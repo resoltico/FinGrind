@@ -64,16 +64,13 @@ readonly expected_resolved_version="$(
 [[ "${expected_resolved_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]{8}\.[0-9]{6}-[0-9]+$ ]] || die \
     "unexpected JaCoCo snapshot resolved version '${expected_resolved_version}'"
 
-FINGRIND_JACOCO_SNAPSHOT_BASE_VERSION="${snapshot_base_version}" \
 FINGRIND_JACOCO_EXPECTED_BUILD_LABEL="${expected_build_label}" \
 FINGRIND_JACOCO_EXPECTED_RESOLVED_VERSION="${expected_resolved_version}" \
 python3 - <<'PY'
 from __future__ import annotations
 
 import os
-import urllib.request
 
-snapshot_base_version = os.environ["FINGRIND_JACOCO_SNAPSHOT_BASE_VERSION"]
 expected_build_label = os.environ["FINGRIND_JACOCO_EXPECTED_BUILD_LABEL"]
 expected_resolved_version = os.environ["FINGRIND_JACOCO_EXPECTED_RESOLVED_VERSION"]
 
@@ -84,36 +81,35 @@ if expected_line != expected_resolved_prefix:
         "error: JaCoCo build label and resolved artifact diverged: "
         f"build label {expected_build_label!r}, resolved version {expected_resolved_version!r}"
     )
-
-artifact_base = "https://central.sonatype.com/repository/maven-snapshots/org/jacoco"
-artifact_urls = {
-    "agent": (
-        f"{artifact_base}/org.jacoco.agent/{snapshot_base_version}/"
-        f"org.jacoco.agent-{expected_resolved_version}.jar"
-    ),
-    "ant": (
-        f"{artifact_base}/org.jacoco.ant/{snapshot_base_version}/"
-        f"org.jacoco.ant-{expected_resolved_version}.jar"
-    ),
-    "core": (
-        f"{artifact_base}/org.jacoco.core/{snapshot_base_version}/"
-        f"org.jacoco.core-{expected_resolved_version}.jar"
-    ),
-    "report": (
-        f"{artifact_base}/org.jacoco.report/{snapshot_base_version}/"
-        f"org.jacoco.report-{expected_resolved_version}.jar"
-    ),
-}
-
-for label, artifact_url in artifact_urls.items():
-    with urllib.request.urlopen(artifact_url, timeout=30) as response:
-        if response.status != 200:
-            raise SystemExit(
-                f"error: JaCoCo artifact {label!r} was not reachable at {artifact_url!r}"
-            )
-
-print(
-    "JaCoCo snapshot verified: "
-    f"base={snapshot_base_version} build={expected_build_label} resolved={expected_resolved_version}"
-)
 PY
+
+readonly jacoco_snapshot_fetch_user_agent="FinGrind-JaCoCo-Snapshot-Verifier/1.0"
+readonly artifact_base="https://central.sonatype.com/repository/maven-snapshots/org/jacoco"
+readonly -a artifact_coordinates=(
+    "org.jacoco.agent:${artifact_base}/org.jacoco.agent/${snapshot_base_version}/org.jacoco.agent-${expected_resolved_version}.jar"
+    "org.jacoco.ant:${artifact_base}/org.jacoco.ant/${snapshot_base_version}/org.jacoco.ant-${expected_resolved_version}.jar"
+    "org.jacoco.core:${artifact_base}/org.jacoco.core/${snapshot_base_version}/org.jacoco.core-${expected_resolved_version}.jar"
+    "org.jacoco.report:${artifact_base}/org.jacoco.report/${snapshot_base_version}/org.jacoco.report-${expected_resolved_version}.jar"
+)
+
+for coordinate in "${artifact_coordinates[@]}"; do
+    artifact_label="${coordinate%%:*}"
+    artifact_url="${coordinate#*:}"
+    curl \
+        --fail \
+        --silent \
+        --show-error \
+        --location \
+        --retry 5 \
+        --retry-all-errors \
+        --retry-delay 2 \
+        --user-agent "${jacoco_snapshot_fetch_user_agent}" \
+        --output /dev/null \
+        "${artifact_url}" || die \
+        "JaCoCo artifact '${artifact_label}' was not reachable at ${artifact_url}"
+done
+
+printf 'JaCoCo snapshot verified: base=%s build=%s resolved=%s\n' \
+    "${snapshot_base_version}" \
+    "${expected_build_label}" \
+    "${expected_resolved_version}"

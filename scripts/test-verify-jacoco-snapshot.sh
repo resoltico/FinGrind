@@ -53,6 +53,12 @@ grep -Fq 'readonly jacoco_snapshot_verifier="${repo_root}/scripts/verify-jacoco-
     "quality gate no longer defines the JaCoCo snapshot verifier owner"
 grep -Fq '"${jacoco_snapshot_verifier}"' "${quality_gate_script}" || die \
     "quality gate no longer runs the JaCoCo snapshot verifier"
+grep -Fq 'readonly jacoco_snapshot_fetch_user_agent="FinGrind-JaCoCo-Snapshot-Verifier/1.0"' "${verifier}" || die \
+    "JaCoCo snapshot verifier no longer declares the repo-owned fetch user agent"
+grep -Fq -- '--retry-all-errors' "${verifier}" || die \
+    "JaCoCo snapshot verifier no longer retries snapshot fetch errors"
+grep -Fq -- '--user-agent "${jacoco_snapshot_fetch_user_agent}"' "${verifier}" || die \
+    "JaCoCo snapshot verifier no longer sends the repo-owned fetch user agent"
 grep -Fq 'scripts/test-verify-jacoco-snapshot.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the JaCoCo snapshot verifier regression"
 grep -Fq 'configurePinnedJacocoSnapshotArtifacts(buildMetadata)' "${root_conventions_path}" || die \

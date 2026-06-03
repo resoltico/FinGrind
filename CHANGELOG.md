@@ -91,6 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed SQLite runtime, bootstrap, and protected-book fixture truth so managed-runtime inspection,
   source-checkout runtime verification, staged protected-book fixtures, and public compatibility
   metadata all agree on the current format-owned contract.
+- Fixed SQLite verification task hygiene so ordinary `:sqlite:test` and `:sqlite:pmdTest` runs
+  no longer regenerate the committed protected-book fixture family inside source-controlled test
+  resources. Protected-book fixture refresh now remains an explicit maintenance task instead of a
+  release-gate side effect.
 - Fixed the Jazzer replay and regression-corpus surface so replay wrappers tolerate real
   verification-lock cleanup timing and the committed corpus follows the live request and
   ledger-plan grammar, starter-chart accounts, and workflow semantics instead of retired fields.
