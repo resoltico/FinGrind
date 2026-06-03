@@ -63,6 +63,7 @@ def load_release_publication_plan(
                 {
                     "runner": release_target["runnerLabel"],
                     "classifier": classifier,
+                    "architectureId": bundle_target["architectureId"],
                     "dockerPlatform": docker_platform,
                     "expectedOs": release_target["expectedRunnerOs"],
                     "expectedArch": release_target["expectedRunnerArch"],

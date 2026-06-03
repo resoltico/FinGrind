@@ -473,7 +473,11 @@ jobs:
           printf 'path=%s\n' "$(fg_gradle_docker_context_dir "$PWD" 'cli' false)" >> "$GITHUB_OUTPUT"
 
       - name: Stage the Docker build context
-        run: ./gradlew :cli:stageDockerBuildContext --no-daemon
+        run: |
+          ./gradlew \
+            -Dfingrind.docker.target.architectureId=${{ matrix.architectureId }} \
+            :cli:stageDockerBuildContext \
+            --no-daemon
 
       - name: Verify managed SQLite CLI runtimes
         run: |
@@ -481,6 +485,8 @@ jobs:
           ./scripts/verify-direct-java-sqlite-runtime.sh
 
       - name: Smoke test the Docker image before publication staging
+        env:
+          FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID: ${{ matrix.architectureId }}
         run: ./scripts/docker-smoke.sh
 
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0

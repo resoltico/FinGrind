@@ -97,6 +97,11 @@ class CliDistributionBuildContractTest {
             repositoryRoot()
                 .resolve(
                     "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"));
+    String dockerManagedSqliteProvisioning =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ManagedSqliteDockerProvisioning.kt"));
     String dockerContextRegistration =
         Files.readString(
             repositoryRoot()
@@ -122,7 +127,7 @@ class CliDistributionBuildContractTest {
 
     assertCliBuildScriptDelegatesDistribution(buildScript);
     assertDistributionPluginOwnsDistributionContracts(
-        distributionPlugin, dockerContextRegistration);
+        distributionPlugin, dockerManagedSqliteProvisioning, dockerContextRegistration);
     assertManagedSqliteProvisioningUsesNamedModuleAccess(
         managedSqliteProvisioning, managedSqliteConsumerPlugin, rootConventionsPlugin);
     assertSqliteBuildScriptOwnsWhiteBoxModulePatch(sqliteBuildScript);
@@ -137,7 +142,9 @@ class CliDistributionBuildContractTest {
   }
 
   private static void assertDistributionPluginOwnsDistributionContracts(
-      String distributionPlugin, String dockerContextRegistration) {
+      String distributionPlugin,
+      String dockerManagedSqliteProvisioning,
+      String dockerContextRegistration) {
     assertTrue(distributionPlugin.contains("stageDockerBuildContext"));
     assertTrue(distributionPlugin.contains("docker-context"));
     assertTrue(distributionPlugin.contains("docker-build-context-manifest.json"));
@@ -153,8 +160,6 @@ class CliDistributionBuildContractTest {
         distributionPlugin.contains("CliDistributionSourceInventory.dockerBuildContextFiles"));
     assertTrue(distributionPlugin.contains("dockerManagedSqliteContractSource"));
     assertTrue(distributionPlugin.contains("dockerBuildContextSourceInputs"));
-    assertTrue(
-        distributionPlugin.contains("ManagedSqliteProvisioningRegistry.require(rootProject)"));
     assertTrue(
         distributionPlugin.contains("ManagedSqliteProvisioningLogic.registerDockerContextTarget"));
     assertTrue(distributionPlugin.contains("managedSqliteProvisioning = dockerManagedSqlite"));
@@ -197,6 +202,12 @@ class CliDistributionBuildContractTest {
     assertFalse(distributionPlugin.contains("launcherCommandForOperatingSystemId"));
     assertFalse(distributionPlugin.contains("managedSqliteHostClassifier("));
     assertFalse(distributionPlugin.contains("managedSqliteLibraryFileNameForHost("));
+    assertFalse(
+        dockerManagedSqliteProvisioning.contains(
+            "if (hostProvisioning.classifier == dockerBundleTarget.classifier)"));
+    assertTrue(
+        dockerManagedSqliteProvisioning.contains(
+            "The staged container runtime must come from the Docker-target toolchain"));
     assertTrue(
         dockerContextRegistration.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
     assertTrue(
@@ -537,7 +548,9 @@ class CliDistributionBuildContractTest {
     assertTrue(dockerSmokeScript.contains(":cli:stageDockerBuildContext"));
     assertTrue(
         dockerSmokeScript.contains(
-            "docker_with_repo_config buildx build --load -t \"${image_tag}\" \"${cli_docker_context_dir}\""));
+            "-Dfingrind.docker.target.architectureId=\"${docker_target_architecture}\""));
+    assertTrue(dockerSmokeScript.contains("docker_with_repo_config buildx build \\"));
+    assertTrue(dockerSmokeScript.contains("--platform \"${docker_target_platform}\""));
     assertFalse(
         dockerSmokeScript.contains(
             "staging relocated Docker build context into repository context"));

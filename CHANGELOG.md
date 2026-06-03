@@ -95,6 +95,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no longer regenerate the committed protected-book fixture family inside source-controlled test
   resources. Protected-book fixture refresh now remains an explicit maintenance task instead of a
   release-gate side effect.
+- Fixed Docker publication staging so Linux hosts no longer short-circuit container assembly onto
+  the source-checkout managed SQLite runtime when the host and container classifiers match. The
+  staged Docker context now remains target-toolchain-owned, and container acceptance now carries
+  explicit target-architecture wiring for reproducible local and hosted verification.
 - Fixed the Jazzer replay and regression-corpus surface so replay wrappers tolerate real
   verification-lock cleanup timing and the committed corpus follows the live request and
   ledger-plan grammar, starter-chart accounts, and workflow semantics instead of retired fields.

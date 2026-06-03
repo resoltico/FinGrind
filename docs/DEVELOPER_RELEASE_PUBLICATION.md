@@ -130,6 +130,10 @@ staged Docker context under the active CLI build root, not from the repository r
 acceptance already proves that staged context boundary; tag-rerun publication must reuse that same
 checked assembly input instead of reopening checkout-local files through repository-root
 `.dockerignore` semantics.
+The staged Docker context must also carry a Docker-target managed SQLite library built for the
+explicit target architecture. Do not short-circuit to the source-checkout managed SQLite runtime
+just because the host and container classifiers share the same OS/architecture label; the public
+container ABI is owned by the target image toolchain, not by the checkout host.
 
 ## Evidence Owners
 

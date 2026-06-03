@@ -32,13 +32,12 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
             val unsupportedPublicCliBundleTargets =
                 DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRootDirectory)
             val hostBundleTarget = DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)
-            val hostManagedSqlite = ManagedSqliteProvisioningRegistry.require(rootProject)
             val managedSqlitePackageId =
                 DistributionContractReader.requiredSqliteSourcePackageId(repositoryRootDirectory)
+            val hostManagedSqlite = ManagedSqliteProvisioningRegistry.require(rootProject)
             val dockerManagedSqlite =
                 ManagedSqliteProvisioningLogic.registerDockerContextTarget(
                     project = rootProject,
-                    hostProvisioning = hostManagedSqlite,
                     repositoryRootDirectory = repositoryRootDirectory,
                     sqliteSourceDirectory =
                         rootProject.layout.projectDirectory.dir(
