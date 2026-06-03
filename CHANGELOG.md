@@ -99,6 +99,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the source-checkout managed SQLite runtime when the host and container classifiers match. The
   staged Docker context now remains target-toolchain-owned, and container acceptance now carries
   explicit target-architecture wiring for reproducible local and hosted verification.
+- Fixed pre-merge published bundle smoke so CI now reads bundle archive and checksum paths from
+  the Gradle-owned bundle manifest instead of scraping `bundleCliArchive` console output. The
+  release gate now verifies the same machine-owned bundle handoff contract before merge and
+  during public release publication.
 - Fixed the Jazzer replay and regression-corpus surface so replay wrappers tolerate real
   verification-lock cleanup timing and the committed corpus follows the live request and
   ledger-plan grammar, starter-chart accounts, and workflow semantics instead of retired fields.

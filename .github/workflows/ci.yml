@@ -230,31 +230,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          task_output="$(
-            ./gradlew :cli:bundleCliArchive \
+          source ./scripts/gradle-wrapper-support.sh
+          is_darwin=false
+          case "$(uname -s)" in
+            Darwin) is_darwin=true ;;
+          esac
+          manifest_path="$(fg_gradle_bundle_archive_manifest_path "$PWD" 'cli' "${is_darwin}")"
+          ./gradlew :cli:bundleCliArchive \
             -PfingrindBundleClassifier=${{ matrix.classifier }} \
             --no-daemon \
             --console=plain
+          archive_path="$(
+            python3 -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["archivePath"])' \
+              "${manifest_path}"
           )"
-          resolve_bundle_path() {
-            local label="$1"
-            local machine_prefix="$2"
-            local legacy_prefix="$3"
-            local resolved_path
-            resolved_path="$(
-              printf '%s\n' "${task_output}" | sed -n \
-                -e "s/^${machine_prefix}=//p" \
-                -e "s/^${legacy_prefix}//p" | tail -n 1
-            )"
-            [ -n "${resolved_path}" ] || {
-              echo "::error::bundleCliArchive did not report ${label}"
-              exit 1
-            }
-            printf '%s' "${resolved_path}"
-          }
-          printf '%s\n' "${task_output}"
-          archive_path="$(resolve_bundle_path 'bundle archive path' 'FINGRIND_BUNDLE_ARCHIVE' 'FinGrind bundle archive: ')"
-          checksum_path="$(resolve_bundle_path 'bundle checksum path' 'FINGRIND_BUNDLE_CHECKSUM' 'FinGrind bundle checksum: ')"
+          checksum_path="$(
+            python3 -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["checksumPath"])' \
+              "${manifest_path}"
+          )"
           printf 'archive-path=%s\n' "${archive_path}" >> "$GITHUB_OUTPUT"
           printf 'checksum-path=%s\n' "${checksum_path}" >> "$GITHUB_OUTPUT"
 
