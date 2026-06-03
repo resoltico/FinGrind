@@ -27,6 +27,8 @@ final class MachineContractPostEntrySchemas {
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.lineFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.openingBalanceFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.evidenceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.sourceDocumentFields()),

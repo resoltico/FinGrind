@@ -272,7 +272,7 @@ class BookAuditEventTest {
                     Money.parse("EUR", "1.00")))),
         postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(

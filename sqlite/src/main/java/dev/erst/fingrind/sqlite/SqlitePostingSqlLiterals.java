@@ -140,19 +140,14 @@ final class SqlitePostingSqlLiterals {
       select
           entity_name,
           accounting_kernel_profile,
+          accounting_basis,
+          accounting_framework_position,
+          entity_form,
+          book_template_id,
           functional_currency_code,
           fiscal_year_start_month,
           fiscal_year_start_day
       from book_identity
-      where singleton_id = 1
-      limit 1
-      """;
-
-  static final String FIND_ENTITY_PROFILE =
-      """
-      select
-          business_activity_tags
-      from entity_profile
       where singleton_id = 1
       limit 1
       """;
@@ -584,18 +579,14 @@ final class SqlitePostingSqlLiterals {
           singleton_id,
           entity_name,
           accounting_kernel_profile,
+          accounting_basis,
+          accounting_framework_position,
+          entity_form,
+          book_template_id,
           functional_currency_code,
           fiscal_year_start_month,
           fiscal_year_start_day
-      ) values (1, ?, ?, ?, ?, ?)
-      """;
-
-  static final String INSERT_ENTITY_PROFILE =
-      """
-      insert into entity_profile (
-          singleton_id,
-          business_activity_tags
-      ) values (1, ?)
+      ) values (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String UPSERT_ACCOUNT =

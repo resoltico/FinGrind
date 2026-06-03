@@ -14,12 +14,11 @@ internal fun Project.registerCliDockerBuildContextTasks(
     shadowJarTask: org.gradle.api.tasks.TaskProvider<Jar>,
     writeRuntimeModuleList: org.gradle.api.tasks.TaskProvider<WriteRuntimeModuleListTask>,
     dockerBuildContextDirectory: Provider<Directory>,
-    repositoryDockerBuildContextDirectory: Directory,
-    mirrorRepositoryDockerBuildContext: Boolean,
     dockerBuildContextManifestOutputFile: Provider<RegularFile>,
     dockerBuildContextFiles: List<String>,
     dockerBuildContextSourceInputs: FileCollection,
     dockerManagedSqliteContractSource: Provider<java.nio.file.Path>,
+    managedSqliteProvisioning: ManagedSqliteProvisioning,
     sqliteBundleHomeSystemProperty: String,
     containerRuntimeDistribution: String,
 ): org.gradle.api.tasks.TaskProvider<Sync> {
@@ -43,6 +42,7 @@ internal fun Project.registerCliDockerBuildContextTasks(
             dependsOn(shadowJarTask)
             dependsOn(writeRuntimeModuleList)
             dependsOn(writeDockerBuildContextManifest)
+            dependsOn(managedSqliteProvisioning.prepareTask)
             into(dockerBuildContextDirectory)
 
             from(writeDockerBuildContextManifest) {
@@ -52,6 +52,10 @@ internal fun Project.registerCliDockerBuildContextTasks(
             from(shadowJarTask.flatMap { it.archiveFile }) {
                 rename { "fingrind.jar" }
             }
+            from(managedSqliteProvisioning.libraryPath)
+            from(managedSqliteProvisioning.checksumPath)
+            from(managedSqliteProvisioning.toolchainFingerprintPath)
+            from(managedSqliteProvisioning.buildContractPath)
             from(writeRuntimeModuleList.flatMap { it.outputFile }) {
                 rename { "runtime-modules.txt" }
             }
@@ -77,20 +81,5 @@ internal fun Project.registerCliDockerBuildContextTasks(
                 into("source-root")
             }
         }
-
-    val syncRepositoryDockerBuildContext =
-        tasks.register<Sync>("syncRepositoryDockerBuildContext") {
-            group = "distribution"
-            description =
-                "Mirrors the staged Docker build context into cli/build/docker-context for plain docker build consumers."
-            dependsOn(stageDockerBuildContext)
-            from(dockerBuildContextDirectory)
-            into(repositoryDockerBuildContextDirectory)
-            enabled = mirrorRepositoryDockerBuildContext
-        }
-
-    stageDockerBuildContext.configure {
-        finalizedBy(syncRepositoryDockerBuildContext)
-    }
     return stageDockerBuildContext
 }

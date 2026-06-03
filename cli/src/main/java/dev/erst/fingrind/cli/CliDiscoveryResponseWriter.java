@@ -25,9 +25,8 @@ final class CliDiscoveryResponseWriter {
       @org.jspecify.annotations.Nullable OperationCategory category) {
     outputMode.run(
         () ->
-            outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(
-                    CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, detail, category))),
+            outputChannel.writePrettySuccess(
+                CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, detail, category)),
         () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpText(helpDescriptor)),
         () -> {
           throw new IllegalArgumentException(
@@ -42,10 +41,9 @@ final class CliDiscoveryResponseWriter {
       CliDiscoverySelections selections) {
     outputMode.run(
         () ->
-            outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(
-                    CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
-                        capabilitiesDescriptor, detail, selections))),
+            outputChannel.writePrettySuccess(
+                CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
+                    capabilitiesDescriptor, detail, selections)),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderCapabilitiesText(capabilitiesDescriptor)),
@@ -57,7 +55,7 @@ final class CliDiscoveryResponseWriter {
 
   void writeEnvironment(EnvironmentDescriptor environmentDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writeEnvelope(CliEnvelopeMapper.successEnvelope(environmentDescriptor)),
+        () -> outputChannel.writePrettySuccess(environmentDescriptor),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderEnvironmentText(environmentDescriptor)),
@@ -69,7 +67,7 @@ final class CliDiscoveryResponseWriter {
 
   void writeVersion(VersionDescriptor versionDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writeEnvelope(CliEnvelopeMapper.successEnvelope(versionDescriptor)),
+        () -> outputChannel.writePrettySuccess(versionDescriptor),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderVersionText(versionDescriptor)),

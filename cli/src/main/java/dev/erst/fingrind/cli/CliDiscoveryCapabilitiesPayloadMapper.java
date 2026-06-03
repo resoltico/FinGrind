@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
@@ -42,7 +43,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryJsonModels.CapabilitiesStorageSlicePayload(
+              new CliDiscoveryCapabilitiesJsonModels.CapabilitiesStorageSlicePayload(
                   capabilitiesDescriptor.storage()),
               storageHints());
       case REQUEST_INPUT ->
@@ -51,7 +52,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryJsonModels.CapabilitiesRequestInputSlicePayload(
+              new CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload(
                   requestInputCompactPayload(capabilitiesDescriptor),
                   detail == DiscoveryDetail.FULL ? capabilitiesDescriptor.requestInput() : null),
               requestInputHints());
@@ -61,32 +62,26 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryJsonModels.CapabilitiesCurrencySlicePayload(
+              new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCurrencySlicePayload(
                   capabilitiesDescriptor.currencyModel()),
-              fullDescriptorHints());
+              focusHints(detail));
       case BOOKKEEPING_KERNEL ->
           focusedSlicePayload(
               capabilitiesDescriptor,
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryJsonModels.CapabilitiesKernelSlicePayload(
+              new CliDiscoveryCapabilitiesJsonModels.CapabilitiesKernelSlicePayload(
                   capabilitiesDescriptor.bookkeepingKernel()),
-              fullDescriptorHints());
+              focusHints(detail));
       case RESPONSE_CONTRACT ->
           focusedSlicePayload(
               capabilitiesDescriptor,
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryJsonModels.CapabilitiesResponseContractSlicePayload(
-                  capabilitiesDescriptor.responseModel(),
-                  capabilitiesDescriptor.planExecution(),
-                  capabilitiesDescriptor.audit(),
-                  capabilitiesDescriptor.accountRegistry(),
-                  capabilitiesDescriptor.reversals(),
-                  capabilitiesDescriptor.preflight()),
-              fullDescriptorHints());
+              responseContractSlicePayload(capabilitiesDescriptor, detail),
+              focusHints(detail));
     };
   }
 
@@ -99,9 +94,9 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
     };
   }
 
-  private static CliDiscoveryJsonModels.CapabilitiesMinimalPayload minimalCapabilitiesPayload(
-      CapabilitiesDescriptor capabilitiesDescriptor) {
-    return new CliDiscoveryJsonModels.CapabilitiesMinimalPayload(
+  private static CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload
+      minimalCapabilitiesPayload(CapabilitiesDescriptor capabilitiesDescriptor) {
+    return new CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
         DiscoveryDetail.MINIMAL,
@@ -112,21 +107,13 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
         capabilitiesDescriptor.currencyModel().scope(),
         capabilitiesDescriptor.currencyModel().multiCurrencyStatus(),
         requestInputCompactPayload(capabilitiesDescriptor),
-        "Rerun with '"
-            + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-            + " --output json "
-            + ProtocolOptions.DETAIL
-            + " compact' for stable command, storage, and request-entry discovery.",
-        "Rerun with '"
-            + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-            + " --output json "
-            + ProtocolOptions.DETAIL
-            + " full' for the exhaustive schema and response contract.");
+        "See --detail compact.",
+        "See --detail full.");
   }
 
-  private static CliDiscoveryJsonModels.CapabilitiesCompactPayload compactCapabilitiesPayload(
-      CapabilitiesDescriptor capabilitiesDescriptor) {
-    return new CliDiscoveryJsonModels.CapabilitiesCompactPayload(
+  private static CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload
+      compactCapabilitiesPayload(CapabilitiesDescriptor capabilitiesDescriptor) {
+    return new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
         DiscoveryDetail.COMPACT,
@@ -135,7 +122,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
         capabilitiesDescriptor.storage().engines().stream().map(Object::toString).toList(),
         requestInputCompactPayload(capabilitiesDescriptor),
         commandCounts(capabilitiesDescriptor.commands()),
-        "Run '"
+        "Use '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json "
             + ProtocolOptions.FOCUS
@@ -146,9 +133,9 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
             + " full' for exhaustive schema, response, and doctrine details.");
   }
 
-  private static CliDiscoveryJsonModels.CapabilitiesPayload fullCapabilitiesPayload(
+  private static CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload fullCapabilitiesPayload(
       CapabilitiesDescriptor capabilitiesDescriptor) {
-    return new CliDiscoveryJsonModels.CapabilitiesPayload(
+    return new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
         DiscoveryDetail.FULL,
@@ -166,14 +153,14 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
         capabilitiesDescriptor);
   }
 
-  private static CliDiscoveryJsonModels.CapabilitiesSlicePayload focusedSlicePayload(
+  private static CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload focusedSlicePayload(
       CapabilitiesDescriptor capabilitiesDescriptor,
       DiscoveryDetail detail,
       DiscoveryFocus focus,
       @Nullable OperationCategory category,
       ProtocolSuccessPayload data,
       List<String> nextHints) {
-    return new CliDiscoveryJsonModels.CapabilitiesSlicePayload(
+    return new CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
         detail,
@@ -183,7 +170,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
         nextHints);
   }
 
-  private static CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload commandsSlicePayload(
+  private static CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload commandsSlicePayload(
       CapabilitiesDescriptor capabilitiesDescriptor,
       DiscoveryDetail detail,
       @Nullable OperationCategory category) {
@@ -191,24 +178,24 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
         filteredCommands(capabilitiesDescriptor.commands(), category);
     return switch (detail) {
       case MINIMAL ->
-          new CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload(
+          new CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload(
               category == null ? null : category.wireValue(),
               filteredCommands.stream()
                   .map(
                       command ->
-                          new CliDiscoveryJsonModels.CommandNamePayload(
+                          new CliDiscoveryCommonJsonModels.CommandNamePayload(
                               command.name(),
                               ProtocolCatalog.operation(command.name()).category().wireValue()))
                   .toList(),
               null,
               null);
       case COMPACT ->
-          new CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload(
+          new CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload(
               category == null ? null : category.wireValue(),
               filteredCommands.stream()
                   .map(
                       command ->
-                          new CliDiscoveryJsonModels.CommandNamePayload(
+                          new CliDiscoveryCommonJsonModels.CommandNamePayload(
                               command.name(),
                               ProtocolCatalog.operation(command.name()).category().wireValue()))
                   .toList(),
@@ -220,12 +207,12 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
                   .toList(),
               null);
       case FULL ->
-          new CliDiscoveryJsonModels.CapabilitiesCommandsSlicePayload(
+          new CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload(
               category == null ? null : category.wireValue(),
               filteredCommands.stream()
                   .map(
                       command ->
-                          new CliDiscoveryJsonModels.CommandNamePayload(
+                          new CliDiscoveryCommonJsonModels.CommandNamePayload(
                               command.name(),
                               ProtocolCatalog.operation(command.name()).category().wireValue()))
                   .toList(),
@@ -234,9 +221,9 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
     };
   }
 
-  private static CliDiscoveryJsonModels.CommandSurfacePayload commandSurfacePayload(
+  private static CliDiscoveryCommonJsonModels.CommandSurfacePayload commandSurfacePayload(
       CommandDescriptor command, List<String> requestFileCommands) {
-    return new CliDiscoveryJsonModels.CommandSurfacePayload(
+    return new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
         command.name(),
         commandCategory(command),
         command.summary(),
@@ -251,9 +238,9 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
         requestFileCommands.contains(command.name().wireName()));
   }
 
-  private static CliDiscoveryJsonModels.RequestInputCompactPayload requestInputCompactPayload(
+  private static CliDiscoveryCommonJsonModels.RequestInputCompactPayload requestInputCompactPayload(
       CapabilitiesDescriptor capabilitiesDescriptor) {
-    return new CliDiscoveryJsonModels.RequestInputCompactPayload(
+    return new CliDiscoveryCommonJsonModels.RequestInputCompactPayload(
         capabilitiesDescriptor.requestInput().bookFileOption(),
         capabilitiesDescriptor.requestInput().bookPassphraseOptions(),
         capabilitiesDescriptor.requestInput().requestFileOption(),
@@ -262,14 +249,15 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
         capabilitiesDescriptor.requestInput().outputOption());
   }
 
-  private static List<CliDiscoveryJsonModels.CommandCountPayload> commandCounts(
+  private static List<CliDiscoveryCommonJsonModels.CommandCountPayload> commandCounts(
       CommandCatalogDescriptor commands) {
     return List.of(
-        new CliDiscoveryJsonModels.CommandCountPayload("discovery", commands.discovery().size()),
-        new CliDiscoveryJsonModels.CommandCountPayload(
+        new CliDiscoveryCommonJsonModels.CommandCountPayload(
+            "discovery", commands.discovery().size()),
+        new CliDiscoveryCommonJsonModels.CommandCountPayload(
             "administration", commands.administration().size()),
-        new CliDiscoveryJsonModels.CommandCountPayload("query", commands.query().size()),
-        new CliDiscoveryJsonModels.CommandCountPayload("write", commands.write().size()));
+        new CliDiscoveryCommonJsonModels.CommandCountPayload("query", commands.query().size()),
+        new CliDiscoveryCommonJsonModels.CommandCountPayload("write", commands.write().size()));
   }
 
   private static List<CommandDescriptor> filteredCommands(
@@ -305,9 +293,43 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
             + "' for a runnable request scaffold.");
   }
 
-  private static List<String> fullDescriptorHints() {
-    return List.of(
-        "Rerun with --detail full only when you need the exhaustive descriptor surface.");
+  private static ProtocolSuccessPayload responseContractSlicePayload(
+      CapabilitiesDescriptor capabilitiesDescriptor, DiscoveryDetail detail) {
+    return switch (detail) {
+      case MINIMAL ->
+          new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSummaryPayload(
+              List.of(
+                  capabilitiesDescriptor.responseModel().successStatus().wireValue(),
+                  capabilitiesDescriptor.responseModel().rejectionStatus().wireValue(),
+                  capabilitiesDescriptor.responseModel().errorStatus().wireValue()),
+              capabilitiesDescriptor.preflight().semantics(),
+              capabilitiesDescriptor.planExecution().journal(),
+              capabilitiesDescriptor.reversals().model(),
+              capabilitiesDescriptor.audit().requestProvenanceFields().size(),
+              capabilitiesDescriptor.audit().committedFields().size());
+      case COMPACT ->
+          new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload(
+              capabilitiesDescriptor.responseModel(),
+              capabilitiesDescriptor.preflight().semantics(),
+              capabilitiesDescriptor.planExecution().journal(),
+              capabilitiesDescriptor.reversals().model(),
+              capabilitiesDescriptor.audit().requestProvenanceFields().size(),
+              capabilitiesDescriptor.audit().committedFields().size());
+      case FULL ->
+          new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSlicePayload(
+              capabilitiesDescriptor.responseModel(),
+              capabilitiesDescriptor.planExecution(),
+              capabilitiesDescriptor.audit(),
+              capabilitiesDescriptor.accountRegistry(),
+              capabilitiesDescriptor.reversals(),
+              capabilitiesDescriptor.preflight());
+    };
+  }
+
+  private static List<String> focusHints(DiscoveryDetail detail) {
+    return detail == DiscoveryDetail.FULL
+        ? List.of("This slice is the exhaustive descriptor surface for the selected focus.")
+        : List.of("Rerun with --detail full only when you need the exhaustive descriptor surface.");
   }
 
   private static String executionModeWireValue(CommandDescriptor command) {

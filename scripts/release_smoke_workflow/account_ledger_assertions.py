@@ -26,8 +26,8 @@ def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_out
     opening_entry = next(
         row for row in row_groups["entry"] if row["postingOriginKind"] == "CASH_REVENUE"
     )
-    adjustment_entry = next(
-        row for row in row_groups["entry"] if row["postingOriginKind"] == "CORRECTION_ADJUSTMENT"
+    expense_entry = next(
+        row for row in row_groups["entry"] if row["postingOriginKind"] == "CASH_EXPENSE"
     )
     assert_entry_row(
         config,
@@ -41,22 +41,20 @@ def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_out
     )
     assert_entry_row(
         config,
-        adjustment_entry,
+        expense_entry,
         effective_date="2026-04-08",
-        posting_origin_kind="CORRECTION_ADJUSTMENT",
+        posting_origin_kind="CASH_EXPENSE",
         debit_amount="0.00",
         credit_amount="4.00",
         running_net_amount="6.00",
-        row_name="running-balance adjustment row",
+        row_name="running-balance expense row",
     )
-    assert_counterpart_rows(
-        config, row_groups["counterpart-account"], opening_entry, adjustment_entry
-    )
+    assert_counterpart_rows(config, row_groups["counterpart-account"], opening_entry, expense_entry)
     assert_source_document_rows(
         config,
         row_groups["source-document"],
         opening_entry,
-        adjustment_entry,
+        expense_entry,
     )
 
 

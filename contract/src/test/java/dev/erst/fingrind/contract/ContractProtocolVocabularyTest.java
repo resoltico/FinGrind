@@ -40,6 +40,7 @@ import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
+import dev.erst.fingrind.contract.workflow.LedgerFactKind;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
@@ -68,7 +69,7 @@ class ContractProtocolVocabularyTest {
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(22, BookFormatContract.FORMAT_VERSION);
+    assertEquals(23, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -77,12 +78,16 @@ class ContractProtocolVocabularyTest {
             "assert-posting-exists",
             "assert-account-balance"),
         LedgerAssertionKind.wireValues());
+    assertEquals(List.of("text", "flag", "count", "money", "group"), LedgerFactKind.wireValues());
     assertEquals("open-book", LedgerStepKind.wireValues().getFirst());
     assertThrows(NullPointerException.class, () -> LedgerStepKind.fromWireValue(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerStepKind.fromWireValue("post_entry"));
     assertThrows(NullPointerException.class, () -> LedgerAssertionKind.fromWireValue(nullOf()));
     assertThrows(
         IllegalArgumentException.class, () -> LedgerAssertionKind.fromWireValue("assert-unknown"));
+    assertEquals(LedgerFactKind.GROUP, LedgerFactKind.fromWireValue("group"));
+    assertThrows(NullPointerException.class, () -> LedgerFactKind.fromWireValue(nullOf()));
+    assertThrows(IllegalArgumentException.class, () -> LedgerFactKind.fromWireValue("decimal"));
     assertThrows(IllegalArgumentException.class, () -> OperationId.fromWireValue("post_entry"));
   }
 
@@ -186,6 +191,7 @@ class ContractProtocolVocabularyTest {
         List.of(
             ContractTemplates.PostingRequestTemplateDescriptor.class,
             ContractTemplates.JournalLineTemplateDescriptor.class,
+            ContractTemplates.OpeningBalanceTemplateDescriptor.class,
             ContractTemplates.AccountingEvidenceTemplateDescriptor.class,
             ContractTemplates.SourceDocumentTemplateDescriptor.class,
             ContractTemplates.ApprovalTemplateDescriptor.class,
@@ -218,6 +224,44 @@ class ContractProtocolVocabularyTest {
   }
 
   @Test
+  void requestInputDescriptor_requiresPositiveByteLimits() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ContractRequestShapes.RequestInputDescriptor(
+                "--book",
+                List.of("--passphrase-stdin"),
+                "--request-file",
+                List.of("execute-plan"),
+                List.of("open-book"),
+                "--output",
+                List.of("plain"),
+                "-",
+                "book-file semantics",
+                0,
+                List.of("book-passphrase semantics"),
+                1024,
+                List.of("request-document semantics")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ContractRequestShapes.RequestInputDescriptor(
+                "--book",
+                List.of("--passphrase-stdin"),
+                "--request-file",
+                List.of("execute-plan"),
+                List.of("open-book"),
+                "--output",
+                List.of("plain"),
+                "-",
+                "book-file semantics",
+                4096,
+                List.of("book-passphrase semantics"),
+                0,
+                List.of("request-document semantics")));
+  }
+
+  @Test
   void templateDescriptorsRejectImpossibleShapesAndInvalidVocabularyDowngrades() {
     assertThrows(
         IllegalArgumentException.class,
@@ -233,6 +277,7 @@ class ContractProtocolVocabularyTest {
                 List.of(
                     new ContractTemplates.JournalLineTemplateDescriptor(
                         "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000"))),
+                null,
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
                     "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
@@ -253,6 +298,7 @@ class ContractProtocolVocabularyTest {
                         "1000", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
                     new ContractTemplates.JournalLineTemplateDescriptor(
                         "2000", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
+                null,
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
                     "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),

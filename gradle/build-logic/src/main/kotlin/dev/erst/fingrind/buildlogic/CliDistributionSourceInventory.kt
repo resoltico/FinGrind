@@ -15,7 +15,9 @@ object CliDistributionSourceInventory {
             "gradle/fingrind-build.properties",
             "gradle/libs.versions.toml",
             "gradle/wrapper/**",
-            "gradle/build-logic/**",
+            "gradle/build-logic/build.gradle.kts",
+            "gradle/build-logic/settings.gradle.kts",
+            "gradle/build-logic/src/**",
             "cli/build.gradle.kts",
             "cli/src/main/**",
             "contract/build.gradle.kts",
@@ -43,12 +45,10 @@ object CliDistributionSourceInventory {
     fun dockerBuildContextSourceFiles(
         project: Project,
         repositoryRootDirectory: Path,
-        managedSqliteSourcePackageId: String,
     ): FileCollection =
         project.objects.fileCollection().from(
             project.rootProject.fileTree(repositoryRootDirectory.toFile()) {
-                dockerBuildContextSourceIncludePatterns(managedSqliteSourcePackageId)
-                    .forEach(::include)
+                dockerBuildContextSourceIncludePatterns().forEach(::include)
             },
         )
 
@@ -58,13 +58,14 @@ object CliDistributionSourceInventory {
             "docker-build-context-manifest.json",
             "docker-entrypoint.sh",
             "fingrind.jar",
-            "managed-sqlite-contract.json",
+            "libsqlite3.so.0",
+            "libsqlite3.so.0.sha256",
+            "toolchain-fingerprint.json",
+            "build-contract.json",
             "runtime-modules.txt",
         )
 
-    private fun dockerBuildContextSourceIncludePatterns(
-        managedSqliteSourcePackageId: String,
-    ): List<String> =
+    private fun dockerBuildContextSourceIncludePatterns(): List<String> =
         listOf(
             "Dockerfile",
             "LICENSE",
@@ -81,7 +82,9 @@ object CliDistributionSourceInventory {
             "gradle/fingrind-build.properties",
             "gradle/libs.versions.toml",
             "gradle/wrapper/**",
-            "gradle/build-logic/**",
+            "gradle/build-logic/build.gradle.kts",
+            "gradle/build-logic/settings.gradle.kts",
+            "gradle/build-logic/src/**",
             "cli/build.gradle.kts",
             "cli/src/main/**",
             "cli/src/docker/**",
@@ -93,10 +96,8 @@ object CliDistributionSourceInventory {
             "executor/src/main/**",
             "report-pdf/build.gradle.kts",
             "report-pdf/src/main/**",
-            "scripts/render-managed-sqlite-compiler-flags.py",
             "scripts/verify-docker-build-context.py",
             "sqlite/build.gradle.kts",
             "sqlite/src/main/**",
-            "third_party/sqlite/$managedSqliteSourcePackageId/**",
         )
 }

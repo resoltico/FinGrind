@@ -3,7 +3,7 @@
   "effectiveDate": "2026-04-09",
   "lines": [
     {
-      "accountCode": "1000",
+      "accountCode": "cash",
       "side": "CREDIT",
       "amount": {
         "currencyCode": "EUR",
@@ -11,7 +11,7 @@
       }
     },
     {
-      "accountCode": "2000",
+      "accountCode": "service-revenue",
       "side": "DEBIT",
       "amount": {
         "currencyCode": "EUR",

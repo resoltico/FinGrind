@@ -367,7 +367,7 @@ fg_run_verification_command() {
     local task_name=$1
     shift
     acquire_lock
-    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache clean "${task_name}" "$@"
+    "${FG_GRADLEW}" --no-configuration-cache "${task_name}" "$@"
 }
 
 fg_run_active_command() {

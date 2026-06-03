@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
@@ -28,7 +29,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
@@ -224,7 +224,7 @@ class LedgerPlanContractTest {
   @Test
   void ledgerPlan_rejectsMoreThanTheProtocolStepLimit() {
     List<LedgerStep> steps =
-        IntStream.rangeClosed(0, InteractionLimits.LEDGER_PLAN_STEP_MAX)
+        IntStream.rangeClosed(0, ProtocolInteractionLimits.LEDGER_PLAN_STEP_MAX)
             .mapToObj(index -> (LedgerStep) new LedgerStep.InspectBook(stepId("inspect-" + index)))
             .toList();
     assertThrows(

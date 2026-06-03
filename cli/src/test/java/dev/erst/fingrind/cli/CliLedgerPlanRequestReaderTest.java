@@ -314,6 +314,90 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
+  void readLedgerPlan_rejectsQueryFieldsNotAcceptedByTheSelectedQueryKind() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "list-accounts",
+                      "query": {
+                        "accountCode": "1000"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Unexpected field: query.accountCode", exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsAssertionFieldsNotAcceptedByTheSelectedAssertionKind() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "assert",
+                      "assertion": {
+                        "kind": "assert-posting-exists",
+                        "postingId": "posting-1",
+                        "accountCode": "1000"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Unexpected field: assertion.accountCode", exception.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsAccountBalanceQueryPostingCoverageField() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [
+                    {
+                      "stepId": "step-1",
+                      "kind": "account-balance",
+                      "query": {
+                        "accountCode": "1000",
+                        "postingCoverage": "all-posting-kinds"
+                      }
+                    }
+                  ]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals("Unexpected field: query.postingCoverage", exception.getMessage());
+  }
+
+  @Test
   void readLedgerPlan_reportsInvalidDateValues() {
     CliRequestReader requestReader =
         new CliRequestReader(
@@ -455,8 +539,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readLedgerPlan_rejectsMissingAndExplicitNullBusinessActivityTags() {
-    CliRequestReader missingFieldReader =
+  void readLedgerPlan_rejectsRetiredBusinessActivityTagsField() {
+    CliRequestReader arrayFieldReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
@@ -468,6 +552,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
+                        "businessActivityTags": ["translation-services"],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01"
                       }
@@ -498,105 +583,17 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                 """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    CliRequestException missingFieldException =
+    CliRequestException arrayFieldException =
         assertThrows(
-            CliRequestException.class, () -> missingFieldReader.readLedgerPlan(Path.of("-")));
+            CliRequestException.class, () -> arrayFieldReader.readLedgerPlan(Path.of("-")));
     CliRequestException explicitNullException =
         assertThrows(
             CliRequestException.class, () -> explicitNullReader.readLedgerPlan(Path.of("-")));
 
     assertEquals(
-        "Missing required field: businessActivityTags", missingFieldException.getMessage());
+        "Unexpected field: openBook.businessActivityTags", arrayFieldException.getMessage());
     assertEquals(
-        "Missing required field: businessActivityTags", explicitNullException.getMessage());
-  }
-
-  @Test
-  void readLedgerPlan_rejectsMalformedBusinessActivityTags() {
-    CliRequestReader nonArrayReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-                {
-                  "planId": "plan-1",
-                  "steps": [
-                    {
-                      "stepId": "open",
-                      "kind": "open-book",
-                      "openBook": {
-                        "entityName": "Acme Studio",
-                        "businessActivityTags": "translation-services",
-                        "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
-                      }
-                    }
-                  ]
-                }
-                """
-                    .getBytes(StandardCharsets.UTF_8)));
-    CliRequestReader nonStringElementReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-                {
-                  "planId": "plan-1",
-                  "steps": [
-                    {
-                      "stepId": "open",
-                      "kind": "open-book",
-                      "openBook": {
-                        "entityName": "Acme Studio",
-                        "businessActivityTags": ["translation-services", 2],
-                        "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
-                      }
-                    }
-                  ]
-                }
-                """
-                    .getBytes(StandardCharsets.UTF_8)));
-
-    CliRequestException nonArrayException =
-        assertThrows(CliRequestException.class, () -> nonArrayReader.readLedgerPlan(Path.of("-")));
-    CliRequestException nonStringElementException =
-        assertThrows(
-            CliRequestException.class, () -> nonStringElementReader.readLedgerPlan(Path.of("-")));
-
-    assertEquals("Field must be an array: businessActivityTags", nonArrayException.getMessage());
-    assertEquals(
-        "Field must contain only strings: businessActivityTags[1]",
-        nonStringElementException.getMessage());
-  }
-
-  @Test
-  void readLedgerPlan_rejectsEmptyBusinessActivityTags() {
-    CliRequestReader requestReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-                {
-                  "planId": "plan-1",
-                  "steps": [
-                    {
-                      "stepId": "open",
-                      "kind": "open-book",
-                      "openBook": {
-                        "entityName": "Acme Studio",
-                        "businessActivityTags": [],
-                        "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
-                      }
-                    }
-                  ]
-                }
-                """
-                    .getBytes(StandardCharsets.UTF_8)));
-
-    CliRequestException exception =
-        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
-
-    assertEquals(
-        "Field must contain at least one value: businessActivityTags", exception.getMessage());
+        "Unexpected field: openBook.businessActivityTags", explicitNullException.getMessage());
   }
 
   @Test
@@ -613,7 +610,6 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "open-book",
                       "openBook": {
                         "entityName": "Acme Studio",
-                        "businessActivityTags": ["translation-services"],
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01"
                       }

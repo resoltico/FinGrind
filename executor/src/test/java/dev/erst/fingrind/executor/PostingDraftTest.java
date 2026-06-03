@@ -37,7 +37,7 @@ class PostingDraftTest {
             journalEntry(),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
             accountingEvidence("idem-1"),
             committedProvenance("idem-1"));
     CommittedPosting postingFact = postingDraft.materialize(new PostingId("posting-1"));
@@ -59,7 +59,7 @@ class PostingDraftTest {
                 journalEntry(),
                 null,
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 accountingEvidence("idem-1"),
                 committedProvenance("idem-1")));
   }

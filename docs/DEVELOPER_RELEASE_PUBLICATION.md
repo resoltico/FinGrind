@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows zip, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did windows expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -51,16 +51,18 @@ These publication invariants are release-critical:
 - the tag-driven bundle publisher must consume the archive and checksum paths reported by
   `:cli:bundleCliArchive`; it must not guess checkout-local `cli/build/distributions/...` paths
   because ordinary Gradle project outputs are externalized outside the checkout by default
-- when `release.yml` is rerun from `main` with `workflow_dispatch` against an existing immutable
-  tag, the bundle-path parser must accept the bundle-output contract emitted by that tag's source
-  line as well as the current `main` contract; a workflow repair on `main` is not allowed to
-  strand a tagged release because the task output text evolved afterward
+- when `release.yml` is rerun with `workflow_dispatch` against an existing immutable tag, the
+  workflow definition may come from repaired `main`, but the build-and-publication scripts must run
+  from the tagged source checkout itself and consume the canonical bundle archive manifest that tag
+  emits
 - each published archive and checksum file must verify through `gh attestation verify`
 - the attested digest must match the exact asset bytes downloadable from GitHub Release
-- the release workflow's `container` job must wait for the verified release asset set before
-  treating publication as complete
-- the release workflow's container-job timeout must leave room for buildx publication and
-  post-push public verification
+- public GitHub release assets are immutable once the release is finalized; any rerun that would
+  require different public bytes must fail and cut a new version tag instead
+- the release workflow's staged-container and promotion jobs must wait for the verified draft
+  release asset set before treating publication as complete
+- the staged-container and promotion timeouts must leave room for buildx publication and post-push
+  public verification
 - verifier timeout budget must exceed the explicit retry budget for release-asset and attestation
   propagation
 
@@ -119,20 +121,15 @@ safe repair path is:
 Do not move the release tag. Do not create a replacement tag for the same version. Repair the
 publication machinery and replay it against the immutable released commit.
 
-If the repair changes how `main` parses bundle-path task output, the rerun workflow must remain
-compatible with the tagged source line it is about to rebuild. The rerun path executes the
-workflow definition from `main` against source code from the immutable tag; those two surfaces can
-legitimately speak different bundle-output dialects after a post-tag publication repair.
+The rerun workflow now reads the canonical bundle-archive manifest instead of scraping Gradle
+console output, so post-tag publication repairs do not need compatibility shims for historical
+log dialects.
 
 If the repair touches container publication, the rerun workflow on `main` must publish from the
-staged Docker context mirrored at `cli/build/docker-context`, not from the repository root. Local
-Docker acceptance already proves that staged context path; tag-rerun publication must reuse the
-same assembly boundary instead of reopening checkout-local files through repository-root
+staged Docker context under the active CLI build root, not from the repository root. Local Docker
+acceptance already proves that staged context boundary; tag-rerun publication must reuse that same
+checked assembly input instead of reopening checkout-local files through repository-root
 `.dockerignore` semantics.
-That rerun path must also materialize workflow-owned helper scripts from `main`, exactly like the
-release workflow does, before it replays the immutable tag checkout. Otherwise the tagged
-container rerun will silently keep the stale tag-owned verifier or publication helper and ignore
-the very repair you just merged.
 
 ## Evidence Owners
 
@@ -171,9 +168,10 @@ workflow, and expose the published native-provenance files through a shell probe
 route filesystem checks back through the FinGrind entrypoint. The mounted-workspace portion of
 that verifier must run the container as the caller's numeric `UID:GID`, matching the repo-owned
 `docker-smoke` contract, so Linux bind-mounted book, key, and PDF artifacts are owned by the
-invoking operator instead of by container-root. The release workflow's `container` job now runs
-this same verifier after push, so workflow automation and the operator's Step 9 command are held
-to one public surface contract. When that mounted-book grammar changes, that text report layout
-changes, the mounted-workspace user contract changes, or the container-native provenance surface
+invoking operator instead of by container-root. The release workflow's staged-container and
+promotion jobs now run this same verifier after push, so workflow automation and the operator's
+Step 9 command are held to one public surface contract. When that mounted-book grammar changes,
+that text report layout changes, the mounted-workspace user contract changes, or the
+container-native provenance surface
 moves, repair the verifier and its mock-backed shell regression harness together before trusting
 the release protocol again.

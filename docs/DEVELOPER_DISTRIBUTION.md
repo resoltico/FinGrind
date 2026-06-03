@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -204,31 +204,30 @@ manifest guard as the source-checkout launcher, so stale raw-JAR bytes are refre
 current checkout before direct execution.
 
 The dedicated Docker assembly entrypoint is `./gradlew :cli:stageDockerBuildContext`. It stages
-one canonical Docker build-context directory under the active CLI build root, plus a mirrored
-checkout-local copy at `cli/build/docker-context/` for plain inspection and manual use. That
-context now contains the Dockerfile, the internal application JAR, the runtime-module list, the
-rendered Docker entrypoint, the managed-SQLite contract, a generated
-`docker-build-context-manifest.json`, and a `source-root/` snapshot of every checked source/build
-input the container assembly depends on, so the public bundle and container image consume one
-trimmed Java runtime closure and one compile-option owner instead of deriving competing module
-sets or private Docker-only contract copies. That same build path resolves runtime-distribution,
-public-distribution, storage, and managed-SQLite facts from the protocol-owned contract resources
-through
+one canonical Docker build-context directory under the active CLI build root. That context now
+contains the Dockerfile, the internal application JAR, the runtime-module list, the rendered
+Docker entrypoint, the managed-SQLite shared library plus its checksum/toolchain/build-contract
+provenance files, a generated `docker-build-context-manifest.json`, and a `source-root/`
+snapshot of every checked source/build input the container assembly depends on, so the public
+bundle and container image consume one trimmed Java runtime closure and one native-SQLite owner
+instead of deriving competing module sets or Docker-only native build pipelines. That same build
+path resolves runtime-distribution, public-distribution, storage, and managed-SQLite facts from
+the protocol-owned contract resources through
 `DistributionContractReader`, which now stays a small facade over dedicated path, JSON, schema,
 bundle-layout, host-platform, and text-rendering collaborators, while the shell verifiers read
 that same contract through
 `scripts/read-contract-values.py`. Bundle metadata, launchers, Docker staging, and operator
 verification therefore all consume one canonical runtime-surface owner instead of parallel copied
 literal values.
+When the workstation is not Linux, that staging task now materializes a Linux-target managed
+SQLite artifact through a pinned Buildx builder image before the Docker build starts, so the
+staged context never mislabels a host-native macOS or Windows library as the container runtime.
 The staged manifest now also records a SHA3-256 fingerprint of the current CLI, contract, core,
 executor, report, SQLite, and Gradle build inputs that feed that staged runtime. A plain
 `docker build` from that staged context therefore rejects stale assembly inputs instead of
 silently packaging an older `fingrind.jar`, entrypoint script, or Dockerfile after local source
 edits. Repository-root `docker build .` is intentionally unsupported; the hygiene boundary is the
-staged context, not the whole checkout. When Gradle stages into a relocated build root, the same
-task mirrors that fresh context back into `cli/build/docker-context/` automatically so manual
-checkout-local Docker work sees the same payload Gradle assembled instead of an older leftover
-tree under the repository.
+staged context, not the whole checkout.
 The resulting image mirrors the bundle-owned runtime layout as well: `/opt/fingrind/` now
 contains `runtime/`, `lib/app/fingrind.jar`, and `lib/native/libsqlite3.so.0` plus its
 `.sha256` sidecar, and the rendered entrypoint sets
@@ -288,9 +287,10 @@ Every release must verify:
 - the GitHub release object contains the complete bundle-and-checksum set
 - the published archive and checksum assets verify through `gh attestation verify` against
   `.github/workflows/release.yml`
-- the release workflow's `container` job waits for the complete GitHub release asset set before it
-  publishes the public image, so Docker publication cannot outrun an incomplete release handoff
-- the release workflow's `container` job keeps enough timeout budget for post-publish verification
+- the release workflow's staged-container and promotion jobs wait for the complete verified draft
+  GitHub release asset set before they publish the public image, so Docker publication cannot
+  outrun an incomplete release handoff
+- the staged-container and promotion jobs keep enough timeout budget for post-publish verification
   of the versioned public tag, and of `latest` when the release owns that pointer, on real
   GitHub-hosted runners, so a successful registry push cannot still end as a red release-surface
   workflow

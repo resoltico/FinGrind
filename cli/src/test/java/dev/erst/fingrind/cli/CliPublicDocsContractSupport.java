@@ -230,7 +230,11 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
   }
 
   private String canonicalizeOwnedTemporaryPaths(String text) {
-    return text.contains("<redacted>") ? text.replace('\\', '/') : text;
+    if (!text.contains("<redacted>")) {
+      return text;
+    }
+    String normalized = text.replace('\\', '/');
+    return normalized.replaceAll("<redacted>/junit-[0-9]+/", "<redacted>/");
   }
 
   private static String canonicalizeGeneratedIds(String text) {

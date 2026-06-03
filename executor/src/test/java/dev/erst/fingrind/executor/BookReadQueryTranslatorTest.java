@@ -13,8 +13,8 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -150,17 +150,21 @@ class BookReadQueryTranslatorTest {
             Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new AccountRegistryQuery(InteractionLimits.PAGE_LIMIT_MIN - 1, Optional.empty()));
+        () ->
+            new AccountRegistryQuery(
+                ProtocolInteractionLimits.PAGE_LIMIT_MIN - 1, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new AccountRegistryQuery(InteractionLimits.PAGE_LIMIT_MAX + 1, Optional.empty()));
+        () ->
+            new AccountRegistryQuery(
+                ProtocolInteractionLimits.PAGE_LIMIT_MAX + 1, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new PostingHistoryQuery(
                 Optional.empty(),
                 EffectiveDateRange.unbounded(),
-                InteractionLimits.PAGE_LIMIT_MAX + 1,
+                ProtocolInteractionLimits.PAGE_LIMIT_MAX + 1,
                 Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
@@ -168,7 +172,7 @@ class BookReadQueryTranslatorTest {
             new PostingHistoryQuery(
                 Optional.empty(),
                 EffectiveDateRange.unbounded(),
-                InteractionLimits.PAGE_LIMIT_MIN - 1,
+                ProtocolInteractionLimits.PAGE_LIMIT_MIN - 1,
                 Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,

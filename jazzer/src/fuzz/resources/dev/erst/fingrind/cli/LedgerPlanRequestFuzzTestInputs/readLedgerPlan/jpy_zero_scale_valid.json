@@ -6,7 +6,6 @@
       "kind": "open-book",
       "openBook": {
         "entityName": "Plan Seed JPY",
-        "businessActivityTags": ["translation-services"],
         "functionalCurrency": "JPY",
         "fiscalYearStart": "01-01"
       }

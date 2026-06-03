@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
@@ -12,7 +11,6 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
-import java.util.List;
 import java.util.Optional;
 
 /** Shared formatting helpers for FinGrind PDF reports. */
@@ -72,7 +70,7 @@ final class PdfValueFormatter {
   static String displayAccountRole(AccountRole accountRole) {
     return switch (accountRole) {
       case ORDINARY -> "Ordinary";
-      case CONTRA -> "Contra";
+      case POLARITY_INVERTED -> "Contra";
     };
   }
 
@@ -128,14 +126,6 @@ final class PdfValueFormatter {
       case ALL_POSTING_KINDS -> "All posting kinds";
       case NON_CLOSING_POSTINGS -> "Non-transfer postings";
     };
-  }
-
-  static String displayBusinessActivityTags(List<BusinessActivityTag> businessActivityTags) {
-    return businessActivityTags.isEmpty()
-        ? "(none)"
-        : businessActivityTags.stream()
-            .map(BusinessActivityTag::value)
-            .collect(java.util.stream.Collectors.joining(", "));
   }
 
   static String reversalTarget(PostingFact postingFact) {

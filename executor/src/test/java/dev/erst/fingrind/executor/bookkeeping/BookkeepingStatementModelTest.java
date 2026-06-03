@@ -65,7 +65,7 @@ class BookkeepingStatementModelTest {
             existing.accountCode(),
             new AccountName("Cash Reserve"),
             AccountType.ASSET,
-            AccountRole.CONTRA,
+            AccountRole.POLARITY_INVERTED,
             accountTaxonomy(AccountType.ASSET));
     AccountDeclaration taxonomyConflictDeclaration =
         new AccountDeclaration(
@@ -94,7 +94,7 @@ class BookkeepingStatementModelTest {
     assertEquals(
         new AccountDeclarationOutcome.Rejected(
             new BookkeepingAdministrationRejection.AccountRoleConflict(
-                existing.accountCode(), AccountRole.ORDINARY, AccountRole.CONTRA)),
+                existing.accountCode(), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)),
         RegisteredAccount.declare(existing, redeclaration, FIXED_INSTANT));
     assertEquals(
         new AccountDeclarationOutcome.Rejected(
@@ -121,7 +121,7 @@ class BookkeepingStatementModelTest {
                 new AccountCode("1090"),
                 new AccountName("Accumulated Depreciation"),
                 AccountType.ASSET,
-                AccountRole.CONTRA,
+                AccountRole.POLARITY_INVERTED,
                 accountTaxonomy(AccountType.ASSET))
             .normalBalance());
   }
@@ -159,7 +159,9 @@ class BookkeepingStatementModelTest {
                 NullPointerException.class,
                 () ->
                     new BookkeepingAdministrationRejection.AccountRoleConflict(
-                        nullOf(AccountCode.class), AccountRole.ORDINARY, AccountRole.CONTRA))
+                        nullOf(AccountCode.class),
+                        AccountRole.ORDINARY,
+                        AccountRole.POLARITY_INVERTED))
             .getMessage());
     assertEquals(
         "requiredFinancialPositionLineClassification",

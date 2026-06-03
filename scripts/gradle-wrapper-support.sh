@@ -162,6 +162,22 @@ fg_gradle_source_checkout_artifact_manifest_path() {
     printf '%s/generated/source-checkout/source-checkout-artifact-manifest.tsv\n' "${fg_gradle_build_dir}"
 }
 
+fg_gradle_bundle_archive_manifest_path() {
+    fg_gradle_repo_root=${1:-}
+    fg_gradle_project_segment=${2:-cli}
+    fg_gradle_is_darwin=${3:-false}
+    fg_gradle_build_dir=$(fg_gradle_project_build_dir "${fg_gradle_repo_root}" "${fg_gradle_project_segment}" "${fg_gradle_is_darwin}")
+    printf '%s/generated/bundle/bundle-archive-manifest.json\n' "${fg_gradle_build_dir}"
+}
+
+fg_gradle_docker_context_dir() {
+    fg_gradle_repo_root=${1:-}
+    fg_gradle_project_segment=${2:-cli}
+    fg_gradle_is_darwin=${3:-false}
+    fg_gradle_build_dir=$(fg_gradle_project_build_dir "${fg_gradle_repo_root}" "${fg_gradle_project_segment}" "${fg_gradle_is_darwin}")
+    printf '%s/docker-context\n' "${fg_gradle_build_dir}"
+}
+
 fg_gradle_file_sha256() {
     fg_gradle_file_path=${1:-}
     if command -v shasum >/dev/null 2>&1; then

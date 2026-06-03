@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -30,8 +30,8 @@ The checked-in `examples/*` files below are source-checkout fixtures for review 
 Public release bundles do not include the repository's `docs/examples/` tree.
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
 - [examples/request-template.json](./examples/request-template.json): exact `print-request-template` scaffold capture
-- [examples/declare-account-cash.json](./examples/declare-account-cash.json): minimal account-declaration request for a debit-balance cash account
-- [examples/declare-account-revenue.json](./examples/declare-account-revenue.json): minimal account-declaration request for a credit-balance revenue account
+- [examples/declare-account-supplemental-cash-reserve.json](./examples/declare-account-supplemental-cash-reserve.json): supplemental account-declaration request for an additional cash reserve account on top of the seeded starter chart
+- [examples/declare-account-supplemental-misc-revenue.json](./examples/declare-account-supplemental-misc-revenue.json): supplemental account-declaration request for an additional miscellaneous revenue account on top of the seeded starter chart
 - [examples/unknown-account-request.json](./examples/unknown-account-request.json): posting request that deterministically rejects for an undeclared account
 - [examples/account-state-violations-response.json](./examples/account-state-violations-response.json): posting rejection example with aggregated account-state details
 - [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json): example committed response with a UUID v7 `postingId`
@@ -88,6 +88,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
+- [DOC_01_Core_EvidenceAndWire.md](./DOC_01_Core_EvidenceAndWire.md)
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)

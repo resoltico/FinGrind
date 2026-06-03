@@ -160,7 +160,7 @@ class SqliteStoreFixtureSupport {
   private static String impliedAccountRole(String accountType, String normalBalance) {
     AccountType parsedAccountType = AccountType.fromWireValue(accountType);
     NormalBalance parsedNormalBalance = NormalBalance.valueOf(normalBalance);
-    for (AccountRole accountRole : List.of(AccountRole.ORDINARY, AccountRole.CONTRA)) {
+    for (AccountRole accountRole : List.of(AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)) {
       if (AccountSemantics.normalBalance(parsedAccountType, accountRole) == parsedNormalBalance) {
         return accountRole.wireValue();
       }
@@ -378,7 +378,7 @@ class SqliteStoreFixtureSupport {
               )
               """
                   .formatted(
-                      dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT.wireValue(),
+                      dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue(),
                       SourceChannel.CLI.wireValue()));
         });
   }
@@ -421,8 +421,7 @@ class SqliteStoreFixtureSupport {
     if (!includeCanonicalFixtureRows) {
       return;
     }
-    if (tableExists(database, SqliteBookContract.BOOK_IDENTITY_TABLE)
-        && tableExists(database, SqliteBookContract.ENTITY_PROFILE_TABLE)) {
+    if (tableExists(database, SqliteBookContract.BOOK_IDENTITY_TABLE)) {
       SqliteMutationWriter.insertBookIdentity(
           database, SqlitePostingFactFixtureSupport.bookIdentity());
     }

@@ -16,9 +16,9 @@ import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -56,7 +56,7 @@ public final class ExecutorAccountingTestSupport {
     Objects.requireNonNull(normalBalance, "normalBalance");
     return AccountSemantics.normalBalance(accountType, AccountRole.ORDINARY) == normalBalance
         ? AccountRole.ORDINARY
-        : AccountRole.CONTRA;
+        : AccountRole.POLARITY_INVERTED;
   }
 
   /** Returns the default taxonomy owner used by legacy balance-driven test fixtures. */
@@ -184,10 +184,8 @@ public final class ExecutorAccountingTestSupport {
   /** Returns one canonical test-only book identity for explicit open-book flows. */
   public static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new EntityProfile(
-            new BookEntityName("Acme Studio"),
-            List.of(new BusinessActivityTag("translation-services"))),
-        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+        new EntityProfile(new BookEntityName("Acme Studio")),
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

@@ -25,7 +25,7 @@ abstract class ProbeManagedSqliteToolchainTask
         abstract val operatingSystemId: Property<String>
 
         @get:Input
-        abstract val hostArchitecture: Property<String>
+        abstract val architectureId: Property<String>
 
         @get:OutputFile
         abstract val outputFile: RegularFileProperty
@@ -69,7 +69,7 @@ abstract class ProbeManagedSqliteToolchainTask
                         appendLine("  \"linkerVersion\": ${json(linkerVersion)},")
                         appendLine("  \"sdkOrSysroot\": ${json(sdkOrSysroot)},")
                         appendLine("  \"operatingSystemId\": ${json(operatingSystemId.get())},")
-                        appendLine("  \"hostArchitecture\": ${json(hostArchitecture.get())}")
+                        appendLine("  \"architectureId\": ${json(architectureId.get())}")
                         appendLine("}")
                     },
                     StandardCharsets.UTF_8,

@@ -1,7 +1,12 @@
 {
-  "entryKind": "CORRECTION_ADJUSTMENT",
+  "entryKind": "CASH_REVENUE",
   "effectiveDate": 1,
-  "lines": [],
+  "cashAccountCode": "1000",
+  "revenueAccountCode": "2000",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
   "evidence": {
     "sourceDocuments": [
       {
@@ -15,5 +20,11 @@
     ],
     "approvals": []
   },
-  "provenance": {}
+  "provenance": {
+    "actorId": "actor-invalid_wrong_type",
+    "actorType": "AGENT",
+    "commandId": "command-invalid_wrong_type",
+    "idempotencyKey": "idem-invalid_wrong_type",
+    "causationId": "cause-invalid_wrong_type"
+  }
 }

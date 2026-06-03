@@ -17,8 +17,7 @@ class PostingOriginKindTest {
             "CASH_EXPENSE",
             "EQUITY_CONTRIBUTION",
             "EQUITY_WITHDRAWAL",
-            "OPENING_BALANCE_ADJUSTMENT",
-            "CORRECTION_ADJUSTMENT",
+            "OPEN_ACCOUNTING_POSITION",
             "REVERSAL_ADJUSTMENT",
             "PERIOD_RESULT_TRANSFER"),
         PostingOriginKind.wireValues());

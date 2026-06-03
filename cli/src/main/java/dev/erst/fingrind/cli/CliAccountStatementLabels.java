@@ -54,7 +54,7 @@ final class CliAccountStatementLabels {
   static String displayAccountRoleLabel(AccountRole accountRole) {
     return switch (accountRole) {
       case ORDINARY -> "Ordinary";
-      case CONTRA -> "Contra";
+      case POLARITY_INVERTED -> "Contra";
     };
   }
 

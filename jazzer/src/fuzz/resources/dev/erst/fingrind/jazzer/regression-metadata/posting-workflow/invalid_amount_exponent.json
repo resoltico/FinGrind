@@ -1,7 +1,7 @@
 {
   "targetKey": "posting-workflow",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/invalid_amount_exponent.json",
-  "coverageIntent": "exponent notation rejection with reversal payload present",
+  "coverageIntent": "exponent notation rejection on a typed cash-revenue request",
   "expectation": {
     "outcomeKind": "expected-invalid",
     "message": "minorUnits must contain ASCII decimal digits only.",

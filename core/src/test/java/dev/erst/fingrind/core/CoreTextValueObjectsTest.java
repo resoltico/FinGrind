@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -61,31 +60,13 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
-  void businessActivityTag_stripsWhitespaceAndRejectsBlank() {
-    assertEquals(
-        "translation-services", new BusinessActivityTag("  translation-services  ").value());
-    assertThrows(NullPointerException.class, () -> new BusinessActivityTag(nullOf()));
-    assertThrows(IllegalArgumentException.class, () -> new BusinessActivityTag("   "));
-  }
-
-  @Test
-  void entityProfile_requiresAllFieldsAndDefensivelyCopiesActivityTags() {
+  void entityProfile_requiresDisplayName() {
     BookEntityName displayName = new BookEntityName("Acme Studio");
-    List<BusinessActivityTag> tags =
-        new ArrayList<>(List.of(new BusinessActivityTag("translation-services")));
 
-    EntityProfile profile = new EntityProfile(displayName, tags);
+    EntityProfile profile = new EntityProfile(displayName);
 
     assertEquals(displayName, profile.displayName());
-    assertEquals(
-        List.of(new BusinessActivityTag("translation-services")), profile.businessActivityTags());
-    tags.add(new BusinessActivityTag("consulting"));
-    assertEquals(1, profile.businessActivityTags().size());
-    assertThrows(
-        UnsupportedOperationException.class,
-        () -> profile.businessActivityTags().add(new BusinessActivityTag("forbidden")));
-    assertThrows(NullPointerException.class, () -> new EntityProfile(nullOf(), List.of()));
-    assertThrows(NullPointerException.class, () -> new EntityProfile(displayName, nullOf()));
+    assertThrows(NullPointerException.class, () -> new EntityProfile(nullOf()));
   }
 
   @Test
@@ -93,25 +74,25 @@ class CoreTextValueObjectsTest {
     BookEntityName entityName = new BookEntityName("Acme Studio");
     CurrencyUnit functionalCurrency = CurrencyUnit.of("EUR");
     FiscalYearStart fiscalYearStart = FiscalYearStart.parse("01-01");
-    EntityProfile entityProfile = new EntityProfile(entityName, List.of());
+    EntityProfile entityProfile = new EntityProfile(entityName);
 
     BookIdentity bookIdentity =
         new BookIdentity(
             entityProfile,
-            AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             functionalCurrency,
             fiscalYearStart);
 
     assertEquals(entityName, bookIdentity.entityName());
     assertEquals(
-        AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
-        bookIdentity.accountingKernelProfileId());
+        AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+        bookIdentity.bookDoctrine().accountingKernelProfileId());
     assertThrows(
         NullPointerException.class,
         () ->
             new BookIdentity(
                 nullOf(),
-                AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
                 functionalCurrency,
                 fiscalYearStart));
     assertThrows(
@@ -122,7 +103,7 @@ class CoreTextValueObjectsTest {
         () ->
             new BookIdentity(
                 entityProfile,
-                AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
                 nullOf(),
                 fiscalYearStart));
     assertThrows(
@@ -130,26 +111,140 @@ class CoreTextValueObjectsTest {
         () ->
             new BookIdentity(
                 entityProfile,
-                AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
                 functionalCurrency,
                 nullOf()));
   }
 
   @Test
+  void bookDoctrine_requiresEveryConstituentValueObject() {
+    BookDoctrine doctrine =
+        new BookDoctrine(
+            AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+            AccountingBasis.CASH_BASIS,
+            AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+            EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+            BookTemplateId.OWNER_MANAGED_SERVICE_CASH);
+
+    assertEquals(
+        AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+        doctrine.accountingKernelProfileId());
+    assertEquals(AccountingBasis.CASH_BASIS, doctrine.accountingBasis());
+    assertEquals(
+        AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+        doctrine.accountingFrameworkPosition());
+    assertEquals(EntityForm.OWNER_MANAGED_SINGLE_ENTITY, doctrine.entityForm());
+    assertEquals(BookTemplateId.OWNER_MANAGED_SERVICE_CASH, doctrine.bookTemplateId());
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookDoctrine(
+                nullOf(),
+                AccountingBasis.CASH_BASIS,
+                AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+                EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+                BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookDoctrine(
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+                nullOf(),
+                AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+                EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+                BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookDoctrine(
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+                AccountingBasis.CASH_BASIS,
+                nullOf(),
+                EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+                BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookDoctrine(
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+                AccountingBasis.CASH_BASIS,
+                AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+                nullOf(),
+                BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookDoctrine(
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+                AccountingBasis.CASH_BASIS,
+                AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+                EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+                nullOf()));
+  }
+
+  @Test
+  void bookDoctrineVocabularyAndBuiltInDoctrineAreStable() {
+    assertEquals(List.of("CASH_BASIS"), AccountingBasis.wireValues());
+    assertEquals(
+        AccountingBasis.CASH_BASIS,
+        AccountingBasis.fromWireValue(AccountingBasis.CASH_BASIS.wireValue()));
+    assertThrows(IllegalArgumentException.class, () -> AccountingBasis.fromWireValue("cash-basis"));
+
+    assertEquals(
+        List.of("NON_STATUTORY_INTERNAL_MANAGEMENT"), AccountingFrameworkPosition.wireValues());
+    assertEquals(
+        AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+        AccountingFrameworkPosition.fromWireValue(
+            AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT.wireValue()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AccountingFrameworkPosition.fromWireValue("non-statutory-internal-management"));
+
+    assertEquals(List.of("OWNER_MANAGED_SINGLE_ENTITY"), EntityForm.wireValues());
+    assertEquals(
+        EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+        EntityForm.fromWireValue(EntityForm.OWNER_MANAGED_SINGLE_ENTITY.wireValue()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> EntityForm.fromWireValue("owner-managed-single-entity"));
+
+    assertEquals(List.of("OWNER_MANAGED_SERVICE_CASH"), BookTemplateId.wireValues());
+    assertEquals(
+        BookTemplateId.OWNER_MANAGED_SERVICE_CASH,
+        BookTemplateId.fromWireValue(BookTemplateId.OWNER_MANAGED_SERVICE_CASH.wireValue()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> BookTemplateId.fromWireValue("owner-managed-service-cash"));
+
+    assertEquals(
+        AccountingBasis.CASH_BASIS,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE.accountingBasis());
+    assertEquals(
+        AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE.accountingFrameworkPosition());
+    assertEquals(
+        EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE.entityForm());
+    assertEquals(
+        BookTemplateId.OWNER_MANAGED_SERVICE_CASH,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE.bookTemplateId());
+  }
+
+  @Test
   void accountingKernelProfileId_stripsWhitespaceAndRejectsInvalidValues() {
     assertEquals(
-        "country-agnostic-bookkeeping-kernel",
-        new AccountingKernelProfileId("  country-agnostic-bookkeeping-kernel  ").value());
+        "internal-management-cash-bookkeeping-kernel",
+        new AccountingKernelProfileId("  internal-management-cash-bookkeeping-kernel  ").value());
     assertThrows(NullPointerException.class, () -> new AccountingKernelProfileId(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> new AccountingKernelProfileId("   "));
     assertThrows(
         IllegalArgumentException.class, () -> new AccountingKernelProfileId("x".repeat(121)));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new AccountingKernelProfileId("Country-Agnostic-Bookkeeping-Kernel"));
+        () -> new AccountingKernelProfileId("Internal-Management-Cash-Bookkeeping-Kernel"));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new AccountingKernelProfileId("country_agnostic_bookkeeping_kernel"));
+        () -> new AccountingKernelProfileId("internal_management_cash_bookkeeping_kernel"));
   }
 
   @Test
@@ -393,11 +488,11 @@ class CoreTextValueObjectsTest {
     assertThrows(IllegalArgumentException.class, () -> AccountType.fromWireValue("asset"));
 
     assertEquals("ORDINARY", AccountRole.ORDINARY.wireValue());
-    assertEquals("CONTRA", AccountRole.CONTRA.wireValue());
-    assertEquals("CONTRA", AccountRole.CONTRA.wireValue());
+    assertEquals("POLARITY_INVERTED", AccountRole.POLARITY_INVERTED.wireValue());
+    assertEquals("POLARITY_INVERTED", AccountRole.POLARITY_INVERTED.wireValue());
     assertEquals(AccountRole.ORDINARY, AccountRole.fromWireValue("ORDINARY"));
-    assertEquals(AccountRole.CONTRA, AccountRole.fromWireValue("CONTRA"));
-    assertEquals(java.util.List.of("ORDINARY", "CONTRA"), AccountRole.wireValues());
+    assertEquals(AccountRole.POLARITY_INVERTED, AccountRole.fromWireValue("POLARITY_INVERTED"));
+    assertEquals(java.util.List.of("ORDINARY", "POLARITY_INVERTED"), AccountRole.wireValues());
     assertThrows(IllegalArgumentException.class, () -> AccountRole.fromWireValue("ordinary"));
   }
 

@@ -1,8 +1,8 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolMoneyFields;
 import dev.erst.fingrind.core.CanonicalTemporalText;
-import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.Money;
 import java.util.List;
 import java.util.Map;
@@ -108,8 +108,8 @@ final class MachineContractScalarSchemas {
         "description",
         "Requested page size for list operations.",
         "minimum",
-        InteractionLimits.PAGE_LIMIT_MIN,
+        ProtocolInteractionLimits.PAGE_LIMIT_MIN,
         "maximum",
-        InteractionLimits.PAGE_LIMIT_MAX);
+        ProtocolInteractionLimits.PAGE_LIMIT_MAX);
   }
 }

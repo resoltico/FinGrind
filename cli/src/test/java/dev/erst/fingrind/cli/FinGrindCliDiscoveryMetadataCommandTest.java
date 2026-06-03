@@ -134,11 +134,11 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     assertEquals("plan-1", json.path("planId").stringValue());
     assertFalse(json.has("executionPolicy"));
     assertEquals("initialize-book", json.path("steps").get(0).path("stepId").stringValue());
-    assertEquals("assert-cash-balance", json.path("steps").get(4).path("stepId").stringValue());
+    assertEquals("assert-cash-balance", json.path("steps").get(2).path("stepId").stringValue());
     assertEquals(
         "assert-account-balance",
-        json.path("steps").get(4).path("assertion").path("kind").stringValue());
-    assertTrue(json.path("steps").get(4).has("assertion"));
-    assertFalse(json.path("steps").get(4).has("accountBalanceAssertion"));
+        json.path("steps").get(2).path("assertion").path("kind").stringValue());
+    assertTrue(json.path("steps").get(2).has("assertion"));
+    assertFalse(json.path("steps").get(2).has("accountBalanceAssertion"));
   }
 }

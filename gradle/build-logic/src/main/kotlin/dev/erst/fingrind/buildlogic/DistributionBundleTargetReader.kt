@@ -26,6 +26,15 @@ object DistributionBundleTargetReader {
         architecture: String = System.getProperty("os.arch", "unknown"),
     ): String = hostBundleTarget(projectRootDirectory, osName, architecture).classifier
 
+    fun dockerBundleTarget(
+        projectRootDirectory: Path,
+        architecture: String = System.getProperty("os.arch", "unknown"),
+    ): DistributionContractReader.BundleTargetContract =
+        bundleTarget(
+            projectRootDirectory,
+            "linux-" + architectureId(architecture),
+        )
+
     fun bundleTarget(
         projectRootDirectory: Path,
         classifier: String,

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
@@ -59,7 +60,17 @@ class PostEntryCommandTest {
         NullPointerException.class,
         () ->
             new PostEntryCommand(
-                new BookkeepingEntry.CorrectionAdjustment(journalEntry()),
+                new BookkeepingEntry.OpenAccountingPosition(
+                    LocalDate.parse("2026-04-07"),
+                    List.of(
+                        new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                            new AccountCode("1000"),
+                            JournalLine.EntrySide.DEBIT,
+                            new MonetaryAmount("EUR", "1000")),
+                        new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                            new AccountCode("3000"),
+                            JournalLine.EntrySide.CREDIT,
+                            new MonetaryAmount("EUR", "1000")))),
                 nullOf(),
                 ContractFixtures.requestProvenance("idem-1"),
                 SourceChannel.CLI));

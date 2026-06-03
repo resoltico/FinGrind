@@ -1,7 +1,7 @@
 {
   "targetKey": "posting-workflow",
   "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/basic_valid.json",
-  "coverageIntent": "successful four-line preflight then commit with optional correlation id",
+  "coverageIntent": "successful typed cash-revenue preflight then commit with optional correlation id",
   "expectation": {
     "outcomeKind": "success",
     "message": "Replay completed without surfacing a bug.",
@@ -10,7 +10,7 @@
       "request": {
         "effectiveDate": "2026-04-10",
         "idempotencyKey": "idem-posting-4",
-        "lineCount": 4,
+        "lineCount": 2,
         "reversalPresent": false
       },
       "lifecycle": {

@@ -36,7 +36,6 @@ final class ProtocolAdministrationOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.ENTITY_NAME + " <text>",
-                ProtocolOptions.BUSINESS_ACTIVITY_TAG + " <business-activity-tag> ...",
                 ProtocolOptions.FUNCTIONAL_CURRENCY + " <currency-code>",
                 ProtocolOptions.FISCAL_YEAR_START + " <MM-DD>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
@@ -45,32 +44,29 @@ final class ProtocolAdministrationOperations {
             "Initialize a new book file with the canonical schema.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s translation-services %s EUR %s 01-01"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s EUR %s 01-01"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.ENTITY_NAME,
-                            ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START)),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s"
+                    "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s EUR %s 01-01 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.ENTITY_NAME,
-                            ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
                             ProtocolOptions.BOOK_PASSPHRASE_PROMPT)),
                 ProtocolExampleStep.command(
-                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s translation-services %s EUR %s 01-01 %s"
+                    "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s EUR %s 01-01 %s"
                         .formatted(
                             OperationId.OPEN_BOOK.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.ENTITY_NAME,
-                            ProtocolOptions.BUSINESS_ACTIVITY_TAG,
                             ProtocolOptions.FUNCTIONAL_CURRENCY,
                             ProtocolOptions.FISCAL_YEAR_START,
                             ProtocolOptions.BOOK_PASSPHRASE_STDIN)))),
@@ -231,14 +227,14 @@ final class ProtocolAdministrationOperations {
             "Declare or reactivate one account in the selected book.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-cash.json"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-supplemental-cash-reserve.json"
                         .formatted(
                             OperationId.DECLARE_ACCOUNT.wireName(),
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REQUEST_FILE)),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-revenue.json"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-supplemental-misc-revenue.json"
                         .formatted(
                             OperationId.DECLARE_ACCOUNT.wireName(),
                             ProtocolOptions.BOOK_FILE,

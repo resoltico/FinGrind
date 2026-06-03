@@ -79,7 +79,6 @@ final class SqlitePostingSql {
   static final String FIND_BOOK_INITIALIZED_AT = SqlitePostingSqlLiterals.FIND_BOOK_INITIALIZED_AT;
   static final String FIND_BOOK_META_VALUE = SqlitePostingSqlLiterals.FIND_BOOK_META_VALUE;
   static final String FIND_BOOK_IDENTITY_CORE = SqlitePostingSqlLiterals.FIND_BOOK_IDENTITY_CORE;
-  static final String FIND_ENTITY_PROFILE = SqlitePostingSqlLiterals.FIND_ENTITY_PROFILE;
   static final String PRAGMA_INTEGRITY_CHECK = SqlitePostingSqlLiterals.PRAGMA_INTEGRITY_CHECK;
   static final String PRAGMA_FOREIGN_KEY_CHECK = SqlitePostingSqlLiterals.PRAGMA_FOREIGN_KEY_CHECK;
   static final int EXPECTED_CANONICAL_SCHEMA_OBJECT_COUNT =
@@ -152,7 +151,6 @@ final class SqlitePostingSql {
       SqlitePostingSqlLiterals.FIND_JOURNAL_LINE_OUTSIDE_FUNCTIONAL_CURRENCY;
   static final String INSERT_BOOK_META_VALUE = SqlitePostingSqlLiterals.INSERT_BOOK_META_VALUE;
   static final String INSERT_BOOK_IDENTITY = SqlitePostingSqlLiterals.INSERT_BOOK_IDENTITY;
-  static final String INSERT_ENTITY_PROFILE = SqlitePostingSqlLiterals.INSERT_ENTITY_PROFILE;
   static final String UPSERT_ACCOUNT = SqlitePostingSqlLiterals.UPSERT_ACCOUNT;
 
   static String listAccounts() {

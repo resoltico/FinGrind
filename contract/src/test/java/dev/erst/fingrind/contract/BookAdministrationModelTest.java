@@ -15,9 +15,9 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -104,15 +104,15 @@ class BookAdministrationModelTest {
   }
 
   @Test
-  void openBookCommand_rejectsMissingBusinessActivityTags() {
-    assertThrows(
-        IllegalArgumentException.class, () -> new OpenBookCommand(bookIdentity(List.of())));
+  void openBookCommand_acceptsNarrowDoctrineIdentity() {
+    assertEquals(
+        "Acme Studio", new OpenBookCommand(bookIdentity()).bookIdentity().entityName().value());
   }
 
-  private static BookIdentity bookIdentity(List<BusinessActivityTag> businessActivityTags) {
+  private static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new EntityProfile(new BookEntityName("Acme Studio"), businessActivityTags),
-        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+        new EntityProfile(new BookEntityName("Acme Studio")),
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

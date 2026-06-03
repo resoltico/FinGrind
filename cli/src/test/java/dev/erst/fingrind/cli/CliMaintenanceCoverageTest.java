@@ -766,13 +766,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             hint(Path.of("backup/entity.sqlite")),
             hint(Path.of("backup/entity.key"))),
         OutputMode.JSON);
-    assertTrue(
-        readJson(output)
-            .path("payload")
-            .path("backupFile")
-            .asText()
-            .replace('\\', '/')
-            .endsWith("<redacted>/backup/entity.sqlite"));
+    assertEquals(
+        publicHintValue(Path.of("backup/entity.sqlite")),
+        readJson(output).path("payload").path("backupFile").asText().replace('\\', '/'));
     output.reset();
 
     writer.writeRestoreBookResult(
@@ -781,13 +777,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             hint(Path.of("backup/entity.sqlite")),
             hint(Path.of("backup/entity.key"))),
         OutputMode.JSON);
-    assertTrue(
-        readJson(output)
-            .path("payload")
-            .path("backupBookKeyFile")
-            .asText()
-            .replace('\\', '/')
-            .endsWith("<redacted>/backup/entity.key"));
+    assertEquals(
+        publicHintValue(Path.of("backup/entity.key")),
+        readJson(output).path("payload").path("backupBookKeyFile").asText().replace('\\', '/'));
     output.reset();
 
     writer.writeInspectRekeyRollbackResult(
@@ -811,13 +803,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             hint(Path.of("books/entity.sqlite")),
             hint(Path.of("books/entity.rekey-rollback.sqlite"))),
         OutputMode.JSON);
-    assertTrue(
-        readJson(output)
-            .path("payload")
-            .path("rollbackArtifact")
-            .asText()
-            .replace('\\', '/')
-            .endsWith("<redacted>/books/entity.rekey-rollback.sqlite"));
+    assertEquals(
+        publicHintValue(Path.of("books/entity.rekey-rollback.sqlite")),
+        readJson(output).path("payload").path("rollbackArtifact").asText().replace('\\', '/'));
     output.reset();
 
     writer.writeRestoreRekeyRollbackResult(

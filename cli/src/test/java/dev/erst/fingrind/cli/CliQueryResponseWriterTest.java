@@ -186,8 +186,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.TEXT);
     String postingRegisterText = postingRegisterTextOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(postingRegisterText.contains("Accounts"));
-    assertTrue(postingRegisterText.contains("Correction"));
+    assertTrue(postingRegisterText.contains("Account codes"));
+    assertTrue(postingRegisterText.contains("Reversal adjustment"));
     assertTrue(postingRegisterText.contains("Reversal"));
     assertTrue(postingRegisterText.contains("1000, 2000"));
     assertTrue(postingRegisterText.contains("10.00"));
@@ -203,7 +203,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             "exportFamily,rowId,parentRowId,relationKind,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,currencyCode,debitTotal,creditTotal,accountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
     assertTrue(
         postingRegisterCsv.contains(
-            "posting-relationships,posting:posting-1,,posting,posting,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,CORRECTION_ADJUSTMENT,reversal,posting-0,EUR,10.00,10.00"));
+            "posting-relationships,posting:posting-1,,posting,posting,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,REVERSAL_ADJUSTMENT,reversal,posting-0,EUR,10.00,10.00"));
     assertTrue(
         postingRegisterCsv.contains(
             "posting-relationships,posting-account:posting-1:1000,posting:posting-1,counterpart-account,account,2026-04-07,2026-04-07T10:15:30Z,posting-1"));
@@ -317,7 +317,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(accountLedgerText.contains("Opening balances"));
     assertTrue(accountLedgerText.contains("EUR 10.00 Debit"));
     assertTrue(accountLedgerText.contains("Running"));
-    assertTrue(accountLedgerText.contains("Counterparts"));
+    assertTrue(accountLedgerText.contains("Counterpart account codes"));
     assertTrue(accountLedgerText.contains("posting-1"));
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))

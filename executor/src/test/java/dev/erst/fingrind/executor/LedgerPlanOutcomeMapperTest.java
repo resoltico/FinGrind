@@ -358,7 +358,7 @@ class LedgerPlanOutcomeMapperTest {
             LedgerPlanOutcomeMapper.administrationRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
                     .AccountRoleConflict(
-                    new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.CONTRA));
+                    new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED));
 
     assertEquals("administration-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals(
@@ -380,7 +380,7 @@ class LedgerPlanOutcomeMapperTest {
         List.of(
             BookWorkflowFact.text("accountCode", "1000"),
             BookWorkflowFact.text("existingAccountRole", "ORDINARY"),
-            BookWorkflowFact.text("requestedAccountRole", "CONTRA")),
+            BookWorkflowFact.text("requestedAccountRole", "POLARITY_INVERTED")),
         accountRoleConflict.failure().facts());
   }
 
@@ -685,7 +685,7 @@ class LedgerPlanOutcomeMapperTest {
                     Money.parse("EUR", "10.00")))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         accountingEvidence("idem-3"),
         new CommittedProvenance(
             new RequestProvenance(

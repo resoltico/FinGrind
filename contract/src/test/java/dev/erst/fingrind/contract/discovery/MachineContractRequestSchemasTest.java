@@ -100,4 +100,14 @@ class MachineContractRequestSchemasTest {
         dev.erst.fingrind.core.CanonicalTemporalText.UTC_INSTANT_PATTERN,
         instantSchema.get("pattern"));
   }
+
+  @Test
+  void postEntryVariantSchemaAliases_reuseCanonicalOwnerSchemas() {
+    assertEquals(
+        MachineContractPostEntryVariantSchemas.openAccountingPositionSchema(),
+        MachineContractPostEntryVariantSchemas.openingBalanceAdjustmentSchema());
+    assertEquals(
+        MachineContractPostEntryVariantSchemas.reversalAdjustmentSchema(),
+        MachineContractPostEntryVariantSchemas.correctionAdjustmentSchema());
+  }
 }

@@ -26,10 +26,10 @@ class ReleaseSmokeConfig:
     expect_bundle_home_property: bool
     book_key_output_permissions: str
     request_sale: SmokePath
-    request_adjustment: SmokePath
+    request_expense: SmokePath
     invalid_request: SmokePath
-    declare_cash: SmokePath
-    declare_revenue: SmokePath
+    declare_asset_supplement: SmokePath
+    declare_expense_supplement: SmokePath
     book: SmokePath
     book_key: SmokePath
     backup_book: SmokePath
@@ -43,18 +43,30 @@ class ReleaseSmokeConfig:
     actor_prefix: str
     open_book_mode: str
     entity_name: str
-    business_activity_tags: list[str]
+    accounting_kernel_profile: str
+    accounting_basis: str
+    accounting_framework_position: str
+    entity_form: str
+    book_template_id: str
     functional_currency: str
     fiscal_year_start: str
+    starter_cash_account_code: str
+    starter_cash_account_name: str
+    starter_revenue_account_code: str
+    starter_revenue_account_name: str
+    asset_supplement_account_code: str
+    asset_supplement_account_name: str
+    expense_supplement_account_code: str
+    expense_supplement_account_name: str
 
 
 @dataclass(frozen=True)
 class ReleaseSmokeScenario:
     request_sale: SmokePath
-    request_adjustment: SmokePath
+    request_expense: SmokePath
     invalid_request: SmokePath
-    declare_cash: SmokePath
-    declare_revenue: SmokePath
+    declare_asset_supplement: SmokePath
+    declare_expense_supplement: SmokePath
     book: SmokePath
     book_key: SmokePath
     backup_book: SmokePath
@@ -67,9 +79,21 @@ class ReleaseSmokeScenario:
     second_page_command_id: str
     actor_prefix: str
     entity_name: str
-    business_activity_tags: list[str]
+    accounting_kernel_profile: str
+    accounting_basis: str
+    accounting_framework_position: str
+    entity_form: str
+    book_template_id: str
     functional_currency: str
     fiscal_year_start: str
+    starter_cash_account_code: str
+    starter_cash_account_name: str
+    starter_revenue_account_code: str
+    starter_revenue_account_name: str
+    asset_supplement_account_code: str
+    asset_supplement_account_name: str
+    expense_supplement_account_code: str
+    expense_supplement_account_name: str
 
 
 class ReleaseSmokeFailure(RuntimeError):

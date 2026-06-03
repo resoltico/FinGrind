@@ -10,7 +10,6 @@ import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -120,7 +119,7 @@ class PdfValueFormatterTest {
   @Test
   void displayAccountRoleFormatsEveryVariant() {
     assertEquals("Ordinary", PdfValueFormatter.displayAccountRole(AccountRole.ORDINARY));
-    assertEquals("Contra", PdfValueFormatter.displayAccountRole(AccountRole.CONTRA));
+    assertEquals("Contra", PdfValueFormatter.displayAccountRole(AccountRole.POLARITY_INVERTED));
   }
 
   @Test
@@ -213,7 +212,7 @@ class PdfValueFormatterTest {
                     new ReversalReference(new PostingId("posting-1")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
@@ -239,7 +238,7 @@ class PdfValueFormatterTest {
                     new ReversalReference(new PostingId("posting-1")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
@@ -280,14 +279,9 @@ class PdfValueFormatterTest {
   }
 
   @Test
-  void displayIdentityProfileValuesFormatsPolicyAndActivityFacts() {
-    assertEquals(
-        "translation-services, advisory",
-        PdfValueFormatter.displayBusinessActivityTags(
-            List.of(
-                new BusinessActivityTag("translation-services"),
-                new BusinessActivityTag("advisory"))));
-    assertEquals("(none)", PdfValueFormatter.displayBusinessActivityTags(List.of()));
+  void displayIdentityProfileValuesFormatsAccountRoleFacts() {
+    assertEquals("Ordinary", PdfValueFormatter.displayAccountRole(AccountRole.ORDINARY));
+    assertEquals("Contra", PdfValueFormatter.displayAccountRole(AccountRole.POLARITY_INVERTED));
   }
 
   @Test
@@ -367,7 +361,7 @@ class PdfValueFormatterTest {
                 new ReversalReference(new PostingId("posting-1")),
                 new ReversalReason("undo test posting")),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
             evidence("idem-1"),
             direct.provenance());
 
@@ -382,7 +376,7 @@ class PdfValueFormatterTest {
         journalEntry(),
         postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         evidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(

@@ -51,7 +51,7 @@ class BookAdministrationRejectionTest {
                 new BookAdministrationRejection.AccountRoleConflict(
                     new dev.erst.fingrind.core.AccountCode("1000"),
                     dev.erst.fingrind.core.AccountRole.ORDINARY,
-                    dev.erst.fingrind.core.AccountRole.CONTRA)),
+                    dev.erst.fingrind.core.AccountRole.POLARITY_INVERTED)),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.AccountTaxonomyConflict(
                     new dev.erst.fingrind.core.AccountCode("1000"),
@@ -84,7 +84,7 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("1100"),
                     dev.erst.fingrind.core.AccountRole.ORDINARY,
                     new dev.erst.fingrind.core.AccountCode("1000"),
-                    dev.erst.fingrind.core.AccountRole.CONTRA)),
+                    dev.erst.fingrind.core.AccountRole.POLARITY_INVERTED)),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.ParentAccountNotHeader(
                     new dev.erst.fingrind.core.AccountCode("1100"),

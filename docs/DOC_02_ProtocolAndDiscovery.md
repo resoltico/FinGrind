@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -146,6 +146,22 @@ public final class ProtocolOptions
 - Purpose: keep option text consistent across parser, help, capabilities, templates, and docs
 - Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
   posting lookup, date filters, and `execute-plan` result detail
+
+## `ProtocolInteractionLimits`
+
+`ProtocolInteractionLimits` owns the public interaction and request-shape limits that define what
+the CLI and machine contracts accept.
+
+```java
+public final class ProtocolInteractionLimits
+```
+
+- Purpose: keep public paging limits, request-size limits, passphrase byte limits, and ledger-plan
+  step limits under one protocol-owned contract instead of duplicating them across CLI parsing,
+  discovery payloads, and executor-boundary validation
+- Current contract: `BOOK_PASSPHRASE_MAX_UTF8_BYTES = 4096`,
+  `REQUEST_PAYLOAD_MAX_BYTES = 1048576`, `PAGE_LIMIT_MIN = 1`, `DEFAULT_PAGE_LIMIT = 50`,
+  `PAGE_LIMIT_MAX = 200`, `LEDGER_PLAN_STEP_MAX = 100`
 
 ## `DiscoveryDetail`
 
@@ -572,8 +588,7 @@ public final class ContractTemplates
   `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, `.CurrencyDescriptor`,
   and `.BookkeepingKernelDescriptor` are the nested typed response descriptors
 - `ContractTemplates`: canonical request and ledger-plan template descriptors
-- `ContractTemplates.TemplateDescriptorType` is the sealed nested owner for the published
-  template-descriptor inventory
+- `TemplateDescriptorType` is the sealed owner for the published template-descriptor inventory
 - `ContractTemplates.OpenBookTemplateDescriptor`, `.PostingRequestTemplateDescriptor`,
   `.JournalLineTemplateDescriptor`, `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
   `.LedgerPlanTemplateDescriptor`, `.LedgerPlanStepTemplateDescriptor`,
@@ -637,7 +652,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 22`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 23`
 
 ## `ProtectedBookFormatContract`
 

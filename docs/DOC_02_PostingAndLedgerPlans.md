@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -285,6 +285,18 @@ public sealed interface LedgerFact
 - Money facts: `LedgerFact.Money` carries the same public `MonetaryAmount` shape used by request,
   template, and response contracts, so agent consumers do not have to infer money semantics from
   free-form text
+
+## `LedgerFactKind`
+
+`LedgerFactKind` owns the stable wire vocabulary for ledger-fact discriminators.
+
+```java
+public enum LedgerFactKind implements WireValue
+```
+
+- Members: `TEXT`, `FLAG`, `COUNT`, `MONEY`, `GROUP`
+- Purpose: keep fact-kind wire tokens canonical across contract DTOs, CLI JSON payloads, and any
+  future machine readers instead of retyping raw discriminator strings
 
 ## `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus`
 

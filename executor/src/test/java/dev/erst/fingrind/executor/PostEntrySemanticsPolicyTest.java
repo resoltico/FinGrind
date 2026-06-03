@@ -108,7 +108,7 @@ class PostEntrySemanticsPolicyTest {
   }
 
   @Test
-  void rejectionFor_skipsSemanticsChecksForAdministrativeAdjustments() {
+  void rejectionFor_skipsSemanticsChecksForAdministrativeEntriesOutsideTypedKernelEvents() {
     PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
     PostingValidationStoreDouble emptyBook = new PostingValidationStoreDouble(Map.of());
 
@@ -116,21 +116,19 @@ class PostEntrySemanticsPolicyTest {
         policy
             .rejectionFor(
                 new PostEntryCommand(
-                    new BookkeepingEntry.OpeningBalanceAdjustment(
-                        PostingApplicationServiceTestSupport.journalEntry()),
+                    new BookkeepingEntry.OpenAccountingPosition(
+                        LocalDate.parse("2026-04-07"),
+                        List.of(
+                            new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                                new AccountCode("1000"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                                MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                            new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                                new AccountCode("2000"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                                MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
                     generatedEvidence("opening-balance", "opening-balance"),
                     requestProvenance("opening-balance"),
-                    SourceChannel.CLI),
-                emptyBook)
-            .isEmpty());
-    assertTrue(
-        policy
-            .rejectionFor(
-                new PostEntryCommand(
-                    new BookkeepingEntry.CorrectionAdjustment(
-                        PostingApplicationServiceTestSupport.journalEntry()),
-                    generatedEvidence("correction-adjustment", "correction-adjustment"),
-                    requestProvenance("correction-adjustment"),
                     SourceChannel.CLI),
                 emptyBook)
             .isEmpty());

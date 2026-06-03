@@ -34,15 +34,9 @@ final class CliDiscoveryHelpTextRenderer {
                     "Open one protected book",
                     CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.OPEN_BOOK)),
                 List.of(
-                    "Print the first account scaffold",
-                    CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-                        + " "
-                        + OperationId.DECLARE_ACCOUNT.wireName()
-                        + " > declare-account-cash.json"),
-                List.of(
-                    "Declare the first account",
+                    "Review the seeded starter chart",
                     CliDiscoveryCommandHelpSupport.primaryCommandExample(
-                        OperationId.DECLARE_ACCOUNT)),
+                        OperationId.LIST_ACCOUNTS)),
                 List.of(
                     "Print the first entry scaffold",
                     CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -78,33 +72,13 @@ final class CliDiscoveryHelpTextRenderer {
                 List.of("Query and reports", joinCommandNames(commandCatalog.query())),
                 List.of("Write", joinCommandNames(commandCatalog.write()))),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
-    String machineRetrieval =
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of(
-                    "Command families",
-                    CliInvocationText.commandExample(OperationId.HELP)
-                        + " --output json --category query"),
-                List.of(
-                    "Command contracts",
-                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                        + " --output json --focus commands --category query"),
-                List.of(
-                    "Book and storage contract",
-                    CliInvocationText.commandExample(OperationId.CAPABILITIES)
-                        + " --output json --focus storage"),
-                List.of(
-                    "Runtime evidence",
-                    CliInvocationText.commandExample(OperationId.ENVIRONMENT) + " --output json")),
-            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Help",
         CliDiscoveryTextSupport.joinSections(
             header,
             CliDiscoveryTextSupport.section("First Successful Run", firstSuccessfulRun),
             CliDiscoveryTextSupport.section("Reference Commands", reference),
-            CliDiscoveryTextSupport.section("Command Families", commandFamilies),
-            CliDiscoveryTextSupport.section("For Agents And Automation", machineRetrieval)));
+            CliDiscoveryTextSupport.section("Command Families", commandFamilies)));
   }
 
   static String renderJsonTemplate(

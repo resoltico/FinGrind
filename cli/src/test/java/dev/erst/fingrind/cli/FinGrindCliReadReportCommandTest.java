@@ -205,7 +205,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "text"
         },
-        "Counterparts");
+        "Counterpart account codes");
     assertCommandOutputContains(
         new String[] {
           "period-summary",
@@ -232,11 +232,6 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
     Path declareRevenueFile =
         writeNamedRequest(
             "close-declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
-    Path declareRetainedEarningsFile =
-        writeNamedRequest(
-            "close-declare-retained-earnings.json",
-            declareAccountJson(
-                "3200", "Retained Earnings", "EQUITY", "ORDINARY", "RESULT_HOLDING", null));
     Path bookFilePath = tempDirectory.resolve("statement-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
 
@@ -278,22 +273,6 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                   bookKeyFilePath.toString(),
                   "--request-file",
                   declareRevenueFile.toString()
-                }));
-    assertEquals(
-        0,
-        cli(
-                new ByteArrayInputStream(new byte[0]),
-                utf8PrintStream(new ByteArrayOutputStream()),
-                fixedClock())
-            .run(
-                new String[] {
-                  "declare-account",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  declareRetainedEarningsFile.toString()
                 }));
     assertEquals(
         0,

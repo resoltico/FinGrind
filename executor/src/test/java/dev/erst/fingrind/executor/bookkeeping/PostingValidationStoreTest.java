@@ -73,8 +73,8 @@ class PostingValidationStoreTest {
 
   private static PostingOriginKind postingOriginKindFor(PostingKind postingKind) {
     return switch (postingKind) {
-      case STANDARD -> PostingOriginKind.CORRECTION_ADJUSTMENT;
-      case OPENING_BALANCE -> PostingOriginKind.OPENING_BALANCE_ADJUSTMENT;
+      case STANDARD -> PostingOriginKind.REVERSAL_ADJUSTMENT;
+      case OPENING_BALANCE -> PostingOriginKind.OPEN_ACCOUNTING_POSITION;
       case PERIOD_RESULT_TRANSFER -> PostingOriginKind.PERIOD_RESULT_TRANSFER;
     };
   }

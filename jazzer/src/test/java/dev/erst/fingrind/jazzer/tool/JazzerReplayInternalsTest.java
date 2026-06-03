@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
@@ -17,6 +18,10 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
@@ -24,6 +29,7 @@ import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.ContentSha256;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceDocumentId;
@@ -35,6 +41,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Covers replay helpers, invariant verifiers, and deterministic Jazzer model seams. */
@@ -329,7 +336,14 @@ class JazzerReplayInternalsTest {
             command.requestProvenance().idempotencyKey(),
             new PostingRejection.DuplicateIdempotencyKey());
 
-    SqliteRoundTripReplayVerifier.verifyDeclaredAccountListing(2, 2);
+    SqliteRoundTripReplayVerifier.verifyDeclaredAccountListing(
+        java.util.List.of(
+            declaredAccount(new AccountCode("cash"), true),
+            declaredAccount(new AccountCode("1000"), true),
+            declaredAccount(new AccountCode("2000"), true)),
+        java.util.List.of(
+            declaredAccount(new AccountCode("1000"), true),
+            declaredAccount(new AccountCode("2000"), true)));
     assertEquals(
         postingFact,
         SqliteRoundTripReplayVerifier.requireStoredPosting(java.util.Optional.of(postingFact)));
@@ -345,7 +359,12 @@ class JazzerReplayInternalsTest {
 
     assertThrows(
         IllegalStateException.class,
-        () -> SqliteRoundTripReplayVerifier.verifyDeclaredAccountListing(1, 2));
+        () ->
+            SqliteRoundTripReplayVerifier.verifyDeclaredAccountListing(
+                java.util.List.of(declaredAccount(new AccountCode("1000"), true)),
+                java.util.List.of(
+                    declaredAccount(new AccountCode("1000"), true),
+                    declaredAccount(new AccountCode("2000"), true))));
     assertThrows(
         IllegalStateException.class,
         () -> SqliteRoundTripReplayVerifier.requireStoredPosting(java.util.Optional.empty()));
@@ -358,7 +377,7 @@ class JazzerReplayInternalsTest {
                     CliFuzzFixtures.journalEntry(command),
                     PostingLineage.direct(),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                     command.evidence(),
                     new CommittedProvenance(
                         command.requestProvenance(),
@@ -572,7 +591,7 @@ class JazzerReplayInternalsTest {
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }
@@ -604,6 +623,21 @@ class JazzerReplayInternalsTest {
                 command.requestProvenance().actorType(),
                 ApprovalDecision.REJECTED,
                 Instant.parse("2026-04-07T13:00:00Z"))));
+  }
+
+  private static DeclaredAccount declaredAccount(AccountCode accountCode, boolean active) {
+    return new DeclaredAccount(
+        accountCode,
+        new AccountName("Synthetic " + accountCode.value()),
+        AccountType.ASSET,
+        AccountRole.ORDINARY,
+        new AccountTaxonomy(
+            dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+            Optional.empty()),
+        active,
+        CliFuzzFixtures.fixedClock().instant());
   }
 
   @SuppressWarnings("NullAway")

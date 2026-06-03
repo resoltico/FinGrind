@@ -43,20 +43,26 @@ grep -Fq 'attest-release-assets:' "${release_workflow}" || die \
     "release workflow no longer attests published release assets"
 grep -Fq 'verify-release:' "${release_workflow}" || die \
     "release workflow no longer verifies the published GitHub release"
+grep -Fq 'finalize-release:' "${release_workflow}" || die \
+    "release workflow no longer finalizes the staged GitHub release after container publication"
 grep -Fq 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1' "${release_workflow}" || die \
     "release workflow no longer pins publication-staging uploads to the current Node24-backed artifact action"
 grep -Fq 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1' "${release_workflow}" || die \
     "release workflow no longer pins publication-staging downloads to the current Node24-backed artifact action"
-grep -Fq 'container:' "${release_workflow}" || die \
-    "release workflow no longer publishes the public container from the same release workflow"
-grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-release-candidate-tag.sh' "${release_workflow}" || die \
-    "release workflow no longer routes the tag verifier through the replay-safe helper surface"
-grep -Fq 'bash "${{ steps.workflow-helper-root.outputs.path }}/scripts/publish-github-release.sh"' "${release_workflow}" || die \
-    "release workflow no longer routes the release publisher through the replay-safe helper surface"
-grep -Fq 'run: ${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-github-release.sh' "${release_workflow}" || die \
-    "release workflow no longer routes the release verifier through the replay-safe helper surface"
-grep -Fq '${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-public-container-surface.sh' "${release_workflow}" || die \
-    "release workflow no longer routes public-container verification through the replay-safe helper surface"
+grep -Fq 'build-staging-container:' "${release_workflow}" || die \
+    "release workflow no longer stages native container images inside the release workflow"
+grep -Fq 'promote-container:' "${release_workflow}" || die \
+    "release workflow no longer promotes staged container images into the public release surface"
+grep -Fq 'run: ./scripts/verify-release-candidate-tag.sh' "${release_workflow}" || die \
+    "release workflow no longer routes the tag verifier through the repo-owned release script"
+grep -Fq './scripts/publish-github-release.sh' "${release_workflow}" || die \
+    "release workflow no longer stages the draft GitHub release through the repo-owned publisher"
+grep -Fq './scripts/finalize-github-release.sh' "${release_workflow}" || die \
+    "release workflow no longer finalizes the staged GitHub release through the repo-owned finalizer"
+grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"' "${release_workflow}" || die \
+    "release workflow no longer verifies the staged draft release before public container promotion"
+grep -Fq './scripts/verify-public-container-surface.sh' "${release_workflow}" || die \
+    "release workflow no longer verifies staged and public container surfaces through the repo-owned verifier"
 grep -Fq 'FINGRIND_RELEASE_MARK_LATEST' "${release_workflow}" || die \
     "release workflow no longer drives GitHub latest ownership from the canonical latest policy"
 grep -Fq 'FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST' "${release_workflow}" || die \

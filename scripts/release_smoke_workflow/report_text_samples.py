@@ -11,8 +11,8 @@ STANDARD_LIST_POSTINGS_TEXT = (
     "Recorded at      : 2026-04-07 10:00:00 UTC\n"
     "Debit total      : 10.00\n"
 )
-STANDARD_ACCOUNT_BALANCE_TEXT = "Account Balance\nAccount : 1000\nNet     : 6.00\n"
-STANDARD_TRIAL_BALANCE_TEXT = "Trial Balance\nAs of : 2026-04-08\n1000 | 6.00\n"
+STANDARD_ACCOUNT_BALANCE_TEXT = "Account Balance\nAccount : cash\nNet     : 6.00\n"
+STANDARD_TRIAL_BALANCE_TEXT = "Trial Balance\nAs of : 2026-04-08\ncash | 6.00\n"
 STANDARD_PERIOD_SUMMARY_TEXT = "Period Summary\nPosting count : 2\n"
 
 

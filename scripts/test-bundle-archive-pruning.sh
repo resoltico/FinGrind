@@ -69,16 +69,18 @@ PY
 readonly current_archive_name="fingrind-$(project_version "${repo_root}")-${host_bundle_classifier}.${host_bundle_archive_format}"
 readonly current_archive_path="${distributions_dir}/${current_archive_name}"
 readonly current_checksum_path="${current_archive_path}.sha256"
+readonly bundle_archive_manifest_path="$(
+    fg_gradle_bundle_archive_manifest_path "${repo_root}" 'cli' "${is_darwin}"
+)"
 readonly stale_archive_path="${distributions_dir}/fingrind-0.00.0-obsolete.${host_bundle_archive_format}"
 readonly stale_checksum_path="${stale_archive_path}.sha256"
 readonly stale_host_archive_path="${distributions_dir}/fingrind-9.99.9-${host_bundle_classifier}.${host_bundle_archive_format}"
 readonly stale_host_checksum_path="${stale_host_archive_path}.sha256"
 readonly legacy_stale_archive_path="${legacy_distributions_dir}/fingrind-legacy-obsolete.${host_bundle_archive_format}"
 readonly legacy_stale_checksum_path="${legacy_stale_archive_path}.sha256"
-readonly task_output_path="${repo_root}/tmp/test-bundle-archive-pruning.output"
 
 cleanup() {
-    rm -f "${task_output_path}"
+    :
 }
 
 trap cleanup EXIT
@@ -94,8 +96,7 @@ if [[ "${legacy_distributions_dir}" != "${distributions_dir}" ]]; then
     printf 'cafebabe *%s\n' "$(basename -- "${legacy_stale_archive_path}")" > "${legacy_stale_checksum_path}"
 fi
 
-mkdir -p "${repo_root}/tmp"
-./gradlew :cli:bundleCliArchive --no-daemon --console=plain | tee "${task_output_path}" >/dev/null
+./gradlew :cli:bundleCliArchive --no-daemon --console=plain >/dev/null
 
 [[ ! -e "${stale_archive_path}" ]] || die "bundleCliArchive left the seeded obsolete archive behind"
 [[ ! -e "${stale_checksum_path}" ]] || die "bundleCliArchive left the seeded obsolete checksum behind"
@@ -138,9 +139,28 @@ if [[ "${legacy_distributions_dir}" != "${distributions_dir}" && -d "${legacy_di
         "bundleCliArchive should not leave versioned distribution artifacts behind under the legacy checkout path ${legacy_distributions_dir}"
 fi
 
-grep -Fqx "FINGRIND_BUNDLE_ARCHIVE=${current_archive_path}" "${task_output_path}" || die \
-    "bundleCliArchive did not report the produced host bundle archive path ${current_archive_path}"
-grep -Fqx "FINGRIND_BUNDLE_CHECKSUM=${current_checksum_path}" "${task_output_path}" || die \
-    "bundleCliArchive did not report the produced host bundle checksum path ${current_checksum_path}"
+[[ -f "${bundle_archive_manifest_path}" ]] || die \
+    "bundleCliArchive did not write the bundle archive manifest ${bundle_archive_manifest_path}"
+python3 - <<'PY' "${bundle_archive_manifest_path}" "${current_archive_path}" "${current_checksum_path}"
+import json
+import pathlib
+import sys
+
+manifest_path = pathlib.Path(sys.argv[1])
+expected_archive_path = pathlib.Path(sys.argv[2]).as_posix()
+expected_checksum_path = pathlib.Path(sys.argv[3]).as_posix()
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+archive_path = manifest.get("archivePath")
+checksum_path = manifest.get("checksumPath")
+if archive_path != expected_archive_path:
+    raise SystemExit(
+        f"bundleCliArchive manifest reported archivePath={archive_path!r}; expected {expected_archive_path!r}",
+    )
+if checksum_path != expected_checksum_path:
+    raise SystemExit(
+        f"bundleCliArchive manifest reported checksumPath={checksum_path!r}; expected {expected_checksum_path!r}",
+    )
+PY
 
 printf 'bundle archive pruning regression: success\n'

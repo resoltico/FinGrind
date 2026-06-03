@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.protocol;
 
-import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
 /** Canonical query-operation registry for the public FinGrind protocol catalog. */
@@ -51,7 +50,7 @@ final class ProtocolQueryOperations {
                             ProtocolOptions.BOOK_FILE,
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.LIMIT,
-                            InteractionLimits.DEFAULT_PAGE_LIMIT)))),
+                            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT)))),
         ProtocolOperationDefinitions.operation(
             OperationId.GET_POSTING,
             OperationCategory.QUERY,
@@ -227,28 +226,27 @@ final class ProtocolQueryOperations {
   }
 
   private static String accountBalanceExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s ./reports/cash-balance.pdf"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s cash %s text"
         .formatted(
             OperationId.ACCOUNT_BALANCE.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
             ProtocolOptions.ACCOUNT_CODE,
-            ProtocolOptions.PDF_OUT);
+            ProtocolOptions.OUTPUT);
   }
 
   private static String trialBalanceExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/trial-balance.pdf %s text"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s text"
         .formatted(
             OperationId.TRIAL_BALANCE.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
             ProtocolOptions.EFFECTIVE_DATE_AS_OF,
-            ProtocolOptions.PDF_OUT,
             ProtocolOptions.OUTPUT);
   }
 
   private static String accountLedgerExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 2026-04-01 %s 2026-04-30 %s ./reports/cash-ledger.pdf %s text"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s cash %s 2026-04-01 %s 2026-04-30 %s text"
         .formatted(
             OperationId.ACCOUNT_LEDGER.wireName(),
             ProtocolOptions.BOOK_FILE,
@@ -256,54 +254,49 @@ final class ProtocolQueryOperations {
             ProtocolOptions.ACCOUNT_CODE,
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             ProtocolOptions.EFFECTIVE_DATE_TO,
-            ProtocolOptions.PDF_OUT,
             ProtocolOptions.OUTPUT);
   }
 
   private static String periodSummaryExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/april-summary.pdf %s text"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s text"
         .formatted(
             OperationId.PERIOD_SUMMARY.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             ProtocolOptions.EFFECTIVE_DATE_TO,
-            ProtocolOptions.PDF_OUT,
             ProtocolOptions.OUTPUT);
   }
 
   private static String financialPositionExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s ./reports/financial-position.pdf %s text"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s text"
         .formatted(
             OperationId.FINANCIAL_POSITION.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
             ProtocolOptions.EFFECTIVE_DATE_AS_OF,
-            ProtocolOptions.PDF_OUT,
             ProtocolOptions.OUTPUT);
   }
 
   private static String incomeStatementExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/income-statement.pdf %s text"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s text"
         .formatted(
             OperationId.INCOME_STATEMENT.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             ProtocolOptions.EFFECTIVE_DATE_TO,
-            ProtocolOptions.PDF_OUT,
             ProtocolOptions.OUTPUT);
   }
 
   private static String changesInEquityExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s ./reports/changes-in-equity.pdf %s text"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s text"
         .formatted(
             OperationId.CHANGES_IN_EQUITY.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
             ProtocolOptions.EFFECTIVE_DATE_FROM,
             ProtocolOptions.EFFECTIVE_DATE_TO,
-            ProtocolOptions.PDF_OUT,
             ProtocolOptions.OUTPUT);
   }
 }

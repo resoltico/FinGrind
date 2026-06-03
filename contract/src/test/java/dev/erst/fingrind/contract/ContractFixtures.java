@@ -33,9 +33,9 @@ import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.ContentSha256;
@@ -50,8 +50,11 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
@@ -74,10 +77,8 @@ final class ContractFixtures {
 
   static BookIdentity bookIdentity() {
     return new BookIdentity(
-        new EntityProfile(
-            new BookEntityName("Acme Studio"),
-            List.of(new BusinessActivityTag("translation-services"))),
-        dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+        new EntityProfile(new BookEntityName("Acme Studio")),
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }
@@ -223,7 +224,7 @@ final class ContractFixtures {
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.CorrectionAdjustment(
+        new BookkeepingEntry.ReversalAdjustment(
             new JournalEntry(
                 FIXTURE_DATE,
                 List.of(
@@ -234,7 +235,10 @@ final class ContractFixtures {
                     new JournalLine(
                         new AccountCode("2000"),
                         JournalLine.EntrySide.CREDIT,
-                        Money.parse("EUR", "10.00"))))),
+                        Money.parse("EUR", "10.00")))),
+            new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                new ReversalReference(new PostingId("posting-0")),
+                new ReversalReason("operator reversal"))),
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
         SourceChannel.CLI);

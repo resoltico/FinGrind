@@ -55,8 +55,7 @@ source "${python_runtime_support}"
 readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-$(fg_gradle_user_home_dir "${repo_root}" "${is_darwin}")}"
 
 prepare_python_runtime_env
-readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
-readonly cli_docker_context_dir="${cli_build_dir}/docker-context"
+readonly cli_docker_context_dir="$(fg_gradle_docker_context_dir "${repo_root}" 'cli' "${is_darwin}")"
 
 resolve_docker_buildx_plugin() {
     local docker_binary=''

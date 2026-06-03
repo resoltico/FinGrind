@@ -182,6 +182,20 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_supportsCapabilitiesCategorySelectorWithoutExplicitCommandFocus() {
+    Capabilities command =
+        assertInstanceOf(
+            Capabilities.class,
+            CliArguments.parse(
+                new String[] {"capabilities", "--output", "json", "--category", "query"}));
+
+    assertEquals(OutputMode.JSON, command.outputMode());
+    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
+    assertEquals(DiscoveryFocus.COMMANDS, command.selections().focus());
+    assertEquals(OperationCategory.QUERY, command.selections().category());
+  }
+
+  @Test
   void parse_supportsCapabilitiesTextOutputWithoutJsonOnlySelectors() {
     Capabilities command =
         assertInstanceOf(

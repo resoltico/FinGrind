@@ -1,13 +1,17 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.AccountingEvidence;
+import dev.erst.fingrind.core.AccountingFrameworkPosition;
 import dev.erst.fingrind.core.AccountingKernelProfileId;
+import dev.erst.fingrind.core.BookDoctrine;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.JournalLine;
@@ -17,10 +21,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,7 +31,6 @@ import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /** Shared SQLite statement helpers for single-row lookups and pragma reads. */
 final class SqliteStatementQueries {
@@ -72,11 +73,13 @@ final class SqliteStatementQueries {
   private record BookIdentityCoreRow(
       String entityName,
       String accountingKernelProfile,
+      String accountingBasis,
+      String accountingFrameworkPosition,
+      String entityForm,
+      String bookTemplateId,
       String functionalCurrencyCode,
       int fiscalYearStartMonth,
       int fiscalYearStartDay) {}
-
-  private record EntityProfileRow(String businessActivityTags) {}
 
   private SqliteStatementQueries() {}
 
@@ -214,16 +217,16 @@ final class SqliteStatementQueries {
     if (identityCoreRow.isEmpty()) {
       return Optional.empty();
     }
-    EntityProfileRow entityProfileRow =
-        loadRequiredEntityProfile(
-            activeDatabase, "Initialized SQLite book is missing entity profile.");
     BookIdentityCoreRow coreRow = identityCoreRow.orElseThrow();
     return Optional.of(
         new BookIdentity(
-            new EntityProfile(
-                new BookEntityName(coreRow.entityName()),
-                decodeBusinessActivityTags(entityProfileRow.businessActivityTags())),
-            new AccountingKernelProfileId(coreRow.accountingKernelProfile()),
+            new EntityProfile(new BookEntityName(coreRow.entityName())),
+            new BookDoctrine(
+                new AccountingKernelProfileId(coreRow.accountingKernelProfile()),
+                AccountingBasis.fromWireValue(coreRow.accountingBasis()),
+                AccountingFrameworkPosition.fromWireValue(coreRow.accountingFrameworkPosition()),
+                EntityForm.fromWireValue(coreRow.entityForm()),
+                BookTemplateId.fromWireValue(coreRow.bookTemplateId())),
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
             new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay())));
   }
@@ -310,47 +313,18 @@ final class SqliteStatementQueries {
                   SqlitePostingMapper.requiredText(statement, 0),
                   SqlitePostingMapper.requiredText(statement, 1),
                   SqlitePostingMapper.requiredText(statement, 2),
-                  SqlitePostingMapper.requiredInt(statement, 3),
-                  SqlitePostingMapper.requiredInt(statement, 4));
+                  SqlitePostingMapper.requiredText(statement, 3),
+                  SqlitePostingMapper.requiredText(statement, 4),
+                  SqlitePostingMapper.requiredText(statement, 5),
+                  SqlitePostingMapper.requiredText(statement, 6),
+                  SqlitePostingMapper.requiredInt(statement, 7),
+                  SqlitePostingMapper.requiredInt(statement, 8));
           if (statement.step() != SqliteNativeResultCode.code("DONE")) {
             throw new IllegalStateException(
                 "SQLite book identity core query returned more than one row.");
           }
           return Optional.of(row);
         });
-  }
-
-  private static EntityProfileRow loadRequiredEntityProfile(
-      SqliteNativeDatabase activeDatabase, String missingMessage) {
-    return withStatement(
-        activeDatabase,
-        SqlitePostingSql.FIND_ENTITY_PROFILE,
-        statement -> {
-          if (statement.step() != SqliteNativeResultCode.code("ROW")) {
-            throw new IllegalStateException(missingMessage);
-          }
-          EntityProfileRow row =
-              new EntityProfileRow(SqlitePostingMapper.requiredText(statement, 0));
-          if (statement.step() != SqliteNativeResultCode.code("DONE")) {
-            throw new IllegalStateException(
-                "SQLite entity profile query returned more than one row.");
-          }
-          return row;
-        });
-  }
-
-  private static List<BusinessActivityTag> decodeBusinessActivityTags(String encodedTags) {
-    if (encodedTags.isBlank()) {
-      return List.of();
-    }
-    return Stream.of(encodedTags.split(",", -1))
-        .map(SqliteStatementQueries::decodeBookMetaValue)
-        .map(BusinessActivityTag::new)
-        .toList();
-  }
-
-  private static String decodeBookMetaValue(String encodedValue) {
-    return new String(Base64.getUrlDecoder().decode(encodedValue), StandardCharsets.UTF_8);
   }
 
   private static <T> T withStatement(

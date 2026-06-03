@@ -16,6 +16,9 @@ object FinGrindBuildMetadata {
         val implementationVendor: String,
         val implementationLicense: String,
         val foojayResolverConventionVersion: String,
+        val jacocoSnapshotBaseVersion: String,
+        val jacocoSnapshotBuildLabel: String,
+        val jacocoSnapshotResolvedVersion: String,
     )
 
     fun load(project: Project): Values = load(project.rootProject.projectDir.toPath())
@@ -30,6 +33,9 @@ object FinGrindBuildMetadata {
             implementationVendor = property(properties, "implementationVendor"),
             implementationLicense = property(properties, "implementationLicense"),
             foojayResolverConventionVersion = property(properties, "foojayResolverConventionVersion"),
+            jacocoSnapshotBaseVersion = property(properties, "fingrindJacocoSnapshotBaseVersion"),
+            jacocoSnapshotBuildLabel = property(properties, "fingrindJacocoSnapshotBuildLabel"),
+            jacocoSnapshotResolvedVersion = property(properties, "fingrindJacocoSnapshotResolvedVersion"),
         )
     }
 

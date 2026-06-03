@@ -54,8 +54,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--business-activity-tag",
-                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -161,8 +159,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--business-activity-tag",
-                      "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -189,8 +185,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--business-activity-tag",
-                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -217,8 +211,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--business-activity-tag",
-                      "translation-services",
                       "--tax-profile-file",
                       taxProfileFile.toString(),
                       "--functional-currency",
@@ -246,8 +238,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--business-activity-tag",
-                      "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -324,8 +314,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--business-activity-tag",
-                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -338,7 +326,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_openBook_collectsBusinessActivityTags() {
+  void parse_openBook_buildsNarrowDoctrinalIdentity() {
     OpenBook command =
         assertInstanceOf(
             OpenBook.class,
@@ -351,10 +339,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
-                  "--business-activity-tag",
-                  "translation,localization",
-                  "--business-activity-tag",
-                  "cafe services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -362,10 +346,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                 }));
 
     assertEquals(
-        List.of("translation,localization", "cafe services"),
-        command.command().bookIdentity().entityProfile().businessActivityTags().stream()
-            .map(value -> value.value())
-            .toList());
+        dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        command.command().bookIdentity().bookDoctrine());
   }
 
   @Test
@@ -550,8 +532,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-passphrase-stdin",
                   "--entity-name",
                   "Acme Studio",
-                  "--business-activity-tag",
-                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -615,8 +595,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-passphrase-prompt",
                   "--entity-name",
                   "Acme Studio",
-                  "--business-activity-tag",
-                  "translation-services",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -644,8 +622,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--business-activity-tag",
-                      "translation-services",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -677,24 +653,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "--fiscal-year-start",
                       "01-01",
                     }));
-    CliArgumentsException missingBusinessActivityTag =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "open-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "book.key",
-                      "--entity-name",
-                      "Acme Studio",
-                      "--functional-currency",
-                      "EUR",
-                      "--fiscal-year-start",
-                      "01-01",
-                    }));
     CliArgumentsException missingFunctionalCurrency =
         assertThrows(
             CliArgumentsException.class,
@@ -708,8 +666,6 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--business-activity-tag",
-                      "translation-services",
                       "--fiscal-year-start",
                       "01-01"
                     }));
@@ -726,17 +682,11 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
-                      "--business-activity-tag",
-                      "translation-services",
                       "--functional-currency",
                       "EUR",
                     }));
     assertEquals("--entity-name", missingEntityName.argument());
     assertEquals("A --entity-name argument is required.", missingEntityName.getMessage());
-    assertEquals("--business-activity-tag", missingBusinessActivityTag.argument());
-    assertEquals(
-        "At least one --business-activity-tag argument is required.",
-        missingBusinessActivityTag.getMessage());
     assertEquals("--functional-currency", missingFunctionalCurrency.argument());
     assertEquals(
         "A --functional-currency argument is required.", missingFunctionalCurrency.getMessage());

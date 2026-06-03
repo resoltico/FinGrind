@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceMath;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -222,8 +223,8 @@ class BookkeepingReportingServiceCoverageTest {
   void comparativeWindows_followFiscalYearAnchorInsteadOfBlindCalendarSubtraction() {
     BookIdentity fiscalYearShiftedIdentity =
         new BookIdentity(
-            new EntityProfile(new BookEntityName("Shifted Year Shop"), List.of()),
-            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            new EntityProfile(new BookEntityName("Shifted Year Shop")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("02-29"));
     CoverageBookStore store =

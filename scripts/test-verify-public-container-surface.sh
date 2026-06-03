@@ -177,7 +177,6 @@ TEXT
                 ;;
             open-book)
                 entity_name=''
-                business_activity_tag=''
                 functional_currency=''
                 fiscal_year_start=''
                 book_file=''
@@ -197,10 +196,6 @@ TEXT
                             entity_name="${2}"
                             shift 2
                             ;;
-                        --business-activity-tag)
-                            business_activity_tag="${2}"
-                            shift 2
-                            ;;
                         --functional-currency)
                             functional_currency="${2}"
                             shift 2
@@ -218,15 +213,19 @@ TEXT
                 [[ -n "${book_file}" ]] || exit 1
                 [[ -n "${book_key_file}" ]] || exit 1
                 [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
-                [[ "${business_activity_tag}" == 'consulting-services' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
+                request_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
-                        --book-file|--book-key-file|--request-file)
+                        --book-file|--book-key-file)
+                            shift 2
+                            ;;
+                        --request-file)
+                            request_file="$(translate_path "${2}")"
                             shift 2
                             ;;
                         *)
@@ -235,7 +234,15 @@ TEXT
                             ;;
                     esac
                 done
-                printf '{"status":"ok","payload":{"accountCode":"1000"}}\n'
+                [[ -n "${request_file}" ]] || exit 1
+                if grep -Fq 'cash-reserve' "${request_file}"; then
+                    printf '{"status":"ok","payload":{"accountCode":"cash-reserve"}}\n'
+                elif grep -Fq 'misc-revenue' "${request_file}"; then
+                    printf '{"status":"ok","payload":{"accountCode":"misc-revenue"}}\n'
+                else
+                    printf 'unexpected declare-account fixture\n' >&2
+                    exit 1
+                fi
                 ;;
             post-entry)
                 request_file=''
@@ -256,8 +263,8 @@ TEXT
                 done
                 [[ -n "${request_file}" ]] || exit 1
                 grep -Fq '"entryKind": "CASH_REVENUE"' "${request_file}" || exit 1
-                grep -Fq '"cashAccountCode": "1000"' "${request_file}" || exit 1
-                grep -Fq '"revenueAccountCode": "2000"' "${request_file}" || exit 1
+                grep -Fq '"cashAccountCode": "cash"' "${request_file}" || exit 1
+                grep -Fq '"revenueAccountCode": "service-revenue"' "${request_file}" || exit 1
                 grep -Fq '"sourceDocumentId": "release-protocol-cash-receipt-1"' "${request_file}" || exit 1
                 grep -Fq '"sourceDocumentType": "cash-receipt"' "${request_file}" || exit 1
                 grep -Fq '"documentDate": "2026-04-08"' "${request_file}" || exit 1
@@ -308,16 +315,19 @@ EUR      |       10.00 |        10.00 |       0.00 | Zero
 
 Accounts
 --------
-Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | USD      |       10.00 |         0.00 |      10.00 | Debit
-2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
+----------------+-----------------+----------+-------------+--------------+------------+-------------
+cash            | Cash            | USD      |       10.00 |         0.00 |      10.00 | Debit
+service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 
 Context
 -------
 Entity              : Release Protocol Fixture
-Accounting profile  : country-agnostic-bookkeeping-kernel
-Business activity   : consulting-services
+Accounting kernel   : internal-management-cash-bookkeeping-kernel
+Accounting basis    : CASH_BASIS
+Framework posture   : NON_STATUTORY_INTERNAL_MANAGEMENT
+Entity form         : OWNER_MANAGED_SINGLE_ENTITY
+Book template       : OWNER_MANAGED_SERVICE_CASH
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds
@@ -338,16 +348,19 @@ EUR      |       10.00 |        10.00 |       0.00 | Zero
 
 Accounts
 --------
-Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
-2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
+----------------+-----------------+----------+-------------+--------------+------------+-------------
+cash            | Cash            | EUR      |       10.00 |         0.00 |      10.00 | Debit
+service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 
 Context
 -------
 Entity              : Release Protocol Fixture
-Accounting profile  : country-agnostic-bookkeeping-kernel
-Business activity   : consulting-services
+Accounting kernel   : internal-management-cash-bookkeeping-kernel
+Accounting basis    : CASH_BASIS
+Framework posture   : NON_STATUTORY_INTERNAL_MANAGEMENT
+Entity form         : OWNER_MANAGED_SINGLE_ENTITY
+Book template       : OWNER_MANAGED_SERVICE_CASH
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds

@@ -20,19 +20,20 @@ final class PdfStatementMetadataRows {
     statementRows.add(List.of("Entity", bookIdentity.entityName().value()));
     statementRows.add(
         List.of(
-            "Book context",
-            "Currency "
-                + bookIdentity.functionalCurrency().code()
-                + " / Fiscal year start "
-                + bookIdentity.fiscalYearStart().wireValue()
-                + " / Posting coverage "
-                + PdfValueFormatter.displayPostingCoverage(postingCoverage)));
-    String businessActivity =
-        PdfValueFormatter.displayBusinessActivityTags(
-            bookIdentity.entityProfile().businessActivityTags());
-    if (!"(none)".equals(businessActivity)) {
-      statementRows.add(List.of("Business activity", businessActivity));
-    }
+            "Accounting kernel", bookIdentity.bookDoctrine().accountingKernelProfileId().value()));
+    statementRows.add(
+        List.of("Accounting basis", bookIdentity.bookDoctrine().accountingBasis().wireValue()));
+    statementRows.add(
+        List.of(
+            "Framework posture",
+            bookIdentity.bookDoctrine().accountingFrameworkPosition().wireValue()));
+    statementRows.add(List.of("Entity form", bookIdentity.bookDoctrine().entityForm().wireValue()));
+    statementRows.add(
+        List.of("Book template", bookIdentity.bookDoctrine().bookTemplateId().wireValue()));
+    statementRows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
+    statementRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
+    statementRows.add(
+        List.of("Posting coverage", PdfValueFormatter.displayPostingCoverage(postingCoverage)));
     statementRows.addAll(rows);
     return List.copyOf(statementRows);
   }

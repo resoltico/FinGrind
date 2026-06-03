@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliDiscoveryJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
@@ -38,30 +39,22 @@ final class CliDiscoveryHelpPayloadMapper {
         };
   }
 
-  private static CliDiscoveryJsonModels.HelpOverviewMinimalPayload minimalHelpOverviewPayload(
+  private static CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload minimalHelpOverviewPayload(
       HelpDescriptor helpDescriptor, @Nullable OperationCategory category) {
-    return new CliDiscoveryJsonModels.HelpOverviewMinimalPayload(
+    return new CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
         DiscoveryDetail.MINIMAL,
         category == null ? null : category.wireValue(),
         commandNamePayloads(helpDescriptor.commands()),
-        "Rerun with '"
-            + CliInvocationText.commandExample(OperationId.HELP)
-            + " --output json "
-            + ProtocolOptions.DETAIL
-            + " compact' for stable usage, options, and output-contract descriptors.",
-        "Rerun with '"
-            + CliInvocationText.commandExample(OperationId.HELP)
-            + " --output json "
-            + ProtocolOptions.DETAIL
-            + " full' for the exhaustive discovery descriptor.");
+        "See --detail compact.",
+        "See --detail full.");
   }
 
-  private static CliDiscoveryJsonModels.HelpOverviewCompactPayload compactHelpOverviewPayload(
+  private static CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload compactHelpOverviewPayload(
       HelpDescriptor helpDescriptor, @Nullable OperationCategory category) {
-    return new CliDiscoveryJsonModels.HelpOverviewCompactPayload(
+    return new CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
@@ -69,19 +62,19 @@ final class CliDiscoveryHelpPayloadMapper {
         category == null ? null : category.wireValue(),
         commandIndexPayloads(helpDescriptor.commands()),
         helpDescriptor.exitCodes(),
-        "Run '"
+        "Use '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json' for the stable machine-readable command contract.",
-        "Run '"
+        "Use '"
             + CliInvocationText.commandExample(OperationId.HELP)
             + " --output json "
             + ProtocolOptions.DETAIL
             + " full' for exhaustive discovery grammar, templates, and response contract details.");
   }
 
-  private static CliDiscoveryJsonModels.HelpOverviewPayload helpOverviewPayload(
+  private static CliDiscoveryHelpJsonModels.HelpOverviewPayload helpOverviewPayload(
       HelpDescriptor helpDescriptor, @Nullable OperationCategory category) {
-    return new CliDiscoveryJsonModels.HelpOverviewPayload(
+    return new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
@@ -129,11 +122,11 @@ final class CliDiscoveryHelpPayloadMapper {
         helpDescriptor.currencyModel());
   }
 
-  private static CliDiscoveryJsonModels.CommandHelpPayload commandHelpPayload(
+  private static CliDiscoveryHelpJsonModels.CommandHelpPayload commandHelpPayload(
       HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
     CommandDescriptor command = helpDescriptor.commands().getFirst();
     ProtocolOperation operation = ProtocolCatalog.operation(command.name());
-    return new CliDiscoveryJsonModels.CommandHelpPayload(
+    return new CliDiscoveryHelpJsonModels.CommandHelpPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
         helpDescriptor.description(),
@@ -147,8 +140,9 @@ final class CliDiscoveryHelpPayloadMapper {
         helpDescriptor.exitCodes());
   }
 
-  private static Optional<CliDiscoveryJsonModels.RequestFileGuidancePayload> requestFileGuidance(
-      HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
+  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
+      requestFileGuidance(
+          HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
     if (operationId == OperationId.POST_ENTRY || operationId == OperationId.PREFLIGHT_ENTRY) {
       return postingRequestGuidance(helpDescriptor, detail);
     }
@@ -161,15 +155,15 @@ final class CliDiscoveryHelpPayloadMapper {
     return Optional.empty();
   }
 
-  private static Optional<CliDiscoveryJsonModels.RequestFileGuidancePayload> postingRequestGuidance(
-      HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
+      postingRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().postEntry() == null
         || helpDescriptor.requestTemplate() == null) {
       return Optional.empty();
     }
     return Optional.of(
-        new CliDiscoveryJsonModels.RequestFileGuidancePayload(
+        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
             "Provide one posting JSON object through --request-file <path|->.",
             detail,
             detail == DiscoveryDetail.FULL ? helpDescriptor.requestTemplate() : null,
@@ -185,7 +179,7 @@ final class CliDiscoveryHelpPayloadMapper {
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)));
   }
 
-  private static Optional<CliDiscoveryJsonModels.RequestFileGuidancePayload>
+  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
       declareAccountRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().declareAccount() == null
@@ -193,7 +187,7 @@ final class CliDiscoveryHelpPayloadMapper {
       return Optional.empty();
     }
     return Optional.of(
-        new CliDiscoveryJsonModels.RequestFileGuidancePayload(
+        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
             "Provide one account-declaration JSON object through --request-file <path|->.",
             detail,
             null,
@@ -211,7 +205,7 @@ final class CliDiscoveryHelpPayloadMapper {
                 + OperationId.DECLARE_ACCOUNT.wireName()));
   }
 
-  private static Optional<CliDiscoveryJsonModels.RequestFileGuidancePayload>
+  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
       ledgerPlanRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().ledgerPlan() == null
@@ -219,7 +213,7 @@ final class CliDiscoveryHelpPayloadMapper {
       return Optional.empty();
     }
     return Optional.of(
-        new CliDiscoveryJsonModels.RequestFileGuidancePayload(
+        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
             "Provide one ledger plan JSON object through --request-file <path|->.",
             detail,
             null,
@@ -254,24 +248,24 @@ final class CliDiscoveryHelpPayloadMapper {
     return helpDescriptor.commands().size() == 1 && helpDescriptor.quickStart().isEmpty();
   }
 
-  private static List<CliDiscoveryJsonModels.CommandIndexPayload> commandIndexPayloads(
+  private static List<CliDiscoveryCommonJsonModels.CommandIndexPayload> commandIndexPayloads(
       List<CommandDescriptor> commands) {
     return commands.stream()
         .map(
             command ->
-                new CliDiscoveryJsonModels.CommandIndexPayload(
+                new CliDiscoveryCommonJsonModels.CommandIndexPayload(
                     command.name(),
                     ProtocolCatalog.operation(command.name()).category().wireValue(),
                     command.summary()))
         .toList();
   }
 
-  private static List<CliDiscoveryJsonModels.CommandNamePayload> commandNamePayloads(
+  private static List<CliDiscoveryCommonJsonModels.CommandNamePayload> commandNamePayloads(
       List<CommandDescriptor> commands) {
     return commands.stream()
         .map(
             command ->
-                new CliDiscoveryJsonModels.CommandNamePayload(
+                new CliDiscoveryCommonJsonModels.CommandNamePayload(
                     command.name(),
                     ProtocolCatalog.operation(command.name()).category().wireValue()))
         .toList();

@@ -104,10 +104,10 @@ class CliDiscoveryHelpTextRendererTest {
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("First Successful Run"));
     assertTrue(rendered.contains("Generate one key file"));
-    assertTrue(rendered.contains("Print the first account scaffold"));
+    assertTrue(rendered.contains("Review the seeded starter chart"));
     assertTrue(rendered.contains("Print the first entry scaffold"));
     assertTrue(rendered.contains("Command Families"));
-    assertTrue(rendered.contains("For Agents And Automation"));
+    assertTrue(rendered.contains("Reference Commands"));
   }
 
   @Test
@@ -119,21 +119,18 @@ class CliDiscoveryHelpTextRendererTest {
 
     int generateKeyIndex = rendered.indexOf("Generate one key file");
     int openBookIndex = rendered.indexOf("Open one protected book");
-    int declareScaffoldIndex = rendered.indexOf("Print the first account scaffold");
-    int declareIndex = rendered.indexOf("Declare the first account");
+    int starterChartIndex = rendered.indexOf("Review the seeded starter chart");
     int entryScaffoldIndex = rendered.indexOf("Print the first entry scaffold");
     int postEntryIndex = rendered.indexOf("Preflight or commit one entry");
 
     assertTrue(generateKeyIndex >= 0, rendered);
     assertTrue(openBookIndex >= 0, rendered);
-    assertTrue(declareScaffoldIndex >= 0, rendered);
-    assertTrue(declareIndex >= 0, rendered);
+    assertTrue(starterChartIndex >= 0, rendered);
     assertTrue(entryScaffoldIndex >= 0, rendered);
     assertTrue(postEntryIndex >= 0, rendered);
     assertTrue(generateKeyIndex < openBookIndex, rendered);
-    assertTrue(openBookIndex < declareScaffoldIndex, rendered);
-    assertTrue(declareScaffoldIndex < declareIndex, rendered);
-    assertTrue(declareIndex < entryScaffoldIndex, rendered);
+    assertTrue(openBookIndex < starterChartIndex, rendered);
+    assertTrue(starterChartIndex < entryScaffoldIndex, rendered);
     assertTrue(entryScaffoldIndex < postEntryIndex, rendered);
   }
 
@@ -181,6 +178,11 @@ class CliDiscoveryHelpTextRendererTest {
 
   @Test
   void renderHelpText_rendersCommandScopedHelpWithUsageAndExamples() {
+    HelpDescriptor canonical =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            OperationId.POST_ENTRY);
     String rendered =
         CliDiscoveryOutputRenderer.renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
@@ -209,15 +211,17 @@ class CliDiscoveryHelpTextRendererTest {
                 List.of(new ExitCodeDescriptor(0, "ok")),
                 new ContractResponse.PreflightDescriptor(
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
+                canonical.requestShapes()));
 
     assertTrue(rendered.contains("Try It"));
     assertTrue(rendered.contains("Before You Run"));
     assertTrue(rendered.contains("Command"));
     assertTrue(rendered.contains("Options"));
-    assertTrue(rendered.contains("Need JSON Contract"));
+    assertTrue(rendered.contains("Request File"));
     assertTrue(rendered.contains("More examples"));
     assertTrue(rendered.contains("print-request-template post-entry > request.json"));
+    assertTrue(rendered.contains("Starter file command"));
     assertTrue(rendered.contains("post-entry --book-file <path> --request-file <path|->"));
   }
 
@@ -320,10 +324,10 @@ class CliDiscoveryHelpTextRendererTest {
                 Objects.requireNonNull(executePlanCanonical.requestShapes())));
 
     assertTrue(declareRendered.contains("Request File"));
-    assertTrue(declareRendered.contains("Need a starter file?"));
+    assertTrue(declareRendered.contains("Starter file command"));
     assertTrue(declareRendered.contains("declare-account --request-file <path|->"));
     assertTrue(executePlanRendered.contains("Request File"));
-    assertTrue(executePlanRendered.contains("Need a starter file?"));
+    assertTrue(executePlanRendered.contains("Starter file command"));
     assertTrue(executePlanRendered.contains("execute-plan --request-file <path|->"));
   }
 
@@ -345,6 +349,24 @@ class CliDiscoveryHelpTextRendererTest {
             CliDiscoveryTestSupport.environment(),
             OperationId.EXECUTE_PLAN);
 
+    String postEntryWithoutRequestShapes =
+        CliDiscoveryOutputRenderer.renderHelpText(
+            new HelpDescriptor(
+                postEntryCanonical.application(),
+                postEntryCanonical.version(),
+                postEntryCanonical.description(),
+                postEntryCanonical.usage(),
+                postEntryCanonical.bookModel(),
+                postEntryCanonical.bookkeepingKernel(),
+                null,
+                postEntryCanonical.requestTemplate(),
+                postEntryCanonical.declareAccountTemplate(),
+                postEntryCanonical.planTemplate(),
+                postEntryCanonical.commands(),
+                postEntryCanonical.quickStart(),
+                postEntryCanonical.exitCodes(),
+                postEntryCanonical.preflight(),
+                postEntryCanonical.currencyModel()));
     String postEntryWithoutShape =
         CliDiscoveryOutputRenderer.renderHelpText(
             new HelpDescriptor(
@@ -502,6 +524,7 @@ class CliDiscoveryHelpTextRendererTest {
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel()));
 
+    assertFalse(postEntryWithoutRequestShapes.contains("\nInput\n"));
     assertFalse(postEntryWithoutShape.contains("\nInput\n"));
     assertFalse(postEntryWithoutTemplate.contains("\nInput\n"));
     assertFalse(declareWithoutRequestShapes.contains("\nInput\n"));

@@ -19,7 +19,7 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new PostingWorkflowReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-10", "idem-posting-4", 4, false),
+            new ParsedPostingCommandDetails("2026-04-10", "idem-posting-4", 2, false),
             new PostingWorkflowLifecycleDetails(
                 new PostingGateDetails(
                     PostingLifecycleStatus.BOOK_NOT_INITIALIZED,

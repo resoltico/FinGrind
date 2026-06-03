@@ -213,7 +213,7 @@ public final class SqliteProtectedBookFixtureGenerator {
         SqliteStoreFixtureSupport.openStore(
             new BookAccess(fixturePath, new BookAccess.PassphraseSource.KeyFile(keyPath)))) {
       if (!(postingFactStore.openBook(
-              INITIALIZED_AT, SqlitePostingFactFixtureSupport.bookIdentity())
+              INITIALIZED_AT, SqlitePostingFactFixtureSupport.bookIdentity(), List.of())
           instanceof BookOpeningOutcome.Opened)) {
         throw new IllegalStateException("Failed to initialize the protected-book fixture.");
       }

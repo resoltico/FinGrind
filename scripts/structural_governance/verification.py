@@ -1,16 +1,20 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import date
 from pathlib import Path
 
 from .budgets import kotlin_budget_for, python_budget_for, shell_budget_for, sql_budget_for
+from .docs_budgets import gradle_kts_budget_for, markdown_budget_for
 from .metrics import (
     measure_kotlin_file,
+    measure_markdown_file,
     measure_python_file,
     measure_shell_file,
     measure_sql_file,
 )
 from .models import FileBudget, FileMetrics, MeasuredSurface
+from .reviewed_surfaces import REVIEWED_SURFACES
 
 
 def verify_build_logic_kotlin(repo_root: Path) -> list[str]:
@@ -23,6 +27,7 @@ def verify_build_logic_kotlin(repo_root: Path) -> list[str]:
         measurement
         for measurement in measurements
         if "src/test/kotlin" not in measurement[0].as_posix()
+        and measurement[1].role_name != "build-logic-reviewed-surface-catalog"
     ]
     return _measurement_violations(measurements, duplication_candidates)
 
@@ -49,6 +54,47 @@ def verify_sqlite_sql(repo_root: Path) -> list[str]:
         return [f"{schema_root}: missing SQLite schema root for structural verification."]
     files = sorted(schema_root.rglob("*.sql"))
     measurements = _measure_files(repo_root, files, sql_budget_for, measure_sql_file)
+    return _measurement_violations(measurements, measurements)
+
+
+def verify_markdown_docs(repo_root: Path) -> list[str]:
+    include_paths = [
+        repo_root / "docs",
+        repo_root / "README.md",
+        repo_root / "AGENTS.md",
+        repo_root / "CHANGELOG.md",
+        repo_root / "SECURITY.md",
+        repo_root / "PATENTS.md",
+        repo_root / "jazzer" / "README.md",
+        repo_root / "cli" / "src" / "bundle" / "root" / "README.md",
+        repo_root / "third_party" / "sqlite",
+    ]
+    files: list[Path] = []
+    for path in include_paths:
+        if path.is_file() and path.suffix == ".md":
+            files.append(path)
+        elif path.is_dir():
+            files.extend(sorted(path.rglob("*.md")))
+    measurements = _measure_files(
+        repo_root,
+        sorted(set(files)),
+        markdown_budget_for,
+        measure_markdown_file,
+    )
+    return _measurement_violations(measurements, measurements)
+
+
+def verify_gradle_kts(repo_root: Path) -> list[str]:
+    candidate_files = [
+        repo_root / "build.gradle.kts",
+        repo_root / "settings.gradle.kts",
+        *sorted(repo_root.glob("*/build.gradle.kts")),
+        *sorted(repo_root.glob("*/settings.gradle.kts")),
+        *sorted((repo_root / "gradle").glob("*/build.gradle.kts")),
+        *sorted((repo_root / "gradle").glob("*/settings.gradle.kts")),
+    ]
+    filtered = [path for path in candidate_files if path.is_file()]
+    measurements = _measure_files(repo_root, filtered, gradle_kts_budget_for, measure_kotlin_file)
     return _measurement_violations(measurements, measurements)
 
 
@@ -79,6 +125,50 @@ def check_metrics(relative_path: Path, budget: FileBudget, metrics: FileMetrics)
         violations.append(
             f"{path_text}: {metrics.nested_types} nested types exceeds {budget.max_nested_types} for "
             f"{budget.role_name}; move focused collaborators into their own file."
+        )
+    return violations
+
+
+def reviewed_surface_violations(relative_path: Path, metrics: FileMetrics) -> list[str]:
+    reviewed = REVIEWED_SURFACES.get(relative_path.as_posix())
+    if reviewed is None:
+        return []
+    approval = reviewed.approval
+    violations: list[str] = []
+    if date.today() > approval.expires_on:
+        violations.append(
+            f"{relative_path.as_posix()}: reviewed structural waiver for {reviewed.owner} expired on "
+            f"{approval.expires_on}; {reviewed.split_trigger}"
+        )
+    if metrics.physical_lines > approval.approved_physical_lines:
+        violations.append(
+            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
+            f"{approval.approved_physical_lines} to {metrics.physical_lines} physical lines before "
+            f"{approval.expires_on}; {reviewed.split_trigger}"
+        )
+    if metrics.logical_lines > approval.approved_logical_lines:
+        violations.append(
+            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
+            f"{approval.approved_logical_lines} to {metrics.logical_lines} logical lines before "
+            f"{approval.expires_on}; {reviewed.split_trigger}"
+        )
+    if metrics.import_like_lines > approval.approved_import_like_lines:
+        violations.append(
+            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
+            f"{approval.approved_import_like_lines} to {metrics.import_like_lines} import-like lines before "
+            f"{approval.expires_on}; {reviewed.split_trigger}"
+        )
+    if metrics.functions > approval.approved_functions:
+        violations.append(
+            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
+            f"{approval.approved_functions} to {metrics.functions} functions before "
+            f"{approval.expires_on}; {reviewed.split_trigger}"
+        )
+    if metrics.nested_types > approval.approved_nested_types:
+        violations.append(
+            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
+            f"{approval.approved_nested_types} to {metrics.nested_types} nested types before "
+            f"{approval.expires_on}; {reviewed.split_trigger}"
         )
     return violations
 
@@ -136,6 +226,7 @@ def _measurement_violations(
     violations: list[str] = []
     for relative_path, budget, metrics in measurements:
         violations.extend(check_metrics(relative_path, budget, metrics))
+        violations.extend(reviewed_surface_violations(relative_path, metrics))
     if duplication_candidates:
         min_window = min(
             budget.max_duplicate_window_lines for _, budget, _ in duplication_candidates

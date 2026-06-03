@@ -243,7 +243,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 "idem-usd",
                 SourceChannel.CLI,
                 List.of(
@@ -287,7 +287,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
                 "idem-opening-revenue",
                 SourceChannel.CLI,
                 List.of(
@@ -329,7 +329,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
                 "idem-opening-expense",
                 SourceChannel.CLI,
                 List.of(
@@ -371,7 +371,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
                 "idem-opening-balance-sheet",
                 SourceChannel.CLI,
                 List.of(
@@ -413,7 +413,7 @@ class PostingAcceptancePolicyTest {
                 openingPosting.journalEntry(),
                 openingPosting.postingLineage(),
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
                 openingPosting.evidence(),
                 openingPosting.provenance()),
             ordinaryPosting);
@@ -422,7 +422,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
                 "idem-opening-late",
                 SourceChannel.CLI,
                 List.of(
@@ -557,7 +557,7 @@ class PostingAcceptancePolicyTest {
   private static PostingCommand command(String idempotencyKey) {
     return command(
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         idempotencyKey,
         SourceChannel.CLI,
         List.of(
@@ -568,7 +568,7 @@ class PostingAcceptancePolicyTest {
   private static PostingCommand command(String idempotencyKey, List<JournalLine> lines) {
     return command(
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         idempotencyKey,
         SourceChannel.CLI,
         lines);
@@ -606,7 +606,7 @@ class PostingAcceptancePolicyTest {
                 line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         new dev.erst.fingrind.core.CommittedProvenance(
             new RequestProvenance(

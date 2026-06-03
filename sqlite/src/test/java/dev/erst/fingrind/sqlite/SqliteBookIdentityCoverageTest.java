@@ -3,14 +3,13 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +28,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void loadBookIdentity_requiresEntityProfileRow() {
+  void loadBookIdentity_materializesEntityProfileFromBookIdentityRow() {
     Path missingEntityProfilePath =
         tempDirectory.resolve("book-identity-missing-entity-profile.sqlite");
     createSchemaOnlyBook(missingEntityProfilePath);
@@ -43,24 +42,34 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   singleton_id,
                   entity_name,
                   accounting_kernel_profile,
+                  accounting_basis,
+                  accounting_framework_position,
+                  entity_form,
+                  book_template_id,
                   functional_currency_code,
                   fiscal_year_start_month,
                   fiscal_year_start_day
               ) values (
                   1,
                   'Acme Studio',
-                  'country-agnostic-bookkeeping-kernel',
+                  'internal-management-cash-bookkeeping-kernel',
+                  'CASH_BASIS',
+                  'NON_STATUTORY_INTERNAL_MANAGEMENT',
+                  'OWNER_MANAGED_SINGLE_ENTITY',
+                  'OWNER_MANAGED_SERVICE_CASH',
                   'EUR',
                   1,
                   1
               )
               """);
-          IllegalStateException exception =
-              assertThrows(
-                  IllegalStateException.class,
-                  () -> SqliteStatementQueries.loadBookIdentity(database));
           assertEquals(
-              "Initialized SQLite book is missing entity profile.", exception.getMessage());
+              Optional.of(
+                  new BookIdentity(
+                      new EntityProfile(new BookEntityName("Acme Studio")),
+                      BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+                      CurrencyUnit.of("EUR"),
+                      FiscalYearStart.parse("01-01"))),
+              SqliteStatementQueries.loadBookIdentity(database));
         });
   }
 
@@ -115,16 +124,12 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void loadBookIdentity_roundTripsEncodedBusinessActivityTags() {
-    Path bookPath = tempDirectory.resolve("book-identity-business-activity-tags.sqlite");
+  void loadBookIdentity_roundTripsNarrowDoctrineIdentity() {
+    Path bookPath = tempDirectory.resolve("book-identity-narrow-doctrine.sqlite");
     BookIdentity bookIdentity =
         new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Acme Studio"),
-                List.of(
-                    new BusinessActivityTag("translation,localization"),
-                    new BusinessActivityTag("cafe services"))),
-            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            new EntityProfile(new BookEntityName("Acme Studio")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(
@@ -144,10 +149,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("book-identity-registered-tax-status.sqlite");
     BookIdentity bookIdentity =
         new BookIdentity(
-            new EntityProfile(
-                new BookEntityName("Registered Studio"),
-                List.of(new BusinessActivityTag("translation-services"))),
-            dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+            new EntityProfile(new BookEntityName("Registered Studio")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(

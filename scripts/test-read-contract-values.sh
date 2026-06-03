@@ -96,9 +96,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "sqliteLibraryFileName": "sqliteLibraryFileName",
             },
             "releasePublication": {
-                "workflowDispatchHelperRef": "workflowDispatchHelperRef",
-                "bundleOutputArchivePrefixes": "bundleOutputArchivePrefixes",
-                "bundleOutputChecksumPrefixes": "bundleOutputChecksumPrefixes",
                 "publicBundleBuildTargets": "publicBundleBuildTargets",
                 "runnerLabel": "runnerLabel",
                 "expectedRunnerOs": "expectedRunnerOs",
@@ -109,6 +106,7 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "requiredCiJobNames": "requiredCiJobNames",
                 "containerRegistry": "containerRegistry",
                 "containerImageName": "containerImageName",
+                "containerStagingImageName": "containerStagingImageName",
                 "containerRunnerLabel": "containerRunnerLabel",
                 "containerPlatforms": "containerPlatforms",
                 "latestPublicationPolicy": "latestPublicationPolicy",
@@ -233,15 +231,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     write_json(
         protocol_root / "release-publication-contract.json",
         {
-            "workflowDispatchHelperRef": "main",
-            "bundleOutputArchivePrefixes": [
-                "FINGRIND_BUNDLE_ARCHIVE=",
-                "FinGrind bundle archive: ",
-            ],
-            "bundleOutputChecksumPrefixes": [
-                "FINGRIND_BUNDLE_CHECKSUM=",
-                "FinGrind bundle checksum: ",
-            ],
             "publicBundleBuildTargets": {
                 "linux-x86_64": {
                     "runnerLabel": "ubuntu-24.04",
@@ -255,8 +244,9 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "requiredCiJobNames": ["Check", "Gate"],
             "containerRegistry": "ghcr.io",
             "containerImageName": "fingrind",
+            "containerStagingImageName": "fingrind-publication-staging",
             "containerRunnerLabel": "ubuntu-24.04",
-            "containerPlatforms": ["linux/amd64", "linux/arm64"],
+            "containerPlatforms": ["linux/amd64"],
             "latestPublicationPolicy": "newest-stable-release-only",
         },
     )
@@ -323,7 +313,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     assert loaded["publicDistribution"]["unsupportedPublicCliBundleTargets"] == [
         "windows-aarch64"
     ]
-    assert loaded["releasePublication"]["workflowDispatchHelperRef"] == "main"
     assert loaded["releasePublication"]["publicBundleBuildTargets"] == {
         "linux-x86_64": {
             "runnerLabel": "ubuntu-24.04",
@@ -332,10 +321,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         }
     }
     assert loaded["releasePublication"]["requiredCiWorkflowName"] == "CI"
-    assert loaded["releasePublication"]["containerPlatforms"] == [
-        "linux/amd64",
-        "linux/arm64",
-    ]
+    assert loaded["releasePublication"]["containerStagingImageName"] == "fingrind-publication-staging"
+    assert loaded["releasePublication"]["containerPlatforms"] == ["linux/amd64"]
     assert loaded["operationIds"]["version"] == "version"
     assert loaded["operationIds"]["generateBookKeyFile"] == "generate-book-key-file"
 
@@ -392,15 +379,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     write_json(
         protocol_root / "release-publication-contract.json",
         {
-            "workflowDispatchHelperRef": "main",
-            "bundleOutputArchivePrefixes": [
-                "FINGRIND_BUNDLE_ARCHIVE=",
-                "FinGrind bundle archive: ",
-            ],
-            "bundleOutputChecksumPrefixes": [
-                "FINGRIND_BUNDLE_CHECKSUM=",
-                "FinGrind bundle checksum: ",
-            ],
             "publicBundleBuildTargets": {
                 "linux-x86_64": {
                     "runnerLabel": "ubuntu-24.04",
@@ -414,8 +392,9 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "requiredCiJobNames": ["Check", "Gate"],
             "containerRegistry": "ghcr.io",
             "containerImageName": "fingrind",
+            "containerStagingImageName": "fingrind-publication-staging",
             "containerRunnerLabel": "ubuntu-24.04",
-            "containerPlatforms": ["linux/amd64", "linux/arm64"],
+            "containerPlatforms": ["linux/amd64"],
             "latestPublicationPolicy": "newest-stable-release-only",
         },
     )

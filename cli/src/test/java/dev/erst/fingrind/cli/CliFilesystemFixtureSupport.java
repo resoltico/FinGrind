@@ -38,6 +38,10 @@ class CliFilesystemFixtureSupport {
     return PublicPathHint.fromPath(path);
   }
 
+  protected static String publicHintValue(Path path) {
+    return hint(path).value().replace('\\', '/');
+  }
+
   @BeforeEach
   void hardenTempDirectory() {
     CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);

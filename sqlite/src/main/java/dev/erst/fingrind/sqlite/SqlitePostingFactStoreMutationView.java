@@ -10,6 +10,7 @@ import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
@@ -21,6 +22,7 @@ import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Objects;
 
 /** Mutation surface over one SQLite posting-fact store. */
@@ -35,9 +37,10 @@ interface SqlitePostingFactStoreMutationView {
   Path storeBookPath();
 
   /** Initializes a previously unopened protected book. */
-  default BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
+  default BookOpeningOutcome openBook(
+      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().openBook(initializedAt, bookIdentity);
+    return storeMutationOperations().openBook(initializedAt, bookIdentity, seededAccounts);
   }
 
   /** Declares a new account in the protected book. */

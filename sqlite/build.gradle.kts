@@ -13,6 +13,7 @@ plugins {
     `java-library`
     `java-test-fixtures`
     id("dev.erst.fingrind.java-conventions")
+    id("dev.erst.fingrind.managed-sqlite-consumer")
 }
 
 description = "SQLite-backed FinGrind persistence adapter"
@@ -75,15 +76,11 @@ tasks.register<JavaExec>("refreshProtectedBookFixture") {
 
 val stageRefreshedProtectedBookFixtureForTestRuntime =
     tasks.register<Sync>("stageRefreshedProtectedBookFixtureForTestRuntime") {
+        dependsOn(tasks.named("refreshProtectedBookFixture"))
         dependsOn(tasks.named("processTestResources"))
-        mustRunAfter(tasks.named("refreshProtectedBookFixture"))
         from(protectedBookFixturePath)
         into(layout.buildDirectory.dir("resources/test/dev/erst/fingrind/sqlite/fixtures"))
     }
-
-tasks.named("refreshProtectedBookFixture") {
-    finalizedBy(stageRefreshedProtectedBookFixtureForTestRuntime)
-}
 
 tasks.named<Test>("test") {
     dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)

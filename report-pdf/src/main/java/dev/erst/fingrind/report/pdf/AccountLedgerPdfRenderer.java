@@ -23,18 +23,23 @@ final class AccountLedgerPdfRenderer {
                         + " — "
                         + report.account().accountName().value()),
                 List.of(
-                    "Classification",
+                    "Account type",
                     PdfValueFormatter.displayAccountType(report.account().accountType())),
                 List.of(
-                    "Role and polarity",
-                    PdfValueFormatter.displayAccountRole(report.account().accountRole())
-                        + " / "
-                        + PdfValueFormatter.displayNormalBalance(report.account().normalBalance())
-                        + " / "
-                        + PdfValueFormatter.displayBoolean(report.account().active())),
+                    "Account role",
+                    PdfValueFormatter.displayAccountRole(report.account().accountRole())),
                 List.of(
-                    "Effective date range",
-                    PdfTemporalValueFormatter.effectiveDateRange(report.effectiveDateRange())))));
+                    "Normal balance",
+                    PdfValueFormatter.displayNormalBalance(report.account().normalBalance())),
+                List.of("Active", PdfValueFormatter.displayBoolean(report.account().active())),
+                List.of(
+                    "Effective date from",
+                    PdfTemporalValueFormatter.optionalDate(
+                        report.effectiveDateRange().effectiveDateFrom().orElse(null))),
+                List.of(
+                    "Effective date to",
+                    PdfTemporalValueFormatter.optionalDate(
+                        report.effectiveDateRange().effectiveDateTo().orElse(null))))));
     if (hasMeaningfulBalances(report.openingBalances())) {
       pageWriter.writeTable(
           "Opening Balances",
@@ -51,7 +56,8 @@ final class AccountLedgerPdfRenderer {
             new PdfTableColumn("Credit", 0.8f, PdfTableColumn.CellAlignment.RIGHT),
             new PdfTableColumn("Running net", 0.95f, PdfTableColumn.CellAlignment.RIGHT),
             new PdfTableColumn("Side", 0.65f, PdfTableColumn.CellAlignment.LEFT),
-            new PdfTableColumn("Counterpart accounts", 1.0f, PdfTableColumn.CellAlignment.LEFT)),
+            new PdfTableColumn(
+                "Counterpart account codes", 1.0f, PdfTableColumn.CellAlignment.LEFT)),
         report.entries().stream()
             .map(
                 entry ->

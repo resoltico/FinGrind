@@ -88,8 +88,9 @@ final class PostingWorkflowFuzzAssertions {
 
     var declaredAccounts =
         CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
+    var listedAccounts = CliFuzzAccountFixtures.listAccounts(bookSession);
     PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(
-        CliFuzzAccountFixtures.listAccounts(bookSession).size(), declaredAccounts.size());
+        listedAccounts, declaredAccounts);
     DeclaredAccount primaryAccount = declaredAccounts.getFirst();
     InMemoryBookFixtureMutations.deactivateAccount(bookSession, primaryAccount.accountCode());
 

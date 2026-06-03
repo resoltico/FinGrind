@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRole;
@@ -18,14 +19,12 @@ import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceDocumentId;
@@ -44,22 +43,6 @@ public final class ContractTemplates {
     return DescriptorNamespaceSupport.descriptorTypes(TemplateDescriptorType.class);
   }
 
-  /** Sealed inventory root for the request-template descriptor namespace. */
-  public sealed interface TemplateDescriptorType
-      permits PostingRequestTemplateDescriptor,
-          JournalLineTemplateDescriptor,
-          AccountingEvidenceTemplateDescriptor,
-          SourceDocumentTemplateDescriptor,
-          ApprovalTemplateDescriptor,
-          ProvenanceTemplateDescriptor,
-          ReversalTemplateDescriptor,
-          LedgerPlanTemplateDescriptor,
-          LedgerPlanStepTemplateDescriptor,
-          OpenBookTemplateDescriptor,
-          LedgerPlanQueryTemplateDescriptor,
-          DeclareAccountTemplateDescriptor,
-          LedgerAssertionTemplateDescriptor {}
-
   /** Canonical request-template document for print-request-template. */
   public record PostingRequestTemplateDescriptor(
       BookkeepingEntryKind entryKind,
@@ -70,6 +53,7 @@ public final class ContractTemplates {
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
       @Nullable List<JournalLineTemplateDescriptor> lines,
+      @Nullable List<OpeningBalanceTemplateDescriptor> openingBalances,
       AccountingEvidenceTemplateDescriptor evidence,
       ProvenanceTemplateDescriptor provenance,
       @Nullable ReversalTemplateDescriptor reversal)
@@ -89,6 +73,10 @@ public final class ContractTemplates {
       equityAccountCode =
           ContractDescriptorValidation.requireOptionalText(equityAccountCode, "equityAccountCode");
       lines = lines == null ? null : ContractDescriptorValidation.copyList(lines, "lines");
+      openingBalances =
+          openingBalances == null
+              ? null
+              : ContractDescriptorValidation.copyList(openingBalances, "openingBalances");
       evidence = ContractDescriptorValidation.requireValue(evidence, "evidence");
       provenance = ContractDescriptorValidation.requireValue(provenance, "provenance");
       ContractPostingRequestTemplateValidators.validate(
@@ -99,7 +87,8 @@ public final class ContractTemplates {
               expenseAccountCode,
               equityAccountCode,
               amount,
-              lines),
+              lines,
+              openingBalances),
           reversal);
     }
   }
@@ -110,6 +99,22 @@ public final class ContractTemplates {
       implements TemplateDescriptorType {
     /** Validates one journal-line template descriptor payload. */
     public JournalLineTemplateDescriptor {
+      accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
+      new AccountCode(accountCode);
+      side = ContractDescriptorValidation.requireValue(side, "side");
+      amount = ContractDescriptorValidation.requireValue(amount, "amount");
+      if (!amount.toMoney().isPositive()) {
+        throw new IllegalArgumentException("amount must carry one positive minor-unit value.");
+      }
+    }
+  }
+
+  /** Canonical request-template opening-balance descriptor. */
+  public record OpeningBalanceTemplateDescriptor(
+      String accountCode, JournalLine.EntrySide side, MonetaryAmount amount)
+      implements TemplateDescriptorType {
+    /** Validates one opening-balance template descriptor payload. */
+    public OpeningBalanceTemplateDescriptor {
       accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
       new AccountCode(accountCode);
       side = ContractDescriptorValidation.requireValue(side, "side");
@@ -279,18 +284,12 @@ public final class ContractTemplates {
 
   /** Canonical open-book template nested inside a ledger plan. */
   public record OpenBookTemplateDescriptor(
-      String entityName,
-      List<String> businessActivityTags,
-      String functionalCurrency,
-      String fiscalYearStart)
+      String entityName, String functionalCurrency, String fiscalYearStart)
       implements TemplateDescriptorType {
     /** Validates one open-book template descriptor payload. */
     public OpenBookTemplateDescriptor {
       entityName = ContractDescriptorValidation.requireText(entityName, "entityName");
       new BookEntityName(entityName);
-      businessActivityTags =
-          ContractDescriptorValidation.copyList(businessActivityTags, "businessActivityTags");
-      businessActivityTags.forEach(BusinessActivityTag::new);
       functionalCurrency =
           ContractDescriptorValidation.requireText(functionalCurrency, "functionalCurrency");
       CurrencyUnit.of(functionalCurrency);
@@ -316,13 +315,13 @@ public final class ContractTemplates {
       effectiveDateTo =
           ContractDescriptorValidation.requireOptionalText(effectiveDateTo, "effectiveDateTo");
       if (limit != null
-          && (limit < InteractionLimits.PAGE_LIMIT_MIN
-              || limit > InteractionLimits.PAGE_LIMIT_MAX)) {
+          && (limit < ProtocolInteractionLimits.PAGE_LIMIT_MIN
+              || limit > ProtocolInteractionLimits.PAGE_LIMIT_MAX)) {
         throw new IllegalArgumentException(
             "limit must be between "
-                + InteractionLimits.PAGE_LIMIT_MIN
+                + ProtocolInteractionLimits.PAGE_LIMIT_MIN
                 + " and "
-                + InteractionLimits.PAGE_LIMIT_MAX
+                + ProtocolInteractionLimits.PAGE_LIMIT_MAX
                 + ".");
       }
       cursor = ContractDescriptorValidation.requireOptionalText(cursor, "cursor");

@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.JournalLineTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.OpeningBalanceTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.ReversalTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -37,10 +38,8 @@ final class ContractPostingRequestTemplateValidators {
         ContractPostingRequestTemplateValidators::validateEquityContributionTemplate,
         BookkeepingEntryKind.EQUITY_WITHDRAWAL,
         ContractPostingRequestTemplateValidators::validateEquityWithdrawalTemplate,
-        BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT,
-        (fields, reversal) -> validateOpeningBalanceAdjustmentTemplate(fields),
-        BookkeepingEntryKind.CORRECTION_ADJUSTMENT,
-        ContractPostingRequestTemplateValidators::validateCorrectionAdjustmentTemplate,
+        BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+        (fields, reversal) -> validateOpenAccountingPositionTemplate(fields),
         BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
         ContractPostingRequestTemplateValidators::validateReversalAdjustmentTemplate);
   }
@@ -53,6 +52,7 @@ final class ContractPostingRequestTemplateValidators {
     forbidText(fields.expenseAccountCode(), "expenseAccountCode");
     forbidText(fields.equityAccountCode(), "equityAccountCode");
     forbidLines(fields.lines());
+    forbidOpeningBalances(fields.openingBalances());
     forbidReversal(reversal);
   }
 
@@ -64,6 +64,7 @@ final class ContractPostingRequestTemplateValidators {
     forbidText(fields.revenueAccountCode(), "revenueAccountCode");
     forbidText(fields.equityAccountCode(), "equityAccountCode");
     forbidLines(fields.lines());
+    forbidOpeningBalances(fields.openingBalances());
     forbidReversal(reversal);
   }
 
@@ -75,6 +76,7 @@ final class ContractPostingRequestTemplateValidators {
     forbidText(fields.revenueAccountCode(), "revenueAccountCode");
     forbidText(fields.expenseAccountCode(), "expenseAccountCode");
     forbidLines(fields.lines());
+    forbidOpeningBalances(fields.openingBalances());
     forbidReversal(reversal);
   }
 
@@ -86,32 +88,38 @@ final class ContractPostingRequestTemplateValidators {
     forbidText(fields.revenueAccountCode(), "revenueAccountCode");
     forbidText(fields.expenseAccountCode(), "expenseAccountCode");
     forbidLines(fields.lines());
+    forbidOpeningBalances(fields.openingBalances());
     forbidReversal(reversal);
   }
 
-  private static void validateOpeningBalanceAdjustmentTemplate(PostingTemplateFields fields) {
-    if (fields.lines() == null || fields.lines().size() < 2) {
+  private static void validateOpenAccountingPositionTemplate(PostingTemplateFields fields) {
+    if (fields.openingBalances() == null || fields.openingBalances().size() < 2) {
       throw new IllegalArgumentException(
-          "lines must contain at least two journal lines for openingBalanceAdjustment.");
+          "openingBalances must contain at least two opening balances for openAccountingPosition.");
     }
     forbidText(fields.cashAccountCode(), "cashAccountCode");
     forbidText(fields.revenueAccountCode(), "revenueAccountCode");
     forbidText(fields.expenseAccountCode(), "expenseAccountCode");
     forbidText(fields.equityAccountCode(), "equityAccountCode");
-    if (fields.amount() != null) {
-      throw new IllegalArgumentException("amount must be absent for openingBalanceAdjustment.");
+    if (fields.lines() != null) {
+      throw new IllegalArgumentException("lines must be absent for openAccountingPosition.");
     }
-  }
-
-  private static void validateCorrectionAdjustmentTemplate(
-      PostingTemplateFields fields, @Nullable ReversalTemplateDescriptor reversal) {
-    validateOpeningBalanceAdjustmentTemplate(fields);
-    forbidReversal(reversal);
+    if (fields.amount() != null) {
+      throw new IllegalArgumentException("amount must be absent for openAccountingPosition.");
+    }
   }
 
   private static void validateReversalAdjustmentTemplate(
       PostingTemplateFields fields, @Nullable ReversalTemplateDescriptor reversal) {
-    validateOpeningBalanceAdjustmentTemplate(fields);
+    requireLines(fields.lines(), "reversalAdjustment");
+    forbidOpeningBalances(fields.openingBalances());
+    forbidText(fields.cashAccountCode(), "cashAccountCode");
+    forbidText(fields.revenueAccountCode(), "revenueAccountCode");
+    forbidText(fields.expenseAccountCode(), "expenseAccountCode");
+    forbidText(fields.equityAccountCode(), "equityAccountCode");
+    if (fields.amount() != null) {
+      throw new IllegalArgumentException("amount must be absent for reversalAdjustment.");
+    }
     if (reversal == null) {
       throw new IllegalArgumentException("reversal must be present for reversalAdjustment.");
     }
@@ -143,7 +151,22 @@ final class ContractPostingRequestTemplateValidators {
 
   private static void forbidLines(@Nullable List<JournalLineTemplateDescriptor> lines) {
     if (lines != null) {
-      throw new IllegalArgumentException("lines must be absent for typed business events.");
+      throw new IllegalArgumentException("lines must be absent for this entryKind.");
+    }
+  }
+
+  private static void requireLines(
+      @Nullable List<JournalLineTemplateDescriptor> lines, String entryKindName) {
+    if (lines == null || lines.size() < 2) {
+      throw new IllegalArgumentException(
+          "lines must contain at least two journal lines for " + entryKindName + ".");
+    }
+  }
+
+  private static void forbidOpeningBalances(
+      @Nullable List<OpeningBalanceTemplateDescriptor> openingBalances) {
+    if (openingBalances != null) {
+      throw new IllegalArgumentException("openingBalances must be absent for this entryKind.");
     }
   }
 
@@ -166,5 +189,6 @@ final class ContractPostingRequestTemplateValidators {
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
-      @Nullable List<JournalLineTemplateDescriptor> lines) {}
+      @Nullable List<JournalLineTemplateDescriptor> lines,
+      @Nullable List<OpeningBalanceTemplateDescriptor> openingBalances) {}
 }

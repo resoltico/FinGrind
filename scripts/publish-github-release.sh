@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Converge the GitHub release for the current tag onto the expected public state using a
-# draft-first publication flow and an explicit latest-pointer policy.
+# Converge the GitHub release draft for the current tag onto the expected staged asset state.
 
 set -euo pipefail
 

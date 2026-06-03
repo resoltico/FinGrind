@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -22,7 +23,8 @@ final class SqliteBookPassphraseEncoding {
 
   static ContractDecision<SqliteBookPassphrase> fromCharactersDecision(
       String normalizedSource, char[] characters, CharsetEncoder encoder) {
-    ByteBuffer encodedBytes = ByteBuffer.allocate(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES + 1);
+    ByteBuffer encodedBytes =
+        ByteBuffer.allocate(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1);
     try {
       CoderResult encodeResult = encoder.encode(CharBuffer.wrap(characters), encodedBytes, true);
       if (encodeResult.isOverflow()) {
@@ -46,7 +48,7 @@ final class SqliteBookPassphraseEncoding {
 
   static ContractDecision<byte[]> normalizeLoadedBytesDecision(
       byte[] loadedBytes, String sourceDescription) {
-    if (loadedBytes.length > SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES) {
+    if (loadedBytes.length > ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES) {
       return ContractDecision.rejected(
           SqliteBookPassphraseValidation.oversizedPassphraseSourceFailure(sourceDescription));
     }

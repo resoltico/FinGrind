@@ -51,7 +51,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "8.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "8.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, postingOne);
       commitPosting(postingFactStore, postingTwo);
       commitPosting(postingFactStore, postingThree);
@@ -99,7 +99,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, posting);
       RegisteredAccount cashAccount =
           postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
@@ -146,7 +146,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "10.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, openingPosting);
       commitPosting(postingFactStore, inRangePosting);
       RegisteredAccount revenueAccount =
@@ -197,7 +197,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "7.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "7.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, eurOpeningPosting);
       commitPosting(postingFactStore, secondOpeningPosting);
       RegisteredAccount cashAccount =

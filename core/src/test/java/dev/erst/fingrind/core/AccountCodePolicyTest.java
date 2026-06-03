@@ -61,7 +61,7 @@ class AccountCodePolicyTest {
             AccountCodePolicy.validate(
                 accountCode,
                 AccountType.ASSET,
-                AccountRole.CONTRA,
+                AccountRole.POLARITY_INVERTED,
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),

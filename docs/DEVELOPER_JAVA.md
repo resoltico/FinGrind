@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_JAVA
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -229,12 +229,11 @@ normal repo work here.
 
 FinGrind's product modules, runtime baseline, and shared included build logic all target Java 26.
 
-`gradle/build-logic` now compiles with Kotlin `2.4.0-RC2` and emits JVM 26 bytecode directly.
+`gradle/build-logic` now compiles with Kotlin `2.4.0` and emits JVM 26 bytecode directly.
 `./gradlew --version` still reports the Kotlin version embedded in the Gradle distribution itself;
 that discovery output is not the authoritative owner of the build-logic Kotlin plugin pin.
-The Kotlin build-logic pin is still an intentionally temporary prerelease choice; move it to the
-matching stable `2.4.x` line as soon as that release is available and the included-build surface
-still verifies cleanly here.
+The Kotlin build-logic pin is the repository-owned stable `2.4.x` line, and the included-build
+surface now verifies against that live GA release instead of a prerelease bridge pin.
 
 ## Java 26 Feature Adoption
 

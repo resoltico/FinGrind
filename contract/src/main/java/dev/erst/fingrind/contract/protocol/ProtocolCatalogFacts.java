@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.core.AccountingKernelProfiles;
-import dev.erst.fingrind.core.InteractionLimits;
 import java.util.List;
 
 /** Shared immutable facts published through the public protocol catalog. */
@@ -29,7 +28,7 @@ final class ProtocolCatalogFacts {
           "Every posting request and every persisted journal line must match the selected book functional currency. Mixed-currency entries are rejected and no foreign-currency translation model exists yet.");
   private static final BookkeepingKernelFacts BOOKKEEPING_KERNEL =
       new BookkeepingKernelFacts(
-          AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL.value(),
+          AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL.value(),
           List.of(
               OperationId.FINANCIAL_POSITION.wireName(),
               OperationId.INCOME_STATEMENT.wireName(),
@@ -63,7 +62,7 @@ final class ProtocolCatalogFacts {
               OperationId.OPEN_BOOK.wireName()
                   + " must be the first step when a plan initializes a book",
               "one plan may contain at most "
-                  + InteractionLimits.LEDGER_PLAN_STEP_MAX
+                  + ProtocolInteractionLimits.LEDGER_PLAN_STEP_MAX
                   + " steps, which bounds the emitted execution journal",
               "a rejected or assertion-failed step rolls back the entire plan transaction",
               "preflight steps are validation-only steps and do not commit postings"));

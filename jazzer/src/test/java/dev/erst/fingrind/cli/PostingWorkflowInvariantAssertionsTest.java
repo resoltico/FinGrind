@@ -41,7 +41,21 @@ class PostingWorkflowInvariantAssertionsTest {
             command.requestProvenance().idempotencyKey(),
             new PostingRejection.DuplicateIdempotencyKey());
 
-    assertDoesNotThrow(() -> PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(2, 2));
+    assertDoesNotThrow(
+        () ->
+            PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(
+                List.of(
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("cash"), true),
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("1000"), true),
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("2000"), true)),
+                List.of(
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("1000"), true),
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("2000"), true))));
     assertDoesNotThrow(
         () ->
             PostingWorkflowInvariantAssertions.assertAccountReactivationPersisted(
@@ -75,7 +89,16 @@ class PostingWorkflowInvariantAssertionsTest {
 
     assertThrows(
         IllegalStateException.class,
-        () -> PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(1, 2));
+        () ->
+            PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(
+                List.of(
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("1000"), true)),
+                List.of(
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("1000"), true),
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("2000"), true))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -392,7 +415,7 @@ class PostingWorkflowInvariantAssertionsTest {
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }

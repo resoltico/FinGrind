@@ -109,13 +109,13 @@ final class BookReadServiceTestSupport {
 
   static InMemoryBookSession initializedBook() {
     InMemoryBookSession bookSession = new InMemoryBookSession();
-    bookSession.openBook(FIXED_INSTANT, bookIdentity());
+    bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
     return bookSession;
   }
 
   static CountingFindAccountBookSession initializedCountingBook() {
     CountingFindAccountBookSession bookSession = new CountingFindAccountBookSession();
-    bookSession.openBook(FIXED_INSTANT, bookIdentity());
+    bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
     return bookSession;
   }
 
@@ -163,7 +163,7 @@ final class BookReadServiceTestSupport {
                     REVENUE_ACCOUNT.accountCode().value(), JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -198,8 +198,10 @@ final class BookReadServiceTestSupport {
     private int findAccountCalls;
 
     BookOpeningOutcome openBook(
-        Instant initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
-      return delegate.openBook(initializedAt, bookIdentity);
+        Instant initializedAt,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts) {
+      return delegate.openBook(initializedAt, bookIdentity, seededAccounts);
     }
 
     AccountDeclarationOutcome declareAccount(

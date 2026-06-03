@@ -52,7 +52,7 @@ def account_ledger_base_row(record_kind: str, **overrides: str) -> dict[str, str
         "parentRowId": "",
         "relationKind": "",
         "recordKind": record_kind,
-        "accountCode": "1000",
+        "accountCode": "cash",
         "accountName": "Cash",
         "accountType": "ASSET",
         "accountRole": "ORDINARY",

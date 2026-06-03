@@ -1,0 +1,8 @@
+{
+  "accountCode": "misc-revenue",
+  "accountName": "Misc Revenue",
+  "accountType": "REVENUE",
+  "accountRole": "ORDINARY",
+  "accountNodeKind": "POSTABLE",
+  "profitAndLossLineClassification": "OTHER_REVENUE"
+}

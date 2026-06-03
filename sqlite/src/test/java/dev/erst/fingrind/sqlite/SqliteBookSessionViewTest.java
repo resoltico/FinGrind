@@ -125,7 +125,11 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(
           new BookOpeningOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookContainsSchema()),
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+          postingFactStore.openBook(
+              Instant.parse("2026-04-07T10:15:30Z"),
+              bookIdentity(),
+              dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                  bookIdentity().bookDoctrine().bookTemplateId())));
     }
   }
 
@@ -174,7 +178,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath));
         SqlitePeriodResultTransferSession periodResultTransferSession =
             SqliteCapabilitySessions.periodResultTransfer(postingFactStore)) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       AccountDeclarationOutcome.Declared declared =
           assertInstanceOf(
               AccountDeclarationOutcome.Declared.class,
@@ -286,7 +290,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(
           openedBook(Instant.parse("2026-04-07T10:15:30Z")),
           administrationView(postingFactStore)
-              .openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+              .openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity(), List.of()));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -312,7 +316,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   void postingView_delegatesReadsWritesWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("posting-view.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new PostingCommitResult.Committed(
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())),
@@ -351,7 +355,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
   void queryView_delegatesQueriesWithoutOwningStoreLifecycle() {
     Path databasePath = tempDirectory.resolve("query-view.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new PostingCommitResult.Committed(
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())),
@@ -405,7 +409,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "10.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "10.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, openingPosting);
       commitPosting(postingFactStore, zeroingPosting);
       RegisteredAccount revenueAccount =
@@ -559,7 +563,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
             SqliteCapabilitySessions.periodResultTransfer(postingFactStore);
         SqlitePlanExecutionSession planExecutionSession =
             SqliteCapabilitySessions.planExecution(postingFactStore)) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       CommittedPosting openingPosting =
           postingFact(
               "posting-1",
@@ -645,8 +649,16 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.periodSummary(oneDaySummary),
           postingSession.periodSummary(oneDaySummary));
       assertEquals(
-          postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()),
-          postingSession.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity()));
+          postingFactStore.openBook(
+              Instant.parse("2026-04-07T10:15:30Z"),
+              bookIdentity(),
+              dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                  bookIdentity().bookDoctrine().bookTemplateId())),
+          postingSession.openBook(
+              Instant.parse("2026-04-07T10:15:30Z"),
+              bookIdentity(),
+              dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                  bookIdentity().bookDoctrine().bookTemplateId())));
       assertEquals(
           postingFactStore.declareAccount(
               new AccountCode("3000"),

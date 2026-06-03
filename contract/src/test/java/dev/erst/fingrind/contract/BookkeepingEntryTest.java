@@ -65,29 +65,33 @@ class BookkeepingEntryTest {
 
   @Test
   void administrativeAdjustments_exposeEffectiveDateLinesAndEntryKinds() {
-    JournalEntry journalEntry = journalEntry();
-    BookkeepingEntry.OpeningBalanceAdjustment openingBalanceAdjustment =
-        new BookkeepingEntry.OpeningBalanceAdjustment(journalEntry);
-    BookkeepingEntry.CorrectionAdjustment correctionAdjustment =
-        new BookkeepingEntry.CorrectionAdjustment(journalEntry);
+    BookkeepingEntry.OpenAccountingPosition openingAccountingPosition =
+        new BookkeepingEntry.OpenAccountingPosition(
+            LocalDate.parse("2026-04-07"),
+            List.of(
+                new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    new MonetaryAmount("EUR", "1000")),
+                new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new AccountCode("3000"),
+                    JournalLine.EntrySide.CREDIT,
+                    new MonetaryAmount("EUR", "1000"))));
     BookkeepingEntry.ReversalAdjustment reversalAdjustment =
         new BookkeepingEntry.ReversalAdjustment(
-            journalEntry,
+            journalEntry(),
             new PostingLineage.Reversal(
                 new dev.erst.fingrind.core.ReversalReference(
                     new dev.erst.fingrind.core.PostingId("posting-1")),
                 new dev.erst.fingrind.core.ReversalReason("operator reversal")));
 
     assertEquals(
-        BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT, openingBalanceAdjustment.entryKind());
-    assertEquals(BookkeepingEntryKind.CORRECTION_ADJUSTMENT, correctionAdjustment.entryKind());
+        BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION, openingAccountingPosition.entryKind());
     assertEquals(BookkeepingEntryKind.REVERSAL_ADJUSTMENT, reversalAdjustment.entryKind());
-    assertEquals(LocalDate.parse("2026-04-07"), openingBalanceAdjustment.effectiveDate());
-    assertEquals(LocalDate.parse("2026-04-07"), correctionAdjustment.effectiveDate());
+    assertEquals(LocalDate.parse("2026-04-07"), openingAccountingPosition.effectiveDate());
     assertEquals(LocalDate.parse("2026-04-07"), reversalAdjustment.effectiveDate());
-    assertEquals(journalEntry.lines(), openingBalanceAdjustment.lines());
-    assertEquals(journalEntry.lines(), correctionAdjustment.lines());
-    assertEquals(journalEntry.lines(), reversalAdjustment.lines());
+    assertEquals(2, openingAccountingPosition.lines().size());
+    assertEquals(journalEntry().lines(), reversalAdjustment.lines());
   }
 
   @Test
@@ -117,9 +121,15 @@ class BookkeepingEntryTest {
                 new AccountCode("1000"),
                 nullOf()));
     assertThrows(
-        NullPointerException.class, () -> new BookkeepingEntry.OpeningBalanceAdjustment(nullOf()));
+        NullPointerException.class,
+        () -> new BookkeepingEntry.OpenAccountingPosition(nullOf(), List.of()));
     assertThrows(
-        NullPointerException.class, () -> new BookkeepingEntry.CorrectionAdjustment(nullOf()));
+        NullPointerException.class,
+        () -> new BookkeepingEntry.OpenAccountingPosition(LocalDate.parse("2026-04-25"), nullOf()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookkeepingEntry.OpenAccountingPosition(LocalDate.parse("2026-04-25"), List.of()));
     assertThrows(
         NullPointerException.class,
         () -> new BookkeepingEntry.ReversalAdjustment(journalEntry(), nullOf()));

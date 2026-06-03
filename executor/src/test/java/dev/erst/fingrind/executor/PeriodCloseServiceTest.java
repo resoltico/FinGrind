@@ -329,7 +329,7 @@ class PeriodResultTransferServiceTest {
             posting(
                 "eur-revenue-credit",
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
@@ -337,7 +337,7 @@ class PeriodResultTransferServiceTest {
             posting(
                 "eur-revenue-debit",
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("4000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
@@ -345,7 +345,7 @@ class PeriodResultTransferServiceTest {
             posting(
                 "eur-unknown",
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("1000", JournalLine.EntrySide.DEBIT, "EUR", "9.00"),
@@ -353,7 +353,7 @@ class PeriodResultTransferServiceTest {
             posting(
                 "usd-revenue",
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("1000", JournalLine.EntrySide.DEBIT, "USD", "30.00"),
@@ -361,7 +361,7 @@ class PeriodResultTransferServiceTest {
             posting(
                 "bhd-expense",
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                 PERIOD_DATE,
                 List.of(
                     moneyLine("5000", JournalLine.EntrySide.DEBIT, "BHD", "7.000"),
@@ -466,7 +466,11 @@ class PeriodResultTransferServiceTest {
     try (InMemoryBookSession bookSession = openedBook()) {
       declareAccount(bookSession, "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY);
       declareAccount(
-          bookSession, "1090", "Purchase Returns", AccountType.ASSET, AccountRole.CONTRA);
+          bookSession,
+          "1090",
+          "Purchase Returns",
+          AccountType.ASSET,
+          AccountRole.POLARITY_INVERTED);
       declareAccount(bookSession, "3000", "Capital", AccountType.EQUITY, AccountRole.ORDINARY);
       declareAccount(
           bookSession,
@@ -478,11 +482,19 @@ class PeriodResultTransferServiceTest {
       declareAccount(
           bookSession, "4000", "Sales Revenue", AccountType.REVENUE, AccountRole.ORDINARY);
       declareAccount(
-          bookSession, "4090", "Sales Discounts", AccountType.REVENUE, AccountRole.CONTRA);
+          bookSession,
+          "4090",
+          "Sales Discounts",
+          AccountType.REVENUE,
+          AccountRole.POLARITY_INVERTED);
       declareAccount(
           bookSession, "5000", "Operating Expense", AccountType.EXPENSE, AccountRole.ORDINARY);
       declareAccount(
-          bookSession, "5090", "Purchase Returns", AccountType.EXPENSE, AccountRole.CONTRA);
+          bookSession,
+          "5090",
+          "Purchase Returns",
+          AccountType.EXPENSE,
+          AccountRole.POLARITY_INVERTED);
       commitPosting(
           bookSession,
           "posting-open",
@@ -572,7 +584,7 @@ class PeriodResultTransferServiceTest {
 
   private static InMemoryBookSession openedBook() {
     InMemoryBookSession bookSession = new InMemoryBookSession();
-    bookSession.openBook(FIXED_INSTANT, bookIdentity());
+    bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
     return bookSession;
   }
 
@@ -727,7 +739,7 @@ class PeriodResultTransferServiceTest {
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(

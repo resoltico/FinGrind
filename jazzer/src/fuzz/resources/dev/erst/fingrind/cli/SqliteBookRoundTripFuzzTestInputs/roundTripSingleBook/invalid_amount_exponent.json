@@ -1,24 +1,12 @@
 {
-  "entryKind": "CORRECTION_ADJUSTMENT",
+  "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-13",
-  "lines": [
-    {
-      "accountCode": "7100",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "USD",
-        "minorUnits": "1e1000000100"
-      }
-    },
-    {
-      "accountCode": "8100",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "USD",
-        "minorUnits": "100"
-      }
-    }
-  ],
+  "cashAccountCode": "7100",
+  "revenueAccountCode": "8100",
+  "amount": {
+    "currencyCode": "USD",
+    "minorUnits": "1e1000000100"
+  },
   "evidence": {
     "sourceDocuments": [
       {

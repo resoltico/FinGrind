@@ -38,7 +38,9 @@ public final class ContractRequestShapes {
       List<String> outputSemantics,
       String stdinToken,
       String bookFileSemantics,
+      int bookPassphraseMaxUtf8Bytes,
       List<String> bookPassphraseSemantics,
+      int requestDocumentMaxUtf8Bytes,
       List<String> requestDocumentSemantics)
       implements RequestShapeDescriptorType {
     /** Validates one request-input descriptor payload. */
@@ -57,8 +59,14 @@ public final class ContractRequestShapes {
       stdinToken = ContractDescriptorValidation.requireText(stdinToken, "stdinToken");
       bookFileSemantics =
           ContractDescriptorValidation.requireText(bookFileSemantics, "bookFileSemantics");
+      if (bookPassphraseMaxUtf8Bytes < 1) {
+        throw new IllegalArgumentException("bookPassphraseMaxUtf8Bytes must be positive.");
+      }
       bookPassphraseSemantics =
           ContractDescriptorValidation.copyList(bookPassphraseSemantics, "bookPassphraseSemantics");
+      if (requestDocumentMaxUtf8Bytes < 1) {
+        throw new IllegalArgumentException("requestDocumentMaxUtf8Bytes must be positive.");
+      }
       requestDocumentSemantics =
           ContractDescriptorValidation.copyList(
               requestDocumentSemantics, "requestDocumentSemantics");
@@ -82,6 +90,7 @@ public final class ContractRequestShapes {
   public record PostEntryRequestShapeDescriptor(
       List<RequestFieldDescriptor> topLevelFields,
       List<RequestFieldDescriptor> lineFields,
+      List<RequestFieldDescriptor> openingBalanceFields,
       List<RequestFieldDescriptor> evidenceFields,
       List<RequestFieldDescriptor> sourceDocumentFields,
       List<RequestFieldDescriptor> approvalFields,
@@ -94,6 +103,8 @@ public final class ContractRequestShapes {
     public PostEntryRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
       lineFields = ContractDescriptorValidation.copyList(lineFields, "lineFields");
+      openingBalanceFields =
+          ContractDescriptorValidation.copyList(openingBalanceFields, "openingBalanceFields");
       evidenceFields = ContractDescriptorValidation.copyList(evidenceFields, "evidenceFields");
       sourceDocumentFields =
           ContractDescriptorValidation.copyList(sourceDocumentFields, "sourceDocumentFields");

@@ -91,30 +91,31 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
                               database,
                               SqlitePostingSql.FIND_BOOK_IDENTITY_CORE,
                               """
-                              select 'Acme Services', 'EUR', '01-01'
+                              select
+                                  'Acme Studio',
+                                  'internal-management-cash-bookkeeping-kernel',
+                                  'CASH_BASIS',
+                                  'NON_STATUTORY_INTERNAL_MANAGEMENT',
+                                  'OWNER_MANAGED_SINGLE_ENTITY',
+                                  'OWNER_MANAGED_SERVICE_CASH',
+                                  'EUR',
+                                  1,
+                                  1
                               union all
-                              select 'Acme Services', 'EUR', '01-01'
+                              select
+                                  'Acme Studio',
+                                  'internal-management-cash-bookkeeping-kernel',
+                                  'CASH_BASIS',
+                                  'NON_STATUTORY_INTERNAL_MANAGEMENT',
+                                  'OWNER_MANAGED_SINGLE_ENTITY',
+                                  'OWNER_MANAGED_SERVICE_CASH',
+                                  'EUR',
+                                  1,
+                                  1
                               """)));
           assertEquals(
               "SQLite book identity core query returned more than one row.",
               identityCoreFailure.getMessage());
-
-          IllegalStateException entityProfileFailure =
-              assertThrows(
-                  IllegalStateException.class,
-                  () ->
-                      SqliteStatementQueries.loadBookIdentity(
-                          redirectedDatabase(
-                              database,
-                              SqlitePostingSql.FIND_ENTITY_PROFILE,
-                              """
-                              select 'SOLE_PROPRIETORSHIP', 'SOLE_OWNER', 'INTERNAL_ONLY', 'NOT_REGISTERED', ''
-                              union all
-                              select 'SOLE_PROPRIETORSHIP', 'SOLE_OWNER', 'INTERNAL_ONLY', 'NOT_REGISTERED', ''
-                              """)));
-          assertEquals(
-              "SQLite entity profile query returned more than one row.",
-              entityProfileFailure.getMessage());
         });
   }
 

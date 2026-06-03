@@ -3,6 +3,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     application
     id("dev.erst.fingrind.java-conventions")
+    id("dev.erst.fingrind.managed-sqlite-consumer")
     alias(libs.plugins.shadow)
     id("dev.erst.fingrind.cli-distribution")
 }

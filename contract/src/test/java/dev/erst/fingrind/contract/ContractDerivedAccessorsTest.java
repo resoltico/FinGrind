@@ -75,7 +75,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             requestJournalEntry,
             reversal,
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
             ContractFixtures.accountingEvidence("idem-1"),
             new CommittedProvenance(
                 requestProvenance, Instant.parse("2026-04-07T10:15:30Z"), SourceChannel.CLI));

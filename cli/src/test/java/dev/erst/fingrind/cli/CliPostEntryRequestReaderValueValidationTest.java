@@ -248,7 +248,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CORRECTION_ADJUSTMENT",
+                  "entryKind": "REVERSAL_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -396,7 +396,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CORRECTION_ADJUSTMENT",
+                  "entryKind": "REVERSAL_ADJUSTMENT",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {

@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
-import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
@@ -112,12 +112,13 @@ class CliJsonRequestCodecTest {
     CliRequestException stdinException =
         CliJsonRequestFailures.requestReadFailure(
             Path.of("-"),
-            new CliRequestPayloadTooLargeException(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES),
+            new CliRequestPayloadTooLargeException(
+                ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES),
             "unused hint");
 
     assertEquals(
         "Request JSON from standard input exceeded the supported "
-            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
             + "-byte UTF-8 limit.",
         stdinException.getMessage());
     assertTrue(
@@ -128,12 +129,13 @@ class CliJsonRequestCodecTest {
     CliRequestException fileException =
         CliJsonRequestFailures.requestReadFailure(
             requestFile,
-            new CliRequestPayloadTooLargeException(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES),
+            new CliRequestPayloadTooLargeException(
+                ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES),
             "unused hint");
 
     assertEquals(
         "Request file exceeded the supported "
-            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
             + "-byte UTF-8 limit: "
             + CliPublicPaths.redactedValue(requestFile)
             + ".",

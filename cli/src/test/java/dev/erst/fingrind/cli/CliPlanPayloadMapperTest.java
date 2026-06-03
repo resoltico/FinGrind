@@ -318,7 +318,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     return List.of(
         LedgerFact.text("postingId", "posting-1"),
         LedgerFact.text("postingKind", "STANDARD"),
-        LedgerFact.text("postingOriginKind", "CORRECTION_ADJUSTMENT"),
+        LedgerFact.text("postingOriginKind", "REVERSAL_ADJUSTMENT"),
         LedgerFact.text("reversalState", "reversal"),
         LedgerFact.text("effectiveDate", "2026-05-14"),
         LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
@@ -372,7 +372,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     return List.of(
         LedgerFact.text("postingId", "posting-1"),
         LedgerFact.text("postingKind", "STANDARD"),
-        LedgerFact.text("postingOriginKind", "CORRECTION_ADJUSTMENT"),
+        LedgerFact.text("postingOriginKind", "REVERSAL_ADJUSTMENT"),
         LedgerFact.text("reversalState", "direct"),
         LedgerFact.text("effectiveDate", "2026-05-14"),
         LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
@@ -444,7 +444,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         List.of(
             LedgerFact.text("postingId", "posting-1"),
             LedgerFact.text("postingKind", "STANDARD"),
-            LedgerFact.text("postingOriginKind", "CORRECTION_ADJUSTMENT"),
+            LedgerFact.text("postingOriginKind", "REVERSAL_ADJUSTMENT"),
             LedgerFact.text("reversalState", "direct"),
             LedgerFact.text("effectiveDate", "2026-05-14"),
             LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
@@ -487,7 +487,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         List.of(
             LedgerFact.text("postingId", "posting-1"),
             LedgerFact.text("postingKind", "STANDARD"),
-            LedgerFact.text("postingOriginKind", "CORRECTION_ADJUSTMENT"),
+            LedgerFact.text("postingOriginKind", "REVERSAL_ADJUSTMENT"),
             LedgerFact.text("reversalState", "reversal"),
             LedgerFact.text("priorPostingId", "prior-posting-1"),
             LedgerFact.text("effectiveDate", "2026-05-14"),

@@ -2,16 +2,23 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** Aggregate owner for parent-child chart invariants over one declared account registry. */
 public final class ChartOfAccounts {
+  private static final Set<FinancialPositionLineClassification>
+      SINGULAR_ACTIVE_FINANCIAL_POSITION_CLASSIFICATIONS =
+          Set.of(FinancialPositionLineClassification.RESULT_HOLDING);
+
   private final Map<AccountCode, RegisteredAccount> accountsByCode;
 
   private ChartOfAccounts(Map<AccountCode, RegisteredAccount> accountsByCode) {
@@ -39,6 +46,11 @@ public final class ChartOfAccounts {
   /** Validates one declaration against the live chart hierarchy. */
   public Optional<BookkeepingAdministrationRejection> validate(AccountDeclaration declaration) {
     Objects.requireNonNull(declaration, "declaration");
+    Optional<BookkeepingAdministrationRejection> singularClassificationConflict =
+        singularFinancialPositionClassificationConflict(declaration);
+    if (singularClassificationConflict.isPresent()) {
+      return singularClassificationConflict;
+    }
     Optional<AccountCode> parentAccountCode = declaration.accountTaxonomy().parentAccountCode();
     if (parentAccountCode.isEmpty()) {
       return Optional.empty();
@@ -103,6 +115,36 @@ public final class ChartOfAccounts {
               childAccountCode, requiredParentAccountCode));
     }
     return Optional.empty();
+  }
+
+  private Optional<BookkeepingAdministrationRejection>
+      singularFinancialPositionClassificationConflict(AccountDeclaration declaration) {
+    Optional<FinancialPositionLineClassification> requestedClassification =
+        declaration.accountTaxonomy().financialPositionLineClassification();
+    if (requestedClassification.isEmpty()
+        || !SINGULAR_ACTIVE_FINANCIAL_POSITION_CLASSIFICATIONS.contains(
+            requestedClassification.orElseThrow())) {
+      return Optional.empty();
+    }
+    List<AccountCode> activeCandidates =
+        accountsByCode.values().stream()
+            .filter(RegisteredAccount::active)
+            .filter(
+                account ->
+                    account
+                        .accountTaxonomy()
+                        .financialPositionLineClassification()
+                        .equals(requestedClassification))
+            .map(RegisteredAccount::accountCode)
+            .toList();
+    if (activeCandidates.isEmpty()) {
+      return Optional.empty();
+    }
+    Set<AccountCode> candidateAccountCodes = new LinkedHashSet<>(activeCandidates);
+    candidateAccountCodes.add(declaration.accountCode());
+    return Optional.of(
+        new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
+            requestedClassification.orElseThrow(), List.copyOf(candidateAccountCodes)));
   }
 
   private boolean wouldCreateCycle(AccountCode childAccountCode, AccountCode parentAccountCode) {

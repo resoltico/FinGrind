@@ -27,6 +27,8 @@ import tools.jackson.databind.node.ObjectNode;
 
 /** Parses post-entry request payloads into command objects. */
 final class CliPostEntryRequestParser {
+  private static final String LEGACY_CORRECTION_FIELD = "correction";
+
   private CliPostEntryRequestParser() {}
 
   static PostEntryCommand readPostEntryCommand(ObjectNode rootNode) {
@@ -35,7 +37,7 @@ final class CliPostEntryRequestParser {
         ProtocolLedgerPlanFields.Step.POSTING,
         ProtocolPostingRequestFieldSets.postEntryTopLevelFields(),
         "Posting request fields must be top-level for direct request files; remove the posting wrapper.");
-    rejectForbiddenField(rootNode, ProtocolPostEntryFields.TopLevel.CORRECTION);
+    rejectForbiddenField(rootNode, LEGACY_CORRECTION_FIELD);
     BookkeepingEntry entry = CliBookkeepingEntryRequestParser.readEntry(rootNode);
     ObjectNode provenanceNode =
         requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.PROVENANCE);

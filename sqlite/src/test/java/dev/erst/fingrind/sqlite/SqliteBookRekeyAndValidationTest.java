@@ -37,7 +37,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
   void rekeyBook_contractLevelResolverUsesNewSecretIntentAndSurfacesRejections() throws Exception {
     Path acceptedBookPath = tempDirectory.resolve("rekey-contract-level.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(acceptedBookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       BookAccess.PassphraseSource replacementSource =
           BookAccess.PassphraseSource.StandardInput.INSTANCE;
       ContractDecision<RekeyBookResult> acceptedDecision =
@@ -58,7 +58,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
     }
     try (SqlitePostingFactStore rejectedStore =
         openStore(bookAccess(tempDirectory.resolve("rekey-contract-rejected.sqlite")))) {
-      initializeBookWithDefaultAccounts(rejectedStore);
+      initializeBookWithMinimalNumericAccounts(rejectedStore);
       ContractDecision<RekeyBookResult> rejectedDecision =
           rejectedStore.rekeyBook(
               BookAccess.PassphraseSource.StandardInput.INSTANCE,
@@ -81,7 +81,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
   void rekeyBook_rotatesPassphraseAndPreservesReadableState() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-book.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "replacement store passphrase", "rotated-store-key".toCharArray())) {
@@ -267,7 +267,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
   void transactionValidationBook_findsDeclaredAccountsThroughBatchLookup() throws Exception {
     Path bookPath = tempDirectory.resolve("validation-success.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       SqliteTransactionValidationBook validationBook =
           new SqliteTransactionValidationBook(
               requireStoreDatabase(postingFactStore), postingFactStore.postingReader());
@@ -287,7 +287,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
             loadPassphrase(bookAccess(bookPath)),
             SqliteStoreAccessMode.READ_WRITE_CREATE,
             sqliteApi::get)) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       sqliteApi.set(
           SqliteNativeApiTestSupport.withOpenV2(
               SqliteNativeBootstrap.api(),
@@ -343,7 +343,7 @@ class SqliteBookRekeyAndValidationTest extends SqlitePostingFactStoreTestSupport
   void rekeyBook_preservesOpenDatabaseWhenNativeRekeyFailsBeforeClose() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-native-failure.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       setStoreDatabase(
           postingFactStore,
           new SqliteNativeDatabase(

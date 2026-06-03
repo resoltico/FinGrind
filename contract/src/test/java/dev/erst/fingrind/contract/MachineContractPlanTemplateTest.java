@@ -13,7 +13,6 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import java.util.Objects;
@@ -26,54 +25,38 @@ class MachineContractPlanTemplateTest {
     ContractTemplates.LedgerPlanTemplateDescriptor template = MachineContract.planTemplate();
     ContractTemplates.LedgerPlanStepTemplateDescriptor initializeBook = template.steps().get(0);
     ContractTemplates.OpenBookTemplateDescriptor initializeBookTemplate = initializeBook.openBook();
-    ContractTemplates.LedgerPlanStepTemplateDescriptor declareCash = template.steps().get(1);
-    ContractTemplates.DeclareAccountTemplateDescriptor declareCashTemplate =
-        declareCash.declareAccount();
-    ContractTemplates.LedgerPlanStepTemplateDescriptor declareRevenue = template.steps().get(2);
-    ContractTemplates.DeclareAccountTemplateDescriptor declareRevenueTemplate =
-        declareRevenue.declareAccount();
-    ContractTemplates.LedgerPlanStepTemplateDescriptor postJournal = template.steps().get(3);
+    ContractTemplates.LedgerPlanStepTemplateDescriptor postJournal = template.steps().get(1);
     ContractTemplates.PostingRequestTemplateDescriptor postJournalTemplate = postJournal.posting();
-    ContractTemplates.LedgerPlanStepTemplateDescriptor assertCashBalance = template.steps().get(4);
+    ContractTemplates.LedgerPlanStepTemplateDescriptor assertCashBalance = template.steps().get(2);
     ContractTemplates.LedgerAssertionTemplateDescriptor assertCashBalanceTemplate =
         assertCashBalance.assertion();
     assertNotNull(initializeBookTemplate);
-    assertNotNull(declareCashTemplate);
-    assertNotNull(declareRevenueTemplate);
     assertNotNull(postJournalTemplate);
     assertNotNull(assertCashBalanceTemplate);
     assertEquals("plan-1", template.planId());
-    assertEquals(5, template.steps().size());
+    assertEquals(3, template.steps().size());
     assertEquals("initialize-book", initializeBook.stepId());
     assertEquals(LedgerStepKind.OPEN_BOOK, initializeBook.kind());
     assertEquals("Acme Studio", initializeBookTemplate.entityName());
     assertEquals("EUR", initializeBookTemplate.functionalCurrency());
     assertEquals("01-01", initializeBookTemplate.fiscalYearStart());
-    assertEquals("declare-cash", declareCash.stepId());
-    assertEquals(LedgerStepKind.DECLARE_ACCOUNT, declareCash.kind());
-    assertEquals("1000", declareCashTemplate.accountCode());
-    assertEquals("Cash", declareCashTemplate.accountName());
-    assertEquals(AccountRole.ORDINARY, declareCashTemplate.accountRole());
-    assertEquals("declare-revenue", declareRevenue.stepId());
-    assertEquals("2000", declareRevenueTemplate.accountCode());
-    assertEquals(AccountRole.ORDINARY, declareRevenueTemplate.accountRole());
     assertEquals("post-journal", postJournal.stepId());
     assertEquals(LedgerStepKind.POST_ENTRY, postJournal.kind());
     assertEquals("2026-01-15", postJournalTemplate.effectiveDate());
     assertEquals(
         dev.erst.fingrind.core.BookkeepingEntryKind.CASH_REVENUE, postJournalTemplate.entryKind());
-    assertEquals("1000", postJournalTemplate.cashAccountCode());
-    assertEquals("2000", postJournalTemplate.revenueAccountCode());
+    assertEquals("cash", postJournalTemplate.cashAccountCode());
+    assertEquals("service-revenue", postJournalTemplate.revenueAccountCode());
     assertEquals("replace-with-actor-id", postJournalTemplate.provenance().actorId());
     assertEquals(ActorType.PERSON, postJournalTemplate.provenance().actorType());
     assertEquals("assert-cash-balance", assertCashBalance.stepId());
     assertEquals(LedgerStepKind.ASSERT, assertCashBalance.kind());
     assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, assertCashBalanceTemplate.kind());
-    assertEquals("1000", assertCashBalanceTemplate.accountCode());
+    assertEquals("cash", assertCashBalanceTemplate.accountCode());
     assertEquals(new MonetaryAmount("EUR", "1000"), assertCashBalanceTemplate.netAmount());
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
-        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.50.0", "test"));
+        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.51.0", "test"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());

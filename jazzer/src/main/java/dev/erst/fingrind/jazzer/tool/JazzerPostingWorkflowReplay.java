@@ -92,8 +92,9 @@ final class JazzerPostingWorkflowReplay {
 
       List<DeclaredAccount> declaredAccounts =
           CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
+      List<DeclaredAccount> listedAccounts = CliFuzzAccountFixtures.listAccounts(bookSession);
       PostingWorkflowInvariantAssertions.verifyDeclaredAccountListing(
-          CliFuzzAccountFixtures.listAccounts(bookSession).size(), declaredAccounts.size());
+          listedAccounts, declaredAccounts);
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       InMemoryBookFixtureMutations.deactivateAccount(bookSession, primaryAccount.accountCode());
       state.inactivePreflightStatus =

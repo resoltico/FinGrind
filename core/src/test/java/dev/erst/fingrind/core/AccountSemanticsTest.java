@@ -20,7 +20,7 @@ class AccountSemanticsTest {
         AccountSemantics.normalBalance(AccountType.ASSET, AccountRole.ORDINARY));
     assertEquals(
         NormalBalance.CREDIT,
-        AccountSemantics.normalBalance(AccountType.ASSET, AccountRole.CONTRA));
+        AccountSemantics.normalBalance(AccountType.ASSET, AccountRole.POLARITY_INVERTED));
     assertEquals(
         NormalBalance.CREDIT,
         AccountSemantics.normalBalance(AccountType.LIABILITY, AccountRole.ORDINARY));
@@ -29,10 +29,10 @@ class AccountSemanticsTest {
         AccountSemantics.normalBalance(AccountType.EQUITY, AccountRole.ORDINARY));
     assertEquals(
         NormalBalance.DEBIT,
-        AccountSemantics.normalBalance(AccountType.REVENUE, AccountRole.CONTRA));
+        AccountSemantics.normalBalance(AccountType.REVENUE, AccountRole.POLARITY_INVERTED));
     assertEquals(
         NormalBalance.CREDIT,
-        AccountSemantics.normalBalance(AccountType.EXPENSE, AccountRole.CONTRA));
+        AccountSemantics.normalBalance(AccountType.EXPENSE, AccountRole.POLARITY_INVERTED));
     assertEquals(
         NormalBalance.DEBIT,
         AccountSemantics.normalBalance(AccountType.EXPENSE, AccountRole.ORDINARY));
@@ -190,7 +190,7 @@ class AccountSemanticsTest {
     assertEquals(
         -100L,
         AccountSemantics.profitAndLossContributionMinorUnits(
-            AccountType.REVENUE, AccountRole.CONTRA, BalanceSide.DEBIT, 100L));
+            AccountType.REVENUE, AccountRole.POLARITY_INVERTED, BalanceSide.DEBIT, 100L));
     assertEquals(
         -40L,
         AccountSemantics.profitAndLossContributionMinorUnits(
@@ -202,7 +202,7 @@ class AccountSemanticsTest {
     assertEquals(
         25L,
         AccountSemantics.profitAndLossContributionMinorUnits(
-            AccountType.EXPENSE, AccountRole.CONTRA, BalanceSide.CREDIT, 25L));
+            AccountType.EXPENSE, AccountRole.POLARITY_INVERTED, BalanceSide.CREDIT, 25L));
     assertEquals(
         0L,
         AccountSemantics.profitAndLossContributionMinorUnits(
@@ -298,7 +298,7 @@ class AccountSemanticsTest {
             AccountType.ASSET,
             AccountRole.ORDINARY,
             parentAssetHeader,
-            AccountRole.CONTRA,
+            AccountRole.POLARITY_INVERTED,
             matchingAssetChild));
 
     assertTrue(

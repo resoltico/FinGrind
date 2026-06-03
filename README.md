@@ -1,21 +1,23 @@
 # FinGrind — command-line double-entry bookkeeping with one protected book per accounting entity
 
 FinGrind is a command-line bookkeeping tool for one accounting entity per protected SQLite book.
-You initialize the book explicitly, declare accounts explicitly, commit typed bookkeeping entries
-or explicit administrative adjustments, and query the same file for balances, ledgers, and
-summaries.
-Humans use the task guide in `help`; automation uses `capabilities --output json`. Invalid writes
-are rejected before they change the book.
+The current public kernel is one narrow internal-management cash-bookkeeping profile with one
+seeded owner-managed service starter chart. You initialize the book explicitly, extend that chart
+when needed, commit typed bookkeeping entries or explicit administrative adjustments, and query
+the same file for balances, ledgers, and built-in statements. Humans use the task guide in
+`help`; automation uses `capabilities --output json`. Invalid writes are rejected before they
+change the book.
 
 - Open one encrypted book per accounting entity, protected by a generated key file
-- Declare accounts and chart nodes before posting; undeclared accounts and non-postable nodes are
-  rejected at commit
+- Start from one seeded owner-managed service starter chart, then declare supplemental accounts
+  and chart nodes when the built-in template is not enough
 - Post typed bookkeeping entries with retained evidence, provenance, and idempotency keys; reserve
   raw journals for explicit administrative adjustments
 - Scaffold runnable request and plan documents with `print-request-template` and
   `print-plan-template`
 - Read back account balances, trial balances with totals and balanced verdicts, account ledgers,
-  and period summaries
+  period summaries, and the built-in financial position, income statement, and changes in equity
+  reports
 - Export any report as operator-readable text tables, JSON, CSV, or PDF
 
 **Project status: Alpha.** FinGrind is under active development and is not yet production-ready.
@@ -28,22 +30,21 @@ copy of the book does not automatically include the unlocking key. If `./secrets
 does not exist, FinGrind creates it with owner-only permissions. If either directory already
 exists, keep it owner-only before you ask FinGrind to write a key or book there.
 
-The example below uses the checked-in request files under `docs/examples/`. For a bundle-first
-walkthrough that creates those files locally, use [docs/USER_QUICK_START.md](docs/USER_QUICK_START.md).
+The example below uses the checked-in request files under `docs/examples/` and the seeded starter
+chart that `open-book` creates. The separate `declare-account-supplemental-*` examples are
+template-extension flows, not alternate first-run starters. For a bundle-first walkthrough that
+creates the JSON request file locally, use [docs/USER_QUICK_START.md](docs/USER_QUICK_START.md).
 
 ```bash
 # Create one protected book
 fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --entity-name "Acme Studio" --business-activity-tag translation-services \
-  --functional-currency EUR \
+  --entity-name "Acme Studio" --functional-currency EUR \
   --fiscal-year-start 01-01
 
-# Declare the accounts used by the first posting
-fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --request-file ./docs/examples/declare-account-cash.json
-fingrind declare-account --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --request-file ./docs/examples/declare-account-revenue.json
+# Review the seeded starter chart
+fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
+  --limit 10
 
 # Post one balanced entry
 fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
@@ -55,8 +56,8 @@ fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets
 ```
 
 The interface is layered: `help` is the operator guide, `print-request-template` scaffolds one
-runnable sample document, and `capabilities --output json` exposes the minimal machine contract
-index. Rerun discovery with `--detail compact` for stable command/output descriptors or
+runnable sample document, and `capabilities --output json` exposes the machine-readable discovery
+surface. Rerun discovery with `--detail compact` for stable command and output descriptors or
 `--detail full` for the exhaustive embedded schemas and doctrine surface.
 
 ```bash
@@ -80,16 +81,19 @@ EUR      |       10.00 |        10.00 |       0.00 | Zero
 
 Accounts
 --------
-Account | Name    | Currency | Debit total | Credit total | Net amount | Balance side
---------+---------+----------+-------------+--------------+------------+-------------
-1000    | Cash    | EUR      |       10.00 |         0.00 |      10.00 | Debit
-2000    | Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
+----------------+-----------------+----------+-------------+--------------+------------+-------------
+cash            | Cash            | EUR      |       10.00 |         0.00 |      10.00 | Debit
+service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 
 Context
 -------
 Entity              : Acme Studio
-Accounting profile  : country-agnostic-bookkeeping-kernel
-Business activity   : translation-services
+Accounting kernel   : internal-management-cash-bookkeeping-kernel
+Accounting basis    : CASH_BASIS
+Framework posture   : NON_STATUTORY_INTERNAL_MANAGEMENT
+Entity form         : OWNER_MANAGED_SINGLE_ENTITY
+Book template       : OWNER_MANAGED_SERVICE_CASH
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds

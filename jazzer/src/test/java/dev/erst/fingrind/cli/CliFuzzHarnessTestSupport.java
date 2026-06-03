@@ -59,11 +59,11 @@ public final class CliFuzzHarnessTestSupport {
     }
   }
 
-  public record CorrectionAdjustmentRequestInput(
-      String effectiveDate, String linesJson, RequestContext context) {
-    public CorrectionAdjustmentRequestInput {
+  public record OpenAccountingPositionRequestInput(
+      String effectiveDate, String openingBalancesJson, RequestContext context) {
+    public OpenAccountingPositionRequestInput {
       Objects.requireNonNull(effectiveDate, "effectiveDate");
-      Objects.requireNonNull(linesJson, "linesJson");
+      Objects.requireNonNull(openingBalancesJson, "openingBalancesJson");
       Objects.requireNonNull(context, "context");
     }
   }
@@ -449,7 +449,6 @@ public final class CliFuzzHarnessTestSupport {
     return """
         {
           "entityName": "Acme Studio",
-          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01"
         }
@@ -537,19 +536,20 @@ public final class CliFuzzHarnessTestSupport {
             provenanceJson(request.context()).indent(10).stripLeading());
   }
 
-  public static String correctionAdjustmentRequestJson(CorrectionAdjustmentRequestInput request) {
+  public static String openAccountingPositionRequestJson(
+      OpenAccountingPositionRequestInput request) {
     return """
         {
-          "entryKind": "CORRECTION_ADJUSTMENT",
+          "entryKind": "OPEN_ACCOUNTING_POSITION",
           "effectiveDate": "%s",
-          "lines": %s,
+          "openingBalances": %s,
           "evidence": %s,
           "provenance": %s
         }
         """
         .formatted(
             request.effectiveDate(),
-            request.linesJson().strip(),
+            request.openingBalancesJson().strip(),
             evidenceJson(
                     request.context().sourceDocumentId(),
                     request.context().sourceDocumentType(),

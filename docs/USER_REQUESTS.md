@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -79,8 +79,8 @@ Current posting-request rules:
 - `CASH_EXPENSE` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
 - `EQUITY_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
 - `EQUITY_WITHDRAWAL` requires `equityAccountCode`, `cashAccountCode`, and `amount`
-- `OPENING_BALANCE_ADJUSTMENT` requires `lines`
-- `CORRECTION_ADJUSTMENT` requires `lines`
+- `OPEN_ACCOUNTING_POSITION` requires `openingBalances`
+- `REVERSAL_ADJUSTMENT` requires `lines`
 - `REVERSAL_ADJUSTMENT` requires `lines` plus `reversal`
 - every administrative adjustment entry must contain at least two journal lines
 - `evidence.sourceDocuments` must contain at least one source-document object
@@ -139,7 +139,7 @@ Current account-declaration rules:
   hierarchy from numeric ranges or prefixes
 - `accountName` must be a non-blank string
 - `accountType` must be one of the canonical chart classifications supported by FinGrind
-- `accountRole` must be one of `ORDINARY` or `CONTRA`
+- `accountRole` must be one of `ORDINARY` or `POLARITY_INVERTED`
 - `accountNodeKind` must be one of `POSTABLE` or `HEADER`
 - `ASSET`, `LIABILITY`, and `EQUITY` accounts must declare
   `financialPositionLineClassification` and must not declare
@@ -174,9 +174,9 @@ Current ledger-plan rules:
 - `steps` must contain at least one object and every `stepId` must be unique
 - `open-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
-- `open-book` uses nested `openBook`, which requires `entityName`,
-  `businessActivityTags`, `functionalCurrency`, and `fiscalYearStart`; the built-in accounting
-  kernel profile is persisted by the runtime and echoed back in response payloads
+- `open-book` uses nested `openBook`, which requires `entityName`, `functionalCurrency`, and
+  `fiscalYearStart`; the runtime persists the built-in doctrine facts and echoes them back in
+  response payloads
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry` and `post-entry` use nested `posting`, which has the same shape as the normal
   posting request, including required `evidence.sourceDocuments[]` and `evidence.approvals[]`
@@ -225,7 +225,7 @@ deterministic repair data.
 | `lines[].side` | `DEBIT`, `CREDIT` |
 | `provenance.actorType` | `PERSON`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
-| `accountRole` | `ORDINARY`, `CONTRA` |
+| `accountRole` | `ORDINARY`, `POLARITY_INVERTED` |
 | `accountNodeKind` | `POSTABLE`, `HEADER` |
 | `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RESERVE`, `OTHER_EQUITY` |
 | `profitAndLossLineClassification` | `OPERATING_REVENUE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `FINANCE_EXPENSE`, `OTHER_EXPENSE` |
@@ -256,8 +256,8 @@ Dynamic fields:
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `open-book.payload.bookIdentity.entityName`, `.accountingKernelProfile`,
-  `.businessActivityTags`, `.functionalCurrency`, and `.fiscalYearStart` echo the persisted
-  initialized-book identity
+  `.accountingBasis`, `.accountingFrameworkPosition`, `.entityForm`, `.bookTemplateId`,
+  `.functionalCurrency`, and `.fiscalYearStart` echo the persisted initialized-book identity
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is a redacted public path hint for the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
@@ -272,7 +272,8 @@ Dynamic fields:
 - plan-journal steps carry typed `data` records rather than generic fact arrays
 - successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
   `fiscalYearStart`; the persisted initialized-book identity also carries
-  `accountingKernelProfile` and `businessActivityTags`
+  `accountingKernelProfile`, `accountingBasis`, `accountingFrameworkPosition`, `entityForm`, and
+  `bookTemplateId`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
   `accountRole`, `normalBalance`, `active`, and `declaredAt`
 - successful `post-entry` and `get-posting` plan steps emit typed `evidence` data with source
@@ -344,6 +345,10 @@ rendered:
 - `bookkeepingKernel.description` carries the current machine-published summary of that live
   bookkeeping kernel
 - `requestInput.bookPassphraseOptions` advertises the supported protected-book passphrase routes
+- `requestInput.bookPassphraseMaxUtf8Bytes` publishes the canonical UTF-8 byte ceiling shared by
+  key-file, stdin, and prompt-backed passphrase sources
+- `requestInput.requestDocumentMaxUtf8Bytes` publishes the canonical UTF-8 byte ceiling for one
+  request JSON document
 - `requestInput.requestDocumentSemantics` advertises the strict JSON-object, duplicate-key, and
   unknown-field rules
 - `environment` reports runtime distribution, protected-book requirements, and managed SQLite
@@ -364,7 +369,10 @@ smallest trailing directory context needed for that response, for example
 Shared initialized-book identity payload:
 - `entityName`
 - `accountingKernelProfile`
-- `businessActivityTags[]`
+- `accountingBasis`
+- `accountingFrameworkPosition`
+- `entityForm`
+- `bookTemplateId`
 - `functionalCurrency`
 - `fiscalYearStart`
 

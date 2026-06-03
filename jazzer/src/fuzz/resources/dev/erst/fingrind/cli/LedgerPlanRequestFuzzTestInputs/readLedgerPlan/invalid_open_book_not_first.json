@@ -10,7 +10,6 @@
       "kind": "open-book",
       "openBook": {
         "entityName": "Late Open Seed",
-        "businessActivityTags": ["translation-services"],
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01"
       }

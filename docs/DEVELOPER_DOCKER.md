@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -56,19 +56,20 @@ The container image itself also stays on the same managed-runtime policy as the 
 - it pins both Docker base images by digest and installs exact Alpine package revisions for the
   builder and runtime layers, so container assembly does not float forward on mutable tags or
   repository package updates
-- it derives the SQLite compiler flags from the canonical managed-SQLite contract through
-  `scripts/render-managed-sqlite-compiler-flags.py`, so Docker does not carry a private handwritten
-  compile-option surface
+- it consumes a Linux-target managed SQLite artifact from the same Gradle-owned managed-SQLite
+  pipeline that owns bundle artifacts, together with its checksum, toolchain fingerprint, and
+  build contract, so Docker does not carry a second native build pipeline
+- on Linux hosts that Docker-target artifact reuses the native host build directly; on non-Linux
+  hosts `:cli:stageDockerBuildContext` materializes the Linux target through a pinned Buildx
+  builder image before Docker image assembly
 - it assembles and ships a private `jlink` runtime instead of inheriting a full general-purpose
   JRE layer
 - it consumes one repository-built staged Docker context produced by
-  `:cli:stageDockerBuildContext`; that staged directory lives under the active CLI build root and
-  is also mirrored into `cli/build/docker-context/` for plain inspection and manual checkout-local
-  use
+  `:cli:stageDockerBuildContext`; that staged directory lives under the active CLI build root
 - that staged context carries the Dockerfile, the internal application JAR, the runtime-module
-  list, the rendered entrypoint, the managed-SQLite contract, `docker-build-context-manifest.json`,
-  and a `source-root/` snapshot of every checked source/build input the container assembly depends
-  on
+  list, the rendered entrypoint, `libsqlite3.so.0`, `libsqlite3.so.0.sha256`,
+  `toolchain-fingerprint.json`, `build-contract.json`, `docker-build-context-manifest.json`, and
+  a `source-root/` snapshot of every checked source/build input the container assembly depends on
 - that manifest includes a SHA3-256 fingerprint of the current source/build inputs behind the
   staged runtime, and both Docker image build and `scripts/docker-smoke.sh` verify that
   fingerprint before trusting the staged context, so Docker and bundle publication cannot drift
@@ -150,9 +151,9 @@ Then the supported local gates are:
   `protected-book-verification-failed` error rather than silently reading the file or leaking raw
   SQLite storage symptoms
 
-The tag-driven `Release` workflow's `container` job also waits for the complete GitHub release
-asset set before image publication, so the public image cannot race ahead of an incomplete bundle
-release.
+The tag-driven `Release` workflow's staged-container and promotion jobs also wait for the complete
+verified draft GitHub release asset set before image publication, so the public image cannot race
+ahead of an incomplete bundle release.
 
 ## Troubleshooting
 

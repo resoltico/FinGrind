@@ -3,14 +3,12 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
-import dev.erst.fingrind.core.AccountingKernelProfiles;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import org.jspecify.annotations.Nullable;
@@ -21,7 +19,6 @@ final class CliOpenBookArguments {
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
               ProtocolOptions.ENTITY_NAME,
-              ProtocolOptions.BUSINESS_ACTIVITY_TAG,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
               ProtocolOptions.OUTPUT),
@@ -38,10 +35,8 @@ final class CliOpenBookArguments {
         parsedArguments.bookAccess(),
         new OpenBookCommand(
             new BookIdentity(
-                new EntityProfile(
-                    requireEntityName(argumentValues.entityName),
-                    requireBusinessActivityTags(argumentValues.businessActivityTags)),
-                AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+                new EntityProfile(requireEntityName(argumentValues.entityName)),
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
                 requireFunctionalCurrency(argumentValues.functionalCurrency),
                 requireFiscalYearStart(argumentValues.fiscalYearStart))),
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));
@@ -66,12 +61,6 @@ final class CliOpenBookArguments {
               CliOptionValues.parseBookEntityNameOption(
                   CliOptionValues.requireValue(argumentIterator, ProtocolOptions.ENTITY_NAME),
                   ProtocolOptions.ENTITY_NAME);
-      case ProtocolOptions.BUSINESS_ACTIVITY_TAG ->
-          argumentValues.businessActivityTags.add(
-              CliOptionValues.parseBusinessActivityTagOption(
-                  CliOptionValues.requireValue(
-                      argumentIterator, ProtocolOptions.BUSINESS_ACTIVITY_TAG),
-                  ProtocolOptions.BUSINESS_ACTIVITY_TAG));
       case ProtocolOptions.FUNCTIONAL_CURRENCY ->
           argumentValues.functionalCurrency =
               CliOptionValues.parseCurrencyUnitOption(
@@ -103,16 +92,6 @@ final class CliOpenBookArguments {
     return entityName;
   }
 
-  private static List<BusinessActivityTag> requireBusinessActivityTags(
-      List<BusinessActivityTag> businessActivityTags) {
-    if (businessActivityTags.isEmpty()) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BUSINESS_ACTIVITY_TAG,
-          "At least one " + ProtocolOptions.BUSINESS_ACTIVITY_TAG + " argument is required.");
-    }
-    return List.copyOf(businessActivityTags);
-  }
-
   private static CurrencyUnit requireFunctionalCurrency(@Nullable CurrencyUnit functionalCurrency) {
     if (functionalCurrency == null) {
       throw CliArgumentValueParser.invalid(
@@ -133,7 +112,6 @@ final class CliOpenBookArguments {
 
   /** Accumulates one parsed open-book argument set before required-field resolution runs. */
   static final class OpenBookArgumentValues {
-    private final List<BusinessActivityTag> businessActivityTags = new ArrayList<>();
     private @Nullable BookEntityName entityName;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;

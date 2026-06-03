@@ -6,7 +6,6 @@
       "kind": "open-book",
       "openBook": {
         "entityName": "Plan Seed Query",
-        "businessActivityTags": ["translation-services"],
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01"
       }

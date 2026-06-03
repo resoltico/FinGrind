@@ -42,15 +42,13 @@ public final class ProtocolPostingRequestFieldSets {
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> OPENING_BALANCE_ADJUSTMENT_FIELDS =
+  private static final Set<String> OPEN_ACCOUNTING_POSITION_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.LINES,
+          ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> CORRECTION_ADJUSTMENT_FIELDS =
-      Set.copyOf(OPENING_BALANCE_ADJUSTMENT_FIELDS);
   private static final Set<String> REVERSAL_ADJUSTMENT_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
@@ -69,6 +67,8 @@ public final class ProtocolPostingRequestFieldSets {
       Set.copyOf(ProtocolPostEntryFields.provenanceFields());
   private static final Set<String> JOURNAL_LINE_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.journalLineFields());
+  private static final Set<String> OPENING_BALANCE_FIELDS =
+      Set.copyOf(ProtocolPostEntryFields.openingBalanceFields());
   private static final Set<String> REVERSAL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.reversalFields());
 
@@ -99,14 +99,9 @@ public final class ProtocolPostingRequestFieldSets {
     return EQUITY_WITHDRAWAL_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for opening-balance adjustment requests. */
-  public static Set<String> openingBalanceAdjustmentFields() {
-    return OPENING_BALANCE_ADJUSTMENT_FIELDS;
-  }
-
-  /** Returns the accepted top-level fields for correction-adjustment requests. */
-  public static Set<String> correctionAdjustmentFields() {
-    return CORRECTION_ADJUSTMENT_FIELDS;
+  /** Returns the accepted top-level fields for open-accounting-position requests. */
+  public static Set<String> openAccountingPositionFields() {
+    return OPEN_ACCOUNTING_POSITION_FIELDS;
   }
 
   /** Returns the accepted top-level fields for reversal-adjustment requests. */
@@ -137,6 +132,11 @@ public final class ProtocolPostingRequestFieldSets {
   /** Returns the accepted nested fields for journal-line objects. */
   public static Set<String> journalLineFields() {
     return JOURNAL_LINE_FIELDS;
+  }
+
+  /** Returns the accepted nested fields for opening-balance objects. */
+  public static Set<String> openingBalanceFields() {
+    return OPENING_BALANCE_FIELDS;
   }
 
   /** Returns the accepted nested fields for reversal-reference objects. */

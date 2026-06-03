@@ -101,7 +101,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                 line("1000", JournalLine.EntrySide.CREDIT, "EUR", "7.00"),
                 line("2000", JournalLine.EntrySide.DEBIT, "EUR", "7.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, postingOne);
       commitPosting(postingFactStore, postingTwo);
       commitPosting(postingFactStore, postingThree);
@@ -189,7 +189,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
                 line("1000", JournalLine.EntrySide.DEBIT, "USD", "8.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "USD", "8.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, postingOne);
       commitPosting(postingFactStore, postingTwo);
       commitPosting(postingFactStore, postingThree);

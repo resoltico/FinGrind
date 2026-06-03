@@ -231,8 +231,6 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
               missingKeyFile.toString(),
               "--entity-name",
               "Acme Studio",
-              "--business-activity-tag",
-              "translation-services",
               "--functional-currency",
               "EUR",
               "--fiscal-year-start",

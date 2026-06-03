@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: USER_EXAMPLES
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -19,7 +19,8 @@ developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
 `.\gradlew.bat :cli:run --args="..."` on Windows.
 
 The public release bundle does not include `docs/examples/`. The runnable commands below therefore
-use local working files such as `./declare-account-cash.json` and `./basic-posting-request.json`.
+use local working files such as `./declare-account-supplemental-cash-reserve.json` and
+`./basic-posting-request.json`.
 If you are in a source checkout, you can populate those files by copying the matching checked-in
 fixtures under [examples/](./examples/). The command blocks below use POSIX shell line continuation
 for readability; on Windows PowerShell, keep the same launcher, local file names, and command
@@ -44,7 +45,6 @@ fingrind \
   open-book \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
-  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   \
@@ -89,7 +89,6 @@ cat ./secrets/acme.book-key | \
     open-book \
     --book-file ./books/acme.sqlite \
     --entity-name "Acme Studio" \
-    --business-activity-tag consulting-services \
     --functional-currency EUR \
     --fiscal-year-start 01-01 \
     \
@@ -99,7 +98,7 @@ cat ./secrets/acme.book-key | \
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --business-activity-tag consulting-services --functional-currency EUR --fiscal-year-start 01-01 --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01 --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -109,7 +108,6 @@ fingrind \
   open-book \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
-  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   \
@@ -119,8 +117,11 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"country-agnostic-bookkeeping-kernel","businessActivityTags":["consulting-services"],"functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
+{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-cash-bookkeeping-kernel","accountingBasis":"CASH_BASIS","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE_CASH","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
 ```
+
+That initialized book starts from the seeded owner-managed service starter chart. Review it with
+`list-accounts` before you declare any supplemental accounts.
 
 ## Inspect Compatibility Before Mutating
 
@@ -245,24 +246,30 @@ fingrind \
   --book-key-file ./secrets/acme.book-key
 ```
 
-## Declare Accounts And Page The Registry
+## Declare Supplemental Accounts And Page The Registry
 
 Create these local files first:
-- `./declare-account-cash.json`: copy [examples/declare-account-cash.json](./examples/declare-account-cash.json)
-- `./declare-account-revenue.json`: copy [examples/declare-account-revenue.json](./examples/declare-account-revenue.json)
+- `./declare-account-supplemental-cash-reserve.json`: copy
+  [examples/declare-account-supplemental-cash-reserve.json](./examples/declare-account-supplemental-cash-reserve.json)
+- `./declare-account-supplemental-misc-revenue.json`: copy
+  [examples/declare-account-supplemental-misc-revenue.json](./examples/declare-account-supplemental-misc-revenue.json)
+
+The starter chart already includes `cash` and `service-revenue`. These checked-in declaration
+examples show how to add supplemental accounts on top of that seeded chart, for example
+`cash-reserve` and `misc-revenue`.
 
 ```bash
 fingrind \
   declare-account \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./declare-account-cash.json
+  --request-file ./declare-account-supplemental-cash-reserve.json
 
 fingrind \
   declare-account \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./declare-account-revenue.json
+  --request-file ./declare-account-supplemental-misc-revenue.json
 
 fingrind \
   list-accounts \
@@ -373,7 +380,6 @@ fingrind \
 
 That plan:
 - opens a new book
-- declares cash and revenue
 - posts one balanced entry
 - asserts the resulting cash balance
 
@@ -419,14 +425,14 @@ fingrind \
   list-postings \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --account-code 1000 \
+  --account-code cash \
   --limit 25
 
 fingrind \
   account-balance \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --account-code 1000
+  --account-code cash
 ```
 
 Checked-in example responses:
@@ -442,7 +448,7 @@ fingrind \
   list-postings \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --account-code 1000 \
+  --account-code cash \
   --limit 25 \
   --cursor "<nextCursor-from-the-prior-page>"
 ```
@@ -461,7 +467,7 @@ fingrind \
   account-ledger \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --account-code 1000 \
+  --account-code cash \
   --effective-date-from 2026-04-07 \
   --effective-date-to 2026-04-08 \
   --output csv
@@ -651,7 +657,6 @@ fingrind \
   open-book \
   --book-file ./prompt.sqlite \
   --entity-name "Acme Studio" \
-  --business-activity-tag consulting-services \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   \

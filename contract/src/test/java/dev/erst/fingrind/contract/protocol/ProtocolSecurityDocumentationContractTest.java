@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /** Guards the canonical security-model reference against contract drift. */
@@ -216,7 +215,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.50.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.51.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
@@ -255,17 +254,6 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
   }
 
   private static String sharedPassphraseByteLimit(CapabilitiesDescriptor capabilities) {
-    String semantics = String.join("\n", capabilities.requestInput().bookPassphraseSemantics());
-    java.util.regex.Matcher utf8LimitMatcher =
-        Pattern.compile("(\\d+)-byte UTF-8 limit").matcher(semantics);
-    if (utf8LimitMatcher.find()) {
-      return utf8LimitMatcher.group(1);
-    }
-    java.util.regex.Matcher byteMatcher = Pattern.compile("(\\d+) bytes").matcher(semantics);
-    if (byteMatcher.find()) {
-      return byteMatcher.group(1);
-    }
-    throw new IllegalStateException(
-        "Could not derive the shared passphrase byte limit from MachineContract request input semantics.");
+    return Integer.toString(capabilities.requestInput().bookPassphraseMaxUtf8Bytes());
   }
 }

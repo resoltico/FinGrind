@@ -13,10 +13,10 @@ def prepare_fixture_directories(config: ReleaseSmokeConfig) -> None:
     # acceptance workflow proves the same owner-only hardening contract that real operators use.
     for path in [
         config.request_sale.local_path,
-        config.request_adjustment.local_path,
+        config.request_expense.local_path,
         config.invalid_request.local_path,
-        config.declare_cash.local_path,
-        config.declare_revenue.local_path,
+        config.declare_asset_supplement.local_path,
+        config.declare_expense_supplement.local_path,
         config.trial_balance_pdf.local_path,
         config.trial_balance_pdf_stderr_path,
     ]:
@@ -30,8 +30,8 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
         cash_revenue_request(
             actor_prefix=actor_prefix,
             effective_date="2026-04-07",
-            cash_account_code="1000",
-            revenue_account_code="2000",
+            cash_account_code=config.starter_cash_account_code,
+            revenue_account_code=config.starter_revenue_account_code,
             minor_units="1000",
             evidence_suffix="sale",
             command_suffix="sale",
@@ -40,30 +40,15 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
         ),
     )
     write_json(
-        config.request_adjustment.local_path,
-        correction_adjustment_request(
+        config.request_expense.local_path,
+        cash_expense_request(
             actor_prefix=actor_prefix,
             effective_date="2026-04-08",
-            lines=[
-                {
-                    "accountCode": "1000",
-                    "side": "CREDIT",
-                    "amount": {
-                        "currencyCode": "EUR",
-                        "minorUnits": "400",
-                    },
-                },
-                {
-                    "accountCode": "2000",
-                    "side": "DEBIT",
-                    "amount": {
-                        "currencyCode": "EUR",
-                        "minorUnits": "400",
-                    },
-                },
-            ],
-            evidence_suffix="adjustment",
-            command_suffix="adjustment",
+            expense_account_code=config.expense_supplement_account_code,
+            cash_account_code=config.starter_cash_account_code,
+            minor_units="400",
+            evidence_suffix="expense",
+            command_suffix="expense",
             idempotency_suffix="idem-2",
             causation_suffix="cause-2",
         ),
@@ -71,8 +56,8 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     write_json(
         config.invalid_request.local_path,
         declare_account_request(
-            account_code="1000",
-            account_name="Cash",
+            account_code="invalid-supplement",
+            account_name="Invalid Supplement",
             account_type="ASSET",
             account_role="ORDINARY",
             account_node_kind="POSTABLE",
@@ -82,10 +67,10 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
         ),
     )
     write_json(
-        config.declare_cash.local_path,
+        config.declare_asset_supplement.local_path,
         declare_account_request(
-            account_code="1000",
-            account_name="Cash",
+            account_code=config.asset_supplement_account_code,
+            account_name=config.asset_supplement_account_name,
             account_type="ASSET",
             account_role="ORDINARY",
             account_node_kind="POSTABLE",
@@ -93,14 +78,14 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
         ),
     )
     write_json(
-        config.declare_revenue.local_path,
+        config.declare_expense_supplement.local_path,
         declare_account_request(
-            account_code="2000",
-            account_name="Revenue",
-            account_type="REVENUE",
+            account_code=config.expense_supplement_account_code,
+            account_name=config.expense_supplement_account_name,
+            account_type="EXPENSE",
             account_role="ORDINARY",
             account_node_kind="POSTABLE",
-            profit_and_loss_line_classification="OPERATING_REVENUE",
+            profit_and_loss_line_classification="OPERATING_EXPENSE",
         ),
     )
 
@@ -137,20 +122,27 @@ def cash_revenue_request(
     }
 
 
-def correction_adjustment_request(
+def cash_expense_request(
     *,
     actor_prefix: str,
     effective_date: str,
-    lines: list[dict[str, Any]],
+    expense_account_code: str,
+    cash_account_code: str,
+    minor_units: str,
     evidence_suffix: str,
     command_suffix: str,
     idempotency_suffix: str,
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "CORRECTION_ADJUSTMENT",
+        "entryKind": "CASH_EXPENSE",
         "effectiveDate": effective_date,
-        "lines": lines,
+        "expenseAccountCode": expense_account_code,
+        "cashAccountCode": cash_account_code,
+        "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": minor_units,
+        },
         "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
         "provenance": posting_provenance(
             actor_prefix, command_suffix, idempotency_suffix, causation_suffix

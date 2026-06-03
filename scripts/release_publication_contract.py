@@ -9,9 +9,6 @@ def load_release_publication_contract(repo_root: Path) -> dict[str, object]:
     contract_values = load_contract_values(repo_root)
     release_publication = contract_values["releasePublication"]
     return {
-        "workflowDispatchHelperRef": release_publication["workflowDispatchHelperRef"],
-        "bundleOutputArchivePrefixes": release_publication["bundleOutputArchivePrefixes"],
-        "bundleOutputChecksumPrefixes": release_publication["bundleOutputChecksumPrefixes"],
         "publicBundleBuildTargets": release_publication["publicBundleBuildTargets"],
         "requiredCiWorkflowName": release_publication["requiredCiWorkflowName"],
         "requiredCiWorkflowPath": release_publication["requiredCiWorkflowPath"],
@@ -19,6 +16,7 @@ def load_release_publication_contract(repo_root: Path) -> dict[str, object]:
         "requiredCiJobNames": release_publication["requiredCiJobNames"],
         "containerRegistry": release_publication["containerRegistry"],
         "containerImageName": release_publication["containerImageName"],
+        "containerStagingImageName": release_publication["containerStagingImageName"],
         "containerRunnerLabel": release_publication["containerRunnerLabel"],
         "containerPlatforms": release_publication["containerPlatforms"],
         "latestPublicationPolicy": release_publication["latestPublicationPolicy"],
@@ -39,6 +37,7 @@ def load_release_publication_plan(
     supported_targets = public_distribution["supportedPublicCliBundleTargets"]
     bundle_matrix: list[dict[str, str]] = []
     published_unix_matrix: list[dict[str, str]] = []
+    container_matrix: list[dict[str, str]] = []
     release_asset_names: list[str] = []
 
     for classifier in supported_targets:
@@ -55,25 +54,42 @@ def load_release_publication_plan(
         bundle_matrix.append(matrix_entry)
         if bundle_target["operatingSystemId"] != "windows":
             published_unix_matrix.append(matrix_entry)
+        if bundle_target["operatingSystemId"] == "linux":
+            docker_platform = {
+                "x86_64": "linux/amd64",
+                "aarch64": "linux/arm64",
+            }[bundle_target["architectureId"]]
+            container_matrix.append(
+                {
+                    "runner": release_target["runnerLabel"],
+                    "classifier": classifier,
+                    "dockerPlatform": docker_platform,
+                    "expectedOs": release_target["expectedRunnerOs"],
+                    "expectedArch": release_target["expectedRunnerArch"],
+                }
+            )
         archive_name = f"fingrind-{version}-{classifier}.{archive_extension}"
         release_asset_names.append(archive_name)
         release_asset_names.append(f"{archive_name}.sha256")
 
     container_image_ref = None
+    container_staging_image_ref = None
     if repository_owner:
         container_image_ref = (
             f"{release_publication['containerRegistry']}/{repository_owner}/"
             f"{release_publication['containerImageName']}"
+        )
+        container_staging_image_ref = (
+            f"{release_publication['containerRegistry']}/{repository_owner}/"
+            f"{release_publication['containerStagingImageName']}"
         )
 
     attestation_subject_paths = [
         f"release-assets/{asset_name}" for asset_name in release_asset_names
     ]
     return {
-        "workflowDispatchHelperRef": release_publication["workflowDispatchHelperRef"],
-        "bundleOutputArchivePrefixes": release_publication["bundleOutputArchivePrefixes"],
-        "bundleOutputChecksumPrefixes": release_publication["bundleOutputChecksumPrefixes"],
         "bundleBuildMatrix": bundle_matrix,
+        "containerBuildMatrix": container_matrix,
         "publishedUnixBundleSmokeMatrix": published_unix_matrix,
         "releaseAssetNames": release_asset_names,
         "releaseAttestationSubjectPaths": attestation_subject_paths,
@@ -84,5 +100,6 @@ def load_release_publication_plan(
         "containerRunnerLabel": release_publication["containerRunnerLabel"],
         "containerPlatforms": release_publication["containerPlatforms"],
         "containerImageRef": container_image_ref,
+        "containerStagingImageRef": container_staging_image_ref,
         "latestPublicationPolicy": release_publication["latestPublicationPolicy"],
     }

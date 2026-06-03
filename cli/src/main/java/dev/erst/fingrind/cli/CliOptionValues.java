@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.core.BookEntityName;
-import dev.erst.fingrind.core.BusinessActivityTag;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -67,17 +66,6 @@ final class CliOptionValues {
           optionName,
           Objects.requireNonNullElse(
               exception.getMessage(), "Option must use MM-DD for " + optionName + "."),
-          exception);
-    }
-  }
-
-  static BusinessActivityTag parseBusinessActivityTagOption(String rawValue, String optionName) {
-    try {
-      return new BusinessActivityTag(rawValue);
-    } catch (IllegalArgumentException exception) {
-      throw CliArgumentValueParser.invalid(
-          optionName,
-          Objects.requireNonNullElse(exception.getMessage(), "Unsupported business activity tag."),
           exception);
     }
   }

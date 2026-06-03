@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
@@ -26,9 +27,9 @@ final class SqliteBookPassphraseValidation {
   static ContractFailure oversizedPassphraseSourceFailure(String sourceDescription) {
     return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
         "The FinGrind book passphrase source exceeded the %d-byte UTF-8 limit: %s"
-            .formatted(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES, sourceDescription),
+            .formatted(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES, sourceDescription),
         "Provide one non-empty single-line UTF-8 passphrase within the %d-byte limit through the selected passphrase source and rerun the command."
-            .formatted(SqliteBookPassphrase.MAX_UTF8_SOURCE_BYTES),
+            .formatted(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES),
         null);
   }
 

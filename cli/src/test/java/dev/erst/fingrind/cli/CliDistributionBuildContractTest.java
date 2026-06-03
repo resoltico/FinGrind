@@ -26,31 +26,22 @@ class CliDistributionBuildContractTest {
     assertTrue(
         dockerfile.contains(
             "FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:46db716f3d5ca5ed35db59c0511b4f7847c4c5c89f53e7fb57fdab0573a762f6 AS builder"));
-    assertTrue(dockerfile.contains("RUN apk add --no-cache build-base=0.5-r3 python3=3.12.13-r0"));
+    assertTrue(dockerfile.contains("RUN apk add --no-cache binutils=2.45.1-r0 python3=3.12.13-r0"));
     assertTrue(dockerfile.contains("COPY source-root/ /build/source-root/"));
     assertTrue(
         dockerfile.contains(
-            "COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar managed-sqlite-contract.json runtime-modules.txt /build/"));
+            "COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar runtime-modules.txt /build/"));
     assertTrue(
         dockerfile.contains(
-            "COPY source-root/scripts/render-managed-sqlite-compiler-flags.py scripts/render-managed-sqlite-compiler-flags.py"));
+            "COPY libsqlite3.so.0 libsqlite3.so.0.sha256 toolchain-fingerprint.json build-contract.json /build/"));
     assertTrue(
         dockerfile.contains(
             "COPY source-root/scripts/verify-docker-build-context.py scripts/verify-docker-build-context.py"));
     assertTrue(
         dockerfile.contains(
-            "COPY source-root/third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/ sqlite-source/"));
-    assertTrue(dockerfile.contains("contract = json.loads(Path(\"managed-sqlite-contract.json\")"));
-    assertTrue(dockerfile.contains("expected_files = contract.get(\"vendoredReleaseFiles\")"));
-    assertTrue(dockerfile.contains("source_dir = Path(\"sqlite-source\")"));
-    assertTrue(dockerfile.contains("vendored SQLite release manifest drift"));
-    assertTrue(
-        dockerfile.contains(
             "python3 scripts/verify-docker-build-context.py --context-dir /build --source-root /build/source-root"));
-    assertTrue(
-        dockerfile.contains(
-            "python3 scripts/render-managed-sqlite-compiler-flags.py /build/managed-sqlite-contract.json"));
-    assertTrue(dockerfile.contains("sqlite-source/sqlite3mc_amalgamation.c"));
+    assertTrue(dockerfile.contains("missing staged managed SQLite artifact"));
+    assertTrue(dockerfile.contains("managed SQLite checksum file declared"));
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh"));
@@ -60,7 +51,7 @@ class CliDistributionBuildContractTest {
     assertTrue(
         dockerfile.contains(
             "COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/"));
-    assertTrue(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256"));
+    assertFalse(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256"));
     assertTrue(
         dockerfile.contains(
             "FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11"));
@@ -77,12 +68,13 @@ class CliDistributionBuildContractTest {
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/build-contract.json /opt/fingrind/lib/native/build-contract.json"));
-    assertTrue(dockerfile.contains("Path(\"toolchain-fingerprint.json\").write_text("));
-    assertTrue(dockerfile.contains("Path(\"build-contract.json\").write_text("));
     assertFalse(dockerfile.contains("ENV FINGRIND_SQLITE_LIBRARY="));
     assertFalse(dockerfile.contains("COPY cli/build/docker-context/ /build/docker-context/"));
+    assertFalse(dockerfile.contains("managed-sqlite-contract.json"));
+    assertFalse(dockerfile.contains("render-managed-sqlite-compiler-flags.py"));
+    assertFalse(dockerfile.contains("sqlite-source/"));
     assertFalse(dockerfile.contains("COPY gradle.properties /build/source-root/gradle.properties"));
-    assertFalse(dockerfile.contains("RUN jdeps "));
+    assertFalse(dockerfile.contains("RUN cc "));
   }
 
   @Test
@@ -117,16 +109,28 @@ class CliDistributionBuildContractTest {
             repositoryRoot()
                 .resolve(
                     "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ManagedSqliteProvisioningLogic.kt"));
+    String managedSqliteConsumerPlugin =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindManagedSqliteConsumerPlugin.kt"));
+    String rootConventionsPlugin =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindRootConventionsPlugin.kt"));
 
     assertCliBuildScriptDelegatesDistribution(buildScript);
     assertDistributionPluginOwnsDistributionContracts(
         distributionPlugin, dockerContextRegistration);
-    assertManagedSqliteProvisioningUsesNamedModuleAccess(managedSqliteProvisioning);
+    assertManagedSqliteProvisioningUsesNamedModuleAccess(
+        managedSqliteProvisioning, managedSqliteConsumerPlugin, rootConventionsPlugin);
     assertSqliteBuildScriptOwnsWhiteBoxModulePatch(sqliteBuildScript);
   }
 
   private static void assertCliBuildScriptDelegatesDistribution(String buildScript) {
     assertTrue(buildScript.contains("id(\"dev.erst.fingrind.cli-distribution\")"));
+    assertTrue(buildScript.contains("id(\"dev.erst.fingrind.managed-sqlite-consumer\")"));
     assertFalse(buildScript.contains("stageDockerBuildContext"));
     assertFalse(buildScript.contains("docker-build-context-manifest.json"));
     assertFalse(buildScript.contains("source-checkout-artifact-manifest.tsv"));
@@ -149,13 +153,16 @@ class CliDistributionBuildContractTest {
         distributionPlugin.contains("CliDistributionSourceInventory.dockerBuildContextFiles"));
     assertTrue(distributionPlugin.contains("dockerManagedSqliteContractSource"));
     assertTrue(distributionPlugin.contains("dockerBuildContextSourceInputs"));
-    assertTrue(distributionPlugin.contains("repositoryDockerBuildContextDirectory"));
+    assertTrue(
+        distributionPlugin.contains("ManagedSqliteProvisioningRegistry.require(rootProject)"));
+    assertTrue(
+        distributionPlugin.contains("ManagedSqliteProvisioningLogic.registerDockerContextTarget"));
+    assertTrue(distributionPlugin.contains("managedSqliteProvisioning = dockerManagedSqlite"));
+    assertTrue(distributionPlugin.contains("bundleArchiveManifestOutputFile"));
+    assertTrue(distributionPlugin.contains("bundleArchiveTasks.manifestTask"));
     assertTrue(
         distributionPlugin.contains(
             "\"bundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
-    assertTrue(distributionPlugin.contains("managedSqliteLibrarySha256Path"));
-    assertTrue(distributionPlugin.contains("managedSqliteToolchainFingerprintPath"));
-    assertTrue(distributionPlugin.contains("managedSqliteBuildContractPath"));
     assertTrue(
         distributionPlugin.contains("repositoryRootPath.set(repositoryRootDirectory.toString())"));
     assertTrue(distributionPlugin.contains("sourceFiles.from(sourceCheckoutArtifactSourceInputs)"));
@@ -188,21 +195,29 @@ class CliDistributionBuildContractTest {
     assertFalse(distributionPlugin.contains("archiveExtensionForOperatingSystemId"));
     assertFalse(distributionPlugin.contains("launcherPathForOperatingSystemId"));
     assertFalse(distributionPlugin.contains("launcherCommandForOperatingSystemId"));
+    assertFalse(distributionPlugin.contains("managedSqliteHostClassifier("));
+    assertFalse(distributionPlugin.contains("managedSqliteLibraryFileNameForHost("));
     assertTrue(
         dockerContextRegistration.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
+    assertTrue(
+        dockerContextRegistration.contains("dependsOn(managedSqliteProvisioning.prepareTask)"));
     assertTrue(
         dockerContextRegistration.contains(
             "from(rootProject.layout.projectDirectory.file(\"Dockerfile\"))"));
     assertTrue(dockerContextRegistration.contains("into(\"source-root\")"));
+    assertTrue(dockerContextRegistration.contains("from(managedSqliteProvisioning.libraryPath)"));
+    assertTrue(dockerContextRegistration.contains("from(managedSqliteProvisioning.checksumPath)"));
     assertTrue(
         dockerContextRegistration.contains(
-            "tasks.register<Sync>(\"syncRepositoryDockerBuildContext\")"));
-    assertTrue(dockerContextRegistration.contains("from(dockerBuildContextSourceInputs)"));
-    assertTrue(dockerContextRegistration.contains("finalizedBy(syncRepositoryDockerBuildContext)"));
+            "from(managedSqliteProvisioning.toolchainFingerprintPath)"));
+    assertTrue(
+        dockerContextRegistration.contains("from(managedSqliteProvisioning.buildContractPath)"));
   }
 
   private static void assertManagedSqliteProvisioningUsesNamedModuleAccess(
-      String managedSqliteProvisioning) {
+      String managedSqliteProvisioning,
+      String managedSqliteConsumerPlugin,
+      String rootConventionsPlugin) {
     assertFalse(managedSqliteProvisioning.contains("enableUnnamedNativeAccess()"));
     assertTrue(managedSqliteProvisioning.contains("enableSqliteNamedNativeAccess()"));
     assertTrue(managedSqliteProvisioning.contains("useModulePath(mainRuntimeModulePath)"));
@@ -217,9 +232,17 @@ class CliDistributionBuildContractTest {
     assertTrue(
         managedSqliteProvisioning.contains(
             "systemProperty(\"fingrind.source-checkout.build-root\", sourceCheckoutBuildRoot.toString())"));
+    assertTrue(managedSqliteConsumerPlugin.contains("ManagedSqliteProvisioningRegistry.require"));
+    assertTrue(
+        managedSqliteConsumerPlugin.contains("ManagedSqliteProvisioningLogic.configureConsumers"));
+    assertTrue(
+        rootConventionsPlugin.contains(
+            "ManagedSqliteProvisioningRegistry.publish(this, managedSqlite)"));
+    assertFalse(rootConventionsPlugin.contains("requiresManagedSqliteRuntime()"));
   }
 
   private static void assertSqliteBuildScriptOwnsWhiteBoxModulePatch(String sqliteBuildScript) {
+    assertTrue(sqliteBuildScript.contains("id(\"dev.erst.fingrind.managed-sqlite-consumer\")"));
     assertTrue(sqliteBuildScript.contains("tasks.named<ProcessResources>(\"processResources\")"));
     assertTrue(
         sqliteBuildScript.contains(
@@ -326,10 +349,10 @@ class CliDistributionBuildContractTest {
         Files.readString(
             repositoryRoot.resolve(
                 "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/PruneBundleOutputsTask.kt"));
-    String reportTask =
+    String manifestTask =
         Files.readString(
             repositoryRoot.resolve(
-                "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ReportBundleArchiveOutputsTask.kt"));
+                "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/WriteBundleArchiveManifestTask.kt"));
     String bundleArchiveTasks =
         Files.readString(
             repositoryRoot.resolve(
@@ -364,9 +387,10 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("dependsOn(cleanBundleOutputs)"));
     assertTrue(
         bundleArchiveTasks.contains(
-            "tasks.register<ReportBundleArchiveOutputsTask>(\"bundleCliArchive\")"));
-    assertTrue(reportTask.contains("FINGRIND_BUNDLE_ARCHIVE="));
-    assertTrue(reportTask.contains("FINGRIND_BUNDLE_CHECKSUM="));
+            "tasks.register<WriteBundleArchiveManifestTask>(\"bundleCliArchive\")"));
+    assertTrue(bundleArchiveTasks.contains("bundleArchiveManifestFile"));
+    assertTrue(manifestTask.contains("archivePath"));
+    assertTrue(manifestTask.contains("checksumPath"));
     assertFalse(distributionPlugin.contains("cleanBundleRoot"));
   }
 
@@ -447,12 +471,12 @@ class CliDistributionBuildContractTest {
   }
 
   @Test
-  void rootProjectSpotless_noLongerExcludesTrackedCodexMarkdown() throws IOException {
+  void rootFormattingConventions_includeTrackedMarkdownAndAvoidCodexExclusion() throws IOException {
     String buildLogic =
         Files.readString(
             repositoryRoot()
                 .resolve(
-                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindRootConventionsPlugin.kt"));
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindRootFormattingConventions.kt"));
 
     assertTrue(buildLogic.contains("\"**/*.md\""));
     assertFalse(buildLogic.contains("\"**/.codex/**\""));

@@ -6,12 +6,21 @@ from pathlib import Path
 
 from .verification import (
     verify_build_logic_kotlin,
+    verify_gradle_kts,
+    verify_markdown_docs,
     verify_python_support,
     verify_shell_release,
     verify_sqlite_sql,
 )
 
-SUPPORTED_SURFACES = ("build-logic-kotlin", "shell-release", "python-support", "sqlite-sql")
+SUPPORTED_SURFACES = (
+    "build-logic-kotlin",
+    "gradle-kts",
+    "markdown-docs",
+    "shell-release",
+    "python-support",
+    "sqlite-sql",
+)
 
 
 def main(argv: list[str]) -> int:
@@ -37,6 +46,10 @@ def main(argv: list[str]) -> int:
     for surface in selected_surfaces:
         if surface == "build-logic-kotlin":
             violations.extend(verify_build_logic_kotlin(repo_root))
+        elif surface == "gradle-kts":
+            violations.extend(verify_gradle_kts(repo_root))
+        elif surface == "markdown-docs":
+            violations.extend(verify_markdown_docs(repo_root))
         elif surface == "shell-release":
             violations.extend(verify_shell_release(repo_root))
         elif surface == "python-support":

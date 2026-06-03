@@ -1,8 +1,8 @@
 {
   "entryKind" : "CASH_REVENUE",
   "effectiveDate" : "2026-01-15",
-  "cashAccountCode" : "1000",
-  "revenueAccountCode" : "2000",
+  "cashAccountCode" : "cash",
+  "revenueAccountCode" : "service-revenue",
   "amount" : {
     "currencyCode" : "EUR",
     "minorUnits" : "1000"

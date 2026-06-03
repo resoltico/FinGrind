@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
@@ -38,8 +39,9 @@ final class SqliteAdministrationCapabilitySession extends SqliteDelegatingSessio
   }
 
   @Override
-  public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
-    return store.openBook(initializedAt, bookIdentity);
+  public BookOpeningOutcome openBook(
+      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
+    return store.openBook(initializedAt, bookIdentity, seededAccounts);
   }
 
   @Override

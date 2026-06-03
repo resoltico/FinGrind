@@ -86,10 +86,10 @@ class CliFuzzFixturesTest {
   void bookkeeping_helpers_follow_typed_and_administrative_entry_currency_shapes() {
     var typedCommand =
         CliFuzzFixtures.readPostEntryCommand(CliFuzzHarnessTestSupport.validJpyRequestBytes());
-    var correctionCommand =
+    var openingPositionCommand =
         CliFuzzFixtures.readPostEntryCommand(
-            CliFuzzHarnessTestSupport.correctionAdjustmentRequestJson(
-                    new CliFuzzHarnessTestSupport.CorrectionAdjustmentRequestInput(
+            CliFuzzHarnessTestSupport.openAccountingPositionRequestJson(
+                    new CliFuzzHarnessTestSupport.OpenAccountingPositionRequestInput(
                         "2026-04-08",
                         """
                         [
@@ -113,7 +113,7 @@ class CliFuzzFixturesTest {
                         """,
                         new CliFuzzHarnessTestSupport.RequestContext(
                             "document-idem-manual-1",
-                            "credit-note",
+                            "opening-balance-sheet",
                             "2026-04-08",
                             "actor-manual-1",
                             "PERSON",
@@ -146,21 +146,20 @@ class CliFuzzFixturesTest {
                 new AccountCode("3100"),
                 new AccountCode("1100"),
                 new MonetaryAmount("USD", "55")));
-    PostEntryCommand openingBalanceCommand =
+    PostEntryCommand structuredOpeningPositionCommand =
         withEntry(
             typedCommand,
-            new BookkeepingEntry.OpeningBalanceAdjustment(
-                new dev.erst.fingrind.core.JournalEntry(
-                    LocalDate.parse("2026-04-12"),
-                    List.of(
-                        new dev.erst.fingrind.core.JournalLine(
-                            new AccountCode("1000"),
-                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                            dev.erst.fingrind.core.Money.parse("SEK", "42.00")),
-                        new dev.erst.fingrind.core.JournalLine(
-                            new AccountCode("3000"),
-                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                            dev.erst.fingrind.core.Money.parse("SEK", "42.00"))))));
+            new BookkeepingEntry.OpenAccountingPosition(
+                LocalDate.parse("2026-04-12"),
+                List.of(
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new AccountCode("1000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                        new MonetaryAmount("SEK", "4200")),
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new AccountCode("3000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                        new MonetaryAmount("SEK", "4200")))));
     PostEntryCommand reversalCommand =
         withEntry(
             typedCommand,
@@ -185,7 +184,7 @@ class CliFuzzFixturesTest {
     assertEquals(
         "JPY",
         CliFuzzFixtures.bookkeepingCommand(typedCommand).journalEntry().currencyUnit().code());
-    assertEquals("GBP", CliFuzzFixtures.journalEntry(correctionCommand).currencyUnit().code());
+    assertEquals("GBP", CliFuzzFixtures.journalEntry(openingPositionCommand).currencyUnit().code());
     assertEquals(
         "CHF",
         CliFuzzFixtures.bookkeepingCommand(cashExpenseCommand)
@@ -206,15 +205,17 @@ class CliFuzzFixturesTest {
             .code());
     assertEquals(
         "SEK",
-        CliFuzzFixtures.bookkeepingCommand(openingBalanceCommand)
+        CliFuzzFixtures.bookkeepingCommand(structuredOpeningPositionCommand)
             .journalEntry()
             .currencyUnit()
             .code());
     assertEquals(
         "NOK",
         CliFuzzFixtures.bookkeepingCommand(reversalCommand).journalEntry().currencyUnit().code());
-    assertEquals(PostingKind.STANDARD, CliFuzzFixtures.postingKind(correctionCommand));
-    assertEquals(PostingKind.OPENING_BALANCE, CliFuzzFixtures.postingKind(openingBalanceCommand));
+    assertEquals(PostingKind.OPENING_BALANCE, CliFuzzFixtures.postingKind(openingPositionCommand));
+    assertEquals(
+        PostingKind.OPENING_BALANCE, CliFuzzFixtures.postingKind(structuredOpeningPositionCommand));
+    assertEquals(PostingKind.STANDARD, CliFuzzFixtures.postingKind(reversalCommand));
   }
 
   @Test
@@ -235,7 +236,7 @@ class CliFuzzFixturesTest {
       assertEquals(
           CliFuzzSyntheticAccountFixtures.firstAccountCode(command),
           declaredAccounts.getFirst().accountCode());
-      assertEquals(2, CliFuzzAccountFixtures.listAccounts(bookSession).size());
+      assertTrue(CliFuzzAccountFixtures.listAccounts(bookSession).containsAll(declaredAccounts));
 
       DeclaredAccount firstAccount = declaredAccounts.getFirst();
       InMemoryBookFixtureMutations.deactivateAccount(bookSession, firstAccount.accountCode());
@@ -255,7 +256,7 @@ class CliFuzzFixturesTest {
             .noneMatch(
                 declareAccountCommand ->
                     declareAccountCommand.accountRole() != AccountRole.ORDINARY
-                        && declareAccountCommand.accountRole() != AccountRole.CONTRA));
+                        && declareAccountCommand.accountRole() != AccountRole.POLARITY_INVERTED));
   }
 
   @Test
@@ -346,25 +347,24 @@ class CliFuzzFixturesTest {
   void administrative_entry_account_declarations_preserve_distinct_line_order() {
     PostEntryCommand typedCommand =
         CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
-    PostEntryCommand openingBalanceCommand =
+    PostEntryCommand structuredOpeningPositionCommand =
         withEntry(
             typedCommand,
-            new BookkeepingEntry.OpeningBalanceAdjustment(
-                new dev.erst.fingrind.core.JournalEntry(
-                    LocalDate.parse("2026-04-12"),
-                    List.of(
-                        new dev.erst.fingrind.core.JournalLine(
-                            new AccountCode("1000"),
-                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                            dev.erst.fingrind.core.Money.parse("SEK", "42.00")),
-                        new dev.erst.fingrind.core.JournalLine(
-                            new AccountCode("3000"),
-                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                            dev.erst.fingrind.core.Money.parse("SEK", "42.00"))))));
-    PostEntryCommand correctionCommand =
+            new BookkeepingEntry.OpenAccountingPosition(
+                LocalDate.parse("2026-04-12"),
+                List.of(
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new AccountCode("1000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                        new MonetaryAmount("SEK", "4200")),
+                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new AccountCode("3000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                        new MonetaryAmount("SEK", "4200")))));
+    PostEntryCommand openingPositionCommand =
         CliFuzzFixtures.readPostEntryCommand(
-            CliFuzzHarnessTestSupport.correctionAdjustmentRequestJson(
-                    new CliFuzzHarnessTestSupport.CorrectionAdjustmentRequestInput(
+            CliFuzzHarnessTestSupport.openAccountingPositionRequestJson(
+                    new CliFuzzHarnessTestSupport.OpenAccountingPositionRequestInput(
                         "2026-04-08",
                         """
                         [
@@ -396,7 +396,7 @@ class CliFuzzFixturesTest {
                         """,
                         new CliFuzzHarnessTestSupport.RequestContext(
                             "document-idem-manual-2",
-                            "credit-note",
+                            "opening-balance-sheet",
                             "2026-04-08",
                             "actor-manual-2",
                             "PERSON",
@@ -428,11 +428,12 @@ class CliFuzzFixturesTest {
     assertEquals(
         List.of("1000", "3000"),
         accountCodes(
-            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(openingBalanceCommand)));
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(
+                structuredOpeningPositionCommand)));
     assertEquals(
         List.of("5000", "6000"),
         accountCodes(
-            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(correctionCommand)));
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(openingPositionCommand)));
     assertEquals(
         List.of("1000", "2000"),
         accountCodes(
@@ -440,29 +441,57 @@ class CliFuzzFixturesTest {
   }
 
   @Test
-  void administrative_entry_account_declarations_cover_numeric_prefixes_and_hash_fallback() {
-    PostEntryCommand command =
-        correctionAdjustmentCommand(
-            "2000",
-            "3000",
-            "4000",
-            "5000",
-            zeroLeadingFallbackCode(),
-            hashedFallbackCodeForBucket(0),
-            hashedFallbackCodeForBucket(1),
-            hashedFallbackCodeForBucket(2),
-            hashedFallbackCodeForBucket(3),
-            hashedFallbackCodeForBucket(4));
+  void administrative_entry_account_declarations_follow_entry_semantics() {
+    String[] accountCodes = {
+      "2000",
+      "3000",
+      "4000",
+      "5000",
+      zeroLeadingFallbackCode(),
+      hashedFallbackCodeForBucket(0),
+      hashedFallbackCodeForBucket(1),
+      hashedFallbackCodeForBucket(2),
+      hashedFallbackCodeForBucket(3),
+      hashedFallbackCodeForBucket(4)
+    };
+    PostEntryCommand openingPositionCommand =
+        openAccountingPositionCommand(
+            accountCodes[0],
+            accountCodes[1],
+            accountCodes[2],
+            accountCodes[3],
+            accountCodes[4],
+            accountCodes[5],
+            accountCodes[6],
+            accountCodes[7],
+            accountCodes[8],
+            accountCodes[9]);
 
-    Map<String, AccountType> accountTypes =
-        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(command).stream()
+    Map<String, AccountType> openingPositionAccountTypes =
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(openingPositionCommand)
+            .stream()
             .collect(
                 java.util.stream.Collectors.toMap(
                     declareAccountCommand -> declareAccountCommand.accountCode().value(),
                     DeclareAccountCommand::accountType));
+    int splitIndex = accountCodes.length / 2;
+    for (int index = 0; index < accountCodes.length; index++) {
+      assertEquals(
+          index < splitIndex ? AccountType.ASSET : AccountType.LIABILITY,
+          openingPositionAccountTypes.get(accountCodes[index]));
+    }
 
-    for (String accountCode : accountTypes.keySet()) {
-      assertEquals(expectedSyntheticAccountType(accountCode), accountTypes.get(accountCode));
+    Map<String, AccountType> reversalAccountTypes =
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(
+                reversalAdjustmentCommand(accountCodes))
+            .stream()
+            .collect(
+                java.util.stream.Collectors.toMap(
+                    declareAccountCommand -> declareAccountCommand.accountCode().value(),
+                    DeclareAccountCommand::accountType));
+    for (String accountCode : reversalAccountTypes.keySet()) {
+      assertEquals(
+          expectedSyntheticAccountType(accountCode), reversalAccountTypes.get(accountCode));
     }
   }
 
@@ -496,7 +525,10 @@ class CliFuzzFixturesTest {
             () -> new dev.erst.fingrind.executor.spi.BookLifecycleInspection.Missing(7),
             new AbstractBookAdministrationStoreStub() {
               @Override
-              public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
+              public BookOpeningOutcome openBook(
+                  Instant initializedAt,
+                  BookIdentity bookIdentity,
+                  List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts) {
                 return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1), bookIdentity);
               }
             },
@@ -615,7 +647,10 @@ class CliFuzzFixturesTest {
   private abstract static class AbstractBookAdministrationStoreStub
       implements BookAdministrationStore, dev.erst.fingrind.executor.spi.AccountCatalogStore {
     @Override
-    public BookOpeningOutcome openBook(Instant initializedAt, BookIdentity bookIdentity) {
+    public BookOpeningOutcome openBook(
+        Instant initializedAt,
+        BookIdentity bookIdentity,
+        List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts) {
       throw new UnsupportedOperationException("not used");
     }
 
@@ -777,24 +812,52 @@ class CliFuzzFixturesTest {
     return commands.stream().map(command -> command.accountCode().value()).toList();
   }
 
-  private static PostEntryCommand correctionAdjustmentCommand(String... accountCodes) {
+  private static PostEntryCommand openAccountingPositionCommand(String... accountCodes) {
+    if (accountCodes.length == 0 || accountCodes.length % 2 != 0) {
+      throw new IllegalArgumentException(
+          "Open-accounting-position fixture requires an even positive number of account codes.");
+    }
+    List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance> balances =
+        new ArrayList<>();
+    int splitIndex = accountCodes.length / 2;
+    for (int index = 0; index < accountCodes.length; index++) {
+      balances.add(
+          new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+              new AccountCode(accountCodes[index]),
+              index < splitIndex
+                  ? dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT
+                  : dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+              new MonetaryAmount("EUR", "100")));
+    }
+    return withEntry(
+        CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8)),
+        new BookkeepingEntry.OpenAccountingPosition(LocalDate.parse("2026-04-14"), balances));
+  }
+
+  private static PostEntryCommand reversalAdjustmentCommand(String... accountCodes) {
+    if (accountCodes.length == 0 || accountCodes.length % 2 != 0) {
+      throw new IllegalArgumentException(
+          "Reversal-adjustment fixture requires an even positive number of account codes.");
+    }
     List<dev.erst.fingrind.core.JournalLine> lines = new ArrayList<>();
-    for (String accountCode : accountCodes) {
+    int splitIndex = accountCodes.length / 2;
+    for (int index = 0; index < accountCodes.length; index++) {
       lines.add(
           new dev.erst.fingrind.core.JournalLine(
-              new AccountCode(accountCode),
-              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-              dev.erst.fingrind.core.Money.parse("EUR", "1.00")));
-      lines.add(
-          new dev.erst.fingrind.core.JournalLine(
-              new AccountCode(accountCode),
-              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+              new AccountCode(accountCodes[index]),
+              index < splitIndex
+                  ? dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT
+                  : dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
               dev.erst.fingrind.core.Money.parse("EUR", "1.00")));
     }
     return withEntry(
         CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8)),
-        new BookkeepingEntry.CorrectionAdjustment(
-            new dev.erst.fingrind.core.JournalEntry(LocalDate.parse("2026-04-14"), lines)));
+        new BookkeepingEntry.ReversalAdjustment(
+            new dev.erst.fingrind.core.JournalEntry(LocalDate.parse("2026-04-14"), lines),
+            new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                new dev.erst.fingrind.core.ReversalReference(
+                    new dev.erst.fingrind.core.PostingId("posting-admin-test")),
+                new dev.erst.fingrind.core.ReversalReason("administrative fixture"))));
   }
 
   private static String hashedFallbackCodeForBucket(int bucket) {
@@ -888,7 +951,6 @@ class CliFuzzFixturesTest {
     return """
         {
           "entityName": "Acme Studio",
-          "businessActivityTags": ["translation-services"],
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01"
         }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for converging a GitHub release onto the expected public publication state.
+# Shared helpers for converging a GitHub release draft onto the expected staged asset state.
 
 publish_release_die() {
     printf 'error: %s\n' "$1" >&2
@@ -112,13 +112,6 @@ PY
         --input - >/dev/null
 }
 
-publish_release_ensure_mutable_release() {
-    if publish_release_exists; then
-        return
-    fi
-    publish_release_create_draft_release
-}
-
 publish_release_delete_asset_if_present() {
     local asset_name=$1
     local observed_digest
@@ -170,14 +163,29 @@ publish_release_converge_asset() {
         "release ${PUBLISH_RELEASE_TAG_NAME} asset ${asset_name} did not converge to digest ${expected_digest}"
 }
 
-publish_release_prepare_for_asset_mutation() {
-    local release_is_draft
+publish_release_assets_match_expected() {
     local asset_path
     local asset_name
     local expected_digest
     local observed_digest
 
-    publish_release_ensure_mutable_release
+    for asset_path in "${PUBLISH_RELEASE_ASSET_PATHS[@]}"; do
+        asset_name="$(basename -- "${asset_path}")"
+        expected_digest="sha256:$(publish_release_compute_sha256 "${asset_path}")"
+        observed_digest="$(publish_release_asset_digest "${asset_name}")"
+        [[ "${observed_digest}" == "${expected_digest}" ]] || return 1
+    done
+    return 0
+}
+
+publish_release_prepare_draft_release() {
+    local release_is_draft
+
+    if ! publish_release_exists; then
+        publish_release_create_draft_release
+        return
+    fi
+
     release_is_draft="$(publish_release_api_field '.draft')"
     [[ "${release_is_draft}" == "true" || "${release_is_draft}" == "false" ]] || publish_release_die \
         "release draft state must resolve to true or false"
@@ -185,15 +193,43 @@ publish_release_prepare_for_asset_mutation() {
         return
     fi
 
+    if publish_release_assets_match_expected; then
+        PUBLISH_RELEASE_PUBLIC_NOOP=true
+        return
+    fi
+
+    publish_release_die \
+        "release ${PUBLISH_RELEASE_TAG_NAME} is already public and immutable; publish a new version tag instead of replacing public assets"
+}
+
+publish_release_stage_draft_assets() {
+    local asset_path
+
     for asset_path in "${PUBLISH_RELEASE_ASSET_PATHS[@]}"; do
-        asset_name="$(basename -- "${asset_path}")"
-        expected_digest="sha256:$(publish_release_compute_sha256 "${asset_path}")"
-        observed_digest="$(publish_release_asset_digest "${asset_name}")"
-        if [[ "${observed_digest}" != "${expected_digest}" ]]; then
-            publish_release_patch_state true false
-            return
-        fi
+        publish_release_converge_asset "${asset_path}"
     done
+    publish_release_patch_state true false
+}
+
+publish_release_finalize_public_release() {
+    local mark_latest=$1
+    local release_is_draft
+
+    [[ "${mark_latest}" == "true" || "${mark_latest}" == "false" ]] || publish_release_die \
+        "final release latest policy must be true or false"
+    publish_release_exists || publish_release_die \
+        "cannot finalize missing release ${PUBLISH_RELEASE_TAG_NAME}"
+    release_is_draft="$(publish_release_api_field '.draft')"
+    [[ "${release_is_draft}" == "true" || "${release_is_draft}" == "false" ]] || publish_release_die \
+        "release draft state must resolve to true or false"
+    if [[ "${release_is_draft}" == "false" ]]; then
+        printf 'GitHub release already public for %s (latest=%s)\n' \
+            "${PUBLISH_RELEASE_TAG_NAME}" "${mark_latest}"
+        return
+    fi
+    publish_release_patch_state false "${mark_latest}"
+    printf 'GitHub release finalized for %s (latest=%s)\n' \
+        "${PUBLISH_RELEASE_TAG_NAME}" "${mark_latest}"
 }
 
 publish_release_main() {
@@ -205,23 +241,21 @@ publish_release_main() {
 
     readonly PUBLISH_RELEASE_TAG_NAME="${tag_name}"
     readonly PUBLISH_RELEASE_ASSET_PATHS=("$@")
-    readonly PUBLISH_RELEASE_MARK_LATEST="${FINGRIND_RELEASE_MARK_LATEST:-false}"
+    PUBLISH_RELEASE_PUBLIC_NOOP=false
 
     [[ -n "${GH_TOKEN:-}" ]] || publish_release_die "GH_TOKEN is required"
     [[ -n "${PUBLISH_RELEASE_TAG_NAME}" ]] || publish_release_die "release tag is required"
-    [[ "${PUBLISH_RELEASE_MARK_LATEST}" == "true" || "${PUBLISH_RELEASE_MARK_LATEST}" == "false" ]] || \
-        publish_release_die "FINGRIND_RELEASE_MARK_LATEST must be true or false"
 
     readonly PUBLISH_RELEASE_REPO_FULL_NAME="$(publish_release_resolve_repository_slug)"
     [[ -n "${PUBLISH_RELEASE_REPO_FULL_NAME}" ]] || publish_release_die \
         "failed to resolve GitHub repository slug"
 
-    publish_release_prepare_for_asset_mutation
-    local asset_path
-    for asset_path in "${PUBLISH_RELEASE_ASSET_PATHS[@]}"; do
-        publish_release_converge_asset "${asset_path}"
-    done
-    publish_release_patch_state false "${PUBLISH_RELEASE_MARK_LATEST}"
-    printf 'GitHub release publish converged for %s (latest=%s)\n' \
-        "${PUBLISH_RELEASE_TAG_NAME}" "${PUBLISH_RELEASE_MARK_LATEST}"
+    publish_release_prepare_draft_release
+    if [[ "${PUBLISH_RELEASE_PUBLIC_NOOP}" == "true" ]]; then
+        printf 'GitHub release already public and asset-complete for %s\n' \
+            "${PUBLISH_RELEASE_TAG_NAME}"
+        return
+    fi
+    publish_release_stage_draft_assets
+    printf 'GitHub release draft staged for %s\n' "${PUBLISH_RELEASE_TAG_NAME}"
 }

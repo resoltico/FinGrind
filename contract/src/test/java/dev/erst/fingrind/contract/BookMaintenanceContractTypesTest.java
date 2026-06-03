@@ -276,7 +276,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         "<redacted>/books/acme.sqlite", new PublicPathHint("<redacted>/books/acme.sqlite").value());
     assertEquals("<redacted>", new PublicPathHint("<redacted>").value());
     assertEquals(
-        "<redacted>/books/acme.sqlite",
+        "<redacted>/contract/books/acme.sqlite",
         PublicPathHint.fromPath(Path.of("books/acme.sqlite")).value());
     assertEquals("<redacted>", PublicPathHint.fromPath(Path.of("/")).value());
     assertIterableEquals(
@@ -294,7 +294,8 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             .toList());
     assertIterableEquals(List.of(), PublicPathHint.disambiguate(List.of()));
     assertIterableEquals(
-        List.of("<redacted>/books/acme.sqlite", "<redacted>/books/acme.sqlite"),
+        List.of(
+            "<redacted>/field-audit/books/acme.sqlite", "<redacted>/field-audit/books/acme.sqlite"),
         PublicPathHint.disambiguate(
                 List.of(
                     Path.of("/tmp/field-audit/books/acme.sqlite"),

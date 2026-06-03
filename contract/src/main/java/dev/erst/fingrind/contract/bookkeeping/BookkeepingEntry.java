@@ -14,8 +14,7 @@ public sealed interface BookkeepingEntry
         BookkeepingEntry.CashExpense,
         BookkeepingEntry.EquityContribution,
         BookkeepingEntry.EquityWithdrawal,
-        BookkeepingEntry.OpeningBalanceAdjustment,
-        BookkeepingEntry.CorrectionAdjustment,
+        BookkeepingEntry.OpenAccountingPosition,
         BookkeepingEntry.ReversalAdjustment {
   /** Returns the stable caller-authored entry kind. */
   BookkeepingEntryKind entryKind();
@@ -108,49 +107,44 @@ public sealed interface BookkeepingEntry
   }
 
   /**
-   * Explicit administrative opening-balance entry reserved for seeding one book before operating
-   * activity begins.
+   * Structured opening accounting position reserved for seeding one book before operating activity
+   * begins.
    */
-  record OpeningBalanceAdjustment(JournalEntry journalEntry) implements BookkeepingEntry {
-    public OpeningBalanceAdjustment {
-      Objects.requireNonNull(journalEntry, "journalEntry");
+  record OpenAccountingPosition(LocalDate effectiveDate, List<OpeningAccountBalance> balances)
+      implements BookkeepingEntry {
+    public OpenAccountingPosition {
+      Objects.requireNonNull(effectiveDate, "effectiveDate");
+      balances = List.copyOf(Objects.requireNonNull(balances, "balances"));
+      if (balances.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Open accounting position requires at least one opening balance.");
+      }
     }
 
     @Override
     public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT;
+      return BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION;
     }
 
-    @Override
-    public LocalDate effectiveDate() {
-      return journalEntry.effectiveDate();
-    }
-
-    /** Returns the caller-authored lines for this opening-balance entry. */
+    /** Returns the caller-authored journal lines implied by this opening accounting position. */
     public List<JournalLine> lines() {
-      return journalEntry.lines();
-    }
-  }
-
-  /** Explicit administrative correction entry for non-opening, non-reversal adjustments. */
-  record CorrectionAdjustment(JournalEntry journalEntry) implements BookkeepingEntry {
-    public CorrectionAdjustment {
-      Objects.requireNonNull(journalEntry, "journalEntry");
+      return balances.stream()
+          .map(
+              balance ->
+                  new JournalLine(
+                      balance.accountCode(), balance.side(), balance.amount().toMoney()))
+          .toList();
     }
 
-    @Override
-    public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.CORRECTION_ADJUSTMENT;
-    }
-
-    @Override
-    public LocalDate effectiveDate() {
-      return journalEntry.effectiveDate();
-    }
-
-    /** Returns the caller-authored lines for this correction entry. */
-    public List<JournalLine> lines() {
-      return journalEntry.lines();
+    /** One typed opening balance inside the initial accounting position. */
+    public record OpeningAccountBalance(
+        AccountCode accountCode, JournalLine.EntrySide side, MonetaryAmount amount) {
+      public OpeningAccountBalance {
+        Objects.requireNonNull(accountCode, "accountCode");
+        Objects.requireNonNull(side, "side");
+        Objects.requireNonNull(amount, "amount");
+        requirePositive(amount, "amount");
+      }
     }
   }
 

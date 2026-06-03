@@ -17,14 +17,19 @@ final class MachineContractPostEntryVariantSchemas {
             cashExpenseSchema(),
             equityContributionSchema(),
             equityWithdrawalSchema(),
-            openingBalanceAdjustmentSchema(),
-            correctionAdjustmentSchema(),
+            openAccountingPositionSchema(),
             reversalAdjustmentSchema()));
   }
 
   static Map<String, Object> lineSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "One balanced journal line.", MachineContractPostEntryFieldSpecs.lineFields());
+  }
+
+  static Map<String, Object> openingBalanceSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "One opening balance inside the initial accounting position.",
+        MachineContractPostEntryFieldSpecs.openingBalanceFields());
   }
 
   static Map<String, Object> provenanceSchema() {
@@ -125,20 +130,31 @@ final class MachineContractPostEntryVariantSchemas {
                 "Declared cash account credited by this withdrawal.")));
   }
 
+  static Map<String, Object> openAccountingPositionSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Explicit administrative opening-position entry used to seed one book before operating activity begins.",
+        List.of(
+            requiredEntryKindField(
+                BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+                "This request records one opening-position administrative entry."),
+            MachineContractPostEntryFieldSpecs.requiredEffectiveDateField(),
+            MachineContractFieldSpec.required(
+                ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
+                "Balanced non-empty array of opening balances for one opening-position administrative entry.",
+                MachineContractSchemaSupport.arraySchema(
+                    "Balanced non-empty array of opening balances for one opening-position administrative entry.",
+                    openingBalanceSchema(),
+                    2)),
+            MachineContractPostEntryFieldSpecs.requiredEvidenceField(),
+            MachineContractPostEntryFieldSpecs.requiredProvenanceField()));
+  }
+
   static Map<String, Object> openingBalanceAdjustmentSchema() {
-    return administrativeAdjustmentSchema(
-        BookkeepingEntryKind.OPENING_BALANCE_ADJUSTMENT,
-        "Explicit administrative opening-balance entry used to seed one book before operating activity begins.",
-        "This request records one opening-balance administrative entry.",
-        "Balanced non-empty array of journal lines for one opening-balance administrative entry.");
+    return openAccountingPositionSchema();
   }
 
   static Map<String, Object> correctionAdjustmentSchema() {
-    return administrativeAdjustmentSchema(
-        BookkeepingEntryKind.CORRECTION_ADJUSTMENT,
-        "Explicit administrative correction entry for non-opening, non-reversal adjustments outside the typed business-event family.",
-        "This request records one correction administrative entry.",
-        "Balanced non-empty array of journal lines for one correction administrative entry.");
+    return reversalAdjustmentSchema();
   }
 
   static Map<String, Object> reversalAdjustmentSchema() {
@@ -178,24 +194,6 @@ final class MachineContractPostEntryVariantSchemas {
             debitOrSourceAccountField,
             creditOrTargetAccountField,
             MachineContractPostEntryFieldSpecs.requiredAmountField(),
-            MachineContractPostEntryFieldSpecs.requiredEvidenceField(),
-            MachineContractPostEntryFieldSpecs.requiredProvenanceField()));
-  }
-
-  private static Map<String, Object> administrativeAdjustmentSchema(
-      BookkeepingEntryKind kind,
-      String description,
-      String entryKindDescription,
-      String linesDescription) {
-    return MachineContractSchemaSupport.objectSchema(
-        description,
-        List.of(
-            requiredEntryKindField(kind, entryKindDescription),
-            MachineContractPostEntryFieldSpecs.requiredEffectiveDateField(),
-            MachineContractFieldSpec.required(
-                ProtocolPostEntryFields.TopLevel.LINES,
-                linesDescription,
-                MachineContractSchemaSupport.arraySchema(linesDescription, lineSchema(), 2)),
             MachineContractPostEntryFieldSpecs.requiredEvidenceField(),
             MachineContractPostEntryFieldSpecs.requiredProvenanceField()));
   }

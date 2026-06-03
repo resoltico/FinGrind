@@ -141,8 +141,7 @@ final class PostEntrySemanticsPolicy {
             EQUITY_WITHDRAWAL_SOURCE_DOCUMENT_TYPES,
             command.evidence().sourceDocuments());
       }
-      case BookkeepingEntry.OpeningBalanceAdjustment _ -> {}
-      case BookkeepingEntry.CorrectionAdjustment _ -> {}
+      case BookkeepingEntry.OpenAccountingPosition _ -> {}
       case BookkeepingEntry.ReversalAdjustment _ -> {}
     }
     if (violations.isEmpty()) {
@@ -161,8 +160,7 @@ final class PostEntrySemanticsPolicy {
           Set.of(event.cashAccountCode(), event.equityAccountCode());
       case BookkeepingEntry.EquityWithdrawal event ->
           Set.of(event.equityAccountCode(), event.cashAccountCode());
-      case BookkeepingEntry.OpeningBalanceAdjustment _ -> Set.of();
-      case BookkeepingEntry.CorrectionAdjustment _ -> Set.of();
+      case BookkeepingEntry.OpenAccountingPosition _ -> Set.of();
       case BookkeepingEntry.ReversalAdjustment _ -> Set.of();
     };
   }

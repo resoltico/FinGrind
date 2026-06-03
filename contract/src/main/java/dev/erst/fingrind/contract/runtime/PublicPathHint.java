@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /** Redacted public path hint that preserves only the trailing path context. */
 public record PublicPathHint(String value) {
-  private static final int DEFAULT_VISIBLE_SEGMENT_COUNT = 2;
+  private static final int DEFAULT_VISIBLE_SEGMENT_COUNT = 3;
 
   /** Validates one redacted public path hint. */
   public PublicPathHint {

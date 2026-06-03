@@ -73,7 +73,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
                 line("1000", JournalLine.EntrySide.DEBIT, "EUR", "30.00"),
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "30.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -152,7 +152,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
     CommittedPosting postingFact =
         postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
-      initializeBookWithDefaultAccounts(postingFactStore);
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, postingFact);
       assertEquals(
           Optional.empty(), postingFactStore.findPosting(new PostingId("posting-missing")));

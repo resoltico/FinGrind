@@ -35,7 +35,16 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
         () -> SqliteRoundTripWorkflowLifecycleAssertions.requireStoredPosting(Optional.empty()));
     assertThrows(
         IllegalStateException.class,
-        () -> SqliteRoundTripWorkflowLifecycleAssertions.verifyDeclaredAccountListing(1, 2));
+        () ->
+            SqliteRoundTripWorkflowLifecycleAssertions.verifyDeclaredAccountListing(
+                List.of(
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("1000"), true)),
+                List.of(
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("1000"), true),
+                    SqliteRoundTripWorkflowTestSupport.declaredAccount(
+                        new AccountCode("2000"), true))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -86,7 +95,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                                 Money.parse("EUR", "11.00")))),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                     baseFact.evidence(),
                     baseFact.provenance()),
                 committed,
@@ -102,7 +111,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                         new ReversalReference(new PostingId("posting-0")),
                         new ReversalReason("unexpected reversal")),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                     baseFact.evidence(),
                     baseFact.provenance()),
                 committed,
@@ -116,7 +125,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                     new dev.erst.fingrind.core.AccountingEvidence(
                         java.util.List.of(
                             new dev.erst.fingrind.core.SourceDocumentReference(
@@ -141,7 +150,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                     baseFact.evidence(),
                     new CommittedProvenance(
                         new RequestProvenance(
@@ -164,7 +173,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                     baseFact.journalEntry(),
                     baseFact.postingLineage(),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
                     baseFact.evidence(),
                     new CommittedProvenance(
                         baseFact.provenance().requestProvenance(),

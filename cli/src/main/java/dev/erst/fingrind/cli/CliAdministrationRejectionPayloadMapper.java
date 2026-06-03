@@ -127,7 +127,7 @@ final class CliAdministrationRejectionPayloadMapper {
               + ".";
     }
     if (rejection instanceof BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous) {
-      return "Leave exactly one active equity account with the built-in closing classification for this book, then rerun "
+      return "Leave exactly one active equity account with the built-in closing classification for this book, then retry the declaration or rerun "
           + TRANSFER_PERIOD_RESULT_OPERATION
           + ".";
     }

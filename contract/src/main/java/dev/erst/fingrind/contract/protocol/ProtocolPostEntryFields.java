@@ -17,6 +17,7 @@ public final class ProtocolPostEntryFields {
         TopLevel.EQUITY_ACCOUNT_CODE,
         TopLevel.AMOUNT,
         TopLevel.LINES,
+        TopLevel.OPENING_BALANCES,
         TopLevel.EVIDENCE,
         TopLevel.PROVENANCE,
         TopLevel.REVERSAL);
@@ -25,6 +26,11 @@ public final class ProtocolPostEntryFields {
   /** Returns journal-line request fields in stable wire order. */
   public static List<String> journalLineFields() {
     return List.of(JournalLine.ACCOUNT_CODE, JournalLine.SIDE, JournalLine.AMOUNT);
+  }
+
+  /** Returns opening-balance request fields in stable wire order. */
+  public static List<String> openingBalanceFields() {
+    return List.of(OpeningBalance.ACCOUNT_CODE, OpeningBalance.SIDE, OpeningBalance.AMOUNT);
   }
 
   /** Returns provenance request fields in stable wire order. */
@@ -80,10 +86,10 @@ public final class ProtocolPostEntryFields {
     public static final String EQUITY_ACCOUNT_CODE = "equityAccountCode";
     public static final String AMOUNT = "amount";
     public static final String LINES = "lines";
+    public static final String OPENING_BALANCES = "openingBalances";
     public static final String EVIDENCE = "evidence";
     public static final String PROVENANCE = "provenance";
     public static final String REVERSAL = "reversal";
-    public static final String CORRECTION = "correction";
 
     private TopLevel() {}
   }
@@ -95,6 +101,15 @@ public final class ProtocolPostEntryFields {
     public static final String AMOUNT = "amount";
 
     private JournalLine() {}
+  }
+
+  /** Opening-balance request fields. */
+  public static final class OpeningBalance {
+    public static final String ACCOUNT_CODE = ProtocolSharedRequestFields.ACCOUNT_CODE;
+    public static final String SIDE = "side";
+    public static final String AMOUNT = "amount";
+
+    private OpeningBalance() {}
   }
 
   /** Provenance request fields. */

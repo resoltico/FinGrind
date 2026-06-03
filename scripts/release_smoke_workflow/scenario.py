@@ -8,9 +8,21 @@ ARGUMENT_PATH_MODE_ABSOLUTE = "absolute"
 ARGUMENT_PATH_MODE_WORK_ROOT_RELATIVE = "relative-to-work-root"
 UNICODE_WORKSPACE_SEGMENT = "Rīga büro"
 ENTITY_NAME = "Acme Studio"
-BUSINESS_ACTIVITY_TAGS = ["consulting-services"]
+ACCOUNTING_KERNEL_PROFILE = "internal-management-cash-bookkeeping-kernel"
+ACCOUNTING_BASIS = "CASH_BASIS"
+ACCOUNTING_FRAMEWORK_POSITION = "NON_STATUTORY_INTERNAL_MANAGEMENT"
+ENTITY_FORM = "OWNER_MANAGED_SINGLE_ENTITY"
+BOOK_TEMPLATE_ID = "OWNER_MANAGED_SERVICE_CASH"
 FUNCTIONAL_CURRENCY = "EUR"
 FISCAL_YEAR_START = "01-01"
+STARTER_CASH_ACCOUNT_CODE = "cash"
+STARTER_CASH_ACCOUNT_NAME = "Cash"
+STARTER_REVENUE_ACCOUNT_CODE = "service-revenue"
+STARTER_REVENUE_ACCOUNT_NAME = "Service Revenue"
+ASSET_SUPPLEMENT_ACCOUNT_CODE = "cash-reserve"
+ASSET_SUPPLEMENT_ACCOUNT_NAME = "Cash Reserve"
+EXPENSE_SUPPLEMENT_ACCOUNT_CODE = "misc-expense"
+EXPENSE_SUPPLEMENT_ACCOUNT_NAME = "Misc Expense"
 
 
 def build_release_smoke_scenario(
@@ -27,25 +39,25 @@ def build_release_smoke_scenario(
             normalized_path_mode,
             Path("requests odd") / f"--sale [{normalized_scenario_id}].json",
         ),
-        request_adjustment=smoke_path(
+        request_expense=smoke_path(
             work_root,
             normalized_path_mode,
-            Path("requests odd") / f"adjustment [{normalized_scenario_id}].json",
+            Path("requests odd") / f"expense [{normalized_scenario_id}].json",
         ),
         invalid_request=smoke_path(
             work_root,
             normalized_path_mode,
             Path("requests odd") / f"bad fields [{normalized_scenario_id}].json",
         ),
-        declare_cash=smoke_path(
+        declare_asset_supplement=smoke_path(
             work_root,
             normalized_path_mode,
-            Path("requests odd") / f"declare account cash [{normalized_scenario_id}].json",
+            Path("requests odd") / f"declare account cash reserve [{normalized_scenario_id}].json",
         ),
-        declare_revenue=smoke_path(
+        declare_expense_supplement=smoke_path(
             work_root,
             normalized_path_mode,
-            Path("requests odd") / f"declare account revenue [{normalized_scenario_id}].json",
+            Path("requests odd") / f"declare account misc expense [{normalized_scenario_id}].json",
         ),
         book=smoke_path(
             work_root,
@@ -114,9 +126,21 @@ def build_release_smoke_scenario(
         second_page_command_id=normalized_scenario_id + "-sale",
         actor_prefix=normalized_scenario_id,
         entity_name=ENTITY_NAME,
-        business_activity_tags=BUSINESS_ACTIVITY_TAGS,
+        accounting_kernel_profile=ACCOUNTING_KERNEL_PROFILE,
+        accounting_basis=ACCOUNTING_BASIS,
+        accounting_framework_position=ACCOUNTING_FRAMEWORK_POSITION,
+        entity_form=ENTITY_FORM,
+        book_template_id=BOOK_TEMPLATE_ID,
         functional_currency=FUNCTIONAL_CURRENCY,
         fiscal_year_start=FISCAL_YEAR_START,
+        starter_cash_account_code=STARTER_CASH_ACCOUNT_CODE,
+        starter_cash_account_name=STARTER_CASH_ACCOUNT_NAME,
+        starter_revenue_account_code=STARTER_REVENUE_ACCOUNT_CODE,
+        starter_revenue_account_name=STARTER_REVENUE_ACCOUNT_NAME,
+        asset_supplement_account_code=ASSET_SUPPLEMENT_ACCOUNT_CODE,
+        asset_supplement_account_name=ASSET_SUPPLEMENT_ACCOUNT_NAME,
+        expense_supplement_account_code=EXPENSE_SUPPLEMENT_ACCOUNT_CODE,
+        expense_supplement_account_name=EXPENSE_SUPPLEMENT_ACCOUNT_NAME,
     )
 
 

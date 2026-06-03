@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.core.InteractionLimits;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -9,12 +9,13 @@ public record ListAccountsQuery(int limit, Optional<AccountPageCursor> cursor) {
   /** Validates one paginated account-list request. */
   public ListAccountsQuery {
     Objects.requireNonNull(cursor, "cursor");
-    if (limit < InteractionLimits.PAGE_LIMIT_MIN || limit > InteractionLimits.PAGE_LIMIT_MAX) {
+    if (limit < ProtocolInteractionLimits.PAGE_LIMIT_MIN
+        || limit > ProtocolInteractionLimits.PAGE_LIMIT_MAX) {
       throw new IllegalArgumentException(
           "listAccounts limit must be between "
-              + InteractionLimits.PAGE_LIMIT_MIN
+              + ProtocolInteractionLimits.PAGE_LIMIT_MIN
               + " and "
-              + InteractionLimits.PAGE_LIMIT_MAX
+              + ProtocolInteractionLimits.PAGE_LIMIT_MAX
               + ".");
     }
   }

@@ -5,31 +5,8 @@
     "kind" : "open-book",
     "openBook" : {
       "entityName" : "Acme Studio",
-      "businessActivityTags" : [ "translation-services" ],
       "functionalCurrency" : "EUR",
       "fiscalYearStart" : "01-01"
-    }
-  }, {
-    "stepId" : "declare-cash",
-    "kind" : "declare-account",
-    "declareAccount" : {
-      "accountCode" : "1000",
-      "accountName" : "Cash",
-      "accountType" : "ASSET",
-      "accountRole" : "ORDINARY",
-      "accountNodeKind" : "POSTABLE",
-      "financialPositionLineClassification" : "CURRENT_ASSET"
-    }
-  }, {
-    "stepId" : "declare-revenue",
-    "kind" : "declare-account",
-    "declareAccount" : {
-      "accountCode" : "2000",
-      "accountName" : "Revenue",
-      "accountType" : "REVENUE",
-      "accountRole" : "ORDINARY",
-      "accountNodeKind" : "POSTABLE",
-      "profitAndLossLineClassification" : "OPERATING_REVENUE"
     }
   }, {
     "stepId" : "post-journal",
@@ -37,8 +14,8 @@
     "posting" : {
       "entryKind" : "CASH_REVENUE",
       "effectiveDate" : "2026-01-15",
-      "cashAccountCode" : "1000",
-      "revenueAccountCode" : "2000",
+      "cashAccountCode" : "cash",
+      "revenueAccountCode" : "service-revenue",
       "amount" : {
         "currencyCode" : "EUR",
         "minorUnits" : "1000"
@@ -67,7 +44,7 @@
     "kind" : "assert",
     "assertion" : {
       "kind" : "assert-account-balance",
-      "accountCode" : "1000",
+      "accountCode" : "cash",
       "netAmount" : {
         "currencyCode" : "EUR",
         "minorUnits" : "1000"

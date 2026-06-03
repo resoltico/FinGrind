@@ -1,24 +1,12 @@
 {
-  "entryKind": "CORRECTION_ADJUSTMENT",
+  "entryKind": "CASH_REVENUE",
   "effectiveDate": "2026-06-13",
-  "lines": [
-    {
-      "accountCode": "3120",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "BHD",
-        "minorUnits": "2750"
-      }
-    },
-    {
-      "accountCode": "4120",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "BHD",
-        "minorUnits": "2750"
-      }
-    }
-  ],
+  "cashAccountCode": "3120",
+  "revenueAccountCode": "4120",
+  "amount": {
+    "currencyCode": "BHD",
+    "minorUnits": "2750"
+  },
   "evidence": {
     "sourceDocuments": [
       {

@@ -76,20 +76,11 @@ public final class PostEntryCommandTranslator {
                       JournalLine.EntrySide.CREDIT,
                       event.amount().toMoney())),
               command);
-      case BookkeepingEntry.OpeningBalanceAdjustment openingBalanceAdjustment ->
+      case BookkeepingEntry.OpenAccountingPosition openingPosition ->
           new PostingCommand(
               PostingKind.OPENING_BALANCE,
-              postingOriginKind(openingBalanceAdjustment),
-              openingBalanceAdjustment.journalEntry(),
-              PostingLineageModel.direct(),
-              command.evidence(),
-              command.requestProvenance(),
-              command.sourceChannel());
-      case BookkeepingEntry.CorrectionAdjustment correctionAdjustment ->
-          new PostingCommand(
-              PostingKind.STANDARD,
-              postingOriginKind(correctionAdjustment),
-              correctionAdjustment.journalEntry(),
+              postingOriginKind(openingPosition),
+              new JournalEntry(openingPosition.effectiveDate(), openingPosition.lines()),
               PostingLineageModel.direct(),
               command.evidence(),
               command.requestProvenance(),
@@ -124,9 +115,7 @@ public final class PostEntryCommandTranslator {
       case BookkeepingEntry.CashExpense _ -> PostingOriginKind.CASH_EXPENSE;
       case BookkeepingEntry.EquityContribution _ -> PostingOriginKind.EQUITY_CONTRIBUTION;
       case BookkeepingEntry.EquityWithdrawal _ -> PostingOriginKind.EQUITY_WITHDRAWAL;
-      case BookkeepingEntry.OpeningBalanceAdjustment _ ->
-          PostingOriginKind.OPENING_BALANCE_ADJUSTMENT;
-      case BookkeepingEntry.CorrectionAdjustment _ -> PostingOriginKind.CORRECTION_ADJUSTMENT;
+      case BookkeepingEntry.OpenAccountingPosition _ -> PostingOriginKind.OPEN_ACCOUNTING_POSITION;
       case BookkeepingEntry.ReversalAdjustment _ -> PostingOriginKind.REVERSAL_ADJUSTMENT;
     };
   }

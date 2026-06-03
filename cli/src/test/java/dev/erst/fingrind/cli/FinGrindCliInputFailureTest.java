@@ -9,8 +9,8 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.InteractionLimits;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.io.ByteArrayInputStream;
@@ -154,7 +154,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     Path requestFile =
         writeNamedRequest(
             "oversized-declare-account.json",
-            "{\"padding\":\"" + "a".repeat(InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES) + "\"}");
+            "{\"padding\":\""
+                + "a".repeat(ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES)
+                + "\"}");
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
@@ -204,7 +206,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
     assertEquals(
         "Request file exceeded the supported "
-            + InteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+            + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
             + "-byte UTF-8 limit: "
             + CliPublicPaths.redactedValue(requestFile)
             + ".",
@@ -279,7 +281,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             CliRequestReaderTestSupport.withEvidence(
                 """
             {
-              "entryKind": "CORRECTION_ADJUSTMENT",
+              "entryKind": "REVERSAL_ADJUSTMENT",
               "effectiveDate": "2026-04-07",
               "lines": %s,
               "provenance": {
@@ -531,8 +533,6 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               bookKeyFilePath.toString(),
               "--entity-name",
               "Acme Studio",
-              "--business-activity-tag",
-              "translation-services",
               "--functional-currency",
               "EUR",
               "--fiscal-year-start",

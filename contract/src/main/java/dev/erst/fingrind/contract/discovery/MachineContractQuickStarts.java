@@ -41,33 +41,20 @@ final class MachineContractQuickStarts {
                         ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE),
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --business-activity-tag translation-services --functional-currency EUR --fiscal-year-start 01-01"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --functional-currency EUR --fiscal-year-start 01-01"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
                         paths.bookFile(),
                         paths.bookKeyFile())),
-            WorkflowStepDescriptor.edit(
-                paths.declareCashFile(), MachineContractTemplatesCatalog.declareAccountCashJson()),
             WorkflowStepDescriptor.command(
                 "%s %s --book-file %s --book-key-file %s --request-file %s"
                     .formatted(
                         launcherCommand(surface),
-                        ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT),
+                        ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS),
                         paths.bookFile(),
                         paths.bookKeyFile(),
-                        paths.declareCashFile())),
-            WorkflowStepDescriptor.edit(
-                paths.declareRevenueFile(),
-                MachineContractTemplatesCatalog.declareAccountRevenueJson()),
-            WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --request-file %s"
-                    .formatted(
-                        launcherCommand(surface),
-                        ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT),
-                        paths.bookFile(),
-                        paths.bookKeyFile(),
-                        paths.declareRevenueFile())),
+                        "--limit 10")),
             WorkflowStepDescriptor.command(
                 "%s %s > %s"
                     .formatted(
@@ -130,21 +117,12 @@ final class MachineContractQuickStarts {
           SOURCE_CHECKOUT_POSIX_SHELL,
           DIRECT_JAVA_POSIX_SHELL,
           CONTAINER_DOCKER ->
-          new QuickStartPaths(
-              "./secrets/acme.book-key",
-              "./books/acme.sqlite",
-              "./declare-account-cash.json",
-              "./declare-account-revenue.json",
-              "./request.json");
+          new QuickStartPaths("./secrets/acme.book-key", "./books/acme.sqlite", "./request.json");
       case BUNDLE_WINDOWS_POWERSHELL,
           SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
           DIRECT_JAVA_WINDOWS_POWERSHELL ->
           new QuickStartPaths(
-              ".\\secrets\\acme.book-key",
-              ".\\books\\acme.sqlite",
-              ".\\declare-account-cash.json",
-              ".\\declare-account-revenue.json",
-              ".\\request.json");
+              ".\\secrets\\acme.book-key", ".\\books\\acme.sqlite", ".\\request.json");
     };
   }
 
@@ -167,10 +145,5 @@ final class MachineContractQuickStarts {
     };
   }
 
-  private record QuickStartPaths(
-      String bookKeyFile,
-      String bookFile,
-      String declareCashFile,
-      String declareRevenueFile,
-      String requestFile) {}
+  private record QuickStartPaths(String bookKeyFile, String bookFile, String requestFile) {}
 }

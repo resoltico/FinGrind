@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.50.0"
+version: "0.51.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-06-01"
+updated: "2026-06-03"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, docker, devcontainer, repo-lock]
   questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do i clean local jazzer state in fingrind", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]
@@ -18,9 +18,10 @@ route:
 
 | Task | Purpose |
 |:-----|:--------|
+| `./gradlew jazzerCheck` | run deterministic Jazzer tests plus regression replay through the root build |
 | `jazzer/bin/test` | run deterministic Jazzer tests |
 | `jazzer/bin/regression` | replay the committed seed floor |
-| `jazzer/bin/check` | run deterministic tests plus regression replay |
+| `jazzer/bin/check` | operator wrapper for the root-owned `jazzerCheck` gate |
 | `jazzer/bin/fuzz-cli-request` | fuzz raw request parsing |
 | `jazzer/bin/fuzz-ledger-plan-request` | fuzz ledger-plan request parsing |
 | `jazzer/bin/fuzz-posting-workflow` | fuzz application write workflow |
@@ -51,9 +52,11 @@ verification command should run at a time.
   then packaging and Docker smoke.
 - `jazzer/bin/test`, `jazzer/bin/regression`, and `jazzer/bin/check`: deterministic Jazzer
   verification entrypoints. Safe for GitHub Actions because they do not start active fuzzing, and
-  they participate in the same repo-wide verification lock contract as `./check.sh`. Each one
-  starts from a clean relocated nested-build output so removed classfiles cannot linger and poison
-  deterministic coverage verification.
+  they participate in the same repo-wide verification lock contract as `./check.sh`. The
+  authoritative deterministic gate is `./gradlew jazzerCheck`; `jazzer/bin/check` is the supported
+  wrapper over that root-owned task, while `jazzer/bin/test` and `jazzer/bin/regression` continue
+  to target the nested build directly. Each deterministic entrypoint starts from a clean relocated
+  nested-build output so removed classfiles cannot linger and poison coverage verification.
 - `jazzer/bin/replay`, `jazzer/bin/list-findings`, `jazzer/bin/seed-audit`,
   `jazzer/bin/clean-local-findings`, and `jazzer/bin/clean-local-corpus`: read-only or
   maintenance wrapper surfaces. They use the same repo-wide verification lock, but they do not
@@ -90,6 +93,12 @@ Live fuzzing is local-only. Active harness execution hard-fails when `GITHUB_ACT
 This runs root verification first and then `jazzer/bin/check`.
 
 ### Run The CI-Equivalent Jazzer Gate Only
+
+```bash
+./gradlew jazzerCheck --console=plain
+```
+
+or, through the supported wrapper:
 
 ```bash
 jazzer/bin/check --no-daemon --console=plain

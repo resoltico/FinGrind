@@ -29,7 +29,7 @@ import java.util.Optional;
 class CliAccountingReportFixtureSupport extends CliRequestDocumentFixtureSupport {
   protected static AccountRole fixtureAccountRole(
       AccountType accountType, NormalBalance normalBalance) {
-    for (AccountRole accountRole : List.of(AccountRole.ORDINARY, AccountRole.CONTRA)) {
+    for (AccountRole accountRole : List.of(AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)) {
       if (AccountSemantics.normalBalance(accountType, accountRole) == normalBalance) {
         return accountRole;
       }

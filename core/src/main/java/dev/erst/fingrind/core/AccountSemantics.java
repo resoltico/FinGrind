@@ -98,7 +98,7 @@ public final class AccountSemantics {
   public static NormalBalance normalBalance(AccountType accountType, AccountRole accountRole) {
     return switch (accountRole) {
       case ORDINARY -> ordinaryNormalBalance(accountType);
-      case CONTRA -> opposite(ordinaryNormalBalance(accountType));
+      case POLARITY_INVERTED -> opposite(ordinaryNormalBalance(accountType));
     };
   }
 
@@ -138,7 +138,7 @@ public final class AccountSemantics {
             ? amountMinor
             : -amountMinor;
     long result = accountType == AccountType.REVENUE ? naturalSigned : -naturalSigned;
-    return accountRole == AccountRole.CONTRA ? Math.negateExact(result) : result;
+    return accountRole == AccountRole.POLARITY_INVERTED ? Math.negateExact(result) : result;
   }
 
   private static NormalBalance ordinaryNormalBalance(AccountType accountType) {

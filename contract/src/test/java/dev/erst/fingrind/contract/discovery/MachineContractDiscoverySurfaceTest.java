@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 /** Coverage and contract tests for the published machine-discovery surfaces. */
 class MachineContractDiscoverySurfaceTest {
   private static final ApplicationIdentity IDENTITY =
-      new ApplicationIdentity("FinGrind", "0.50.0", "Protected bookkeeping kernel");
+      new ApplicationIdentity("FinGrind", "0.51.0", "Protected bookkeeping kernel");
 
   @Test
   void helpWithoutTopicPublishesCanonicalQuickStartForEveryRuntimeDistribution() {
@@ -121,10 +121,12 @@ class MachineContractDiscoverySurfaceTest {
 
   @Test
   void templateCatalogPublishesCanonicalScaffoldsForEverySupportedSelection() {
-    assertTrue(MachineContractTemplatesCatalog.declareAccountCashJson().contains("\"1000\""));
-    assertTrue(MachineContractTemplatesCatalog.declareAccountRevenueJson().contains("\"2000\""));
+    assertTrue(
+        MachineContractTemplatesCatalog.declareAccountCashJson().contains("\"cash-reserve\""));
+    assertTrue(
+        MachineContractTemplatesCatalog.declareAccountRevenueJson().contains("\"misc-revenue\""));
     assertEquals(BookkeepingEntryKind.CASH_REVENUE, MachineContract.requestTemplate().entryKind());
-    assertEquals("1000", MachineContract.declareAccountTemplate().accountCode());
+    assertEquals("cash-reserve", MachineContract.declareAccountTemplate().accountCode());
     assertEquals("plan-1", MachineContract.planTemplate().planId());
     assertNull(MachineContractTemplatesCatalog.requestShapesFor(null));
     assertNull(
@@ -167,29 +169,40 @@ class MachineContractDiscoverySurfaceTest {
         expectedSurfaces, help.quickStart().stream().map(WorkflowDescriptor::surface).toList());
 
     for (WorkflowDescriptor workflow : help.quickStart()) {
-      assertEquals(13, workflow.steps().size());
+      assertEquals(10, workflow.steps().size());
       assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(0));
       WorkflowStepDescriptor.Command generateKey =
           assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(1));
       WorkflowStepDescriptor.Command openBook =
           assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(2));
-      WorkflowStepDescriptor.Edit declareCash =
-          assertInstanceOf(WorkflowStepDescriptor.Edit.class, workflow.steps().get(3));
-      WorkflowStepDescriptor.Edit declareRevenue =
-          assertInstanceOf(WorkflowStepDescriptor.Edit.class, workflow.steps().get(5));
+      WorkflowStepDescriptor.Command listAccounts =
+          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(3));
+      WorkflowStepDescriptor.Command printRequestTemplate =
+          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(4));
       WorkflowStepDescriptor.Note placeholderNote =
-          assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(8));
+          assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(5));
+      WorkflowStepDescriptor.Note idempotencyNote =
+          assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(6));
+      WorkflowStepDescriptor.Command preflight =
+          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(7));
+      WorkflowStepDescriptor.Command postEntry =
+          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(8));
       WorkflowStepDescriptor.Command trialBalance =
-          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(12));
+          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(9));
 
       assertTrue(
           generateKey
               .text()
               .contains(ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)));
       assertTrue(openBook.text().contains("--entity-name \"Acme Studio\""));
-      assertTrue(declareCash.content().contains("\"accountCode\": \"1000\""));
-      assertTrue(declareRevenue.content().contains("\"accountCode\": \"2000\""));
+      assertTrue(
+          listAccounts.text().contains(ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS)));
+      assertTrue(printRequestTemplate.text().contains("print-request-template >"));
       assertTrue(placeholderNote.text().contains("placeholder-first scaffold"));
+      assertTrue(idempotencyNote.text().contains("idempotencyKey"));
+      assertTrue(
+          preflight.text().contains(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY)));
+      assertTrue(postEntry.text().contains(ProtocolCatalog.operationName(OperationId.POST_ENTRY)));
       assertTrue(
           trialBalance
               .text()

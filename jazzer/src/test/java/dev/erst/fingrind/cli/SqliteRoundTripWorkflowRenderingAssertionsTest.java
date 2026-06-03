@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -30,8 +31,8 @@ import org.junit.jupiter.api.Test;
 class SqliteRoundTripWorkflowRenderingAssertionsTest {
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
-          new EntityProfile(new BookEntityName("Acme Studio"), List.of()),
-          dev.erst.fingrind.core.AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL,
+          new EntityProfile(new BookEntityName("Acme Studio")),
+          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"));
 

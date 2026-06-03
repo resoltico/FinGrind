@@ -33,7 +33,7 @@ readonly developer_distribution_doc="${repo_root}/docs/DEVELOPER_DISTRIBUTION.md
 
 timeout_minutes="$(
     awk '
-        /^  container:/ {
+        /^  build-staging-container:/ {
             in_container_job = 1
             next
         }
@@ -50,18 +50,22 @@ timeout_minutes="$(
 (( timeout_minutes >= 30 )) || die \
     "container publication timeout must leave budget for buildx publication and post-push verification; expected at least 30 minutes, got ${timeout_minutes}"
 
-grep -Fq 'workflow-helper-root' "${workflow_file}" || die \
-    "release workflow no longer resolves a workflow helper-root for immutable-tag reruns"
 grep -Fq '      - verify-release' "${workflow_file}" || die \
     "container publication no longer waits for the verified GitHub release handoff"
-grep -Fq '${{ steps.workflow-helper-root.outputs.path }}/scripts/verify-public-container-surface.sh' "${workflow_file}" || die \
-    "container publication no longer verifies the published public container surface through the workflow helper-root"
+grep -Fq 'build-staging-container:' "${workflow_file}" || die \
+    "release workflow no longer stages native container images per Linux target"
+grep -Fq 'promote-container:' "${workflow_file}" || die \
+    "release workflow no longer promotes staged container images into the public tags"
+grep -Fq './scripts/verify-public-container-surface.sh' "${workflow_file}" || die \
+    "container publication no longer verifies staged and public container surfaces through the repo-owned verifier"
 grep -Fq 'FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST' "${workflow_file}" || die \
     "container publication no longer aligns latest verification with the canonical latest policy"
-grep -Fq 'context: cli/build/docker-context' "${workflow_file}" || die \
-    "container publication no longer publishes from the staged Docker build context"
+grep -Fq 'fg_gradle_docker_context_dir' "${workflow_file}" || die \
+    "container publication no longer resolves the staged Docker build context through the canonical wrapper helper"
 grep -Fq 'context: .' "${workflow_file}" && die \
     "container publication reopened the repository root instead of the staged Docker build context"
+grep -Fq 'docker buildx imagetools create' "${workflow_file}" || die \
+    "container publication no longer promotes staged platform images into one public manifest"
 grep -Fq 'post-publish verification' "${developer_distribution_doc}" || die \
     "developer distribution doc no longer describes the post-publish verification budget"
 if [[ -e "${repo_root}/.github/workflows/container.yml" ]]; then

@@ -564,7 +564,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
       String effectiveDate,
       String recordedAt,
       PostingFactSqlLiterals sqlLiterals) {
-    String postingOriginKind = defaultPostingOriginKind(postingKind, sqlLiterals);
+    String postingOriginKind = defaultPostingOriginKind(postingKind);
     database.executeStatement(
         """
         insert into posting_fact (
@@ -616,23 +616,14 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                 sqlLiterals.priorPostingIdSqlLiteral()));
   }
 
-  private static String defaultPostingOriginKind(
-      String postingKind, PostingFactSqlLiterals sqlLiterals) {
+  private static String defaultPostingOriginKind(String postingKind) {
     return switch (postingKind) {
       case "OPENING_BALANCE" ->
-          dev.erst.fingrind.core.PostingOriginKind.OPENING_BALANCE_ADJUSTMENT.wireValue();
+          dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION.wireValue();
       case "PERIOD_RESULT_TRANSFER" ->
           dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER.wireValue();
-      default ->
-          isReversal(sqlLiterals)
-              ? dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue()
-              : dev.erst.fingrind.core.PostingOriginKind.CORRECTION_ADJUSTMENT.wireValue();
+      default -> dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue();
     };
-  }
-
-  private static boolean isReversal(PostingFactSqlLiterals sqlLiterals) {
-    return !"null".equals(sqlLiterals.reasonSqlLiteral())
-        || !"null".equals(sqlLiterals.priorPostingIdSqlLiteral());
   }
 
   private record PostingFactSqlLiterals(

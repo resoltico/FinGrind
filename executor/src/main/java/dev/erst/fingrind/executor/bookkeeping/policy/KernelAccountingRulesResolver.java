@@ -11,13 +11,13 @@ public final class KernelAccountingRulesResolver {
   /** Returns the executable built-in policy pack selected by one initialized book identity. */
   public static KernelAccountingRules forBookIdentity(BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    if (AccountingKernelProfiles.COUNTRY_AGNOSTIC_BOOKKEEPING_KERNEL.equals(
-        bookIdentity.accountingKernelProfileId())) {
+    if (AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL.equals(
+        bookIdentity.bookDoctrine().accountingKernelProfileId())) {
       return InternalManagementKernelAccountingRules.current();
     }
     throw new IllegalArgumentException(
         "Unsupported accounting kernel profile: "
-            + bookIdentity.accountingKernelProfileId().value()
+            + bookIdentity.bookDoctrine().accountingKernelProfileId().value()
             + ".");
   }
 }
