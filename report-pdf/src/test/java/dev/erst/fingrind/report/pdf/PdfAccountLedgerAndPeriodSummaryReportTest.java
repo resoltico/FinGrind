@@ -11,6 +11,7 @@ import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.evidence;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.extractedText;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.ledgerEntries;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.money;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.normalizedExtractedText;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -139,9 +140,9 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                     BalanceSide.DEBIT)),
             List.of(balance("EUR", "250.00", "100.00", "150.00", BalanceSide.DEBIT)));
 
-    String accountLedgerText =
-        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
-    String normalizedAccountLedgerText = accountLedgerText.replace('\n', ' ');
+    byte[] accountLedgerPdf = PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport);
+    String accountLedgerText = extractedText(accountLedgerPdf);
+    String normalizedAccountLedgerText = normalizedExtractedText(accountLedgerPdf);
 
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("250.00"));

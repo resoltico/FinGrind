@@ -113,6 +113,10 @@ final class PdfReportFixtureSupport {
     }
   }
 
+  static String normalizedExtractedText(byte[] pdfBytes) throws IOException {
+    return extractedText(pdfBytes).replaceAll("\\s+", " ").trim();
+  }
+
   static List<AccountLedgerEntry> ledgerEntries(int count) {
     List<AccountLedgerEntry> entries = new ArrayList<>();
     for (int index = 0; index < count; index++) {
