@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:46db716f3d5ca5ed35db59c0511b4f7847c4c5c89f53e7fb57fdab0573a762f6 AS builder
+FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:d5514973a10f0dbdf3c18199465713176316a60ee032d19adacd4812588b611b AS builder
 
 WORKDIR /build
 
