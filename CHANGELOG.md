@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rebuilds directly from compiled project outputs instead of cached test-fixture archives. This
   removes truncated-archive drift from the repository gate and lets the nested Jazzer build
   self-heal stale patch state on the next verification run.
+- Fixed the pinned JaCoCo snapshot preparation path so the authoritative Gradle-side artifact
+  fetch now uses the repo-owned user agent and retry posture instead of a naked `openStream()`
+  call. This removes the cold-download `403` that only surfaced on Windows merge-side bundle
+  smoke after the `0.51.0` release-control-plane repairs.
 
 ## [0.51.0] - 2026-06-03
 

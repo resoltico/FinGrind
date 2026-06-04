@@ -30,6 +30,7 @@ readonly stage_contract_script="${script_dir}/check-stage-contract.sh"
 readonly root_conventions_path="${script_dir}/../gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindRootConventionsPlugin.kt"
 readonly java_conventions_path="${script_dir}/../gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindJavaConventionsPlugin.kt"
 readonly pinned_artifacts_path="${script_dir}/../gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindPinnedJacocoSnapshotArtifacts.kt"
+readonly prepare_task_path="${script_dir}/../gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/PrepareJacocoSnapshotArtifactsTask.kt"
 
 [[ -x "${verifier}" ]] || die "missing JaCoCo snapshot verifier at ${verifier}"
 [[ -f "${version_catalog_path}" ]] || die "missing version catalog at ${version_catalog_path}"
@@ -39,6 +40,7 @@ readonly pinned_artifacts_path="${script_dir}/../gradle/build-logic/src/main/kot
 [[ -f "${root_conventions_path}" ]] || die "missing root conventions plugin at ${root_conventions_path}"
 [[ -f "${java_conventions_path}" ]] || die "missing java conventions plugin at ${java_conventions_path}"
 [[ -f "${pinned_artifacts_path}" ]] || die "missing pinned JaCoCo artifact owner at ${pinned_artifacts_path}"
+[[ -f "${prepare_task_path}" ]] || die "missing JaCoCo snapshot preparation task at ${prepare_task_path}"
 
 if grep -Fq 'jacoco = "' "${version_catalog_path}"; then
     die "version catalog must not own the JaCoCo version"
@@ -67,6 +69,10 @@ grep -Fq 'configurePinnedJacocoSnapshotArtifacts(buildMetadata)' "${java_convent
     "java conventions no longer apply the pinned JaCoCo artifact owner"
 grep -Fq 'prepareJacocoSnapshotArtifacts' "${pinned_artifacts_path}" || die \
     "pinned JaCoCo artifact owner no longer stages the deterministic artifact set"
+grep -Fq 'JACOCO_SNAPSHOT_FETCH_USER_AGENT = "FinGrind-JaCoCo-Snapshot-Verifier/1.0"' "${prepare_task_path}" || die \
+    "JaCoCo snapshot preparation task no longer sends the repo-owned fetch user agent"
+grep -Fq 'DOWNLOAD_MAX_ATTEMPTS = 6' "${prepare_task_path}" || die \
+    "JaCoCo snapshot preparation task no longer retries cold snapshot downloads"
 "${verifier}" >/dev/null
 
 printf 'JaCoCo snapshot verifier regression: success\n'
