@@ -141,8 +141,8 @@ any owned lock as proof that another Git owner has the checkout open. If it repo
 Then run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 That gate now also proves the repo-owned JaCoCo snapshot contract: the pinned snapshot base
 version, the published build label in `gradle/fingrind-build.properties`, and the resolved
-snapshot metadata and resolved artifact coordinates must align through
-`./scripts/verify-jacoco-snapshot.sh` before the Gradle
+artifact coordinates must align through `./scripts/verify-jacoco-snapshot.sh`, and the exact
+pinned jars must stage successfully through `prepareJacocoSnapshotArtifacts`, before the Gradle
 stages run.
 Because this baseline gate runs before `./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD`,
 any bundle archive names, Docker smoke echoes, or distribution manifests produced in Step 1 will
@@ -309,6 +309,9 @@ The verifier's default wait is sized for the normal PR-side CI fan-out where the
 arrives after the slower sibling jobs finish, including the late-starting Windows smoke leg. If
 GitHub Actions queueing is unusually slow, extend the wait explicitly instead of guessing:
 
+That Windows leg is the post-`Check` bundle-publication proof for the Windows target. It is not a
+second owner of the canonical root `./check.sh` gate.
+
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-pr-gate.sh <N>
 ```
@@ -346,6 +349,9 @@ Requirements before continuing:
 The verifier's default wait is intentionally long enough to cover the normal post-merge CI
 fan-out where `Windows bundle smoke` does not start until `Check` finishes. If GitHub Actions
 queueing is unusually slow, extend the wait explicitly instead of guessing:
+
+That Windows leg is the post-`Check` Windows publication proof only. The canonical root gate
+remains single-owned by the Linux `Check` job.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-merge-handoff.sh

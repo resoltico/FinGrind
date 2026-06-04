@@ -35,14 +35,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   self-heal stale patch state on the next verification run.
 - Fixed the pinned JaCoCo snapshot contract so the authoritative Gradle-side artifact fetch now
   uses the repo-owned user agent and retry posture instead of a naked `openStream()` call, while
-  the root gate now proves the pinned snapshot through published metadata and exact resolved
-  coordinates instead of brittle live jar downloads. This removes both the cold-download `403`
-  that surfaced on Windows merge-side bundle smoke and the hosted-runner curl `403` that surfaced
-  during the `0.51.0` release repair loop.
+  the root gate now proves the pinned snapshot through the local build metadata contract and the
+  Gradle-owned `prepareJacocoSnapshotArtifacts` task instead of a separate live snapshot-metadata
+  fetch path. This removes both the cold-download `403` that surfaced on Windows merge-side bundle
+  smoke and the hosted-runner snapshot-metadata `403` that surfaced during the `0.51.0` release
+  repair loop.
 - Fixed the root verification gate so long-running logged Jazzer pruning regressions emit
   periodic keepalive output through the shared process helper. This prevents healthy hosted-runner
   release-surface checks from being killed as false stalls during the `0.51.0` release repair
   loop.
+- Fixed the Windows publication lane so `Windows bundle smoke` no longer reruns the canonical
+  root `check` gate before building and smoking the self-contained bundle. The Windows job now
+  proves only the Windows-owned publication surfaces after `Check`, which removes the unrelated
+  JaCoCo snapshot staging failure that surfaced during the `0.51.0` merge handoff.
 
 ## [0.51.0] - 2026-06-03
 
