@@ -148,6 +148,10 @@ staged Docker context under the active CLI build root, not from the repository r
 acceptance already proves that staged context boundary; tag-rerun publication must reuse that same
 checked assembly input instead of reopening checkout-local files through repository-root
 `.dockerignore` semantics.
+When helper-rooted rerun scripts drive that Docker acceptance or publication path, they must also
+pass the active tagged checkout root into the helper entrypoint instead of letting the helper infer
+its source root from the workflow-owner helper checkout path. The helper checkout owns control-plane
+repairs; the tagged checkout owns the staged Docker context and source-fingerprint truth.
 The staged Docker context must also carry a Docker-target managed SQLite library built for the
 explicit target architecture. Do not short-circuit to the source-checkout managed SQLite runtime
 just because the host and container classifiers share the same OS/architecture label; the public

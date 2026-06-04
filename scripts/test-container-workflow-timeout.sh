@@ -62,6 +62,8 @@ grep -Fq 'path: workflow-owner-surface' "${workflow_file}" || die \
     "container publication no longer checks out the workflow-owner helper surface for rerun-safe helper scripts"
 grep -Fq 'FINGRIND_WORKFLOW_HELPER_ROOT' "${workflow_file}" || die \
     "container publication no longer resolves helper-rooted release-control scripts"
+grep -Fq 'FINGRIND_DOCKER_SMOKE_REPO_ROOT: ${{ github.workspace }}' "${workflow_file}" || die \
+    "container publication no longer passes the active checkout root into helper-rooted Docker smoke"
 grep -Fq 'FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST' "${workflow_file}" || die \
     "container publication no longer aligns latest verification with the canonical latest policy"
 grep -Fq 'fg_gradle_docker_context_dir' "${workflow_file}" || die \
