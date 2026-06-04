@@ -309,6 +309,9 @@ The verifier's default wait is sized for the normal PR-side CI fan-out where the
 arrives after the slower sibling jobs finish, including the late-starting Windows smoke leg. If
 GitHub Actions queueing is unusually slow, extend the wait explicitly instead of guessing:
 
+That Windows leg is the post-`Check` bundle-publication proof for the Windows target. It is not a
+second owner of the canonical root `./check.sh` gate.
+
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-pr-gate.sh <N>
 ```
@@ -346,6 +349,9 @@ Requirements before continuing:
 The verifier's default wait is intentionally long enough to cover the normal post-merge CI
 fan-out where `Windows bundle smoke` does not start until `Check` finishes. If GitHub Actions
 queueing is unusually slow, extend the wait explicitly instead of guessing:
+
+That Windows leg is the post-`Check` Windows publication proof only. The canonical root gate
+remains single-owned by the Linux `Check` job.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-merge-handoff.sh
