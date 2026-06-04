@@ -478,8 +478,11 @@ The repository ships four workflow files and six named CI jobs:
 1. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
    Runs on `ubuntu-24.04`.
-2. `windows-bundle-smoke` — builds and smokes the Windows bundle on `windows-2022` after `check`
-   passes. Uses the repo-owned
+2. `windows-bundle-smoke` — runs the Windows publication lane on `windows-2022` after `check`
+   passes. It does not rerun the canonical root gate. Instead it proves the Windows-owned
+   surfaces only: included build-logic tests, direct-Java and source-checkout SQLite runtime
+   verifiers, the self-contained Windows bundle build, and the PowerShell bundle smoke workflow.
+   Uses the repo-owned
    [configure-windows-defender-build-exclusions.ps1](../scripts/configure-windows-defender-build-exclusions.ps1)
    owner for one best-effort Windows Defender exclusion attempt on the workspace and Gradle user
    home before Gradle work begins. The exclusion attempt is a performance optimization only: an

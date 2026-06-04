@@ -44,6 +44,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   periodic keepalive output through the shared process helper. This prevents healthy hosted-runner
   release-surface checks from being killed as false stalls during the `0.51.0` release repair
   loop.
+- Fixed the Windows publication lane so `Windows bundle smoke` no longer reruns the canonical
+  root `check` gate before building and smoking the self-contained bundle. The Windows job now
+  proves only the Windows-owned publication surfaces after `Check`, which removes the unrelated
+  JaCoCo snapshot staging failure that surfaced during the `0.51.0` merge handoff.
 
 ## [0.51.0] - 2026-06-03
 

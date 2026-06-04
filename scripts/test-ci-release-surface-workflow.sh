@@ -36,8 +36,6 @@ grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${workflow_file}" || die \
     "CI workflow no longer exports the pinned uv launcher path for Gradle-owned Python tool tasks"
 grep -Fq 'sysconfig.get_path' "${workflow_file}" || die \
     "CI workflow no longer resolves the uv launcher scripts path through Python sysconfig"
-grep -Fq 'Run root quality gates on Windows' "${workflow_file}" || die \
-    "CI workflow no longer keeps the Windows root gate as an explicit fail-fast step"
 grep -Fq 'Run included build-logic tests on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps Windows build-logic verification as a separate step"
 grep -Fq 'Published bundle smoke (${{ matrix.classifier }})' "${workflow_file}" || die \
@@ -72,6 +70,9 @@ fi
 if grep -Fq 'site.USER_BASE' "${workflow_file}"; then
     die "CI workflow still computes the uv launcher path from site.USER_BASE instead of Python's scripts scheme"
 fi
+if grep -Fq '.\gradlew.bat check --no-daemon --console=plain' "${workflow_file}"; then
+    die "CI workflow still reruns the canonical root gate inside the Windows bundle publication lane"
+fi
 if grep -Fq 'resolve_bundle_path()' "${workflow_file}"; then
     die "CI workflow still scrapes published bundle smoke artifact paths from Gradle console output instead of the canonical bundle manifest"
 fi
@@ -79,6 +80,8 @@ grep -Fq '.\scripts\verify-direct-java-sqlite-runtime.ps1' "${workflow_file}" ||
     "CI workflow no longer delegates Windows direct-Java runtime verification to the canonical PowerShell owner"
 grep -Fq '.\scripts\verify-source-checkout-sqlite-runtime.ps1' "${workflow_file}" || die \
     "CI workflow no longer delegates Windows source-checkout runtime verification to the canonical PowerShell owner"
+grep -A4 -F 'windows-bundle-smoke:' "${workflow_file}" | grep -Fq 'needs: check' || die \
+    "CI workflow no longer gates the Windows publication lane on the canonical Check job"
 if grep -Fq 'Run root quality gates and included build-logic tests on Windows' "${workflow_file}"; then
     die "CI workflow still combines Windows root verification and build-logic verification in one non-fail-fast step"
 fi
