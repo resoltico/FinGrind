@@ -200,8 +200,9 @@ contract owned by `gradle/fingrind-build.properties` instead of resolving a floa
 at build time. The build metadata pins the snapshot base version `0.8.15-SNAPSHOT`, the published
 build label `0.8.15.202606030734`, and the resolved artifact version `0.8.15-20260603.073432-117`;
 the shared build logic stages that exact JaCoCo jar set under the wrapper-owned build root; and
-`./scripts/verify-jacoco-snapshot.sh` proves the published snapshot metadata resolves to that
-exact artifact set before any Gradle verification stage runs.
+`./scripts/verify-jacoco-snapshot.sh` proves the local pinned contract shape, then stages that
+exact artifact set through `prepareJacocoSnapshotArtifacts` before any Gradle verification stage
+runs. The root gate no longer depends on a separate live snapshot-metadata fetch path.
 
 ### One managed-SQLite contract
 

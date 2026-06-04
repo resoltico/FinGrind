@@ -141,8 +141,8 @@ any owned lock as proof that another Git owner has the checkout open. If it repo
 Then run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
 That gate now also proves the repo-owned JaCoCo snapshot contract: the pinned snapshot base
 version, the published build label in `gradle/fingrind-build.properties`, and the resolved
-snapshot metadata and resolved artifact coordinates must align through
-`./scripts/verify-jacoco-snapshot.sh` before the Gradle
+artifact coordinates must align through `./scripts/verify-jacoco-snapshot.sh`, and the exact
+pinned jars must stage successfully through `prepareJacocoSnapshotArtifacts`, before the Gradle
 stages run.
 Because this baseline gate runs before `./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD`,
 any bundle archive names, Docker smoke echoes, or distribution manifests produced in Step 1 will

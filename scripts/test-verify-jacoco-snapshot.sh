@@ -62,12 +62,10 @@ grep -Fq 'readonly python_contract_verifier="${script_dir}/verify_jacoco_snapsho
     "JaCoCo snapshot verifier no longer delegates to the repo-owned Python contract verifier"
 grep -Fq 'python3 "${python_contract_verifier}" --repo-root "${repo_root}"' "${verifier}" || die \
     "JaCoCo snapshot verifier no longer executes the repo-owned Python contract verifier"
-grep -Fq 'JACOCO_SNAPSHOT_FETCH_USER_AGENT = "FinGrind-JaCoCo-Snapshot-Verifier/1.0"' "${python_contract_verifier}" || die \
-    "JaCoCo snapshot contract verifier no longer declares the repo-owned fetch user agent"
-grep -Fq 'maven-metadata.xml' "${python_contract_verifier}" || die \
-    "JaCoCo snapshot contract verifier no longer resolve published snapshot metadata"
-grep -Fq 'DOWNLOAD_MAX_ATTEMPTS = 6' "${python_contract_verifier}" || die \
-    "JaCoCo snapshot contract verifier no longer retries snapshot metadata fetches"
+grep -Fq '"${gradlew}" prepareJacocoSnapshotArtifacts --console=plain --no-daemon >/dev/null' "${verifier}" || die \
+    "JaCoCo snapshot verifier no longer stages the pinned artifact set through the Gradle-owned preparation task"
+grep -Fq 'contract=local-shape' "${python_contract_verifier}" || die \
+    "JaCoCo snapshot contract verifier no longer report the local contract-shape proof mode"
 grep -Fq 'scripts/test-verify-jacoco-snapshot.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the JaCoCo snapshot verifier regression"
 grep -Fq 'configurePinnedJacocoSnapshotArtifacts(buildMetadata)' "${root_conventions_path}" || die \
