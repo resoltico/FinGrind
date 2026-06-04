@@ -23,6 +23,7 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly verifier="${script_dir}/verify-jacoco-snapshot.sh"
+readonly python_contract_verifier="${script_dir}/verify_jacoco_snapshot_contract.py"
 readonly version_catalog_path="${script_dir}/../gradle/libs.versions.toml"
 readonly build_metadata_path="${script_dir}/../gradle/fingrind-build.properties"
 readonly quality_gate_script="${script_dir}/run-quality-gates.sh"
@@ -33,6 +34,8 @@ readonly pinned_artifacts_path="${script_dir}/../gradle/build-logic/src/main/kot
 readonly prepare_task_path="${script_dir}/../gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/PrepareJacocoSnapshotArtifactsTask.kt"
 
 [[ -x "${verifier}" ]] || die "missing JaCoCo snapshot verifier at ${verifier}"
+[[ -f "${python_contract_verifier}" ]] || die \
+    "missing JaCoCo snapshot contract verifier at ${python_contract_verifier}"
 [[ -f "${version_catalog_path}" ]] || die "missing version catalog at ${version_catalog_path}"
 [[ -f "${build_metadata_path}" ]] || die "missing build metadata at ${build_metadata_path}"
 [[ -x "${quality_gate_script}" ]] || die "missing quality gate script at ${quality_gate_script}"
@@ -55,12 +58,16 @@ grep -Fq 'readonly jacoco_snapshot_verifier="${repo_root}/scripts/verify-jacoco-
     "quality gate no longer defines the JaCoCo snapshot verifier owner"
 grep -Fq '"${jacoco_snapshot_verifier}"' "${quality_gate_script}" || die \
     "quality gate no longer runs the JaCoCo snapshot verifier"
-grep -Fq 'readonly jacoco_snapshot_fetch_user_agent="FinGrind-JaCoCo-Snapshot-Verifier/1.0"' "${verifier}" || die \
-    "JaCoCo snapshot verifier no longer declares the repo-owned fetch user agent"
-grep -Fq -- '--retry-all-errors' "${verifier}" || die \
-    "JaCoCo snapshot verifier no longer retries snapshot fetch errors"
-grep -Fq -- '--user-agent "${jacoco_snapshot_fetch_user_agent}"' "${verifier}" || die \
-    "JaCoCo snapshot verifier no longer sends the repo-owned fetch user agent"
+grep -Fq 'readonly python_contract_verifier="${script_dir}/verify_jacoco_snapshot_contract.py"' "${verifier}" || die \
+    "JaCoCo snapshot verifier no longer delegates to the repo-owned Python contract verifier"
+grep -Fq 'python3 "${python_contract_verifier}" --repo-root "${repo_root}"' "${verifier}" || die \
+    "JaCoCo snapshot verifier no longer executes the repo-owned Python contract verifier"
+grep -Fq 'JACOCO_SNAPSHOT_FETCH_USER_AGENT = "FinGrind-JaCoCo-Snapshot-Verifier/1.0"' "${python_contract_verifier}" || die \
+    "JaCoCo snapshot contract verifier no longer declares the repo-owned fetch user agent"
+grep -Fq 'maven-metadata.xml' "${python_contract_verifier}" || die \
+    "JaCoCo snapshot contract verifier no longer resolve published snapshot metadata"
+grep -Fq 'DOWNLOAD_MAX_ATTEMPTS = 6' "${python_contract_verifier}" || die \
+    "JaCoCo snapshot contract verifier no longer retries snapshot metadata fetches"
 grep -Fq 'scripts/test-verify-jacoco-snapshot.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the JaCoCo snapshot verifier regression"
 grep -Fq 'configurePinnedJacocoSnapshotArtifacts(buildMetadata)' "${root_conventions_path}" || die \
