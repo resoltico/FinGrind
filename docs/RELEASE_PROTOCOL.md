@@ -440,6 +440,9 @@ The neutral attestation and verification jobs must also download draft assets th
 repo-owned `./scripts/download-github-release-assets.sh` seam rather than `gh release download
 <tag>`. GitHub can expose a draft release object that tag-based `gh release view` resolves while
 tag-based `gh release download` still reports `release not found` until finalization.
+Those draft-downloading jobs must also keep write-scoped `contents` permission. In the live
+workflow surface, a read-scoped Actions token can list the draft release while failing to fetch
+the staged asset bytes themselves.
 Those neutral jobs must also resolve repo-owned downloader, verifier, and finalizer helpers from
 the workflow-owner helper checkout during `workflow_dispatch` reruns; the repair theory is not
 real if the rerun keeps calling stale tag-local helper scripts after `main` fixes them.
