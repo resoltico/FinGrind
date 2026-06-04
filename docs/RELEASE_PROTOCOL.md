@@ -453,6 +453,10 @@ repository root before dispatching the rerun. The local Docker acceptance gate
 already proves that staged context boundary; the public container publication path must reuse that
 same checked assembly input rather than reopening the checkout root under repository-root
 `.dockerignore` rules.
+If helper-rooted rerun scripts participate in that staged-container path, they must receive the
+tagged checkout root explicitly. The helper checkout on `main` owns repaired release-control
+scripts; the tagged checkout owns the staged Docker context and the source inputs those scripts
+must verify.
 
 Never create a second tag or move an existing release tag just to retry CI.
 

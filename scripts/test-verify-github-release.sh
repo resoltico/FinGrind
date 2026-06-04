@@ -114,6 +114,20 @@ printf '%s' "${verify_job_surface}" | grep -Fq 'contents: write' || die \
 printf '%s' "${verify_job_surface}" | grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"' || die \
     "release workflow verifier job no longer verifies the staged draft release before container publication"
 
+container_job_surface="$(
+    python3 - <<'PY' "${release_workflow}"
+from pathlib import Path
+import sys
+
+workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
+start = workflow.index("  build-staging-container:\n")
+end = workflow.index("\n  promote-container:\n", start)
+print(workflow[start:end], end="")
+PY
+)"
+printf '%s' "${container_job_surface}" | grep -Fq 'FINGRIND_DOCKER_SMOKE_REPO_ROOT: ${{ github.workspace }}' || die \
+    "release workflow no longer passes the tagged checkout root into helper-rooted Docker smoke during staged-container publication"
+
 release_assets_json="$(
     python3 "${repo_root}/scripts/read-release-publication-plan.py" --version 9.9.9 | jq -c '.releaseAssetNames'
 )"

@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now keep write-scoped GitHub `contents` permission while downloading staged release bytes. This
   removes the read-token draft-asset fetch failure that surfaced in the `0.51.0` replay after the
   helper-root rerun repair landed.
+- Fixed the staged-container replay seam so helper-rooted Docker acceptance now receives the active
+  tagged checkout root explicitly instead of inferring it from the workflow-owner helper
+  checkout. This removes the false stale-Docker-context failure that surfaced in the `0.51.0`
+  replay after draft-asset attestation and verification had already passed.
 - Raised the default release-check verifier timeout budget to cover the normal merge-side CI
   fan-out where `Windows bundle smoke` starts after `Check`, while keeping the protocol's explicit
   timeout override path for unusually slow Actions queueing.

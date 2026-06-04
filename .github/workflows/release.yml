@@ -534,6 +534,7 @@ jobs:
 
       - name: Smoke test the Docker image before publication staging
         env:
+          FINGRIND_DOCKER_SMOKE_REPO_ROOT: ${{ github.workspace }}
           FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID: ${{ matrix.architectureId }}
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/docker-smoke.sh"
 

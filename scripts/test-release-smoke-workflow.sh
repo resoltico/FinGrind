@@ -178,6 +178,8 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${docker_smoke_sh}" || die
     "docker-smoke.sh no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the shared scenario-id contract"
+grep -Fq 'FINGRIND_DOCKER_SMOKE_REPO_ROOT' "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer publishes the explicit rerun checkout-root contract"
 grep -Fq 'FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the explicit Docker target architecture contract"
 grep -Fq -- '-Dfingrind.docker.target.architectureId="${docker_target_architecture}"' \

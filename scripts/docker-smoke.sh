@@ -11,6 +11,11 @@ print_usage() {
         'Builds the local FinGrind Docker image and runs the mounted-workspace office-worker acceptance workflow.' \
         '' \
         'Environment:' \
+        '  FINGRIND_DOCKER_SMOKE_REPO_ROOT       Optional explicit checkout root whose staged Docker' \
+        '                                         build context and source inputs should drive this' \
+        '                                         acceptance run. Use this when helper-rooted rerun' \
+        '                                         scripts execute from a different checkout than the' \
+        '                                         release source tree.' \
         '  FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID  Optional explicit Docker target architecture' \
         '                                         (x86_64 or aarch64). When set, both Docker build-' \
         '                                         context staging and the acceptance image build use' \
@@ -30,7 +35,7 @@ done
 source "$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/release-smoke-support.sh"
 
 readonly script_dir="$(resolve_script_dir)"
-readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly repo_root="${FINGRIND_DOCKER_SMOKE_REPO_ROOT:-$(cd -P -- "${script_dir}/.." && pwd)}"
 readonly docker_smoke_target_support="${repo_root}/scripts/docker-smoke-target-support.sh"
 readonly gradlew="${repo_root}/gradlew"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
