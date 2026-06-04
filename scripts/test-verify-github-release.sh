@@ -57,6 +57,8 @@ grep -Fq 'run: ./scripts/verify-release-candidate-tag.sh' "${release_workflow}" 
     "release workflow no longer routes the tag verifier through the repo-owned release script"
 grep -Fq './scripts/publish-github-release.sh' "${release_workflow}" || die \
     "release workflow no longer stages the draft GitHub release through the repo-owned publisher"
+grep -Fq './scripts/download-github-release-assets.sh' "${release_workflow}" || die \
+    "release workflow no longer downloads staged or draft release assets through the repo-owned downloader"
 grep -Fq './scripts/finalize-github-release.sh' "${release_workflow}" || die \
     "release workflow no longer finalizes the staged GitHub release through the repo-owned finalizer"
 grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"' "${release_workflow}" || die \
@@ -176,10 +178,41 @@ fi
 if [[ "${1:-}" == "release" && "${2:-}" == "view" ]]; then
     requested_tag="${3:-}"
     [[ "${requested_tag}" == "${tag}" ]] || exit 1
-    [[ "${4:-}" == "--json" ]] || exit 1
-    json_field="${5:-}"
-    [[ "${6:-}" == "--jq" ]] || exit 1
-    jq_query="${7:-}"
+    shift 3
+    requested_repo=''
+    if [[ "${1:-}" == "--repo" ]]; then
+        requested_repo="${2:-}"
+        shift 2
+    fi
+    [[ -z "${requested_repo}" || "${requested_repo}" == "${repo}" ]] || exit 1
+    [[ "${1:-}" == "--json" ]] || exit 1
+    json_field="${2:-}"
+    if [[ $# -eq 2 ]]; then
+        case "${json_field}" in
+            assets)
+                ASSET_LISTING_JSON="${asset_listing_json}" python3 - <<'PY'
+import json
+import os
+
+asset_names = json.loads(os.environ["ASSET_LISTING_JSON"])
+assets = [
+    {
+        "name": name,
+        "apiUrl": f"https://api.github.com/repos/resoltico/FinGrind/releases/assets/{index + 1}",
+    }
+    for index, name in enumerate(asset_names)
+]
+print(json.dumps({"assets": assets}))
+PY
+                ;;
+            *)
+                exit 1
+                ;;
+        esac
+        exit 0
+    fi
+    [[ "${3:-}" == "--jq" ]] || exit 1
+    jq_query="${4:-}"
     case "${json_field}:${jq_query}" in
         tagName:.tagName)
             printf '%s\n' "${tag}"
@@ -257,10 +290,17 @@ if [[ "${1:-}" == "attestation" && "${2:-}" == "verify" ]]; then
 fi
 
 if [[ "${1:-}" == "api" ]]; then
-    endpoint="${2:-}"
+    shift
+    if [[ "${1:-}" == "--method" && "${2:-}" == "GET" ]]; then
+        shift 2
+    fi
+    if [[ "${1:-}" == "-H" && "${2:-}" == "Accept: application/octet-stream" ]]; then
+        shift 2
+    fi
+    endpoint="${1:-}"
     case "${endpoint}" in
         /repos/"${repo}"/private-vulnerability-reporting)
-            [[ "${3:-}" == "--jq" && "${4:-}" == ".enabled" ]] || exit 1
+            [[ "${2:-}" == "--jq" && "${3:-}" == ".enabled" ]] || exit 1
             printf '%s\n' "${private_reporting_enabled}"
             ;;
         /repos/"${repo}"/zipball/"${tag}")
@@ -272,6 +312,25 @@ if [[ "${1:-}" == "api" ]]; then
             ;;
         /repos/"${repo}"/tarball/"${tag}")
             cat "${good_tar}"
+            ;;
+        /repos/"${repo}"/releases/assets/*)
+            asset_id="${endpoint##*/}"
+            asset_name="$(
+                ASSET_LISTING_JSON="${asset_listing_json}" python3 - "${asset_id}" <<'PY'
+import json
+import os
+import sys
+
+asset_id = int(sys.argv[1])
+assets = json.loads(os.environ["ASSET_LISTING_JSON"])
+print(assets[asset_id - 1])
+PY
+            )"
+            source_root="${asset_root}"
+            if [[ "${mode}" == "bad-checksum" && "${asset_name}" == *.sha256 ]]; then
+                source_root="${bad_checksum_root}"
+            fi
+            cat "${source_root}/${asset_name}"
             ;;
         *)
             exit 1

@@ -34,7 +34,8 @@ That means the workflow order is:
 1. build each archive on its target runner
 2. attest the runner-built archive and checksum bytes for each target
 3. upload the archive and checksum set into a draft GitHub Release object
-4. download those published bytes back on one neutral post-upload job
+4. download those published bytes back on one neutral post-upload job through the repo-owned
+   draft-aware release asset downloader
 5. create artifact attestations from those downloaded bytes
 6. verify the release object, published archive/checksum pairs, and published attestations
 7. publish or verify the public container only after the release asset handoff is complete
@@ -63,6 +64,10 @@ These publication invariants are release-critical:
   release asset set before treating publication as complete
 - the draft-first GitHub release publisher must wait for a newly created draft release to become
   visible through the Releases API before it inspects or mutates draft assets
+- draft asset download before finalization must not rely on `gh release download <tag>` because
+  GitHub can expose a draft release object that `gh release view <tag>` can resolve while
+  tag-based release downloads still report `release not found`; use the repo-owned
+  `./scripts/download-github-release-assets.sh` seam instead
 - the staged-container and promotion timeouts must leave room for buildx publication and post-push
   public verification
 - verifier timeout budget must exceed the explicit retry budget for release-asset and attestation
@@ -103,9 +108,9 @@ Operational rule:
 
 The neutral post-upload job is the most failure-prone seam in this flow. It needs a few explicit
 rules:
-- pass explicit repository context to `gh release download` with `GH_REPO` or `--repo`
-- retry downloads into the same directory with `--clobber`
-- print the final GitHub CLI error on failure instead of hiding it behind a retry loop
+- pass explicit repository context to the repo-owned draft-aware downloader
+- retry draft or published asset downloads until the release object exposes the named assets
+- print the final download failure instead of hiding it behind a retry loop
 - treat download and attestation propagation lag as normal and budget for it explicitly
 
 Without those rules, the workflow can fail in ways that hide the real cause and waste hours on

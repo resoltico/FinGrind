@@ -77,17 +77,25 @@ verify_github_release_downloaded_assets() {
     local attestation_output
     local asset_name
     local asset_path
+    local downloader_output
+    local asset_names=()
 
-    while IFS= read -r asset_name || [[ -n "${asset_name}" ]]; do
-        [[ -n "${asset_name}" ]] || continue
-        gh release download "${VERIFY_GITHUB_RELEASE_TAG_NAME}" \
-            --pattern "${asset_name}" \
+    mapfile -t asset_names < <(verify_github_release_resolve_asset_names)
+    downloader_output="$(
+        "${VERIFY_GITHUB_RELEASE_ASSET_DOWNLOADER}" \
+            --repo "${VERIFY_GITHUB_RELEASE_REPOSITORY_SLUG}" \
+            --tag "${VERIFY_GITHUB_RELEASE_TAG_NAME}" \
             --dir "${work_dir}" \
-            --clobber >/dev/null 2>&1 || {
-            verify_github_release_record_failure \
-                "failed to download published release asset ${asset_name} from ${VERIFY_GITHUB_RELEASE_TAG_NAME}"
-            return 1
-        }
+            --retries 1 \
+            --delay-seconds 0 \
+            "${asset_names[@]}" 2>&1
+    )" || {
+        verify_github_release_record_failure "${downloader_output}"
+        return 1
+    }
+
+    for asset_name in "${asset_names[@]}"; do
+        [[ -n "${asset_name}" ]] || continue
         asset_path="${work_dir}/${asset_name}"
         [[ -f "${asset_path}" ]] || {
             verify_github_release_record_failure \
@@ -103,7 +111,7 @@ verify_github_release_downloaded_assets() {
                 "published attestation verification failed for ${asset_name}: ${attestation_output}"
             return 1
         }
-    done < <(verify_github_release_resolve_asset_names)
+    done
 }
 
 verify_github_release_archive_checksum_pairs() {
@@ -270,12 +278,15 @@ verify_github_release_parse_args() {
 
 verify_github_release_init_contract() {
     readonly VERIFY_GITHUB_RELEASE_ARCHIVE_VERIFIER="${VERIFY_GITHUB_RELEASE_SCRIPT_DIR}/verify-source-archive.py"
+    readonly VERIFY_GITHUB_RELEASE_ASSET_DOWNLOADER="${VERIFY_GITHUB_RELEASE_SCRIPT_DIR}/download-github-release-assets.sh"
     readonly VERIFY_GITHUB_RELEASE_SECURITY_POLICY_VERIFIER="${VERIFY_GITHUB_RELEASE_SCRIPT_DIR}/verify-security-policy-surface.sh"
     readonly VERIFY_GITHUB_RELEASE_SIGNER_WORKFLOW_PATH='.github/workflows/release.yml'
     readonly VERIFY_GITHUB_RELEASE_PLAN_READER="${VERIFY_GITHUB_RELEASE_SCRIPT_DIR}/read-release-publication-plan.py"
 
     [[ -f "${VERIFY_GITHUB_RELEASE_ARCHIVE_VERIFIER}" ]] || verify_github_release_die \
         "missing source archive verifier at ${VERIFY_GITHUB_RELEASE_ARCHIVE_VERIFIER}"
+    [[ -x "${VERIFY_GITHUB_RELEASE_ASSET_DOWNLOADER}" ]] || verify_github_release_die \
+        "missing executable release asset downloader at ${VERIFY_GITHUB_RELEASE_ASSET_DOWNLOADER}"
     [[ -x "${VERIFY_GITHUB_RELEASE_SECURITY_POLICY_VERIFIER}" ]] || verify_github_release_die \
         "missing executable security-policy verifier at ${VERIFY_GITHUB_RELEASE_SECURITY_POLICY_VERIFIER}"
     [[ -f "${VERIFY_GITHUB_RELEASE_PLAN_READER}" ]] || verify_github_release_die \

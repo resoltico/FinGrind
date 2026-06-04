@@ -357,25 +357,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          readonly last_error_file="$(mktemp)"
-          trap 'rm -f "${last_error_file}"' EXIT
           mapfile -t asset_names < <(printf '%s' "${RELEASE_ASSET_NAMES_JSON}" | jq -r '.[]')
-          for asset_name in "${asset_names[@]}"; do
-            attempt=1
-            until gh release download "${RELEASE_TAG}" \
-              --repo "${GH_REPO}" \
-              --pattern "${asset_name}" \
-              --dir release-assets \
-              --clobber >/dev/null 2>"${last_error_file}"; do
-              if (( attempt >= FINGRIND_RELEASE_ASSET_DOWNLOAD_RETRIES )); then
-                echo "failed to download published release asset ${asset_name} for attestation"
-                cat "${last_error_file}" >&2
-                exit 1
-              fi
-              attempt=$((attempt + 1))
-              sleep "${FINGRIND_RELEASE_ASSET_DOWNLOAD_DELAY_SECONDS}"
-            done
-          done
+          ./scripts/download-github-release-assets.sh \
+            --repo "${GH_REPO}" \
+            --tag "${RELEASE_TAG}" \
+            --dir release-assets \
+            --retries "${FINGRIND_RELEASE_ASSET_DOWNLOAD_RETRIES}" \
+            --delay-seconds "${FINGRIND_RELEASE_ASSET_DOWNLOAD_DELAY_SECONDS}" \
+            "${asset_names[@]}"
 
       - name: Attest published release assets
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
