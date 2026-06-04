@@ -28,9 +28,12 @@ require_command() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly python_contract_verifier="${script_dir}/verify_jacoco_snapshot_contract.py"
+readonly gradlew="${repo_root}/gradlew"
 
 require_command python3
 [[ -f "${python_contract_verifier}" ]] || die \
     "missing JaCoCo snapshot contract verifier at ${python_contract_verifier}"
+[[ -x "${gradlew}" ]] || die "missing executable Gradle wrapper at ${gradlew}"
 
 python3 "${python_contract_verifier}" --repo-root "${repo_root}"
+"${gradlew}" prepareJacocoSnapshotArtifacts --console=plain --no-daemon >/dev/null
