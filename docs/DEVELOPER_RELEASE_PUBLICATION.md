@@ -68,8 +68,9 @@ These publication invariants are release-critical:
   GitHub can expose a draft release object that `gh release view <tag>` can resolve while
   tag-based release downloads still report `release not found`; use the repo-owned
   `./scripts/download-github-release-assets.sh` seam instead
-- neutral release jobs that invoke repo-owned downloader or verifier scripts must first check out
-  the repository so those script paths exist on the runner
+- neutral release jobs that invoke repo-owned downloader, verifier, or finalizer scripts must
+  resolve those helpers through the workflow-owner helper checkout during `workflow_dispatch`
+  reruns, so post-tag publication repairs on `main` actually reach the live control-plane seams
 - the staged-container and promotion timeouts must leave room for buildx publication and post-push
   public verification
 - verifier timeout budget must exceed the explicit retry budget for release-asset and attestation
@@ -133,6 +134,11 @@ publication machinery and replay it against the immutable released commit.
 The rerun workflow now reads the canonical bundle-archive manifest instead of scraping Gradle
 console output, so post-tag publication repairs do not need compatibility shims for historical
 log dialects.
+
+The rerun workflow also resolves repo-owned control-plane helpers from the workflow owner helper
+checkout on `main` rather than assuming the immutable tag checkout contains every later repair
+script. That includes draft-asset download, release verification, release finalization, and
+public container verification seams.
 
 If the repair touches container publication, the rerun workflow on `main` must publish from the
 staged Docker context under the active CLI build root, not from the repository root. Local Docker

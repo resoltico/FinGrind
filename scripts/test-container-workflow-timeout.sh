@@ -56,8 +56,12 @@ grep -Fq 'build-staging-container:' "${workflow_file}" || die \
     "release workflow no longer stages native container images per Linux target"
 grep -Fq 'promote-container:' "${workflow_file}" || die \
     "release workflow no longer promotes staged container images into the public tags"
-grep -Fq './scripts/verify-public-container-surface.sh' "${workflow_file}" || die \
+grep -Fq 'verify-public-container-surface.sh' "${workflow_file}" || die \
     "container publication no longer verifies staged and public container surfaces through the repo-owned verifier"
+grep -Fq 'path: workflow-owner-surface' "${workflow_file}" || die \
+    "container publication no longer checks out the workflow-owner helper surface for rerun-safe helper scripts"
+grep -Fq 'FINGRIND_WORKFLOW_HELPER_ROOT' "${workflow_file}" || die \
+    "container publication no longer resolves helper-rooted release-control scripts"
 grep -Fq 'FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST' "${workflow_file}" || die \
     "container publication no longer aligns latest verification with the canonical latest policy"
 grep -Fq 'fg_gradle_docker_context_dir' "${workflow_file}" || die \

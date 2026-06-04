@@ -440,8 +440,9 @@ The neutral attestation and verification jobs must also download draft assets th
 repo-owned `./scripts/download-github-release-assets.sh` seam rather than `gh release download
 <tag>`. GitHub can expose a draft release object that tag-based `gh release view` resolves while
 tag-based `gh release download` still reports `release not found` until finalization.
-Those neutral jobs must also check out the repository before invoking repo-owned downloader or
-verifier scripts; the draft-aware seam is a repository path, not a builtin runner capability.
+Those neutral jobs must also resolve repo-owned downloader, verifier, and finalizer helpers from
+the workflow-owner helper checkout during `workflow_dispatch` reruns; the repair theory is not
+real if the rerun keeps calling stale tag-local helper scripts after `main` fixes them.
 
 If the repair changes container publication, verify that the `Release` workflow's staging-container
 build job builds from the staged Docker context under the active CLI build root instead of the

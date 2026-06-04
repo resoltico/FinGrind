@@ -49,21 +49,25 @@ grep -Fq 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.
     "release workflow no longer pins publication-staging uploads to the current Node24-backed artifact action"
 grep -Fq 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1' "${release_workflow}" || die \
     "release workflow no longer pins publication-staging downloads to the current Node24-backed artifact action"
+grep -Fq 'FINGRIND_WORKFLOW_HELPER_ROOT' "${release_workflow}" || die \
+    "release workflow no longer resolves the workflow-owner helper surface for post-tag repair jobs"
+grep -Fq 'path: workflow-owner-surface' "${release_workflow}" || die \
+    "release workflow no longer checks out the workflow-owner helper surface for workflow-dispatch reruns"
 grep -Fq 'build-staging-container:' "${release_workflow}" || die \
     "release workflow no longer stages native container images inside the release workflow"
 grep -Fq 'promote-container:' "${release_workflow}" || die \
     "release workflow no longer promotes staged container images into the public release surface"
-grep -Fq 'run: ./scripts/verify-release-candidate-tag.sh' "${release_workflow}" || die \
+grep -Fq 'verify-release-candidate-tag.sh' "${release_workflow}" || die \
     "release workflow no longer routes the tag verifier through the repo-owned release script"
-grep -Fq './scripts/publish-github-release.sh' "${release_workflow}" || die \
+grep -Fq 'publish-github-release.sh' "${release_workflow}" || die \
     "release workflow no longer stages the draft GitHub release through the repo-owned publisher"
-grep -Fq './scripts/download-github-release-assets.sh' "${release_workflow}" || die \
+grep -Fq 'download-github-release-assets.sh' "${release_workflow}" || die \
     "release workflow no longer downloads staged or draft release assets through the repo-owned downloader"
-grep -Fq './scripts/finalize-github-release.sh' "${release_workflow}" || die \
+grep -Fq 'finalize-github-release.sh' "${release_workflow}" || die \
     "release workflow no longer finalizes the staged GitHub release through the repo-owned finalizer"
 grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"' "${release_workflow}" || die \
     "release workflow no longer verifies the staged draft release before public container promotion"
-grep -Fq './scripts/verify-public-container-surface.sh' "${release_workflow}" || die \
+grep -Fq 'verify-public-container-surface.sh' "${release_workflow}" || die \
     "release workflow no longer verifies staged and public container surfaces through the repo-owned verifier"
 grep -Fq 'FINGRIND_RELEASE_MARK_LATEST' "${release_workflow}" || die \
     "release workflow no longer drives GitHub latest ownership from the canonical latest policy"
@@ -87,8 +91,10 @@ PY
 )"
 printf '%s' "${attest_job_surface}" | grep -Fq 'uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2' || die \
     "release workflow attestation job no longer checks out the repository before invoking repo-owned downloader scripts"
-printf '%s' "${attest_job_surface}" | grep -Fq './scripts/download-github-release-assets.sh' || die \
-    "release workflow attestation job no longer invokes the repo-owned draft-aware asset downloader inside the attestation job surface"
+printf '%s' "${attest_job_surface}" | grep -Fq 'path: workflow-owner-surface' || die \
+    "release workflow attestation job no longer checks out the workflow-owner helper surface for rerun-safe draft asset downloads"
+printf '%s' "${attest_job_surface}" | grep -Fq '${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/download-github-release-assets.sh' || die \
+    "release workflow attestation job no longer invokes the helper-rooted draft-aware asset downloader inside the attestation job surface"
 
 release_assets_json="$(
     python3 "${repo_root}/scripts/read-release-publication-plan.py" --version 9.9.9 | jq -c '.releaseAssetNames'
