@@ -5,6 +5,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the draft-first GitHub release publisher so a freshly created draft release is awaited
+  until it becomes visible through the Releases API before asset convergence begins. This removes
+  the silent post-create visibility race that could abort tag-driven publication before the first
+  staged asset upload.
+- Raised the default release-check verifier timeout budget to cover the normal merge-side CI
+  fan-out where `Windows bundle smoke` starts after `Check`, while keeping the protocol's explicit
+  timeout override path for unusually slow Actions queueing.
+- Fixed Jazzer deterministic verification so white-box SQLite and executor patch staging now
+  rebuilds directly from compiled project outputs instead of cached test-fixture archives. This
+  removes truncated-archive drift from the repository gate and lets the nested Jazzer build
+  self-heal stale patch state on the next verification run.
+
 ## [0.51.0] - 2026-06-03
 
 ### Changed

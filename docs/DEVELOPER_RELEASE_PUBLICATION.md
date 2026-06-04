@@ -61,6 +61,8 @@ These publication invariants are release-critical:
   require different public bytes must fail and cut a new version tag instead
 - the release workflow's staged-container and promotion jobs must wait for the verified draft
   release asset set before treating publication as complete
+- the draft-first GitHub release publisher must wait for a newly created draft release to become
+  visible through the Releases API before it inspects or mutates draft assets
 - the staged-container and promotion timeouts must leave room for buildx publication and post-push
   public verification
 - verifier timeout budget must exceed the explicit retry budget for release-asset and attestation
