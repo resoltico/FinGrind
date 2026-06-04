@@ -32,8 +32,12 @@ readonly release_workflow="${repo_root}/.github/workflows/release.yml"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
 grep -Fq 'scripts/test-download-github-release-assets.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the draft-aware release asset downloader"
-grep -Fq './scripts/download-github-release-assets.sh' "${release_workflow}" || die \
+grep -Fq 'download-github-release-assets.sh' "${release_workflow}" || die \
     "release workflow no longer downloads draft-aware release assets through the repo-owned downloader"
+grep -Fq 'path: workflow-owner-surface' "${release_workflow}" || die \
+    "release workflow no longer checks out the workflow-owner helper surface for rerun-safe asset downloads"
+grep -Fq 'FINGRIND_WORKFLOW_HELPER_ROOT' "${release_workflow}" || die \
+    "release workflow no longer resolves the helper-root path for release asset downloads"
 
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-download-github-release-assets.XXXXXX")"
 cleanup() {

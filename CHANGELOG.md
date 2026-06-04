@@ -13,10 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   staged asset upload.
 - Fixed draft release attestation and staged-release verification so neutral post-upload jobs now
   download assets through the repo-owned draft-aware release downloader instead of assuming
-  `gh release download <tag>` can resolve a release before finalization, and the attestation job
-  now checks out the repository before invoking that repo-owned seam. This removes the draft-only
-  GitHub CLI lookup gap and the missing-checkout workflow gap that surfaced during the `0.51.0`
-  replay.
+  `gh release download <tag>` can resolve a release before finalization, and all rerun-safe
+  release-control helpers now resolve through the workflow-owner checkout on `main` instead of
+  assuming the immutable tag checkout contains every later repair seam. This removes the
+  draft-only GitHub CLI lookup gap and the stale-tag-helper workflow gap that surfaced during the
+  `0.51.0` replay.
 - Raised the default release-check verifier timeout budget to cover the normal merge-side CI
   fan-out where `Windows bundle smoke` starts after `Check`, while keeping the protocol's explicit
   timeout override path for unusually slow Actions queueing.
