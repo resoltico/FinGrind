@@ -93,8 +93,26 @@ printf '%s' "${attest_job_surface}" | grep -Fq 'uses: actions/checkout@de0fac2e4
     "release workflow attestation job no longer checks out the repository before invoking repo-owned downloader scripts"
 printf '%s' "${attest_job_surface}" | grep -Fq 'path: workflow-owner-surface' || die \
     "release workflow attestation job no longer checks out the workflow-owner helper surface for rerun-safe draft asset downloads"
+printf '%s' "${attest_job_surface}" | grep -Fq 'contents: write' || die \
+    "release workflow attestation job no longer keeps write-scoped contents permission for staged draft asset downloads"
 printf '%s' "${attest_job_surface}" | grep -Fq '${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/download-github-release-assets.sh' || die \
     "release workflow attestation job no longer invokes the helper-rooted draft-aware asset downloader inside the attestation job surface"
+
+verify_job_surface="$(
+    python3 - <<'PY' "${release_workflow}"
+from pathlib import Path
+import sys
+
+workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
+start = workflow.index("  verify-release:\n")
+end = workflow.index("\n  build-staging-container:\n", start)
+print(workflow[start:end], end="")
+PY
+)"
+printf '%s' "${verify_job_surface}" | grep -Fq 'contents: write' || die \
+    "release workflow verifier job no longer keeps write-scoped contents permission for staged draft asset verification downloads"
+printf '%s' "${verify_job_surface}" | grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"' || die \
+    "release workflow verifier job no longer verifies the staged draft release before container publication"
 
 release_assets_json="$(
     python3 "${repo_root}/scripts/read-release-publication-plan.py" --version 9.9.9 | jq -c '.releaseAssetNames'

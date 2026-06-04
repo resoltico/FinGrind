@@ -68,6 +68,9 @@ These publication invariants are release-critical:
   GitHub can expose a draft release object that `gh release view <tag>` can resolve while
   tag-based release downloads still report `release not found`; use the repo-owned
   `./scripts/download-github-release-assets.sh` seam instead
+- neutral jobs that download staged draft assets must keep write-scoped `contents` permission.
+  In the live GitHub Actions surface, a read-scoped workflow token can enumerate the draft release
+  while failing to fetch the staged asset bytes themselves
 - neutral release jobs that invoke repo-owned downloader, verifier, or finalizer scripts must
   resolve those helpers through the workflow-owner helper checkout during `workflow_dispatch`
   reruns, so post-tag publication repairs on `main` actually reach the live control-plane seams

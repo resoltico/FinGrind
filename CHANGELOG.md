@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assuming the immutable tag checkout contains every later repair seam. This removes the
   draft-only GitHub CLI lookup gap and the stale-tag-helper workflow gap that surfaced during the
   `0.51.0` replay.
+- Fixed staged draft-asset attestation and draft-phase release verification so those neutral jobs
+  now keep write-scoped GitHub `contents` permission while downloading staged release bytes. This
+  removes the read-token draft-asset fetch failure that surfaced in the `0.51.0` replay after the
+  helper-root rerun repair landed.
 - Raised the default release-check verifier timeout budget to cover the normal merge-side CI
   fan-out where `Windows bundle smoke` starts after `Check`, while keeping the protocol's explicit
   timeout override path for unusually slow Actions queueing.
