@@ -435,6 +435,11 @@ become visible through the Releases API before it inspects or mutates draft asse
 `gh release create` call is not, by itself, proof that the follow-up asset convergence queries can
 already observe that draft.
 
+The neutral attestation and verification jobs must also download draft assets through the
+repo-owned `./scripts/download-github-release-assets.sh` seam rather than `gh release download
+<tag>`. GitHub can expose a draft release object that tag-based `gh release view` resolves while
+tag-based `gh release download` still reports `release not found` until finalization.
+
 If the repair changes container publication, verify that the `Release` workflow's staging-container
 build job builds from the staged Docker context under the active CLI build root instead of the
 repository root before dispatching the rerun. The local Docker acceptance gate
@@ -562,7 +567,8 @@ Requirements:
   contract changes first.
 - Every published archive and published checksum file verifies through `gh attestation verify`
   against the repository's `.github/workflows/release.yml` signer workflow. The helper script
-  downloads the published assets and performs that verification for you.
+  downloads the draft-or-published assets through the repo-owned draft-aware downloader and
+  performs that verification for you.
 - The release workflow must create those attestations from the published release assets
   themselves. Upload the bundle and checksum files first, download the published bytes back from
   GitHub on a neutral attestation job, and attest those downloaded files. Do not attest
