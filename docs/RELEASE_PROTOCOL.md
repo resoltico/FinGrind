@@ -305,11 +305,11 @@ If `./scripts/verify-release-pr-gate.sh <N>` reports a failing `Gate`, fix the f
 release branch, and run the verifier again — do not merge a red PR.
 
 The verifier's default wait is sized for the normal PR-side CI fan-out where the aggregate `Gate`
-arrives after the slower sibling jobs finish. If GitHub Actions queueing is unusually slow, extend
-the wait explicitly instead of guessing:
+arrives after the slower sibling jobs finish, including the late-starting Windows smoke leg. If
+GitHub Actions queueing is unusually slow, extend the wait explicitly instead of guessing:
 
 ```bash
-FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-pr-gate.sh <N>
 ```
 
 ### Step 4
@@ -347,7 +347,7 @@ fan-out where `Windows bundle smoke` does not start until `Check` finishes. If G
 queueing is unusually slow, extend the wait explicitly instead of guessing:
 
 ```bash
-FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-merge-handoff.sh
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-merge-handoff.sh
 ```
 
 GitHub auto-delete on merge should also be enabled at the repository level. `--delete-branch`
@@ -429,6 +429,11 @@ commit.
 The rerun workflow now reads the canonical bundle-archive manifest instead of scraping
 `:cli:bundleCliArchive` console output, so post-tag publication repairs do not need compatibility
 shims for historical log dialects.
+
+The draft-first GitHub release publisher must also wait for a freshly created draft release to
+become visible through the Releases API before it inspects or mutates draft assets. A successful
+`gh release create` call is not, by itself, proof that the follow-up asset convergence queries can
+already observe that draft.
 
 If the repair changes container publication, verify that the `Release` workflow's staging-container
 build job builds from the staged Docker context under the active CLI build root instead of the

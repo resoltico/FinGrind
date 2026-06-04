@@ -69,6 +69,46 @@ publish_release_asset_digest() {
     publish_release_api_field ".assets[]? | select(.name == \"${asset_name}\") | .digest // empty"
 }
 
+publish_release_wait_for_visibility() {
+    local retries="${FINGRIND_RELEASE_DRAFT_VISIBILITY_RETRIES:-10}"
+    local delay_seconds="${FINGRIND_RELEASE_DRAFT_VISIBILITY_DELAY_SECONDS:-1}"
+    local release_json=''
+
+    while (( retries > 0 )); do
+        release_json="$(publish_release_view_json || true)"
+        if [[ -n "${release_json}" ]]; then
+            return
+        fi
+        retries=$((retries - 1))
+        (( retries > 0 )) || break
+        if [[ "${delay_seconds}" != "0" && "${delay_seconds}" != "0.0" ]]; then
+            sleep "${delay_seconds}"
+        fi
+    done
+
+    publish_release_die \
+        "release ${PUBLISH_RELEASE_TAG_NAME} was not visible through the GitHub Releases API after creation"
+}
+
+publish_release_resolve_api_field_or_die() {
+    local jq_expression=$1
+    local failure_message=$2
+    local resolved_value
+
+    resolved_value="$(publish_release_api_field "${jq_expression}")" || publish_release_die \
+        "${failure_message}"
+    printf '%s\n' "${resolved_value}"
+}
+
+publish_release_resolve_asset_digest_or_die() {
+    local asset_name=$1
+    local resolved_value
+
+    resolved_value="$(publish_release_asset_digest "${asset_name}")" || publish_release_die \
+        "failed to inspect release ${PUBLISH_RELEASE_TAG_NAME} asset ${asset_name}"
+    printf '%s\n' "${resolved_value}"
+}
+
 publish_release_create_draft_release() {
     gh release create "${PUBLISH_RELEASE_TAG_NAME}" \
         --title "${PUBLISH_RELEASE_TAG_NAME}" \
@@ -76,6 +116,7 @@ publish_release_create_draft_release() {
         --generate-notes \
         --latest=false \
         --verify-tag >/dev/null
+    publish_release_wait_for_visibility
 }
 
 publish_release_patch_state() {
@@ -84,7 +125,9 @@ publish_release_patch_state() {
     local release_id
     local payload
 
-    release_id="$(publish_release_api_field '.id')"
+    release_id="$(publish_release_resolve_api_field_or_die \
+        '.id' \
+        "failed to resolve release id for ${PUBLISH_RELEASE_TAG_NAME}")"
     [[ -n "${release_id}" ]] || publish_release_die \
         "failed to resolve release id for ${PUBLISH_RELEASE_TAG_NAME}"
     payload="$(
@@ -116,10 +159,10 @@ publish_release_delete_asset_if_present() {
     local asset_name=$1
     local observed_digest
 
-    observed_digest="$(publish_release_asset_digest "${asset_name}")"
+    observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
     [[ -n "${observed_digest}" ]] || return 0
     gh release delete-asset "${PUBLISH_RELEASE_TAG_NAME}" "${asset_name}" --yes >/dev/null 2>&1 || {
-        observed_digest="$(publish_release_asset_digest "${asset_name}")"
+        observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
         [[ -z "${observed_digest}" ]] || publish_release_die \
             "failed to replace draft release asset ${asset_name} on ${PUBLISH_RELEASE_TAG_NAME}"
     }
@@ -133,7 +176,7 @@ publish_release_upload_asset() {
 
     asset_name="$(basename -- "${asset_path}")"
     gh release upload "${PUBLISH_RELEASE_TAG_NAME}" "${asset_path}" >/dev/null 2>&1 || {
-        observed_digest="$(publish_release_asset_digest "${asset_name}")"
+        observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
         expected_digest="sha256:$(publish_release_compute_sha256 "${asset_path}")"
         [[ "${observed_digest}" == "${expected_digest}" ]] || publish_release_die \
             "failed to upload ${asset_name} to release ${PUBLISH_RELEASE_TAG_NAME}"
@@ -149,7 +192,7 @@ publish_release_converge_asset() {
     asset_name="$(basename -- "${asset_path}")"
     [[ -f "${asset_path}" ]] || publish_release_die "missing release asset at ${asset_path}"
     expected_digest="sha256:$(publish_release_compute_sha256 "${asset_path}")"
-    observed_digest="$(publish_release_asset_digest "${asset_name}")"
+    observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
 
     if [[ "${observed_digest}" == "${expected_digest}" ]]; then
         return
@@ -158,7 +201,7 @@ publish_release_converge_asset() {
     publish_release_delete_asset_if_present "${asset_name}"
     publish_release_upload_asset "${asset_path}"
 
-    observed_digest="$(publish_release_asset_digest "${asset_name}")"
+    observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
     [[ "${observed_digest}" == "${expected_digest}" ]] || publish_release_die \
         "release ${PUBLISH_RELEASE_TAG_NAME} asset ${asset_name} did not converge to digest ${expected_digest}"
 }
@@ -172,7 +215,7 @@ publish_release_assets_match_expected() {
     for asset_path in "${PUBLISH_RELEASE_ASSET_PATHS[@]}"; do
         asset_name="$(basename -- "${asset_path}")"
         expected_digest="sha256:$(publish_release_compute_sha256 "${asset_path}")"
-        observed_digest="$(publish_release_asset_digest "${asset_name}")"
+        observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
         [[ "${observed_digest}" == "${expected_digest}" ]] || return 1
     done
     return 0
@@ -186,7 +229,9 @@ publish_release_prepare_draft_release() {
         return
     fi
 
-    release_is_draft="$(publish_release_api_field '.draft')"
+    release_is_draft="$(publish_release_resolve_api_field_or_die \
+        '.draft' \
+        "failed to resolve release draft state for ${PUBLISH_RELEASE_TAG_NAME}")"
     [[ "${release_is_draft}" == "true" || "${release_is_draft}" == "false" ]] || publish_release_die \
         "release draft state must resolve to true or false"
     if [[ "${release_is_draft}" == "true" ]]; then
@@ -219,7 +264,9 @@ publish_release_finalize_public_release() {
         "final release latest policy must be true or false"
     publish_release_exists || publish_release_die \
         "cannot finalize missing release ${PUBLISH_RELEASE_TAG_NAME}"
-    release_is_draft="$(publish_release_api_field '.draft')"
+    release_is_draft="$(publish_release_resolve_api_field_or_die \
+        '.draft' \
+        "failed to resolve release draft state for ${PUBLISH_RELEASE_TAG_NAME}")"
     [[ "${release_is_draft}" == "true" || "${release_is_draft}" == "false" ]] || publish_release_die \
         "release draft state must resolve to true or false"
     if [[ "${release_is_draft}" == "false" ]]; then
@@ -246,7 +293,9 @@ publish_release_main() {
     [[ -n "${GH_TOKEN:-}" ]] || publish_release_die "GH_TOKEN is required"
     [[ -n "${PUBLISH_RELEASE_TAG_NAME}" ]] || publish_release_die "release tag is required"
 
-    readonly PUBLISH_RELEASE_REPO_FULL_NAME="$(publish_release_resolve_repository_slug)"
+    readonly PUBLISH_RELEASE_REPO_FULL_NAME="$(
+        publish_release_resolve_repository_slug
+    )" || publish_release_die "failed to resolve GitHub repository slug"
     [[ -n "${PUBLISH_RELEASE_REPO_FULL_NAME}" ]] || publish_release_die \
         "failed to resolve GitHub repository slug"
 

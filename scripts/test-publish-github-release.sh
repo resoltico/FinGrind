@@ -59,7 +59,14 @@ action = sys.argv[2]
 if state_path.exists():
     state = json.loads(state_path.read_text(encoding="utf-8"))
 else:
-    state = {"exists": False, "id": 444, "draft": False, "make_latest": "false", "assets": {}}
+    state = {
+        "exists": False,
+        "id": 444,
+        "draft": False,
+        "make_latest": "false",
+        "assets": {},
+        "visibilityDelayRemaining": 0,
+    }
 
 if action == "dump":
     print(json.dumps(state))
@@ -109,7 +116,20 @@ tag_name = sys.argv[2]
 if state_path.exists():
     state = json.loads(state_path.read_text(encoding="utf-8"))
 else:
-    state = {"exists": False, "id": 444, "draft": False, "make_latest": "false", "assets": {}}
+    state = {
+        "exists": False,
+        "id": 444,
+        "draft": False,
+        "make_latest": "false",
+        "assets": {},
+        "visibilityDelayRemaining": 0,
+    }
+
+if state["exists"] and state.get("visibilityDelayRemaining", 0) > 0:
+    state["visibilityDelayRemaining"] -= 1
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    print("[]")
+    raise SystemExit(0)
 
 if not state["exists"]:
     print("[]")
@@ -207,6 +227,7 @@ run_publish_fixture() {
     local state_dir=$1
     local asset_path=$2
     PATH="${fixture_root}/bin:${PATH}" \
+        FINGRIND_RELEASE_DRAFT_VISIBILITY_DELAY_SECONDS=0 \
         GH_TOKEN='test-token' \
         RELEASE_TAG='v9.9.9' \
         FAKE_RELEASE_STATE_FILE="${state_dir}/release-state.json" \
@@ -273,6 +294,18 @@ grep -Fq 'upload fingrind.tar.gz ' "${created_state_dir}/operations.log" || die 
 if grep -Fq '"draft": false' "${created_state_dir}/operations.log"; then
     die "release publisher finalized the release during draft staging"
 fi
+
+created_visibility_state_dir="${fixture_root}/created-with-visibility-delay"
+mkdir -p "${created_visibility_state_dir}"
+create_asset "${created_visibility_state_dir}/fingrind.tar.gz" 'created-with-visibility-delay'
+write_state "${created_visibility_state_dir}/release-state.json" \
+    '{"exists": false, "id": 444, "draft": false, "make_latest": "false", "assets": {}, "visibilityDelayRemaining": 1}'
+: > "${created_visibility_state_dir}/operations.log"
+run_publish_fixture "${created_visibility_state_dir}" "${created_visibility_state_dir}/fingrind.tar.gz"
+grep -Fq 'create' "${created_visibility_state_dir}/operations.log" || die \
+    "release publisher did not create a draft release before waiting for visibility"
+grep -Fq 'upload fingrind.tar.gz ' "${created_visibility_state_dir}/operations.log" || die \
+    "release publisher did not upload the initial release asset after draft visibility lag"
 
 run_finalize_fixture "${created_state_dir}" true
 grep -Fq '"draft": false' "${created_state_dir}/operations.log" || die \
