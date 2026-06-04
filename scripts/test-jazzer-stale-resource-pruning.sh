@@ -30,6 +30,8 @@ readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
+# shellcheck source=/dev/null
+source "${repo_root}/scripts/check-process-support.sh"
 
 is_darwin=false
 if [[ "$(uname -s)" == 'Darwin' ]]; then
@@ -54,13 +56,17 @@ mkdir -p "$(dirname "${stale_input_resource}")" "$(dirname "${stale_metadata_res
 printf 'stale processed seed\n' > "${stale_input_resource}"
 printf 'stale processed metadata\n' > "${stale_metadata_resource}"
 
-if ! ./gradlew \
+if ! run_logged_command_with_progress \
+    "${process_log}" \
+    "jazzer stale-resource pruning regression" \
+    20 \
+    ./gradlew \
     --project-dir jazzer \
     processFuzzResources \
     --rerun-tasks \
     --no-daemon \
     --no-configuration-cache \
-    --console=plain >"${process_log}"; then
+    --console=plain; then
     cat "${process_log}" >&2
     exit 1
 fi

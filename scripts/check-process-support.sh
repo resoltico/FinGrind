@@ -71,3 +71,27 @@ capture_with_timeout() {
     kill "${watchdog_pid}" 2>/dev/null || true
     wait "${watchdog_pid}" 2>/dev/null || true
 }
+
+run_logged_command_with_progress() {
+    local capture_output_path=$1
+    local progress_label=$2
+    local pulse_seconds=$3
+    shift 3
+
+    local started_at
+    started_at=$(date +%s)
+
+    "$@" >"${capture_output_path}" 2>&1 &
+    local command_pid=$!
+
+    while kill -0 "${command_pid}" 2>/dev/null; do
+        sleep "${pulse_seconds}"
+        if kill -0 "${command_pid}" 2>/dev/null; then
+            local elapsed_seconds
+            elapsed_seconds=$(($(date +%s) - started_at))
+            printf '%s: waiting (%ss)\n' "${progress_label}" "${elapsed_seconds}"
+        fi
+    done
+
+    wait "${command_pid}"
+}

@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fetch now uses the repo-owned user agent and retry posture instead of a naked `openStream()`
   call. This removes the cold-download `403` that only surfaced on Windows merge-side bundle
   smoke after the `0.51.0` release-control-plane repairs.
+- Fixed the root verification gate so long-running logged Jazzer pruning regressions emit
+  periodic keepalive output through the shared process helper. This prevents healthy hosted-runner
+  release-surface checks from being killed as false stalls during the `0.51.0` release repair
+  loop.
 
 ## [0.51.0] - 2026-06-03
 
