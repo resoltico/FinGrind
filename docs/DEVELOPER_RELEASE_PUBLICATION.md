@@ -68,6 +68,8 @@ These publication invariants are release-critical:
   GitHub can expose a draft release object that `gh release view <tag>` can resolve while
   tag-based release downloads still report `release not found`; use the repo-owned
   `./scripts/download-github-release-assets.sh` seam instead
+- neutral release jobs that invoke repo-owned downloader or verifier scripts must first check out
+  the repository so those script paths exist on the runner
 - the staged-container and promotion timeouts must leave room for buildx publication and post-push
   public verification
 - verifier timeout budget must exceed the explicit retry budget for release-asset and attestation

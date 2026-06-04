@@ -74,6 +74,22 @@ grep -Fq './scripts/verify-github-release.sh' "${repo_root}/docs/RELEASE_PROTOCO
 grep -Fq './scripts/verify-public-container-surface.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires public-container surface verification"
 
+attest_job_surface="$(
+    python3 - <<'PY' "${release_workflow}"
+from pathlib import Path
+import sys
+
+workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
+start = workflow.index("  attest-release-assets:\n")
+end = workflow.index("\n  verify-release:\n", start)
+print(workflow[start:end], end="")
+PY
+)"
+printf '%s' "${attest_job_surface}" | grep -Fq 'uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2' || die \
+    "release workflow attestation job no longer checks out the repository before invoking repo-owned downloader scripts"
+printf '%s' "${attest_job_surface}" | grep -Fq './scripts/download-github-release-assets.sh' || die \
+    "release workflow attestation job no longer invokes the repo-owned draft-aware asset downloader inside the attestation job surface"
+
 release_assets_json="$(
     python3 "${repo_root}/scripts/read-release-publication-plan.py" --version 9.9.9 | jq -c '.releaseAssetNames'
 )"
