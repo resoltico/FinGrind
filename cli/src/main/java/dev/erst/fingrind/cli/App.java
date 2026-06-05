@@ -6,24 +6,15 @@ import java.util.Objects;
 public final class App {
   private final CliFactory cliFactory;
   private final ExitHandler exitHandler;
-  private final LaunchArgumentsResolver launchArgumentsResolver;
 
   /** Creates the production App wired to the default CLI factory and {@code System::exit}. */
   public App() {
-    this(
-        FinGrindCli::standardRunner,
-        System::exit,
-        LauncherInvocationArguments::resolveForCurrentProcess);
+    this(FinGrindCli::standardRunner, System::exit);
   }
 
-  App(
-      CliFactory cliFactory,
-      ExitHandler exitHandler,
-      LaunchArgumentsResolver launchArgumentsResolver) {
+  App(CliFactory cliFactory, ExitHandler exitHandler) {
     this.cliFactory = Objects.requireNonNull(cliFactory, "cliFactory must not be null");
     this.exitHandler = Objects.requireNonNull(exitHandler, "exitHandler must not be null");
-    this.launchArgumentsResolver =
-        Objects.requireNonNull(launchArgumentsResolver, "launchArgumentsResolver must not be null");
   }
 
   /** Runs the FinGrind CLI and exits with its process status code. */
@@ -37,15 +28,7 @@ public final class App {
 
   void run(String[] args, CliRuntimeEnvironment runtimeEnvironment) {
     Objects.requireNonNull(runtimeEnvironment, "runtimeEnvironment must not be null");
-    String[] resolvedArguments;
-    try {
-      resolvedArguments = launchArgumentsResolver.resolve(args);
-    } catch (LauncherInvocationArgumentsException exception) {
-      runtimeEnvironment.errorStream().println("error: " + exception.getMessage());
-      exitHandler.exit(1);
-      return;
-    }
-    int exitCode = cliFactory.create(runtimeEnvironment).run(resolvedArguments);
+    int exitCode = cliFactory.create(runtimeEnvironment).run(args.clone());
     if (exitCode != 0) {
       exitHandler.exit(exitCode);
     }

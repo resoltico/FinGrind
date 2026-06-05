@@ -56,7 +56,7 @@ def _assert_account_balance_text(config: ReleaseSmokeConfig, text_output: str) -
     for pattern, message in (
         (r"^Account Balance$", "report title"),
         (
-            rf"Account[[:space:]]+:[[:space:]]+{re.escape(config.starter_cash_account_code)}",
+            rf"Account[[:space:]]+:[[:space:]]+.+[[:space:]]+\[{re.escape(config.starter_cash_account_code)}\]",
             "selected account",
         ),
         (r"6\.00", "expected net balance"),

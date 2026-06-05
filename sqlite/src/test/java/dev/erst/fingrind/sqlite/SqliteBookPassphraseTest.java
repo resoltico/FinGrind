@@ -51,12 +51,13 @@ class SqliteBookPassphraseTest {
   @Test
   void normalizeSourceDescription_trimsAndRejectsBlankSourceDescriptions() {
     assertEquals(
-        "secret source", SqliteBookPassphrase.normalizeSourceDescription("  secret source  "));
+        "secret source",
+        SqliteBookPassphraseValidation.normalizeSourceDescription("  secret source  "));
 
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
-            () -> SqliteBookPassphrase.normalizeSourceDescription("   "));
+            () -> SqliteBookPassphraseValidation.normalizeSourceDescription("   "));
 
     assertEquals("sourceDescription must not be blank.", exception.getMessage());
   }
@@ -173,7 +174,7 @@ class SqliteBookPassphraseTest {
   void zeroize_overwritesArrayBackedBuffers() {
     ByteBuffer heapBytes = ByteBuffer.wrap(new byte[] {7, 8, 9, 10});
 
-    SqliteBookPassphrase.zeroize(heapBytes);
+    SqliteBookPassphraseZeroization.zeroize(heapBytes);
 
     assertArrayEquals(new byte[4], heapBytes.array());
   }
@@ -186,7 +187,7 @@ class SqliteBookPassphraseTest {
     directBytes.put(2, (byte) 9);
     directBytes.put(3, (byte) 10);
 
-    SqliteBookPassphrase.zeroize(directBytes);
+    SqliteBookPassphraseZeroization.zeroize(directBytes);
 
     byte[] actual = new byte[4];
     for (int index = 0; index < actual.length; index++) {
@@ -203,7 +204,7 @@ class SqliteBookPassphraseTest {
     directCharacters.put(2, 'c');
     directCharacters.put(3, 'd');
 
-    SqliteBookPassphrase.zeroize(directCharacters);
+    SqliteBookPassphraseZeroization.zeroize(directCharacters);
 
     char[] actual = new char[4];
     for (int index = 0; index < actual.length; index++) {

@@ -28,19 +28,19 @@ class ProtocolDistributionCatalogTest {
         ".\\scripts\\source-checkout-cli.ps1", distribution.sourceCheckoutLauncherCommand(true));
     assertEquals("./scripts/direct-java-cli.sh", distribution.directJavaLauncherCommand(false));
     assertEquals(".\\scripts\\direct-java-cli.ps1", distribution.directJavaLauncherCommand(true));
+    assertEquals("fingrind", distribution.containerLauncherCommand());
     assertEquals(
         "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>",
-        distribution.containerLauncherCommand());
+        distribution.containerMountedLauncherPrefix());
+    assertEquals(
+        List.of(PublicCliBundleTarget.LINUX_X86_64, PublicCliBundleTarget.LINUX_AARCH64),
+        distribution.supportedPublicCliBundleTargets());
     assertEquals(
         List.of(
             PublicCliBundleTarget.MACOS_AARCH64,
             PublicCliBundleTarget.MACOS_X86_64,
-            PublicCliBundleTarget.LINUX_X86_64,
-            PublicCliBundleTarget.LINUX_AARCH64,
-            PublicCliBundleTarget.WINDOWS_X86_64),
-        distribution.supportedPublicCliBundleTargets());
-    assertEquals(
-        List.of(PublicCliBundleTarget.WINDOWS_AARCH64),
+            PublicCliBundleTarget.WINDOWS_X86_64,
+            PublicCliBundleTarget.WINDOWS_AARCH64),
         distribution.unsupportedPublicCliBundleTargets());
     for (PublicCliBundleTarget target : distribution.supportedPublicCliBundleTargets()) {
       assertTrue(distribution.bundleLauncherCommand(target).contains("fingrind"));

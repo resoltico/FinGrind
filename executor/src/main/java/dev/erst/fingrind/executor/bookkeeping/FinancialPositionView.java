@@ -14,6 +14,7 @@ public record FinancialPositionView(
     Optional<LocalDate> effectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
+    boolean accountingEquationBalanced,
     List<FinancialPositionSectionView> sections,
     List<FinancialPositionSectionView> comparativeSections) {
   public FinancialPositionView {

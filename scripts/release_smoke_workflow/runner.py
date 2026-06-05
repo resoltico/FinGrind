@@ -10,14 +10,12 @@ from .discovery_checks import (
     verify_runtime_contract,
     verify_version_command,
 )
-from .failure_checks import (
-    verify_deterministic_nonsense_workflows,
-    verify_rekey_and_wrong_key_semantics,
-)
 from .fixtures import prepare_fixture_directories, write_acceptance_fixtures
 from .maintenance_checks import verify_backup_restore_and_rollback_surfaces
 from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
 from .query_checks import verify_operator_queries_and_reports, verify_preflight_and_commit
+from .rekey_failure_checks import verify_rekey_and_wrong_key_semantics
+from .request_failure_checks import verify_deterministic_nonsense_workflows
 from .setup_checks import (
     verify_account_registry,
     verify_book_key_generation,

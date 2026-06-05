@@ -24,7 +24,8 @@ def assert_discovery_payloads(
     payload = required_mapping(capabilities_payload, "payload")
     environment = required_mapping(environment_payload, "payload")
     full_contract = required_mapping(payload, "fullContract")
-    distribution = required_mapping(environment, "distribution")
+    runtime_surface_payload = required_mapping(environment, "runtime")
+    publication_surface = required_mapping(environment, "publication")
     storage = required_mapping(environment, "storage")
     sqlite = required_mapping(environment, "sqlite")
     runtime = required_mapping(sqlite, "runtime")
@@ -43,7 +44,8 @@ def assert_discovery_payloads(
     assert_discovery_surface(
         config,
         payload,
-        distribution,
+        runtime_surface_payload,
+        publication_surface,
         storage,
         sqlite,
         runtime_surface,

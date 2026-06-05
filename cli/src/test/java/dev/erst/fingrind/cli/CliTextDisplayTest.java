@@ -31,4 +31,10 @@ class CliTextDisplayTest {
     assertEquals("Current Asset", CliTextDisplay.wireLabel("CURRENT_ASSET"));
     assertEquals("Current Asset", CliTextDisplay.wireLabel("CURRENT__ASSET"));
   }
+
+  @Test
+  void humanDisplay_truncatesLongOpaqueReferencesAndPreservesShortValues() {
+    assertEquals("posting", CliHumanDisplay.opaqueReference("posting"));
+    assertEquals("12345678", CliHumanDisplay.opaqueReference("123456789"));
+  }
 }

@@ -26,13 +26,6 @@ interface ExitHandler {
   void exit(int exitCode);
 }
 
-/** Functional interface for resolving the process argument vector before CLI parsing. */
-@FunctionalInterface
-interface LaunchArgumentsResolver {
-  /** Resolves the CLI arguments that should be presented to the FinGrind parser. */
-  String[] resolve(String[] processArguments);
-}
-
 /** Runtime-owned console and clock inputs for one CLI process invocation. */
 record CliRuntimeEnvironment(
     InputStream inputStream, PrintStream outputStream, PrintStream errorStream, Clock clock) {

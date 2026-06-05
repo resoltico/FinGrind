@@ -27,11 +27,6 @@ readonly verifier="${script_dir}/verify-sqlite-runtime-contract.py"
 
 [[ -f "${verifier}" ]] || die "missing SQLite runtime verifier at ${verifier}"
 
-(
-    cd "${repo_root}" &&
-        ./gradlew :cli:installShadowDist prepareManagedSqlite --no-daemon --console=plain >/dev/null
-)
-
 environment_output="$(
     cd "${repo_root}" &&
         ./scripts/source-checkout-cli.sh environment --output json

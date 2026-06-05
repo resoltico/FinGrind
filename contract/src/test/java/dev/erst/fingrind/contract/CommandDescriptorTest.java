@@ -105,11 +105,13 @@ class CommandDescriptorTest {
             "Execute one plan");
 
     assertEquals(
-        OutputMode.JSON,
+        OutputMode.TEXT,
         Objects.requireNonNull(help.selectableOutputDefaults()).redirectedStdout());
     assertEquals(
-        OutputMode.JSON,
+        OutputMode.TEXT,
         Objects.requireNonNull(declareAccount.selectableOutputDefaults()).redirectedStdout());
+    assertEquals(
+        "json, text (via --output; default: text)", declareAccount.stdoutContractSummary());
     assertNull(fixedEnvelope.selectableOutputDefaults());
   }
 

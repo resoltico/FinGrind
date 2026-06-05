@@ -17,9 +17,9 @@ final class CliAccountBalanceOutputRenderer {
             List.of(
                 List.of(
                     "Account",
-                    snapshot.account().accountCode().value()
-                        + " "
-                        + snapshot.account().accountName().value()),
+                    CliHumanDisplay.accountLabel(
+                        snapshot.account().accountCode().value(),
+                        snapshot.account().accountName().value())),
                 List.of(
                     "Range",
                     CliQueryScopeText.dateRange(
@@ -39,7 +39,7 @@ final class CliAccountBalanceOutputRenderer {
     String context =
         CliTextFormat.renderKeyValueBlock(
             mergeContextRows(
-                CliBookIdentityDisplay.detailRows(snapshot.bookIdentity()),
+                CliBookIdentityDisplay.contextRows(snapshot.bookIdentity()),
                 List.of(
                     List.of(
                         "Posting coverage",

@@ -27,19 +27,19 @@ interface SqlitePostingFactStoreLifecycleView extends AutoCloseable {
   /** Begins the shared ledger-plan transaction scope for this store. */
   default void beginLedgerPlanTransaction() {
     storeThreadOwner().requireOwnerThread();
-    storeLifecycle().beginLedgerPlanTransaction();
+    storeLifecycle().transactions().begin();
   }
 
   /** Commits the shared ledger-plan transaction scope for this store. */
   default void commitLedgerPlanTransaction() {
     storeThreadOwner().requireOwnerThread();
-    storeLifecycle().commitLedgerPlanTransaction();
+    storeLifecycle().transactions().commit();
   }
 
   /** Rolls back the shared ledger-plan transaction scope for this store. */
   default void rollbackLedgerPlanTransaction() {
     storeThreadOwner().requireOwnerThread();
-    storeLifecycle().rollbackLedgerPlanTransaction();
+    storeLifecycle().transactions().rollback();
   }
 
   /** Closes the underlying lifecycle and native handles for this store. */

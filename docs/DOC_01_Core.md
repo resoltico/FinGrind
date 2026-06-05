@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: CORE
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -165,6 +165,21 @@ public final class BookDoctrines
 - Purpose: centralize the current built-in doctrine so open-book, discovery, SQLite, CLI, and
   tests all speak one doctrine bundle
 - Current built-in doctrine: `INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE`
+
+## `BookDoctrineDisplay`
+
+`BookDoctrineDisplay` is the operator-facing label owner for persisted doctrine values.
+
+```java
+public final class BookDoctrineDisplay
+```
+
+- Purpose: translate persisted doctrine identifiers into stable human-facing labels for CLI, PDF,
+  and other operator surfaces
+- Current label families: accounting kernel, accounting basis, framework posture, entity form,
+  and starter chart
+- Boundary: this is a presentation helper over persisted doctrine values, not a second doctrine
+  source
 
 ## `AccountingEvidence`
 

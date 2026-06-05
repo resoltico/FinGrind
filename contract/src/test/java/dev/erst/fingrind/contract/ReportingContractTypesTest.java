@@ -369,11 +369,14 @@ class ReportingContractTypesTest {
             "Wrong key", "Use the correct key file.", "--book-key-file");
     ContractDecision<String> accepted = ContractDecision.accepted("ok");
     ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
-    assertEquals(14, descriptors.size());
+    assertEquals(16, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
         descriptors.stream()
             .anyMatch(descriptor -> "interactive-prompt-unavailable".equals(descriptor.code())));
+    assertTrue(
+        descriptors.stream()
+            .anyMatch(descriptor -> "unsupported-output-selection".equals(descriptor.code())));
     assertTrue(
         descriptors.stream().anyMatch(descriptor -> "internal-error".equals(descriptor.code())));
     assertTrue(
@@ -387,6 +390,7 @@ class ReportingContractTypesTest {
             .anyMatch(descriptor -> "pdf-export-failure".equals(descriptor.code())));
     assertEquals("invalid-page-cursor", ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code());
     assertEquals(1, ContractErrors.Descriptor.INVALID_PAGE_CURSOR.exitCode());
+    assertEquals(2, ContractErrors.Descriptor.UNSUPPORTED_OUTPUT_SELECTION.exitCode());
     assertEquals(5, ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.exitCode());
     assertEquals(6, ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.exitCode());
     assertTrue(

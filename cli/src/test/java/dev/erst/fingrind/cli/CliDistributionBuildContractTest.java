@@ -97,11 +97,6 @@ class CliDistributionBuildContractTest {
             repositoryRoot()
                 .resolve(
                     "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"));
-    String dockerManagedSqliteProvisioning =
-        Files.readString(
-            repositoryRoot()
-                .resolve(
-                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/ManagedSqliteDockerProvisioning.kt"));
     String dockerContextRegistration =
         Files.readString(
             repositoryRoot()
@@ -127,7 +122,7 @@ class CliDistributionBuildContractTest {
 
     assertCliBuildScriptDelegatesDistribution(buildScript);
     assertDistributionPluginOwnsDistributionContracts(
-        distributionPlugin, dockerManagedSqliteProvisioning, dockerContextRegistration);
+        distributionPlugin, dockerContextRegistration);
     assertManagedSqliteProvisioningUsesNamedModuleAccess(
         managedSqliteProvisioning, managedSqliteConsumerPlugin, rootConventionsPlugin);
     assertSqliteBuildScriptOwnsWhiteBoxModulePatch(sqliteBuildScript);
@@ -142,17 +137,16 @@ class CliDistributionBuildContractTest {
   }
 
   private static void assertDistributionPluginOwnsDistributionContracts(
-      String distributionPlugin,
-      String dockerManagedSqliteProvisioning,
-      String dockerContextRegistration) {
+      String distributionPlugin, String dockerContextRegistration) {
     assertTrue(distributionPlugin.contains("stageDockerBuildContext"));
     assertTrue(distributionPlugin.contains("docker-context"));
     assertTrue(distributionPlugin.contains("docker-build-context-manifest.json"));
-    assertTrue(distributionPlugin.contains("source-checkout-artifact-manifest.tsv"));
-    assertTrue(
-        distributionPlugin.contains(
-            "CliDistributionSourceInventory.sourceCheckoutArtifactSourceFiles"));
-    assertTrue(distributionPlugin.contains("sourceCheckoutArtifactSourceInputs"));
+    assertFalse(distributionPlugin.contains("source-checkout-artifact-manifest.tsv"));
+    assertTrue(distributionPlugin.contains("source-checkout-runtime-manifest.tsv"));
+    assertTrue(distributionPlugin.contains("JavaToolchainService"));
+    assertTrue(distributionPlugin.contains("launcherFor"));
+    assertTrue(distributionPlugin.contains("metadata.installationPath"));
+    assertTrue(distributionPlugin.contains("writeSourceCheckoutRuntimeManifest"));
     assertTrue(
         distributionPlugin.contains(
             "CliDistributionSourceInventory.dockerBuildContextSourceFiles"));
@@ -161,6 +155,8 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("dockerManagedSqliteContractSource"));
     assertTrue(distributionPlugin.contains("dockerBuildContextSourceInputs"));
     assertTrue(
+        distributionPlugin.contains("ManagedSqliteProvisioningRegistry.require(rootProject)"));
+    assertTrue(
         distributionPlugin.contains("ManagedSqliteProvisioningLogic.registerDockerContextTarget"));
     assertTrue(distributionPlugin.contains("managedSqliteProvisioning = dockerManagedSqlite"));
     assertTrue(distributionPlugin.contains("bundleArchiveManifestOutputFile"));
@@ -168,13 +164,10 @@ class CliDistributionBuildContractTest {
     assertTrue(
         distributionPlugin.contains(
             "\"bundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
-    assertTrue(
-        distributionPlugin.contains("repositoryRootPath.set(repositoryRootDirectory.toString())"));
-    assertTrue(distributionPlugin.contains("sourceFiles.from(sourceCheckoutArtifactSourceInputs)"));
-    assertTrue(
-        distributionPlugin.contains(
-            "tasks.register<WriteSourceFileHashManifestTask>(\"writeSourceCheckoutArtifactManifest\")"));
-    assertTrue(distributionPlugin.contains("finalizedBy(writeSourceCheckoutArtifactManifest)"));
+    assertTrue(distributionPlugin.contains("dependsOn(shadowJarTask)"));
+    assertTrue(distributionPlugin.contains("finalizedBy(writeSourceCheckoutRuntimeManifest)"));
+    assertTrue(distributionPlugin.contains("javaExecutable.set(sourceCheckoutJavaLauncher.map"));
+    assertTrue(distributionPlugin.contains("javaInstallationDirectory.set("));
     assertTrue(distributionPlugin.contains("tasks.named<ProcessResources>(\"processResources\")"));
     assertTrue(
         distributionPlugin.contains(
@@ -189,25 +182,18 @@ class CliDistributionBuildContractTest {
     assertTrue(
         distributionPlugin.contains(
             "rootProject.layout.projectDirectory.dir(\"gradle/build-logic/src/main\")"));
-    assertTrue(distributionPlugin.contains("from(sourceCheckoutArtifactSourceInputs)"));
     assertFalse(
         distributionPlugin.contains(
             "inputs.dir(rootProject.layout.projectDirectory.dir(\"gradle/build-logic\"))"));
-    assertFalse(distributionPlugin.contains("sourceCheckoutArtifactSourceIncludePatterns"));
     assertFalse(distributionPlugin.contains("dockerBuildContextSourceIncludePatterns"));
     assertFalse(distributionPlugin.contains("stageDockerRuntimeInputs"));
     assertFalse(distributionPlugin.contains("docker/jdeps"));
     assertFalse(distributionPlugin.contains("archiveExtensionForOperatingSystemId"));
+    assertFalse(distributionPlugin.contains("System.getProperty(\"java.home\")"));
     assertFalse(distributionPlugin.contains("launcherPathForOperatingSystemId"));
     assertFalse(distributionPlugin.contains("launcherCommandForOperatingSystemId"));
     assertFalse(distributionPlugin.contains("managedSqliteHostClassifier("));
     assertFalse(distributionPlugin.contains("managedSqliteLibraryFileNameForHost("));
-    assertFalse(
-        dockerManagedSqliteProvisioning.contains(
-            "if (hostProvisioning.classifier == dockerBundleTarget.classifier)"));
-    assertTrue(
-        dockerManagedSqliteProvisioning.contains(
-            "The staged container runtime must come from the Docker-target toolchain"));
     assertTrue(
         dockerContextRegistration.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
     assertTrue(
@@ -299,22 +285,31 @@ class CliDistributionBuildContractTest {
     String sourceCheckoutShell =
         Files.readString(repositoryRoot.resolve("scripts/source-checkout-cli.sh"));
     String directJavaShell = Files.readString(repositoryRoot.resolve("scripts/direct-java-cli.sh"));
+    String shellWrapperEntrypoint =
+        Files.readString(repositoryRoot.resolve("scripts/source-checkout-cli-entrypoint.sh"));
     String shellWrapperCommon =
         Files.readString(repositoryRoot.resolve("scripts/source-checkout-cli-common.sh"));
+    String powerShellWrapperCommon =
+        Files.readString(repositoryRoot.resolve("scripts/source-checkout-cli-common.ps1"));
     String sourceCheckoutPowerShell =
         Files.readString(repositoryRoot.resolve("scripts/source-checkout-cli.ps1"));
     String directJavaPowerShell =
         Files.readString(repositoryRoot.resolve("scripts/direct-java-cli.ps1"));
 
-    assertTrue(shellSupport.contains("fg_gradle_source_checkout_artifact_manifest_path()"));
-    assertTrue(shellSupport.contains("fg_gradle_source_checkout_artifact_needs_refresh()"));
-    assertTrue(powerShellSupport.contains("Get-FinGrindSourceCheckoutArtifactManifestPath"));
-    assertTrue(powerShellSupport.contains("Invoke-FinGrindEnsureSourceCheckoutArtifact"));
-    assertTrue(sourceCheckoutShell.contains("source-checkout-cli-common.sh"));
-    assertTrue(directJavaShell.contains("source-checkout-cli-common.sh"));
-    assertTrue(shellWrapperCommon.contains("fg_gradle_source_checkout_artifact_needs_refresh"));
-    assertTrue(sourceCheckoutPowerShell.contains("Invoke-FinGrindEnsureSourceCheckoutArtifact"));
-    assertTrue(directJavaPowerShell.contains("Invoke-FinGrindEnsureSourceCheckoutArtifact"));
+    assertTrue(shellSupport.contains("fg_gradle_source_checkout_runtime_manifest_path()"));
+    assertTrue(powerShellSupport.contains("Get-FinGrindSourceCheckoutRuntimeManifestPath"));
+    assertTrue(sourceCheckoutShell.contains("source-checkout-cli-entrypoint.sh"));
+    assertTrue(directJavaShell.contains("source-checkout-cli-entrypoint.sh"));
+    assertTrue(shellWrapperEntrypoint.contains("source-checkout-cli-common.sh"));
+    assertTrue(shellWrapperCommon.contains("fg_gradle_source_checkout_runtime_manifest_path"));
+    assertTrue(shellWrapperCommon.contains("fg_cli_wrapper_load_runtime_manifest"));
+    assertTrue(
+        shellWrapperCommon.contains(
+            "./gradlew \\\n            :cli:writeSourceCheckoutRuntimeManifest \\\n            prepareManagedSqlite"));
+    assertTrue(powerShellWrapperCommon.contains("Invoke-FinGrindEnsureCliWrapperRuntime"));
+    assertTrue(powerShellWrapperCommon.contains("Read-FinGrindSourceCheckoutRuntimeManifest"));
+    assertTrue(sourceCheckoutPowerShell.contains("source-checkout-cli-common.ps1"));
+    assertTrue(directJavaPowerShell.contains("source-checkout-cli-common.ps1"));
   }
 
   @Test
@@ -329,12 +324,43 @@ class CliDistributionBuildContractTest {
   }
 
   @Test
+  void publishedLaunchers_targetTheCanonicalAutomaticModuleIdentity() throws IOException {
+    Path repositoryRoot = repositoryRoot();
+    String buildScript = Files.readString(repositoryRoot.resolve("cli/build.gradle.kts"));
+    String posixBundleLauncher =
+        Files.readString(repositoryRoot.resolve("cli/src/bundle/bin/fingrind"));
+    String powerShellBundleLauncher =
+        Files.readString(repositoryRoot.resolve("cli/src/bundle/bin/fingrind.ps1"));
+    String dockerEntrypoint =
+        Files.readString(repositoryRoot.resolve("cli/src/docker/docker-entrypoint.sh"));
+
+    assertTrue(buildScript.contains("\"Automatic-Module-Name\" to \"fingrind\""));
+    assertTrue(
+        posixBundleLauncher.contains("application_module='fingrind/dev.erst.fingrind.cli.App'"));
+    assertTrue(posixBundleLauncher.contains("--enable-native-access=fingrind"));
+    assertTrue(posixBundleLauncher.contains("--module \"${application_module}\""));
+    assertTrue(
+        powerShellBundleLauncher.contains(
+            "$applicationModule = \"fingrind/dev.erst.fingrind.cli.App\""));
+    assertTrue(powerShellBundleLauncher.contains("--enable-native-access=fingrind"));
+    assertTrue(powerShellBundleLauncher.contains("\"--module\","));
+    assertTrue(powerShellBundleLauncher.contains("$applicationModule"));
+    assertTrue(
+        dockerEntrypoint.contains("application_module=\"fingrind/dev.erst.fingrind.cli.App\""));
+    assertTrue(dockerEntrypoint.contains("--enable-native-access=fingrind"));
+    assertTrue(dockerEntrypoint.contains("--module \"${application_module}\""));
+  }
+
+  @Test
   void cliBuild_generatesBundleManifestFromCanonicalContractMetadata() throws IOException {
     Path repositoryRoot = repositoryRoot();
     String distributionPlugin =
         Files.readString(
             repositoryRoot.resolve(
                 "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"));
+    String bundleReadme = Files.readString(repositoryRoot.resolve("cli/src/bundle/root/README.md"));
+    String quickStartRequest =
+        Files.readString(repositoryRoot.resolve("cli/src/bundle/root/quick-start-request.json"));
 
     assertFalse(Files.exists(repositoryRoot.resolve("cli/src/bundle/root/bundle-manifest.json")));
     assertTrue(
@@ -346,6 +372,10 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("generated/bundle/root/bundle-manifest.json"));
     assertTrue(distributionPlugin.contains("writeBundleManifest"));
     assertFalse(distributionPlugin.contains("src/bundle/root/bundle-manifest.json"));
+    assertTrue(bundleReadme.contains("quick-start-request.json"));
+    assertTrue(quickStartRequest.contains("\"entryKind\": \"CASH_REVENUE\""));
+    assertTrue(quickStartRequest.contains("\"cashAccountCode\": \"cash\""));
+    assertTrue(quickStartRequest.contains("\"revenueAccountCode\": \"service-revenue\""));
   }
 
   @Test
@@ -548,9 +578,7 @@ class CliDistributionBuildContractTest {
     assertTrue(dockerSmokeScript.contains(":cli:stageDockerBuildContext"));
     assertTrue(
         dockerSmokeScript.contains(
-            "-Dfingrind.docker.target.architectureId=\"${docker_target_architecture}\""));
-    assertTrue(dockerSmokeScript.contains("docker_with_repo_config buildx build \\"));
-    assertTrue(dockerSmokeScript.contains("--platform \"${docker_target_platform}\""));
+            "docker_with_repo_config buildx build --load -t \"${image_tag}\" \"${cli_docker_context_dir}\""));
     assertFalse(
         dockerSmokeScript.contains(
             "staging relocated Docker build context into repository context"));
@@ -578,10 +606,15 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleOfficeWorker.contains("bundle-smoke-command-bridge.ps1"));
     assertTrue(
         bundleCommandBridge.contains("Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8"));
-    assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
-    assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
-    assertTrue(bundleCommandBridge.contains("FINGRIND_BUNDLE_STDIN_FILE"));
-    assertTrue(bundleCommandBridge.contains("& $LauncherPath"));
+    assertTrue(bundleCommandBridge.contains("Get-Command pwsh"));
+    assertTrue(bundleCommandBridge.contains("ProcessStartInfo"));
+    assertTrue(bundleCommandBridge.contains("RedirectStandardInput"));
+    assertTrue(bundleCommandBridge.contains("\"-ExecutionPolicy\""));
+    assertTrue(bundleCommandBridge.contains("\"-File\", $LauncherPath"));
+    assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
+    assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
+    assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_STDIN_FILE"));
+    assertFalse(bundleCommandBridge.contains("& $LauncherPath"));
     assertTrue(bundleAcceptance.contains("Rīga büro"));
   }
 
@@ -594,15 +627,19 @@ class CliDistributionBuildContractTest {
     assertTrue(powerShellLauncher.contains("ArgumentList.Add"));
     assertTrue(powerShellLauncher.contains("WorkingDirectory"));
     assertTrue(powerShellLauncher.contains("RedirectStandardInput"));
-    assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
-    assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
-    assertTrue(powerShellLauncher.contains("FINGRIND_LAUNCHER_ARGUMENTS_FILE"));
-    assertTrue(powerShellLauncher.contains("FINGRIND_BUNDLE_STDIN_FILE"));
+    assertTrue(powerShellLauncher.contains("[Console]::IsInputRedirected"));
+    assertTrue(powerShellLauncher.contains("OpenStandardInput().CopyTo"));
+    assertTrue(powerShellLauncher.contains("Remove(\"FINGRIND_SQLITE_LIBRARY\")"));
+    assertTrue(powerShellLauncher.contains("Remove(\"FINGRIND_LAUNCHER_ARGUMENTS_FILE\")"));
     assertTrue(powerShellLauncher.contains("$PSScriptRoot"));
     assertTrue(powerShellLauncher.contains("$scriptInvocationArguments = @($args)"));
     assertFalse(powerShellLauncher.contains("$MyInvocation.MyCommand.Path"));
     assertFalse(powerShellLauncher.contains("& $runtimeJava @javaArguments"));
     assertFalse(powerShellLauncher.contains("ConvertFrom-Json"));
+    assertFalse(powerShellLauncher.contains("$env:FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
+    assertFalse(powerShellLauncher.contains("$env:FINGRIND_BUNDLE_ARGUMENTS_FILE"));
+    assertFalse(powerShellLauncher.contains("$env:FINGRIND_BUNDLE_STDIN_FILE"));
+    assertFalse(powerShellLauncher.contains("Environment[\"FINGRIND_LAUNCHER_ARGUMENTS_FILE\"]"));
   }
 
   private static Path repositoryRoot() {

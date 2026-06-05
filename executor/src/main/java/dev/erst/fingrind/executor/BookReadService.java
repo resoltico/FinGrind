@@ -37,6 +37,7 @@ import dev.erst.fingrind.executor.bookkeeping.RejectedResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.ResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
+import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingResultTransferReadSupport;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.List;
 import java.util.Objects;
@@ -216,8 +217,10 @@ public final class BookReadService {
   private BookInspection.ResultTransferReadiness resultTransferReadiness(
       BookIdentity bookIdentity) {
     var requiredClassification =
-        bookkeepingReadService.requiredResultHoldingClassification(bookIdentity);
-    ResultHoldingSelection selection = bookkeepingReadService.resultHoldingSelection(bookIdentity);
+        BookkeepingResultTransferReadSupport.requiredResultHoldingClassification(bookIdentity);
+    ResultHoldingSelection selection =
+        BookkeepingResultTransferReadSupport.resultHoldingSelection(
+            bookIdentity, bookkeepingReadService.bookStore());
     return switch (selection) {
       case AcceptedResultHoldingSelection accepted ->
           new BookInspection.ResultTransferReadiness(

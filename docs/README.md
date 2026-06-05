@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -22,7 +22,9 @@ Then choose one of the user, developer, or reference tracks below.
 ## User Guides
 
 - [USER_QUICK_START.md](./USER_QUICK_START.md): fastest path to create one protected book, post one entry, and read one report back
+- [USER_INSTALL.md](./USER_INSTALL.md): exact public bundle names, launcher paths, checksum commands, attestation commands, and container package surface
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, report output modes, PDF artifact behavior, exit codes, and runtime requirements
+- [USER_CONTAINER.md](./USER_CONTAINER.md): published container image workflow, mounted workspace model, and smoke-tested command examples
 - [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, ledger-plan, read/report JSON shapes, executable request schemas, deterministic error codes, and response envelopes
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, atomic ledger plans, duplicates, stdin, and reversal templates
 

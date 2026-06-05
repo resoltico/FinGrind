@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -259,17 +259,29 @@ public record BookWorkflowExecutionJournal(...)
 ## `BookWorkflowPublishedLanguageTranslator`
 
 `BookWorkflowPublishedLanguageTranslator` maps the public `LedgerPlan` family onto the local
-workflow context and projects local workflow metadata back into the public execution journal and
-plan result surface.
+workflow context and delegates local journal projection to the narrower
+`BookWorkflowPublishedJournalTranslator`.
 
 ```java
 public final class BookWorkflowPublishedLanguageTranslator
 ```
 
 - Purpose: keep plan orchestration semantics and published workflow DTOs decoupled
-- Boundary: translates request plans into local steps/assertions at ingress, and translates local
-  workflow journals, failures, and `BookWorkflowFact` observations back into `LedgerJournal*`,
-  `LedgerFact`, and `LedgerPlanResult` at egress
+- Boundary: translates request plans into local steps/assertions at ingress, while leaving journal
+  projection to the dedicated workflow-journal translator
+
+## `BookWorkflowPublishedJournalTranslator`
+
+`BookWorkflowPublishedJournalTranslator` projects local workflow journal descriptors, entries,
+failures, and facts into the published execution-journal and plan-result surface.
+
+```java
+final class BookWorkflowPublishedJournalTranslator
+```
+
+- Purpose: keep journal/boundary/assertion projection independent from plan-ingress mapping
+- Boundary: translates local workflow journals, failures, and `BookWorkflowFact` observations
+  into `LedgerJournal*`, `LedgerFact`, and assertion/boundary surface families at egress
 
 ## `LedgerFact`
 

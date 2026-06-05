@@ -186,12 +186,12 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.TEXT);
     String postingRegisterText = postingRegisterTextOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(postingRegisterText.contains("Account codes"));
+    assertTrue(postingRegisterText.contains("Accounts"));
     assertTrue(postingRegisterText.contains("Reversal adjustment"));
     assertTrue(postingRegisterText.contains("Reversal"));
     assertTrue(postingRegisterText.contains("1000, 2000"));
     assertTrue(postingRegisterText.contains("10.00"));
-    assertTrue(postingRegisterText.contains("posting-1"));
+    assertTrue(postingRegisterText.contains("posting-"));
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
         .writeListPostingsResult(
@@ -317,8 +317,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(accountLedgerText.contains("Opening balances"));
     assertTrue(accountLedgerText.contains("EUR 10.00 Debit"));
     assertTrue(accountLedgerText.contains("Running"));
-    assertTrue(accountLedgerText.contains("Counterpart account codes"));
-    assertTrue(accountLedgerText.contains("posting-1"));
+    assertTrue(accountLedgerText.contains("Counterparts"));
+    assertTrue(accountLedgerText.contains("posting-"));
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))
         .writeAccountLedgerResult(

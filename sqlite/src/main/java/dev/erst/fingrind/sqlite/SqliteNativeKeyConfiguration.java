@@ -46,13 +46,13 @@ final class SqliteNativeKeyConfiguration {
       configuredDatabase.configuration().validateConfiguredKey();
       return configuredDatabase;
     } catch (SqliteNativeException exception) {
-      SqliteNativeConnections.suppressCloseFailure(databaseHandle, sqliteApi, exception);
+      suppressCloseFailure(databaseHandle, sqliteApi, exception);
       throw exception;
     } catch (Error error) {
-      SqliteNativeConnections.suppressCloseFailure(databaseHandle, sqliteApi, error);
+      suppressCloseFailure(databaseHandle, sqliteApi, error);
       throw error;
     } catch (RuntimeException exception) {
-      SqliteNativeConnections.suppressCloseFailure(databaseHandle, sqliteApi, exception);
+      suppressCloseFailure(databaseHandle, sqliteApi, exception);
       throw exception;
     }
   }
@@ -89,5 +89,23 @@ final class SqliteNativeKeyConfiguration {
             requireOpenConfigurationSuccess(resultCode, sqliteApi);
           }
         });
+  }
+
+  private static void suppressCloseFailure(
+      MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure) {
+    if (databaseHandle.equals(MemorySegment.NULL)) {
+      return;
+    }
+    try {
+      int resultCode =
+          SqliteNativeCallAdapter.adapt(
+                  SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3CloseV2())
+              .invoke(databaseHandle);
+      if (resultCode != SqliteNativeResultCode.code("OK")) {
+        primaryFailure.addSuppressed(SqliteNativeErrors.failure(resultCode, sqliteApi));
+      }
+    } catch (RuntimeException exception) {
+      primaryFailure.addSuppressed(exception);
+    }
   }
 }

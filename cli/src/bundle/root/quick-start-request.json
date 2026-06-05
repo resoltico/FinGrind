@@ -1,0 +1,30 @@
+{
+  "entryKind": "CASH_REVENUE",
+  "effectiveDate": "2026-04-08",
+  "cashAccountCode": "cash",
+  "revenueAccountCode": "service-revenue",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "quick-start-cash-receipt-1",
+        "sourceDocumentType": "cash-receipt",
+        "documentDate": "2026-04-08",
+        "capturedAt": "2026-04-08T10:15:30Z",
+        "storageLocator": "vault://quick-start/cash-receipt-1",
+        "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      }
+    ],
+    "approvals": []
+  },
+  "provenance": {
+    "actorId": "quick-start-operator",
+    "actorType": "PERSON",
+    "commandId": "quick-start-posting",
+    "idempotencyKey": "quick-start-idem-1",
+    "causationId": "quick-start-cause-1"
+  }
+}

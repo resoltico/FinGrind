@@ -29,11 +29,6 @@ readonly direct_java_wrapper="${script_dir}/direct-java-cli.sh"
 [[ -f "${verifier}" ]] || die "missing SQLite runtime verifier at ${verifier}"
 [[ -x "${direct_java_wrapper}" ]] || die "missing direct Java wrapper at ${direct_java_wrapper}"
 
-(
-    cd "${repo_root}" &&
-        ./gradlew :cli:shadowJar prepareManagedSqlite --no-daemon --console=plain >/dev/null
-)
-
 environment_output="$(
     cd "${repo_root}" &&
         "${direct_java_wrapper}" environment --output json

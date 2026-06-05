@@ -78,7 +78,14 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
-        cli.run(new String[] {"generate-book-key-file", "--book-key-file", keyFilePath.toString()});
+        cli.run(
+            new String[] {
+              "generate-book-key-file",
+              "--book-key-file",
+              keyFilePath.toString(),
+              "--output",
+              "json"
+            });
     assertEquals(0, exitCode);
     assertTrue(Files.isRegularFile(keyFilePath));
     JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
@@ -99,7 +106,14 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
-        cli.run(new String[] {"generate-book-key-file", "--book-key-file", keyFilePath.toString()});
+        cli.run(
+            new String[] {
+              "generate-book-key-file",
+              "--book-key-file",
+              keyFilePath.toString(),
+              "--output",
+              "json"
+            });
     assertEquals(7, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(

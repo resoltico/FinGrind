@@ -20,19 +20,10 @@ function Get-PythonCommand {
     Fail "missing Python interpreter; expected python3 or python on PATH"
 }
 
-function Get-GradleWrapperCommand {
-    if ($IsWindows) {
-        return (Join-Path $repoRoot "gradlew.bat")
-    }
-
-    return (Join-Path $repoRoot "gradlew")
-}
-
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $verifier = Join-Path $PSScriptRoot "verify-sqlite-runtime-contract.py"
 $launcherWrapper = Join-Path $PSScriptRoot "source-checkout-cli.ps1"
 $pythonCommand = Get-PythonCommand
-$gradleWrapper = Get-GradleWrapperCommand
 
 if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
     Fail "missing SQLite runtime verifier at $verifier"
@@ -43,11 +34,6 @@ if (-not (Test-Path -LiteralPath $launcherWrapper -PathType Leaf)) {
 
 Push-Location $repoRoot
 try {
-    & $gradleWrapper :cli:installShadowDist prepareManagedSqlite --no-daemon --console=plain | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Fail "Gradle failed while preparing the source-checkout managed runtime"
-    }
-
     $environmentOutput = (& $launcherWrapper environment --output json | Out-String)
     if ($LASTEXITCODE -ne 0) {
         Fail "source-checkout launcher environment probe failed"

@@ -67,15 +67,14 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
-                new String[] {
-                  "post-entry",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  requestFile.toString()
-                }));
+                jsonArguments(
+                    "post-entry",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    requestFile.toString())));
     String postingId =
         new ObjectMapper()
             .readTree(commitOutput.toString(StandardCharsets.UTF_8))
@@ -87,13 +86,12 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(inspectOutput), fixedClock())
             .run(
-                new String[] {
-                  "inspect-book",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString()
-                }));
+                jsonArguments(
+                    "inspect-book",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString())));
     var inspectEnvelope = new ObjectMapper().readTree(inspectOutput.toByteArray());
     assertEquals(
         CliPublicPaths.redactedValue(bookFilePath),
@@ -104,15 +102,14 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(getPostingOutput), fixedClock())
             .run(
-                new String[] {
-                  "get-posting",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--posting-id",
-                  postingId
-                }));
+                jsonArguments(
+                    "get-posting",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--posting-id",
+                    postingId)));
     assertTrue(getPostingOutput.toString(StandardCharsets.UTF_8).contains(postingId));
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     assertEquals(
@@ -122,30 +119,28 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(listPostingsOutput),
                 fixedClock())
             .run(
-                new String[] {
-                  "list-postings",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--limit",
-                  "10"
-                }));
+                jsonArguments(
+                    "list-postings",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--limit",
+                    "10")));
     assertTrue(listPostingsOutput.toString(StandardCharsets.UTF_8).contains(postingId));
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(balanceOutput), fixedClock())
             .run(
-                new String[] {
-                  "account-balance",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--account-code",
-                  "1000"
-                }));
+                jsonArguments(
+                    "account-balance",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--account-code",
+                    "1000")));
     assertJsonContains(balanceOutput, "\"accountCode\":\"1000\"");
     assertTrue(balanceOutput.toString(StandardCharsets.UTF_8).contains("\"balances\""));
   }

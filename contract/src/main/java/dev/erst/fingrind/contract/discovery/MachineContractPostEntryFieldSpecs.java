@@ -59,27 +59,27 @@ final class MachineContractPostEntryFieldSpecs {
             "Balanced non-empty array of journal lines used only by reversal administrative entries.",
             MachineContractSchemaSupport.arraySchema(
                 "Balanced non-empty array of journal lines used only by reversal administrative entries.",
-                MachineContractPostEntryVariantSchemas.lineSchema(),
+                MachineContractPostEntryComponentSchemas.lineSchema(),
                 2)),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
             "Balanced non-empty array of opening balances used only by open-accounting-position entries.",
             MachineContractSchemaSupport.arraySchema(
                 "Balanced non-empty array of opening balances used only by open-accounting-position entries.",
-                MachineContractPostEntryVariantSchemas.openingBalanceSchema(),
+                MachineContractPostEntryComponentSchemas.openingBalanceSchema(),
                 2)),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.EVIDENCE,
             "First-class retained source-document and approval evidence linked to this bookkeeping entry.",
-            MachineContractPostEntryVariantSchemas.evidenceSchema()),
+            MachineContractPostEntryComponentSchemas.evidenceSchema()),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.PROVENANCE,
             "Caller-supplied request provenance captured before commit.",
-            MachineContractPostEntryVariantSchemas.provenanceSchema()),
+            MachineContractPostEntryComponentSchemas.provenanceSchema()),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.REVERSAL,
             "Required reversal target descriptor for REVERSAL_ADJUSTMENT and absent otherwise.",
-            MachineContractPostEntryVariantSchemas.reversalSchema()));
+            MachineContractPostEntryComponentSchemas.reversalSchema()));
   }
 
   static List<MachineContractFieldSpec> lineFields() {
@@ -129,14 +129,14 @@ final class MachineContractPostEntryFieldSpecs {
             "Non-empty ordered source-document references linked to this posting.",
             MachineContractSchemaSupport.arraySchema(
                 "Non-empty ordered source-document references linked to this posting.",
-                MachineContractPostEntryVariantSchemas.sourceDocumentSchema(),
+                MachineContractPostEntryComponentSchemas.sourceDocumentSchema(),
                 1)),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Evidence.APPROVALS,
             "Ordered approval references linked to this posting. The list may be empty when no approval exists for the posting.",
             MachineContractSchemaSupport.arraySchema(
                 "Ordered approval references linked to this posting.",
-                MachineContractPostEntryVariantSchemas.approvalSchema(),
+                MachineContractPostEntryComponentSchemas.approvalSchema(),
                 0)));
   }
 

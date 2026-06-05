@@ -8,6 +8,7 @@ import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
@@ -98,39 +99,54 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 java.setSrcDirs(listOf("src/fuzz/java"))
                 resources.setSrcDirs(listOf("src/fuzz/resources"))
             }
+            fun registerWhiteBoxModulePatch(
+                taskName: String,
+                directoryName: String,
+                packagePath: String,
+                fixtureJarPattern: Regex,
+                localOutputDirectories: List<Any> = emptyList(),
+            ): Pair<org.gradle.api.provider.Provider<org.gradle.api.file.Directory>, org.gradle.api.tasks.TaskProvider<Sync>> {
+                val patchDirectory = layout.buildDirectory.dir(directoryName)
+                val fixtureArtifacts =
+                    testSourceSet.runtimeClasspath.filter { runtimeEntry ->
+                        runtimeEntry.isFile && runtimeEntry.name.matches(fixtureJarPattern)
+                    }
+                val patchTask =
+                    tasks.register<Sync>(taskName) {
+                        dependsOn(fixtureArtifacts)
+                        localOutputDirectories.forEach { outputDirectory ->
+                            from(outputDirectory) {
+                                include("$packagePath/**")
+                            }
+                        }
+                        from(
+                            {
+                                fixtureArtifacts.files.map(::zipTree)
+                            },
+                        ) {
+                            include("$packagePath/**")
+                        }
+                        into(patchDirectory)
+                    }
+                return patchDirectory to patchTask
+            }
 
-            val sqliteWhiteBoxPatch =
-                registerJazzerWhiteBoxModulePatch(
+            val (sqliteWhiteBoxTestPatchDirectory, sqliteWhiteBoxTestPatch) =
+                registerWhiteBoxModulePatch(
                     taskName = "stageSqliteWhiteBoxTestPatch",
                     directoryName = "sqlite-white-box-patch",
                     packagePath = "dev/erst/fingrind/sqlite",
+                    fixtureJarPattern = Regex("""sqlite-.*-test-fixtures\.jar"""),
                     localOutputDirectories =
                         listOf(mainSourceSet.output.classesDirs, testSourceSet.output.classesDirs),
-                    repositoryOutputDirectories =
-                        listOf(
-                            repositoryProjectOutputDirectoryForJazzer(
-                                "sqlite",
-                                "classes/java/testFixtures",
-                            ),
-                        ),
                 )
-            val sqliteWhiteBoxTestPatchDirectory = sqliteWhiteBoxPatch.patchDirectory
-            val sqliteWhiteBoxTestPatch = sqliteWhiteBoxPatch.patchTask
-            val executorWhiteBoxPatch =
-                registerJazzerWhiteBoxModulePatch(
+            val (executorWhiteBoxTestPatchDirectory, executorWhiteBoxTestPatch) =
+                registerWhiteBoxModulePatch(
                     taskName = "stageExecutorWhiteBoxTestPatch",
                     directoryName = "executor-white-box-patch",
                     packagePath = "dev/erst/fingrind/executor",
-                    repositoryOutputDirectories =
-                        listOf(
-                            repositoryProjectOutputDirectoryForJazzer(
-                                "executor",
-                                "classes/java/testFixtures",
-                            ),
-                        ),
+                    fixtureJarPattern = Regex("""executor-.*-test-fixtures\.jar"""),
                 )
-            val executorWhiteBoxTestPatchDirectory = executorWhiteBoxPatch.patchDirectory
-            val executorWhiteBoxTestPatch = executorWhiteBoxPatch.patchTask
             val jazzerAgentJar =
                 tasks.named<Jar>("jar") {
                     manifest.attributes(

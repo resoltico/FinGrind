@@ -4,26 +4,6 @@ internal val reviewedJavaSqliteAndPdfTestSourceSurfaces =
     listOf(
         reviewedJavaSourceSurface(
             relativePath =
-                "src/test/java/dev/erst/fingrind/sqlite/SqliteBookSchemaContractTest.java",
-            owner = "sqlite-schema-tests",
-            reason =
-                "The canonical SQLite schema contract suite intentionally proves one large schema surface against one executable fixture matrix.",
-            splitTrigger =
-                "Split by schema concern before adding another independent schema contract family.",
-            roleName = "sqlite-schema-contract-test",
-            physicalLines = 1304,
-            logicalLines = 1254,
-            imports = 26,
-            nestedTypes = 48,
-            methodsPerTopLevelType = 44,
-            fieldsPerTopLevelType = 32,
-            switchArmsPerMethod = 20,
-            methodLineSpan = 260,
-            methodParameters = 10,
-            methodDecisionPoints = 32,
-        ),
-        reviewedJavaSourceSurface(
-            relativePath =
                 "src/test/java/dev/erst/fingrind/sqlite/SqliteProtectedBookMaintenanceStoreCoverageTest.java",
             owner = "sqlite-maintenance-tests",
             reason =
@@ -41,6 +21,9 @@ internal val reviewedJavaSqliteAndPdfTestSourceSurfaces =
             methodLineSpan = 260,
             methodParameters = 10,
             methodDecisionPoints = 32,
+            expiresOn = reviewedExpiry(7, 23),
+            budgetVarianceReason =
+                "The maintenance store matrix exceeds the default test-suite budget until backup, restore, and rollback persistence scenarios are split further.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/test/java/dev/erst/fingrind/sqlite/SqliteRuntimeProbeStatusTest.java",
@@ -60,24 +43,8 @@ internal val reviewedJavaSqliteAndPdfTestSourceSurfaces =
             methodLineSpan = 380,
             methodParameters = 10,
             methodDecisionPoints = 32,
-        ),
-        reviewedJavaSourceSurface(
-            relativePath = "src/test/java/dev/erst/fingrind/report/pdf/PdfReportServiceTest.java",
-            owner = "pdf-report-tests",
-            reason =
-                "The PDF report service suite remains one reviewed executable matrix over the public PDF rendering surface.",
-            splitTrigger =
-                "Split by report family or layout concern before adding another broad PDF rendering branch.",
-            roleName = "pdf-report-service-test",
-            physicalLines = 1001,
-            logicalLines = 950,
-            imports = 78,
-            nestedTypes = 48,
-            methodsPerTopLevelType = 40,
-            fieldsPerTopLevelType = 32,
-            switchArmsPerMethod = 20,
-            methodLineSpan = 360,
-            methodParameters = 10,
-            methodDecisionPoints = 32,
+            expiresOn = reviewedExpiry(7, 30),
+            budgetVarianceReason =
+                "The runtime probe matrix exceeds the default test-suite budget until runtime-state families are split further.",
         ),
     )

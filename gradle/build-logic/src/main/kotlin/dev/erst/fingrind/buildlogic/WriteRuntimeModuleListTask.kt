@@ -21,9 +21,13 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
         private val missingDependencyPattern = Regex("""->\s+([A-Za-z0-9_$.]+)\s+not found$""")
     }
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val javaExecutable: RegularFileProperty
+
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.NONE)
-    abstract val javaHomeDirectory: DirectoryProperty
+    abstract val javaInstallationDirectory: DirectoryProperty
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
@@ -49,7 +53,12 @@ abstract class WriteRuntimeModuleListTask : DefaultTask() {
         val outputPath = outputFile.get().asFile
         outputPath.parentFile.mkdirs()
 
-        val jdepsExecutable = executable(javaHomeDirectory.get().asFile, "jdeps")
+        val javaHomeDirectory = javaInstallationDirectory.get().asFile
+        val javaExecutableFile = javaExecutable.get().asFile
+        require(javaExecutableFile.isFile) {
+            "Expected Java executable at ${javaExecutableFile.absolutePath} but it was not found."
+        }
+        val jdepsExecutable = executable(javaHomeDirectory, "jdeps")
         val command =
             mutableListOf(
                 jdepsExecutable.absolutePath,

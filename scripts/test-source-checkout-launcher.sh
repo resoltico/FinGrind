@@ -44,8 +44,10 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly contract_values_reader="${repo_root}/scripts/read-contract-values.py"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 readonly launcher_wrapper="${repo_root}/scripts/source-checkout-cli.sh"
+readonly launcher_wrapper_entrypoint="${repo_root}/scripts/source-checkout-cli-entrypoint.sh"
 readonly launcher_wrapper_common="${repo_root}/scripts/source-checkout-cli-common.sh"
 readonly launcher_wrapper_ps1="${repo_root}/scripts/source-checkout-cli.ps1"
+readonly launcher_wrapper_common_ps1="${repo_root}/scripts/source-checkout-cli-common.ps1"
 readonly raw_java_wrapper="${repo_root}/scripts/direct-java-cli.sh"
 readonly raw_java_wrapper_ps1="${repo_root}/scripts/direct-java-cli.ps1"
 readonly gradle_wrapper_support_ps1="${repo_root}/scripts/gradle-wrapper-support.ps1"
@@ -54,25 +56,31 @@ readonly repo_tmp_dir="${repo_root}/tmp"
 [[ -f "${contract_values_reader}" ]] || die "missing contract-values reader"
 [[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper"
 [[ -x "${launcher_wrapper}" ]] || die "missing POSIX source-checkout launcher wrapper"
+[[ -f "${launcher_wrapper_entrypoint}" ]] || die "missing POSIX source-checkout launcher entrypoint helper"
 [[ -f "${launcher_wrapper_common}" ]] || die "missing POSIX source-checkout launcher shared helper"
 [[ -f "${launcher_wrapper_ps1}" ]] || die "missing PowerShell source-checkout launcher wrapper"
+[[ -f "${launcher_wrapper_common_ps1}" ]] || die "missing PowerShell source-checkout launcher shared helper"
 [[ -x "${raw_java_wrapper}" ]] || die "missing POSIX direct-Java wrapper"
 [[ -f "${raw_java_wrapper_ps1}" ]] || die "missing PowerShell direct-Java wrapper"
 [[ -f "${gradle_wrapper_support_ps1}" ]] || die "missing PowerShell Gradle wrapper support helper"
-grep -Fq 'gradle-wrapper-support.ps1' "${launcher_wrapper_ps1}" || die \
-    "PowerShell source-checkout launcher wrapper no longer sources the shared Gradle wrapper helper"
-grep -Fq 'gradle-wrapper-support.ps1' "${raw_java_wrapper_ps1}" || die \
-    "PowerShell direct-Java wrapper no longer sources the shared Gradle wrapper helper"
-grep -Fq 'source-checkout-cli-common.sh' "${launcher_wrapper}" || die \
-    "POSIX source-checkout launcher wrapper no longer delegates through the shared wrapper owner"
-grep -Fq 'source-checkout-cli-common.sh' "${raw_java_wrapper}" || die \
-    "POSIX direct-Java wrapper no longer delegates through the shared wrapper owner"
-grep -Fq 'fg_gradle_source_checkout_artifact_needs_refresh' "${launcher_wrapper_common}" || die \
-    "POSIX launcher shared helper no longer verifies raw-JAR freshness"
-grep -Fq 'Invoke-FinGrindEnsureSourceCheckoutArtifact' "${launcher_wrapper_ps1}" || die \
-    "PowerShell source-checkout launcher wrapper no longer verifies raw-JAR freshness"
-grep -Fq 'Invoke-FinGrindEnsureSourceCheckoutArtifact' "${raw_java_wrapper_ps1}" || die \
-    "PowerShell direct-Java wrapper no longer verifies raw-JAR freshness"
+grep -Fq 'source-checkout-cli-common.ps1' "${launcher_wrapper_ps1}" || die \
+    "PowerShell source-checkout launcher wrapper no longer delegates through the shared wrapper owner"
+grep -Fq 'source-checkout-cli-common.ps1' "${raw_java_wrapper_ps1}" || die \
+    "PowerShell direct-Java wrapper no longer delegates through the shared wrapper owner"
+grep -Fq 'gradle-wrapper-support.ps1' "${launcher_wrapper_common_ps1}" || die \
+    "PowerShell launcher shared helper no longer sources the shared Gradle wrapper helper"
+grep -Fq 'source-checkout-cli-entrypoint.sh' "${launcher_wrapper}" || die \
+    "POSIX source-checkout launcher wrapper no longer delegates through the shared wrapper entrypoint owner"
+grep -Fq 'source-checkout-cli-entrypoint.sh' "${raw_java_wrapper}" || die \
+    "POSIX direct-Java wrapper no longer delegates through the shared wrapper entrypoint owner"
+grep -Fq 'source-checkout-cli-common.sh' "${launcher_wrapper_entrypoint}" || die \
+    "POSIX launcher entrypoint helper no longer delegates through the runtime helper owner"
+grep -Fq 'fg_gradle_source_checkout_runtime_manifest_path' "${launcher_wrapper_common}" || die \
+    "POSIX launcher shared helper no longer resolves the source-checkout runtime manifest"
+grep -Fq 'Invoke-FinGrindEnsureCliWrapperRuntime' "${launcher_wrapper_common_ps1}" || die \
+    "PowerShell launcher shared helper no longer verifies wrapper runtime freshness"
+grep -Fq 'Read-FinGrindSourceCheckoutRuntimeManifest' "${launcher_wrapper_common_ps1}" || die \
+    "PowerShell launcher shared helper no longer loads the source-checkout runtime manifest"
 
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
@@ -83,10 +91,9 @@ case "$(uname -s)" in
 esac
 
 readonly cli_build_dir="$(fg_gradle_project_build_dir "${repo_root}" 'cli' "${is_darwin}")"
-readonly launcher="${cli_build_dir}/install/cli-shadow/bin/cli"
 readonly raw_jar="${cli_build_dir}/libs/fingrind.jar"
-readonly source_checkout_artifact_manifest="$(
-    fg_gradle_source_checkout_artifact_manifest_path "${repo_root}" 'cli' "${is_darwin}"
+readonly source_checkout_runtime_manifest="$(
+    fg_gradle_source_checkout_runtime_manifest_path "${repo_root}" 'cli' "${is_darwin}"
 )"
 
 mkdir -p "${repo_tmp_dir}"
@@ -97,11 +104,14 @@ cleanup() {
 }
 trap cleanup EXIT
 
-"${repo_root}/gradlew" :cli:installShadowDist prepareManagedSqlite --no-daemon --console=plain >/dev/null
+"${repo_root}/gradlew" \
+    :cli:writeSourceCheckoutRuntimeManifest \
+    prepareManagedSqlite \
+    --no-daemon \
+    --console=plain >/dev/null
 
-[[ -x "${launcher}" ]] || die "missing generated source-checkout launcher"
-[[ -f "${source_checkout_artifact_manifest}" ]] || die \
-    "missing source-checkout artifact manifest"
+[[ -f "${source_checkout_runtime_manifest}" ]] || die \
+    "missing source-checkout runtime manifest"
 
 readonly expected_runtime_distribution="$(
     FINGRIND_CONTRACT_VALUES_JSON="$(python3 "${contract_values_reader}")" python3 - <<'PY'
@@ -193,7 +203,7 @@ document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected_runtime_distribution = sys.argv[2]
 sqlite = document["payload"]["sqlite"]
 runtime = sqlite["runtime"]
-actual_runtime_distribution = document["payload"]["distribution"]["runtimeDistribution"]
+actual_runtime_distribution = document["payload"]["runtime"]["runtimeDistribution"]
 status = runtime.get("status")
 if actual_runtime_distribution != expected_runtime_distribution:
     raise SystemExit(
@@ -321,20 +331,19 @@ if "postingKind" in document:
     raise SystemExit("developer direct-Java request template leaked retired postingKind")
 PY
 
-python3 - "${source_checkout_artifact_manifest}" <<'PY'
+python3 - "${source_checkout_runtime_manifest}" <<'PY'
 import pathlib
 import sys
 
 manifest_path = pathlib.Path(sys.argv[1])
 lines = manifest_path.read_text(encoding="utf-8").splitlines()
 for index, line in enumerate(lines):
-    if not line.startswith("sourceFile\t"):
+    if not line.startswith("javaExecutable\t"):
         continue
-    record_type, relative_path, _ = line.split("\t")
-    lines[index] = f"{record_type}\t{relative_path}\t{'0' * 64}"
+    lines[index] = "javaExecutable\t/definitely/missing/fingrind-java"
     break
 else:
-    raise SystemExit("source-checkout launcher fixture manifest omitted sourceFile rows")
+    raise SystemExit("source-checkout runtime manifest omitted javaExecutable")
 manifest_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 PY
 
@@ -477,7 +486,7 @@ import sys
 
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 expected_distribution = sys.argv[2]
-distribution = document["payload"]["distribution"]["runtimeDistribution"]
+distribution = document["payload"]["runtime"]["runtimeDistribution"]
 runtime = document["payload"]["sqlite"]["runtime"]
 status = runtime.get("status")
 if distribution != expected_distribution:
@@ -568,7 +577,7 @@ import sys
 
 document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 payload = document["payload"]
-distribution = payload["distribution"]["runtimeDistribution"]
+distribution = payload["runtime"]["runtimeDistribution"]
 runtime = payload["sqlite"]["runtime"]
 if distribution != sys.argv[2]:
     raise SystemExit(

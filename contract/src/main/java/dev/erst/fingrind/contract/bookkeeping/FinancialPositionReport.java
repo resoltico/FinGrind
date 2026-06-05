@@ -15,6 +15,7 @@ public record FinancialPositionReport(
     Optional<LocalDate> effectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
+    boolean accountingEquationBalanced,
     List<FinancialPositionSection> sections,
     List<FinancialPositionSection> comparativeSections) {
   /** Validates one financial-position report. */

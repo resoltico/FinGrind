@@ -7,13 +7,16 @@ import org.gradle.kotlin.dsl.register
 
 internal fun registerDockerManagedSqliteTarget(
     project: Project,
+    hostProvisioning: ManagedSqliteProvisioning,
     repositoryRootDirectory: Path,
     sqliteSourceDirectory: Directory,
     sqliteVersionValue: String,
     sqlite3mcVersionValue: String,
     sourcePackageId: String,
+    dockerBundleTarget: DistributionContractReader.BundleTargetContract =
+        DistributionBundleTargetReader.dockerBundleTarget(repositoryRootDirectory),
 ): ManagedSqliteProvisioning {
-    val dockerBundleTarget = DistributionBundleTargetReader.dockerBundleTarget(repositoryRootDirectory)
+
     val verifyManagedSqliteSource =
         registerManagedSqliteSourceVerification(
             project = project,
@@ -45,7 +48,7 @@ internal fun registerDockerManagedSqliteTarget(
         project.tasks.register<PrepareDockerManagedSqliteTask>("prepareDockerManagedSqlite") {
             group = "build setup"
             description =
-                "Builds the managed SQLite $sqliteVersionValue / SQLite3 Multiple Ciphers $sqlite3mcVersionValue shared library for the configured Linux Docker target. The staged container runtime must come from the Docker-target toolchain even when the host classifier matches, because the published container ABI is owned by the target image rather than by the source-checkout runtime."
+                "Builds the managed SQLite $sqliteVersionValue / SQLite3 Multiple Ciphers $sqlite3mcVersionValue shared library for the Linux Docker target."
             dependsOn(verifyManagedSqliteSource)
             sourceFile.set(sqliteSourceFile.asFile)
             supportFiles.from(headerFile.asFile, sqliteHeaderFile.asFile, extensionHeaderFile.asFile)

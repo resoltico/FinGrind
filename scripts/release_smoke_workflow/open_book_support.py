@@ -24,6 +24,8 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             "--fiscal-year-start",
             config.fiscal_year_start,
             "--book-passphrase-stdin",
+            "--output",
+            "json",
             stdin_text=generated_passphrase,
         )
     if config.open_book_mode == "book-key-file":
@@ -40,6 +42,8 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             config.fiscal_year_start,
             "--book-key-file",
             config.book_key.argument,
+            "--output",
+            "json",
         )
     raise ReleaseSmokeFailure(
         f"{config.label} configured unsupported open-book mode: {config.open_book_mode}"

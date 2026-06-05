@@ -43,11 +43,15 @@ grep -Fq 'scripts/test-verify-release-pr-gate.sh' "${stage_contract_script}" || 
     "check stage contract no longer exercises the PR Gate verifier regression"
 grep -Fq './scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer requires the PR Gate verifier"
-grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
+grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer documents the PR Gate verifier timeout override"
-grep -Fq 'The aggregate `Gate` check run appears only after `Check`, `Windows bundle smoke`, and `Docker' "${release_protocol}" || die \
+grep -Fq 'The aggregate `Gate` check run appears only after `Check`, the published Linux bundle-smoke' "${release_protocol}" || die \
     "release protocol no longer documents the delayed Gate materialization contract"
-grep -Fq '`Gate` is still absent. Treat a missing `Gate` as pending, not as success.' "${release_protocol}" || die \
+grep -Fq 'matrix, and the devcontainer gate pair have finished or been skipped in workflow `CI`.' "${release_protocol}" || die \
+    "release protocol no longer documents the delayed Gate materialization contract"
+grep -Fq 'therefore show `Check` green while `Gate` is absent. Treat a missing `Gate` as pending, not as' "${release_protocol}" || die \
+    "release protocol no longer documents missing-Gate-as-pending semantics"
+grep -Fq 'success. The verifier is the canonical owner of that waiting logic.' "${release_protocol}" || die \
     "release protocol no longer documents missing-Gate-as-pending semantics"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "PR Gate verifier no longer sources the canonical release-check owner"
@@ -59,8 +63,8 @@ readonly timeout_default="$(
         "${verifier}"
 )"
 [[ -n "${timeout_default}" ]] || die "failed to read PR Gate verifier default timeout"
-(( timeout_default >= 3000 )) || die \
-    "PR Gate verifier default timeout regressed below 3000 seconds (${timeout_default})"
+(( timeout_default >= 2400 )) || die \
+    "PR Gate verifier default timeout regressed below 2400 seconds (${timeout_default})"
 
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-verify-release-pr-gate.XXXXXX")"
 cleanup() {

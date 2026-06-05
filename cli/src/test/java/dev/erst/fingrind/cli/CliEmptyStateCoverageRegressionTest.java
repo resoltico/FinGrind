@@ -226,6 +226,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             allPostingKinds(),
+            true,
             List.of(assetSection),
             List.of(assetSection, liabilitySection));
 
@@ -246,6 +247,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             allPostingKinds(),
+            true,
             List.of(),
             List.of());
 

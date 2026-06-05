@@ -104,8 +104,8 @@ final class CliPostingOutputRenderer {
                     "Role",
                     "Debit",
                     "Credit",
-                    "Account codes",
-                    "Posting"),
+                    "Accounts",
+                    "Posting ref"),
                 page.postings().stream()
                     .map(CliPostingFactFormatter::postingRegisterTextRow)
                     .toList(),
@@ -114,7 +114,7 @@ final class CliPostingOutputRenderer {
     String context =
         CliTextFormat.renderKeyValueBlock(
             mergeContextRows(
-                CliBookIdentityDisplay.detailRows(page.bookIdentity()),
+                CliBookIdentityDisplay.contextRows(page.bookIdentity()),
                 List.of(
                     List.of(
                         "Account filter",

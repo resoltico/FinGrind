@@ -104,6 +104,7 @@ abstract class UvToolTask @Inject constructor(
             osName = System.getProperty("os.name"),
             probeVersion = ::probePythonMajorMinor,
             findUvManagedPythonExecutable = ::findUvManagedPythonExecutable,
+            resolveExecutablePath = ::resolveExecutablePath,
         )
             ?: throw GradleException(
                 "FinGrind requires Python ${requiredPythonVersion.get()} for repo-owned Python tooling. " +
@@ -292,6 +293,13 @@ abstract class UvToolTask @Inject constructor(
         spec.environment("UV_PYTHON_DOWNLOADS", "never")
         spec.environment("UV_NO_PROGRESS", "1")
     }
+
+    private fun resolveExecutablePath(command: String): String? =
+        resolveExecutableOnPath(
+            command = command,
+            osName = System.getProperty("os.name"),
+            pathEntries = System.getenv("PATH").orEmpty().split(java.io.File.pathSeparator),
+        )
 
     private fun normalizedOutput(
         stdout: ByteArrayOutputStream,

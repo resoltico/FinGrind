@@ -57,7 +57,7 @@ class SqliteManagedLibraryIdentityTestSupport {
   protected static Path hostManagedLibraryPath() {
     SqliteLibraryTarget libraryTarget;
     try {
-      libraryTarget = SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null, null);
+      libraryTarget = SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null);
     } catch (IllegalStateException exception) {
       throw new IllegalStateException(
           "Missing source-checkout managed SQLite runtime for managed-library identity tests.",

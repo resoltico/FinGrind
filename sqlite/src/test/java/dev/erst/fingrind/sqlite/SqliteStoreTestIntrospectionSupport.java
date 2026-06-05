@@ -140,6 +140,19 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
     assertFalse(message.contains("SQLITE_IOERR_CODEC"));
   }
 
+  static void assertInvalidBookFilePathFailure(
+      IllegalStateException exception, String detailFragment) {
+    assertTrue(exception instanceof ContractFailureException);
+    ContractFailureException contractFailureException = (ContractFailureException) exception;
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_BOOK_FILE_PATH,
+        contractFailureException.failure().descriptor());
+    assertTrue(contractFailureException.failure().message().contains(detailFragment));
+    String hint = Objects.requireNonNull(contractFailureException.failure().hint());
+    assertTrue(hint.contains("regular non-symlink protected-book path"));
+    assertTrue(hint.contains("private owner-only parent directory"));
+  }
+
   static PostingCommitResult rejected(BookkeepingPostingRejection rejection) {
     return new PostingCommitResult.Rejected(rejection);
   }

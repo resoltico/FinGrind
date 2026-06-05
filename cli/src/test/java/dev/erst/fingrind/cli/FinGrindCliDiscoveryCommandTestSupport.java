@@ -78,7 +78,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
       int helpExitCode = helpCli.run(new String[] {"help", "--output", "text"});
       int commandHelpExitCode =
           commandHelpCli.run(new String[] {"help", "open-book", "--output", "text"});
-      int failureExitCode = failureCli.run(new String[] {"post-entry", "--bogus"});
+      int failureExitCode = failureCli.run(jsonArguments("post-entry", "--bogus"));
       assertEquals(0, helpExitCode);
       assertEquals(0, commandHelpExitCode);
       assertEquals(1, failureExitCode);
@@ -248,20 +248,20 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
         payload.path("sqlite").path("libraryMode").stringValue());
     assertEquals(
         ProtocolCatalog.distribution().publicCliDistribution().wireValue(),
-        payload.path("distribution").path("publicCliDistribution").stringValue());
+        payload.path("publication").path("publicCliDistribution").stringValue());
     assertEquals(
         FinGrindCli.runtimeDistribution(),
-        payload.path("distribution").path("runtimeDistribution").stringValue());
+        payload.path("runtime").path("runtimeDistribution").stringValue());
     assertEquals(
         ProtocolCatalog.distribution().supportedPublicCliBundleTargets().stream()
             .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
             .toList(),
-        readTextArray(payload.path("distribution").path("supportedPublicCliBundleTargets")));
+        readTextArray(payload.path("publication").path("supportedPublicCliBundleTargets")));
     assertEquals(
         ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets().stream()
             .map(dev.erst.fingrind.contract.protocol.PublicCliBundleTarget::wireValue)
             .toList(),
-        readTextArray(payload.path("distribution").path("unsupportedPublicCliBundleTargets")));
+        readTextArray(payload.path("publication").path("unsupportedPublicCliBundleTargets")));
     assertEquals(
         ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty(),
         payload.path("sqlite").path("bundleHomeSystemProperty").stringValue());
@@ -376,7 +376,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
       EnvironmentDescriptor environmentDescriptor) {
     assertEquals(
         ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution(),
-        environmentDescriptor.distribution().runtimeDistribution());
+        environmentDescriptor.runtime().runtimeDistribution());
     assertEquals(
         ProtocolCatalog.runtime().storageDriver(), environmentDescriptor.storage().storageDriver());
     assertEquals(
@@ -392,16 +392,16 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
         environmentDescriptor.sqlite().libraryMode());
     assertEquals(
         ProtocolCatalog.distribution().publicCliDistribution(),
-        environmentDescriptor.distribution().publicCliDistribution());
+        environmentDescriptor.publication().publicCliDistribution());
     assertEquals(
         ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
-        environmentDescriptor.distribution().supportedPublicCliBundleTargets());
+        environmentDescriptor.publication().supportedPublicCliBundleTargets());
     assertEquals(
         ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
-        environmentDescriptor.distribution().unsupportedPublicCliBundleTargets());
+        environmentDescriptor.publication().unsupportedPublicCliBundleTargets());
     assertEquals(
         ProtocolCatalog.distribution().sourceCheckoutJava(),
-        environmentDescriptor.distribution().sourceCheckoutJava());
+        environmentDescriptor.publication().sourceCheckoutJava());
     assertEquals(
         ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty(),
         environmentDescriptor.sqlite().bundleHomeSystemProperty());

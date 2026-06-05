@@ -102,12 +102,18 @@ class MachineContractRequestSchemasTest {
   }
 
   @Test
-  void postEntryVariantSchemaAliases_reuseCanonicalOwnerSchemas() {
+  void postEntryVariantSchemas_reuseCanonicalComponentOwnerSchemas() {
     assertEquals(
-        MachineContractPostEntryVariantSchemas.openAccountingPositionSchema(),
-        MachineContractPostEntryVariantSchemas.openingBalanceAdjustmentSchema());
+        MachineContractPostEntryComponentSchemas.openingBalanceSchema(),
+        MachineContractPostEntryVariantSchemas.openingBalanceSchema());
     assertEquals(
-        MachineContractPostEntryVariantSchemas.reversalAdjustmentSchema(),
-        MachineContractPostEntryVariantSchemas.correctionAdjustmentSchema());
+        MachineContractPostEntryComponentSchemas.sourceDocumentSchema(),
+        MachineContractPostEntryVariantSchemas.sourceDocumentSchema());
+    assertEquals(
+        MachineContractPostEntryComponentSchemas.approvalSchema(),
+        MachineContractPostEntryVariantSchemas.approvalSchema());
+    assertEquals(
+        MachineContractPostEntryComponentSchemas.reversalSchema(),
+        MachineContractPostEntryVariantSchemas.reversalSchema());
   }
 }

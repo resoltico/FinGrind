@@ -70,7 +70,7 @@ final class SqliteNativeBootstrap {
   /** Lazily resolves the process-global C runtime {@code strlen} symbol on first use. */
   private static final class StrlenHolder {
     private static final MethodHandle INSTANCE =
-        SqliteNativeApiLoader.downcall(LINKER.defaultLookup(), STRLEN_SYMBOL, STRLEN_DESCRIPTOR);
+        SqliteNativeApiBindings.downcall(LINKER.defaultLookup(), STRLEN_SYMBOL, STRLEN_DESCRIPTOR);
 
     private StrlenHolder() {}
   }

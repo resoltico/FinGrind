@@ -4,29 +4,12 @@ import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /** Builds per-command help sections for operator-facing discovery text. */
 final class CliDiscoveryCommandHelpSupport {
-  private static final Set<OperationId> BOOK_READ_OPERATIONS =
-      Set.of(
-          OperationId.ACCOUNT_BALANCE,
-          OperationId.ACCOUNT_LEDGER,
-          OperationId.TRIAL_BALANCE,
-          OperationId.FINANCIAL_POSITION,
-          OperationId.INCOME_STATEMENT,
-          OperationId.CHANGES_IN_EQUITY,
-          OperationId.PERIOD_SUMMARY,
-          OperationId.LIST_POSTINGS,
-          OperationId.GET_POSTING);
-
-  private static final Set<OperationId> ENTRY_REQUEST_OPERATIONS =
-      Set.of(OperationId.POST_ENTRY, OperationId.PREFLIGHT_ENTRY);
-
   private CliDiscoveryCommandHelpSupport() {}
 
   static String renderCommandHelpText(HelpDescriptor helpDescriptor) {
@@ -41,190 +24,74 @@ final class CliDiscoveryCommandHelpSupport {
         command.options().isEmpty()
             ? "(none)"
             : CliTextFormat.renderLiteralBlock(command.options(), "");
-    String run = CliDiscoveryTextSupport.section("Command", usage);
+    String run = CliDiscoveryTextSupport.section("Command Syntax", usage);
     String renderedOptions =
         "(none)".equals(options) ? "" : CliDiscoveryTextSupport.section("Options", options);
     return CliTextFormat.renderTitledBlock(
         command.name().wireName(),
         CliDiscoveryTextSupport.joinSections(
             summary,
-            renderPreparation(command.name()),
-            CliDiscoveryTextSupport.section("Try It", renderCommandExamples(operation)),
-            renderRequestGuidance(helpDescriptor, command.name()),
+            CliDiscoveryCommandGuidance.renderPreparation(command.name()),
+            CliDiscoveryCommandGuidance.renderRequestGuidance(helpDescriptor, command.name()),
+            renderOutputContract(command),
+            CliDiscoveryCommandGuidance.renderExitBehavior(helpDescriptor.exitCodes()),
+            renderRepairGuidance(command.name()),
+            CliDiscoveryTextSupport.section(
+                "Try It", CliDiscoveryCommandExamples.renderCommandExamples(operation)),
             run,
             renderedOptions));
   }
 
   static String primaryCommandExample(OperationId operationId) {
-    ProtocolOperation operation = ProtocolCatalog.operation(operationId);
-    List<String> commandExamples =
-        operation.exampleSteps().stream()
-            .filter(ProtocolExampleStep.Command.class::isInstance)
-            .map(ProtocolExampleStep::text)
-            .map(CliInvocationText::rewriteInvocationPrefix)
-            .toList();
-    return CliDiscoveryExampleSelector.selectPrimaryCommandExample(operationId, commandExamples);
+    return CliDiscoveryCommandExamples.primaryCommandExample(operationId);
   }
 
-  private static String renderCommandExamples(ProtocolOperation operation) {
-    List<String> commandExamples =
-        operation.exampleSteps().stream()
-            .filter(ProtocolExampleStep.Command.class::isInstance)
-            .map(ProtocolExampleStep::text)
-            .map(CliInvocationText::rewriteInvocationPrefix)
-            .toList();
-    List<String> notes =
-        operation.exampleSteps().stream()
-            .filter(ProtocolExampleStep.Note.class::isInstance)
-            .map(ProtocolExampleStep::text)
-            .toList();
-    List<String> sections = new ArrayList<>();
-    sections.add(
-        commandExamples.isEmpty()
-            ? "(none)"
-            : CliTextFormat.renderShellCommandBlock(
-                primaryOperatorExamples(operation.id(), commandExamples),
-                CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
-    if (commandExamples.size() > 1) {
-      sections.add(
-          "More examples"
-              + System.lineSeparator()
-              + CliTextFormat.renderLiteralBlock(commandExamples, "$ "));
-    }
-    if (!notes.isEmpty()) {
-      sections.add(
-          "Notes:"
-              + System.lineSeparator()
-              + CliTextFormat.renderBulletedBlock(notes, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
-    }
-    return String.join(System.lineSeparator() + System.lineSeparator(), sections);
+  static String primaryStarterRequestCommand(OperationId operationId) {
+    return CliDiscoveryCommandExamples.primaryStarterRequestCommand(operationId);
   }
 
-  private static String renderPreparation(OperationId operationId) {
-    List<List<String>> rows = preparationRows(operationId);
-    return rows.isEmpty()
-        ? ""
-        : CliDiscoveryTextSupport.section(
-            "Before You Run", CliTextFormat.renderKeyValueBlock(rows));
-  }
-
-  private static List<List<String>> preparationRows(OperationId operationId) {
-    if (operationId == OperationId.DECLARE_ACCOUNT) {
-      return List.of(
-          List.of("Needs", "One opened protected book."),
-          List.of("Next step after success", primaryCommandExample(OperationId.LIST_ACCOUNTS)));
-    }
-    if (ENTRY_REQUEST_OPERATIONS.contains(operationId)) {
-      return List.of(
-          List.of("Needs", "One opened protected book and every referenced account declared."),
-          List.of("Next step after success", primaryCommandExample(OperationId.TRIAL_BALANCE)));
-    }
-    if (BOOK_READ_OPERATIONS.contains(operationId)) {
-      return List.of(List.of("Needs", "One opened protected book."));
-    }
-    if (operationId == OperationId.EXECUTE_PLAN) {
-      return List.of(
-          List.of("Needs", "One ledger plan JSON document passed through --request-file."),
+  private static String renderOutputContract(CommandDescriptor command) {
+    List<List<String>> rows = new ArrayList<>();
+    rows.add(List.of("Stdout contract", command.stdoutContractSummary()));
+    if (command.outputModes().contains(dev.erst.fingrind.contract.protocol.OutputMode.CSV)) {
+      rows.add(
           List.of(
-              "Starter file", CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
+              "CSV contract",
+              "The exportFamily column identifies which CSV row grammar the command produced."));
     }
-    return List.of();
-  }
-
-  private static String renderRequestGuidance(
-      HelpDescriptor helpDescriptor, OperationId operationId) {
-    if (ENTRY_REQUEST_OPERATIONS.contains(operationId)) {
-      return renderPostingRequestGuidance(helpDescriptor, operationId);
-    }
-    if (operationId == OperationId.DECLARE_ACCOUNT) {
-      return renderDeclareAccountRequestGuidance(helpDescriptor);
-    }
-    if (operationId == OperationId.EXECUTE_PLAN) {
-      return renderLedgerPlanRequestGuidance(helpDescriptor);
-    }
-    return "";
-  }
-
-  private static String renderPostingRequestGuidance(
-      HelpDescriptor helpDescriptor, OperationId operationId) {
-    if (helpDescriptor.requestShapes() == null
-        || helpDescriptor.requestShapes().postEntry() == null
-        || helpDescriptor.requestTemplate() == null) {
-      return "";
+    if (!command.artifactOutputs().isEmpty()) {
+      rows.add(
+          List.of(
+              "Artifact outputs",
+              String.join(
+                  ", ",
+                  command.artifactOutputs().stream()
+                      .map(artifact -> artifact.format() + " via " + artifact.option())
+                      .toList())));
     }
     return CliDiscoveryTextSupport.section(
-        "Request File",
-        requestFileGuidance(
-            "Pass one JSON object through --request-file <path|->.",
-            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-                + " "
-                + operationId.wireName()));
+        "Output Contract", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  private static String renderDeclareAccountRequestGuidance(HelpDescriptor helpDescriptor) {
-    if (helpDescriptor.requestShapes() == null
-        || helpDescriptor.requestShapes().declareAccount() == null
-        || helpDescriptor.declareAccountTemplate() == null) {
-      return "";
-    }
+  private static String renderRepairGuidance(OperationId operationId) {
     return CliDiscoveryTextSupport.section(
-        "Request File",
-        requestFileGuidance(
-            "Pass one JSON object through --request-file <path|->.",
-            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-                + " "
-                + OperationId.DECLARE_ACCOUNT.wireName()));
-  }
-
-  private static String renderLedgerPlanRequestGuidance(HelpDescriptor helpDescriptor) {
-    if (helpDescriptor.requestShapes() == null
-        || helpDescriptor.requestShapes().ledgerPlan() == null
-        || helpDescriptor.planTemplate() == null) {
-      return "";
-    }
-    return CliDiscoveryTextSupport.section(
-        "Request File",
-        requestFileGuidance(
-            "Pass one ledger plan JSON object through --request-file <path|->.",
-            CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
-  }
-
-  private static String requestFileGuidance(String introduction, String shortcutCommand) {
-    return String.join(
-        System.lineSeparator() + System.lineSeparator(),
-        CliTextFormat.wrap(introduction, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH),
-        "Starter file command"
-            + System.lineSeparator()
-            + CliTextFormat.renderLiteralBlock(List.of(shortcutCommand), "$ "));
-  }
-
-  private static List<String> primaryOperatorExamples(
-      OperationId operationId, List<String> commandExamples) {
-    String primaryCommandExample =
-        CliDiscoveryExampleSelector.selectPrimaryCommandExample(operationId, commandExamples);
-    if (operationId == OperationId.DECLARE_ACCOUNT) {
-      return List.of(
-          CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-              + " "
-              + OperationId.DECLARE_ACCOUNT.wireName()
-              + " > "
-              + OperationId.DECLARE_ACCOUNT.wireName()
-              + ".json",
-          primaryCommandExample);
-    }
-    if (ENTRY_REQUEST_OPERATIONS.contains(operationId)) {
-      return List.of(
-          CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-              + " "
-              + operationId.wireName()
-              + " > request.json",
-          primaryCommandExample);
-    }
-    if (operationId == OperationId.EXECUTE_PLAN) {
-      return List.of(
-          CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE) + " > ledger-plan.json",
-          primaryCommandExample);
-    }
-    return List.of(primaryCommandExample);
+        "Inspect And Repair",
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "Command help",
+                    CliInvocationText.commandExample(OperationId.HELP)
+                        + " "
+                        + operationId.wireName()),
+                List.of(
+                    "Machine contract",
+                    CliInvocationText.commandExample(OperationId.HELP)
+                        + " "
+                        + operationId.wireName()
+                        + " --output json"),
+                List.of(
+                    "Request template",
+                    CliDiscoveryCommandGuidance.requestTemplateHint(operationId))),
+            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
   }
 }

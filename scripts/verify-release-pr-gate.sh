@@ -27,8 +27,8 @@ readonly release_check_support="${script_repo_root}/scripts/release-check-suppor
 readonly verification_support="${script_repo_root}/scripts/release-check-verification-support.sh"
 readonly poll_interval_seconds="${FINGRIND_RELEASE_CHECK_POLL_INTERVAL_SECONDS:-10}"
 # Release PR Gate materializes only after the workflow fan-out completes, so normal healthy CI can
-# take materially longer than a single job runtime, especially when Windows smoke jobs start late.
-readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-3000}"
+# take materially longer than a single job runtime.
+readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-2400}"
 
 [[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
 [[ -f "${verification_support}" ]] || die "missing release-check verification helper at ${verification_support}"

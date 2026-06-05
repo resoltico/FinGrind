@@ -2,7 +2,8 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
@@ -21,7 +22,8 @@ public sealed interface ContractDiscoveryDescriptor extends ProtocolSuccessPaylo
         CommandDescriptor,
         SelectableOutputDefaultsDescriptor,
         ExitCodeDescriptor,
-        EnvironmentDistributionDescriptor,
+        EnvironmentRuntimeDescriptor,
+        EnvironmentPublicationDescriptor,
         EnvironmentStorageDescriptor,
         EnvironmentSqliteDescriptor,
         EnvironmentDescriptor {}

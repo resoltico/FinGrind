@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: USER_QUICK_START
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, quick start, first run, open book, starter chart, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -11,29 +11,54 @@ route:
 # Quick Start
 
 **Purpose**: Get one protected FinGrind book running, post one entry, and read one report back.
-**Prerequisites**: Download one public FinGrind release bundle and unpack it. The public download
-already includes what it needs to run.
+**Prerequisites**: Download one public FinGrind Linux bundle and unpack it on a glibc Linux host.
+The public download already includes what it needs to run. On macOS or Windows, use the published
+container workflow in [USER_CONTAINER.md](./USER_CONTAINER.md) instead of the bundle path.
 
 In the examples below, `fingrind` means a session-local shell function backed by the launcher
-inside the extracted download. The commands use relative paths in the current working directory so
-the same file layout works from a public bundle on macOS, Linux, and Windows PowerShell. The
-public bundle does not include the repository's `docs/examples/` fixtures, so this guide creates
-the needed JSON files directly.
+inside the extracted Linux bundle. The commands use relative paths in the current working
+directory. The public bundle does not include the repository's `docs/examples/` fixtures, but it
+does ship one offline `./quick-start-request.json` sample document for the first posting flow.
 
-## 1. Check That The Download Runs
+## 1. Pick And Verify The Download
 
-On macOS or Linux:
+Choose the archive that matches your host:
+
+<!-- BEGIN GENERATED USER_QUICK_START BUNDLE MATRIX -->
+| Target | Archive name pattern | Launcher path | Compatibility | Status |
+|:-------|:---------------------|:--------------|:--------------|:-------|
+| `linux-x86_64` | `fingrind-<version>-linux-x86_64.tar.gz` | `bin/fingrind` | `glibc Linux x86_64` | published |
+| `linux-aarch64` | `fingrind-<version>-linux-aarch64.tar.gz` | `bin/fingrind` | `glibc Linux aarch64` | published |
+| `macos-aarch64` | `fingrind-<version>-macos-aarch64.tar.gz` | `bin/fingrind` | `macOS aarch64` | not published |
+| `macos-x86_64` | `fingrind-<version>-macos-x86_64.tar.gz` | `bin/fingrind` | `macOS x86_64` | not published |
+| `windows-x86_64` | `fingrind-<version>-windows-x86_64.zip` | `bin/fingrind.ps1` | `Windows x86_64` | not published |
+| `windows-aarch64` | `fingrind-<version>-windows-aarch64.zip` | `bin/fingrind.ps1` | `Windows aarch64` | not published |
+<!-- END GENERATED USER_QUICK_START BUNDLE MATRIX -->
+
+Every published archive also has one sibling `.sha256` file plus one GitHub artifact
+attestation.
+
+Publisher-backed provenance:
+
+```bash
+gh attestation verify --repo resoltico/FinGrind <downloaded-archive>
+```
+
+Convenience checksum verification:
+
+```bash
+shasum -a 256 -c <downloaded-archive>.sha256
+sha256sum -c <downloaded-archive>.sha256
+```
+
+For the fuller package matrix, published container surface, and launcher-path reference, continue
+with [USER_INSTALL.md](./USER_INSTALL.md).
+
+## 2. Check That The Download Runs
 
 ```bash
 tar -xzf <downloaded-archive>.tar.gz
 ./<extracted-directory>/bin/fingrind version
-```
-
-On Windows PowerShell:
-
-```powershell
-Expand-Archive <downloaded-archive>.zip -DestinationPath .
-.\<extracted-directory>\bin\fingrind.ps1 version
 ```
 
 Use the actual archive and extracted directory names from the release you downloaded.
@@ -44,11 +69,7 @@ For the remaining copy-paste commands below, define `fingrind` once in your curr
 fingrind() { "./<extracted-directory>/bin/fingrind" "$@"; }
 ```
 
-```powershell
-function fingrind { & .\<extracted-directory>\bin\fingrind.ps1 @args }
-```
-
-## 2. Create A Key File
+## 3. Create A Key File
 
 FinGrind protects each book. Start by creating one key file that will hold the secret for the
 book:
@@ -64,7 +85,7 @@ owner-only as well as the key file itself. Keep `./books/` owner-only too. If `.
 `./books/` does not exist yet, FinGrind creates it with owner-only permissions. If either
 directory already exists, keep it owner-only before you reuse that path.
 
-## 3. Open The Book
+## 4. Open The Book
 
 Create one new book file and protect it with that key:
 
@@ -75,7 +96,7 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
 If you accidentally rerun `open-book` against the same initialized file, the command is rejected
 deterministically instead of mutating the existing book.
 
-## 4. Review The Starter Chart
+## 5. Review The Starter Chart
 
 `open-book` seeds the built-in starter chart for the current owner-managed service template. The
 first run includes these postable accounts:
@@ -93,20 +114,20 @@ Inspect that chart directly:
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --limit 10
 ```
 
-## 5. Post Your First Entry
+## 6. Post Your First Entry
 
-Start from the canonical posting template:
+Start from the bundled quick-start example:
 
 ```bash
-fingrind print-request-template > ./request.json
+cp ./quick-start-request.json ./request.json
 ```
 
-That scaffold is a placeholder-first sample document. It intentionally uses placeholder evidence and
-provenance values. Replace every `replace-with-...` token before real-world use. Reusing one
-committed `idempotencyKey` against the same book is rejected.
+That bundled file is a concrete sample document. Replace the sample evidence, provenance, and
+idempotency values before real-world use. Reusing one committed `idempotencyKey` against the same
+book is rejected.
 
-Replace the contents of `./request.json` with one balanced entry that uses the seeded starter
-accounts, for example:
+`./quick-start-request.json` already contains one balanced entry that uses the seeded starter
+accounts:
 
 ```json
 {
@@ -153,7 +174,7 @@ Then commit it:
 fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
 ```
 
-## 6. Read The Result Back
+## 7. Read The Result Back
 
 Ask for a quick reporting view:
 
@@ -167,8 +188,10 @@ Or check one account directly:
 fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --account-code cash --output text
 ```
 
-## 7. Where To Go Next
+## 8. Where To Go Next
 
+- [USER_INSTALL.md](./USER_INSTALL.md) for exact public package names, launcher paths, checksums, and attestation commands
+- [USER_CONTAINER.md](./USER_CONTAINER.md) for the published container image workflow
 - [USER_CLI.md](./USER_CLI.md) for the full command surface and exit behavior
 - [USER_REQUESTS.md](./USER_REQUESTS.md) for request and response shapes
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md) for longer flows, reversals, plans, and report examples

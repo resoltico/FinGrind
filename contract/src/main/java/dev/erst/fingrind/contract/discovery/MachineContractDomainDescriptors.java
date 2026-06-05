@@ -64,7 +64,9 @@ final class MachineContractDomainDescriptors {
     return List.of(
         new ExitCodeDescriptor(0, "successful command"),
         new ExitCodeDescriptor(1, "invalid invocation or malformed request"),
-        new ExitCodeDescriptor(2, "deterministic refusal after the command was understood"),
+        new ExitCodeDescriptor(
+            2,
+            "deterministic refusal after the command was understood, including unsupported output selections"),
         new ExitCodeDescriptor(
             3,
             "valid "
@@ -73,7 +75,8 @@ final class MachineContractDomainDescriptors {
         new ExitCodeDescriptor(4, "runtime failure while executing an otherwise valid invocation"),
         new ExitCodeDescriptor(
             5, "interactive prompt or managed runtime environment precondition failure"),
-        new ExitCodeDescriptor(6, "protected-book passphrase, key-file, or verification failure"),
+        new ExitCodeDescriptor(
+            6, "protected-book path, passphrase, key-file, or verification failure"),
         new ExitCodeDescriptor(
             7, "protected-book maintenance precondition or destination-collision failure"));
   }
@@ -226,7 +229,7 @@ final class MachineContractDomainDescriptors {
     if (operation.outputModes().isEmpty()) {
       return null;
     }
-    return new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.JSON);
+    return new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.TEXT);
   }
 
   private static List<CommandDescriptor> commandDescriptors(OperationCategory category) {

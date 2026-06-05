@@ -26,7 +26,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                 }));
 
     assertEquals(Path.of("books/entity.book-key"), command.bookKeyFilePath());
-    assertEquals(OutputMode.JSON, command.outputMode());
+    assertEquals(OutputMode.TEXT, command.outputMode());
   }
 
   @Test
@@ -435,7 +435,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
     assertEquals(LocalDate.parse("2026-04-01"), command.reportingPeriod().effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), command.reportingPeriod().effectiveDateTo());
-    assertEquals(OutputMode.JSON, command.outputMode());
+    assertEquals(OutputMode.TEXT, command.outputMode());
   }
 
   @Test
@@ -762,21 +762,21 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals(Path.of("book.sqlite"), restoreBook.bookFilePath());
     assertEquals(Path.of("backup/entity.sqlite"), restoreBook.backupFilePath());
     assertEquals(Path.of("backup/entity.key"), restoreBook.backupBookKeyFilePath());
-    assertEquals(OutputMode.JSON, restoreBook.outputMode());
+    assertEquals(OutputMode.TEXT, restoreBook.outputMode());
 
     assertEquals(Path.of("book.sqlite"), restoreRekeyRollback.bookFilePath());
     assertEquals(
         Path.of("book.rekey-rollback.sqlite"), restoreRekeyRollback.rollbackArtifactPath());
     assertInstanceOf(
         BookAccess.PassphraseSource.KeyFile.class, restoreRekeyRollback.expectedPassphraseSource());
-    assertEquals(OutputMode.JSON, restoreRekeyRollback.outputMode());
+    assertEquals(OutputMode.TEXT, restoreRekeyRollback.outputMode());
 
     assertEquals(Path.of("book.sqlite"), deleteRekeyRollback.bookAccess().bookFilePath());
     assertEquals(Path.of("book.rekey-rollback.sqlite"), deleteRekeyRollback.rollbackArtifactPath());
     assertInstanceOf(
         BookAccess.PassphraseSource.KeyFile.class,
         deleteRekeyRollback.bookAccess().passphraseSource());
-    assertEquals(OutputMode.JSON, deleteRekeyRollback.outputMode());
+    assertEquals(OutputMode.TEXT, deleteRekeyRollback.outputMode());
   }
 
   @Test

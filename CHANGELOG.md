@@ -5,49 +5,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-06-05
+
+### Changed
+
+- Bumped the repository-owned static-analysis baseline to NullAway `0.13.5` and Ruff
+  `0.15.16`.
+- Hard-broke the live bookkeeping theory onto one explicit doctrine owner. `BookIdentity` now
+  carries one composed `BookDoctrine` made from the accounting-kernel profile, accounting basis,
+  framework position, entity form, and starter-chart template, and the built-in
+  owner-managed-service cash doctrine now drives discovery, examples, and operator-facing labels
+  from one source.
+- Hard-broke the public bookkeeping operation surface onto one narrower cash-bookkeeping kernel.
+  Typed cash revenue, cash expense, equity contribution, and equity withdrawal remain the primary
+  operating entries; opening balances now enter through the structured
+  `OPEN_ACCOUNTING_POSITION` flow; direct administrative entries are reversal-only; and public
+  request and workflow surfaces reject retired mixed-branch and legacy adjustment fields instead
+  of tolerating them.
+- Hard-broke the operator and runtime surface onto deterministic contracts. `help`, `version`, and
+  `environment` now default predictably instead of switching by stdout interactivity; runtime facts
+  and publication facts are split in the environment descriptor; prompt-plus-machine-output
+  combinations now refuse deterministically; protected-book filesystem violations publish the
+  stable `invalid-book-file-path` contract; and report/query text, CSV, and PDF surfaces now use
+  one human display grammar with lighter doctrine wording and explicit financial-position equation
+  verdicts.
+- Hard-broke onboarding and package guidance onto one canonical first-run story. The storefront
+  README, bundle README, quick-start guide, request templates, and checked-in examples now share
+  the seeded owner-managed service starter chart and one concrete first-post request; public
+  self-contained bundles are Linux-only; macOS and Windows are routed to the published container
+  or source-checkout paths; and source-checkout plus direct-Java launchers now use one
+  Gradle-owned Java 26 toolchain manifest instead of shell-local Java discovery.
+- Hard-broke structural-governance and release-control ownership farther across the repository.
+  Reviewed waivers are now self-removing and time-aware, repo-local audit mirrors publish
+  structural evidence from the checkout, tighter PMD and source-shape budgets force earlier file
+  splits, managed SQLite packaging and container assembly share one Gradle-owned provenance
+  pipeline, and draft-first immutable release publication remains the only supported release path.
+
 ### Fixed
 
-- Fixed the draft-first GitHub release publisher so a freshly created draft release is awaited
-  until it becomes visible through the Releases API before asset convergence begins. This removes
-  the silent post-create visibility race that could abort tag-driven publication before the first
-  staged asset upload.
-- Fixed draft release attestation and staged-release verification so neutral post-upload jobs now
-  download assets through the repo-owned draft-aware release downloader instead of assuming
-  `gh release download <tag>` can resolve a release before finalization, and all rerun-safe
-  release-control helpers now resolve through the workflow-owner checkout on `main` instead of
-  assuming the immutable tag checkout contains every later repair seam. This removes the
-  draft-only GitHub CLI lookup gap and the stale-tag-helper workflow gap that surfaced during the
-  `0.51.0` replay.
-- Fixed staged draft-asset attestation and draft-phase release verification so those neutral jobs
-  now keep write-scoped GitHub `contents` permission while downloading staged release bytes. This
-  removes the read-token draft-asset fetch failure that surfaced in the `0.51.0` replay after the
-  helper-root rerun repair landed.
-- Fixed the staged-container replay seam so helper-rooted Docker acceptance now receives the active
-  tagged checkout root explicitly instead of inferring it from the workflow-owner helper
-  checkout. This removes the false stale-Docker-context failure that surfaced in the `0.51.0`
-  replay after draft-asset attestation and verification had already passed.
-- Raised the default release-check verifier timeout budget to cover the normal merge-side CI
-  fan-out where `Windows bundle smoke` starts after `Check`, while keeping the protocol's explicit
-  timeout override path for unusually slow Actions queueing.
-- Fixed Jazzer deterministic verification so white-box SQLite and executor patch staging now
-  rebuilds directly from compiled project outputs instead of cached test-fixture archives. This
-  removes truncated-archive drift from the repository gate and lets the nested Jazzer build
-  self-heal stale patch state on the next verification run.
-- Fixed the pinned JaCoCo snapshot contract so the authoritative Gradle-side artifact fetch now
-  uses the repo-owned user agent and retry posture instead of a naked `openStream()` call, while
-  the root gate now proves the pinned snapshot through the local build metadata contract and the
-  Gradle-owned `prepareJacocoSnapshotArtifacts` task instead of a separate live snapshot-metadata
-  fetch path. This removes both the cold-download `403` that surfaced on Windows merge-side bundle
-  smoke and the hosted-runner snapshot-metadata `403` that surfaced during the `0.51.0` release
-  repair loop.
-- Fixed the root verification gate so long-running logged Jazzer pruning regressions emit
-  periodic keepalive output through the shared process helper. This prevents healthy hosted-runner
-  release-surface checks from being killed as false stalls during the `0.51.0` release repair
-  loop.
-- Fixed the Windows publication lane so `Windows bundle smoke` no longer reruns the canonical
-  root `check` gate before building and smoking the self-contained bundle. The Windows job now
-  proves only the Windows-owned publication surfaces after `Check`, which removes the unrelated
-  JaCoCo snapshot staging failure that surfaced during the `0.51.0` merge handoff.
+- Fixed same-target Linux Docker publication so the Docker build context now stages its own
+  Alpine-linked managed SQLite library instead of reusing the host-managed build, and normal
+  SQLite verification no longer rewrites the committed protected-book compatibility fixtures
+  during every gate run. The long-running Jazzer pruning regressions now emit progress under
+  slower CI runners instead of tripping the release-surface stall watchdog.
+- Fixed operator guidance drift so text help, machine help, discovery ladders, bundle quick-start
+  content, Docker/source-checkout hints, and example documents all describe the same live command
+  surface instead of overlapping older flows.
+- Fixed public distribution proof so bundle verification, module-identity checks, Linux container
+  publication, checksum and attestation guidance, and launcher/runtime contract tests all prove
+  the same packaged surface instead of parallel partial stories.
+- Fixed SQLite runtime and lifecycle failure paths so managed-runtime inspection, failed-open
+  native cleanup, protected-book security preconditions, passphrase-source reading, and
+  source-checkout runtime verification now share deterministic contract-owned failure shapes.
+- Fixed draft-first release replay, staged-asset attestation, helper-root handoff, pinned JaCoCo
+  snapshot verification, Windows publication-lane ownership, and long-running Jazzer release-gate
+  keepalive behavior so post-tag repairs no longer rediscover the `0.51.0` release-control
+  defects one at a time. The aggregate release `Gate` contract now blocks only on the Linux-owned
+  public publication proof surfaces; the Windows non-public bundle smoke lane remains visible as
+  observational coverage without owning release promotion. Jazzer replay and finding-list wrappers
+  now pin repo-verification lock ownership to the wrapper process, so fast-fail and JSON tool
+  paths do not strand stale lock owners during release-surface verification, and the replay-wrapper
+  regression now verifies that wrapper probes return the repo lock to its inherited baseline state
+  when the full repository gate owns the parent verification lock. Jazzer white-box patch staging
+  now depends explicitly on the `executor` and `sqlite` fixture archive producers before those
+  archives are expanded, which closes the hosted release-gate race on cold caches. Release-surface
+  shell verifiers also no longer assume Bash 4-only `mapfile`, which keeps the protocol runnable on the
+  repository's macOS Bash baseline.
 
 ## [0.51.0] - 2026-06-03
 
@@ -2730,8 +2753,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.51.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.52.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
+[0.52.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.52.0
 [0.50.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.50.0
 [0.49.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.49.0
 [0.48.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.48.0

@@ -2,17 +2,19 @@ package dev.erst.fingrind.buildlogic
 
 import java.time.LocalDate
 
-private val reviewedSurfaceExpiry = LocalDate.of(2026, 8, 31)
+internal fun reviewedExpiry(month: Int, dayOfMonth: Int): LocalDate =
+    LocalDate.of(2026, month, dayOfMonth)
 
 internal fun reviewedApproval(
     physicalLines: Int,
     logicalLines: Int,
     imports: Int,
+    expiresOn: LocalDate,
 ) = ReviewedJavaSourceApproval(
     approvedPhysicalLines = physicalLines,
     approvedLogicalLines = logicalLines,
     approvedImports = imports,
-    expiresOn = reviewedSurfaceExpiry,
+    expiresOn = expiresOn,
 )
 
 internal fun reviewedBudget(
@@ -57,6 +59,9 @@ internal fun reviewedJavaSourceSurface(
     methodLineSpan: Int,
     methodParameters: Int,
     methodDecisionPoints: Int,
+    expiresOn: LocalDate,
+    budgetVarianceReason: String? = null,
+    duplicationExemptionReason: String? = null,
 ) = ReviewedJavaSourceSurface(
     relativePath = relativePath,
     owner = owner,
@@ -76,7 +81,9 @@ internal fun reviewedJavaSourceSurface(
             methodParameters = methodParameters,
             methodDecisionPoints = methodDecisionPoints,
         ),
-    approval = reviewedApproval(physicalLines, logicalLines, imports),
+    budgetVarianceReason = budgetVarianceReason,
+    duplicationExemptionReason = duplicationExemptionReason,
+    approval = reviewedApproval(physicalLines, logicalLines, imports, expiresOn),
 )
 
 internal val reviewedSurfaceEntries =

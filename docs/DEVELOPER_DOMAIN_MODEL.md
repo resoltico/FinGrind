@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -170,6 +170,8 @@ This context owns orchestration semantics for AI-authored or automation-authored
   `BookWorkflowJournalEntry` and `BookWorkflowExecutionJournal`
 - workflow-local plan ids and step ids
 - translation from public `LedgerPlan` payloads into executable internal workflow steps
+- translation from local workflow journals, failures, and facts back into the published
+  `LedgerJournal*`, `LedgerFact`, and `LedgerPlanResult` families
 
 Assertions and step ordering belong here, not inside the bookkeeping model.
 
@@ -224,6 +226,9 @@ Interpretation:
   `executor.bookkeeping.posting.BookkeepingPostingService`
 - `LedgerPlanService` is the thin published-language adapter over the local
   `executor.workflow.BookWorkflowExecutionService`
+- `BookWorkflowPublishedLanguageTranslator` and
+  `BookWorkflowPublishedJournalTranslator` together form the workflow-side anti-corruption layer
+  at the published-language edge
 - the local maintenance service owns backup, restore, rollback selection, replacement, and
   verification semantics before any public maintenance DTO or rejection family is projected
 - the local bookkeeping services own inspection, query, reporting, preflight, and commit semantics

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
+
 from .assertions import assert_discovery_payloads
 from .cli import run_cli
-from .models import ReleaseSmokeConfig
+from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
 from .support import parse_json_output, payload_field, project_version, require, require_match
 
 
@@ -40,7 +42,16 @@ def verify_runtime_contract(
         run_cli(config, operation_ids["environment"], "--output", "json"),
         f"{config.label} environment output was not valid JSON",
     )
-    return assert_discovery_payloads(config, contract, capabilities_payload, environment_payload)
+    try:
+        return assert_discovery_payloads(
+            config, contract, capabilities_payload, environment_payload
+        )
+    except ReleaseSmokeFailure as exc:
+        raise ReleaseSmokeFailure(
+            f"{exc}\n"
+            "Environment payload:\n"
+            f"{json.dumps(environment_payload, indent=2, sort_keys=True)}"
+        ) from exc
 
 
 def verify_help_and_template_surfaces(

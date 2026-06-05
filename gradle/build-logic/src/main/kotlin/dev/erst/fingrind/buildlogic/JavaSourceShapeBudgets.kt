@@ -3,8 +3,8 @@ package dev.erst.fingrind.buildlogic
 internal val productionMainBudget =
     JavaSourceShapeBudget(
         roleName = "production-main",
-        maxPhysicalLines = 400,
-        maxLogicalLines = 360,
+        maxPhysicalLines = 350,
+        maxLogicalLines = 335,
         maxImports = 44,
         maxNestedTypes = 10,
         maxMethodsPerTopLevelType = 20,
@@ -18,8 +18,8 @@ internal val productionMainBudget =
 internal val exportedPublicSeamBudget =
     JavaSourceShapeBudget(
         roleName = "exported-public-seam",
-        maxPhysicalLines = 400,
-        maxLogicalLines = 360,
+        maxPhysicalLines = 340,
+        maxLogicalLines = 335,
         maxImports = 44,
         maxNestedTypes = 18,
         maxMethodsPerTopLevelType = 20,

@@ -71,7 +71,7 @@ final class CliAccountPageOutputRenderer {
             summary,
             accounts,
             CliReportRenderSupport.keyValueSection(
-                "Context", CliBookIdentityDisplay.detailRows(page.bookIdentity()))));
+                "Context", CliBookIdentityDisplay.contextRows(page.bookIdentity()))));
   }
 
   static String renderCsv(AccountPage page) {

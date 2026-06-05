@@ -74,7 +74,7 @@ grep -Fq 'Configure MSVC developer command environment' "${release_workflow}" ||
     "release workflow no longer declares the Windows MSVC bootstrap step"
 grep -Fq 'setup-msvc-dev-cmd.ps1' "${release_workflow}" || die \
     "release workflow no longer bootstraps the Windows MSVC environment through the repo-owned script"
-grep -Fq '$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/setup-msvc-dev-cmd.ps1' "${release_workflow}" || die \
+grep -Fq 'run: '\''& "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/setup-msvc-dev-cmd.ps1" -Arch x64'\''' "${release_workflow}" || die \
     "release workflow no longer bootstraps the Windows MSVC environment through the repo-owned script"
 if grep -Fq 'ilammy/msvc-dev-cmd' "${ci_workflow}"; then
     die "CI workflow still depends on the deprecated third-party msvc-dev-cmd action"

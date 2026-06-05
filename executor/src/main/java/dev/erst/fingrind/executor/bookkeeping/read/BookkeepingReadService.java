@@ -1,8 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping.read;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -18,16 +16,13 @@ import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementView;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.ResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
-import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.bookkeeping.reporting.BookkeepingReportingService;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
@@ -49,6 +44,11 @@ public final class BookkeepingReadService {
   /** Returns the local lifecycle snapshot before public contract projection. */
   public BookLifecycleInspection inspectBook() {
     return bookStore.inspectBook();
+  }
+
+  /** Exposes the underlying initialized-store seam to narrower read-policy helpers. */
+  public BookkeepingReadStore bookStore() {
+    return bookStore;
   }
 
   /** Looks up one declared account while preserving lifecycle rejection distinctly. */
@@ -167,29 +167,6 @@ public final class BookkeepingReadService {
     Objects.requireNonNull(query, "query");
     return ifInitializedOutcome(
         () -> new BookkeepingReadOutcome.Reported<>(reportingService.changesInEquity(query)));
-  }
-
-  /**
-   * Returns the current result-transfer-rule selection for the initialized book's result-holding
-   * account.
-   */
-  public ResultHoldingSelection resultHoldingSelection(BookIdentity bookIdentity) {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return new PeriodResultTransferPlanner(
-            KernelAccountingRulesResolver.forBookIdentity(bookIdentity).resultTransferPolicy())
-        .resultHoldingAccount(bookIdentity, bookStore.allAccounts());
-  }
-
-  /**
-   * Returns the required result-holding classification for the selected book's result-transfer
-   * policy.
-   */
-  public FinancialPositionLineClassification requiredResultHoldingClassification(
-      BookIdentity bookIdentity) {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return KernelAccountingRulesResolver.forBookIdentity(bookIdentity)
-        .resultTransferPolicy()
-        .resultHoldingLineClassification(bookIdentity);
   }
 
   private <T> BookkeepingReadOutcome<T> ifInitializedOutcome(

@@ -134,7 +134,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(rendered.contains("Command"));
     assertFalse(rendered.contains("Request File"));
     assertFalse(rendered.contains("Starter file command"));
-    assertFalse(rendered.contains("Artifact outputs"));
+    assertTrue(rendered.contains("Artifact outputs"));
     assertFalse(rendered.contains("Selectable defaults"));
     assertFalse(rendered.contains("json interactive / json redirected"));
   }
@@ -339,14 +339,14 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.51.0"));
+    assertTrue(rendered.contains("0.52.0"));
   }
 
   private static dev.erst.fingrind.contract.runtime.EnvironmentDescriptor
       environmentForDistribution(RuntimeDistribution distribution) {
     return new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
-        new dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor(
-            distribution,
+        new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(distribution),
+        new dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             List.of(),
             List.of(),

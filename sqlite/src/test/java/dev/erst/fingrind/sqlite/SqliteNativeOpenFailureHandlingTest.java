@@ -159,7 +159,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
           assertThrows(
               AssertionError.class,
               () ->
-                  SqliteNativeConnections.configureOpenedDatabase(
+                  SqliteNativeKeyConfiguration.configureOpenedDatabase(
                       tempDirectory
                           .resolve("configure-opened-error.sqlite")
                           .toAbsolutePath()
@@ -195,7 +195,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteNativeConnections.configureOpenedDatabase(
+                  SqliteNativeKeyConfiguration.configureOpenedDatabase(
                       tempDirectory
                           .resolve("configure-opened-close-failure.sqlite")
                           .toAbsolutePath()
@@ -208,6 +208,32 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
       assertEquals("busy-timeout boom", Objects.requireNonNull(exception.getCause()).getMessage());
       assertEquals(1, exception.getSuppressed().length);
     }
+  }
+
+  @Test
+  void configureOpenedDatabase_cleanupCloseSkipsNullHandle() throws Throwable {
+    RuntimeException primaryFailure = new RuntimeException("primary failure");
+
+    invokeKeyConfigurationSuppressCloseFailure(
+        MemorySegment.NULL, SqliteNativeBootstrap.api(), primaryFailure);
+
+    assertEquals(0, primaryFailure.getSuppressed().length);
+  }
+
+  @Test
+  void configureOpenedDatabase_addsSuppressedCloseFailureWhenCleanupCloseThrows() throws Throwable {
+    SqliteNativeApi sqliteApi =
+        SqliteNativeApiTestSupport.withCloseV2(
+            SqliteNativeBootstrap.api(),
+            throwingMethodHandle(
+                new IllegalStateException("close boom"), int.class, MemorySegment.class));
+    RuntimeException primaryFailure = new RuntimeException("primary failure");
+
+    invokeKeyConfigurationSuppressCloseFailure(
+        MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
+
+    assertEquals(1, primaryFailure.getSuppressed().length);
+    assertEquals("close boom", primaryFailure.getSuppressed()[0].getMessage());
   }
 
   @Test
@@ -243,7 +269,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               () ->
                   hardenOpenedDatabase(
                       bookPath.toAbsolutePath().normalize(),
-                      SqliteNativeConnections.configureOpenedDatabase(
+                      SqliteNativeKeyConfiguration.configureOpenedDatabase(
                           bookPath.toAbsolutePath().normalize(),
                           fakeDatabaseHandle,
                           passphrase,
@@ -296,7 +322,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               () ->
                   hardenOpenedDatabase(
                       bookPath.toAbsolutePath().normalize(),
-                      SqliteNativeConnections.configureOpenedDatabase(
+                      SqliteNativeKeyConfiguration.configureOpenedDatabase(
                           bookPath.toAbsolutePath().normalize(),
                           fakeDatabaseHandle,
                           passphrase,
@@ -544,6 +570,111 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
   }
 
   @Test
+  void open_preservesNativeOpenFailureWhenCleanupCloseSucceeds() throws Exception {
+    AtomicInteger closeCalls = new AtomicInteger();
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
+    try (Arena arena = Arena.ofConfined();
+        SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "native open cleanup close success", TEST_BOOK_KEY.toCharArray())) {
+      MemorySegment fakeDatabaseHandle = arena.allocate(1);
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeBridgeTestSupport.class,
+                      "failOpenWithDatabaseHandle",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          MemorySegment.class,
+                          int.class,
+                          MemorySegment.class)),
+              0,
+              fakeDatabaseHandle);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
+          MethodHandles.insertArguments(
+              MethodHandles.lookup()
+                  .findStatic(
+                      SqliteNativeBridgeTestSupport.class,
+                      "recordCloseCall",
+                      java.lang.invoke.MethodType.methodType(
+                          int.class, AtomicInteger.class, MemorySegment.class)),
+              0,
+              closeCalls);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
+          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
+      SqliteNativeException exception =
+          assertThrows(
+              SqliteNativeException.class,
+              () ->
+                  SqliteNativeConnections.open(
+                      tempDirectory.resolve("open-native-failure-cleanup-close-success.sqlite"),
+                      passphrase,
+                      SqliteNativeOpenMode.READ_WRITE_CREATE,
+                      sqliteApi));
+      assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
+      assertEquals(1, closeCalls.get());
+      assertEquals(0, exception.getSuppressed().length);
+      assertEquals(
+          activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
+    }
+  }
+
+  @Test
+  void open_cleanupCloseClosesReturnedHandleWhenCloseSucceeds() throws Throwable {
+    AtomicInteger closeCalls = new AtomicInteger();
+    SqliteNativeApi sqliteApi =
+        SqliteNativeApiTestSupport.withCloseV2(
+            SqliteNativeBootstrap.api(),
+            MethodHandles.insertArguments(
+                MethodHandles.lookup()
+                    .findStatic(
+                        SqliteNativeBridgeTestSupport.class,
+                        "recordCloseCall",
+                        MethodType.methodType(int.class, AtomicInteger.class, MemorySegment.class)),
+                0,
+                closeCalls));
+    RuntimeException primaryFailure = new RuntimeException("primary failure");
+
+    invokeConnectionSuppressCloseFailure(MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
+
+    assertEquals(1, closeCalls.get());
+    assertEquals(0, primaryFailure.getSuppressed().length);
+  }
+
+  @Test
+  void open_addsSuppressedCleanupCloseFailureWhenCleanupCloseThrows() throws Throwable {
+    AtomicInteger closeCalls = new AtomicInteger();
+    SqliteNativeApi sqliteApi =
+        SqliteNativeApiTestSupport.withCloseV2(
+            SqliteNativeBootstrap.api(),
+            MethodHandles.insertArguments(
+                MethodHandles.lookup()
+                    .findStatic(
+                        SqliteNativeBridgeTestSupport.class,
+                        "recordCloseCallThenThrow",
+                        MethodType.methodType(int.class, AtomicInteger.class, MemorySegment.class)),
+                0,
+                closeCalls));
+    RuntimeException primaryFailure = new RuntimeException("primary failure");
+
+    invokeConnectionSuppressCloseFailure(MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
+
+    assertEquals(1, closeCalls.get());
+    assertEquals(1, primaryFailure.getSuppressed().length);
+    assertEquals(
+        "Failed to close the SQLite native library bridge.",
+        primaryFailure.getSuppressed()[0].getMessage());
+    assertEquals(
+        "close boom for handle",
+        Objects.requireNonNull(primaryFailure.getSuppressed()[0].getCause()).getMessage());
+  }
+
+  @Test
   void open_preservesNativeOpenFailureWhenNoHandleIsReturned() throws Exception {
     AtomicInteger closeCalls = new AtomicInteger();
     try (Arena arena = Arena.ofConfined();
@@ -593,7 +724,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
       SqliteNativeException sqliteException =
           assertThrows(
               SqliteNativeException.class,
-              () -> SqliteNativeConnections.requireOpenConfigurationSuccess(14, sqliteApi));
+              () -> SqliteNativeKeyConfiguration.requireOpenConfigurationSuccess(14, sqliteApi));
       assertEquals(14, sqliteException.resultCode());
       assertEquals("SQLITE_CANTOPEN", sqliteException.resultName());
       assertEquals("SQLITE_CANTOPEN: boom", sqliteException.getMessage());
@@ -612,7 +743,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
       SqliteNativeException exception =
           assertThrows(
               SqliteNativeException.class,
-              () -> SqliteNativeConnections.requireOpenConfigurationSuccess(14, sqliteApi));
+              () -> SqliteNativeKeyConfiguration.requireOpenConfigurationSuccess(14, sqliteApi));
       assertEquals("SQLITE_CANTOPEN: boom", exception.getMessage());
     }
   }
@@ -629,7 +760,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
       SqliteNativeException exception =
           assertThrows(
               SqliteNativeException.class,
-              () -> SqliteNativeConnections.requireOpenConfigurationSuccess(14, sqliteApi));
+              () -> SqliteNativeKeyConfiguration.requireOpenConfigurationSuccess(14, sqliteApi));
       assertEquals("SQLITE_CANTOPEN", exception.getMessage());
     }
   }
@@ -638,7 +769,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
   void requireOpenConfigurationSuccess_acceptsOkResult() {
     assertDoesNotThrow(
         () ->
-            SqliteNativeConnections.requireOpenConfigurationSuccess(
+            SqliteNativeKeyConfiguration.requireOpenConfigurationSuccess(
                 SqliteNativeResultCode.code("OK"), SqliteNativeBootstrap.api()));
   }
 
@@ -666,6 +797,34 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
       throw new LinkageError(
           "Failed to invoke SQLite native open-and-harden helper for tests.", throwable);
     }
+  }
+
+  private static void invokeConnectionSuppressCloseFailure(
+      MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure)
+      throws Throwable {
+    MethodHandles.Lookup lookup =
+        MethodHandles.privateLookupIn(SqliteNativeConnections.class, MethodHandles.lookup());
+    lookup
+        .findStatic(
+            SqliteNativeConnections.class,
+            "suppressCloseFailure",
+            MethodType.methodType(
+                void.class, MemorySegment.class, SqliteNativeApi.class, Throwable.class))
+        .invokeExact(databaseHandle, sqliteApi, primaryFailure);
+  }
+
+  private static void invokeKeyConfigurationSuppressCloseFailure(
+      MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure)
+      throws Throwable {
+    MethodHandles.Lookup lookup =
+        MethodHandles.privateLookupIn(SqliteNativeKeyConfiguration.class, MethodHandles.lookup());
+    lookup
+        .findStatic(
+            SqliteNativeKeyConfiguration.class,
+            "suppressCloseFailure",
+            MethodType.methodType(
+                void.class, MemorySegment.class, SqliteNativeApi.class, Throwable.class))
+        .invokeExact(databaseHandle, sqliteApi, primaryFailure);
   }
 
   private static AclFileAttributeView throwingAclView(String message) {

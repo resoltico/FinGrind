@@ -99,6 +99,7 @@ object BundleManifestRenderer {
                 documentationFiles =
                     listOf(
                         "README.md",
+                        "quick-start-request.json",
                         "bundle-manifest.json",
                         "LICENSE",
                         "LICENSE-APACHE-2.0",

@@ -22,11 +22,7 @@ service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |     
 Context
 -------
 Entity              : Acme Studio
-Accounting kernel   : internal-management-cash-bookkeeping-kernel
-Accounting basis    : CASH_BASIS
-Framework posture   : NON_STATUTORY_INTERNAL_MANAGEMENT
-Entity form         : OWNER_MANAGED_SINGLE_ENTITY
-Book template       : OWNER_MANAGED_SERVICE_CASH
+Starter chart       : Owner-managed service starter chart
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds

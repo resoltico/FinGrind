@@ -9,7 +9,8 @@ from .support import require, require_bool, require_string, required_list, requi
 def assert_discovery_surface(
     config: ReleaseSmokeConfig,
     payload: dict[str, Any],
-    distribution: dict[str, Any],
+    runtime_surface_payload: dict[str, Any],
+    publication_surface: dict[str, Any],
     storage: dict[str, Any],
     sqlite: dict[str, Any],
     runtime_surface: dict[str, Any],
@@ -23,11 +24,11 @@ def assert_discovery_surface(
         f"{config.label} capabilities output did not expose the exhaustive full discovery contract",
     )
     require(
-        require_string(distribution, "runtimeDistribution") == runtime_distribution,
+        require_string(runtime_surface_payload, "runtimeDistribution") == runtime_distribution,
         f"{config.label} environment output did not report the canonical runtime distribution",
     )
     require(
-        require_string(distribution, "publicCliDistribution")
+        require_string(publication_surface, "publicCliDistribution")
         == require_string(runtime_surface, "publicCliDistribution"),
         f"{config.label} environment output did not report the public CLI distribution contract",
     )
@@ -36,7 +37,7 @@ def assert_discovery_surface(
         ("unsupportedPublicCliBundleTargets", "current unsupported public bundle targets"),
     ):
         require(
-            required_list(distribution, key) == required_list(public_distribution, key),
+            required_list(publication_surface, key) == required_list(public_distribution, key),
             f"{config.label} environment output did not report the {message}",
         )
     require(
@@ -84,9 +85,7 @@ def assert_loaded_sqlite_runtime(
         )
         require(
             require_string(runtime, "status") == "ready",
-            f"{config.label} environment output did not report a ready SQLite runtime"
-            f" (status={require_string(runtime, 'status')},"
-            f" issue={runtime.get('issue', '<none>')})",
+            f"{config.label} environment output did not report a ready SQLite runtime",
         )
         require(
             require_string(runtime, "runtimeProvenance") == expected_runtime_provenance,

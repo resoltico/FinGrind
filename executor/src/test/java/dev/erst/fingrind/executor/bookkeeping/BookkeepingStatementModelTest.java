@@ -339,6 +339,7 @@ class BookkeepingStatementModelTest {
             Optional.of(LocalDate.parse("2026-05-12")),
             EffectiveDateRange.of(null, LocalDate.parse("2025-05-12")),
             PostingCoverage.ALL_POSTING_KINDS,
+            true,
             financialPositionSections,
             financialPositionSections);
     IncomeStatementView incomeStatementView =

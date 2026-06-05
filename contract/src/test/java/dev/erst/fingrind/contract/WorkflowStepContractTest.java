@@ -39,7 +39,6 @@ class WorkflowStepContractTest {
     assertEquals(
         List.of(
             "bundle-posix-shell",
-            "bundle-windows-powershell",
             "source-checkout-posix-shell",
             "source-checkout-windows-powershell",
             "direct-java-posix-shell",
@@ -47,10 +46,10 @@ class WorkflowStepContractTest {
             "container-docker"),
         WireValue.wireValues(WorkflowSurface.class));
     assertEquals(
-        WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL,
-        WorkflowSurface.fromWireValue("bundle-windows-powershell"));
-    assertEquals(
         WorkflowSurface.CONTAINER_DOCKER, WorkflowSurface.fromWireValue("container-docker"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> WorkflowSurface.fromWireValue("bundle-windows-powershell"));
   }
 
   @Test

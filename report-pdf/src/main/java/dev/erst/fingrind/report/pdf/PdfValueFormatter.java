@@ -1,14 +1,11 @@
 package dev.erst.fingrind.report.pdf;
 
-import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.PostingCoverage;
-import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.util.Optional;
@@ -49,12 +46,12 @@ final class PdfValueFormatter {
   static String displayStatementLineCode(String lineCode, StatementLineKind lineKind) {
     return switch (lineKind) {
       case DECLARED_ACCOUNT -> lineCode;
-      case CURRENT_PERIOD_RESULT -> "(derived)";
+      case CURRENT_PERIOD_RESULT -> "Calculated line";
     };
   }
 
   static String displayLineRole(Optional<AccountRole> lineRole) {
-    return lineRole.map(PdfValueFormatter::displayAccountRole).orElse("(derived)");
+    return lineRole.map(PdfValueFormatter::displayAccountRole).orElse("Calculated line");
   }
 
   static String displayAccountType(AccountType accountType) {
@@ -93,7 +90,7 @@ final class PdfValueFormatter {
       Optional<FinancialPositionLineClassification> lineClassification) {
     return lineClassification
         .map(PdfValueFormatter::displayFinancialPositionLineClassification)
-        .orElse("(derived)");
+        .orElse("Calculated line");
   }
 
   static String displayProfitAndLossLineClassification(
@@ -119,31 +116,5 @@ final class PdfValueFormatter {
 
   static String displayBoolean(boolean value) {
     return value ? "Yes" : "No";
-  }
-
-  static String displayPostingCoverage(PostingCoverage postingCoverage) {
-    return switch (postingCoverage) {
-      case ALL_POSTING_KINDS -> "All posting kinds";
-      case NON_CLOSING_POSTINGS -> "Non-transfer postings";
-    };
-  }
-
-  static String reversalTarget(PostingFact postingFact) {
-    return postingFact
-        .reversalReference()
-        .map(reference -> reference.priorPostingId().value())
-        .orElse("(not a reversal)");
-  }
-
-  static String postingRole(PostingFact postingFact) {
-    return postingFact.reversalReference().isPresent() ? "Reversal" : "Direct";
-  }
-
-  static String displayPostingKind(PostingKind postingKind) {
-    return switch (postingKind) {
-      case STANDARD -> "Standard";
-      case PERIOD_RESULT_TRANSFER -> "Period result transfer";
-      case OPENING_BALANCE -> "Opening balance";
-    };
   }
 }

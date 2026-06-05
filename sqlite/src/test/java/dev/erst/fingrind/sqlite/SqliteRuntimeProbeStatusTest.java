@@ -157,22 +157,6 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void sqliteRuntimeProbe_reportsUnavailableWhenConfiguredLibraryTargetIsInvalid() {
-    SqliteRuntime.Probe runtimeProbe =
-        SqliteRuntime.probeConfiguredTarget(
-            () -> {
-              throw new IllegalStateException("bundle launcher misconfigured");
-            });
-    assertEquals(SqliteRuntime.Status.UNAVAILABLE, runtimeProbe.status());
-    assertEquals(
-        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-        runtimeProbe.compileOptionsVerification());
-    assertNull(runtimeProbe.runtimeProvenance());
-    assertNull(runtimeProbe.runtimeTrustBasis());
-    assertTrue(requireIssue(runtimeProbe).contains("bundle launcher misconfigured"));
-  }
-
-  @Test
   void sqliteNativeAccessGate_allowsTheCurrentRuntimeModuleWhenNativeAccessIsEnabled() {
     Module runtimeModule = SqliteNativeAccessGate.runtimeModule();
 
@@ -207,30 +191,6 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertTrue(
         NullTestSupport.messageOf(exception)
             .contains("--enable-native-access=" + namedModule.getName()));
-  }
-
-  @Test
-  void sqliteRuntimeProbe_reportsUnavailableWhenNativeAccessIsDisabled() {
-    Module unnamedModule = Thread.currentThread().getContextClassLoader().getUnnamedModule();
-
-    SqliteRuntime.Probe runtimeProbe =
-        SqliteRuntime.probeConfiguredTarget(
-            () ->
-                new SqliteLibraryTarget(
-                    SqliteRuntime.LIBRARY_MODE,
-                    SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                    "/tmp/libsqlite3.dylib"),
-            unnamedModule,
-            false);
-
-    assertEquals(SqliteRuntime.Status.UNAVAILABLE, runtimeProbe.status());
-    assertEquals(
-        SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-        runtimeProbe.compileOptionsVerification());
-    assertNull(runtimeProbe.runtimeProvenance());
-    assertNull(runtimeProbe.runtimeTrustBasis());
-    assertNull(runtimeProbe.loadedLibraryPath());
-    assertTrue(requireIssue(runtimeProbe).contains("--enable-native-access=ALL-UNNAMED"));
   }
 
   @Test

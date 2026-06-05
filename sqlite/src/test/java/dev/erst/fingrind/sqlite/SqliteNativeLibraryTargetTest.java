@@ -25,50 +25,26 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
             IllegalStateException.class,
             () ->
                 SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    null, null, List::of, () -> null));
+                    null, List::of, () -> null));
     String message = Objects.requireNonNull(exception.getMessage());
     assertTrue(message.contains("bundle launcher"));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                null, null, List::of, () -> null));
-  }
-
-  @Test
-  void configuredLibraryTarget_rejectsRetiredConfiguredLibraryOverride() {
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    "./build/../sqlite/libsqlite3.so.0"));
-    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("has been removed"));
-    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("FINGRIND_SQLITE_LIBRARY"));
+            SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null, List::of, () -> null));
     assertThrows(
         IllegalArgumentException.class,
         () -> new SqliteLibraryTarget(" ", SqliteRuntimeProvenance.BUNDLE_MANAGED, "x"));
   }
 
   @Test
-  void configuredLibraryTarget_rejectsRetiredConfiguredLibraryOverrideEvenWhenBundleHomeExists() {
+  void configuredLibraryTarget_blankBundleHomeFallsBackToSupportedResolutionPaths() {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
             () ->
                 SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    "./build/../sqlite/libsqlite3.so.0", tempDirectory.toString()));
-    assertTrue(Objects.requireNonNull(exception.getMessage()).contains("has been removed"));
-  }
-
-  @Test
-  void configuredLibraryTarget_blankConfiguredPathFallsBackToSupportedResolutionPaths() {
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    "   ", null, List::of, () -> null));
+                    "   ", List::of, () -> null));
     assertTrue(Objects.requireNonNull(exception.getMessage()).contains("bundle launcher"));
   }
 
@@ -80,7 +56,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.createDirectories(bundledLibraryPath.getParent());
     Files.writeString(bundledLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
     SqliteLibraryTarget libraryTarget =
-        SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null, bundleHomePath.toString());
+        SqliteManagedLibraryTargetLocator.configuredLibraryTarget(bundleHomePath.toString());
     assertEquals("managed-only", libraryTarget.mode());
     assertEquals(
         bundledLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
@@ -101,7 +77,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
     SqliteLibraryTarget libraryTarget =
         SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-            null, null, () -> List.of(sourceCheckoutRoot), () -> null);
+            null, () -> List.of(sourceCheckoutRoot), () -> null);
     assertEquals("managed-only", libraryTarget.mode());
     assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
     assertEquals(
@@ -130,7 +106,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
           "fingrind.source-checkout.root", sourceCheckoutRoot.resolve("gradlew").toString());
       System.clearProperty("fingrind.source-checkout.build-root");
       SqliteLibraryTarget libraryTarget =
-          SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null, null);
+          SqliteManagedLibraryTargetLocator.configuredLibraryTarget();
       assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
       assertEquals(
           managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
@@ -141,7 +117,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void configuredLibraryTarget_singleArgumentOverload_resolvesManagedLibraryFromDefaultDetection()
+  void configuredLibraryTarget_bundleHomeOverload_resolvesManagedLibraryFromDefaultDetection()
       throws IOException {
     Path sourceCheckoutRoot = tempDirectory.resolve("FinGrind-single-arg");
     Path managedLibraryPath =
@@ -162,7 +138,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
           "fingrind.source-checkout.root", sourceCheckoutRoot.resolve("gradlew").toString());
       System.clearProperty("fingrind.source-checkout.build-root");
       SqliteLibraryTarget libraryTarget =
-          SqliteManagedLibraryTargetLocator.configuredLibraryTarget(null);
+          SqliteManagedLibraryTargetLocator.configuredLibraryTarget();
       assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
       assertEquals(
           managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
@@ -189,7 +165,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
     Files.writeString(managedLibraryPath, "sqlite3mc", StandardCharsets.UTF_8);
     SqliteLibraryTarget libraryTarget =
         SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-            null, null, () -> List.of(sourceCheckoutRoot), () -> externalizedBuildRoot);
+            null, () -> List.of(sourceCheckoutRoot), () -> externalizedBuildRoot);
     assertEquals(SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED, libraryTarget.provenance());
     assertEquals(
         managedLibraryPath.toAbsolutePath().normalize().toString(), libraryTarget.lookupTarget());
@@ -216,7 +192,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
             IllegalStateException.class,
             () ->
                 SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    null, null, () -> List.of(sourceCheckoutRoot), () -> null));
+                    null, () -> List.of(sourceCheckoutRoot), () -> null));
     assertTrue(Objects.requireNonNull(exception.getMessage()).contains("prepareManagedSqlite"));
   }
 
@@ -229,7 +205,7 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
             IllegalStateException.class,
             () ->
                 SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    null, bundleHomePath.toString()));
+                    bundleHomePath.toString()));
     String message = Objects.requireNonNull(exception.getMessage());
     assertTrue(message.contains("bundle home"));
   }
@@ -241,22 +217,14 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
             IllegalStateException.class,
             () ->
                 SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    null, null, List::of, () -> null));
-    IllegalStateException blankConfiguredPath =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    "   ", null, List::of, () -> null));
+                    null, List::of, () -> null));
     IllegalStateException blankBundleHome =
         assertThrows(
             IllegalStateException.class,
             () ->
                 SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                    null, "   ", List::of, () -> null));
+                    "   ", List::of, () -> null));
     assertTrue(Objects.requireNonNull(missingEverywhere.getMessage()).contains("bundle launcher"));
-    assertTrue(
-        Objects.requireNonNull(blankConfiguredPath.getMessage()).contains("bundle launcher"));
     assertTrue(Objects.requireNonNull(blankBundleHome.getMessage()).contains("bundle launcher"));
   }
 

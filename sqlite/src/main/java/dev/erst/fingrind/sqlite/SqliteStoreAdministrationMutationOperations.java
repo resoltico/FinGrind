@@ -52,7 +52,7 @@ final class SqliteStoreAdministrationMutationOperations {
               return preexistingOutcome.orElseThrow();
             }
 
-            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
+            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
             SqliteBookSchemaBootstrap.initializeBook(activeDatabase);
             SqliteBookIntegrityVerifier.recordSchemaFingerprint(activeDatabase);
             SqliteMutationWriter.insertInitializedAt(activeDatabase, initializedAt);
@@ -104,7 +104,7 @@ final class SqliteStoreAdministrationMutationOperations {
                   new BookkeepingAdministrationRejection.BookNotInitialized());
             }
 
-            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
+            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
             Optional<RegisteredAccount> existingAccount =
                 SqliteStatementQueries.findOneAccount(activeDatabase, accountCode);
             AccountDeclarationOutcome declarationOutcome =

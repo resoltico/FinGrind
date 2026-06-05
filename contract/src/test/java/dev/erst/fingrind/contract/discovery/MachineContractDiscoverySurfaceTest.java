@@ -11,7 +11,8 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
@@ -23,13 +24,12 @@ import org.junit.jupiter.api.Test;
 /** Coverage and contract tests for the published machine-discovery surfaces. */
 class MachineContractDiscoverySurfaceTest {
   private static final ApplicationIdentity IDENTITY =
-      new ApplicationIdentity("FinGrind", "0.51.0", "Protected bookkeeping kernel");
+      new ApplicationIdentity("FinGrind", "0.52.0", "Protected bookkeeping kernel");
 
   @Test
   void helpWithoutTopicPublishesCanonicalQuickStartForEveryRuntimeDistribution() {
     assertQuickStartSurface(
-        RuntimeDistribution.SELF_CONTAINED_BUNDLE,
-        List.of(WorkflowSurface.BUNDLE_POSIX_SHELL, WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL));
+        RuntimeDistribution.SELF_CONTAINED_BUNDLE, List.of(WorkflowSurface.BUNDLE_POSIX_SHELL));
     assertQuickStartSurface(
         RuntimeDistribution.SOURCE_CHECKOUT_GRADLE,
         List.of(
@@ -169,135 +169,140 @@ class MachineContractDiscoverySurfaceTest {
         expectedSurfaces, help.quickStart().stream().map(WorkflowDescriptor::surface).toList());
 
     for (WorkflowDescriptor workflow : help.quickStart()) {
-      assertEquals(10, workflow.steps().size());
-      assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(0));
-      WorkflowStepDescriptor.Command generateKey =
-          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(1));
-      WorkflowStepDescriptor.Command openBook =
-          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(2));
-      WorkflowStepDescriptor.Command listAccounts =
-          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(3));
-      WorkflowStepDescriptor.Command printRequestTemplate =
-          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(4));
-      WorkflowStepDescriptor.Note placeholderNote =
-          assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(5));
-      WorkflowStepDescriptor.Note idempotencyNote =
-          assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(6));
-      WorkflowStepDescriptor.Command preflight =
-          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(7));
-      WorkflowStepDescriptor.Command postEntry =
-          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(8));
-      WorkflowStepDescriptor.Command trialBalance =
-          assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(9));
-
-      assertTrue(
-          generateKey
-              .text()
-              .contains(ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)));
-      assertTrue(openBook.text().contains("--entity-name \"Acme Studio\""));
-      assertTrue(
-          listAccounts.text().contains(ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS)));
-      assertTrue(printRequestTemplate.text().contains("print-request-template >"));
-      assertTrue(placeholderNote.text().contains("placeholder-first scaffold"));
-      assertTrue(idempotencyNote.text().contains("idempotencyKey"));
-      assertTrue(
-          preflight.text().contains(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY)));
-      assertTrue(postEntry.text().contains(ProtocolCatalog.operationName(OperationId.POST_ENTRY)));
-      assertTrue(
-          trialBalance
-              .text()
-              .contains(ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE) + " --book-file"));
-      assertTrue(trialBalance.text().endsWith("--output text"));
-
-      switch (workflow.surface()) {
-        case BUNDLE_POSIX_SHELL -> {
-          assertTrue(
-              generateKey
-                  .text()
-                  .startsWith(
-                      ProtocolCatalog.distribution()
-                              .bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64)
-                          + " generate-book-key-file --book-key-file ./secrets/acme.book-key"));
-          assertTrue(openBook.text().contains("--book-file ./books/acme.sqlite"));
-        }
-        case BUNDLE_WINDOWS_POWERSHELL -> {
-          assertTrue(
-              generateKey
-                  .text()
-                  .startsWith(
-                      ProtocolCatalog.distribution()
-                              .bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_X86_64)
-                          + " generate-book-key-file --book-key-file .\\secrets\\acme.book-key"));
-          assertTrue(openBook.text().contains("--book-file .\\books\\acme.sqlite"));
-        }
-        case SOURCE_CHECKOUT_POSIX_SHELL -> {
-          assertTrue(
-              generateKey
-                  .text()
-                  .startsWith(
-                      ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(false)
-                          + " generate-book-key-file --book-key-file ./secrets/acme.book-key"));
-          assertTrue(
-              ((WorkflowStepDescriptor.Note) workflow.steps().get(0))
-                  .text()
-                  .contains("./gradlew :cli:installShadowDist prepareManagedSqlite"));
-        }
-        case SOURCE_CHECKOUT_WINDOWS_POWERSHELL -> {
-          assertTrue(
-              generateKey
-                  .text()
-                  .startsWith(
-                      ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(true)
-                          + " generate-book-key-file --book-key-file .\\secrets\\acme.book-key"));
-          assertTrue(
-              ((WorkflowStepDescriptor.Note) workflow.steps().get(0))
-                  .text()
-                  .contains(".\\gradlew.bat :cli:installShadowDist prepareManagedSqlite"));
-        }
-        case DIRECT_JAVA_POSIX_SHELL -> {
-          assertTrue(
-              generateKey
-                  .text()
-                  .startsWith(
-                      ProtocolCatalog.distribution().directJavaLauncherCommand(false)
-                          + " generate-book-key-file --book-key-file ./secrets/acme.book-key"));
-          assertTrue(
-              ((WorkflowStepDescriptor.Note) workflow.steps().get(0))
-                  .text()
-                  .contains("./gradlew :cli:shadowJar prepareManagedSqlite"));
-        }
-        case DIRECT_JAVA_WINDOWS_POWERSHELL -> {
-          assertTrue(
-              generateKey
-                  .text()
-                  .startsWith(
-                      ProtocolCatalog.distribution().directJavaLauncherCommand(true)
-                          + " generate-book-key-file --book-key-file .\\secrets\\acme.book-key"));
-          assertTrue(
-              ((WorkflowStepDescriptor.Note) workflow.steps().get(0))
-                  .text()
-                  .contains(".\\gradlew.bat :cli:shadowJar prepareManagedSqlite"));
-        }
-        case CONTAINER_DOCKER -> {
-          assertTrue(
-              generateKey
-                  .text()
-                  .startsWith(
-                      ProtocolCatalog.distribution().containerLauncherCommand()
-                          + " generate-book-key-file --book-key-file ./secrets/acme.book-key"));
-          assertTrue(
-              ((WorkflowStepDescriptor.Note) workflow.steps().get(0))
-                  .text()
-                  .contains("<container-image>"));
-        }
-      }
+      QuickStartSteps steps = quickStartSteps(workflow);
+      assertCommonQuickStartSteps(steps);
+      assertSurfaceSpecificQuickStartSteps(workflow.surface(), steps);
     }
+  }
+
+  private static QuickStartSteps quickStartSteps(WorkflowDescriptor workflow) {
+    assertEquals(10, workflow.steps().size());
+    return new QuickStartSteps(
+        assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(0)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(1)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(2)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(3)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(4)),
+        assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(5)),
+        assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(6)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(7)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(8)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(9)));
+  }
+
+  private static void assertCommonQuickStartSteps(QuickStartSteps steps) {
+    assertTrue(
+        steps
+            .generateKey()
+            .text()
+            .contains(ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)));
+    assertTrue(steps.openBook().text().contains("--entity-name \"Acme Studio\""));
+    assertTrue(
+        steps
+            .listAccounts()
+            .text()
+            .contains(ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS)));
+    assertTrue(steps.idempotencyNote().text().contains("idempotencyKey"));
+    assertTrue(
+        steps
+            .preflight()
+            .text()
+            .contains(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY)));
+    assertTrue(
+        steps.postEntry().text().contains(ProtocolCatalog.operationName(OperationId.POST_ENTRY)));
+    assertTrue(
+        steps
+            .trialBalance()
+            .text()
+            .contains(ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE) + " --book-file"));
+    assertTrue(steps.trialBalance().text().endsWith("--output text"));
+  }
+
+  private static void assertSurfaceSpecificQuickStartSteps(
+      WorkflowSurface surface, QuickStartSteps steps) {
+    switch (surface) {
+      case BUNDLE_POSIX_SHELL -> assertBundlePosixQuickStartSteps(steps);
+      case SOURCE_CHECKOUT_POSIX_SHELL ->
+          assertSourceCheckoutQuickStartSteps(false, "./secrets/acme.book-key", steps);
+      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
+          assertSourceCheckoutQuickStartSteps(true, ".\\secrets\\acme.book-key", steps);
+      case DIRECT_JAVA_POSIX_SHELL ->
+          assertDirectJavaQuickStartSteps(false, "./secrets/acme.book-key", steps);
+      case DIRECT_JAVA_WINDOWS_POWERSHELL ->
+          assertDirectJavaQuickStartSteps(true, ".\\secrets\\acme.book-key", steps);
+      case CONTAINER_DOCKER -> assertContainerQuickStartSteps(steps);
+    }
+  }
+
+  private static void assertBundlePosixQuickStartSteps(QuickStartSteps steps) {
+    assertTrue(
+        steps
+            .generateKey()
+            .text()
+            .startsWith(
+                ProtocolCatalog.distribution()
+                        .bundleLauncherCommand(PublicCliBundleTarget.LINUX_X86_64)
+                    + " generate-book-key-file --book-key-file ./secrets/acme.book-key"));
+    assertTrue(steps.openBook().text().contains("--book-file ./books/acme.sqlite"));
+    assertEquals(
+        "cp ./quick-start-request.json ./request.json", steps.requestPreparationCommand().text());
+    assertTrue(steps.requestPreparationNote().text().contains("concrete sample document"));
+    assertTrue(steps.requestPreparationNote().text().contains("./request.json"));
+  }
+
+  private static void assertSourceCheckoutQuickStartSteps(
+      boolean windows, String bookKeyPath, QuickStartSteps steps) {
+    assertTrue(
+        steps
+            .generateKey()
+            .text()
+            .startsWith(
+                ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(windows)
+                    + " generate-book-key-file --book-key-file "
+                    + bookKeyPath));
+    assertRuntimeManagedQuickStartSteps(steps);
+  }
+
+  private static void assertDirectJavaQuickStartSteps(
+      boolean windows, String bookKeyPath, QuickStartSteps steps) {
+    assertTrue(
+        steps
+            .generateKey()
+            .text()
+            .startsWith(
+                ProtocolCatalog.distribution().directJavaLauncherCommand(windows)
+                    + " generate-book-key-file --book-key-file "
+                    + bookKeyPath));
+    assertRuntimeManagedQuickStartSteps(steps);
+  }
+
+  private static void assertContainerQuickStartSteps(QuickStartSteps steps) {
+    assertTrue(
+        steps
+            .generateKey()
+            .text()
+            .startsWith(
+                ProtocolCatalog.distribution().containerLauncherCommand()
+                    + " generate-book-key-file --book-key-file ./secrets/acme.book-key"));
+    assertTrue(steps.introNote().text().contains("session-local fingrind wrapper"));
+    assertPlaceholderRequestPreparation(steps);
+  }
+
+  private static void assertRuntimeManagedQuickStartSteps(QuickStartSteps steps) {
+    assertTrue(
+        steps.introNote().text().contains("Gradle-owned Java 26 toolchain manifest automatically"));
+    assertPlaceholderRequestPreparation(steps);
+  }
+
+  private static void assertPlaceholderRequestPreparation(QuickStartSteps steps) {
+    assertTrue(steps.requestPreparationCommand().text().contains("print-request-template >"));
+    assertTrue(steps.requestPreparationNote().text().contains("placeholder-first scaffold"));
   }
 
   private static EnvironmentDescriptor environment(RuntimeDistribution runtimeDistribution) {
     return new EnvironmentDescriptor(
-        new EnvironmentDistributionDescriptor(
-            runtimeDistribution,
+        new EnvironmentRuntimeDescriptor(runtimeDistribution),
+        new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
             ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
@@ -328,4 +333,16 @@ class MachineContractDiscoverySurfaceTest {
                 "test fixture"),
             null));
   }
+
+  private record QuickStartSteps(
+      WorkflowStepDescriptor.Note introNote,
+      WorkflowStepDescriptor.Command generateKey,
+      WorkflowStepDescriptor.Command openBook,
+      WorkflowStepDescriptor.Command listAccounts,
+      WorkflowStepDescriptor.Command requestPreparationCommand,
+      WorkflowStepDescriptor.Note requestPreparationNote,
+      WorkflowStepDescriptor.Note idempotencyNote,
+      WorkflowStepDescriptor.Command preflight,
+      WorkflowStepDescriptor.Command postEntry,
+      WorkflowStepDescriptor.Command trialBalance) {}
 }

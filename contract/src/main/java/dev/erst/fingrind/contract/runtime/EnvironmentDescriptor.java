@@ -5,13 +5,15 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 
 /** Descriptor for the active SQLite runtime environment. */
 public record EnvironmentDescriptor(
-    EnvironmentDistributionDescriptor distribution,
+    EnvironmentRuntimeDescriptor runtime,
+    EnvironmentPublicationDescriptor publication,
     EnvironmentStorageDescriptor storage,
     EnvironmentSqliteDescriptor sqlite)
     implements ContractDiscoveryDescriptor {
   /** Validates one runtime environment descriptor payload. */
   public EnvironmentDescriptor {
-    distribution = ContractDescriptorValidation.requireValue(distribution, "distribution");
+    runtime = ContractDescriptorValidation.requireValue(runtime, "runtime");
+    publication = ContractDescriptorValidation.requireValue(publication, "publication");
     storage = ContractDescriptorValidation.requireValue(storage, "storage");
     sqlite = ContractDescriptorValidation.requireValue(sqlite, "sqlite");
   }

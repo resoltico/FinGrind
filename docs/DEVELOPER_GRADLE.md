@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -200,9 +200,8 @@ contract owned by `gradle/fingrind-build.properties` instead of resolving a floa
 at build time. The build metadata pins the snapshot base version `0.8.15-SNAPSHOT`, the published
 build label `0.8.15.202606030734`, and the resolved artifact version `0.8.15-20260603.073432-117`;
 the shared build logic stages that exact JaCoCo jar set under the wrapper-owned build root; and
-`./scripts/verify-jacoco-snapshot.sh` proves the local pinned contract shape, then stages that
-exact artifact set through `prepareJacocoSnapshotArtifacts` before any Gradle verification stage
-runs. The root gate no longer depends on a separate live snapshot-metadata fetch path.
+`./scripts/verify-jacoco-snapshot.sh` proves those exact published artifacts exist before any
+Gradle verification stage runs.
 
 ### One managed-SQLite contract
 
@@ -246,12 +245,12 @@ That contract now has a few explicit rules:
   and Docker-context staging call it through `:cli:stageDockerBuildContext` rather than asking
   contributors to invoke it directly
 - local developer direct-Java verification uses `./scripts/direct-java-cli.sh` or
-  `.\scripts\direct-java-cli.ps1` and must therefore run both `:cli:shadowJar` and
-  `prepareManagedSqlite`
-- the repo-owned source-checkout and direct-Java wrappers now verify one generated source-hash
-  manifest before they execute the cached raw JAR, and they refresh `:cli:shadowJar` plus
-  `prepareManagedSqlite` automatically when the current checkout has outrun the last prepared
-  artifact
+  `.\scripts\direct-java-cli.ps1` and therefore runs `:cli:writeSourceCheckoutRuntimeManifest`
+  plus `prepareManagedSqlite` before launching the cached raw JAR
+- the repo-owned source-checkout and direct-Java wrappers now delegate checkout freshness to the
+  Gradle-owned runtime-preparation tasks instead of replaying source hashing in shell. Each
+  launch refreshes `:cli:writeSourceCheckoutRuntimeManifest` plus `prepareManagedSqlite`, then
+  executes through the generated Java 26 runtime manifest
 
 ### Committed Jazzer topology
 

@@ -73,77 +73,29 @@ public final class SqliteRuntime {
 
   /** Probes the packaged SQLite runtime without throwing, for CLI discovery surfaces. */
   public static Probe probe() {
-    return probeConfiguredTarget(
+    return SqliteRuntimeProbeSupport.probeConfiguredTarget(
         () ->
             SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-                System.getenv("FINGRIND_SQLITE_LIBRARY"),
                 System.getProperty(SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY)));
   }
 
   static Probe probeConfiguredTarget(
       Supplier<SqliteLibraryTarget> configuredLibraryTargetSupplier) {
-    return probeConfiguredTarget(
-        configuredLibraryTargetSupplier, SqliteNativeAccessGate.runtimeModule());
+    return SqliteRuntimeProbeSupport.probeConfiguredTarget(configuredLibraryTargetSupplier);
   }
 
   static Probe probeConfiguredTarget(
       Supplier<SqliteLibraryTarget> configuredLibraryTargetSupplier, Module nativeAccessModule) {
-    return probeConfiguredTarget(
-        configuredLibraryTargetSupplier,
-        nativeAccessModule,
-        SqliteNativeAccessGate.isEnabled(nativeAccessModule));
+    return SqliteRuntimeProbeSupport.probeConfiguredTarget(
+        configuredLibraryTargetSupplier, nativeAccessModule);
   }
 
   static Probe probeConfiguredTarget(
       Supplier<SqliteLibraryTarget> configuredLibraryTargetSupplier,
       Module nativeAccessModule,
       boolean nativeAccessEnabled) {
-    Objects.requireNonNull(nativeAccessModule, "nativeAccessModule");
-    SqliteLibraryTarget configuredLibraryTarget;
-    try {
-      configuredLibraryTarget = configuredLibraryTargetSupplier.get();
-    } catch (RuntimeException | Error throwable) {
-      return new Probe(
-          LIBRARY_MODE,
-          REQUIRED_MINIMUM_SQLITE_VERSION,
-          REQUIRED_SQLITE3MC_VERSION,
-          REQUIRED_SQLITE_SOURCE_ID,
-          SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-          Status.UNAVAILABLE,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          failureDetail(throwable),
-          null);
-    }
-    if (!nativeAccessEnabled) {
-      return new Probe(
-          configuredLibraryTarget.mode(),
-          REQUIRED_MINIMUM_SQLITE_VERSION,
-          REQUIRED_SQLITE3MC_VERSION,
-          REQUIRED_SQLITE_SOURCE_ID,
-          SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-          Status.UNAVAILABLE,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          SqliteNativeAccessGate.failureMessage(nativeAccessModule),
-          null);
-    }
-    return probe(
-        () -> configuredLibraryTarget.mode(),
-        () -> configuredLibraryTarget.provenance(),
-        () -> configuredLibraryTarget.lookupTarget(),
-        SqliteNativeRuntimeMetadata::sqliteVersion,
-        SqliteNativeRuntimeMetadata::sqlite3MultipleCiphersVersion,
-        SqliteNativeRuntimeMetadata::sqliteSourceId,
-        SqliteRuntime::failureDetail);
+    return SqliteRuntimeProbeSupport.probeConfiguredTarget(
+        configuredLibraryTargetSupplier, nativeAccessModule, nativeAccessEnabled);
   }
 
   /** Normalizes a runtime probe failure into one stable sentence for machine-facing surfaces. */
@@ -159,123 +111,14 @@ public final class SqliteRuntime {
       Supplier<String> sqlite3MultipleCiphersVersionSupplier,
       Supplier<String> sqliteSourceIdSupplier,
       Function<Throwable, String> failureDetail) {
-    Objects.requireNonNull(libraryModeSupplier, "libraryModeSupplier");
-    Objects.requireNonNull(runtimeProvenanceSupplier, "runtimeProvenanceSupplier");
-    Objects.requireNonNull(loadedLibraryPathSupplier, "loadedLibraryPathSupplier");
-    Objects.requireNonNull(sqliteVersionSupplier, "sqliteVersionSupplier");
-    Objects.requireNonNull(
-        sqlite3MultipleCiphersVersionSupplier, "sqlite3MultipleCiphersVersionSupplier");
-    Objects.requireNonNull(sqliteSourceIdSupplier, "sqliteSourceIdSupplier");
-    Objects.requireNonNull(failureDetail, "failureDetail");
-
-    String libraryMode = libraryModeSupplier.get();
-    SqliteRuntimeProvenance runtimeProvenance = runtimeProvenanceSupplier.get();
-    String loadedLibraryPath = publicLoadedLibraryPath(loadedLibraryPathSupplier.get());
-    SqliteRuntimeArtifactEvidence runtimeArtifactEvidence =
-        artifactEvidence(loadedLibraryPathSupplier.get());
-    String loadedSqliteVersion = null;
-    String loadedSqlite3mcVersion = null;
-    String loadedSqliteSourceId = null;
-    try {
-      loadedSqliteVersion = sqliteVersionSupplier.get();
-      loadedSqlite3mcVersion = sqlite3MultipleCiphersVersionSupplier.get();
-      loadedSqliteSourceId = sqliteSourceIdSupplier.get();
-      return new Probe(
-          libraryMode,
-          REQUIRED_MINIMUM_SQLITE_VERSION,
-          REQUIRED_SQLITE3MC_VERSION,
-          REQUIRED_SQLITE_SOURCE_ID,
-          SqliteCompileOptionsVerificationStatus.VERIFIED,
-          Status.READY,
-          runtimeProvenance,
-          SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
-          loadedLibraryPath,
-          loadedSqliteVersion,
-          loadedSqlite3mcVersion,
-          loadedSqliteSourceId,
-          null,
-          runtimeArtifactEvidence);
-    } catch (UnsupportedSqliteVersionException exception) {
-      return new Probe(
-          libraryMode,
-          REQUIRED_MINIMUM_SQLITE_VERSION,
-          REQUIRED_SQLITE3MC_VERSION,
-          REQUIRED_SQLITE_SOURCE_ID,
-          SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-          Status.INCOMPATIBLE,
-          runtimeProvenance,
-          SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
-          loadedLibraryPath,
-          exception.loadedVersion(),
-          exception.loadedSqlite3mcVersion(),
-          exception.loadedSourceId(),
-          failureDetail.apply(exception),
-          runtimeArtifactEvidence);
-    } catch (UnsupportedSqliteMultipleCiphersVersionException exception) {
-      return new Probe(
-          libraryMode,
-          REQUIRED_MINIMUM_SQLITE_VERSION,
-          REQUIRED_SQLITE3MC_VERSION,
-          REQUIRED_SQLITE_SOURCE_ID,
-          SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-          Status.INCOMPATIBLE,
-          runtimeProvenance,
-          SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
-          loadedLibraryPath,
-          exception.loadedSqliteVersion(),
-          exception.loadedVersion(),
-          exception.loadedSourceId(),
-          failureDetail.apply(exception),
-          runtimeArtifactEvidence);
-    } catch (UnsupportedSqliteSourceIdException exception) {
-      return new Probe(
-          libraryMode,
-          REQUIRED_MINIMUM_SQLITE_VERSION,
-          REQUIRED_SQLITE3MC_VERSION,
-          REQUIRED_SQLITE_SOURCE_ID,
-          SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-          Status.INCOMPATIBLE,
-          runtimeProvenance,
-          SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
-          loadedLibraryPath,
-          exception.loadedSqliteVersion(),
-          exception.loadedSqlite3mcVersion(),
-          exception.loadedSourceId(),
-          failureDetail.apply(exception),
-          runtimeArtifactEvidence);
-    } catch (UnsupportedSqliteCompileOptionsException exception) {
-      return new Probe(
-          libraryMode,
-          REQUIRED_MINIMUM_SQLITE_VERSION,
-          REQUIRED_SQLITE3MC_VERSION,
-          REQUIRED_SQLITE_SOURCE_ID,
-          SqliteCompileOptionsVerificationStatus.FAILED,
-          Status.INCOMPATIBLE,
-          runtimeProvenance,
-          SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
-          loadedLibraryPath,
-          exception.loadedSqliteVersion(),
-          exception.loadedSqlite3mcVersion(),
-          exception.loadedSourceId(),
-          failureDetail.apply(exception),
-          runtimeArtifactEvidence);
-    } catch (RuntimeException | Error throwable) {
-      return new Probe(
-          libraryMode,
-          REQUIRED_MINIMUM_SQLITE_VERSION,
-          REQUIRED_SQLITE3MC_VERSION,
-          REQUIRED_SQLITE_SOURCE_ID,
-          SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-          Status.FAILED,
-          runtimeProvenance,
-          SqliteRuntimeTrustBasis.fromProvenance(runtimeProvenance),
-          loadedLibraryPath,
-          loadedSqliteVersion,
-          loadedSqlite3mcVersion,
-          loadedSqliteSourceId,
-          failureDetail.apply(throwable),
-          runtimeArtifactEvidence);
-    }
+    return SqliteRuntimeProbeSupport.probe(
+        libraryModeSupplier,
+        runtimeProvenanceSupplier,
+        loadedLibraryPathSupplier,
+        sqliteVersionSupplier,
+        sqlite3MultipleCiphersVersionSupplier,
+        sqliteSourceIdSupplier,
+        failureDetail);
   }
 
   /** Machine-facing runtime state for one SQLite probe. */
@@ -374,8 +217,7 @@ public final class SqliteRuntime {
     return SqliteRuntimePathEvidenceSupport.publicLoadedLibraryPath(loadedLibraryPath);
   }
 
-  private static @Nullable SqliteRuntimeArtifactEvidence artifactEvidence(
-      String loadedLibraryPath) {
+  static @Nullable SqliteRuntimeArtifactEvidence artifactEvidence(String loadedLibraryPath) {
     return SqliteRuntimePathEvidenceSupport.artifactEvidence(loadedLibraryPath);
   }
 

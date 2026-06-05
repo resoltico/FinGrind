@@ -81,10 +81,9 @@ class PdfReportServiceTest {
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
-    assertTrue(trialBalanceText.contains("Accounting kernel"));
+    assertTrue(trialBalanceText.contains("Starter chart"));
     assertTrue(trialBalanceText.contains("EUR"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
-    assertTrue(trialBalanceText.contains("2025-04-01 to 2025-04-30"));
     assertTrue(trialBalanceText.contains("Comparative Trial Balance"));
     assertTrue(trialBalanceText.contains("Asset"));
     assertTrue(trialBalanceText.contains("Ordinary"));
@@ -102,6 +101,7 @@ class PdfReportServiceTest {
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             PostingCoverage.ALL_POSTING_KINDS,
+            true,
             List.of(
                 new FinancialPositionSection(
                     AccountType.EQUITY,
@@ -147,9 +147,9 @@ class PdfReportServiceTest {
     String changesInEquityText =
         extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(changesInEquityReport));
 
-    assertTrue(financialPositionText.contains("(derived)"));
+    assertTrue(financialPositionText.contains("Calculated line"));
     assertFalse(financialPositionText.contains("current-period-result"));
-    assertTrue(changesInEquityText.contains("(derived)"));
+    assertTrue(changesInEquityText.contains("Calculated line"));
     assertFalse(changesInEquityText.contains("current-period-result"));
   }
 
@@ -161,6 +161,7 @@ class PdfReportServiceTest {
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            true,
             List.of(
                 new FinancialPositionSection(
                     AccountType.ASSET,
@@ -265,6 +266,7 @@ class PdfReportServiceTest {
     assertTrue(financialPositionText.contains("Financial Position"));
     assertTrue(financialPositionText.contains("Acme Studio"));
     assertTrue(financialPositionText.contains("All posting kinds"));
+    assertTrue(financialPositionText.contains("Balanced"));
     assertTrue(financialPositionText.contains("Ordinary"));
     assertTrue(financialPositionText.contains("Comparative Assets"));
     assertTrue(financialPositionText.contains("Prior Cash and Cash"));
@@ -283,6 +285,36 @@ class PdfReportServiceTest {
     assertTrue(changesInEquityText.contains("Comparative Changes In Equity"));
     assertTrue(changesInEquityText.contains("Comparative Equity Totals"));
     assertTrue(changesInEquityText.contains("Prior Contributed Capital"));
+  }
+
+  @Test
+  void renderFinancialPositionSurfacesImbalancedEquationVerdict() throws IOException {
+    FinancialPositionReport imbalancedReport =
+        new FinancialPositionReport(
+            BOOK_IDENTITY,
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS,
+            false,
+            List.of(
+                new FinancialPositionSection(
+                    AccountType.ASSET,
+                    List.of(
+                        financialPositionRow(
+                            "1000",
+                            "Cash and Cash Equivalents",
+                            AccountType.ASSET,
+                            AccountRole.ORDINARY,
+                            FinancialPositionLineClassification.CURRENT_ASSET,
+                            balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
+                    List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))),
+            List.of());
+
+    String financialPositionText =
+        extractedText(PDF_REPORT_SERVICE.renderFinancialPosition(imbalancedReport));
+
+    assertTrue(financialPositionText.contains("Accounting equation"));
+    assertTrue(financialPositionText.contains("Imbalanced"));
   }
 
   @Test
@@ -405,6 +437,7 @@ class PdfReportServiceTest {
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            true,
             List.of(
                 new FinancialPositionSection(AccountType.LIABILITY, List.of(), List.of()),
                 new FinancialPositionSection(
@@ -471,10 +504,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.51.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.52.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.51.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.52.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));

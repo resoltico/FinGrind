@@ -22,7 +22,7 @@ final class CliPostingFactFormatter {
         CliPostingLabels.postingDebitTotal(postingFact),
         CliPostingLabels.postingCreditTotal(postingFact),
         postingAccounts(postingFact),
-        postingFact.postingId().value());
+        CliHumanDisplay.opaqueReference(postingFact.postingId().value()));
   }
 
   static List<String> trialBalanceCsvRow(TrialBalanceRow row) {
@@ -50,7 +50,7 @@ final class CliPostingFactFormatter {
             + " "
             + CliBalanceOutputFormatter.displayBalanceSideLabel(entry.runningBalanceSide()),
         counterpartAccounts(account, entry.postingFact()),
-        entry.postingFact().postingId().value());
+        CliHumanDisplay.opaqueReference(entry.postingFact().postingId().value()));
   }
 
   static List<String> periodActivityCsvRow(PeriodAccountActivityRow row) {

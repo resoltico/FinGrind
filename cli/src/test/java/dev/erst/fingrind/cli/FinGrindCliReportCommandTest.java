@@ -120,15 +120,14 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
 
     int exitCode =
         cli.run(
-            new String[] {
-              "trial-balance",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--pdf-out",
-              pdfOutputPath.toString()
-            });
+            jsonArguments(
+                "trial-balance",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--pdf-out",
+                pdfOutputPath.toString()));
 
     assertEquals(2, exitCode);
     assertJsonContains(outputStream, "\"code\":\"query-book-not-initialized\"");
@@ -500,15 +499,14 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
 
     int exitCode =
         cli.run(
-            new String[] {
-              "trial-balance",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--pdf-out",
-              pdfOutputPath.toString()
-            });
+            jsonArguments(
+                "trial-balance",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--pdf-out",
+                pdfOutputPath.toString()));
 
     assertEquals(4, exitCode);
     assertJsonContains(outputStream, "\"code\":\"pdf-export-failure\"");

@@ -23,10 +23,10 @@ readonly verifier_py="${repo_root}/scripts/verify-structural-governance.py"
 
 print_usage() {
     printf '%s\n' \
-        'Usage: ./scripts/verify-structural-governance.sh [--surface build-logic-kotlin] [--surface shell-release] [--surface python-support] [--surface sqlite-sql]' \
+        'Usage: ./scripts/verify-structural-governance.sh [--surface build-logic-kotlin] [--surface gradle-kts] [--surface markdown-docs] [--surface shell-release] [--surface python-support] [--surface sqlite-sql]' \
         '' \
         'Verifies FinGrind structural-governance budgets for non-Java control-plane surfaces.' \
-        'Without --surface, the verifier checks build-logic-kotlin, shell-release, python-support, and sqlite-sql.'
+        'Without --surface, the verifier checks build-logic-kotlin, gradle-kts, markdown-docs, shell-release, python-support, and sqlite-sql.'
 }
 
 for argument in "$@"; do

@@ -13,28 +13,12 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
   private final SqliteStoreContext context;
   private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
   private final SqliteLedgerPlanTransactionCoordinator ledgerPlanTransactions;
+  private final Transactions transactions = new Transactions();
 
   SqliteStoreLifecycle(SqliteStoreContext context, SqliteSessionSecret sessionSecret) {
     super(sessionSecret);
     this.context = java.util.Objects.requireNonNull(context, "context");
     this.ledgerPlanTransactions = new SqliteLedgerPlanTransactionCoordinator(context);
-  }
-
-  void beginLedgerPlanTransaction() {
-    threadOwner.requireOwnerThread();
-    ensureOpen();
-    ledgerPlanTransactions.begin(this::database, this::cleanupCreatedMissingBookArtifacts);
-  }
-
-  void commitLedgerPlanTransaction() {
-    threadOwner.requireOwnerThread();
-    ensureOpen();
-    ledgerPlanTransactions.commit(this::database);
-  }
-
-  void rollbackLedgerPlanTransaction() {
-    threadOwner.requireOwnerThread();
-    ledgerPlanTransactions.rollback(publishedDatabase(), this::cleanupCreatedMissingBookArtifacts);
   }
 
   void close() {
@@ -138,6 +122,10 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
     ensureOpen();
   }
 
+  Transactions transactions() {
+    return transactions;
+  }
+
   SqliteNativeDatabase initializedQueryDatabase() {
     threadOwner.requireOwnerThread();
     if (Files.notExists(context.bookPath())) {
@@ -146,34 +134,6 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
     SqliteNativeDatabase activeDatabase = database();
     requireInitializedBook(activeDatabase);
     return activeDatabase;
-  }
-
-  SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
-    threadOwner.requireOwnerThread();
-    if (ledgerPlanTransactions.active()) {
-      ledgerPlanTransactions.beginImmediateIfNeeded(activeDatabase);
-      return SqliteTransactionOwnership.SHARED;
-    }
-    activeDatabase.executeStatement("begin immediate");
-    return SqliteTransactionOwnership.OWNED;
-  }
-
-  boolean ledgerPlanTransactionActive() {
-    threadOwner.requireOwnerThread();
-    return ledgerPlanTransactions.active();
-  }
-
-  boolean ledgerPlanTransactionBegunInDatabase() {
-    threadOwner.requireOwnerThread();
-    return ledgerPlanTransactions.begunInDatabase();
-  }
-
-  void cleanupCreatedMissingBookArtifactsIfPresent() {
-    threadOwner.requireOwnerThread();
-    if (!ledgerPlanTransactions.createdBookArtifacts()) {
-      return;
-    }
-    cleanupCreatedMissingBookArtifacts(ledgerPlanTransactions.preexistingAncestorDirectory());
   }
 
   private ContractDecision<SqliteNativeDatabase> openDatabase() {
@@ -204,5 +164,58 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
   private void cleanupCreatedMissingBookArtifacts(@Nullable Path preexistingAncestorDirectory) {
     SqliteLedgerPlanArtifactCleanup.cleanupCreatedMissingBookArtifacts(
         context.bookPath(), preexistingAncestorDirectory, detachPublishedDatabase());
+  }
+
+  /** Coordinates ledger-plan transaction state for one open SQLite store lifecycle. */
+  final class Transactions {
+    private Transactions() {}
+
+    void begin() {
+      threadOwner.requireOwnerThread();
+      ensureOpen();
+      ledgerPlanTransactions.begin(
+          SqliteStoreLifecycle.this::database,
+          SqliteStoreLifecycle.this::cleanupCreatedMissingBookArtifacts);
+    }
+
+    void commit() {
+      threadOwner.requireOwnerThread();
+      ensureOpen();
+      ledgerPlanTransactions.commit(SqliteStoreLifecycle.this::database);
+    }
+
+    void rollback() {
+      threadOwner.requireOwnerThread();
+      ledgerPlanTransactions.rollback(
+          publishedDatabase(), SqliteStoreLifecycle.this::cleanupCreatedMissingBookArtifacts);
+    }
+
+    SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
+      threadOwner.requireOwnerThread();
+      if (ledgerPlanTransactions.active()) {
+        ledgerPlanTransactions.beginImmediateIfNeeded(activeDatabase);
+        return SqliteTransactionOwnership.SHARED;
+      }
+      activeDatabase.executeStatement("begin immediate");
+      return SqliteTransactionOwnership.OWNED;
+    }
+
+    boolean active() {
+      threadOwner.requireOwnerThread();
+      return ledgerPlanTransactions.active();
+    }
+
+    boolean begunInDatabase() {
+      threadOwner.requireOwnerThread();
+      return ledgerPlanTransactions.begunInDatabase();
+    }
+
+    void cleanupCreatedMissingBookArtifactsIfPresent() {
+      threadOwner.requireOwnerThread();
+      if (!ledgerPlanTransactions.createdBookArtifacts()) {
+        return;
+      }
+      cleanupCreatedMissingBookArtifacts(ledgerPlanTransactions.preexistingAncestorDirectory());
+    }
   }
 }

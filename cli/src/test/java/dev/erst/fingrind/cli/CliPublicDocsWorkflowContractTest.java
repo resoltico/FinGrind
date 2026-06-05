@@ -20,22 +20,25 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         normalizeLineEndings(
             Files.readString(
                 repositoryRoot().resolve("docs/USER_QUICK_START.md"), StandardCharsets.UTF_8));
-    assertTrue(guide.contains("placeholder-first sample document"));
-    assertTrue(guide.contains("same book is rejected"));
+    assertTrue(guide.contains("concrete sample document"));
+    assertTrue(guide.contains("same initialized file"));
     assertTrue(guide.contains("--entity-name"));
     assertTrue(guide.contains("--functional-currency"));
     assertTrue(guide.contains("--fiscal-year-start"));
     assertTrue(guide.contains("starter chart"));
     assertTrue(guide.contains("\"cashAccountCode\": \"cash\""));
     assertTrue(guide.contains("\"revenueAccountCode\": \"service-revenue\""));
+    assertTrue(guide.contains("quick-start-request.json"));
     Path workspace = tempDirectory.resolve("quick-start");
     Path bookFile = workspace.resolve("acme.sqlite");
     Path bookKeyFile = workspace.resolve("acme.book-key");
     Path requestFile =
         writeNamedRequest(
             "quick-start-request.json",
-            extractFencedBlock(
-                guide, "Replace the contents of `./request.json` with one balanced entry", "json"));
+            normalizeLineEndings(
+                Files.readString(
+                    repositoryRoot().resolve("cli/src/bundle/root/quick-start-request.json"),
+                    StandardCharsets.UTF_8)));
     JsonNode generatedKey =
         runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
     assertEquals("ok", generatedKey.path("status").stringValue());

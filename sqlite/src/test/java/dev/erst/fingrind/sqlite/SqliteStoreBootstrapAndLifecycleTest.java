@@ -112,8 +112,7 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
                       throw new java.io.IOException("boom");
                     }));
 
-    assertEquals("Failed to create SQLite book directory.", exception.getMessage());
-    assertEquals("boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    assertInvalidBookFilePathFailure(exception, "boom");
   }
 
   @Test

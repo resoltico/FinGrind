@@ -33,4 +33,9 @@ internal object FinGrindFilesystemLayout {
         } else {
             project.path.removePrefix(":").replace(':', '/')
         }
+
+    fun structuralGovernanceAuditFile(project: Project, reportName: String): File =
+        project.rootProject.projectDir.resolve(
+            "tmp/structural-governance/${projectSegment(project)}/$reportName",
+        )
 }

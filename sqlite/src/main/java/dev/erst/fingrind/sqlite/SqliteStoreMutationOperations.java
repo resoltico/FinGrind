@@ -96,7 +96,7 @@ final class SqliteStoreMutationOperations {
         activeDatabase -> {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
-            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
+            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
             Optional<BookkeepingPostingRejection> ordinaryOutcome =
                 postingAcceptancePolicy.rejectionFor(
                     postingDraft,
@@ -149,7 +149,7 @@ final class SqliteStoreMutationOperations {
               return new PeriodResultTransferOutcome.Rejected(
                   new BookkeepingAdministrationRejection.BookNotInitialized());
             }
-            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
+            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
             List<RegisteredAccount> accounts =
                 SqliteStatementQueries.loadAllAccounts(
                     activeDatabase, SqlitePostingSql.LOAD_ALL_ACCOUNTS);
@@ -217,7 +217,7 @@ final class SqliteStoreMutationOperations {
               return new PeriodResultTransferOutcome.Rejected(
                   new BookkeepingAdministrationRejection.BookNotInitialized());
             }
-            transactionOwnership = lifecycle.beginImmediateIfNeeded(activeDatabase);
+            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
             PeriodResultTransferOutcome outcome =
                 persistPeriodResultTransfer(
                     activeDatabase, periodResultTransferDraft, postingIdGenerator);

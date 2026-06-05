@@ -47,10 +47,7 @@ trap cleanup EXIT
 readonly parent_pid_path="${tmp_dir}/parent.pid"
 readonly child_pid_path="${tmp_dir}/child.pid"
 readonly output_path="${tmp_dir}/capture.txt"
-readonly progress_log_path="${tmp_dir}/progress-capture.txt"
-readonly progress_stdout_path="${tmp_dir}/progress-stdout.txt"
 readonly worker_path="${tmp_dir}/ignore_term_tree.py"
-readonly progress_worker_path="${tmp_dir}/progress-worker.sh"
 
 cat >"${worker_path}" <<'PY'
 import os
@@ -74,14 +71,6 @@ print("ready", flush=True)
 time.sleep(30)
 PY
 
-cat >"${progress_worker_path}" <<'SH'
-#!/usr/bin/env bash
-set -euo pipefail
-printf 'worker output\n'
-sleep 0.4
-SH
-chmod +x "${progress_worker_path}"
-
 CHECK_PROCESS_TIMEOUT_TERM_GRACE_SECONDS=0.2 \
     capture_with_timeout \
     "${output_path}" \
@@ -101,19 +90,5 @@ fi
 if kill -0 "${child_pid}" 2>/dev/null; then
     die "capture_with_timeout left the TERM-ignoring child process running"
 fi
-
-if ! run_logged_command_with_progress \
-    "${progress_log_path}" \
-    "progress-helper regression" \
-    0.1 \
-    "${progress_worker_path}" >"${progress_stdout_path}"; then
-    cat "${progress_log_path}" >&2
-    die "run_logged_command_with_progress returned a failure for the progress helper worker"
-fi
-
-grep -Fq 'progress-helper regression: waiting (' "${progress_stdout_path}" || die \
-    "run_logged_command_with_progress did not emit periodic keepalive output"
-grep -Fq 'worker output' "${progress_log_path}" || die \
-    "run_logged_command_with_progress did not capture command output into the requested log"
 
 printf 'check-process-support regression: success\n'

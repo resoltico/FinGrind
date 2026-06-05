@@ -43,12 +43,14 @@ final class CliAccountStatementLabels {
   static String displayStatementLineCode(String lineCode, StatementLineKind lineKind) {
     return switch (lineKind) {
       case DECLARED_ACCOUNT -> lineCode;
-      case CURRENT_PERIOD_RESULT -> "(derived)";
+      case CURRENT_PERIOD_RESULT -> CliHumanDisplay.calculatedLineLabel();
     };
   }
 
   static String displayLineRole(Optional<AccountRole> lineRole) {
-    return lineRole.map(CliAccountStatementLabels::displayAccountRoleLabel).orElse("(derived)");
+    return lineRole
+        .map(CliAccountStatementLabels::displayAccountRoleLabel)
+        .orElse(CliHumanDisplay.calculatedLineLabel());
   }
 
   static String displayAccountRoleLabel(AccountRole accountRole) {
@@ -84,7 +86,7 @@ final class CliAccountStatementLabels {
       Optional<FinancialPositionLineClassification> lineClassification) {
     return lineClassification
         .map(CliAccountStatementLabels::displayFinancialPositionLineClassification)
-        .orElse("(derived)");
+        .orElse(CliHumanDisplay.calculatedLineLabel());
   }
 
   static String displayProfitAndLossLineClassification(

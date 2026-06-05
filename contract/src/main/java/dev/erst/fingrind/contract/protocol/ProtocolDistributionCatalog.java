@@ -23,8 +23,13 @@ public final class ProtocolDistributionCatalog {
     return ProtocolCatalogFacts.runtimeSurfaceContract().containerRuntimeDistribution();
   }
 
-  /** Returns the canonical container launcher command for host-mounted execution. */
+  /** Returns the canonical logical launcher command for container-backed execution. */
   public String containerLauncherCommand() {
+    return "fingrind";
+  }
+
+  /** Returns the canonical mounted container launcher prefix for host execution. */
+  public String containerMountedLauncherPrefix() {
     return "docker run --rm -i -v <host-workdir>:/workspace -w /workspace <container-image>";
   }
 

@@ -74,8 +74,6 @@ tasks.register<JavaExec>("refreshProtectedBookFixture") {
 }
 
 tasks.named<Test>("test") {
-    // Committed protected-book fixtures are compatibility artifacts. Standard test runs must not
-    // rewrite tracked resources as a side effect; refresh stays an explicit maintenance task.
     patchModule("dev.erst.fingrind.sqlite", sqliteWhiteBoxTestPatchPath)
     addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
     addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")

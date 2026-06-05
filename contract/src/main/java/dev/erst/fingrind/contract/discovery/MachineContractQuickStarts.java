@@ -12,10 +12,7 @@ final class MachineContractQuickStarts {
 
   static List<WorkflowDescriptor> canonicalQuickStart(RuntimeDistribution runtimeDistribution) {
     return switch (runtimeDistribution) {
-      case SELF_CONTAINED_BUNDLE ->
-          List.of(
-              workflow(WorkflowSurface.BUNDLE_POSIX_SHELL),
-              workflow(WorkflowSurface.BUNDLE_WINDOWS_POWERSHELL));
+      case SELF_CONTAINED_BUNDLE -> List.of(workflow(WorkflowSurface.BUNDLE_POSIX_SHELL));
       case SOURCE_CHECKOUT_GRADLE ->
           List.of(
               workflow(WorkflowSurface.SOURCE_CHECKOUT_POSIX_SHELL),
@@ -48,23 +45,14 @@ final class MachineContractQuickStarts {
                         paths.bookFile(),
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --request-file %s"
+                "%s %s --book-file %s --book-key-file %s --limit 10"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS),
                         paths.bookFile(),
-                        paths.bookKeyFile(),
-                        "--limit 10")),
-            WorkflowStepDescriptor.command(
-                "%s %s > %s"
-                    .formatted(
-                        launcherCommand(surface),
-                        ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE),
-                        paths.requestFile())),
-            WorkflowStepDescriptor.note(
-                "The emitted request document is a placeholder-first scaffold. Replace the evidence and provenance placeholders in "
-                    + paths.requestFile()
-                    + " before using it for real-world bookkeeping."),
+                        paths.bookKeyFile())),
+            requestPreparationCommand(surface, paths),
+            requestPreparationNote(surface, paths),
             WorkflowStepDescriptor.note(
                 "Use a fresh provenance.idempotencyKey for each committed posting on the same book."),
             WorkflowStepDescriptor.command(
@@ -96,18 +84,56 @@ final class MachineContractQuickStarts {
     return switch (surface) {
       case BUNDLE_POSIX_SHELL ->
           "Run commands from the extracted bundle root so the canonical launcher path resolves directly.";
-      case BUNDLE_WINDOWS_POWERSHELL ->
-          "Run commands from the extracted bundle root so the canonical PowerShell launcher path resolves directly.";
       case SOURCE_CHECKOUT_POSIX_SHELL ->
-          "Run commands from the repository root after ./gradlew :cli:installShadowDist prepareManagedSqlite builds the local launcher and managed SQLite runtime.";
+          "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
       case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
-          "Run commands from the repository root after .\\gradlew.bat :cli:installShadowDist prepareManagedSqlite builds the local launcher and managed SQLite runtime.";
+          "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
       case DIRECT_JAVA_POSIX_SHELL ->
-          "Run commands from the repository root after ./gradlew :cli:shadowJar prepareManagedSqlite builds the developer raw JAR and managed SQLite runtime.";
+          "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
       case DIRECT_JAVA_WINDOWS_POWERSHELL ->
-          "Run commands from the repository root after .\\gradlew.bat :cli:shadowJar prepareManagedSqlite builds the developer raw JAR and managed SQLite runtime.";
+          "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
       case CONTAINER_DOCKER ->
-          "Replace <container-image> with the built or published FinGrind image reference and replace <host-workdir> with the host directory you want mounted at /workspace.";
+          "Define one session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
+    };
+  }
+
+  private static WorkflowStepDescriptor requestPreparationCommand(
+      WorkflowSurface surface, QuickStartPaths paths) {
+    return switch (surface) {
+      case BUNDLE_POSIX_SHELL ->
+          WorkflowStepDescriptor.command(
+              "cp ./quick-start-request.json %s".formatted(paths.requestFile()));
+      case SOURCE_CHECKOUT_POSIX_SHELL,
+          SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
+          DIRECT_JAVA_POSIX_SHELL,
+          DIRECT_JAVA_WINDOWS_POWERSHELL,
+          CONTAINER_DOCKER ->
+          WorkflowStepDescriptor.command(
+              "%s %s > %s"
+                  .formatted(
+                      launcherCommand(surface),
+                      ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE),
+                      paths.requestFile()));
+    };
+  }
+
+  private static WorkflowStepDescriptor requestPreparationNote(
+      WorkflowSurface surface, QuickStartPaths paths) {
+    return switch (surface) {
+      case BUNDLE_POSIX_SHELL ->
+          WorkflowStepDescriptor.note(
+              "The bundled quick-start request is a concrete sample document. Replace the sample evidence and provenance values in "
+                  + paths.requestFile()
+                  + " before using it for real-world bookkeeping.");
+      case SOURCE_CHECKOUT_POSIX_SHELL,
+          SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
+          DIRECT_JAVA_POSIX_SHELL,
+          DIRECT_JAVA_WINDOWS_POWERSHELL,
+          CONTAINER_DOCKER ->
+          WorkflowStepDescriptor.note(
+              "The emitted request document is a placeholder-first scaffold. Replace the evidence and provenance placeholders in "
+                  + paths.requestFile()
+                  + " before using it for real-world bookkeeping.");
     };
   }
 
@@ -118,9 +144,7 @@ final class MachineContractQuickStarts {
           DIRECT_JAVA_POSIX_SHELL,
           CONTAINER_DOCKER ->
           new QuickStartPaths("./secrets/acme.book-key", "./books/acme.sqlite", "./request.json");
-      case BUNDLE_WINDOWS_POWERSHELL,
-          SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
-          DIRECT_JAVA_WINDOWS_POWERSHELL ->
+      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL, DIRECT_JAVA_WINDOWS_POWERSHELL ->
           new QuickStartPaths(
               ".\\secrets\\acme.book-key", ".\\books\\acme.sqlite", ".\\request.json");
     };
@@ -129,10 +153,7 @@ final class MachineContractQuickStarts {
   private static String launcherCommand(WorkflowSurface surface) {
     return switch (surface) {
       case BUNDLE_POSIX_SHELL ->
-          ProtocolCatalog.distribution().bundleLauncherCommand(PublicCliBundleTarget.MACOS_AARCH64);
-      case BUNDLE_WINDOWS_POWERSHELL ->
-          ProtocolCatalog.distribution()
-              .bundleLauncherCommand(PublicCliBundleTarget.WINDOWS_X86_64);
+          ProtocolCatalog.distribution().bundleLauncherCommand(PublicCliBundleTarget.LINUX_X86_64);
       case SOURCE_CHECKOUT_POSIX_SHELL ->
           ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(false);
       case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->

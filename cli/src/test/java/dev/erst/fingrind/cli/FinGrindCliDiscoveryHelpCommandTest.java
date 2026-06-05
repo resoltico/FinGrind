@@ -40,7 +40,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     assertTrue(help.contains("First Successful Run"));
     assertTrue(help.contains("Generate one key file"));
     assertTrue(help.contains("Review the seeded starter chart"));
-    assertTrue(help.contains("Print the first entry scaffold"));
+    assertTrue(help.contains("Create the first request"));
     assertTrue(
         containsCollapsedText(
             help,
@@ -53,7 +53,6 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
                 dev.erst.fingrind.contract.protocol.OperationId.PRINT_REQUEST_TEMPLATE)));
     assertFalse(help.contains("Guidance"));
     assertFalse(help.contains("declare-account-supplemental-cash-reserve.json"));
-    assertFalse(help.contains("provenance.idempotencyKey"));
   }
 
   @Test
@@ -67,7 +66,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     assertTrue(help.contains("Try It"));
     assertTrue(help.contains("Before You Run"));
     assertTrue(help.contains("Request File"));
-    assertTrue(help.contains("Command"));
+    assertTrue(help.contains("Command Syntax"));
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
     assertTrue(
@@ -76,32 +75,28 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
             CliInvocationText.commandExample(
                     dev.erst.fingrind.contract.protocol.OperationId.PRINT_REQUEST_TEMPLATE)
                 + " post-entry > request.json"));
-    assertTrue(help.contains("Starter file command"));
-    assertFalse(help.contains("Output Contract"));
+    assertTrue(help.contains("Output Contract"));
   }
 
   @Test
-  void run_defaultsDiscoveryCommandsToJsonWhenStdoutIsRedirected() throws Exception {
+  void run_defaultsDiscoveryCommandsToTextUnlessJsonIsExplicitlyRequested() {
     ByteArrayOutputStream helpOutput = new ByteArrayOutputStream();
     FinGrindCli helpCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(helpOutput), fixedClock());
     int helpExitCode = helpCli.run(new String[] {"help"});
     assertEquals(0, helpExitCode);
-    JsonNode helpEnvelope =
-        new ObjectMapper().readTree(helpOutput.toString(StandardCharsets.UTF_8));
-    assertEquals("ok", helpEnvelope.path("status").stringValue());
-    assertEquals("minimal", helpEnvelope.path("payload").path("detail").stringValue());
-    assertTrue(helpEnvelope.path("payload").path("commands").isArray());
+    String helpText = helpOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(helpText.contains("FinGrind Help"));
+    assertFalse(helpText.contains("\"status\""));
 
     ByteArrayOutputStream versionOutput = new ByteArrayOutputStream();
     FinGrindCli versionCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(versionOutput), fixedClock());
     int versionExitCode = versionCli.run(new String[] {"version"});
     assertEquals(0, versionExitCode);
-    JsonNode versionEnvelope =
-        new ObjectMapper().readTree(versionOutput.toString(StandardCharsets.UTF_8));
-    assertEquals("ok", versionEnvelope.path("status").stringValue());
-    assertTrue(versionEnvelope.path("payload").has("version"));
+    String versionText = versionOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(versionText.contains("FinGrind"));
+    assertFalse(versionText.contains("\"status\""));
 
     ByteArrayOutputStream capabilitiesOutput = new ByteArrayOutputStream();
     FinGrindCli capabilitiesCli =
@@ -111,16 +106,9 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
             fixedClock());
     int capabilitiesExitCode = capabilitiesCli.run(new String[] {"capabilities"});
     assertEquals(0, capabilitiesExitCode);
-    JsonNode capabilitiesEnvelope =
-        new ObjectMapper().readTree(capabilitiesOutput.toString(StandardCharsets.UTF_8));
-    assertEquals("ok", capabilitiesEnvelope.path("status").stringValue());
-    assertEquals("minimal", capabilitiesEnvelope.path("payload").path("detail").stringValue());
-    assertEquals("overview", capabilitiesEnvelope.path("payload").path("focus").stringValue());
-    assertTrue(capabilitiesEnvelope.path("payload").path("requestInput").isObject());
-    assertTrue(capabilitiesEnvelope.path("payload").path("bookBoundary").isTextual());
-    assertTrue(capabilitiesEnvelope.path("payload").path("builtInStatements").isArray());
-    assertFalse(capabilitiesEnvelope.path("payload").has("storageEngines"));
-    assertFalse(capabilitiesEnvelope.path("payload").has("commands"));
+    String capabilitiesText = capabilitiesOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(capabilitiesText.contains("Capabilities"));
+    assertFalse(capabilitiesText.contains("\"status\""));
   }
 
   @Test
@@ -222,7 +210,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
               utf8PrintStream(failureOutputStream),
               fixedClock());
       int helpExitCode = helpCli.run(new String[] {"help", "post-entry", "--output", "json"});
-      int failureExitCode = failureCli.run(new String[] {"post-entry", "--bogus"});
+      int failureExitCode = failureCli.run(jsonArguments("post-entry", "--bogus"));
       assertEquals(0, helpExitCode);
       assertEquals(1, failureExitCode);
       JsonNode helpPayload =

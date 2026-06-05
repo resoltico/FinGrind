@@ -3,6 +3,7 @@ package dev.erst.fingrind.buildlogic
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import java.nio.file.Files
 
 class PythonExecutableResolverTest {
     @Test
@@ -19,9 +20,12 @@ class PythonExecutableResolverTest {
                     }
                 },
                 findUvManagedPythonExecutable = { error("uv-managed fallback should not be used") },
+                resolveExecutablePath = { command ->
+                    if (command == "python3.12") "/usr/local/bin/python3.12" else null
+                },
             )
 
-        assertEquals("python3.12", selected)
+        assertEquals("/usr/local/bin/python3.12", selected)
     }
 
     @Test
@@ -39,6 +43,7 @@ class PythonExecutableResolverTest {
                     }
                 },
                 findUvManagedPythonExecutable = { _ -> null },
+                resolveExecutablePath = { _ -> null },
             )
 
         assertNull(selected)
@@ -58,8 +63,25 @@ class PythonExecutableResolverTest {
                     }
                 },
                 findUvManagedPythonExecutable = { "C:/Users/test/.local/bin/python3.12" },
+                resolveExecutablePath = { command -> if (command.contains("python3.12")) command else null },
             )
 
         assertEquals("C:/Users/test/.local/bin/python3.12", selected)
+    }
+
+    @Test
+    fun resolveExecutableOnPath_returnsAbsoluteExecutablePathForBareCommand() {
+        val executableDirectory = Files.createTempDirectory("python-path-test")
+        val executable = executableDirectory.resolve("python3.12")
+        Files.writeString(executable, "")
+
+        val resolved =
+            resolveExecutableOnPath(
+                command = "python3.12",
+                osName = "Linux",
+                pathEntries = listOf(executableDirectory.toString()),
+            )
+
+        assertEquals(executable.toAbsolutePath().toString(), resolved)
     }
 }

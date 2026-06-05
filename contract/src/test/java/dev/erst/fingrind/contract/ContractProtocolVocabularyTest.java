@@ -34,7 +34,8 @@ import dev.erst.fingrind.contract.protocol.StorageEngine;
 import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
@@ -157,7 +158,8 @@ class ContractProtocolVocabularyTest {
             CommandDescriptor.class,
             SelectableOutputDefaultsDescriptor.class,
             ExitCodeDescriptor.class,
-            EnvironmentDistributionDescriptor.class,
+            EnvironmentRuntimeDescriptor.class,
+            EnvironmentPublicationDescriptor.class,
             EnvironmentStorageDescriptor.class,
             EnvironmentSqliteDescriptor.class,
             EnvironmentDescriptor.class),

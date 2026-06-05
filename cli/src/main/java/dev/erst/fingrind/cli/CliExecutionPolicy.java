@@ -84,7 +84,7 @@ final class CliExecutionPolicy {
     for (BookAccess.PassphraseSource passphraseSource : passphraseSources) {
       if (passphraseSource instanceof BookAccess.PassphraseSource.InteractivePrompt) {
         return Optional.of(
-            ContractErrors.Descriptor.INVALID_REQUEST.failure(
+            ContractErrors.Descriptor.UNSUPPORTED_OUTPUT_SELECTION.failure(
                 "Interactive passphrase prompting is only supported with --output text.",
                 "Rerun with --output text, or switch the passphrase source to --book-key-file or --book-passphrase-stdin before selecting one machine output mode.",
                 ProtocolOptions.OUTPUT));

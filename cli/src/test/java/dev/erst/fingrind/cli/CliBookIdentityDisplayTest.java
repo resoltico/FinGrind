@@ -25,16 +25,22 @@ class CliBookIdentityDisplayTest {
     assertEquals(
         List.of(
             List.of("Entity", "Acme Studio"),
-            List.of("Accounting kernel", "internal-management-cash-bookkeeping-kernel"),
-            List.of("Accounting basis", "CASH_BASIS"),
+            List.of("Starter chart", "Owner-managed service starter chart"),
             List.of("Functional currency", "EUR"),
             List.of("Fiscal year start", "01-01")),
         CliBookIdentityDisplay.summaryRows(bookIdentity));
     assertEquals(
-        List.of("Accounting kernel", "internal-management-cash-bookkeeping-kernel"),
+        List.of(
+            List.of("Entity", "Acme Studio"),
+            List.of("Starter chart", "Owner-managed service starter chart"),
+            List.of("Functional currency", "EUR"),
+            List.of("Fiscal year start", "01-01")),
+        CliBookIdentityDisplay.contextRows(bookIdentity));
+    assertEquals(
+        List.of("Accounting kernel", "Internal management cash bookkeeping"),
         CliBookIdentityDisplay.detailRows(bookIdentity).get(1));
     assertEquals(
-        List.of("Accounting basis", "CASH_BASIS"),
+        List.of("Accounting basis", "Cash basis"),
         CliBookIdentityDisplay.detailRows(bookIdentity).get(2));
   }
 }
