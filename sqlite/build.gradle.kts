@@ -5,7 +5,6 @@ import dev.erst.fingrind.buildlogic.addReads
 import dev.erst.fingrind.buildlogic.patchModule
 import org.gradle.api.plugins.quality.Pmd
 import org.gradle.api.tasks.JavaExec
-import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.testing.Test
 import org.gradle.language.jvm.tasks.ProcessResources
 
@@ -74,21 +73,10 @@ tasks.register<JavaExec>("refreshProtectedBookFixture") {
     addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
 }
 
-val stageRefreshedProtectedBookFixtureForTestRuntime =
-    tasks.register<Sync>("stageRefreshedProtectedBookFixtureForTestRuntime") {
-        dependsOn(tasks.named("refreshProtectedBookFixture"))
-        dependsOn(tasks.named("processTestResources"))
-        from(protectedBookFixturePath)
-        into(layout.buildDirectory.dir("resources/test/dev/erst/fingrind/sqlite/fixtures"))
-    }
-
 tasks.named<Test>("test") {
-    dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)
     patchModule("dev.erst.fingrind.sqlite", sqliteWhiteBoxTestPatchPath)
     addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
     addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")
 }
 
-tasks.named<Pmd>("pmdTest") {
-    dependsOn(stageRefreshedProtectedBookFixtureForTestRuntime)
-}
+tasks.named<Pmd>("pmdTest") {}

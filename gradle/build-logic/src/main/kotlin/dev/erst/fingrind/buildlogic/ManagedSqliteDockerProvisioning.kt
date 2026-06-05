@@ -13,11 +13,9 @@ internal fun registerDockerManagedSqliteTarget(
     sqliteVersionValue: String,
     sqlite3mcVersionValue: String,
     sourcePackageId: String,
+    dockerBundleTarget: DistributionContractReader.BundleTargetContract =
+        DistributionBundleTargetReader.dockerBundleTarget(repositoryRootDirectory),
 ): ManagedSqliteProvisioning {
-    val dockerBundleTarget = DistributionBundleTargetReader.dockerBundleTarget(repositoryRootDirectory)
-    if (hostProvisioning.classifier == dockerBundleTarget.classifier) {
-        return hostProvisioning
-    }
 
     val verifyManagedSqliteSource =
         registerManagedSqliteSourceVerification(

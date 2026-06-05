@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed same-target Linux Docker publication so the Docker build context now stages its own
+  Alpine-linked managed SQLite library instead of reusing the host-managed build, and normal
+  SQLite verification no longer rewrites the committed protected-book compatibility fixtures
+  during every gate run.
 - Fixed operator guidance drift so text help, machine help, discovery ladders, bundle quick-start
   content, Docker/source-checkout hints, and example documents all describe the same live command
   surface instead of overlapping older flows.
