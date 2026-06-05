@@ -54,14 +54,16 @@ mkdir -p "${main_classes_dir}"
 printf 'orphaned cached class\n' > "${stale_executor_class}"
 printf 'orphaned cached class\n' > "${stale_classifier_class}"
 
-if ! ./gradlew \
-    --project-dir jazzer \
-    compileJava \
-    --rerun-tasks \
-    --no-daemon \
-    --no-configuration-cache \
-    --console=plain >"${compile_log}"; then
-    cat "${compile_log}" >&2
+if ! fg_run_with_log_heartbeat \
+    "jazzer stale-class pruning check: compileJava in progress" \
+    "${compile_log}" \
+    ./gradlew \
+        --project-dir jazzer \
+        compileJava \
+        --rerun-tasks \
+        --no-daemon \
+        --no-configuration-cache \
+        --console=plain; then
     exit 1
 fi
 

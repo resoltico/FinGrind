@@ -54,14 +54,16 @@ mkdir -p "$(dirname "${stale_input_resource}")" "$(dirname "${stale_metadata_res
 printf 'stale processed seed\n' > "${stale_input_resource}"
 printf 'stale processed metadata\n' > "${stale_metadata_resource}"
 
-if ! ./gradlew \
-    --project-dir jazzer \
-    processFuzzResources \
-    --rerun-tasks \
-    --no-daemon \
-    --no-configuration-cache \
-    --console=plain >"${process_log}"; then
-    cat "${process_log}" >&2
+if ! fg_run_with_log_heartbeat \
+    "jazzer stale-resource pruning check: processFuzzResources in progress" \
+    "${process_log}" \
+    ./gradlew \
+        --project-dir jazzer \
+        processFuzzResources \
+        --rerun-tasks \
+        --no-daemon \
+        --no-configuration-cache \
+        --console=plain; then
     exit 1
 fi
 
