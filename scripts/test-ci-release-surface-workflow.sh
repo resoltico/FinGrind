@@ -76,8 +76,16 @@ grep -Fq '.\scripts\verify-direct-java-sqlite-runtime.ps1' "${workflow_file}" ||
     "CI workflow no longer delegates Windows direct-Java runtime verification to the canonical PowerShell owner"
 grep -Fq '.\scripts\verify-source-checkout-sqlite-runtime.ps1' "${workflow_file}" || die \
     "CI workflow no longer delegates Windows source-checkout runtime verification to the canonical PowerShell owner"
-grep -A4 -F 'windows-bundle-smoke:' "${workflow_file}" | grep -Fq 'needs: check' || die \
-    "CI workflow no longer gates the Windows publication lane on the canonical Check job"
+grep -A5 -F 'windows-nonpublic-bundle-smoke:' "${workflow_file}" | grep -Fq 'needs: check' || die \
+    "CI workflow no longer gates the non-public Windows smoke lane on the canonical Check job"
+grep -A5 -F 'windows-nonpublic-bundle-smoke:' "${workflow_file}" | grep -Fq 'continue-on-error: true' || die \
+    "CI workflow no longer marks the non-public Windows smoke lane as observational"
+if grep -Fq 'windows-bundle-smoke:' "${workflow_file}"; then
+    die "CI workflow carries the retired release-blocking Windows bundle-smoke job key"
+fi
+if grep -A10 -F 'gate:' "${workflow_file}" | grep -Fq 'windows-nonpublic-bundle-smoke'; then
+    die "CI workflow reattached the non-public Windows smoke lane to the aggregate Gate contract"
+fi
 if grep -Fq 'Run root quality gates and included build-logic tests on Windows' "${workflow_file}"; then
     die "CI workflow combines Windows root verification and build-logic verification in one non-fail-fast step"
 fi

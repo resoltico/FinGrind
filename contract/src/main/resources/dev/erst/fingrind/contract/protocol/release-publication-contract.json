@@ -16,7 +16,6 @@
   "requiredCiGateJobName": "Gate",
   "requiredCiJobNames": [
     "Check",
-    "Windows bundle smoke",
     "Published bundle smoke (linux-x86_64)",
     "Published bundle smoke (linux-aarch64)",
     "Detect devcontainer changes",

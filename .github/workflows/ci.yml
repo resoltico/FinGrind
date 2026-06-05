@@ -72,10 +72,11 @@ jobs:
       - name: Run the canonical root verification gate
         run: ./check.sh --no-daemon --console=plain
 
-  windows-bundle-smoke:
-    name: Windows bundle smoke
+  windows-nonpublic-bundle-smoke:
+    name: Windows non-public bundle smoke
     runs-on: windows-2022
     needs: check
+    continue-on-error: true
     timeout-minutes: 25
 
     steps:
@@ -318,7 +319,6 @@ jobs:
     if: always()
     needs:
       - check
-      - windows-bundle-smoke
       - published-unix-bundle-smoke
       - devcontainer-changes
       - devcontainer

@@ -60,7 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed draft-first release replay, staged-asset attestation, helper-root handoff, pinned JaCoCo
   snapshot verification, Windows publication-lane ownership, and long-running Jazzer release-gate
   keepalive behavior so post-tag repairs no longer rediscover the `0.51.0` release-control
-  defects one at a time.
+  defects one at a time. The aggregate release `Gate` contract now blocks only on the Linux-owned
+  public publication proof surfaces; the Windows non-public bundle smoke lane remains visible as
+  observational coverage without owning release promotion.
 
 ## [0.51.0] - 2026-06-03
 

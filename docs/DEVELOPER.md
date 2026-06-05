@@ -468,8 +468,9 @@ root-script `subprojects {}` policy blocks.
 The repository ships four workflow files and six named CI jobs:
 
 - `CI` runs on pushes, pull requests to `main`, and manual `workflow_dispatch`, and publishes the
-  aggregate `Gate` required-status job plus the individual `Check`, `Windows bundle smoke`,
-  `Docker smoke`, `Contributor devcontainer`, and `Detect devcontainer changes` jobs.
+  aggregate `Gate` required-status job plus the individual `Check`, `Published bundle smoke
+  (linux-x86_64)`, `Published bundle smoke (linux-aarch64)`, `Windows non-public bundle smoke`,
+  `Contributor devcontainer`, and `Detect devcontainer changes` jobs.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 - `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
@@ -479,18 +480,22 @@ The repository ships four workflow files and six named CI jobs:
 1. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
    Runs on `ubuntu-24.04`.
-2. `windows-bundle-smoke` — runs the Windows publication lane on `windows-2022` after `check`
-   passes. It does not rerun the canonical root gate. Instead it proves the Windows-owned
-   surfaces only: included build-logic tests, direct-Java and source-checkout SQLite runtime
-   verifiers, the self-contained Windows bundle build, and the PowerShell bundle smoke workflow.
-   Uses the repo-owned
+2. `windows-nonpublic-bundle-smoke` — runs the Windows-owned support lane on `windows-2022`
+   after `check` passes. It does not rerun the canonical root gate and it does not participate in
+   the release-blocking `Gate` contract because public self-contained bundle publication is
+   Linux-only. It proves the Windows-owned non-public surfaces only: included build-logic tests,
+   direct-Java and source-checkout SQLite runtime verifiers, the self-contained Windows bundle
+   build, and the PowerShell bundle smoke workflow. Uses the repo-owned
    [configure-windows-defender-build-exclusions.ps1](../scripts/configure-windows-defender-build-exclusions.ps1)
    owner for one best-effort Windows Defender exclusion attempt on the workspace and Gradle user
    home before Gradle work begins. The exclusion attempt is a performance optimization only: an
    unavailable Defender service must warn and continue instead of blocking the product-verification
    lane.
-3. `docker-smoke` — builds the application JAR and smokes the Docker image on `ubuntu-24.04`
-   after `check` passes.
+3. `published-unix-bundle-smoke` — runs the release-owned Linux publication-proof matrix after
+   `check` passes. The matrix covers `linux-x86_64` on `ubuntu-24.04` and `linux-aarch64` on
+   `ubuntu-24.04-arm`, builds the exact published bundle classifier on each runner, reads the
+   emitted archive/checksum paths from the Gradle-owned bundle manifest, and delegates archive
+   acceptance to `./scripts/bundle-smoke.sh`.
 4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
    against the devcontainer trigger paths. Runs independently; no upstream dependency.
 5. `devcontainer` — validates the committed contributor devcontainer surface through
@@ -501,13 +506,16 @@ The repository ships four workflow files and six named CI jobs:
 6. `gate` — aggregate required-status job using `if: always()` with explicit
    `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate
    does not prevent `Gate` from being reported or block merge; only a failed or cancelled job
-   prevents success. Configure branch protection to require `Gate` as the single required check.
+   prevents success. It aggregates `check`, the published Linux bundle-smoke matrix, and the
+   devcontainer gate pair. Configure branch protection to require `Gate` as the single required
+   check.
 
 **Path-based devcontainer gate theory.** The devcontainer gate validates the contributor
 *environment*, not application code. Application code changes are already proven by `check`,
-`windows-bundle-smoke`, and `docker-smoke`. Running the full Docker build-and-validate cycle on
-every PR regardless of what changed wastes 15-20 minutes per run. The gate therefore fires only
-when the environment itself changes — specifically when any of these paths are touched:
+the published Linux bundle-smoke matrix, plus one observational Windows support lane. Running the
+full Docker build-and-validate cycle on every PR regardless of what changed wastes 15-20 minutes
+per run. The gate therefore fires only when the environment itself changes — specifically when any
+of these paths are touched:
 
 - `.devcontainer/` — the Dockerfile and `devcontainer.json`
 - `scripts/validate-devcontainer.sh`

@@ -297,20 +297,21 @@ Do not proceed until `./scripts/verify-release-pr-gate.sh <N>` succeeds for the 
 is the single authoritative required check for release promotion, and the verifier checks the PR
 head commit directly instead of inferring readiness from `statusCheckRollup`.
 
-The aggregate `Gate` check run appears only after `Check`, `Windows bundle smoke`, and `Docker
-smoke` have finished or been skipped in workflow `CI`. A PR can therefore show `Check` green while
-`Gate` is still absent. Treat a missing `Gate` as pending, not as success. The verifier is the
-canonical owner of that waiting logic.
+The aggregate `Gate` check run appears only after `Check`, the published Linux bundle-smoke
+matrix, and the devcontainer gate pair have finished or been skipped in workflow `CI`. A PR can
+therefore show `Check` green while `Gate` is absent. Treat a missing `Gate` as pending, not as
+success. The verifier is the canonical owner of that waiting logic.
 
 If `./scripts/verify-release-pr-gate.sh <N>` reports a failing `Gate`, fix the failure, push to the
 release branch, and run the verifier again — do not merge a red PR.
 
 The verifier's default wait is sized for the normal PR-side CI fan-out where the aggregate `Gate`
-arrives after the slower sibling jobs finish, including the late-starting Windows smoke leg. If
-GitHub Actions queueing is unusually slow, extend the wait explicitly instead of guessing:
+arrives after the slower sibling jobs finish, especially the published Linux bundle-smoke matrix.
+If GitHub Actions queueing is unusually slow, extend the wait explicitly instead of guessing:
 
-That Windows leg is the post-`Check` bundle-publication proof for the Windows target. It is not a
-second owner of the canonical root `./check.sh` gate.
+The separate Windows non-public bundle smoke job remains an observational lane only. It does not
+participate in the release-blocking `Gate` contract because public self-contained bundle
+publication is Linux-only.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
@@ -347,11 +348,11 @@ Requirements before continuing:
   the canonical `Gate` check is green on the exact commit that will be tagged.
 
 The verifier's default wait is intentionally long enough to cover the normal post-merge CI
-fan-out where `Windows bundle smoke` does not start until `Check` finishes. If GitHub Actions
-queueing is unusually slow, extend the wait explicitly instead of guessing:
+fan-out where the published Linux bundle-smoke matrix follows `Check`. If GitHub Actions queueing
+is unusually slow, extend the wait explicitly instead of guessing:
 
-That Windows leg is the post-`Check` Windows publication proof only. The canonical root gate
-remains single-owned by the Linux `Check` job.
+The separate Windows non-public bundle smoke lane remains observational. The canonical release
+gate remains single-owned by `Check` plus the Linux publication-proof matrix.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-merge-handoff.sh
