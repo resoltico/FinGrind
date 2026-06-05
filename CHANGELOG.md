@@ -66,8 +66,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now pin repo-verification lock ownership to the wrapper process, so fast-fail and JSON tool
   paths do not strand stale lock owners during release-surface verification, and the replay-wrapper
   regression now verifies that wrapper probes return the repo lock to its inherited baseline state
-  when the full repository gate owns the parent verification lock. Release-surface shell verifiers
-  also no longer assume Bash 4-only `mapfile`, which keeps the protocol runnable on the
+  when the full repository gate owns the parent verification lock. Jazzer white-box patch staging
+  now depends explicitly on the `executor` and `sqlite` fixture archive producers before those
+  archives are expanded, which closes the hosted release-gate race on cold caches. Release-surface
+  shell verifiers also no longer assume Bash 4-only `mapfile`, which keeps the protocol runnable on the
   repository's macOS Bash baseline.
 
 ## [0.51.0] - 2026-06-03
