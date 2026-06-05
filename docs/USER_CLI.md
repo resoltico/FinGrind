@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: USER_CLI
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -11,15 +11,18 @@ route:
 # CLI Guide
 
 **Purpose**: Run the packaged FinGrind CLI and understand its command, file, and exit behavior.
-**Prerequisites**: For public use, download one self-contained FinGrind release bundle and unpack it.
-No separate Java install is required for that path. For source-driven local runs,
+**Prerequisites**: For public use, download one self-contained FinGrind Linux release bundle and
+unpack it on a glibc Linux host. No separate Java install is required for that path. On macOS or
+Windows, use the published container workflow in [USER_CONTAINER.md](./USER_CONTAINER.md) or a
+source checkout. For source-driven local runs,
 `./gradlew :cli:run` manages SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 automatically.
-The generated source-checkout launcher from `./gradlew :cli:installShadowDist prepareManagedSqlite`
-also carries the managed native-access, source-checkout runtime-distribution, and managed-SQLite
-checkout-discovery defaults for you. For direct Java execution from a prepared checkout, use
-`./scripts/direct-java-cli.sh` or `.\scripts\direct-java-cli.ps1`; those wrappers publish the
-same managed runtime-distribution, checkout roots, and module-scoped native access as the other
-developer launchers.
+For exact public package names, checksum commands, and the published container reference, start
+with [USER_INSTALL.md](./USER_INSTALL.md). The source-checkout wrapper
+`./scripts/source-checkout-cli.sh` or `.\scripts\source-checkout-cli.ps1` and the direct-Java
+wrapper `./scripts/direct-java-cli.sh` or `.\scripts\direct-java-cli.ps1` both publish the same
+managed runtime-distribution, checkout roots, and module-scoped native access as the other
+developer launch surfaces, and they refresh the raw JAR plus the Gradle-owned Java 26 toolchain
+manifest automatically when the checkout has moved.
 
 ## Overview
 
@@ -31,9 +34,8 @@ Every book-bound command also requires exactly one passphrase source:
 - `--book-passphrase-prompt` for an interactive non-echo terminal prompt
 
 `help` is returned when no command is supplied.
-`help`, `version`, and `capabilities` default to plain-language discovery output on an interactive
-terminal and to JSON when stdout is redirected or captured; they also accept `--output json` or
-`--output text` explicitly.
+`help`, `version`, `capabilities`, and `environment` default to plain-language discovery output
+unless you explicitly select `--output json`.
 `help` and `capabilities` additionally accept `--detail minimal`, `--detail compact`, or
 `--detail full` only when the resolved output mode is JSON. `capabilities` also accepts `--focus`
 for one discovery concern, and both discovery commands accept `--category` for one command-family
@@ -166,23 +168,25 @@ The command table below is generated from the canonical protocol catalog and con
 ## Packaged CLI
 
 Public FinGrind CLI downloads are self-contained bundle archives, not a standalone JAR.
-The current public target set is:
-- `macos-aarch64`
-- `macos-x86_64`
+The current published public target set is:
 - `linux-x86_64`
 - `linux-aarch64`
-- `windows-x86_64`
 
-The protocol contract also declares `windows-aarch64` explicitly as an unsupported public bundle
-target so machine clients can distinguish "known but not currently shipped" from "unknown target."
+The protocol contract also declares these known-but-not-published public bundle targets so machine
+clients can distinguish "not published" from "unknown target":
+- `macos-aarch64`
+- `macos-x86_64`
+- `windows-x86_64`
+- `windows-aarch64`
 
 Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
 hosts. They are not presented as a universal Linux binary for every libc variant.
-Windows bundles are built on Windows GitHub-hosted runners with the native MSVC toolchain and are
-published as `.zip` archives with the `bin\fingrind.ps1` launcher.
+FinGrind does not publish unsigned macOS bundles or PowerShell-first Windows bundles as public
+release artifacts. On macOS or Windows, use the published container image or a source checkout.
 
 Each extracted archive also contains:
 - a top-level `README.md` with the local quick start
+- a top-level `quick-start-request.json` with one concrete first-post request example
 - a top-level generated `bundle-manifest.json` with machine-readable distribution metadata and
   canonical bootstrap commands that point back to `help`, `capabilities`, and the request/plan
   template operations
@@ -193,48 +197,31 @@ Each published bundle archive also ships with one sibling `.sha256` digest file 
 Release and one GitHub artifact attestation. Use `gh attestation verify --repo resoltico/FinGrind
 <downloaded-archive>` when you need bundle-sidecar-consistency provenance, and treat the `.sha256`
 file as a convenience integrity digest rather than the only trust anchor.
+Use [USER_INSTALL.md](./USER_INSTALL.md) for the exact archive-name matrix, checksum commands, and
+the published container image surface.
 
-One public Unix bundle flow:
+One published Linux bundle flow:
 
 ```bash
-bundle_archive="$(printf '%s\n' ./fingrind-*-macos-aarch64.tar.gz | head -n 1)"
+bundle_archive="$(printf '%s\n' ./fingrind-*-linux-x86_64.tar.gz | head -n 1)"
 bundle_root="${bundle_archive#./}"
 bundle_root="${bundle_root%.tar.gz}"
 tar -xzf "${bundle_archive}"
 "./${bundle_root}/bin/fingrind" help
-"./${bundle_root}/bin/fingrind" \
-  print-request-template > ./request.json
+cp "./${bundle_root}/quick-start-request.json" ./request.json
 ```
 
 Edit `./request.json` and replace the placeholder evidence and provenance values before using it with
 `preflight-entry` or `post-entry`.
 
-One public Windows bundle flow:
-
-```powershell
-$bundleArchive = (Get-ChildItem -LiteralPath . -Filter 'fingrind-*-windows-x86_64.zip' | Select-Object -First 1).FullName
-$bundleRoot = Join-Path . ([System.IO.Path]::GetFileNameWithoutExtension($bundleArchive))
-Expand-Archive $bundleArchive -DestinationPath . -Force
-& (Join-Path $bundleRoot 'bin\fingrind.ps1') help
-& (Join-Path $bundleRoot 'bin\fingrind.ps1') `
-  print-request-template > .\request.json
-```
-
-Edit `.\request.json` and replace the placeholder evidence and provenance values before using it with
-`preflight-entry` or `post-entry`.
-
-In the examples below, `fingrind` means the extracted bundle launcher.
+In the examples below, `fingrind` means the extracted Linux bundle launcher.
 Command-scoped help and repair hints emitted from a self-contained bundle use that same launcher
-path, such as `./bin/fingrind` on POSIX bundles or `.\bin\fingrind.ps1` on Windows bundles.
+path, such as `./bin/fingrind` on published Linux bundles.
 
 For copy-paste use from one extracted bundle session, define `fingrind` once first.
 
 ```bash
 fingrind() { "./<bundle-root>/bin/fingrind" "$@"; }
-```
-
-```powershell
-function fingrind { & .\<bundle-root>\bin\fingrind.ps1 @args }
 ```
 
 For source-driven local use, prefer:
@@ -243,18 +230,19 @@ For source-driven local use, prefer:
 ./gradlew :cli:run --args="help"
 ```
 
-For a source-checkout launcher that behaves like a local installed executable:
+For a source-checkout wrapper that behaves like a local checkout-managed executable:
 
 ```bash
-./gradlew :cli:installShadowDist prepareManagedSqlite
 ./scripts/source-checkout-cli.sh help
 ```
 
-That wrapper resolves the active CLI build directory, then invokes the generated launcher with the
-native-access flag, the source-checkout runtime-distribution marker, and the managed-SQLite
-checkout lookup already baked in. When the checkout source set has moved ahead of the cached
-`shadowJar`, the wrapper refreshes `:cli:shadowJar` plus `prepareManagedSqlite` before it runs, so
-the launcher cannot silently publish an older request or plan contract than the current sources.
+That wrapper resolves the active CLI build directory, then launches the raw JAR through the
+Gradle-owned Java 26 toolchain executable with the native-access flag, the source-checkout
+runtime-distribution marker, and the managed-SQLite checkout lookup already baked in. When the
+checkout source set or toolchain manifest has moved ahead of the cached build outputs, the wrapper
+refreshes the raw JAR, runtime manifest, and managed SQLite runtime before it runs, so the
+supported local wrapper cannot silently publish an older request or plan contract than the current
+sources.
 
 For local bundle verification from a source checkout:
 
@@ -276,15 +264,15 @@ The direct-Java wrapper is the supported advanced contributor path outside Gradl
 the public FinGrind download contract:
 
 ```bash
-./gradlew :cli:shadowJar prepareManagedSqlite
 ./scripts/direct-java-cli.sh help
 ```
 
-That wrapper resolves the active CLI build directory and then runs the prepared application module.
+That wrapper resolves the active CLI build directory and then runs the prepared application module
+through the same Gradle-owned Java 26 toolchain executable that the source-checkout wrapper uses.
 When the module stays under the prepared checkout layout, it auto-discovers the managed SQLite
-library and grants native access only to the `fingrind` module. Like the source-checkout launcher,
-it refreshes the cached raw JAR against the current checkout before execution when the last build
-artifact has drifted behind source.
+library and grants native access only to the `fingrind` module. Like the source-checkout wrapper,
+it refreshes the cached raw JAR, runtime manifest, and managed SQLite runtime before execution
+when the current checkout has moved.
 
 `--request-file -` means read the request JSON from standard input.
 `--book-passphrase-stdin` means read the book passphrase from standard input instead.
@@ -402,12 +390,12 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.1 /
   SQLite3 Multiple Ciphers 2.3.4 native library.
-- `environment.distribution.runtimeDistribution` tells you whether the current
-  process is running from a self-contained bundle, container image, source-checkout Gradle launch,
-  or direct Java wrapper invocation.
-- `environment.distribution.supportedPublicCliBundleTargets` and
-  `environment.distribution.unsupportedPublicCliBundleTargets` expose the public
-  distribution matrix directly to automation.
+- `environment.runtime.runtimeDistribution` tells you whether the current process is running from a
+  self-contained bundle, container image, source-checkout Gradle launch, or direct Java wrapper
+  invocation.
+- `environment.publication.supportedPublicCliBundleTargets` and
+  `environment.publication.unsupportedPublicCliBundleTargets` expose the public distribution matrix
+  directly to automation.
 - `capabilities.requestShapes.schemaDialect` declares the JSON Schema dialect, and
   `capabilities.requestShapes.*.schema` publishes executable request schemas alongside the field
   descriptor arrays.
@@ -445,11 +433,11 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   records; successful `list-accounts` and `list-postings` steps keep both pagination fields and
   structured row arrays instead of collapsing to counts alone.
 - `environment` reports runtime-contract details directly under:
-  `payload.distribution.publicCliDistribution`,
-  `payload.distribution.sourceCheckoutJava`,
-  `payload.distribution.runtimeDistribution`,
-  `payload.distribution.supportedPublicCliBundleTargets`,
-  `payload.distribution.unsupportedPublicCliBundleTargets`,
+  `payload.runtime.runtimeDistribution`,
+  `payload.publication.publicCliDistribution`,
+  `payload.publication.sourceCheckoutJava`,
+  `payload.publication.supportedPublicCliBundleTargets`,
+  `payload.publication.unsupportedPublicCliBundleTargets`,
   `payload.sqlite.bundleHomeSystemProperty`,
   `payload.sqlite.requiredCompileOptions`,
   `payload.sqlite.forbiddenCompileOptions`,
@@ -481,7 +469,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 - `capabilities` also reports `preflight.semantics`, `preflight.commitGuarantee`, and
   `currencyModel` so agents can discover the advisory preflight contract and single-currency
   scope without reading source code.
-- Gradle-driven local runs, the generated source-checkout launcher, and the container image use a
+- Gradle-driven local runs, the source-checkout wrapper, and the container image use a
   managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library.
 - The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped
   native access when they run from a prepared checkout. Direct-Java launches outside that checkout

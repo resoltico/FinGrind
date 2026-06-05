@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -313,7 +313,7 @@ That Windows leg is the post-`Check` bundle-publication proof for the Windows ta
 second owner of the canonical root `./check.sh` gate.
 
 ```bash
-FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-pr-gate.sh <N>
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
 ```
 
 ### Step 4
@@ -568,20 +568,14 @@ Requirements:
 - `isDraft` is `false`.
 - `isPrerelease` is `false` unless the target release is intentionally a prerelease.
 - The complete bundle asset set is present:
-  - `fingrind-X.Y.Z-macos-aarch64.tar.gz`
-  - `fingrind-X.Y.Z-macos-aarch64.tar.gz.sha256`
-  - `fingrind-X.Y.Z-macos-x86_64.tar.gz`
-  - `fingrind-X.Y.Z-macos-x86_64.tar.gz.sha256`
   - `fingrind-X.Y.Z-linux-x86_64.tar.gz`
   - `fingrind-X.Y.Z-linux-x86_64.tar.gz.sha256`
   - `fingrind-X.Y.Z-linux-aarch64.tar.gz`
   - `fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256`
-  - `fingrind-X.Y.Z-windows-x86_64.zip`
-  - `fingrind-X.Y.Z-windows-x86_64.zip.sha256`
 - Targets disclosed through
-  `environment.distribution.unsupportedPublicCliBundleTargets` such as the current
-  `windows-aarch64` entry must not appear as release assets unless the public-distribution
-  contract changes first.
+  `environment.publication.unsupportedPublicCliBundleTargets` such as the current `macos-*` and
+  `windows-*` entries must not appear as release assets unless the public-distribution contract
+  changes first.
 - Every published archive and published checksum file verifies through `gh attestation verify`
   against the repository's `.github/workflows/release.yml` signer workflow. The helper script
   downloads the draft-or-published assets through the repo-owned draft-aware downloader and

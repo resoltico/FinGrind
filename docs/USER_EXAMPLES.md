@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: USER_EXAMPLES
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -11,12 +11,14 @@ route:
 # Example Workflows
 
 **Purpose**: Provide copy-paste FinGrind CLI flows that work against the current public surface.
-**Prerequisites**: Use the extracted self-contained FinGrind bundle launcher. In the examples
-below, `fingrind` means a session-local shell function backed by that launcher, for example the
-script under `./<bundle-root>/bin/fingrind` on macOS/Linux or
-`.\<bundle-root>\bin\fingrind.ps1` on Windows. For source-driven local work, the equivalent
-developer route is `./gradlew :cli:run --args="..."` on macOS/Linux or
-`.\gradlew.bat :cli:run --args="..."` on Windows.
+**Prerequisites**: Use the extracted published Linux bundle launcher or one equivalent local
+launcher surface. In the examples below, `fingrind` means a session-local shell function backed by
+that launcher, for example the script under `./<bundle-root>/bin/fingrind` on a published Linux
+bundle. On Windows, use the same command order with either the published container wrapper from
+[USER_CONTAINER.md](./USER_CONTAINER.md) or one source-checkout launcher such as
+`.\scripts\source-checkout-cli.ps1`. For source-driven local work, the equivalent developer route
+is `./gradlew :cli:run --args="..."` on macOS/Linux or `.\gradlew.bat :cli:run --args="..."` on
+Windows.
 
 The public release bundle does not include `docs/examples/`. The runnable commands below therefore
 use local working files such as `./declare-account-supplemental-cash-reserve.json` and
@@ -26,14 +28,14 @@ fixtures under [examples/](./examples/). The command blocks below use POSIX shel
 for readability; on Windows PowerShell, keep the same launcher, local file names, and command
 order, but use PowerShell line continuation or one-line invocations.
 
-For copy-paste use from one extracted bundle session, define `fingrind` once first.
+For copy-paste use from one extracted Linux bundle session, define `fingrind` once first.
 
 ```bash
 fingrind() { "./<bundle-root>/bin/fingrind" "$@"; }
 ```
 
 ```powershell
-function fingrind { & .\<bundle-root>\bin\fingrind.ps1 @args }
+function fingrind { docker run --rm -i -v "${PWD}:/workspace" -w /workspace ghcr.io/resoltico/fingrind:<tag> @args }
 ```
 
 ## Choose A Book Passphrase Source

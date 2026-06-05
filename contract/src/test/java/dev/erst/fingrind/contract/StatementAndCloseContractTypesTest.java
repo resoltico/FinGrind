@@ -70,6 +70,7 @@ class StatementAndCloseContractTypesTest {
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            true,
             new ArrayList<>(List.of(financialPositionSection)),
             new ArrayList<>(List.of(financialPositionSection)));
     FinancialPositionResult.Reported reportedFinancialPosition =
@@ -209,6 +210,7 @@ class StatementAndCloseContractTypesTest {
                 Optional.empty(),
                 EffectiveDateRange.unbounded(),
                 PostingCoverage.ALL_POSTING_KINDS,
+                true,
                 nullOf(),
                 List.of()));
     assertThrows(

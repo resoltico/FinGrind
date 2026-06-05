@@ -6,7 +6,8 @@ import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
@@ -215,13 +216,14 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.51.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.52.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
     return new EnvironmentDescriptor(
-        new EnvironmentDistributionDescriptor(
-            ProtocolCatalog.distribution().bundleRuntimeDistribution(),
+        new EnvironmentRuntimeDescriptor(
+            ProtocolCatalog.distribution().bundleRuntimeDistribution()),
+        new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
             ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),

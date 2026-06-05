@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -135,12 +135,15 @@ Runtime identity rules:
   `source-checkout-sidecar-consistency` for `source-checkout-managed`
 - environment.sqlite.runtime.runtimeTrustBasis distinguishes bundle-sidecar-consistency bundle runtimes from source-verified local-build runtimes
 - environment.sqlite.runtime.runtimeTrustBasis distinguishes bundle-sidecar-consistency bundle runtimes from source-checkout-sidecar-consistency source-checkout runtimes without requiring agents to infer that distinction from prose alone
-- the source-checkout launcher and developer raw-JAR wrapper publish both the source-checkout root
+- the source-checkout wrapper and developer raw-JAR wrapper publish both the source-checkout root
   and the active root-project build directory, so relocated Gradle build roots resolve the same
   managed library tree that Gradle actually prepared instead of guessing at `repo/build/...`
+- the source-checkout wrapper and developer raw-JAR wrapper both launch through the Gradle-owned
+  Java 26 toolchain executable recorded in the generated source-checkout runtime manifest, so the
+  supported local runtime surface cannot drift onto an unrelated ambient shell JDK
 
 Current verification paths:
-- `scripts/verify-source-checkout-sqlite-runtime.sh` proves the generated source-checkout launcher
+- `scripts/verify-source-checkout-sqlite-runtime.sh` proves the source-checkout wrapper
   reports the canonical source-checkout runtime distribution with `source-checkout-managed`
   provenance; `scripts/verify-source-checkout-sqlite-runtime.ps1` proves that same contract on
   the Windows PowerShell release surface
@@ -148,9 +151,9 @@ Current verification paths:
   the canonical direct-Java runtime distribution with `source-checkout-managed` provenance;
   `scripts/verify-direct-java-sqlite-runtime.ps1` proves that same contract on the Windows
   PowerShell release surface
-- `scripts/test-source-checkout-launcher.sh` proves the generated launcher and the prepared
+- `scripts/test-source-checkout-launcher.sh` proves the source-checkout wrapper and the prepared
   developer direct-Java wrapper both resolve the managed runtime without leaking native-access
-  warnings
+  warnings, and that they heal corrupted source-checkout runtime manifests before launch
 - `./scripts/docker-smoke.sh` proves the staged Docker context carries the managed SQLite
   library together with its checksum and provenance files from the same Gradle-owned native build
   path used by the source-checkout and direct-Java runtimes

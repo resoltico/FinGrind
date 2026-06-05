@@ -196,17 +196,17 @@ class CliReportArgumentParsingTest {
                   "--pdf-out",
                   "reports/equity.pdf"
                 }));
-    assertEquals(OutputMode.JSON, defaultInspectBook.outputMode());
+    assertEquals(OutputMode.TEXT, defaultInspectBook.outputMode());
     assertEquals(OutputMode.TEXT, inspectBook.outputMode());
-    assertEquals(OutputMode.JSON, defaultTrialBalance.output().outputMode());
+    assertEquals(OutputMode.TEXT, defaultTrialBalance.output().outputMode());
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-30")), trialBalance.query().effectiveDateAsOf());
-    assertEquals(OutputMode.JSON, defaultAccountLedger.output().outputMode());
+    assertEquals(OutputMode.TEXT, defaultAccountLedger.output().outputMode());
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-01")), accountLedger.query().effectiveDateFrom());
-    assertEquals(OutputMode.JSON, defaultPeriodSummary.output().outputMode());
+    assertEquals(OutputMode.TEXT, defaultPeriodSummary.output().outputMode());
     assertEquals(LocalDate.parse("2026-04-30"), periodSummary.query().effectiveDateTo());
-    assertEquals(OutputMode.JSON, defaultFinancialPosition.output().outputMode());
+    assertEquals(OutputMode.TEXT, defaultFinancialPosition.output().outputMode());
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-30")), financialPosition.query().effectiveDateAsOf());
     assertEquals(OutputMode.CSV, incomeStatement.output().outputMode());

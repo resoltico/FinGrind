@@ -61,15 +61,14 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             workflow);
     int exitCode =
         cli.run(
-            new String[] {
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            jsonArguments(
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
         CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
@@ -123,15 +122,14 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             workflow);
     int exitCode =
         cli.run(
-            new String[] {
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            jsonArguments(
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
         CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
@@ -189,15 +187,14 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
 
     int exitCode =
         cli.run(
-            new String[] {
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            jsonArguments(
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
 
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
@@ -332,15 +329,14 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             workflow);
     int exitCode =
         cli.run(
-            new String[] {
-              "preflight-entry",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            jsonArguments(
+                "preflight-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
         CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
@@ -410,15 +406,14 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             workflow);
     int exitCode =
         cli.run(
-            new String[] {
-              "execute-plan",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            jsonArguments(
+                "execute-plan",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
     assertEquals(1, exitCode);
     JsonNode failureEnvelope =
         CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());

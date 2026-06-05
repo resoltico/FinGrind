@@ -9,15 +9,6 @@ $applicationModule = "fingrind/dev.erst.fingrind.cli.App"
 $scriptInvocationArguments = @($args)
 
 function Invoke-FinGrindBundleLauncher {
-    $stdinFile = $env:FINGRIND_BUNDLE_STDIN_FILE
-    $argumentsFile = $env:FINGRIND_BUNDLE_ARGUMENTS_FILE
-    $launcherArguments =
-        if ([string]::IsNullOrWhiteSpace($argumentsFile)) {
-            $scriptInvocationArguments
-        } else {
-            @()
-        }
-
     if (-not (Test-Path -LiteralPath $runtimeJava -PathType Leaf)) {
         [Console]::Error.WriteLine("error: missing bundled Java runtime at $runtimeJava")
         return 1
@@ -25,15 +16,6 @@ function Invoke-FinGrindBundleLauncher {
 
     if (-not (Test-Path -LiteralPath $applicationJar -PathType Leaf)) {
         [Console]::Error.WriteLine("error: missing FinGrind application JAR at $applicationJar")
-        return 1
-    }
-
-    if ($argumentsFile -and -not (Test-Path -LiteralPath $argumentsFile -PathType Leaf)) {
-        [Console]::Error.WriteLine("error: missing staged bundle arguments file at $argumentsFile")
-        return 1
-    }
-    if ($stdinFile -and -not (Test-Path -LiteralPath $stdinFile -PathType Leaf)) {
-        [Console]::Error.WriteLine("error: missing staged bundle stdin file at $stdinFile")
         return 1
     }
 
@@ -45,20 +27,18 @@ function Invoke-FinGrindBundleLauncher {
         $applicationJar,
         "--module",
         $applicationModule
-    ) + $launcherArguments
+    ) + $scriptInvocationArguments
 
     $javaStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $javaStartInfo.FileName = $runtimeJava
     $javaStartInfo.WorkingDirectory = [System.IO.Directory]::GetCurrentDirectory()
     $javaStartInfo.UseShellExecute = $false
-    $javaStartInfo.RedirectStandardInput = [string]::IsNullOrEmpty($stdinFile) -eq $false
+    $javaStartInfo.RedirectStandardInput = [Console]::IsInputRedirected
     [void] $javaStartInfo.Environment.Remove("FINGRIND_BUNDLE_RETURN_EXIT_CODE")
     [void] $javaStartInfo.Environment.Remove("FINGRIND_BUNDLE_STDIN_FILE")
     [void] $javaStartInfo.Environment.Remove("FINGRIND_BUNDLE_ARGUMENTS_FILE")
     [void] $javaStartInfo.Environment.Remove("FINGRIND_LAUNCHER_ARGUMENTS_FILE")
-    if (-not [string]::IsNullOrWhiteSpace($argumentsFile)) {
-        $javaStartInfo.Environment["FINGRIND_LAUNCHER_ARGUMENTS_FILE"] = $argumentsFile
-    }
+    [void] $javaStartInfo.Environment.Remove("FINGRIND_SQLITE_LIBRARY")
 
     foreach ($javaArgument in $javaArguments) {
         [void] $javaStartInfo.ArgumentList.Add([string] $javaArgument)
@@ -74,9 +54,13 @@ function Invoke-FinGrindBundleLauncher {
         }
 
         if ($javaStartInfo.RedirectStandardInput) {
-            $stdinText = Get-Content -LiteralPath $stdinFile -Raw -Encoding UTF8
-            $javaProcess.StandardInput.Write($stdinText)
-            $javaProcess.StandardInput.Close()
+            try {
+                [Console]::OpenStandardInput().CopyTo($javaProcess.StandardInput.BaseStream)
+                $javaProcess.StandardInput.BaseStream.Flush()
+            }
+            finally {
+                $javaProcess.StandardInput.Close()
+            }
         }
 
         $javaProcess.WaitForExit()
@@ -88,7 +72,4 @@ function Invoke-FinGrindBundleLauncher {
 }
 
 $launcherExitCode = Invoke-FinGrindBundleLauncher
-if ($env:FINGRIND_BUNDLE_RETURN_EXIT_CODE -eq "true") {
-    return $launcherExitCode
-}
 exit $launcherExitCode

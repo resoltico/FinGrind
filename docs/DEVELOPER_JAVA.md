@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DEVELOPER_JAVA
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -66,7 +66,8 @@ Reasons:
 - the wrapper pins FinGrind's actual Gradle version and downloads the official Gradle distribution
   declared by the repository
 - source-driven Gradle uses the repository-owned Java 26 toolchain contract after the wrapper JVM
-  launches, while the developer direct-Java wrappers use the ambient shell `java`
+  launches, and the developer direct-Java wrappers now launch through that same Gradle-owned Java
+  26 toolchain executable instead of ambient shell `java`
 - the public packaged CLI bundles its own Java 26 runtime instead of depending on ambient shell
   Java
 - FinGrind's SQLite adapter relies on Java 26 FFM, so product compilation, tests, and packaging
@@ -257,7 +258,8 @@ Current practical result:
 ## Pitfalls
 
 Known pitfalls:
-- the developer direct-Java wrappers do not use Gradle toolchains
+- the developer direct-Java wrappers require the generated source-checkout runtime manifest to
+  resolve the Gradle-owned Java 26 toolchain executable
 - assuming `./check.sh` requires an ambient Java 26 product JDK in the shell; the wrapper only
   needs a launch JVM, while Gradle toolchains own the product baseline
 - Homebrew `gradle` declares a dependency on `openjdk`, which can reintroduce Java drift during
@@ -316,9 +318,10 @@ Run those commands from a real terminal session.
 Why:
 - local shell startup files are what make Java 26 the default `java`
 - the public packaged CLI bundles its own runtime, while the developer direct-Java wrappers depend
-  on the ambient launcher runtime
-- Gradle toolchains own FinGrind's product JDK baseline after the wrapper launches, while direct
-  Java wrapper flows remain explicit ambient-runtime workflows
+  on the Gradle-owned toolchain runtime manifest generated from the current checkout
+- Gradle toolchains own FinGrind's product JDK baseline after the wrapper launches, and direct
+  Java wrapper flows now use that same toolchain-owned launcher path rather than one ambient
+  shell-Java workflow
 
 ## Maintenance Guidance
 

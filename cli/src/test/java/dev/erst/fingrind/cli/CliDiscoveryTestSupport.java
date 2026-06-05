@@ -13,7 +13,8 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
@@ -93,7 +94,7 @@ final class CliDiscoveryTestSupport {
   static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.51.0",
+        "0.52.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -114,8 +115,9 @@ final class CliDiscoveryTestSupport {
   static EnvironmentDescriptor environmentWithRuntime(
       EnvironmentSqliteDescriptor.RuntimeState runtime) {
     return new EnvironmentDescriptor(
-        new EnvironmentDistributionDescriptor(
-            ProtocolCatalog.distribution().bundleRuntimeDistribution(),
+        new EnvironmentRuntimeDescriptor(
+            ProtocolCatalog.distribution().bundleRuntimeDistribution()),
+        new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.WINDOWS_X86_64),
             List.of(),

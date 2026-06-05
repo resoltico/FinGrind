@@ -82,7 +82,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportMethodsWritePdfArtifacts() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.51.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK));
 
     Path accountBalancePdf = tempDirectory.resolve("balance.pdf");
     Path trialBalancePdf = tempDirectory.resolve("trial.pdf");
@@ -103,7 +103,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportIgnoresPermissionNormalizationOnNonPosixFileSystems() throws IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.51.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK));
     Path archivePath = tempDirectory.resolve("reports.zip");
 
     try (FileSystem zipFileSystem =
@@ -227,7 +227,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportWrapsFilesystemFailuresInCliPdfExportException() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.51.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK));
     Path blockedParent = tempDirectory.resolve("not-a-directory");
     Files.writeString(blockedParent, "nope", StandardCharsets.UTF_8);
     Path outputPath = blockedParent.resolve("trial-balance.pdf");
@@ -244,7 +244,7 @@ class CliPdfReportExporterTest {
   void exportFallsBackToNonAtomicMoveWhenAtomicMoveIsUnsupported() {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.51.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK), fileOperations);
 
     exporter.exportTrialBalance(Path.of("trial-balance.pdf"), trialBalanceReport());
 
@@ -258,7 +258,7 @@ class CliPdfReportExporterTest {
     fileOperations.failDuringMove = true;
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.51.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK), fileOperations);
 
     CliPdfExportException exception =
         assertThrows(
@@ -279,7 +279,7 @@ class CliPdfReportExporterTest {
   @Test
   void deleteIfPresentRemovesExistingTemporaryFiles() throws IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.51.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK));
     Path temporaryFile = Files.createTempFile(tempDirectory, "delete-me", ".tmp");
 
     exporter.deleteIfPresent(temporaryFile);
@@ -292,7 +292,7 @@ class CliPdfReportExporterTest {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.51.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK), fileOperations);
 
     exporter.deleteIfPresent(Path.of("temporary.pdf"));
 

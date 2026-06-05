@@ -85,7 +85,7 @@ class PdfValueFormatterTest {
         "Current period result",
         PdfValueFormatter.displayRowKind(StatementLineKind.CURRENT_PERIOD_RESULT));
     assertEquals(
-        "(derived)",
+        "Calculated line",
         PdfValueFormatter.displayStatementLineCode(
             "current-period-result", StatementLineKind.CURRENT_PERIOD_RESULT));
     assertEquals(
@@ -96,7 +96,7 @@ class PdfValueFormatterTest {
   @Test
   void displayLineRoleFormatsDeclaredAndDerivedRoles() {
     assertEquals("Ordinary", PdfValueFormatter.displayLineRole(Optional.of(AccountRole.ORDINARY)));
-    assertEquals("(derived)", PdfValueFormatter.displayLineRole(Optional.empty()));
+    assertEquals("Calculated line", PdfValueFormatter.displayLineRole(Optional.empty()));
   }
 
   @Test
@@ -157,7 +157,7 @@ class PdfValueFormatterTest {
         PdfValueFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.RESERVE));
     assertEquals(
-        "(derived)",
+        "Calculated line",
         PdfValueFormatter.displayFinancialPositionLineClassification(Optional.empty()));
     assertEquals(
         "Current asset",
@@ -201,10 +201,11 @@ class PdfValueFormatterTest {
             ProfitAndLossLineClassification.OTHER_EXPENSE));
     assertEquals(
         "Direct",
-        PdfValueFormatter.postingRole(postingFact("posting-1", "idem-1", PostingLineage.direct())));
+        PdfPostingValueFormatter.postingRole(
+            postingFact("posting-1", "idem-1", PostingLineage.direct())));
     assertEquals(
         "Reversal",
-        PdfValueFormatter.postingRole(
+        PdfPostingValueFormatter.postingRole(
             new PostingFact(
                 new PostingId("posting-2"),
                 journalEntry(),
@@ -226,11 +227,11 @@ class PdfValueFormatterTest {
                     SourceChannel.CLI))));
     assertEquals(
         "(not a reversal)",
-        PdfValueFormatter.reversalTarget(
+        PdfPostingValueFormatter.reversalTarget(
             postingFact("posting-1", "idem-1", PostingLineage.direct())));
     assertEquals(
         "posting-1",
-        PdfValueFormatter.reversalTarget(
+        PdfPostingValueFormatter.reversalTarget(
             new PostingFact(
                 new PostingId("posting-2"),
                 journalEntry(),
@@ -272,10 +273,10 @@ class PdfValueFormatterTest {
   void displayPostingCoverageFormatsEveryVariant() {
     assertEquals(
         "All posting kinds",
-        PdfValueFormatter.displayPostingCoverage(PostingCoverage.ALL_POSTING_KINDS));
+        PdfPostingValueFormatter.displayPostingCoverage(PostingCoverage.ALL_POSTING_KINDS));
     assertEquals(
         "Non-transfer postings",
-        PdfValueFormatter.displayPostingCoverage(PostingCoverage.NON_CLOSING_POSTINGS));
+        PdfPostingValueFormatter.displayPostingCoverage(PostingCoverage.NON_CLOSING_POSTINGS));
   }
 
   @Test
@@ -286,12 +287,13 @@ class PdfValueFormatterTest {
 
   @Test
   void displayPostingKindFormatsEveryVariant() {
-    assertEquals("Standard", PdfValueFormatter.displayPostingKind(PostingKind.STANDARD));
+    assertEquals("Standard", PdfPostingValueFormatter.displayPostingKind(PostingKind.STANDARD));
     assertEquals(
         "Period result transfer",
-        PdfValueFormatter.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
+        PdfPostingValueFormatter.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
     assertEquals(
-        "Opening balance", PdfValueFormatter.displayPostingKind(PostingKind.OPENING_BALANCE));
+        "Opening balance",
+        PdfPostingValueFormatter.displayPostingKind(PostingKind.OPENING_BALANCE));
   }
 
   @Test
@@ -365,8 +367,8 @@ class PdfValueFormatterTest {
             evidence("idem-1"),
             direct.provenance());
 
-    assertEquals("(not a reversal)", PdfValueFormatter.reversalTarget(direct));
-    assertEquals("posting-1", PdfValueFormatter.reversalTarget(reversal));
+    assertEquals("(not a reversal)", PdfPostingValueFormatter.reversalTarget(direct));
+    assertEquals("posting-1", PdfPostingValueFormatter.reversalTarget(reversal));
   }
 
   private static PostingFact postingFact(

@@ -25,7 +25,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode = cli.run(new String[] {"open-book"});
+    int exitCode = cli.run(jsonArguments("open-book"));
     assertEquals(1, exitCode);
     JsonNode failurePayload =
         assertDoesNotThrow(() -> new ObjectMapper().readTree(outputStream.toByteArray()));
@@ -119,15 +119,14 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                 new SqliteStorageFailureException("Failed to open SQLite book connection.")));
     int exitCode =
         cli.run(
-            new String[] {
-              "preflight-entry",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            jsonArguments(
+                "preflight-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
     assertEquals(4, exitCode);
     assertJsonContains(outputStream, "\"code\":\"storage-runtime-failure\"");
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("initialization state"));
@@ -148,15 +147,14 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                     "FinGrind could not locate the managed SQLite runtime.")));
     int exitCode =
         cli.run(
-            new String[] {
-              "rekey-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--replacement-book-key-file",
-              tempDirectory.resolve("replacement.key").toString()
-            });
+            jsonArguments(
+                "rekey-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--replacement-book-key-file",
+                tempDirectory.resolve("replacement.key").toString()));
     assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
@@ -165,7 +163,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             .path("hint")
             .stringValue()
             .contains(
-                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
+                "Run a supported FinGrind launcher surface: the extracted published Linux bundle launcher (bin/fingrind), the published container image"));
   }
 
   @Test
@@ -183,13 +181,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                     "fingrind.bundle.home did not resolve a bundled SQLite library.")));
     int exitCode =
         cli.run(
-            new String[] {
-              "list-accounts",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            });
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString()));
     assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
@@ -198,7 +195,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             .path("hint")
             .stringValue()
             .contains(
-                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
+                "Run a supported FinGrind launcher surface: the extracted published Linux bundle launcher (bin/fingrind), the published container image"));
   }
 
   @Test
@@ -217,13 +214,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                     "bin/fingrind must be used from the extracted bundle root.")));
     int exitCode =
         cli.run(
-            new String[] {
-              "list-accounts",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            });
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString()));
     assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
@@ -232,7 +228,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             .path("hint")
             .stringValue()
             .contains(
-                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
+                "Run a supported FinGrind launcher surface: the extracted published Linux bundle launcher (bin/fingrind), the published container image"));
   }
 
   @Test
@@ -251,13 +247,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                     "bin\\fingrind.ps1 must be used from the extracted bundle root.")));
     int exitCode =
         cli.run(
-            new String[] {
-              "list-accounts",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            });
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString()));
     assertEquals(5, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
@@ -266,7 +261,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             .path("hint")
             .stringValue()
             .contains(
-                "Run the published FinGrind bundle launcher (bin/fingrind on macOS/Linux or bin\\fingrind.ps1 on Windows)"));
+                "Run a supported FinGrind launcher surface: the extracted published Linux bundle launcher (bin/fingrind), the published container image"));
   }
 
   @Test
@@ -286,15 +281,14 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             new ExplodingWorkflow(new IllegalStateException("boom")));
     int exitCode =
         cli.run(
-            new String[] {
-              "post-entry",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            jsonArguments(
+                "post-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
     assertEquals(70, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("internal-error", failureEnvelope.path("code").stringValue());
@@ -325,15 +319,14 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             new IllegalArgumentWorkflow());
     int exitCode =
         cli.run(
-            new String[] {
-              "preflight-entry",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            jsonArguments(
+                "preflight-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
     assertEquals(70, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("internal-error", failureEnvelope.path("code").stringValue());

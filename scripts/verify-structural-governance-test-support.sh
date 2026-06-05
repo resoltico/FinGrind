@@ -184,20 +184,19 @@ PY
     run_expect_failure "oversized_support.py" "$1" --surface python-support
 }
 
-fixture_root_python_reviewed_surface_growth_failure() {
-    mkdir -p "$1/scripts"
-    cat > "$1/scripts/verify-structural-governance.py" <<'EOF'
-from structural_governance.cli import main
+fixture_root_sql_reviewed_surface_growth_failure() {
+    mkdir -p "$1/sqlite/src/main/resources/dev/erst/fingrind/sqlite"
+    python3 - "$1" <<'PY'
+from pathlib import Path
+import sys
 
-from structural_governance.verification import verify_python_support
-from structural_governance.verification import verify_shell_release
-from structural_governance.verification import verify_sqlite_sql
-from structural_governance.verification import verify_build_logic_kotlin
-
-if __name__ == "__main__":
-    main()
-EOF
-    run_expect_failure "reviewed structural surface" "$1" --surface python-support
+path = Path(sys.argv[1]) / "sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql"
+lines = []
+for index in range(0, 1180):
+    lines.append(f"create table table_{index} (id integer primary key);")
+path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+    run_expect_failure "reviewed structural surface" "$1" --surface sqlite-sql
 }
 
 fixture_root_sql_budget_failure() {
@@ -252,8 +251,22 @@ run_structural_governance_regressions() {
     run_in_temp_fixture fixture_root_shell_budget_failure
     run_in_temp_fixture fixture_root_shell_duplicate_failure
     run_in_temp_fixture fixture_root_python_budget_failure
-    run_in_temp_fixture fixture_root_python_reviewed_surface_growth_failure
+    run_in_temp_fixture fixture_root_sql_reviewed_surface_growth_failure
     run_in_temp_fixture fixture_root_sql_budget_failure
     run_in_temp_fixture fixture_root_markdown_budget_failure
     run_in_temp_fixture fixture_root_gradle_budget_failure
+    assert_verifier_usage_mentions_all_supported_surfaces
+}
+
+assert_verifier_usage_mentions_all_supported_surfaces() {
+    local output
+    output="$("${structural_governance_common_repo_root}/scripts/verify-structural-governance.sh" --help)"
+    [[ "${output}" == *"gradle-kts"* ]] || {
+        printf 'expected verify-structural-governance help to mention gradle-kts\n' >&2
+        exit 1
+    }
+    [[ "${output}" == *"markdown-docs"* ]] || {
+        printf 'expected verify-structural-governance help to mention markdown-docs\n' >&2
+        exit 1
+    }
 }

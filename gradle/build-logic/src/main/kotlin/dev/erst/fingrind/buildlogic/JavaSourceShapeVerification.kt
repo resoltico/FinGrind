@@ -1,6 +1,8 @@
 package dev.erst.fingrind.buildlogic
 
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.time.LocalDate
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.Project
@@ -26,8 +28,15 @@ internal fun Project.registerJavaSourceShapeTask() =
                 "Fails the build when Java source files exceed FinGrind's structural shape budgets."
             projectPathValue.set(path)
             projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
+            waiverHorizon.set(LocalDate.now().toString())
             reportFile.set(
                 layout.buildDirectory.file("reports/structural-governance/java-source-shape.tsv"),
+            )
+            auditMirrorFile.set(
+                FinGrindFilesystemLayout.structuralGovernanceAuditFile(
+                    project = this@registerJavaSourceShapeTask,
+                    reportName = "java-source-shape.tsv",
+                ),
             )
             sourceFiles.from(
                 fileTree(projectDir) {
@@ -45,6 +54,9 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
     @get:Input
     abstract val projectDirectoryPath: Property<String>
 
+    @get:Input
+    abstract val waiverHorizon: Property<String>
+
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sourceFiles: ConfigurableFileCollection
@@ -52,13 +64,17 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
     @get:OutputFile
     abstract val reportFile: RegularFileProperty
 
+    @get:OutputFile
+    abstract val auditMirrorFile: RegularFileProperty
+
     @TaskAction
     fun verify() {
         val projectDirectory = File(projectDirectoryPath.get())
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
+        val currentDate = LocalDate.parse(waiverHorizon.get())
         val rows =
             mutableListOf(
-                "path\trole\treviewOwner\treviewExpiry\tapprovedPhysical\tapprovedLogical\tapprovedImports\tphysical\tlogical\timports\tnestedTypes\tmaxMethods\tmaxFields\tmaxSwitchArms\tmaxMethodLines\tmaxMethodParameters\tmaxMethodDecisionPoints",
+                "path\tdefaultRole\trole\treviewOwner\treviewExpiry\treviewBudgetVarianceReason\treviewDuplicationExemptionReason\tapprovedPhysical\tapprovedLogical\tapprovedImports\tphysical\tlogical\timports\tnestedTypes\tmaxMethods\tmaxFields\tmaxSwitchArms\tmaxMethodLines\tmaxMethodParameters\tmaxMethodDecisionPoints",
             )
         val violations = mutableListOf<String>()
         sourceFiles.files
@@ -69,6 +85,12 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                     return@forEach
                 }
                 val packageName = JavaSourceStructuralContracts.packageNameFor(file)
+                val defaultBudget =
+                    JavaSourceStructuralContracts.baselineBudgetFor(
+                        relativePath = relativePath,
+                        packageName = packageName,
+                        exportedPackages = exportedPackages,
+                    )
                 val contract =
                     JavaSourceStructuralContracts.contractFor(
                         relativePath = relativePath,
@@ -81,9 +103,12 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                 rows +=
                     listOf(
                             relativePath,
+                            defaultBudget.roleName,
                             contract.budget.roleName,
                             reviewedSurface?.owner.orEmpty(),
                             approval?.expiresOn?.toString().orEmpty(),
+                            reviewedSurface?.budgetVarianceReason.orEmpty(),
+                            reviewedSurface?.duplicationExemptionReason.orEmpty(),
                             approval?.approvedPhysicalLines?.toString().orEmpty(),
                             approval?.approvedLogicalLines?.toString().orEmpty(),
                             approval?.approvedImports?.toString().orEmpty(),
@@ -108,13 +133,25 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                 }
                 violations += javaShapeViolations(relativePath, metrics, contract.budget)
                 if (reviewedSurface != null) {
-                    violations += reviewedSurfaceViolations(relativePath, metrics, reviewedSurface)
+                    violations += reviewedSurfaceDefinitionViolations(reviewedSurface, defaultBudget)
+                    violations +=
+                        reviewedSurfaceViolations(
+                            relativePath = relativePath,
+                            metrics = metrics,
+                            reviewedSurface = reviewedSurface,
+                            defaultBudget = defaultBudget,
+                            currentDate = currentDate,
+                        )
                 }
             }
-        val renderedReport = rows.joinToString(System.lineSeparator(), postfix = System.lineSeparator())
+        val renderedReport =
+            rows.joinToString(System.lineSeparator(), postfix = System.lineSeparator())
         val outputFile = reportFile.get().asFile
+        val auditMirror = auditMirrorFile.get().asFile
         outputFile.parentFile.mkdirs()
-        outputFile.writeText(renderedReport)
+        auditMirror.parentFile.mkdirs()
+        outputFile.writeText(renderedReport, StandardCharsets.UTF_8)
+        auditMirror.writeText(renderedReport, StandardCharsets.UTF_8)
         if (violations.isNotEmpty()) {
             throw GradleException(
                 buildString {
@@ -122,6 +159,9 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                     violations.forEach(::appendLine)
                     appendLine(
                         "Structural inventory report: ${outputFile.invariantSeparatorsPath()}",
+                    )
+                    appendLine(
+                        "Repo-local audit mirror: ${auditMirror.invariantSeparatorsPath()}",
                     )
                 },
             )

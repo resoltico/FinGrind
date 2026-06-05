@@ -20,59 +20,52 @@ $arguments = @()
 foreach ($argument in @($request.arguments)) {
     $arguments += [string] $argument
 }
-$argumentsFile = $null
-$stdinFile = $null
-$priorReturnMode = $env:FINGRIND_BUNDLE_RETURN_EXIT_CODE
-$priorArgumentsFile = $env:FINGRIND_BUNDLE_ARGUMENTS_FILE
-$priorStdinFile = $env:FINGRIND_BUNDLE_STDIN_FILE
-
-try {
-    $argumentsFile = Join-Path ([System.IO.Path]::GetTempPath()) (
-        "fingrind-bundle-arguments-" + [System.Guid]::NewGuid().ToString("N") + ".json"
-    )
-    $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-    [System.IO.File]::WriteAllText(
-        $argumentsFile,
-        (ConvertTo-Json -Compress $arguments),
-        $utf8NoBom
-    )
-    $env:FINGRIND_BUNDLE_ARGUMENTS_FILE = $argumentsFile
-
-    if ($null -ne $request.stdinText) {
-        $stdinFile = Join-Path ([System.IO.Path]::GetTempPath()) (
-            "fingrind-bundle-stdin-" + [System.Guid]::NewGuid().ToString("N") + ".txt"
-        )
-        [System.IO.File]::WriteAllText($stdinFile, [string] $request.stdinText, $utf8NoBom)
-        $env:FINGRIND_BUNDLE_STDIN_FILE = $stdinFile
-    }
-    $env:FINGRIND_BUNDLE_RETURN_EXIT_CODE = "true"
-
-    $launcherResult = & $LauncherPath
-    if (-not $?) {
-        exit 1
-    }
-    exit ([int] $launcherResult)
+$pwshExecutable = (Get-Command pwsh -CommandType Application | Select-Object -ExpandProperty Source -First 1)
+if ([string]::IsNullOrWhiteSpace($pwshExecutable)) {
+    throw "missing pwsh executable for bundle bridge"
 }
-finally {
-    if ($null -ne $argumentsFile -and (Test-Path -LiteralPath $argumentsFile -PathType Leaf)) {
-        Remove-Item -LiteralPath $argumentsFile -Force -ErrorAction SilentlyContinue
+
+function Invoke-LauncherBridgeProcess {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]] $InvocationArguments,
+        [Parameter()]
+        [AllowNull()]
+        [string] $StdinText
+    )
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $pwshExecutable
+    $startInfo.WorkingDirectory = [System.IO.Directory]::GetCurrentDirectory()
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardInput = $null -ne $StdinText
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    foreach ($invocationArgument in $InvocationArguments) {
+        [void] $startInfo.ArgumentList.Add([string] $invocationArgument)
     }
-    if ($null -ne $stdinFile -and (Test-Path -LiteralPath $stdinFile -PathType Leaf)) {
-        Remove-Item -LiteralPath $stdinFile -Force -ErrorAction SilentlyContinue
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    try {
+        if (-not $process.Start()) {
+            throw "failed to start bundle bridge subprocess"
+        }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if ($startInfo.RedirectStandardInput) {
+            $process.StandardInput.Write($StdinText)
+            $process.StandardInput.Close()
+        }
+        $process.WaitForExit()
+        [Console]::Out.Write($stdoutTask.GetAwaiter().GetResult())
+        [Console]::Error.Write($stderrTask.GetAwaiter().GetResult())
+        return $process.ExitCode
     }
-    if ($null -ne $priorArgumentsFile) {
-        $env:FINGRIND_BUNDLE_ARGUMENTS_FILE = $priorArgumentsFile
-    } else {
-        Remove-Item Env:FINGRIND_BUNDLE_ARGUMENTS_FILE -ErrorAction SilentlyContinue
-    }
-    if ($null -ne $priorStdinFile) {
-        $env:FINGRIND_BUNDLE_STDIN_FILE = $priorStdinFile
-    } else {
-        Remove-Item Env:FINGRIND_BUNDLE_STDIN_FILE -ErrorAction SilentlyContinue
-    }
-    if ($null -ne $priorReturnMode) {
-        $env:FINGRIND_BUNDLE_RETURN_EXIT_CODE = $priorReturnMode
-    } else {
-        Remove-Item Env:FINGRIND_BUNDLE_RETURN_EXIT_CODE -ErrorAction SilentlyContinue
+    finally {
+        $process.Dispose()
     }
 }
+
+$bridgeArguments = @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $LauncherPath) + $arguments
+exit (Invoke-LauncherBridgeProcess -InvocationArguments $bridgeArguments -StdinText $request.stdinText)

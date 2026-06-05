@@ -47,7 +47,7 @@ def main() -> None:
     runtime_surface = require_mapping(contract.get("runtimeSurface"), "runtimeSurface")
     managed_sqlite = require_mapping(contract.get("managedSqlite"), "managedSqlite")
     payload = require_mapping(document.get("payload"), "payload")
-    distribution = require_mapping(payload.get("distribution"), "payload.distribution")
+    runtime_surface_payload = require_mapping(payload.get("runtime"), "payload.runtime")
     sqlite = require_mapping(payload.get("sqlite"), "payload.sqlite")
     runtime = require_mapping(sqlite.get("runtime"), "payload.sqlite.runtime")
 
@@ -55,7 +55,7 @@ def main() -> None:
 
     checks = [
         (
-            distribution.get("runtimeDistribution") == expected_runtime_distribution,
+            runtime_surface_payload.get("runtimeDistribution") == expected_runtime_distribution,
             f"{args.label} runtime distribution drifted from the canonical contract",
         ),
         (

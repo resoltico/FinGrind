@@ -176,14 +176,6 @@ jobs:
             classifier: linux-aarch64
             expected_os: Linux
             expected_arch: aarch64
-          - runner: macos-15
-            classifier: macos-aarch64
-            expected_os: Darwin
-            expected_arch: arm64
-          - runner: macos-15-intel
-            classifier: macos-x86_64
-            expected_os: Darwin
-            expected_arch: x86_64
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

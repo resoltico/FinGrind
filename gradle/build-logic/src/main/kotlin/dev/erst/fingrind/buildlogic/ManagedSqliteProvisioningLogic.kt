@@ -59,6 +59,7 @@ internal object ManagedSqliteProvisioningLogic {
 
     fun registerDockerContextTarget(
         project: Project,
+        hostProvisioning: ManagedSqliteProvisioning,
         repositoryRootDirectory: Path,
         sqliteSourceDirectory: Directory,
         sqliteVersionValue: String,
@@ -67,6 +68,7 @@ internal object ManagedSqliteProvisioningLogic {
     ): ManagedSqliteProvisioning =
         registerDockerManagedSqliteTarget(
             project = project,
+            hostProvisioning = hostProvisioning,
             repositoryRootDirectory = repositoryRootDirectory,
             sqliteSourceDirectory = sqliteSourceDirectory,
             sqliteVersionValue = sqliteVersionValue,

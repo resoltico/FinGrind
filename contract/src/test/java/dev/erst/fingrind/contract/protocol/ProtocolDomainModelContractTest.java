@@ -122,7 +122,9 @@ class ProtocolDomainModelContractTest extends ProtocolContractRepositorySupport 
         violations);
     assertOnlyTranslatorImportsPublishedLanguage(
         repositoryRoot().resolve("executor/src/main/java/dev/erst/fingrind/executor/workflow"),
-        Set.of("BookWorkflowPublishedLanguageTranslator.java"),
+        Set.of(
+            "BookWorkflowPublishedLanguageTranslator.java",
+            "BookWorkflowPublishedJournalTranslator.java"),
         Set.of(
             "import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;",
             "import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;",

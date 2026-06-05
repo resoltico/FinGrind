@@ -24,6 +24,7 @@ class ReviewedSurface:
     reason: str
     split_trigger: str
     budget: FileBudget
+    budget_variance_reason: str | None
     approval: "ReviewedSurfaceApproval"
 
 

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -21,22 +21,20 @@ and [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md).
 FinGrind's public CLI download is a self-contained per-platform archive, not a raw JAR.
 
 Each published archive contains:
-- launcher scripts under `bin/`: `fingrind` and, on Windows, `fingrind.ps1`
+- the POSIX launcher script under `bin/fingrind`
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite native library pinned by the canonical managed-SQLite contract for that target
 - a top-level `README.md` for local operator bootstrap
+- a top-level `quick-start-request.json` for the first posting flow
 - a top-level generated `bundle-manifest.json` for machine bootstrap and target discovery
 - top-level legal files: `LICENSE`, `LICENSE-APACHE-2.0`, `LICENSE-SIL-OFL-1.1`,
   `LICENSE-SQLITE3MULTIPLECIPHERS`, `NOTICE`, and `PATENTS.md`
 
 The bundle launcher sets `fingrind.bundle.home` and starts the private runtime directly.
-On Windows, the PowerShell launcher also hands staged bridge arguments to the JVM through the
-dedicated `FINGRIND_LAUNCHER_ARGUMENTS_FILE` environment contract so Unicode-only acceptance paths
-do not have to survive a second native argv rehydration seam inside PowerShell.
 That keeps public execution independent from:
 - a separately installed Java runtime
-- a preconfigured `FINGRIND_SQLITE_LIBRARY`
+- any inherited `FINGRIND_SQLITE_LIBRARY` override
 - ambient host `libsqlite3` fallback
 
 This is the supported public CLI contract.
@@ -71,14 +69,14 @@ self-contained runtime contract, not the primary public artifact.
 
 ## Public Target Matrix
 
-Current public bundle targets:
-- `macos-aarch64`
-- `macos-x86_64`
+Current published public bundle targets:
 - `linux-x86_64`
 - `linux-aarch64`
-- `windows-x86_64`
 
-Declared but intentionally unsupported public bundle targets:
+Declared but intentionally not-published public bundle targets:
+- `macos-aarch64`
+- `macos-x86_64`
+- `windows-x86_64`
 - `windows-aarch64`
 
 Linux bundle policy:
@@ -86,10 +84,12 @@ Linux bundle policy:
 - they therefore target ordinary glibc Linux hosts
 - they are not claimed to be one universal binary for every Linux libc variant
 
-Windows bundle policy:
-- public Windows bundles are built on Windows GitHub-hosted runners
-- they use the native MSVC toolchain through the Developer Command Prompt environment
-- they are published as `.zip` archives and use `bin\fingrind.ps1` as the canonical launcher
+macOS and Windows publication policy:
+- the bundle-layout contract keeps macOS and Windows target identities explicit
+- the public-distribution contract marks those identities as not published
+- the repository does not publish unsigned macOS bundles or PowerShell-first Windows bundles as
+  public release artifacts
+- operators on macOS or Windows are routed to the published container image or to a source checkout
 
 ## Release Build Policy
 
@@ -100,8 +100,7 @@ Why that is acceptable:
   release workstation
 - Zulu 26 on GitHub-hosted runners provides the full JDK surface we actually need:
   `javac`, `jdeps`, and `jlink`
-- the supported release matrix is covered by those runners today: Ubuntu x86_64, Ubuntu arm64,
-  macOS arm64, macOS x86_64, and Windows x86_64
+- the published release matrix is covered by those runners today: Ubuntu x86_64 and Ubuntu arm64
 
 When to revisit this choice:
 - if Zulu stops offering Java 26 for one of the supported public bundle builders
@@ -141,7 +140,7 @@ Current rules:
 - the container image ships the same application JAR plus a private `jlink` runtime, not a full
   inherited distro JRE
 - the container image advertises itself through
-  `environment.distribution.runtimeDistribution = "container-image"`
+  `environment.runtime.runtimeDistribution = "container-image"`
 - the bundle remains the canonical public CLI artifact; the container is an additional supported
   public runtime surface, not a weaker or differently pinned path
 
@@ -169,25 +168,24 @@ On Windows PowerShell, use:
 .\scripts\bundle-smoke.ps1
 ```
 
-Source-checkout installed launcher entrypoint:
+Source-checkout wrapper entrypoint:
 
 ```bash
-./gradlew :cli:installShadowDist prepareManagedSqlite
 ./scripts/source-checkout-cli.sh help
 ```
 
-That wrapper resolves the active CLI build directory, then invokes the generated launcher with the
-same Java native-access flag as the bundle, the source-checkout runtime-distribution contract, and
-managed-SQLite checkout lookup already baked in. The launcher also carries the active root-project
-build directory so relocated Gradle build roots resolve the prepared managed SQLite library tree
-instead of guessing at `repo/build/...`. The repo-owned wrapper now verifies a source-hash manifest
-before each launch; when the cached raw JAR has drifted behind the live checkout, it refreshes
-`:cli:shadowJar` and `prepareManagedSqlite` before executing the command.
+That wrapper resolves the active CLI build directory, then launches the raw application module
+through the same Gradle-owned Java 26 toolchain executable that bundle packaging uses. It carries
+the same Java native-access flag as the bundle, the source-checkout runtime-distribution contract,
+and managed-SQLite checkout lookup already baked in. The wrapper also carries the active
+root-project build directory so relocated Gradle build roots resolve the prepared managed SQLite
+library tree instead of guessing at `repo/build/...`. Before each launch it delegates freshness
+back to Gradle by refreshing `:cli:writeSourceCheckoutRuntimeManifest` plus `prepareManagedSqlite`,
+then executes through the generated runtime manifest instead of replaying source hashing in shell.
 
 Developer direct-Java entrypoints:
 
 ```bash
-./gradlew :cli:shadowJar prepareManagedSqlite
 ./scripts/direct-java-cli.sh help
 ```
 
@@ -195,13 +193,14 @@ The direct-Java wrapper remains useful for:
 - advanced contributor debugging
 - validating the application JAR directly during development
 
-That wrapper resolves the active CLI build directory and then runs the prepared application module.
-It grants native access only to the `fingrind` module and keeps the same managed-SQLite
-auto-discovery path as the generated source-checkout launcher. Manual
-`FINGRIND_SQLITE_LIBRARY` export remains the escape hatch only for custom direct-Java launches
-that have been moved away from the prepared checkout layout. The wrapper uses the same source-hash
-manifest guard as the source-checkout launcher, so stale raw-JAR bytes are refreshed from the
-current checkout before direct execution.
+That wrapper resolves the active CLI build directory and then runs the prepared application module
+through the same Gradle-owned Java 26 toolchain executable as the source-checkout wrapper. It
+grants native access only to the `fingrind` module and keeps the same managed-SQLite
+auto-discovery path as the source-checkout wrapper. Launches moved away from the prepared checkout
+layout are unsupported rather than repaired through ambient native-library overrides. The wrapper
+uses the same source-hash and runtime-manifest guards as the source-checkout wrapper, so stale
+raw-JAR bytes or stale toolchain metadata are refreshed from the current checkout before direct
+execution.
 
 The dedicated Docker assembly entrypoint is `./gradlew :cli:stageDockerBuildContext`. It stages
 one canonical Docker build-context directory under the active CLI build root. That context now
@@ -265,21 +264,21 @@ It is not the public release artifact.
 
 ## Publication Rules
 
-For the GitHub Release publication topology, published-byte attestation rationale, Windows ZIP
-canary behavior, and post-tag workflow-repair path, use
+For the GitHub Release publication topology, published-byte attestation rationale, Windows
+publication-lane canary behavior, and post-tag workflow-repair path, use
 [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md). This document keeps the
 distribution contract concise; the publication reference carries the failure theory.
 
 Every GitHub release must publish:
-- one archive per supported target (`.tar.gz` for macOS and Linux, `.zip` for Windows)
+- one archive per published Linux target (`.tar.gz`)
 - one `.sha256` checksum file per supported target archive
 - one GitHub artifact attestation per published archive and checksum file, created from the exact bytes downloaded from the published GitHub Release rather than attesting runner-local bundle outputs
 
 Every release must verify:
 - the extracted bundle runs without ambient Java
-- the extracted bundle runs without a preconfigured `FINGRIND_SQLITE_LIBRARY`
+- the extracted bundle ignores any inherited `FINGRIND_SQLITE_LIBRARY` override
 - the extracted bundle contains a top-level operator `README.md` and machine-readable
-  `bundle-manifest.json`
+  `bundle-manifest.json` plus `quick-start-request.json`
 - the shipped `bundle-manifest.json` points machine clients at the canonical `help`,
   `capabilities`, `print-request-template`, and `print-plan-template` operations instead of
   reauthoring static command-group arrays

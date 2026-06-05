@@ -16,7 +16,8 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
@@ -280,8 +281,9 @@ final class ContractFixtures {
 
   static EnvironmentDescriptor environmentDescriptor() {
     return new EnvironmentDescriptor(
-        new EnvironmentDistributionDescriptor(
-            ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution(),
+        new EnvironmentRuntimeDescriptor(
+            ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution()),
+        new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
             ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),

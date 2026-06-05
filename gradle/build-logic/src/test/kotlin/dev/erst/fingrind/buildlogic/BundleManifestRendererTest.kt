@@ -101,8 +101,8 @@ class BundleManifestRendererTest {
                 "public-distribution-contract.json",
                 """
                 {
-                  "supportedTargets": ["macos-aarch64", "linux-x86_64"],
-                  "unsupportedTargets": ["windows-aarch64"]
+                  "supportedTargets": ["linux-x86_64", "linux-aarch64"],
+                  "unsupportedTargets": ["macos-aarch64", "macos-x86_64", "windows-x86_64", "windows-aarch64"]
                 }
                 """.trimIndent(),
             )
@@ -153,6 +153,30 @@ class BundleManifestRendererTest {
                       "launcherCommand": "./bin/fingrind",
                       "sqliteLibraryFileName": "libsqlite3.so.0"
                     },
+                    "linux-aarch64": {
+                      "operatingSystemId": "linux",
+                      "architectureId": "aarch64",
+                      "archiveFormat": "tar.gz",
+                      "launcherPath": "bin/fingrind",
+                      "launcherCommand": "./bin/fingrind",
+                      "sqliteLibraryFileName": "libsqlite3.so.0"
+                    },
+                    "macos-x86_64": {
+                      "operatingSystemId": "macos",
+                      "architectureId": "x86_64",
+                      "archiveFormat": "tar.gz",
+                      "launcherPath": "bin/fingrind",
+                      "launcherCommand": "./bin/fingrind",
+                      "sqliteLibraryFileName": "libsqlite3.dylib"
+                    },
+                    "windows-x86_64": {
+                      "operatingSystemId": "windows",
+                      "architectureId": "x86_64",
+                      "archiveFormat": "zip",
+                      "launcherPath": "bin/fingrind.ps1",
+                      "launcherCommand": ".\\bin\\fingrind.ps1",
+                      "sqliteLibraryFileName": "sqlite3.dll"
+                    },
                     "windows-aarch64": {
                       "operatingSystemId": "windows",
                       "architectureId": "aarch64",
@@ -183,7 +207,7 @@ class BundleManifestRendererTest {
                     repositoryRoot,
                     applicationName = "FinGrind",
                     version = "0.26.0",
-                    bundleClassifier = "macos-aarch64",
+                    bundleClassifier = "linux-x86_64",
             )
 
             val manifest = objectMapper.readTree(rendered)
@@ -193,9 +217,9 @@ class BundleManifestRendererTest {
             assertEquals("tar.gz", manifest.path("archiveFormat").requireText())
             assertEquals("self-contained-bundle", manifest.path("runtimeDistribution").requireText())
             assertEquals("self-contained-bundle", manifest.path("publicCliDistribution").requireText())
-            assertEquals("macos-aarch64", manifest.path("bundleTarget").path("classifier").requireText())
-            assertEquals("macos", manifest.path("bundleTarget").path("operatingSystem").requireText())
-            assertEquals("aarch64", manifest.path("bundleTarget").path("architecture").requireText())
+            assertEquals("linux-x86_64", manifest.path("bundleTarget").path("classifier").requireText())
+            assertEquals("linux", manifest.path("bundleTarget").path("operatingSystem").requireText())
+            assertEquals("x86_64", manifest.path("bundleTarget").path("architecture").requireText())
             assertEquals("bin/fingrind", manifest.path("launcher").requireText())
             assertEquals(
                 "sqlite-ffm-sqlite3mc",
@@ -231,19 +255,22 @@ class BundleManifestRendererTest {
             val supportedTargets =
                 manifest.path("supportedPublicCliBundleTargets").toList().map { it.requireText() }
             assertEquals(
-                listOf("macos-aarch64", "linux-x86_64"),
+                listOf("linux-x86_64", "linux-aarch64"),
                 supportedTargets,
             )
             val unsupportedTargets =
                 manifest.path("unsupportedPublicCliBundleTargets").toList().map { it.requireText() }
             assertEquals(
-                listOf("windows-aarch64"),
+                listOf("macos-aarch64", "macos-x86_64", "windows-x86_64", "windows-aarch64"),
                 unsupportedTargets,
             )
             val documentationFiles =
                 manifest.path("documentationFiles").toList().map { it.requireText() }
             assertTrue(
                 documentationFiles.contains("bundle-manifest.json"),
+            )
+            assertTrue(
+                documentationFiles.contains("quick-start-request.json"),
             )
             assertFalse(rendered.contains("discoveryCommands"))
         } finally {

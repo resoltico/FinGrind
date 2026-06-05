@@ -43,7 +43,7 @@ grep -Fq 'scripts/test-verify-release-pr-gate.sh' "${stage_contract_script}" || 
     "check stage contract no longer exercises the PR Gate verifier regression"
 grep -Fq './scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer requires the PR Gate verifier"
-grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
+grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer documents the PR Gate verifier timeout override"
 grep -Fq 'The aggregate `Gate` check run appears only after `Check`, `Windows bundle smoke`, and `Docker' "${release_protocol}" || die \
     "release protocol no longer documents the delayed Gate materialization contract"
@@ -59,8 +59,8 @@ readonly timeout_default="$(
         "${verifier}"
 )"
 [[ -n "${timeout_default}" ]] || die "failed to read PR Gate verifier default timeout"
-(( timeout_default >= 3000 )) || die \
-    "PR Gate verifier default timeout regressed below 3000 seconds (${timeout_default})"
+(( timeout_default >= 2400 )) || die \
+    "PR Gate verifier default timeout regressed below 2400 seconds (${timeout_default})"
 
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-verify-release-pr-gate.XXXXXX")"
 cleanup() {

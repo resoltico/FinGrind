@@ -1,5 +1,6 @@
 package dev.erst.fingrind.report.pdf;
 
+import dev.erst.fingrind.core.BookDoctrineDisplay;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
@@ -20,20 +21,13 @@ final class PdfStatementMetadataRows {
     statementRows.add(List.of("Entity", bookIdentity.entityName().value()));
     statementRows.add(
         List.of(
-            "Accounting kernel", bookIdentity.bookDoctrine().accountingKernelProfileId().value()));
-    statementRows.add(
-        List.of("Accounting basis", bookIdentity.bookDoctrine().accountingBasis().wireValue()));
-    statementRows.add(
-        List.of(
-            "Framework posture",
-            bookIdentity.bookDoctrine().accountingFrameworkPosition().wireValue()));
-    statementRows.add(List.of("Entity form", bookIdentity.bookDoctrine().entityForm().wireValue()));
-    statementRows.add(
-        List.of("Book template", bookIdentity.bookDoctrine().bookTemplateId().wireValue()));
+            "Starter chart",
+            BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())));
     statementRows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     statementRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
     statementRows.add(
-        List.of("Posting coverage", PdfValueFormatter.displayPostingCoverage(postingCoverage)));
+        List.of(
+            "Posting coverage", PdfPostingValueFormatter.displayPostingCoverage(postingCoverage)));
     statementRows.addAll(rows);
     return List.copyOf(statementRows);
   }
@@ -44,14 +38,6 @@ final class PdfStatementMetadataRows {
       PostingCoverage postingCoverage,
       List<List<String>> rows) {
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
-    List<List<String>> statementRows =
-        new ArrayList<>(reportParameters(bookIdentity, postingCoverage, List.of()));
-    String comparativeRange =
-        PdfTemporalValueFormatter.comparativeRange(comparativeEffectiveDateRange);
-    if (!"(none)".equals(comparativeRange)) {
-      statementRows.add(List.of("Comparative range", comparativeRange));
-    }
-    statementRows.addAll(rows);
-    return List.copyOf(statementRows);
+    return reportParameters(bookIdentity, postingCoverage, rows);
   }
 }

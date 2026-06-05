@@ -91,53 +91,18 @@ final class CliDiscoveryArguments {
   }
 
   static CliCommand parseCapabilities(List<String> arguments) {
-    @Nullable OutputMode outputMode = null;
-    @Nullable DiscoveryDetail detail = null;
-    @Nullable DiscoveryFocus focus = null;
-    @Nullable OperationCategory category = null;
-    ListIterator<String> argumentIterator = arguments.listIterator(1);
-    while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
-        outputMode =
-            CliOptionModes.requireOutputMode(
-                outputMode,
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-                CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-        continue;
-      }
-      if (ProtocolOptions.DETAIL.equals(argument)) {
-        detail = CliOptionModes.requireDiscoveryDetail(detail, argumentIterator);
-        continue;
-      }
-      if (ProtocolOptions.FOCUS.equals(argument)) {
-        focus = CliOptionModes.requireDiscoveryFocus(focus, argumentIterator);
-        continue;
-      }
-      if (ProtocolOptions.CATEGORY.equals(argument)) {
-        category = CliOptionModes.requireOperationCategory(category, argumentIterator);
-        continue;
-      }
-      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
-    }
-    OutputMode resolvedOutputMode = CliOptionModes.resolvedDiscoveryOutputMode(outputMode);
-    requireJsonDiscoverySelections(detail, category, focus, resolvedOutputMode);
-    DiscoveryFocus resolvedFocus =
-        focus == null
-            ? (category == null ? DiscoveryFocus.OVERVIEW : DiscoveryFocus.COMMANDS)
-            : focus;
-    if (category != null && focus != null && resolvedFocus != DiscoveryFocus.COMMANDS) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.CATEGORY,
-          ProtocolOptions.CATEGORY
-              + " requires "
-              + ProtocolOptions.FOCUS
-              + " commands on the capabilities surface.");
-    }
+    CapabilitiesOptionState options = parseCapabilitiesOptions(arguments);
+    OutputMode resolvedOutputMode =
+        CliOptionModes.resolvedDiscoveryOutputMode(options.outputMode());
+    requireJsonDiscoverySelections(
+        options.detail(), options.category(), options.focus(), resolvedOutputMode);
+    DiscoveryFocus resolvedFocus = resolvedCapabilitiesFocus(options.focus(), options.category());
+    requireCapabilitiesCategoryFocusCompatibility(
+        options.category(), options.focus(), resolvedFocus);
     return new Capabilities(
         resolvedOutputMode,
-        detail == null ? DiscoveryDetail.MINIMAL : detail,
-        new CliDiscoverySelections(resolvedFocus, category));
+        options.detail() == null ? DiscoveryDetail.MINIMAL : options.detail(),
+        new CliDiscoverySelections(resolvedFocus, options.category()));
   }
 
   static CliCommand parseEnvironment(List<String> arguments) {
@@ -230,6 +195,60 @@ final class CliDiscoveryArguments {
         ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT));
   }
 
+  private static CapabilitiesOptionState parseCapabilitiesOptions(List<String> arguments) {
+    @Nullable OutputMode outputMode = null;
+    @Nullable DiscoveryDetail detail = null;
+    @Nullable DiscoveryFocus focus = null;
+    @Nullable OperationCategory category = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (ProtocolOptions.OUTPUT.equals(argument)) {
+        outputMode =
+            CliOptionModes.requireOutputMode(
+                outputMode,
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
+        continue;
+      }
+      if (ProtocolOptions.DETAIL.equals(argument)) {
+        detail = CliOptionModes.requireDiscoveryDetail(detail, argumentIterator);
+        continue;
+      }
+      if (ProtocolOptions.FOCUS.equals(argument)) {
+        focus = CliOptionModes.requireDiscoveryFocus(focus, argumentIterator);
+        continue;
+      }
+      if (ProtocolOptions.CATEGORY.equals(argument)) {
+        category = CliOptionModes.requireOperationCategory(category, argumentIterator);
+        continue;
+      }
+      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+    }
+    return new CapabilitiesOptionState(outputMode, detail, focus, category);
+  }
+
+  private static DiscoveryFocus resolvedCapabilitiesFocus(
+      @Nullable DiscoveryFocus focus, @Nullable OperationCategory category) {
+    return focus == null
+        ? (category == null ? DiscoveryFocus.OVERVIEW : DiscoveryFocus.COMMANDS)
+        : focus;
+  }
+
+  private static void requireCapabilitiesCategoryFocusCompatibility(
+      @Nullable OperationCategory category,
+      @Nullable DiscoveryFocus focus,
+      DiscoveryFocus resolvedFocus) {
+    if (category != null && focus != null && resolvedFocus != DiscoveryFocus.COMMANDS) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.CATEGORY,
+          ProtocolOptions.CATEGORY
+              + " requires "
+              + ProtocolOptions.FOCUS
+              + " commands on the capabilities surface.");
+    }
+  }
+
   private static void requireJsonDiscoverySelections(
       @Nullable DiscoveryDetail detail,
       @Nullable OperationCategory category,
@@ -261,4 +280,11 @@ final class CliDiscoveryArguments {
     /** Builds one parsed discovery command with the resolved output mode. */
     CliCommand create(OutputMode outputMode);
   }
+
+  /** Parsed JSON-only selectors for one capabilities discovery invocation. */
+  private record CapabilitiesOptionState(
+      @Nullable OutputMode outputMode,
+      @Nullable DiscoveryDetail detail,
+      @Nullable DiscoveryFocus focus,
+      @Nullable OperationCategory category) {}
 }

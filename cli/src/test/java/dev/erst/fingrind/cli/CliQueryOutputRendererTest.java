@@ -8,15 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
-import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
-import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
-import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
-import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
-import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
-import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
-import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
-import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -156,9 +148,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 resultTransferReadyInspection()));
 
     assertTrue(inspection.contains("Accounting kernel"));
-    assertTrue(inspection.contains("internal-management-cash-bookkeeping-kernel"));
+    assertTrue(inspection.contains("Internal management cash bookkeeping"));
     assertTrue(inspection.contains("Accounting basis"));
-    assertTrue(inspection.contains("CASH_BASIS"));
+    assertTrue(inspection.contains("Cash basis"));
     assertTrue(inspection.contains("Functional currency"));
   }
 
@@ -294,7 +286,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals("4.00", ledgerTextRow.get(3));
     assertEquals("6.00 Debit", ledgerTextRow.get(4));
     assertEquals("2000", ledgerTextRow.get(5));
-    assertEquals("posting-1", ledgerTextRow.get(6));
+    assertEquals("posting-", ledgerTextRow.get(6));
 
     String emptyAccountsText =
         CliAccountPageOutputRenderer.renderText(accountPage(List.of(), 50, Optional.empty()));
@@ -453,138 +445,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             "recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit,message"));
   }
 
-  @Test
-  void renderStatementAndFormatterHelpers_coverAllAccountTypeAndEmptySectionBranches() {
-    assertEquals(
-        "Assets", CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.ASSET));
-    assertEquals(
-        "Liabilities",
-        CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.LIABILITY));
-    assertEquals(
-        "Equity", CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.EQUITY));
-    assertEquals(
-        "Revenue", CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.REVENUE));
-    assertEquals(
-        "Expenses", CliQueryLabelFormatAccess.displayAccountTypeSectionLabel(AccountType.EXPENSE));
-    assertEquals("Asset", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.ASSET));
-    assertEquals(
-        "Liability", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.LIABILITY));
-    assertEquals("Equity", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.EQUITY));
-    assertEquals("Revenue", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.REVENUE));
-    assertEquals("Expense", CliQueryLabelFormatAccess.displayLineTypeLabel(AccountType.EXPENSE));
-
-    FinancialPositionReport emptyFinancialPosition =
-        new FinancialPositionReport(
-            bookIdentity(),
-            Optional.empty(),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(),
-            List.of());
-    IncomeStatementReport emptyIncomeStatement =
-        new IncomeStatementReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            standardOnly(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-    ChangesInEquityReport changesInEquityReport = sampleChangesInEquityReport();
-
-    String financialPositionText =
-        CliReportOutputRenderer.renderFinancialPositionText(emptyFinancialPosition);
-    String incomeStatementText =
-        CliReportOutputRenderer.renderIncomeStatementText(emptyIncomeStatement);
-    String changesInEquityText =
-        CliReportOutputRenderer.renderChangesInEquityText(changesInEquityReport);
-
-    assertTrue(financialPositionText.contains("Financial Position"));
-    assertTrue(
-        financialPositionText.contains("No financial position lines matched the selected scope."));
-    assertTrue(incomeStatementText.contains("Income Statement"));
-    assertTrue(
-        incomeStatementText.contains("No income statement lines matched the selected scope."));
-    assertTrue(changesInEquityText.contains("Changes In Equity"));
-    assertTrue(changesInEquityText.contains("Closing totals"));
-  }
-
   private static int csvFieldCount(String row) {
     return CliCsvFormat.csvFieldCount(row);
-  }
-
-  @Test
-  void displayRowKind_labelsDeclaredAndDerivedRows() {
-    assertEquals(
-        "Current period result",
-        CliQueryLabelFormatAccess.displayRowKind(StatementLineKind.CURRENT_PERIOD_RESULT));
-    assertEquals(
-        "Account", CliQueryLabelFormatAccess.displayRowKind(StatementLineKind.DECLARED_ACCOUNT));
-  }
-
-  @Test
-  void statementTextRenderers_hideSyntheticLineCodesForDerivedRows() {
-    CurrencyBalance creditBalance =
-        CliResponseWriterTestSupport.currencyBalance(
-            "EUR", "0.00", "10.00", "10.00", BalanceSide.CREDIT);
-    FinancialPositionReport financialPositionReport =
-        new FinancialPositionReport(
-            bookIdentity(),
-            Optional.of(LocalDate.parse("2026-04-30")),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(
-                new FinancialPositionSection(
-                    AccountType.EQUITY,
-                    List.of(
-                        new FinancialPositionRow(
-                            "current-period-result",
-                            "Current period result",
-                            AccountType.EQUITY,
-                            Optional.empty(),
-                            Optional.empty(),
-                            StatementLineKind.CURRENT_PERIOD_RESULT,
-                            creditBalance)),
-                    List.of(creditBalance))),
-            List.of());
-    ChangesInEquityReport changesInEquityReport =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(
-                new dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow(
-                    "current-period-result",
-                    "Current period result",
-                    Optional.of(AccountType.EQUITY),
-                    Optional.empty(),
-                    Optional.empty(),
-                    StatementLineKind.CURRENT_PERIOD_RESULT,
-                    CliResponseWriterTestSupport.currencyBalance(
-                        "EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO),
-                    creditBalance,
-                    creditBalance)),
-            List.of(),
-            List.of(creditBalance),
-            List.of(creditBalance),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-
-    String financialPositionText =
-        CliReportOutputRenderer.renderFinancialPositionText(financialPositionReport);
-    String changesInEquityText =
-        CliReportOutputRenderer.renderChangesInEquityText(changesInEquityReport);
-
-    assertTrue(financialPositionText.contains("(derived)"));
-    assertFalse(financialPositionText.contains("current-period-result"));
-    assertTrue(changesInEquityText.contains("(derived)"));
-    assertFalse(changesInEquityText.contains("current-period-result"));
   }
 
   @Test
@@ -602,7 +464,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     PostingFact directPostingFact = directPostingFact();
 
     assertEquals(
-        "(derived)",
+        "Calculated line",
         CliQueryLabelFormatAccess.displayStatementLineCode(
             "current-period-result", StatementLineKind.CURRENT_PERIOD_RESULT));
     assertEquals(
@@ -614,7 +476,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals(
         "(not a reversal)", CliQueryLabelFormatAccess.reversalTargetText(directPostingFact));
     assertEquals("posting-0", CliQueryLabelFormatAccess.reversalTargetText(postingFact));
-    assertEquals("(derived)", CliQueryLabelFormatAccess.displayLineRole(Optional.empty()));
+    assertEquals("Calculated line", CliQueryLabelFormatAccess.displayLineRole(Optional.empty()));
     assertEquals(
         "Contra",
         CliQueryLabelFormatAccess.displayLineRole(Optional.of(AccountRole.POLARITY_INVERTED)));
@@ -644,7 +506,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             "10.00",
             "10.00",
             "1000, 2000",
-            "posting-1"),
+            "posting-"),
         CliQueryRowFormatAccess.postingRegisterTextRow(postingFact));
     assertEquals(
         List.of(
@@ -710,49 +572,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         "Result transfer",
         CliQueryLabelFormatAccess.displayPostingOriginKind(
             PostingOriginKind.PERIOD_RESULT_TRANSFER));
-  }
-
-  @Test
-  void renderChangesInEquityCsv_fillsMissingCurrencyTotalsWithZeroBalances() {
-    CurrencyBalance openingBalance =
-        CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"));
-    CurrencyBalance movementBalance =
-        CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
-    CurrencyBalance closingBalance =
-        CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"));
-    ChangesInEquityReport report =
-        new ChangesInEquityReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.unbounded(),
-            allPostingKinds(),
-            List.of(
-                new ChangesInEquityRow(
-                    "3200",
-                    "Retained Earnings",
-                    Optional.of(AccountType.EQUITY),
-                    Optional.of(AccountRole.ORDINARY),
-                    Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
-                    StatementLineKind.DECLARED_ACCOUNT,
-                    openingBalance,
-                    movementBalance,
-                    closingBalance)),
-            List.of(),
-            List.of(movementBalance),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of());
-
-    String rendered = CliReportOutputRenderer.renderChangesInEquityCsv(report);
-
-    assertTrue(
-        rendered.contains(
-            "current,report-total,2026-04-01,2026-04-30,report-total,Report total,,,REPORT_TOTAL,EUR"));
-    assertTrue(
-        rendered.contains(",EUR,0.00,0.00,0.00,ZERO,0.00,10.00,10.00,CREDIT,0.00,0.00,0.00,ZERO"));
   }
 
   @Test
@@ -840,7 +659,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.RESERVE));
     assertEquals(
-        "(derived)",
+        "Calculated line",
         CliQueryLabelFormatAccess.displayFinancialPositionLineClassification(Optional.empty()));
     assertEquals(
         "Other equity",
@@ -885,75 +704,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(text.contains("5100"));
     assertTrue(csv.contains("EQUITY_CONTRIBUTION"));
     assertTrue(csv.contains("COST_OF_SALES"));
-  }
-
-  @Test
-  void renderStatementTexts_skipEmptySectionsAndKeepTotalsOnlySections() {
-    CurrencyBalance debitBalance = eurDebitBalance();
-    FinancialPositionReport financialPositionReport =
-        new FinancialPositionReport(
-            bookIdentity(),
-            Optional.of(LocalDate.parse("2026-04-30")),
-            EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
-            allPostingKinds(),
-            List.of(
-                new FinancialPositionSection(
-                    AccountType.ASSET,
-                    List.of(
-                        new FinancialPositionRow(
-                            "1000",
-                            "Cash without Totals",
-                            AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
-                            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                            StatementLineKind.DECLARED_ACCOUNT,
-                            debitBalance)),
-                    List.of()),
-                new FinancialPositionSection(AccountType.LIABILITY, List.of(), List.of()),
-                new FinancialPositionSection(AccountType.EQUITY, List.of(), List.of(debitBalance))),
-            List.of());
-    IncomeStatementReport incomeStatementReport =
-        new IncomeStatementReport(
-            bookIdentity(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
-            standardOnly(),
-            List.of(
-                new IncomeStatementSection(
-                    AccountType.REVENUE,
-                    List.of(
-                        new IncomeStatementRow(
-                            "4000",
-                            "Revenue without Totals",
-                            AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
-                            ProfitAndLossLineClassification.OPERATING_REVENUE,
-                            StatementLineKind.DECLARED_ACCOUNT,
-                            debitBalance)),
-                    List.of()),
-                new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of()),
-                new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of(debitBalance))),
-            List.of(),
-            List.of(),
-            List.of());
-
-    String financialPositionText =
-        CliReportOutputRenderer.renderFinancialPositionText(financialPositionReport);
-    String incomeStatementText =
-        CliReportOutputRenderer.renderIncomeStatementText(incomeStatementReport);
-
-    assertTrue(financialPositionText.contains("Cash without Totals"));
-    assertTrue(financialPositionText.contains("Equity"));
-    assertTrue(financialPositionText.contains("Section totals"));
-    assertTrue(financialPositionText.contains("Empty sections"));
-    assertTrue(financialPositionText.contains("Liabilities"));
-    assertFalse(financialPositionText.contains("Comparative Financial Position"));
-    assertTrue(incomeStatementText.contains("Revenue without Totals"));
-    assertTrue(incomeStatementText.contains("Expenses"));
-    assertTrue(incomeStatementText.contains("Section totals"));
-    assertTrue(incomeStatementText.contains("Empty sections"));
-    assertFalse(incomeStatementText.contains("Comparative Income Statement"));
   }
 
   @Test

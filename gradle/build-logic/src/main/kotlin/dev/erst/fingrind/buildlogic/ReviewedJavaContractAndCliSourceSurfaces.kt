@@ -20,6 +20,9 @@ internal val reviewedJavaContractAndCliSourceSurfaces =
             methodLineSpan = 140,
             methodParameters = 12,
             methodDecisionPoints = 24,
+            expiresOn = reviewedExpiry(7, 15),
+            budgetVarianceReason =
+                "The published rejection-language catalog exceeds the default exported seam budget until the named rejection families are split.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/contract/discovery/ContractTemplates.java",
@@ -39,6 +42,11 @@ internal val reviewedJavaContractAndCliSourceSurfaces =
             methodLineSpan = 70,
             methodParameters = 8,
             methodDecisionPoints = 16,
+            expiresOn = reviewedExpiry(7, 22),
+            budgetVarianceReason =
+                "The published discovery template namespace exceeds the default exported seam budget until request-template families finish splitting.",
+            duplicationExemptionReason =
+                "The published template namespace intentionally repeats machine-contract record structure until template families move into separate owners.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/cli/json/CliDiscoveryJsonModels.java",
@@ -58,6 +66,11 @@ internal val reviewedJavaContractAndCliSourceSurfaces =
             methodLineSpan = 60,
             methodParameters = 6,
             methodDecisionPoints = 14,
+            expiresOn = reviewedExpiry(7, 29),
+            budgetVarianceReason =
+                "The discovery JSON aggregate exceeds the default CLI JSON budget until capabilities, help, and environment payload families finish splitting.",
+            duplicationExemptionReason =
+                "The discovery JSON aggregate intentionally repeats machine-contract record structure until payload families move into separate owners.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
@@ -77,6 +90,11 @@ internal val reviewedJavaContractAndCliSourceSurfaces =
             methodLineSpan = 60,
             methodParameters = 6,
             methodDecisionPoints = 14,
+            expiresOn = reviewedExpiry(8, 5),
+            budgetVarianceReason =
+                "The ledger-plan JSON aggregate exceeds the default CLI JSON budget until envelope, fact, and rejection payload families finish splitting.",
+            duplicationExemptionReason =
+                "The ledger-plan JSON aggregate intentionally repeats machine-contract record structure until payload families move into separate owners.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/cli/json/CliRejectionJsonModels.java",
@@ -96,6 +114,11 @@ internal val reviewedJavaContractAndCliSourceSurfaces =
             methodLineSpan = 60,
             methodParameters = 6,
             methodDecisionPoints = 14,
+            expiresOn = reviewedExpiry(8, 12),
+            budgetVarianceReason =
+                "The rejection JSON aggregate exceeds the default CLI JSON budget until rejection families move into separate owners.",
+            duplicationExemptionReason =
+                "The rejection JSON aggregate intentionally repeats machine-contract record structure until rejection payload families move into separate owners.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/cli/json/CliReportJsonModels.java",
@@ -115,6 +138,11 @@ internal val reviewedJavaContractAndCliSourceSurfaces =
             methodLineSpan = 60,
             methodParameters = 6,
             methodDecisionPoints = 14,
+            expiresOn = reviewedExpiry(8, 19),
+            budgetVarianceReason =
+                "The report JSON aggregate exceeds the default CLI JSON budget until statement families move into separate owners.",
+            duplicationExemptionReason =
+                "The report JSON aggregate intentionally repeats machine-contract record structure until report payload families move into separate owners.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/contract/protocol/ProtocolAdministrationOperations.java",
@@ -134,6 +162,9 @@ internal val reviewedJavaContractAndCliSourceSurfaces =
             methodLineSpan = 320,
             methodParameters = 16,
             methodDecisionPoints = 24,
+            expiresOn = reviewedExpiry(8, 26),
+            budgetVarianceReason =
+                "The administration operation catalog exceeds the default exported seam budget until administration families move into separate published owners.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/contract/protocol/ProtocolQueryOperations.java",
@@ -153,5 +184,8 @@ internal val reviewedJavaContractAndCliSourceSurfaces =
             methodLineSpan = 360,
             methodParameters = 16,
             methodDecisionPoints = 24,
+            expiresOn = reviewedExpiry(9, 2),
+            budgetVarianceReason =
+                "The query operation catalog exceeds the default exported seam budget until query families move into separate published owners.",
         ),
     )

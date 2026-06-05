@@ -140,27 +140,39 @@ def python_budget_for(relative_path: Path) -> FileBudget:
         return reviewed.budget
     path_text = relative_path.as_posix()
     if path_text.startswith("scripts/release_smoke_workflow/"):
-        return FileBudget(
-            role_name="python-release-smoke-support",
-            max_physical_lines=240,
-            max_logical_lines=200,
-            max_import_like_lines=14,
-            max_functions=14,
-            max_nested_types=6,
-            max_duplicate_window_lines=24,
-            split_hint="split the release-smoke helper by one scenario, CLI, or assertion responsibility family.",
-        )
+        return python_release_smoke_support_budget()
     if relative_path.name.startswith("test-"):
-        return FileBudget(
-            role_name="python-script-test",
-            max_physical_lines=320,
-            max_logical_lines=260,
-            max_import_like_lines=14,
-            max_functions=16,
-            max_nested_types=6,
-            max_duplicate_window_lines=24,
-            split_hint="split the Python regression test by fixture generation versus assertion-owner helpers.",
-        )
+        return python_script_test_budget()
+    return python_support_budget()
+
+
+def python_release_smoke_support_budget() -> FileBudget:
+    return FileBudget(
+        role_name="python-release-smoke-support",
+        max_physical_lines=240,
+        max_logical_lines=200,
+        max_import_like_lines=14,
+        max_functions=14,
+        max_nested_types=6,
+        max_duplicate_window_lines=24,
+        split_hint="split the release-smoke helper by one scenario, CLI, or assertion responsibility family.",
+    )
+
+
+def python_script_test_budget() -> FileBudget:
+    return FileBudget(
+        role_name="python-script-test",
+        max_physical_lines=320,
+        max_logical_lines=260,
+        max_import_like_lines=14,
+        max_functions=16,
+        max_nested_types=6,
+        max_duplicate_window_lines=24,
+        split_hint="split the Python regression test by fixture generation versus assertion-owner helpers.",
+    )
+
+
+def python_support_budget() -> FileBudget:
     return FileBudget(
         role_name="python-support",
         max_physical_lines=320,
@@ -177,6 +189,10 @@ def sql_budget_for(relative_path: Path) -> FileBudget:
     reviewed = REVIEWED_SURFACES.get(relative_path.as_posix())
     if reviewed is not None:
         return reviewed.budget
+    return sqlite_sql_support_budget()
+
+
+def sqlite_sql_support_budget() -> FileBudget:
     return FileBudget(
         role_name="sqlite-sql-support",
         max_physical_lines=220,

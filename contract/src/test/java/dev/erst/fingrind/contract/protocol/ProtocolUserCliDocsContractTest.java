@@ -73,6 +73,15 @@ class ProtocolUserCliDocsContractTest extends ProtocolContractRepositorySupport 
     assertEquals(expected.stripTrailing(), extractReadmeTrialBalanceBlock(readme).stripTrailing());
   }
 
+  @Test
+  void readmeQuickStart_isBundleSafeAndFixtureFree() throws IOException {
+    String readme = Files.readString(repositoryRoot().resolve("README.md"));
+
+    assertTrue(readme.contains("fingrind print-request-template > ./request.json"));
+    assertTrue(readme.contains("--request-file ./request.json"));
+    assertFalse(readme.contains("./docs/examples/basic-posting-request.json"));
+  }
+
   private static String extractReadmeTrialBalanceBlock(String readme) {
     String marker = "\n```\nTrial Balance\n=============\n";
     int markerIndex = readme.indexOf(marker);

@@ -16,7 +16,10 @@ import org.gradle.api.tasks.bundling.Tar
 import org.gradle.api.tasks.bundling.Zip
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.language.jvm.tasks.ProcessResources
+import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
@@ -27,17 +30,23 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
         with(project) {
             val repositoryRootDirectory = rootProject.projectDir.toPath()
             val fingrindJavaVersion = FinGrindBuildMetadata.load(this).javaVersion
+            val javaToolchainService = project.extensions.getByType<JavaToolchainService>()
+            val sourceCheckoutJavaLauncher =
+                javaToolchainService.launcherFor {
+                    languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
+                }
             val publicCliBundleTargets =
                 DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
             val unsupportedPublicCliBundleTargets =
                 DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRootDirectory)
             val hostBundleTarget = DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)
+            val hostManagedSqlite = ManagedSqliteProvisioningRegistry.require(rootProject)
             val managedSqlitePackageId =
                 DistributionContractReader.requiredSqliteSourcePackageId(repositoryRootDirectory)
-            val hostManagedSqlite = ManagedSqliteProvisioningRegistry.require(rootProject)
             val dockerManagedSqlite =
                 ManagedSqliteProvisioningLogic.registerDockerContextTarget(
                     project = rootProject,
+                    hostProvisioning = hostManagedSqlite,
                     repositoryRootDirectory = repositoryRootDirectory,
                     sqliteSourceDirectory =
                         rootProject.layout.projectDirectory.dir(
@@ -74,8 +83,6 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 )
             val bundleName =
                 bundleClassifier.map { classifier -> "fingrind-${project.version}-$classifier" }
-            val currentJavaHomeDirectory =
-                layout.dir(providers.provider { file(System.getProperty("java.home")) })
             val compileOnlyConfiguration = configurations.named("compileOnly")
             val jdepsInputsConfiguration =
                 configurations.create("jdepsInputs") {
@@ -95,14 +102,9 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
             val dockerBuildContextDirectory = layout.buildDirectory.dir("docker-context")
             val dockerBuildContextManifestOutputFile =
                 layout.buildDirectory.file("generated/docker/docker-build-context-manifest.json")
-            val sourceCheckoutArtifactManifestOutputFile =
+            val sourceCheckoutRuntimeManifestOutputFile =
                 layout.buildDirectory.file(
-                    "generated/source-checkout/source-checkout-artifact-manifest.tsv",
-                )
-            val sourceCheckoutArtifactSourceInputs =
-                CliDistributionSourceInventory.sourceCheckoutArtifactSourceFiles(
-                    project,
-                    repositoryRootDirectory,
+                    "generated/source-checkout/source-checkout-runtime-manifest.tsv",
                 )
             val dockerBuildContextSourceInputs =
                 CliDistributionSourceInventory.dockerBuildContextSourceFiles(
@@ -196,21 +198,26 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 workingDir = rootProject.projectDir
             }
 
-            val writeSourceCheckoutArtifactManifest =
-                tasks.register<WriteSourceFileHashManifestTask>("writeSourceCheckoutArtifactManifest") {
+            val writeSourceCheckoutRuntimeManifest =
+                tasks.register<WriteSourceCheckoutRuntimeManifestTask>(
+                    "writeSourceCheckoutRuntimeManifest",
+                ) {
                     group = "distribution"
                     description =
-                        "Writes the source-hash manifest that proves the checkout-local raw JAR matches the current sources."
+                        "Writes the source-checkout runtime manifest that points supported developer launchers at the Gradle-owned Java 26 toolchain."
                     dependsOn(shadowJarTask)
-                    ownerTaskName.set("shadowJar")
-                    repositoryRootPath.set(repositoryRootDirectory.toString())
-                    sourceFiles.from(sourceCheckoutArtifactSourceInputs)
-                    outputFile.set(sourceCheckoutArtifactManifestOutputFile)
-                    outputs.upToDateWhen { false }
+                    ownerTaskName.set("writeSourceCheckoutRuntimeManifest")
+                    javaExecutable.set(sourceCheckoutJavaLauncher.map { it.executablePath })
+                    javaInstallationDirectory.set(
+                        sourceCheckoutJavaLauncher.map { it.metadata.installationPath },
+                    )
+                    nativeAccessModule.set("fingrind")
+                    applicationModule.set("fingrind/dev.erst.fingrind.cli.App")
+                    outputFile.set(sourceCheckoutRuntimeManifestOutputFile)
                 }
 
             shadowJarTask.configure {
-                finalizedBy(writeSourceCheckoutArtifactManifest)
+                finalizedBy(writeSourceCheckoutRuntimeManifest)
             }
 
             tasks.named<ProcessResources>("processResources") {
@@ -250,7 +257,10 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     group = "distribution"
                     description = "Computes the Java module set required by the FinGrind CLI bundle."
                     dependsOn(shadowJarTask)
-                    javaHomeDirectory.set(currentJavaHomeDirectory)
+                    javaExecutable.set(sourceCheckoutJavaLauncher.map { it.executablePath })
+                    javaInstallationDirectory.set(
+                        sourceCheckoutJavaLauncher.map { it.metadata.installationPath },
+                    )
                     applicationJar.set(shadowJarArchiveFile)
                     javaVersion.set(fingrindJavaVersion)
                     additionalModules.set(listOf("jdk.unsupported"))
@@ -280,7 +290,10 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     group = "distribution"
                     description = "Builds the private Java runtime image for the FinGrind CLI bundle."
                     dependsOn(writeRuntimeModuleList)
-                    javaHomeDirectory.set(currentJavaHomeDirectory)
+                    javaExecutable.set(sourceCheckoutJavaLauncher.map { it.executablePath })
+                    javaInstallationDirectory.set(
+                        sourceCheckoutJavaLauncher.map { it.metadata.installationPath },
+                    )
                     runtimeModuleListFile.set(runtimeModuleListOutputFile)
                     outputDirectory.set(runtimeImageDirectory)
                 }

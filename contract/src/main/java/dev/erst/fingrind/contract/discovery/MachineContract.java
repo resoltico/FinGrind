@@ -49,7 +49,7 @@ public final class MachineContract {
                 .toList(),
         selectedOperation == null
             ? MachineContractQuickStarts.canonicalQuickStart(
-                environment.distribution().runtimeDistribution())
+                environment.runtime().runtimeDistribution())
             : List.of(),
         MachineContractDomainDescriptors.exitCodes(),
         MachineContractDomainDescriptors.preflight(),

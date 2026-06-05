@@ -22,6 +22,8 @@ def verify_backup_restore_and_rollback_surfaces(
             config.backup_book.argument,
             "--backup-book-key-file-out",
             config.backup_book_key.argument,
+            "--output",
+            "json",
         ),
         f"{config.label} backup-book output was not valid JSON",
     )
@@ -48,6 +50,8 @@ def verify_backup_restore_and_rollback_surfaces(
             config.backup_book.argument,
             "--backup-book-key-file",
             config.backup_book_key.argument,
+            "--output",
+            "json",
         ),
         f"{config.label} restore-book output was not valid JSON",
     )
@@ -67,6 +71,8 @@ def verify_backup_restore_and_rollback_surfaces(
         config.restored_book.argument,
         "--book-key-file",
         config.backup_book_key.argument,
+        "--output",
+        "json",
     )
     require_match(
         restored_accounts_output,
@@ -85,6 +91,8 @@ def verify_backup_restore_and_rollback_surfaces(
             operation_ids["inspectRekeyRollback"],
             "--book-file",
             config.book.argument,
+            "--output",
+            "json",
         ),
         f"{config.label} inspect-rekey-rollback output was not valid JSON",
     )

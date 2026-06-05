@@ -76,6 +76,10 @@ final class CliFinancialPositionReportRenderer {
         List.of(
             "As of",
             CliQueryScopeText.upperDateBoundaryLabel(report.effectiveDateAsOf().orElse(null))));
+    rows.add(
+        List.of(
+            "Accounting equation",
+            report.accountingEquationBalanced() ? "Balanced" : "Imbalanced"));
     if (renderableSections.isEmpty()) {
       rows.add(List.of("Outcome", CliQueryScopeText.noMatchesLabel("financial position lines")));
     } else {

@@ -100,8 +100,8 @@ domain: USER_CLI
 updated: "2026-04-20"
 ---
 
-tar -xzf fingrind-1.2.3-macos-aarch64.tar.gz
-Expand-Archive fingrind-1.2.3-windows-x86_64.zip -DestinationPath .
+tar -xzf fingrind-1.2.3-linux-x86_64.tar.gz
+tar -xzf fingrind-1.2.3-linux-aarch64.tar.gz
 EOF
 
 cat > "${fixture_root}/docs/USER_EXAMPLES.md" <<'EOF'
@@ -112,8 +112,7 @@ domain: USER_EXAMPLES
 updated: "2026-04-20"
 ---
 
-./fingrind-1.2.3-macos-aarch64/bin/fingrind help
-.\fingrind-1.2.3-windows-x86_64\bin\fingrind.ps1 help
+./fingrind-1.2.3-linux-x86_64/bin/fingrind help
 EOF
 
 cat > "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" <<'EOF'
@@ -151,9 +150,8 @@ FINGRIND_RELEASE_REPO_ROOT="${fixture_root}" \
 require_file_contains "${fixture_root}/gradle.properties" 'version=1.2.4'
 require_file_contains "${fixture_root}/docs/RELEASE_PROTOCOL.md" 'version: "1.2.4"'
 require_file_contains "${fixture_root}/docs/RELEASE_PROTOCOL.md" 'updated: "2026-04-23"'
-require_file_contains "${fixture_root}/docs/USER_CLI.md" 'fingrind-1.2.4-macos-aarch64.tar.gz'
-require_file_contains "${fixture_root}/docs/USER_CLI.md" 'fingrind-1.2.4-windows-x86_64.zip'
-require_file_contains "${fixture_root}/docs/USER_EXAMPLES.md" './fingrind-1.2.4-macos-aarch64/bin/fingrind help'
+require_file_contains "${fixture_root}/docs/USER_CLI.md" 'fingrind-1.2.4-linux-x86_64.tar.gz'
+require_file_contains "${fixture_root}/docs/USER_EXAMPLES.md" './fingrind-1.2.4-linux-x86_64/bin/fingrind help'
 require_file_contains "${fixture_root}/cli/src/test/java/dev/erst/fingrind/cli/ExampleTest.java" '"1.2.4"'
 require_file_contains "${fixture_root}/report-pdf/src/test/java/dev/erst/fingrind/report/pdf/ExampleTest.java" \
     '"FinGrind 1.2.4"'

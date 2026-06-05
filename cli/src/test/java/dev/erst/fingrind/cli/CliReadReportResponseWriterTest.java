@@ -100,7 +100,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 new ListPostingsResult.Listed(
                     postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
-        "Account codes");
+        "Accounts");
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(
@@ -201,7 +201,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
-        "Counterpart account codes");
+        "Counterparts");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(

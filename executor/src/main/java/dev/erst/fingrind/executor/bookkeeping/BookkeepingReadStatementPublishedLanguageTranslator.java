@@ -22,6 +22,7 @@ public final class BookkeepingReadStatementPublishedLanguageTranslator {
         view.effectiveDateAsOf(),
         view.comparativeEffectiveDateRange(),
         view.postingCoverage(),
+        view.accountingEquationBalanced(),
         view.sections().stream()
             .map(BookkeepingReadStatementPublishedLanguageTranslator::toPublished)
             .toList(),

@@ -20,6 +20,9 @@ internal val reviewedJavaExecutorAndSqliteSourceSurfaces =
             methodLineSpan = 100,
             methodParameters = 10,
             methodDecisionPoints = 20,
+            expiresOn = reviewedExpiry(7, 10),
+            budgetVarianceReason =
+                "The close-planning owner exceeds the default production budget until readiness, horizon, and posting-shape concerns are split further.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/executor/workflow/BookWorkflowExecutionService.java",
@@ -39,6 +42,9 @@ internal val reviewedJavaExecutorAndSqliteSourceSurfaces =
             methodLineSpan = 85,
             methodParameters = 10,
             methodDecisionPoints = 18,
+            expiresOn = reviewedExpiry(7, 17),
+            budgetVarianceReason =
+                "The workflow execution owner exceeds the default production budget until command-family dispatch seams are split further.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSqlLiterals.java",
@@ -58,25 +64,9 @@ internal val reviewedJavaExecutorAndSqliteSourceSurfaces =
             methodLineSpan = 20,
             methodParameters = 0,
             methodDecisionPoints = 2,
-        ),
-        reviewedJavaSourceSurface(
-            relativePath = "src/main/java/dev/erst/fingrind/sqlite/SqliteStoreMutationOperations.java",
-            owner = "sqlite-mutation",
-            reason =
-                "SQLite mutation orchestration remains one reviewed store surface rather than a silently growing write-side bucket.",
-            splitTrigger =
-                "Split by lifecycle mutation, account mutation, and posting mutation families before adding another write concern.",
-            roleName = "sqlite-mutation-operations",
-            physicalLines = 409,
-            logicalLines = 389,
-            imports = 33,
-            nestedTypes = 6,
-            methodsPerTopLevelType = 18,
-            fieldsPerTopLevelType = 10,
-            switchArmsPerMethod = 10,
-            methodLineSpan = 110,
-            methodParameters = 10,
-            methodDecisionPoints = 20,
+            expiresOn = reviewedExpiry(7, 24),
+            budgetVarianceReason =
+                "The SQLite posting SQL catalog exceeds the default production budget until query families are generated or split into narrower catalogs.",
         ),
         reviewedJavaSourceSurface(
             relativePath = "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeCalls.java",
@@ -96,5 +86,8 @@ internal val reviewedJavaExecutorAndSqliteSourceSurfaces =
             methodLineSpan = 20,
             methodParameters = 12,
             methodDecisionPoints = 2,
+            expiresOn = reviewedExpiry(8, 7),
+            budgetVarianceReason =
+                "The typed native-call table exceeds the default production budget until lifecycle, statement, and metadata call families are split further.",
         ),
     )

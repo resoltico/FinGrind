@@ -39,7 +39,7 @@ source "${verification_support}"
 
 readonly blocking_checks_csv="$(fingrind_required_ci_checks_csv)"
 readonly poll_interval_seconds="${FINGRIND_RELEASE_CHECK_POLL_INTERVAL_SECONDS:-10}"
-readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-3000}"
+readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-2400}"
 
 [[ -n "${tag_name}" ]] || die "release tag is required"
 [[ "${tag_name}" == v* ]] || die "release tag must start with v"

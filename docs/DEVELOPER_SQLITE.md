@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -147,16 +147,16 @@ License and attribution stance:
   runtime provenance family as the extracted bundle instead of the operator override path
 - public CLI bundles are also managed-only: the launcher sets `fingrind.bundle.home`, and the
   runtime resolves the managed SQLite library from `lib/native/` inside the extracted bundle
-- generated source-checkout launchers are managed-only as well: after
-  `./gradlew :cli:installShadowDist prepareManagedSqlite`, the launcher resolves the managed
-  SQLite library from that prepared checkout automatically, and the repo-owned wrapper refreshes
-  the cached raw JAR plus managed runtime when the current checkout has moved ahead of the last
-  prepared build
+- the source-checkout wrapper is managed-only as well: it resolves the managed SQLite library
+  from the prepared checkout automatically, and the repo-owned wrapper refreshes the cached raw
+  JAR, the source-checkout runtime manifest, and the managed runtime when the current checkout has
+  moved ahead of the last prepared build
 - the developer direct-Java wrappers (`./scripts/direct-java-cli.sh` and
   `.\scripts\direct-java-cli.ps1`) are the supported non-bundle Java entrypoints; they resolve
-  the same managed SQLite library automatically from a prepared checkout and grant native access
-  only to the `fingrind` module, and they refresh the cached raw JAR from the live checkout when
-  the source-hash manifest shows drift
+  the same managed SQLite library automatically from a prepared checkout, launch through the
+  Gradle-owned Java 26 toolchain executable, grant native access only to the `fingrind` module,
+  and refresh the cached raw JAR plus the source-checkout runtime manifest when the live checkout
+  has drifted ahead of the last prepared build
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
 - `:cli:shadowJar` packages only the Java application surface; local standalone verification that
   wants the managed native library must also run `prepareManagedSqlite` first. When the resulting
@@ -431,8 +431,8 @@ Reasons for the current design:
   code into FinGrind itself
 
 Managed runtime targets currently build SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 from the
-vendored amalgamation on macOS and Linux. The public bundle launcher, Docker entrypoint, generated
-source-checkout launcher, and developer direct-Java wrappers all grant native access only to the
+vendored amalgamation on macOS and Linux. The public bundle launcher, Docker entrypoint,
+source-checkout wrapper, and developer direct-Java wrappers all grant native access only to the
 `fingrind` module. Selected Gradle `Test` and `JavaExec` task owners keep explicit classpath-era
 native-access flags because those developer tasks execute in the unnamed module rather than
 through the published automatic module. Controlled surfaces resolve the managed library through

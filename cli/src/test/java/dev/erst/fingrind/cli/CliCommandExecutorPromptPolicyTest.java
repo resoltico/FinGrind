@@ -160,7 +160,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
             failureWriter(outputStream),
             new CliDiagnosticsWriter(utf8PrintStream(diagnosticsStream)),
             workflow,
-            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.51.0", fixedClock())));
+            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", fixedClock())));
     CliCommand.ReportOutput jsonOutput = new CliCommand.ReportOutput(OutputMode.JSON, null);
 
     assertPromptFailure(
@@ -223,10 +223,10 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   private void assertPromptFailure(ByteArrayOutputStream outputStream, IntSupplier invocation)
       throws IOException {
     int exitCode = invocation.getAsInt();
-    assertEquals(1, exitCode);
+    assertEquals(2, exitCode);
     tools.jackson.databind.JsonNode envelope = readJson(outputStream);
     assertEquals("error", envelope.path("status").textValue());
-    assertEquals("invalid-request", envelope.path("code").textValue());
+    assertEquals("unsupported-output-selection", envelope.path("code").textValue());
     assertEquals(
         "Interactive passphrase prompting is only supported with --output text.",
         envelope.path("message").textValue());

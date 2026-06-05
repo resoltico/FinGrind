@@ -4,21 +4,17 @@ import dev.erst.fingrind.contract.discovery.ContractDiscoveryDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.PublicCliDistribution;
-import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import java.util.List;
 
-/** Descriptor for the public CLI distribution and runtime packaging contract. */
-public record EnvironmentDistributionDescriptor(
-    RuntimeDistribution runtimeDistribution,
+/** Descriptor for the public package surface that this runtime belongs to. */
+public record EnvironmentPublicationDescriptor(
     PublicCliDistribution publicCliDistribution,
     List<PublicCliBundleTarget> supportedPublicCliBundleTargets,
     List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets,
     String sourceCheckoutJava)
     implements ContractDiscoveryDescriptor {
-  /** Validates one distribution descriptor payload. */
-  public EnvironmentDistributionDescriptor {
-    runtimeDistribution =
-        ContractDescriptorValidation.requireValue(runtimeDistribution, "runtimeDistribution");
+  /** Validates one publication descriptor payload. */
+  public EnvironmentPublicationDescriptor {
     publicCliDistribution =
         ContractDescriptorValidation.requireValue(publicCliDistribution, "publicCliDistribution");
     supportedPublicCliBundleTargets =

@@ -30,8 +30,6 @@ readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
-# shellcheck source=/dev/null
-source "${repo_root}/scripts/check-process-support.sh"
 
 is_darwin=false
 if [[ "$(uname -s)" == 'Darwin' ]]; then
@@ -56,17 +54,13 @@ mkdir -p "${main_classes_dir}"
 printf 'orphaned cached class\n' > "${stale_executor_class}"
 printf 'orphaned cached class\n' > "${stale_classifier_class}"
 
-if ! run_logged_command_with_progress \
-    "${compile_log}" \
-    "jazzer stale-class pruning regression" \
-    20 \
-    ./gradlew \
+if ! ./gradlew \
     --project-dir jazzer \
     compileJava \
     --rerun-tasks \
     --no-daemon \
     --no-configuration-cache \
-    --console=plain; then
+    --console=plain >"${compile_log}"; then
     cat "${compile_log}" >&2
     exit 1
 fi

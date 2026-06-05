@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Extract the self-contained FinGrind CLI bundle and run the public office-worker acceptance
-# workflow without ambient Java or a preconfigured FINGRIND_SQLITE_LIBRARY.
+# workflow without ambient Java or any operator-managed SQLite override path.
 
 set -euo pipefail
 
@@ -117,7 +117,7 @@ python3 "${bundle_contract_verifier}" \
 export FINGRIND_RELEASE_SMOKE_LABEL="Bundle acceptance"
 export FINGRIND_RELEASE_SMOKE_REPO_ROOT="${repo_root}"
 export FINGRIND_RELEASE_SMOKE_COMMAND_PREFIX_JSON="$(json_array_of_strings "${bundle_launcher}")"
-export FINGRIND_RELEASE_SMOKE_COMMAND_ENV_DROP_JSON='["FINGRIND_SQLITE_LIBRARY","JAVA_HOME"]'
+export FINGRIND_RELEASE_SMOKE_COMMAND_ENV_DROP_JSON='["JAVA_HOME"]'
 export FINGRIND_RELEASE_SMOKE_COMMAND_ENV_SET_JSON='{"PATH":"/usr/bin:/bin"}'
 export FINGRIND_RELEASE_SMOKE_RUNTIME_DISTRIBUTION_KEY="bundleRuntimeDistribution"
 export FINGRIND_RELEASE_SMOKE_EXPECT_LOADED_SQLITE_DETAILS="true"

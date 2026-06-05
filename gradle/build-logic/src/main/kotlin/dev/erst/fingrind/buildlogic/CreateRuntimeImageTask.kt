@@ -14,9 +14,13 @@ import org.gradle.api.tasks.TaskAction
 
 @CacheableTask
 abstract class CreateRuntimeImageTask : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val javaExecutable: RegularFileProperty
+
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.NONE)
-    abstract val javaHomeDirectory: DirectoryProperty
+    abstract val javaInstallationDirectory: DirectoryProperty
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.NONE)
@@ -27,7 +31,11 @@ abstract class CreateRuntimeImageTask : DefaultTask() {
 
     @TaskAction
     fun createRuntimeImage() {
-        val javaHome = javaHomeDirectory.get().asFile
+        val javaHome = javaInstallationDirectory.get().asFile
+        val javaExecutableFile = javaExecutable.get().asFile
+        require(javaExecutableFile.isFile) {
+            "Expected Java executable at ${javaExecutableFile.absolutePath} but it was not found."
+        }
         val jlinkExecutable = executable(javaHome, "jlink")
         val jmodsDirectory = javaHome.resolve("jmods")
         if (!jmodsDirectory.isDirectory) {

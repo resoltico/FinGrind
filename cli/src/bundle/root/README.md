@@ -9,7 +9,7 @@ It already contains:
 - the platform-native public archive format `${bundleArchiveFormat}`
 
 No separate Java install is required for this archive.
-No `FINGRIND_SQLITE_LIBRARY` export is required for this archive.
+Any inherited `FINGRIND_SQLITE_LIBRARY` override is ignored for this archive.
 
 Machine-readable bundle metadata:
 - `./bundle-manifest.json`
@@ -30,8 +30,10 @@ Quick start:
 3. Run `${bundleLauncherCommand} generate-book-key-file --book-key-file ./secrets/entity.book-key`
 4. Run `${bundleLauncherCommand} open-book --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01`
 5. Run `${bundleLauncherCommand} list-accounts --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --limit 10` to inspect the seeded starter chart
-6. Run `${bundleLauncherCommand} print-request-template > ./request.json`
-7. Edit `./request.json`, then run `${bundleLauncherCommand} preflight-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json` and `${bundleLauncherCommand} post-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json`
+6. Copy the bundled first-post sample with `cp ./quick-start-request.json ./request.json`
+7. Edit `./request.json` and replace the sample evidence and provenance values before real-world use
+8. Run `${bundleLauncherCommand} preflight-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json`
+9. Run `${bundleLauncherCommand} post-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json`
 
 The best machine-readable contract after startup is:
 - `${bundleLauncherCommand} capabilities --output json`

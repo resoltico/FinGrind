@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -345,8 +345,8 @@ public final class SqliteRuntimeStateValidator
 - `SqliteRuntimeStateValidator`: canonical owner for the valid runtime-state matrix shared by the
   public descriptor layer and the SQLite runtime probe surface
 - Validation surface: `wireValue()`, `wireValues()`, `fromWireValue(...)`, and typed discovery
-  records such as `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`, and
-  `EnvironmentSqliteDescriptor`
+  records such as `EnvironmentRuntimeDescriptor`, `EnvironmentPublicationDescriptor`,
+  `EnvironmentStorageDescriptor`, and `EnvironmentSqliteDescriptor`
 - Operational reach: build logic, bundle metadata/launchers, Docker staging, and shell verifiers
   consume the same protocol-owned runtime-surface contract instead of carrying private copies of
   those wire values
@@ -546,8 +546,8 @@ public final class ContractTemplates
 - `ApplicationIdentity`, `HelpDescriptor`, `CapabilitiesDescriptor`,
   `StorageSurfaceDescriptor`, `CommandCatalogDescriptor`, `VersionDescriptor`,
   `ArtifactOutputDescriptor`, `CommandDescriptor`, `ExitCodeDescriptor`,
-  `EnvironmentDistributionDescriptor`, `EnvironmentStorageDescriptor`,
-  `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
+  `EnvironmentRuntimeDescriptor`, `EnvironmentPublicationDescriptor`,
+  `EnvironmentStorageDescriptor`, `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
 - `EnvironmentSqliteDescriptor.runtime` is an explicit state family with `ReadyRuntime`,
   `UnavailableRuntime`, `FailedRuntime`, and `IncompatibleRuntime`, so discovery payloads publish

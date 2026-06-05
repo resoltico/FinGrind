@@ -49,7 +49,7 @@ distribution_key = sys.argv[1]
 runtime_provenance = sys.argv[2]
 document = {
     "payload": {
-        "distribution": {
+        "runtime": {
             "runtimeDistribution": runtime_surface[distribution_key],
         },
         "sqlite": {
@@ -97,7 +97,7 @@ runtime_surface = contract["runtimeSurface"]
 managed_sqlite = contract["managedSqlite"]
 document = {
     "payload": {
-        "distribution": {
+        "runtime": {
             "runtimeDistribution": runtime_surface["directJavaRuntimeDistribution"],
         },
         "sqlite": {

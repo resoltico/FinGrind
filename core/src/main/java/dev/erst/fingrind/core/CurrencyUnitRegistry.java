@@ -56,39 +56,40 @@ final class CurrencyUnitRegistry {
     String line = reader.readLine();
     while (line != null) {
       lineNumber++;
-      if (line.isEmpty()) {
-        throw new IllegalStateException(
-            "Currency-unit registry line " + lineNumber + " must not be blank.");
+      ParsedCurrencyScale parsedRecord = parseCurrencyScaleRecord(line, lineNumber);
+      if (previousCode != null) {
+        assertStrictlySorted(previousCode, parsedRecord.code());
       }
-      int commaIndex = line.indexOf(',');
-      if (commaIndex <= 0 || commaIndex != line.lastIndexOf(',')) {
-        throw new IllegalStateException(
-            "Currency-unit registry line "
-                + lineNumber
-                + " must use one CODE,SCALE record format.");
-      }
-      String code = line.substring(0, commaIndex);
-      if (!code.matches("[A-Z]{3}")) {
-        throw new IllegalStateException(
-            "Currency-unit registry line "
-                + lineNumber
-                + " has unsupported code text: "
-                + code
-                + ".");
-      }
-      if (previousCode != null && code.compareTo(previousCode) <= 0) {
-        throw new IllegalStateException(
-            "Currency-unit registry must remain strictly sorted without duplicates: " + code + ".");
-      }
-      int scale = parseScale(line.substring(commaIndex + 1), lineNumber, code);
-      scaleByCode.put(code, scale);
-      previousCode = code;
+      scaleByCode.put(parsedRecord.code(), parsedRecord.scale());
+      previousCode = parsedRecord.code();
       line = reader.readLine();
     }
     if (scaleByCode.isEmpty()) {
       throw new IllegalStateException("Currency-unit registry must not be empty.");
     }
     return Collections.unmodifiableMap(scaleByCode);
+  }
+
+  private static ParsedCurrencyScale parseCurrencyScaleRecord(String line, int lineNumber) {
+    if (line.isEmpty()) {
+      throw new IllegalStateException(blankLineMessage(lineNumber));
+    }
+    int commaIndex = line.indexOf(',');
+    if (commaIndex <= 0 || commaIndex != line.lastIndexOf(',')) {
+      throw new IllegalStateException(invalidRecordFormatMessage(lineNumber));
+    }
+    String code = line.substring(0, commaIndex);
+    if (!code.matches("[A-Z]{3}")) {
+      throw new IllegalStateException(unsupportedCodeTextMessage(lineNumber, code));
+    }
+    return new ParsedCurrencyScale(
+        code, parseScale(line.substring(commaIndex + 1), lineNumber, code));
+  }
+
+  private static void assertStrictlySorted(String previousCode, String code) {
+    if (code.compareTo(previousCode) <= 0) {
+      throw new IllegalStateException(sortedWithoutDuplicatesMessage(code));
+    }
   }
 
   private static int parseScale(String scaleText, int lineNumber, String code) {
@@ -113,4 +114,25 @@ final class CurrencyUnitRegistry {
     }
     return scale;
   }
+
+  private static String blankLineMessage(int lineNumber) {
+    return "Currency-unit registry line %s must not be blank.".formatted(lineNumber);
+  }
+
+  private static String invalidRecordFormatMessage(int lineNumber) {
+    return "Currency-unit registry line %s must use one CODE,SCALE record format."
+        .formatted(lineNumber);
+  }
+
+  private static String unsupportedCodeTextMessage(int lineNumber, String code) {
+    return "Currency-unit registry line %s has unsupported code text: %s."
+        .formatted(lineNumber, code);
+  }
+
+  private static String sortedWithoutDuplicatesMessage(String code) {
+    return "Currency-unit registry must remain strictly sorted without duplicates: %s."
+        .formatted(code);
+  }
+
+  private record ParsedCurrencyScale(String code, int scale) {}
 }

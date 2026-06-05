@@ -146,20 +146,13 @@ function Invoke-BundleCommand {
         [switch] $AllowFailure
     )
 
-    $originalSqliteLibrary = $env:FINGRIND_SQLITE_LIBRARY
     $originalJavaHome = $env:JAVA_HOME
     try {
-        Remove-Item Env:FINGRIND_SQLITE_LIBRARY -ErrorAction SilentlyContinue
         Remove-Item Env:JAVA_HOME -ErrorAction SilentlyContinue
         $outputLines = & $script:BundleLauncher @Arguments 2>&1 | ForEach-Object { $_.ToString() }
         $output = ($outputLines | Where-Object { -not [string]::IsNullOrEmpty($_) }) -join "`n"
         $exitCode = $LASTEXITCODE
     } finally {
-        if ($null -ne $originalSqliteLibrary) {
-            $env:FINGRIND_SQLITE_LIBRARY = $originalSqliteLibrary
-        } else {
-            Remove-Item Env:FINGRIND_SQLITE_LIBRARY -ErrorAction SilentlyContinue
-        }
         if ($null -ne $originalJavaHome) {
             $env:JAVA_HOME = $originalJavaHome
         } else {

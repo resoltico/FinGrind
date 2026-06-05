@@ -22,44 +22,31 @@ final class MachineContractPostEntryVariantSchemas {
   }
 
   static Map<String, Object> lineSchema() {
-    return MachineContractSchemaSupport.objectSchema(
-        "One balanced journal line.", MachineContractPostEntryFieldSpecs.lineFields());
+    return MachineContractPostEntryComponentSchemas.lineSchema();
   }
 
   static Map<String, Object> openingBalanceSchema() {
-    return MachineContractSchemaSupport.objectSchema(
-        "One opening balance inside the initial accounting position.",
-        MachineContractPostEntryFieldSpecs.openingBalanceFields());
+    return MachineContractPostEntryComponentSchemas.openingBalanceSchema();
   }
 
   static Map<String, Object> provenanceSchema() {
-    return MachineContractSchemaSupport.objectSchema(
-        "Caller-supplied provenance captured before commit.",
-        MachineContractPostEntryFieldSpecs.provenanceFields());
+    return MachineContractPostEntryComponentSchemas.provenanceSchema();
   }
 
   static Map<String, Object> evidenceSchema() {
-    return MachineContractSchemaSupport.objectSchema(
-        "First-class source-document and approval references linked to this posting.",
-        MachineContractPostEntryFieldSpecs.evidenceFields());
+    return MachineContractPostEntryComponentSchemas.evidenceSchema();
   }
 
   static Map<String, Object> sourceDocumentSchema() {
-    return MachineContractSchemaSupport.objectSchema(
-        "One retained source document linked to this posting.",
-        MachineContractPostEntryFieldSpecs.sourceDocumentFields());
+    return MachineContractPostEntryComponentSchemas.sourceDocumentSchema();
   }
 
   static Map<String, Object> approvalSchema() {
-    return MachineContractSchemaSupport.objectSchema(
-        "One retained approval linked to this posting.",
-        MachineContractPostEntryFieldSpecs.approvalFields());
+    return MachineContractPostEntryComponentSchemas.approvalSchema();
   }
 
   static Map<String, Object> reversalSchema() {
-    return MachineContractSchemaSupport.objectSchema(
-        "Optional reversal target descriptor.",
-        MachineContractPostEntryFieldSpecs.reversalFields());
+    return MachineContractPostEntryComponentSchemas.reversalSchema();
   }
 
   static Map<String, Object> cashRevenueSchema() {
@@ -134,7 +121,7 @@ final class MachineContractPostEntryVariantSchemas {
     return MachineContractSchemaSupport.objectSchema(
         "Explicit administrative opening-position entry used to seed one book before operating activity begins.",
         List.of(
-            requiredEntryKindField(
+            MachineContractPostEntryComponentSchemas.requiredEntryKindField(
                 BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
                 "This request records one opening-position administrative entry."),
             MachineContractPostEntryFieldSpecs.requiredEffectiveDateField(),
@@ -149,19 +136,11 @@ final class MachineContractPostEntryVariantSchemas {
             MachineContractPostEntryFieldSpecs.requiredProvenanceField()));
   }
 
-  static Map<String, Object> openingBalanceAdjustmentSchema() {
-    return openAccountingPositionSchema();
-  }
-
-  static Map<String, Object> correctionAdjustmentSchema() {
-    return reversalAdjustmentSchema();
-  }
-
   static Map<String, Object> reversalAdjustmentSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Explicit administrative reversal entry that fully negates one previously committed posting.",
         List.of(
-            requiredEntryKindField(
+            MachineContractPostEntryComponentSchemas.requiredEntryKindField(
                 BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
                 "This request records one reversal administrative entry."),
             MachineContractPostEntryFieldSpecs.requiredEffectiveDateField(),
@@ -189,20 +168,13 @@ final class MachineContractPostEntryVariantSchemas {
     return MachineContractSchemaSupport.objectSchema(
         description,
         List.of(
-            requiredEntryKindField(kind, entryKindDescription),
+            MachineContractPostEntryComponentSchemas.requiredEntryKindField(
+                kind, entryKindDescription),
             MachineContractPostEntryFieldSpecs.requiredEffectiveDateField(),
             debitOrSourceAccountField,
             creditOrTargetAccountField,
             MachineContractPostEntryFieldSpecs.requiredAmountField(),
             MachineContractPostEntryFieldSpecs.requiredEvidenceField(),
             MachineContractPostEntryFieldSpecs.requiredProvenanceField()));
-  }
-
-  private static MachineContractFieldSpec requiredEntryKindField(
-      BookkeepingEntryKind kind, String description) {
-    return MachineContractFieldSpec.required(
-        ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-        description,
-        MachineContractScalarSchemas.constSchema(kind.wireValue(), description));
   }
 }

@@ -32,12 +32,14 @@ import java.util.Set;
 final class SqliteStoreReadOperations {
   private final SqliteStoreQueryOperations queryOperations;
   private final SqliteStoreReportOperations reportOperations;
+  private final PostingHistoryReadOperations postingHistory;
 
   SqliteStoreReadOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
     Objects.requireNonNull(context, "context");
     Objects.requireNonNull(lifecycle, "lifecycle");
     this.queryOperations = new SqliteStoreQueryOperations(context, lifecycle);
     this.reportOperations = new SqliteStoreReportOperations(context, lifecycle);
+    this.postingHistory = new PostingHistoryReadOperations(queryOperations);
   }
 
   BookLifecycleInspection inspectBook() {
@@ -76,16 +78,8 @@ final class SqliteStoreReadOperations {
     return queryOperations.listPostings(query);
   }
 
-  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
-    return queryOperations.postings(effectiveDateRange);
-  }
-
-  Optional<LocalDate> earliestPostingEffectiveDate() {
-    return queryOperations.earliestPostingEffectiveDate();
-  }
-
-  Optional<LocalDate> transferredThroughEffectiveDate() {
-    return queryOperations.transferredThroughEffectiveDate();
+  PostingHistoryReadOperations postingHistory() {
+    return postingHistory;
   }
 
   Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
@@ -107,5 +101,26 @@ final class SqliteStoreReadOperations {
 
   PeriodSummaryView periodSummary(PeriodSummaryCriteria query) {
     return reportOperations.periodSummary(query);
+  }
+
+  /** Reads posting-history facts that support close policy and posting-history projections. */
+  static final class PostingHistoryReadOperations {
+    private final SqliteStoreQueryOperations queryOperations;
+
+    private PostingHistoryReadOperations(SqliteStoreQueryOperations queryOperations) {
+      this.queryOperations = queryOperations;
+    }
+
+    List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      return queryOperations.postings(effectiveDateRange);
+    }
+
+    Optional<LocalDate> earliestPostingEffectiveDate() {
+      return queryOperations.earliestPostingEffectiveDate();
+    }
+
+    Optional<LocalDate> transferredThroughEffectiveDate() {
+      return queryOperations.transferredThroughEffectiveDate();
+    }
   }
 }

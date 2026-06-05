@@ -19,6 +19,8 @@ def verify_book_key_generation(
             operation_ids["generateBookKeyFile"],
             "--book-key-file",
             config.book_key.argument,
+            "--output",
+            "json",
         ),
         f"{config.label} generate-book-key-file output was not valid JSON",
     )
@@ -107,6 +109,8 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         config.book_key.argument,
         "--request-file",
         config.declare_asset_supplement.argument,
+        "--output",
+        "json",
     )
     declare_revenue_output = run_cli(
         config,
@@ -117,6 +121,8 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         config.book_key.argument,
         "--request-file",
         config.declare_expense_supplement.argument,
+        "--output",
+        "json",
     )
     list_output = run_cli(
         config,
@@ -125,6 +131,8 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         config.book.argument,
         "--book-key-file",
         config.book_key.argument,
+        "--output",
+        "json",
     )
     require_match(
         declare_asset_output,

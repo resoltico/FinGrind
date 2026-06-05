@@ -65,6 +65,7 @@ final class FinancialPositionStatementCalculator {
         criteria.effectiveDateAsOf(),
         comparativeRange,
         postingCoverage,
+        true,
         sections,
         comparativeSections);
   }

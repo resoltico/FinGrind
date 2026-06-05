@@ -48,6 +48,10 @@ public final class ContractErrors {
         "invalid-book-key-file",
         "Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.",
         6),
+    INVALID_BOOK_FILE_PATH(
+        "invalid-book-file-path",
+        "Book access or initialization refused because the selected protected-book path, parent directory, or permissions do not satisfy the protected-book contract.",
+        6),
     INVALID_BOOK_PASSPHRASE_SOURCE(
         "invalid-book-passphrase-source",
         "Book access refused because the supplied passphrase source is empty, malformed, or otherwise does not satisfy the protected-book contract.",
@@ -64,6 +68,10 @@ public final class ContractErrors {
         "interactive-prompt-failed",
         "Interactive passphrase entry refused because FinGrind did not receive one valid passphrase from the interactive console.",
         5),
+    UNSUPPORTED_OUTPUT_SELECTION(
+        "unsupported-output-selection",
+        "Invocation refused because the selected output mode does not fit the understood command and runtime policy.",
+        2),
     PROTECTED_BOOK_VERIFICATION_FAILED(
         "protected-book-verification-failed",
         "Book access refused because FinGrind could not verify the selected protected book with the supplied passphrase source.",

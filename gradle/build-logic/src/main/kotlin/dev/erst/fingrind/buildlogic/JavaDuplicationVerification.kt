@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets
 import net.sourceforge.pmd.cpd.CPDConfiguration
 import net.sourceforge.pmd.cpd.CPDReport
 import net.sourceforge.pmd.cpd.CpdAnalysis
+import net.sourceforge.pmd.cpd.XMLRenderer
 import net.sourceforge.pmd.lang.LanguageRegistry
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
@@ -29,13 +30,19 @@ internal fun Project.registerJavaSourceDuplicationTask() =
             group = "verification"
             description =
                 "Fails the build when Java source files contain duplicate token sequences."
-            projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
+            projectDirectoryPath.set(fileInvariantPath(projectDir))
             sourceRoots.from(
                 listOf(
                     file("src/main/java"),
                 ).filter(File::isDirectory),
             )
             reportFile.set(layout.buildDirectory.file("reports/pmd/cpd.xml"))
+            auditMirrorFile.set(
+                FinGrindFilesystemLayout.structuralGovernanceAuditFile(
+                    project = this@registerJavaSourceDuplicationTask,
+                    reportName = "java-duplication-cpd.xml",
+                ),
+            )
         }
     }
 
@@ -50,19 +57,28 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
     @get:OutputFile
     abstract val reportFile: RegularFileProperty
 
+    @get:OutputFile
+    abstract val auditMirrorFile: RegularFileProperty
+
     @TaskAction
     fun verify() {
         val existingSourceRoots = sourceRoots.files.filter(File::isDirectory).sortedBy { it.path }
         val projectDirectory = File(projectDirectoryPath.get())
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
         val report = reportFile.get().asFile
+        val auditMirror = auditMirrorFile.get().asFile
         if (existingSourceRoots.isEmpty()) {
             report.delete()
+            auditMirror.delete()
             return
         }
         report.parentFile.mkdirs()
+        auditMirror.parentFile.mkdirs()
         if (report.exists()) {
             report.delete()
+        }
+        if (auditMirror.exists()) {
+            auditMirror.delete()
         }
         val configuration = CPDConfiguration(LanguageRegistry.CPD)
         configuration.setSourceEncoding(StandardCharsets.UTF_8)
@@ -71,8 +87,8 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
         configuration.isIgnoreLiterals = true
         configuration.isIgnoreAnnotations = true
         configuration.isSkipDuplicates = true
-        configuration.rendererName = "xml"
         var duplicationCount = 0
+        val xmlRenderer = XMLRenderer()
         val xmlReport =
             CpdAnalysis.create(configuration).use { analysis ->
                 existingSourceRoots.forEach { sourceRoot ->
@@ -82,7 +98,7 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
                         .filter { it.extension == "java" }
                         .filter { it.name != "module-info.java" && it.name != "package-info.java" }
                         .filter { sourceFile ->
-                            val relativePath = sourceFile.displayPath(projectDirectory)
+                            val relativePath = projectDisplayPath(sourceFile, projectDirectory)
                             JavaSourceStructuralContracts.includeInDuplicationCheck(
                                 relativePath = relativePath,
                                 packageName = JavaSourceStructuralContracts.packageNameFor(sourceFile),
@@ -96,22 +112,29 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
                 val writer = StringWriter()
                 analysis.performAnalysis { cpdReport ->
                     duplicationCount = duplicationCountFor(cpdReport)
-                    configuration.getCPDReportRenderer().render(cpdReport, writer)
+                    xmlRenderer.render(cpdReport, writer)
                 }
                 writer.toString()
-            }
+        }
         report.writeText(xmlReport, StandardCharsets.UTF_8)
+        auditMirror.writeText(xmlReport, StandardCharsets.UTF_8)
         if (!report.isFile) {
             throw GradleException(
-                "PMD CPD did not produce a report at ${report.invariantSeparatorsPath()}.",
+                "PMD CPD did not produce a report at ${fileInvariantPath(report)}.",
             )
         }
         if (duplicationCount > 0) {
             throw GradleException(
-                "FinGrind Java duplication violations: $duplicationCount translation-heavy duplicate blocks exceed 200 tokens. See ${report.invariantSeparatorsPath()}.",
+                "FinGrind Java duplication violations: $duplicationCount translation-heavy duplicate blocks exceed 200 tokens. See ${fileInvariantPath(report)} and ${fileInvariantPath(auditMirror)}.",
             )
         }
     }
 
     private fun duplicationCountFor(report: CPDReport): Int = report.getMatches().size
 }
+
+private fun fileInvariantPath(file: File): String = file.path.replace(File.separatorChar, '/')
+
+private fun projectDisplayPath(file: File, projectDirectory: File): String =
+    runCatching { fileInvariantPath(file.relativeTo(projectDirectory)) }
+        .getOrElse { fileInvariantPath(file) }

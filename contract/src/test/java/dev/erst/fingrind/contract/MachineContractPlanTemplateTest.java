@@ -56,7 +56,7 @@ class MachineContractPlanTemplateTest {
     assertEquals(new MonetaryAmount("EUR", "1000"), assertCashBalanceTemplate.netAmount());
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
-        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.51.0", "test"));
+        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.52.0", "test"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());

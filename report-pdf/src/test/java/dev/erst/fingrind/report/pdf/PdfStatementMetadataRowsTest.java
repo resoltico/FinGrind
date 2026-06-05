@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
 /** Direct coverage tests for shared PDF statement metadata rows. */
 class PdfStatementMetadataRowsTest {
   @Test
-  void reportParameters_includeDoctrineAndOperatorContext() {
+  void reportParameters_includeLeanOperatorContext() {
     BookIdentity bookIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Acme Studio")),
@@ -31,8 +31,8 @@ class PdfStatementMetadataRowsTest {
             List.of(List.of("As of", "2026-04-30")));
 
     assertEquals("Entity", rows.get(0).getFirst());
-    assertEquals("Accounting kernel", rows.get(1).getFirst());
-    assertEquals("Posting coverage", rows.get(8).getFirst());
+    assertEquals("Starter chart", rows.get(1).getFirst());
+    assertEquals("Posting coverage", rows.get(4).getFirst());
     assertTrue(rows.contains(List.of("As of", "2026-04-30")));
   }
 }

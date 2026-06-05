@@ -56,9 +56,11 @@ class ProtocolCatalogTest {
     ProtocolOperation duplicateHelp = operation(OperationId.HELP, List.of("--other"));
     ProtocolOperation version = operation(OperationId.VERSION, List.of("--same"));
     assertThrows(
-        IllegalStateException.class, () -> ProtocolCatalog.indexById(List.of(help, duplicateHelp)));
+        IllegalStateException.class,
+        () -> ProtocolCatalogIndexSupport.indexById(List.of(help, duplicateHelp)));
     assertThrows(
-        IllegalStateException.class, () -> ProtocolCatalog.indexByToken(List.of(help, version)));
+        IllegalStateException.class,
+        () -> ProtocolCatalogIndexSupport.indexByToken(List.of(help, version)));
   }
 
   @Test
@@ -67,7 +69,7 @@ class ProtocolCatalogTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                ProtocolCatalog.requireOperation(
+                ProtocolCatalogIndexSupport.requireOperation(
                     Map.of(OperationId.HELP, ProtocolCatalog.operation(OperationId.HELP)),
                     OperationId.VERSION));
 
@@ -781,10 +783,10 @@ class ProtocolCatalogTest {
                 """
                 {
                   "supportedPublicCliBundleTargets": [
-                    "macos-aarch64",
                     "linux-x86_64"
                   ],
                   "unsupportedPublicCliBundleTargets": [
+                    "macos-aarch64",
                     "windows-aarch64"
                   ]
                 }
@@ -792,10 +794,10 @@ class ProtocolCatalogTest {
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
             "test-resource");
     assertEquals(
-        List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.LINUX_X86_64),
-        loaded.supportedPublicCliBundleTargets());
+        List.of(PublicCliBundleTarget.LINUX_X86_64), loaded.supportedPublicCliBundleTargets());
     assertEquals(
-        List.of(PublicCliBundleTarget.WINDOWS_AARCH64), loaded.unsupportedPublicCliBundleTargets());
+        List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.WINDOWS_AARCH64),
+        loaded.unsupportedPublicCliBundleTargets());
     assertEquals(
         "supportedPublicCliBundleTargets must be a JSON array of strings.",
         assertThrows(

@@ -18,8 +18,8 @@ final class CliAccountLedgerReportRenderer {
                     "Debit",
                     "Credit",
                     "Running",
-                    "Counterpart account codes",
-                    "Posting"),
+                    "Counterparts",
+                    "Posting ref"),
                 report.entries().stream()
                     .map(
                         entry ->
@@ -32,9 +32,9 @@ final class CliAccountLedgerReportRenderer {
             List.of(
                 List.of(
                     "Account",
-                    report.account().accountCode().value()
-                        + " "
-                        + report.account().accountName().value()),
+                    CliHumanDisplay.accountLabel(
+                        report.account().accountCode().value(),
+                        report.account().accountName().value())),
                 List.of(
                     "Range",
                     CliQueryScopeText.dateRange(

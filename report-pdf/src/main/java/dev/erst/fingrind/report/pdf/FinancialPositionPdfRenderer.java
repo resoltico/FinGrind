@@ -36,6 +36,13 @@ final class FinancialPositionPdfRenderer {
                 List.of(
                     "Effective date as of",
                     PdfTemporalValueFormatter.optionalDate(
-                        report.effectiveDateAsOf().orElse(null))))));
+                        report.effectiveDateAsOf().orElse(null))),
+                List.of(
+                    "Accounting equation",
+                    report.accountingEquationBalanced() ? "Balanced" : "Imbalanced"),
+                List.of(
+                    "Comparative range",
+                    PdfTemporalValueFormatter.comparativeRange(
+                        report.comparativeEffectiveDateRange())))));
   }
 }

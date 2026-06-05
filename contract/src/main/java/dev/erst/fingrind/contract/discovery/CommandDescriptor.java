@@ -63,12 +63,18 @@ public record CommandDescriptor(
     if (!outputModes.isEmpty()) {
       SelectableOutputDefaultsDescriptor defaults =
           Objects.requireNonNull(selectableOutputDefaults, "selectableOutputDefaults");
+      String defaultSummary =
+          defaults.interactiveTerminal() == defaults.redirectedStdout()
+              ? "default: " + defaults.interactiveTerminal().wireValue()
+              : "default: "
+                  + defaults.interactiveTerminal().wireValue()
+                  + " interactive, "
+                  + defaults.redirectedStdout().wireValue()
+                  + " redirected";
       return String.join(", ", outputModes.stream().map(OutputMode::wireValue).toList())
-          + " (via --output; default: "
-          + defaults.interactiveTerminal().wireValue()
-          + " interactive, "
-          + defaults.redirectedStdout().wireValue()
-          + " redirected)";
+          + " (via --output; "
+          + defaultSummary
+          + ")";
     }
     return switch (executionMode) {
       case JSON_ENVELOPE -> "json envelope (fixed)";
@@ -94,6 +100,6 @@ public record CommandDescriptor(
     if (outputModes.isEmpty()) {
       return null;
     }
-    return new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.JSON);
+    return new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.TEXT);
   }
 }

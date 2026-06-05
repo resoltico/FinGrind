@@ -1,13 +1,16 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.SqliteLibraryMode;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** Renders runtime and version discovery text for operators. */
 final class CliDiscoveryRuntimeTextRenderer {
@@ -20,8 +23,11 @@ final class CliDiscoveryRuntimeTextRenderer {
             List.of(
                 List.of("Runtime status", displayRuntimeStatus(runtime.status().wireValue())),
                 List.of(
-                    "Distribution",
-                    displayRuntimeDistribution(environmentDescriptor.distribution())),
+                    "Current launcher",
+                    displayRuntimeDistribution(environmentDescriptor.runtime())),
+                List.of(
+                    "Public package surface",
+                    displayPublicationSurface(environmentDescriptor.publication())),
                 List.of("Book storage", displayStorage(environmentDescriptor.storage())),
                 List.of("Book protection", displayProtection(environmentDescriptor.storage())),
                 List.of(
@@ -90,14 +96,31 @@ final class CliDiscoveryRuntimeTextRenderer {
     return CliTextDisplay.wireLabel(wireValue);
   }
 
-  private static String displayRuntimeDistribution(
-      EnvironmentDistributionDescriptor distributionDescriptor) {
-    return switch (distributionDescriptor.runtimeDistribution()) {
+  private static String displayRuntimeDistribution(EnvironmentRuntimeDescriptor runtimeDescriptor) {
+    return switch (runtimeDescriptor.runtimeDistribution()) {
       case SELF_CONTAINED_BUNDLE -> "Self-contained public bundle";
       case SOURCE_CHECKOUT_GRADLE -> "Source checkout launcher";
       case DIRECT_JAVA_INVOCATION -> "Developer direct-Java launcher";
       case CONTAINER_IMAGE -> "Container image launcher";
     };
+  }
+
+  private static String displayPublicationSurface(
+      EnvironmentPublicationDescriptor publicationDescriptor) {
+    String targets =
+        publicationDescriptor.supportedPublicCliBundleTargets().isEmpty()
+            ? "(no public self-contained bundle targets)"
+            : publicationDescriptor.supportedPublicCliBundleTargets().stream()
+                .map(CliDiscoveryRuntimeTextRenderer::displayBundleTarget)
+                .collect(Collectors.joining(", "));
+    return "Public "
+        + CliTextDisplay.wireLabel(publicationDescriptor.publicCliDistribution().wireValue())
+        + "; supported bundle targets: "
+        + targets;
+  }
+
+  private static String displayBundleTarget(PublicCliBundleTarget bundleTarget) {
+    return bundleTarget.wireValue().replace('-', ' ');
   }
 
   private static String displayStorage(EnvironmentStorageDescriptor ignored) {

@@ -47,12 +47,12 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
 
   @Test
   void ensureParentDirectory_rejectsPathsWithoutWritableParentDirectory() {
-    IllegalArgumentException exception =
+    IllegalStateException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            IllegalStateException.class,
             () -> SqliteBookSchemaBootstrap.ensureParentDirectory(Path.of("/")));
-    assertEquals(
-        "Book path must resolve against a writable parent directory.", exception.getMessage());
+    assertInvalidBookFilePathFailure(
+        exception, "Book path must resolve against a writable parent directory.");
   }
 
   @Test

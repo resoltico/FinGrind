@@ -68,7 +68,8 @@ final class SqliteRekeyService {
                 .BookNotInitialized());
       }
       SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(context.bookPath());
-      SqliteNativeConnections.rekey(activeDatabase, activeReplacementPassphrase.nativePassphrase());
+      SqliteNativeKeyConfiguration.rekey(
+          activeDatabase, activeReplacementPassphrase.nativePassphrase());
       try {
         return publishRekeyedDatabase(
             activeDatabase,
@@ -101,7 +102,7 @@ final class SqliteRekeyService {
     try {
       lifecycle.requireInitializedBook(reopenedDatabase);
       SqliteTransactionOwnership transactionOwnership =
-          lifecycle.beginImmediateIfNeeded(reopenedDatabase);
+          lifecycle.transactions().beginImmediateIfNeeded(reopenedDatabase);
       try {
         SqliteAuditEventWriter.insertAuditEvent(
             reopenedDatabase, BookAuditEvent.bookRekeyed(rekeyedAt));

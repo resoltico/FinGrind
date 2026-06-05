@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -30,16 +32,28 @@ final class SqliteBookSchemaBootstrap {
 
   static void ensureParentDirectory(
       Path bookPath, SecureParentDirectoryEnsurer secureParentDirectoryEnsurer) {
-    Path parent = bookPath.toAbsolutePath().normalize().getParent();
+    Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
+    Path parent = normalizedBookPath.getParent();
     if (parent == null) {
-      throw new IllegalArgumentException(
-          "Book path must resolve against a writable parent directory.");
+      throw invalidBookFilePath(
+          normalizedBookPath,
+          new IllegalArgumentException(
+              "Book path must resolve against a writable parent directory."));
     }
     try {
-      secureParentDirectoryEnsurer.ensure(bookPath.toAbsolutePath().normalize());
-    } catch (IOException exception) {
-      throw new IllegalStateException("Failed to create SQLite book directory.", exception);
+      secureParentDirectoryEnsurer.ensure(normalizedBookPath);
+    } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
+      throw invalidBookFilePath(normalizedBookPath, exception);
     }
+  }
+
+  private static ContractFailureException invalidBookFilePath(
+      Path normalizedBookPath, Exception exception) {
+    return new ContractFailureException(
+        ContractErrors.Descriptor.INVALID_BOOK_FILE_PATH.failure(
+            SqliteBookFileSecuritySupport.invalidBookFilePathMessage(normalizedBookPath, exception),
+            SqliteBookFileSecuritySupport.invalidBookFilePathHint(),
+            null));
   }
 
   /** Applies the canonical schema to the supplied connection exactly once per opened session. */

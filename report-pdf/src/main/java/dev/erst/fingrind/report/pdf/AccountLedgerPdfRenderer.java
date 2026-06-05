@@ -85,7 +85,7 @@ final class AccountLedgerPdfRenderer {
 
   private static String postingEntrySummary(
       dev.erst.fingrind.contract.bookkeeping.PostingFact postingFact) {
-    String postingKind = PdfValueFormatter.displayPostingKind(postingFact.postingKind());
+    String postingKind = PdfPostingValueFormatter.displayPostingKind(postingFact.postingKind());
     return postingFact
         .reversalReference()
         .map(

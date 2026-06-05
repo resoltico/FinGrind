@@ -30,12 +30,12 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
   protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   protected JsonNode runJsonCommand(String... arguments) throws IOException {
-    return OBJECT_MAPPER.readTree(runPlainCommand(arguments));
+    return OBJECT_MAPPER.readTree(runPlainCommand(jsonArguments(arguments)));
   }
 
   protected JsonNode runJsonCommandExpectingExit(int expectedExitCode, String... arguments)
       throws IOException {
-    return OBJECT_MAPPER.readTree(runPlainCommand(expectedExitCode, arguments));
+    return OBJECT_MAPPER.readTree(runPlainCommand(expectedExitCode, jsonArguments(arguments)));
   }
 
   protected JsonNode runRawJsonCommand(String... arguments) throws IOException {

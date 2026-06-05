@@ -17,6 +17,8 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         config.book_key.argument,
         "--request-file",
         config.request_sale.argument,
+        "--output",
+        "json",
     )
     commit_sale_output = run_cli(
         config,
@@ -27,6 +29,8 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         config.book_key.argument,
         "--request-file",
         config.request_sale.argument,
+        "--output",
+        "json",
     )
     commit_expense_output = run_cli(
         config,
@@ -37,6 +41,8 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         config.book_key.argument,
         "--request-file",
         config.request_expense.argument,
+        "--output",
+        "json",
     )
     require_match(
         preflight_output,
@@ -70,6 +76,8 @@ def verify_operator_queries_and_reports(
             config.book_key.argument,
             "--limit",
             "1",
+            "--output",
+            "json",
         ),
         f"{config.label} list-postings first page was not valid JSON",
     )
@@ -89,6 +97,8 @@ def verify_operator_queries_and_reports(
         next_cursor,
         "--limit",
         "25",
+        "--output",
+        "json",
     )
     list_postings_text_output = run_cli(
         config,

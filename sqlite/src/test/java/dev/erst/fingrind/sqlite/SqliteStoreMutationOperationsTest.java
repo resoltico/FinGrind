@@ -119,7 +119,7 @@ class SqliteStoreMutationOperationsTest {
           lifecycle.database(),
           dev.erst.fingrind.executor.bookkeeping.BookAuditEvent.bookOpened(
               Instant.parse("2026-04-29T10:15:30Z")));
-      SqliteNativeConnections.rekey(lifecycle.database(), replacementPassphrase);
+      SqliteNativeKeyConfiguration.rekey(lifecycle.database(), replacementPassphrase);
       SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(bookPath);
       try {
         IllegalStateException failure =
@@ -169,7 +169,7 @@ class SqliteStoreMutationOperationsTest {
           lifecycle.database(),
           dev.erst.fingrind.executor.bookkeeping.BookAuditEvent.bookOpened(
               Instant.parse("2026-04-29T10:15:30Z")));
-      SqliteNativeConnections.rekey(lifecycle.database(), replacementPassphrase);
+      SqliteNativeKeyConfiguration.rekey(lifecycle.database(), replacementPassphrase);
       SqliteRekeyRollbackFile rollbackFile = SqliteRekeyRollbackFile.create(bookPath);
       try {
         IllegalStateException failure =

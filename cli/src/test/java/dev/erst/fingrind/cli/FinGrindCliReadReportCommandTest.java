@@ -106,15 +106,14 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
-                new String[] {
-                  "post-entry",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  requestFile.toString()
-                }));
+                jsonArguments(
+                    "post-entry",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    requestFile.toString())));
     String postingId =
         new ObjectMapper()
             .readTree(commitOutput.toString(StandardCharsets.UTF_8))
@@ -205,7 +204,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "text"
         },
-        "Counterpart account codes");
+        "Counterparts");
     assertCommandOutputContains(
         new String[] {
           "period-summary",

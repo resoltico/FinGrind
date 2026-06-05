@@ -3,16 +3,17 @@
 FinGrind is a command-line bookkeeping tool for one accounting entity per protected SQLite book.
 The current public kernel is one narrow internal-management cash-bookkeeping profile with one
 seeded owner-managed service starter chart. You initialize the book explicitly, extend that chart
-when needed, commit typed bookkeeping entries or explicit administrative adjustments, and query
-the same file for balances, ledgers, and built-in statements. Humans use the task guide in
-`help`; automation uses `capabilities --output json`. Invalid writes are rejected before they
-change the book.
+when needed, seed first balances through one structured opening-position flow, commit typed
+cash-kernel bookkeeping entries or explicit reversal adjustments, and query the same file for
+balances, ledgers, and built-in statements. Humans use the task guide in `help`; automation uses
+`capabilities --output json`. Invalid writes are rejected before they change the book.
 
 - Open one encrypted book per accounting entity, protected by a generated key file
 - Start from one seeded owner-managed service starter chart, then declare supplemental accounts
   and chart nodes when the built-in template is not enough
-- Post typed bookkeeping entries with retained evidence, provenance, and idempotency keys; reserve
-  raw journals for explicit administrative adjustments
+- Post typed cash-kernel bookkeeping entries with retained evidence, provenance, and idempotency
+  keys; use the structured opening-position flow for first balances and reserve administrative
+  entries for explicit reversals
 - Scaffold runnable request and plan documents with `print-request-template` and
   `print-plan-template`
 - Read back account balances, trial balances with totals and balanced verdicts, account ledgers,
@@ -21,6 +22,8 @@ change the book.
 - Export any report as operator-readable text tables, JSON, CSV, or PDF
 
 **Project status: Alpha.** FinGrind is under active development and is not yet production-ready.
+Public self-contained downloads are published for Linux targets. On macOS or Windows, use the
+published container workflow or a source checkout.
 
 ## Quick Start
 
@@ -30,10 +33,12 @@ copy of the book does not automatically include the unlocking key. If `./secrets
 does not exist, FinGrind creates it with owner-only permissions. If either directory already
 exists, keep it owner-only before you ask FinGrind to write a key or book there.
 
-The example below uses the checked-in request files under `docs/examples/` and the seeded starter
-chart that `open-book` creates. The separate `declare-account-supplemental-*` examples are
-template-extension flows, not alternate first-run starters. For a bundle-first walkthrough that
-creates the JSON request file locally, use [docs/USER_QUICK_START.md](docs/USER_QUICK_START.md).
+The example below is launcher-neutral and bundle-safe: it creates the request JSON locally from
+the live CLI instead of depending on repository fixtures. The seeded starter chart created by
+`open-book` already includes `cash` and `service-revenue`, so the first posting does not need
+supplemental chart setup. For the Linux bundle-first walkthrough and the exact public package
+matrix, use
+[docs/USER_QUICK_START.md](docs/USER_QUICK_START.md) and [docs/USER_INSTALL.md](docs/USER_INSTALL.md).
 
 ```bash
 # Create one protected book
@@ -46,9 +51,16 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --limit 10
 
-# Post one balanced entry
+# Copy the concrete first-post sample that ships with public bundles, or use
+# `fingrind print-request-template post-entry > ./request.json` on source-checkout and container
+# paths.
+cp ./quick-start-request.json ./request.json
+# Alternative when that bundled sample is not present:
+fingrind print-request-template > ./request.json
+
+# Edit ./request.json so it uses one real evidence/provenance set, then post one balanced entry
 fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --request-file ./docs/examples/basic-posting-request.json
+  --request-file ./request.json
 
 # Read the trial balance back
 fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
@@ -89,11 +101,7 @@ service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |     
 Context
 -------
 Entity              : Acme Studio
-Accounting kernel   : internal-management-cash-bookkeeping-kernel
-Accounting basis    : CASH_BASIS
-Framework posture   : NON_STATUTORY_INTERNAL_MANAGEMENT
-Entity form         : OWNER_MANAGED_SINGLE_ENTITY
-Book template       : OWNER_MANAGED_SERVICE_CASH
+Starter chart       : Owner-managed service starter chart
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds

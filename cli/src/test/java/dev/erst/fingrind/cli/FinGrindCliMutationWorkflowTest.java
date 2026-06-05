@@ -26,22 +26,23 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, currentBookKeyFilePath)));
+    assertEquals(
+        0,
+        openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, currentBookKeyFilePath))));
     ByteArrayOutputStream rekeyOutput = new ByteArrayOutputStream();
     FinGrindCli rekeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
     assertEquals(
         0,
         rekeyCli.run(
-            new String[] {
-              "rekey-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              currentBookKeyFilePath.toString(),
-              "--replacement-book-key-file",
-              replacementBookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "rekey-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                currentBookKeyFilePath.toString(),
+                "--replacement-book-key-file",
+                replacementBookKeyFilePath.toString())));
     assertJsonContains(rekeyOutput, "\"bookFile\"");
     ByteArrayOutputStream oldKeyOutput = new ByteArrayOutputStream();
     FinGrindCli oldKeyCli =
@@ -49,13 +50,12 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         6,
         oldKeyCli.run(
-            new String[] {
-              "list-accounts",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              currentBookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                currentBookKeyFilePath.toString())));
     JsonNode oldKeyFailureEnvelope = new ObjectMapper().readTree(oldKeyOutput.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
@@ -67,13 +67,12 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         newKeyCli.run(
-            new String[] {
-              "list-accounts",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              replacementBookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                replacementBookKeyFilePath.toString())));
     assertJsonContains(newKeyOutput, "\"status\":\"ok\"");
   }
 
@@ -85,7 +84,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
+    assertEquals(
+        0, openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
     Path corruptedBookPath =
         tempDirectory.resolve("corrupted-books").resolve("entity-corrupted.sqlite");
     byte[] corruptedBytes = Files.readAllBytes(bookFilePath);
@@ -97,13 +97,12 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         6,
         inspectCli.run(
-            new String[] {
-              "inspect-book",
-              "--book-file",
-              corruptedBookPath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "inspect-book",
+                "--book-file",
+                corruptedBookPath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString())));
     JsonNode failureEnvelope = new ObjectMapper().readTree(inspectOutput.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
@@ -125,7 +124,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     FinGrindCli cli;
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(0, cli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
+    assertEquals(
+        0, cli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
     assertJsonContains(openOutput, "\"initializedAt\"");
     assertJsonContains(openOutput, "\"entityName\":\"Acme Studio\"");
     ByteArrayOutputStream declareCashOutput = new ByteArrayOutputStream();
@@ -137,15 +137,14 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         cli.run(
-            new String[] {
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              declareCashFile.toString()
-            }));
+            jsonArguments(
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                declareCashFile.toString())));
     assertJsonContains(declareCashOutput, "\"accountCode\":\"1000\"");
     ByteArrayOutputStream declareRevenueOutput = new ByteArrayOutputStream();
     cli =
@@ -170,13 +169,12 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         cli.run(
-            new String[] {
-              "list-accounts",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString())));
     assertJsonContains(listOutput, "\"accountName\":\"Cash\"");
     assertJsonContains(listOutput, "\"accountName\":\"Revenue\"");
     ByteArrayOutputStream preflightOutput = new ByteArrayOutputStream();
@@ -185,30 +183,28 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         cli.run(
-            new String[] {
-              "preflight-entry",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            }));
+            jsonArguments(
+                "preflight-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString())));
     assertJsonContains(preflightOutput, "\"status\":\"ok\"");
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock());
     assertEquals(
         0,
         cli.run(
-            new String[] {
-              "post-entry",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            }));
+            jsonArguments(
+                "post-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString())));
     JsonNode envelope = new ObjectMapper().readTree(commitOutput.toString(StandardCharsets.UTF_8));
     assertEquals("ok", envelope.path("status").stringValue());
     UUID postingId = UUID.fromString(envelope.path("payload").path("postingId").stringValue());
@@ -228,22 +224,23 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, currentBookKeyFilePath)));
+    assertEquals(
+        0,
+        openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, currentBookKeyFilePath))));
     ByteArrayOutputStream rekeyOutput = new ByteArrayOutputStream();
     FinGrindCli rekeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
     assertEquals(
         6,
         rekeyCli.run(
-            new String[] {
-              "rekey-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              wrongCurrentBookKeyFilePath.toString(),
-              "--replacement-book-key-file",
-              replacementBookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "rekey-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                wrongCurrentBookKeyFilePath.toString(),
+                "--replacement-book-key-file",
+                replacementBookKeyFilePath.toString())));
     String outputText = rekeyOutput.toString(StandardCharsets.UTF_8);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(
@@ -264,7 +261,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
+    assertEquals(
+        0, openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
 
     ByteArrayOutputStream firstBackupOutput = new ByteArrayOutputStream();
     FinGrindCli firstBackupCli =
@@ -296,17 +294,16 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         7,
         secondBackupCli.run(
-            new String[] {
-              "backup-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--backup-file-out",
-              backupFilePath.toString(),
-              "--backup-book-key-file-out",
-              secondBackupKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "backup-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--backup-file-out",
+                backupFilePath.toString(),
+                "--backup-book-key-file-out",
+                secondBackupKeyFilePath.toString())));
     JsonNode failureEnvelope = new ObjectMapper().readTree(secondBackupOutput.toByteArray());
     assertEquals("rejected", failureEnvelope.path("status").stringValue());
     assertEquals("backup-destination-already-exists", failureEnvelope.path("code").stringValue());

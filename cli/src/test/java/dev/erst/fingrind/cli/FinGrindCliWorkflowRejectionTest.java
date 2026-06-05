@@ -93,15 +93,14 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 fixedClock(),
                 workflow)
             .run(
-                new String[] {
-                  "execute-plan",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  planFile.toString()
-                });
+                jsonArguments(
+                    "execute-plan",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    planFile.toString()));
     assertEquals(3, exitCode);
     assertJsonContains(outputStream, "\"status\":\"assertion-failed\"");
     assertJsonContains(outputStream, "\"failureCode\":\"assertion-failed\"");
@@ -376,15 +375,14 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 fixedClock(),
                 workflow)
             .run(
-                new String[] {
-                  "get-posting",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--posting-id",
-                  "posting-missing"
-                }));
+                jsonArguments(
+                    "get-posting",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--posting-id",
+                    "posting-missing")));
     assertJsonContains(getPostingOutput, "\"code\":\"posting-not-found\"");
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     assertEquals(
@@ -395,13 +393,12 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 fixedClock(),
                 workflow)
             .run(
-                new String[] {
-                  "list-postings",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString()
-                }));
+                jsonArguments(
+                    "list-postings",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString())));
     assertJsonContains(listPostingsOutput, "\"code\":\"unknown-account\"");
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     assertEquals(
@@ -412,15 +409,14 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 fixedClock(),
                 workflow)
             .run(
-                new String[] {
-                  "account-balance",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--account-code",
-                  "1000"
-                }));
+                jsonArguments(
+                    "account-balance",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--account-code",
+                    "1000")));
     assertJsonContains(balanceOutput, "\"code\":\"query-book-not-initialized\"");
   }
 }

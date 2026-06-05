@@ -44,6 +44,7 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
             Optional.of(EFFECTIVE_DATE),
             EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
             PostingCoverage.ALL_POSTING_KINDS,
+            true,
             List.of(
                 new FinancialPositionSectionView(
                     AccountType.ASSET,
@@ -147,6 +148,7 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
             Optional.of(EFFECTIVE_DATE),
             EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
             PostingCoverage.ALL_POSTING_KINDS,
+            true,
             List.of(
                 new FinancialPositionSection(
                     AccountType.ASSET,

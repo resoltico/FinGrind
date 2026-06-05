@@ -7,6 +7,20 @@ internal object JavaSourceStructuralContracts {
     private val reviewedSurfaceByPath =
         reviewedSurfaceEntries.associateBy(ReviewedJavaSourceSurface::relativePath)
 
+    fun baselineBudgetFor(
+        relativePath: String,
+        packageName: String?,
+        exportedPackages: Set<String>,
+    ): JavaSourceShapeBudget =
+        when {
+            "src/testFixtures/java/" in relativePath -> testFixturesBudget
+            "src/test/java/" in relativePath -> testBudget
+            "src/fuzz/java/" in relativePath -> fuzzBudget
+            "src/main/java/dev/erst/fingrind/cli/json/" in relativePath -> cliJsonFamilyBudget
+            packageName != null && packageName in exportedPackages -> exportedPublicSeamBudget
+            else -> productionMainBudget
+        }
+
     fun contractFor(
         relativePath: String,
         packageName: String?,
@@ -18,38 +32,10 @@ internal object JavaSourceStructuralContracts {
                 reviewedSurface = reviewedSurface,
             )
         }
-        return when {
-            "src/testFixtures/java/" in relativePath ->
-                JavaSourceStructuralContract(
-                    budget = testFixturesBudget,
-                    reviewedSurface = null,
-                )
-            "src/test/java/" in relativePath ->
-                JavaSourceStructuralContract(
-                    budget = testBudget,
-                    reviewedSurface = null,
-                )
-            "src/fuzz/java/" in relativePath ->
-                JavaSourceStructuralContract(
-                    budget = fuzzBudget,
-                    reviewedSurface = null,
-                )
-            "src/main/java/dev/erst/fingrind/cli/json/" in relativePath ->
-                JavaSourceStructuralContract(
-                    budget = cliJsonFamilyBudget,
-                    reviewedSurface = null,
-                )
-            packageName != null && packageName in exportedPackages ->
-                JavaSourceStructuralContract(
-                    budget = exportedPublicSeamBudget,
-                    reviewedSurface = null,
-                )
-            else ->
-                JavaSourceStructuralContract(
-                    budget = productionMainBudget,
-                    reviewedSurface = null,
-                )
-        }
+        return JavaSourceStructuralContract(
+            budget = baselineBudgetFor(relativePath, packageName, exportedPackages),
+            reviewedSurface = null,
+        )
     }
 
     fun exportedPackages(projectDirectory: File): Set<String> {
@@ -75,18 +61,43 @@ internal object JavaSourceStructuralContracts {
         relativePath: String,
         packageName: String?,
         exportedPackages: Set<String>,
-    ): Boolean {
-        val roleName = contractFor(relativePath, packageName, exportedPackages).budget.roleName
-        return roleName !in
-            setOf(
-                "contract-template-namespace",
-                "cli-discovery-json-aggregate",
-                "cli-plan-json-aggregate",
-                "cli-rejection-json-aggregate",
-                "cli-report-json-aggregate",
-            )
-    }
+    ): Boolean =
+        reviewedSurfaceByPath[relativePath]?.duplicationExemptionReason == null
 }
+
+internal fun reviewedSurfaceDefinitionViolations(
+    reviewedSurface: ReviewedJavaSourceSurface,
+    defaultBudget: JavaSourceShapeBudget,
+): List<String> {
+    val budget = reviewedSurface.budget
+    if (budgetExceedsDefaultBudget(budget, defaultBudget) && reviewedSurface.budgetVarianceReason == null) {
+        return listOf(
+            "${reviewedSurface.relativePath}: reviewed surface for ${reviewedSurface.owner} widens the ${defaultBudget.roleName} budget without an explicit variance reason.",
+        )
+    }
+    return emptyList()
+}
+
+private fun budgetExceedsDefaultBudget(
+    reviewedBudget: JavaSourceShapeBudget,
+    defaultBudget: JavaSourceShapeBudget,
+): Boolean =
+    reviewedBudget.maxPhysicalLines > defaultBudget.maxPhysicalLines ||
+        reviewedBudget.maxLogicalLines > defaultBudget.maxLogicalLines ||
+        reviewedBudget.maxImports > defaultBudget.maxImports ||
+        reviewedBudget.maxNestedTypes > defaultBudget.maxNestedTypes ||
+        reviewedBudget.maxMethodsPerTopLevelType > defaultBudget.maxMethodsPerTopLevelType ||
+        reviewedBudget.maxFieldsPerTopLevelType > defaultBudget.maxFieldsPerTopLevelType ||
+        reviewedBudget.maxSwitchArmsPerMethod > defaultBudget.maxSwitchArmsPerMethod ||
+        reviewedBudget.maxMethodLineSpan > defaultBudget.maxMethodLineSpan ||
+        reviewedBudget.maxMethodParameters > defaultBudget.maxMethodParameters ||
+        reviewedBudget.maxMethodDecisionPoints > defaultBudget.maxMethodDecisionPoints
+
+private fun reviewedWaiverIsUnnecessary(
+    relativePath: String,
+    metrics: JavaSourceShapeMetrics,
+    defaultBudget: JavaSourceShapeBudget,
+): Boolean = javaShapeViolations(relativePath, metrics, defaultBudget).isEmpty()
 
 internal fun javaShapeViolations(
     relativePath: String,
@@ -141,6 +152,7 @@ internal fun reviewedSurfaceViolations(
     relativePath: String,
     metrics: JavaSourceShapeMetrics,
     reviewedSurface: ReviewedJavaSourceSurface,
+    defaultBudget: JavaSourceShapeBudget,
     currentDate: LocalDate = LocalDate.now(),
 ): List<String> {
     val violations = mutableListOf<String>()
@@ -160,6 +172,13 @@ internal fun reviewedSurfaceViolations(
     if (metrics.importCount > approval.approvedImports) {
         violations +=
             "$relativePath: reviewed surface for ${reviewedSurface.owner} grew from ${approval.approvedImports} to ${metrics.importCount} imports before the waiver expiry ${approval.expiresOn}; ${reviewedSurface.splitTrigger}"
+    }
+    if (
+        reviewedSurface.duplicationExemptionReason == null &&
+            reviewedWaiverIsUnnecessary(relativePath, metrics, defaultBudget)
+    ) {
+        violations +=
+            "$relativePath: reviewed surface waiver for ${reviewedSurface.owner} is no longer needed because the file fits the ${defaultBudget.roleName} budget; remove the reviewed waiver instead of carrying a stale exception."
     }
     return violations
 }

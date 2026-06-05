@@ -35,7 +35,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             CliArguments.parse(
                 new String[] {"inspect-rekey-rollback", "--book-file", "book.sqlite"}));
     assertEquals(Path.of("book.sqlite"), defaultInspect.bookFilePath());
-    assertEquals(OutputMode.JSON, defaultInspect.outputMode());
+    assertEquals(OutputMode.TEXT, defaultInspect.outputMode());
 
     BackupBook backupBook =
         assertInstanceOf(

@@ -23,39 +23,11 @@ public final class AccountSemantics {
     Objects.requireNonNull(accountRole, "accountRole");
     Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
     Objects.requireNonNull(accountTaxonomy.nodeKind(), "accountTaxonomy.nodeKind");
-    Optional<FinancialPositionLineClassification> financialPositionLineClassification =
-        accountTaxonomy.financialPositionLineClassification();
-    Optional<ProfitAndLossLineClassification> profitAndLossLineClassification =
-        accountTaxonomy.profitAndLossLineClassification();
     if (!closesTemporaryProfitAndLossAccountType(accountType)) {
-      if (financialPositionLineClassification.isEmpty()) {
-        throw new IllegalArgumentException(
-            "Financial-position classification is required for balance-sheet accounts.");
-      }
-      if (profitAndLossLineClassification.isPresent()) {
-        throw new IllegalArgumentException(
-            "Profit-and-loss classification must be absent for balance-sheet accounts.");
-      }
-      FinancialPositionLineClassification declaredClassification =
-          financialPositionLineClassification.orElseThrow();
-      if (declaredClassification.accountType() != accountType) {
-        throw new IllegalArgumentException(
-            "Financial-position classification must match the declared accountType.");
-      }
+      validateBalanceSheetTaxonomy(accountType, accountTaxonomy);
       return;
     }
-    if (profitAndLossLineClassification.isEmpty()) {
-      throw new IllegalArgumentException(
-          "Profit-and-loss classification is required for nominal accounts.");
-    }
-    if (financialPositionLineClassification.isPresent()) {
-      throw new IllegalArgumentException(
-          "Financial-position classification must be absent for nominal accounts.");
-    }
-    if (profitAndLossLineClassification.orElseThrow().accountType() != accountType) {
-      throw new IllegalArgumentException(
-          "Profit-and-loss classification must match the declared accountType.");
-    }
+    validateNominalTaxonomy(accountType, accountTaxonomy);
   }
 
   /** Returns whether this taxonomy may accept direct postings. */
@@ -146,6 +118,41 @@ public final class AccountSemantics {
       case ASSET, EXPENSE -> NormalBalance.DEBIT;
       case LIABILITY, EQUITY, REVENUE -> NormalBalance.CREDIT;
     };
+  }
+
+  private static void validateBalanceSheetTaxonomy(
+      AccountType accountType, AccountTaxonomy accountTaxonomy) {
+    Optional<FinancialPositionLineClassification> declaredClassification =
+        accountTaxonomy.financialPositionLineClassification();
+    if (declaredClassification.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Financial-position classification is required for balance-sheet accounts.");
+    }
+    if (accountTaxonomy.profitAndLossLineClassification().isPresent()) {
+      throw new IllegalArgumentException(
+          "Profit-and-loss classification must be absent for balance-sheet accounts.");
+    }
+    if (declaredClassification.orElseThrow().accountType() != accountType) {
+      throw new IllegalArgumentException(
+          "Financial-position classification must match the declared accountType.");
+    }
+  }
+
+  private static void validateNominalTaxonomy(
+      AccountType accountType, AccountTaxonomy accountTaxonomy) {
+    if (accountTaxonomy.profitAndLossLineClassification().isEmpty()) {
+      throw new IllegalArgumentException(
+          "Profit-and-loss classification is required for nominal accounts.");
+    }
+    if (accountTaxonomy.financialPositionLineClassification().isPresent()) {
+      throw new IllegalArgumentException(
+          "Financial-position classification must be absent for nominal accounts.");
+    }
+    if (accountTaxonomy.profitAndLossLineClassification().orElseThrow().accountType()
+        != accountType) {
+      throw new IllegalArgumentException(
+          "Profit-and-loss classification must match the declared accountType.");
+    }
   }
 
   private static NormalBalance opposite(NormalBalance normalBalance) {

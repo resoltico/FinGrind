@@ -189,15 +189,14 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         cli.run(
-            new String[] {
-              "rekey-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              currentBookKeyFilePath.toString(),
-              "--replacement-book-key-file",
-              replacementBookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "rekey-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                currentBookKeyFilePath.toString(),
+                "--replacement-book-key-file",
+                replacementBookKeyFilePath.toString())));
     assertEquals(
         List.of(bookAccess(bookFilePath, currentBookKeyFilePath)), workflow.rekeyBookAccesses());
     assertEquals(
@@ -256,41 +255,38 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         cli.run(
-            new String[] {
-              "backup-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              currentBookKeyFilePath.toString(),
-              "--backup-file-out",
-              backupFilePath.toString(),
-              "--backup-book-key-file-out",
-              backupBookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "backup-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                currentBookKeyFilePath.toString(),
+                "--backup-file-out",
+                backupFilePath.toString(),
+                "--backup-book-key-file-out",
+                backupBookKeyFilePath.toString())));
     assertEquals(
         0,
         cli.run(
-            new String[] {
-              "restore-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--backup-file",
-              backupFilePath.toString(),
-              "--backup-book-key-file",
-              backupBookKeyFilePath.toString()
-            }));
+            jsonArguments(
+                "restore-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--backup-file",
+                backupFilePath.toString(),
+                "--backup-book-key-file",
+                backupBookKeyFilePath.toString())));
     assertEquals(
         0,
         cli.run(
-            new String[] {
-              "restore-rekey-rollback",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              currentBookKeyFilePath.toString(),
-              "--rollback-file",
-              rollbackArtifactPath.toString()
-            }));
+            jsonArguments(
+                "restore-rekey-rollback",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                currentBookKeyFilePath.toString(),
+                "--rollback-file",
+                rollbackArtifactPath.toString())));
 
     assertEquals(
         List.of(bookAccess(bookFilePath, currentBookKeyFilePath)), workflow.backupBookAccesses());

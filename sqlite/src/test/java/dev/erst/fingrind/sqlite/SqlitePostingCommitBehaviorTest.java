@@ -211,18 +211,16 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
             new BookAccess(
                 fileParent.resolve("entity.sqlite"),
                 new BookAccess.PassphraseSource.KeyFile(keyPath)))) {
-      IllegalArgumentException exception =
+      IllegalStateException exception =
           assertThrows(
-              IllegalArgumentException.class,
+              IllegalStateException.class,
               () ->
                   postingFactStore.openBook(
                       Instant.parse("2026-04-07T10:15:30Z"),
                       bookIdentity(),
                       dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
                           bookIdentity().bookDoctrine().bookTemplateId())));
-      assertTrue(
-          NullTestSupport.messageOf(exception)
-              .contains("must resolve beneath an existing directory"));
+      assertInvalidBookFilePathFailure(exception, "must resolve beneath an existing directory");
     }
   }
 

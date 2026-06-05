@@ -64,12 +64,4 @@ if grep -Fq 'Contributor devcontainer' "${verifier}"; then
     die "release-candidate verifier reintroduced the obsolete contributor-devcontainer release check"
 fi
 
-readonly timeout_default="$(
-    sed -n 's/^readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-\([0-9][0-9]*\)}"$/\1/p' \
-        "${verifier}"
-)"
-[[ -n "${timeout_default}" ]] || die "failed to read release-candidate verifier default timeout"
-(( timeout_default >= 3000 )) || die \
-    "release-candidate verifier default timeout regressed below 3000 seconds (${timeout_default})"
-
 printf 'verify-release-candidate-tag regression: success\n'

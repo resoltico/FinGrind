@@ -3,10 +3,14 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** Renders operator-facing help text for discovery and per-command guidance. */
 final class CliDiscoveryHelpTextRenderer {
@@ -21,36 +25,12 @@ final class CliDiscoveryHelpTextRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Version", helpDescriptor.version()),
-                List.of("Description", helpDescriptor.description())),
+                List.of("Description", helpDescriptor.description()),
+                List.of(
+                    "Default text mode",
+                    "Commands default to text unless you explicitly select --output.")),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
-    String firstSuccessfulRun =
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of(
-                    "Generate one key file",
-                    CliDiscoveryCommandHelpSupport.primaryCommandExample(
-                        OperationId.GENERATE_BOOK_KEY_FILE)),
-                List.of(
-                    "Open one protected book",
-                    CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.OPEN_BOOK)),
-                List.of(
-                    "Review the seeded starter chart",
-                    CliDiscoveryCommandHelpSupport.primaryCommandExample(
-                        OperationId.LIST_ACCOUNTS)),
-                List.of(
-                    "Print the first entry scaffold",
-                    CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-                        + " "
-                        + OperationId.POST_ENTRY.wireName()
-                        + " > request.json"),
-                List.of(
-                    "Preflight or commit one entry",
-                    CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.POST_ENTRY)),
-                List.of(
-                    "Read the first report",
-                    CliDiscoveryCommandHelpSupport.primaryCommandExample(
-                        OperationId.TRIAL_BALANCE))),
-            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+    String firstSuccessfulRun = renderQuickStart(helpDescriptor.quickStart());
     String reference =
         CliTextFormat.renderKeyValueBlock(
             List.of(
@@ -108,12 +88,112 @@ final class CliDiscoveryHelpTextRenderer {
     return helpDescriptor.commands().size() == 1 && helpDescriptor.quickStart().isEmpty();
   }
 
+  private static String renderQuickStart(List<WorkflowDescriptor> quickStart) {
+    if (quickStart.isEmpty()) {
+      return CliTextFormat.renderKeyValueBlock(
+          List.of(
+              List.of(
+                  "Generate one key file",
+                  CliDiscoveryCommandHelpSupport.primaryCommandExample(
+                      OperationId.GENERATE_BOOK_KEY_FILE)),
+              List.of(
+                  "Open one protected book",
+                  CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.OPEN_BOOK)),
+              List.of(
+                  "Review the seeded starter chart",
+                  CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.LIST_ACCOUNTS)),
+              List.of(
+                  "Create the first request",
+                  CliDiscoveryCommandHelpSupport.primaryStarterRequestCommand(
+                      OperationId.POST_ENTRY)),
+              List.of(
+                  "Preflight or commit one entry",
+                  CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.POST_ENTRY)),
+              List.of(
+                  "Read the first report",
+                  CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.TRIAL_BALANCE))),
+          CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+    }
+    WorkflowDescriptor workflow = quickStart.getFirst();
+    List<String> sections = new ArrayList<>();
+    workflow.steps().stream()
+        .filter(WorkflowStepDescriptor.Note.class::isInstance)
+        .map(WorkflowStepDescriptor.Note.class::cast)
+        .findFirst()
+        .ifPresent(
+            note ->
+                sections.add(
+                    CliTextFormat.wrap(note.text(), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH)));
+    List<String> commands =
+        workflow.steps().stream()
+            .filter(WorkflowStepDescriptor.Command.class::isInstance)
+            .map(WorkflowStepDescriptor.Command.class::cast)
+            .map(WorkflowStepDescriptor.Command::text)
+            .toList();
+    if (!commands.isEmpty()) {
+      sections.add(renderQuickStartCommands(commands));
+    }
+    List<String> notes =
+        workflow.steps().stream()
+            .filter(WorkflowStepDescriptor.Note.class::isInstance)
+            .map(WorkflowStepDescriptor.Note.class::cast)
+            .skip(1)
+            .map(WorkflowStepDescriptor.Note::text)
+            .toList();
+    if (!notes.isEmpty()) {
+      sections.add(
+          "Notes:"
+              + System.lineSeparator()
+              + CliTextFormat.renderBulletedBlock(notes, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
+    }
+    return String.join(System.lineSeparator() + System.lineSeparator(), sections);
+  }
+
+  private static String renderQuickStartCommands(List<String> commands) {
+    List<String> sections = new ArrayList<>();
+    for (int index = 0; index < commands.size(); index++) {
+      String command = commands.get(index);
+      sections.add(
+          quickStartCommandLabel(command, index)
+              + System.lineSeparator()
+              + CliTextFormat.renderShellCommandBlock(
+                  List.of(command), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
+    }
+    return String.join(System.lineSeparator() + System.lineSeparator(), sections);
+  }
+
+  private static String quickStartCommandLabel(String command, int index) {
+    if (command.contains(ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE))) {
+      return "Generate one key file";
+    }
+    if (command.contains(ProtocolCatalog.operationName(OperationId.OPEN_BOOK))) {
+      return "Open one protected book";
+    }
+    if (command.contains(ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS))) {
+      return "Review the seeded starter chart";
+    }
+    if (command.contains("quick-start-request.json")
+        || command.contains(ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE))) {
+      return "Create the first request";
+    }
+    if (command.contains(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY))) {
+      return "Validate the first request";
+    }
+    if (command.contains(ProtocolCatalog.operationName(OperationId.POST_ENTRY))) {
+      return "Commit the first entry";
+    }
+    if (command.contains(ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE))) {
+      return "Read the first report";
+    }
+    return "Step " + (index + 1);
+  }
+
   private static String joinCommandNames(List<CommandDescriptor> commands) {
     return String.join(", ", commands.stream().map(command -> command.name().wireName()).toList());
   }
 
   private static CommandCatalogDescriptor groupedCommands(List<CommandDescriptor> commands) {
-    java.util.Map<OperationCategory, List<CommandDescriptor>> commandsByCategory =
+    Map<OperationCategory, List<CommandDescriptor>> commandsByCategory =
         commands.stream()
             .collect(
                 java.util.stream.Collectors.groupingBy(

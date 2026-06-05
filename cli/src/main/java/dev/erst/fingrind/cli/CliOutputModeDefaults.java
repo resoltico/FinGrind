@@ -8,17 +8,15 @@ final class CliOutputModeDefaults {
   private CliOutputModeDefaults() {}
 
   static OutputMode resolved(@Nullable OutputMode explicitOutputMode) {
-    return resolved(explicitOutputMode, interactiveConsoleAvailable());
+    return resolved(explicitOutputMode, true);
   }
 
   static OutputMode resolvedDiscovery(@Nullable OutputMode explicitOutputMode) {
-    return explicitOutputMode == null
-        ? defaultDiscoveryOutputMode(interactiveConsoleAvailable())
-        : explicitOutputMode;
+    return explicitOutputMode == null ? defaultDiscoveryOutputMode(true) : explicitOutputMode;
   }
 
   static OutputMode defaultSelectableOutputMode() {
-    return defaultSelectableOutputMode(interactiveConsoleAvailable());
+    return defaultSelectableOutputMode(true);
   }
 
   static OutputMode resolved(
@@ -29,19 +27,14 @@ final class CliOutputModeDefaults {
   }
 
   static OutputMode defaultSelectableOutputMode(boolean interactiveConsoleAvailable) {
-    return interactiveConsoleAvailable ? OutputMode.TEXT : OutputMode.JSON;
+    return OutputMode.TEXT;
   }
 
   static OutputMode defaultDiscoveryOutputMode() {
-    return defaultDiscoveryOutputMode(interactiveConsoleAvailable());
+    return defaultDiscoveryOutputMode(true);
   }
 
   static OutputMode defaultDiscoveryOutputMode(boolean interactiveConsoleAvailable) {
-    return interactiveConsoleAvailable ? OutputMode.TEXT : OutputMode.JSON;
-  }
-
-  private static boolean interactiveConsoleAvailable() {
-    java.io.Console console = System.console();
-    return java.util.Optional.ofNullable(console).map(java.io.Console::isTerminal).orElse(false);
+    return OutputMode.TEXT;
   }
 }

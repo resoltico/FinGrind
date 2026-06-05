@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: INDEX
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -87,6 +87,7 @@ route:
 | `BalanceMath` | `DOC_01_Core.md` | `BalanceMath` |
 | `BalanceSide` | `DOC_01_Core.md` | `BalanceSide` |
 | `BookDoctrine` | `DOC_01_Core.md` | `BookDoctrine` |
+| `BookDoctrineDisplay` | `DOC_01_Core.md` | `BookDoctrineDisplay` |
 | `BookDoctrines` | `DOC_01_Core.md` | `BookDoctrines` |
 | `BookEntityName` | `DOC_01_Core.md` | `BookEntityName` |
 | `BookIdentity` | `DOC_01_Core.md` | `BookIdentity` |
@@ -198,7 +199,8 @@ route:
 | `DescriptorNamespaceSupport` | `DOC_02_ProtocolAndDiscovery.md` | `DescriptorNamespaceSupport` |
 | `DiscoveryDetail` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryDetail` |
 | `EnvironmentDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentDistributionDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `EnvironmentPublicationDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `EnvironmentRuntimeDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `EnvironmentSqliteDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `EnvironmentSqliteDescriptor.FailedRuntime` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `EnvironmentSqliteDescriptor.IncompatibleRuntime` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |

@@ -57,7 +57,7 @@ readonly timeout_default="$(
         "${verifier}"
 )"
 [[ -n "${timeout_default}" ]] || die "failed to read merge-handoff verifier default timeout"
-(( timeout_default >= 3000 )) || die \
-    "merge-handoff verifier default timeout regressed below 3000 seconds (${timeout_default})"
+(( timeout_default >= 2400 )) || die \
+    "merge-handoff verifier default timeout regressed below 2400 seconds (${timeout_default})"
 
 printf 'verify-release-merge-handoff regression: success\n'

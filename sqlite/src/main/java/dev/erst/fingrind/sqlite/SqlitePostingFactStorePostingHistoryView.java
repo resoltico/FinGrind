@@ -17,18 +17,18 @@ interface SqlitePostingFactStorePostingHistoryView {
   /** Returns committed postings inside the requested effective-date range. */
   default List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().postings(effectiveDateRange);
+    return storeReadOperations().postingHistory().postings(effectiveDateRange);
   }
 
   /** Returns the earliest posting effective date when any postings exist. */
   default Optional<LocalDate> earliestPostingEffectiveDate() {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().earliestPostingEffectiveDate();
+    return storeReadOperations().postingHistory().earliestPostingEffectiveDate();
   }
 
   /** Returns the last effective date transferred through period-result close when available. */
   default Optional<LocalDate> transferredThroughEffectiveDate() {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().transferredThroughEffectiveDate();
+    return storeReadOperations().postingHistory().transferredThroughEffectiveDate();
   }
 }

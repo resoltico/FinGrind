@@ -16,7 +16,8 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentDistributionDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
@@ -198,8 +199,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
             ? null
             : SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID;
     return new EnvironmentDescriptor(
-        new EnvironmentDistributionDescriptor(
-            RuntimeDistribution.fromWireValue(runtimeDistribution),
+        new EnvironmentRuntimeDescriptor(RuntimeDistribution.fromWireValue(runtimeDistribution)),
+        new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
             ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),

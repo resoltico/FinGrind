@@ -51,8 +51,8 @@ class DistributionContractReaderSurfaceTest {
                 "public-distribution-contract.json",
                 """
                 {
-                  "supportedTargets": ["macos-aarch64", "linux-x86_64"],
-                  "unsupportedTargets": ["windows-aarch64"]
+                  "supportedTargets": ["linux-x86_64", "linux-aarch64"],
+                  "unsupportedTargets": ["macos-aarch64", "macos-x86_64", "windows-x86_64", "windows-aarch64"]
                 }
                 """.trimIndent(),
             )
@@ -103,6 +103,30 @@ class DistributionContractReaderSurfaceTest {
                       "launcherCommand": "./bin/fingrind",
                       "sqliteLibraryFileName": "libsqlite3.so.0"
                     },
+                    "linux-aarch64": {
+                      "operatingSystemId": "linux",
+                      "architectureId": "aarch64",
+                      "archiveFormat": "tar.gz",
+                      "launcherPath": "bin/fingrind",
+                      "launcherCommand": "./bin/fingrind",
+                      "sqliteLibraryFileName": "libsqlite3.so.0"
+                    },
+                    "macos-x86_64": {
+                      "operatingSystemId": "macos",
+                      "architectureId": "x86_64",
+                      "archiveFormat": "tar.gz",
+                      "launcherPath": "bin/fingrind",
+                      "launcherCommand": "./bin/fingrind",
+                      "sqliteLibraryFileName": "libsqlite3.dylib"
+                    },
+                    "windows-x86_64": {
+                      "operatingSystemId": "windows",
+                      "architectureId": "x86_64",
+                      "archiveFormat": "zip",
+                      "launcherPath": "bin/fingrind.ps1",
+                      "launcherCommand": ".\\bin\\fingrind.ps1",
+                      "sqliteLibraryFileName": "sqlite3.dll"
+                    },
                     "windows-aarch64": {
                       "operatingSystemId": "windows",
                       "architectureId": "aarch64",
@@ -131,11 +155,11 @@ class DistributionContractReaderSurfaceTest {
             nestedBuildRoot.createDirectories()
 
             assertEquals(
-                listOf("macos-aarch64", "linux-x86_64"),
+                listOf("linux-x86_64", "linux-aarch64"),
                 DistributionContractReader.publicCliBundleTargets(repositoryRoot),
             )
             assertEquals(
-                listOf("windows-aarch64"),
+                listOf("macos-aarch64", "macos-x86_64", "windows-x86_64", "windows-aarch64"),
                 DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRoot),
             )
             assertEquals(

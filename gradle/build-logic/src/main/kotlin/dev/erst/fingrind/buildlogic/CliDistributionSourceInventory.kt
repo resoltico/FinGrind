@@ -5,43 +5,6 @@ import org.gradle.api.Project
 import org.gradle.api.file.FileCollection
 
 object CliDistributionSourceInventory {
-    private val sourceCheckoutArtifactSourceIncludePatterns =
-        listOf(
-            "build.gradle.kts",
-            "settings.gradle.kts",
-            "gradle.properties",
-            "gradlew",
-            "gradlew.bat",
-            "gradle/fingrind-build.properties",
-            "gradle/libs.versions.toml",
-            "gradle/wrapper/**",
-            "gradle/build-logic/build.gradle.kts",
-            "gradle/build-logic/settings.gradle.kts",
-            "gradle/build-logic/src/**",
-            "cli/build.gradle.kts",
-            "cli/src/main/**",
-            "contract/build.gradle.kts",
-            "contract/src/main/**",
-            "core/build.gradle.kts",
-            "core/src/main/**",
-            "executor/build.gradle.kts",
-            "executor/src/main/**",
-            "report-pdf/build.gradle.kts",
-            "report-pdf/src/main/**",
-            "sqlite/build.gradle.kts",
-            "sqlite/src/main/**",
-        )
-
-    fun sourceCheckoutArtifactSourceFiles(
-        project: Project,
-        repositoryRootDirectory: Path,
-    ): FileCollection =
-        project.objects.fileCollection().from(
-            project.rootProject.fileTree(repositoryRootDirectory.toFile()) {
-                sourceCheckoutArtifactSourceIncludePatterns.forEach(::include)
-            },
-        )
-
     fun dockerBuildContextSourceFiles(
         project: Project,
         repositoryRootDirectory: Path,

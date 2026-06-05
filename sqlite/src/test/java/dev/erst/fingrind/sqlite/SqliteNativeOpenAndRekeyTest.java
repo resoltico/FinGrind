@@ -202,7 +202,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
       try (SqliteBookPassphrase replacementPassphrase =
           SqliteBookPassphrase.fromCharacters(
               "replacement native passphrase", "rotated-key".toCharArray())) {
-        SqliteNativeConnections.rekey(database, replacementPassphrase);
+        SqliteNativeKeyConfiguration.rekey(database, replacementPassphrase);
       }
     }
     try (SqliteBookPassphrase replacementPassphrase =
@@ -252,7 +252,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     assertThrows(
         NullPointerException.class,
         () ->
-            SqliteNativeConnections.rekey(
+            SqliteNativeKeyConfiguration.rekey(
                 NullTestSupport.nullOf(SqliteNativeDatabase.class),
                 NullTestSupport.nullOf(SqliteBookPassphrase.class)));
     try (SqliteBookPassphrase passphrase =
@@ -262,7 +262,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
       assertThrows(
           NullPointerException.class,
           () ->
-              SqliteNativeConnections.rekey(
+              SqliteNativeKeyConfiguration.rekey(
                   database, NullTestSupport.nullOf(SqliteBookPassphrase.class)));
     }
   }
@@ -288,7 +288,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
         SqliteNativeException exception =
             assertThrows(
                 SqliteNativeException.class,
-                () -> SqliteNativeConnections.rekey(database, replacementPassphrase));
+                () -> SqliteNativeKeyConfiguration.rekey(database, replacementPassphrase));
         assertEquals("SQLITE_CANTOPEN", exception.resultName());
       }
     }
@@ -319,7 +319,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
         IllegalStateException exception =
             assertThrows(
                 IllegalStateException.class,
-                () -> SqliteNativeConnections.rekey(database, replacementPassphrase));
+                () -> SqliteNativeKeyConfiguration.rekey(database, replacementPassphrase));
         assertTrue(
             NullTestSupport.messageOf(exception)
                 .contains(
@@ -352,7 +352,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteNativeConnections.applyKey(
+                  SqliteNativeKeyConfiguration.applyKey(
                       MemorySegment.NULL, keyMaterial, sqliteApi, arena));
       assertTrue(
           NullTestSupport.messageOf(exception)
@@ -378,7 +378,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
           assertThrows(
               SqliteNativeException.class,
               () ->
-                  SqliteNativeConnections.applyKey(
+                  SqliteNativeKeyConfiguration.applyKey(
                       MemorySegment.NULL, keyMaterial, sqliteApi, arena));
       assertEquals("SQLITE_CANTOPEN: boom", exception.getMessage());
     }
@@ -399,7 +399,8 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
               constantMethodHandle(0, MemorySegment.class));
       assertDoesNotThrow(
           () ->
-              SqliteNativeConnections.applyKey(MemorySegment.NULL, keyMaterial, sqliteApi, arena));
+              SqliteNativeKeyConfiguration.applyKey(
+                  MemorySegment.NULL, keyMaterial, sqliteApi, arena));
     }
   }
 }

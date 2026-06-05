@@ -29,6 +29,8 @@ internal data class ReviewedJavaSourceSurface(
     val reason: String,
     val splitTrigger: String,
     val budget: JavaSourceShapeBudget,
+    val budgetVarianceReason: String?,
+    val duplicationExemptionReason: String?,
     val approval: ReviewedJavaSourceApproval,
 )
 

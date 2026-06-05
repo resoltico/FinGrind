@@ -14,6 +14,11 @@ from .metrics import (
     measure_sql_file,
 )
 from .models import FileBudget, FileMetrics, MeasuredSurface
+from .reviewed_surface_verification import (
+    default_budget_for_reviewed_surface,
+    reviewed_surface_definition_violations,
+    reviewed_surface_violations,
+)
 from .reviewed_surfaces import REVIEWED_SURFACES
 
 
@@ -129,50 +134,6 @@ def check_metrics(relative_path: Path, budget: FileBudget, metrics: FileMetrics)
     return violations
 
 
-def reviewed_surface_violations(relative_path: Path, metrics: FileMetrics) -> list[str]:
-    reviewed = REVIEWED_SURFACES.get(relative_path.as_posix())
-    if reviewed is None:
-        return []
-    approval = reviewed.approval
-    violations: list[str] = []
-    if date.today() > approval.expires_on:
-        violations.append(
-            f"{relative_path.as_posix()}: reviewed structural waiver for {reviewed.owner} expired on "
-            f"{approval.expires_on}; {reviewed.split_trigger}"
-        )
-    if metrics.physical_lines > approval.approved_physical_lines:
-        violations.append(
-            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
-            f"{approval.approved_physical_lines} to {metrics.physical_lines} physical lines before "
-            f"{approval.expires_on}; {reviewed.split_trigger}"
-        )
-    if metrics.logical_lines > approval.approved_logical_lines:
-        violations.append(
-            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
-            f"{approval.approved_logical_lines} to {metrics.logical_lines} logical lines before "
-            f"{approval.expires_on}; {reviewed.split_trigger}"
-        )
-    if metrics.import_like_lines > approval.approved_import_like_lines:
-        violations.append(
-            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
-            f"{approval.approved_import_like_lines} to {metrics.import_like_lines} import-like lines before "
-            f"{approval.expires_on}; {reviewed.split_trigger}"
-        )
-    if metrics.functions > approval.approved_functions:
-        violations.append(
-            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
-            f"{approval.approved_functions} to {metrics.functions} functions before "
-            f"{approval.expires_on}; {reviewed.split_trigger}"
-        )
-    if metrics.nested_types > approval.approved_nested_types:
-        violations.append(
-            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} grew from "
-            f"{approval.approved_nested_types} to {metrics.nested_types} nested types before "
-            f"{approval.expires_on}; {reviewed.split_trigger}"
-        )
-    return violations
-
-
 def duplicate_window_violations(
     measurements: list[MeasuredSurface],
     minimum_window_lines: int,
@@ -224,9 +185,26 @@ def _measurement_violations(
     duplication_candidates: list[MeasuredSurface],
 ) -> list[str]:
     violations: list[str] = []
+    current_date = date.today()
     for relative_path, budget, metrics in measurements:
         violations.extend(check_metrics(relative_path, budget, metrics))
-        violations.extend(reviewed_surface_violations(relative_path, metrics))
+        reviewed = REVIEWED_SURFACES.get(relative_path.as_posix())
+        if reviewed is not None:
+            default_budget = default_budget_for_reviewed_surface(relative_path)
+            baseline_violations = check_metrics(relative_path, default_budget, metrics)
+            violations.extend(
+                reviewed_surface_definition_violations(relative_path, reviewed, default_budget)
+            )
+            violations.extend(
+                reviewed_surface_violations(
+                    relative_path,
+                    reviewed,
+                    metrics,
+                    default_budget,
+                    current_date,
+                    baseline_violations,
+                )
+            )
     if duplication_candidates:
         min_window = min(
             budget.max_duplicate_window_lines for _, budget, _ in duplication_candidates

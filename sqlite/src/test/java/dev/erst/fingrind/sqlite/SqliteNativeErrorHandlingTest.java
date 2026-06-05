@@ -350,7 +350,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteNativeApiLoader.downcall(
+                SqliteNativeApiBindings.downcall(
                     Linker.nativeLinker().defaultLookup(),
                     "sqlite3_missing_symbol_for_test",
                     FunctionDescriptor.of(ValueLayout.JAVA_INT)));

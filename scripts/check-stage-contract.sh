@@ -59,7 +59,6 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-source-checkout-launcher.sh
     scripts/test-verify-structural-governance.sh
     scripts/test-publish-github-release.sh
-    scripts/test-download-github-release-assets.sh
     scripts/test-verify-github-release.sh
     scripts/test-verify-security-policy-surface.sh
     scripts/test-verify-release-primary-checkout.sh
@@ -67,7 +66,6 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-verify-sqlite-runtime-powershell.sh
     scripts/test-verify-jacoco-snapshot.sh
     scripts/test-verify-build-logic-plugin-jar.sh
-    scripts/test-sqlite-test-fixture-refresh-wiring.sh
     scripts/test-verify-repo-hygiene.sh
     scripts/validate-devcontainer.sh
     scripts/verify-source-checkout-sqlite-runtime.sh

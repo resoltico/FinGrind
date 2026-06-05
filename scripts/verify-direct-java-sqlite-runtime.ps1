@@ -20,35 +20,16 @@ function Get-PythonCommand {
     Fail "missing Python interpreter; expected python3 or python on PATH"
 }
 
-function Get-GradleWrapperCommand {
-    if ($IsWindows) {
-        return (Join-Path $repoRoot "gradlew.bat")
-    }
-
-    return (Join-Path $repoRoot "gradlew")
-}
-
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $verifier = Join-Path $PSScriptRoot "verify-sqlite-runtime-contract.py"
 $directJavaWrapper = Join-Path $PSScriptRoot "direct-java-cli.ps1"
 $pythonCommand = Get-PythonCommand
-$gradleWrapper = Get-GradleWrapperCommand
 
 if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
     Fail "missing SQLite runtime verifier at $verifier"
 }
 if (-not (Test-Path -LiteralPath $directJavaWrapper -PathType Leaf)) {
     Fail "missing direct Java wrapper at $directJavaWrapper"
-}
-
-Push-Location $repoRoot
-try {
-    & $gradleWrapper :cli:shadowJar prepareManagedSqlite --no-daemon --console=plain | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Fail "Gradle failed while preparing the managed SQLite runtime"
-    }
-} finally {
-    Pop-Location
 }
 
 Push-Location $repoRoot

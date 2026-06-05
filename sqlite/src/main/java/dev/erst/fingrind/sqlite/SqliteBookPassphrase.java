@@ -39,7 +39,7 @@ public final class SqliteBookPassphrase implements AutoCloseable {
   public static ContractDecision<SqliteBookPassphrase> fromUtf8BytesDecision(
       String sourceDescription, byte[] loadedBytes) {
     return fromUtf8BytesDecision(
-        sourceDescription, loadedBytes, SqliteBookPassphrase::normalizeLoadedBytesDecision);
+        sourceDescription, loadedBytes, SqliteBookPassphraseEncoding::normalizeLoadedBytesDecision);
   }
 
   static ContractDecision<SqliteBookPassphrase> fromUtf8BytesDecision(
@@ -59,7 +59,8 @@ public final class SqliteBookPassphrase implements AutoCloseable {
               new SqliteBookPassphrase(normalizedSource, normalizedBytes));
         }
         case ContractDecision.Rejected<byte[]>(var failure) -> {
-          return rejectedAfterZeroizing(loadedBytes, failure);
+          Arrays.fill(loadedBytes, (byte) 0);
+          return ContractDecision.rejected(failure);
         }
       }
     } catch (RuntimeException | Error exception) {
@@ -122,29 +123,5 @@ public final class SqliteBookPassphrase implements AutoCloseable {
   @Override
   public void close() {
     Arrays.fill(utf8Bytes, (byte) 0);
-  }
-
-  static String normalizeSourceDescription(String sourceDescription) {
-    return SqliteBookPassphraseValidation.normalizeSourceDescription(sourceDescription);
-  }
-
-  private static ContractDecision<byte[]> normalizeLoadedBytesDecision(
-      byte[] loadedBytes, String sourceDescription) {
-    return SqliteBookPassphraseEncoding.normalizeLoadedBytesDecision(
-        loadedBytes, sourceDescription);
-  }
-
-  private static ContractDecision<SqliteBookPassphrase> rejectedAfterZeroizing(
-      byte[] loadedBytes, dev.erst.fingrind.contract.runtime.ContractFailure failure) {
-    Arrays.fill(loadedBytes, (byte) 0);
-    return ContractDecision.rejected(failure);
-  }
-
-  static void zeroize(java.nio.ByteBuffer encodedBytes) {
-    SqliteBookPassphraseZeroization.zeroize(encodedBytes);
-  }
-
-  static void zeroize(java.nio.CharBuffer decodedCharacters) {
-    SqliteBookPassphraseZeroization.zeroize(decodedCharacters);
   }
 }

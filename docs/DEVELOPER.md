@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DEVELOPER
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -238,7 +238,7 @@ Generated-state stance:
 | Gradle Wrapper | 9.5.1 |
 | Kotlin build logic | 2.4.0 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, the published container image, generated source-checkout launchers, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
+| SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
 | Jackson Databind | 3.1.4 |
 | JUnit Jupiter | 6.1.0 |
 | Jazzer | 0.30.0 |
@@ -365,9 +365,10 @@ This matters even when a repo currently has only the default Gradle `test` task:
 Root Gradle verification and the explicit CLI/runtime task owners enable Java native access where
 required, compile a managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library from
 `third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/`, and keep the packaged CLI
-surfaces on the same managed-runtime contract. The generated source-checkout launcher and
-developer direct-Java wrappers discover that prepared checkout runtime without any operator
-override path.
+surfaces on the same managed-runtime contract. The source-checkout wrapper and developer
+direct-Java wrappers discover that prepared checkout runtime without any operator override path
+and now launch through the Gradle-owned Java 26 toolchain executable rather than ambient shell
+Java.
 
 Public release verification now centers on the self-contained bundle archive, not the raw JAR.
 `./gradlew :cli:bundleCliArchive` builds the archive, and `./scripts/bundle-smoke.sh` on

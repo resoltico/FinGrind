@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.51.0"
+version: "0.52.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-06-03"
+updated: "2026-06-05"
 route:
-  keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows zip, gh attestation]
-  questions: ["how does fingrind attest published release assets", "why did windows expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
+  keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows publication lane, gh attestation]
+  questions: ["how does fingrind attest published release assets", "why did the windows publication lane expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
 ---
 
 # Release Publication Reference
@@ -34,8 +34,7 @@ That means the workflow order is:
 1. build each archive on its target runner
 2. attest the runner-built archive and checksum bytes for each target
 3. upload the archive and checksum set into a draft GitHub Release object
-4. download those published bytes back on one neutral post-upload job through the repo-owned
-   draft-aware release asset downloader
+4. download those published bytes back on one neutral post-upload job
 5. create artifact attestations from those downloaded bytes
 6. verify the release object, published archive/checksum pairs, and published attestations
 7. publish or verify the public container only after the release asset handoff is complete
@@ -62,18 +61,6 @@ These publication invariants are release-critical:
   require different public bytes must fail and cut a new version tag instead
 - the release workflow's staged-container and promotion jobs must wait for the verified draft
   release asset set before treating publication as complete
-- the draft-first GitHub release publisher must wait for a newly created draft release to become
-  visible through the Releases API before it inspects or mutates draft assets
-- draft asset download before finalization must not rely on `gh release download <tag>` because
-  GitHub can expose a draft release object that `gh release view <tag>` can resolve while
-  tag-based release downloads still report `release not found`; use the repo-owned
-  `./scripts/download-github-release-assets.sh` seam instead
-- neutral jobs that download staged draft assets must keep write-scoped `contents` permission.
-  In the live GitHub Actions surface, a read-scoped workflow token can enumerate the draft release
-  while failing to fetch the staged asset bytes themselves
-- neutral release jobs that invoke repo-owned downloader, verifier, or finalizer scripts must
-  resolve those helpers through the workflow-owner helper checkout during `workflow_dispatch`
-  reruns, so post-tag publication repairs on `main` actually reach the live control-plane seams
 - the staged-container and promotion timeouts must leave room for buildx publication and post-push
   public verification
 - verifier timeout budget must exceed the explicit retry budget for release-asset and attestation
@@ -94,16 +81,19 @@ repository workflow identity.
 
 ## Cross-Platform Notes
 
-The trust model is identical across all supported bundle targets:
-- macOS and Linux publish `.tar.gz`
-- Windows publishes `.zip`
+The trust model is identical across every release-control surface:
+- published bundle assets are the Linux `.tar.gz` archives declared by the public-distribution
+  contract
+- the Windows publication lane remains one quality canary over launcher semantics, Unicode
+  forwarding, and bundle/runtime behavior even though Windows bundles are not published as release
+  assets
 
 Windows is not a separate provenance class. It is a canary surface.
 
-In the `0.32.0` release repair, the Windows ZIP exposed the publication drift first because the
-published ZIP digest diverged from the runner-local subject that had been attested. That symptom
-looked Windows-specific at first glance, but the root cause was publication topology, not Windows
-crypto or Windows signing.
+In the `0.32.0` release repair, the Windows publication lane exposed the publication drift first
+because the published asset digest diverged from the runner-local subject that had been attested.
+That symptom looked Windows-specific at first glance, but the root cause was publication
+topology, not Windows crypto or Windows signing.
 
 Operational rule:
 - if one target fails attestation because the published digest differs from the attested subject,
@@ -114,9 +104,9 @@ Operational rule:
 
 The neutral post-upload job is the most failure-prone seam in this flow. It needs a few explicit
 rules:
-- pass explicit repository context to the repo-owned draft-aware downloader
-- retry draft or published asset downloads until the release object exposes the named assets
-- print the final download failure instead of hiding it behind a retry loop
+- pass explicit repository context to `gh release download` with `GH_REPO` or `--repo`
+- retry downloads into the same directory with `--clobber`
+- print the final GitHub CLI error on failure instead of hiding it behind a retry loop
 - treat download and attestation propagation lag as normal and budget for it explicitly
 
 Without those rules, the workflow can fail in ways that hide the real cause and waste hours on
@@ -138,24 +128,11 @@ The rerun workflow now reads the canonical bundle-archive manifest instead of sc
 console output, so post-tag publication repairs do not need compatibility shims for historical
 log dialects.
 
-The rerun workflow also resolves repo-owned control-plane helpers from the workflow owner helper
-checkout on `main` rather than assuming the immutable tag checkout contains every later repair
-script. That includes draft-asset download, release verification, release finalization, and
-public container verification seams.
-
 If the repair touches container publication, the rerun workflow on `main` must publish from the
 staged Docker context under the active CLI build root, not from the repository root. Local Docker
 acceptance already proves that staged context boundary; tag-rerun publication must reuse that same
 checked assembly input instead of reopening checkout-local files through repository-root
 `.dockerignore` semantics.
-When helper-rooted rerun scripts drive that Docker acceptance or publication path, they must also
-pass the active tagged checkout root into the helper entrypoint instead of letting the helper infer
-its source root from the workflow-owner helper checkout path. The helper checkout owns control-plane
-repairs; the tagged checkout owns the staged Docker context and source-fingerprint truth.
-The staged Docker context must also carry a Docker-target managed SQLite library built for the
-explicit target architecture. Do not short-circuit to the source-checkout managed SQLite runtime
-just because the host and container classifiers share the same OS/architecture label; the public
-container ABI is owned by the target image toolchain, not by the checkout host.
 
 ## Evidence Owners
 

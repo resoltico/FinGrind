@@ -45,26 +45,26 @@
 
     <rule ref="category/java/design.xml/TooManyMethods">
         <properties>
-            <property name="maxmethods" value="18"/>
+            <property name="maxmethods" value="16"/>
         </properties>
     </rule>
 
     <rule ref="category/java/design.xml/CyclomaticComplexity">
         <properties>
-            <property name="methodReportLevel" value="15"/>
-            <property name="classReportLevel" value="120"/>
+            <property name="methodReportLevel" value="14"/>
+            <property name="classReportLevel" value="110"/>
         </properties>
     </rule>
 
     <rule ref="category/java/design.xml/CognitiveComplexity">
         <properties>
-            <property name="reportLevel" value="20"/>
+            <property name="reportLevel" value="18"/>
         </properties>
     </rule>
 
     <rule ref="category/java/design.xml/CouplingBetweenObjects">
         <properties>
-            <property name="threshold" value="60"/>
+            <property name="threshold" value="50"/>
         </properties>
     </rule>
 

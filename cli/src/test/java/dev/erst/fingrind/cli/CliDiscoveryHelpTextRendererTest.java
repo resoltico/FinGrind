@@ -8,6 +8,8 @@ import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
@@ -105,7 +107,7 @@ class CliDiscoveryHelpTextRendererTest {
     assertTrue(rendered.contains("First Successful Run"));
     assertTrue(rendered.contains("Generate one key file"));
     assertTrue(rendered.contains("Review the seeded starter chart"));
-    assertTrue(rendered.contains("Print the first entry scaffold"));
+    assertTrue(rendered.contains("Create the first request"));
     assertTrue(rendered.contains("Command Families"));
     assertTrue(rendered.contains("Reference Commands"));
   }
@@ -120,18 +122,24 @@ class CliDiscoveryHelpTextRendererTest {
     int generateKeyIndex = rendered.indexOf("Generate one key file");
     int openBookIndex = rendered.indexOf("Open one protected book");
     int starterChartIndex = rendered.indexOf("Review the seeded starter chart");
-    int entryScaffoldIndex = rendered.indexOf("Print the first entry scaffold");
-    int postEntryIndex = rendered.indexOf("Preflight or commit one entry");
+    int entryScaffoldIndex = rendered.indexOf("Create the first request");
+    int preflightIndex = rendered.indexOf("Validate the first request");
+    int postEntryIndex = rendered.indexOf("Commit the first entry");
+    int firstReportIndex = rendered.indexOf("Read the first report");
 
     assertTrue(generateKeyIndex >= 0, rendered);
     assertTrue(openBookIndex >= 0, rendered);
     assertTrue(starterChartIndex >= 0, rendered);
     assertTrue(entryScaffoldIndex >= 0, rendered);
+    assertTrue(preflightIndex >= 0, rendered);
     assertTrue(postEntryIndex >= 0, rendered);
+    assertTrue(firstReportIndex >= 0, rendered);
     assertTrue(generateKeyIndex < openBookIndex, rendered);
     assertTrue(openBookIndex < starterChartIndex, rendered);
     assertTrue(starterChartIndex < entryScaffoldIndex, rendered);
-    assertTrue(entryScaffoldIndex < postEntryIndex, rendered);
+    assertTrue(entryScaffoldIndex < preflightIndex, rendered);
+    assertTrue(preflightIndex < postEntryIndex, rendered);
+    assertTrue(postEntryIndex < firstReportIndex, rendered);
   }
 
   @Test
@@ -173,7 +181,7 @@ class CliDiscoveryHelpTextRendererTest {
 
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("First Successful Run"));
-    assertFalse(rendered.contains("bundle bootstrap note body"));
+    assertTrue(rendered.contains("bundle bootstrap note body"));
   }
 
   @Test
@@ -216,10 +224,9 @@ class CliDiscoveryHelpTextRendererTest {
 
     assertTrue(rendered.contains("Try It"));
     assertTrue(rendered.contains("Before You Run"));
-    assertTrue(rendered.contains("Command"));
+    assertTrue(rendered.contains("Command Syntax"));
     assertTrue(rendered.contains("Options"));
     assertTrue(rendered.contains("Request File"));
-    assertTrue(rendered.contains("More examples"));
     assertTrue(rendered.contains("print-request-template post-entry > request.json"));
     assertTrue(rendered.contains("Starter file command"));
     assertTrue(rendered.contains("post-entry --book-file <path> --request-file <path|->"));
@@ -258,10 +265,45 @@ class CliDiscoveryHelpTextRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("Try It"));
-    assertTrue(rendered.contains("Command"));
+    assertTrue(rendered.contains("Command Syntax"));
     assertTrue(rendered.contains("(none)"));
     assertFalse(rendered.contains("Options"));
     assertFalse(rendered.contains("Request File"));
+  }
+
+  @Test
+  void renderHelpText_omitsExitBehaviorWhenNoExitCodesArePublished() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpText(
+            CliDiscoveryTestSupport.helpDescriptor(
+                CliDiscoveryTestSupport.identity(),
+                List.of(),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.VERSION,
+                        List.of("--version"),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
+                        List.of(),
+                        "Show version")),
+                List.of(),
+                List.of(),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+
+    assertFalse(rendered.contains("Exit Behavior"));
   }
 
   @Test
@@ -329,6 +371,39 @@ class CliDiscoveryHelpTextRendererTest {
     assertTrue(executePlanRendered.contains("Request File"));
     assertTrue(executePlanRendered.contains("Starter file command"));
     assertTrue(executePlanRendered.contains("execute-plan --request-file <path|->"));
+  }
+
+  @Test
+  void renderHelpText_includesCsvContractForCsvCapableCommands() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpText(
+            MachineContract.help(
+                CliDiscoveryTestSupport.identity(),
+                CliDiscoveryTestSupport.environment(),
+                OperationId.LIST_POSTINGS));
+
+    assertTrue(rendered.contains("Output Contract"));
+    assertTrue(rendered.contains("CSV contract"));
+    assertTrue(rendered.contains("exportFamily"));
+  }
+
+  @Test
+  void renderHelpText_usesBundleStarterRequestCopyCommandWhenBundleRuntimeIsSelected() {
+    String previousDistribution = System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
+    System.setProperty(
+        FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
+    try {
+      String rendered =
+          CliDiscoveryOutputRenderer.renderHelpText(
+              MachineContract.help(
+                  CliDiscoveryTestSupport.identity(),
+                  CliDiscoveryTestSupport.environment(),
+                  OperationId.POST_ENTRY));
+
+      assertTrue(rendered.contains("cp ./quick-start-request.json ./request.json"));
+    } finally {
+      restoreRuntimeDistribution(previousDistribution);
+    }
   }
 
   @Test
@@ -533,5 +608,52 @@ class CliDiscoveryHelpTextRendererTest {
     assertFalse(executePlanWithoutRequestShapes.contains("\nInput\n"));
     assertFalse(executePlanWithoutShape.contains("\nInput\n"));
     assertFalse(executePlanWithoutTemplate.contains("\nInput\n"));
+  }
+
+  @Test
+  void renderHelpText_labelsUnrecognizedWorkflowCommandsAsNumberedSteps() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderHelpText(
+            CliDiscoveryTestSupport.helpDescriptor(
+                CliDiscoveryTestSupport.identity(),
+                List.of("fingrind help"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
+                        List.of(),
+                        "Show help")),
+                List.of(
+                    new WorkflowDescriptor(
+                        dev.erst.fingrind.contract.discovery.WorkflowSurface.BUNDLE_POSIX_SHELL,
+                        List.of(WorkflowStepDescriptor.command("fingrind custom-seam")))),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+
+    assertTrue(rendered.contains("Step 1"));
+    assertTrue(rendered.contains("fingrind custom-seam"));
+  }
+
+  private static void restoreRuntimeDistribution(String previousDistribution) {
+    if (previousDistribution == null) {
+      System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
+      return;
+    }
+    System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, previousDistribution);
   }
 }

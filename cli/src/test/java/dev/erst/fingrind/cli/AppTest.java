@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -41,8 +39,7 @@ class AppTest {
                   observedArgs.set(String.join(",", args));
                   return 0;
                 },
-            observedExitCode::set,
-            args -> args);
+            observedExitCode::set);
 
     app.run(new String[] {"help"}, RUNTIME_ENVIRONMENT);
 
@@ -53,7 +50,7 @@ class AppTest {
   @Test
   void runCallsExitHandlerForNonZeroExitCodes() {
     AtomicInteger observedExitCode = new AtomicInteger(-1);
-    App app = new App(runtimeEnvironment -> args -> 3, observedExitCode::set, args -> args);
+    App app = new App(runtimeEnvironment -> args -> 3, observedExitCode::set);
 
     app.run(new String[] {"post-entry"}, RUNTIME_ENVIRONMENT);
 
@@ -84,8 +81,7 @@ class AppTest {
                   return 0;
                 };
               },
-              exitCode -> {},
-              args -> args);
+              exitCode -> {});
       System.setIn(redirectedInput);
       System.setOut(redirectedOut);
       System.setErr(redirectedError);
@@ -103,38 +99,6 @@ class AppTest {
     assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("runtime-out"));
     assertTrue(errorStream.toString(StandardCharsets.UTF_8).contains("runtime-err"));
     assertEquals(Clock.systemUTC().getZone(), runtimeEnvironment.clock().getZone());
-  }
-
-  @Test
-  void runReportsLauncherArgumentResolutionFailuresAndSkipsCliInvocation() {
-    ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
-    AtomicBoolean cliInvoked = new AtomicBoolean(false);
-    AtomicInteger observedExitCode = new AtomicInteger(-1);
-    try (PrintStream redirectedError =
-        new PrintStream(errorStream, false, StandardCharsets.UTF_8)) {
-      App app =
-          new App(
-              runtimeEnvironment ->
-                  args -> {
-                    cliInvoked.set(true);
-                    return 0;
-                  },
-              observedExitCode::set,
-              args -> {
-                throw new LauncherInvocationArgumentsException("staged launcher arguments failed");
-              });
-      app.run(
-          new String[] {"help"},
-          new CliRuntimeEnvironment(
-              new ByteArrayInputStream(new byte[0]),
-              new PrintStream(new ByteArrayOutputStream(), false, StandardCharsets.UTF_8),
-              redirectedError,
-              Clock.fixed(Instant.parse("2026-05-15T10:00:00Z"), ZoneOffset.UTC)));
-    }
-
-    assertEquals(1, observedExitCode.get());
-    assertTrue(errorStream.toString(StandardCharsets.UTF_8).contains("staged launcher arguments"));
-    assertFalse(cliInvoked.get());
   }
 
   @Test

@@ -42,20 +42,20 @@
 
     <rule ref="category/java/design.xml/CyclomaticComplexity">
         <properties>
-            <property name="methodReportLevel" value="18"/>
-            <property name="classReportLevel" value="140"/>
+            <property name="methodReportLevel" value="16"/>
+            <property name="classReportLevel" value="130"/>
         </properties>
     </rule>
 
     <rule ref="category/java/design.xml/CognitiveComplexity">
         <properties>
-            <property name="reportLevel" value="22"/>
+            <property name="reportLevel" value="20"/>
         </properties>
     </rule>
 
     <rule ref="category/java/design.xml/CouplingBetweenObjects">
         <properties>
-            <property name="threshold" value="80"/>
+            <property name="threshold" value="72"/>
         </properties>
     </rule>
 

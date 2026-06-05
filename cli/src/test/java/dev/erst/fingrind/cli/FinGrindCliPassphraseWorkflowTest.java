@@ -30,7 +30,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             fixedClock());
     assertEquals(
         0,
-        openCli.run(openBookStandardInputArguments(bookFilePath)),
+        openCli.run(jsonArguments(openBookStandardInputArguments(bookFilePath))),
         openOutput.toString(StandardCharsets.UTF_8));
     assertJsonContains(openOutput, "\"initializedAt\"");
     assertJsonContains(openOutput, "\"entityName\":\"Acme Studio\"");
@@ -43,9 +43,11 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         listCli.run(
-            new String[] {
-              "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
-            }));
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-passphrase-stdin")));
     assertJsonContains(listOutput, "\"status\":\"ok\"");
   }
 
@@ -120,7 +122,8 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
+    assertEquals(
+        0, openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
     String wrongSecret = "wrong-stdin-secret";
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
@@ -131,9 +134,11 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         6,
         listCli.run(
-            new String[] {
-              "list-accounts", "--book-file", bookFilePath.toString(), "--book-passphrase-stdin"
-            }));
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-passphrase-stdin")));
     String outputText = listOutput.toString(StandardCharsets.UTF_8);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(
@@ -150,7 +155,8 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
     FinGrindCli openCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
-    assertEquals(0, openCli.run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
+    assertEquals(
+        0, openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
     String wrongSecret = "wrong-stdin-secret";
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     FinGrindCli listCli =
@@ -198,7 +204,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             },
             utf8PrintStream(outputStream),
             fixedClock());
-    assertEquals(6, cli.run(openBookStandardInputArguments(bookFilePath)));
+    assertEquals(6, cli.run(jsonArguments(openBookStandardInputArguments(bookFilePath))));
     String outputText = outputStream.toString(StandardCharsets.UTF_8);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
     assertEquals(
@@ -223,19 +229,18 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
 
     int exitCode =
         cli.run(
-            new String[] {
-              "open-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              missingKeyFile.toString(),
-              "--entity-name",
-              "Acme Studio",
-              "--functional-currency",
-              "EUR",
-              "--fiscal-year-start",
-              "01-01"
-            });
+            jsonArguments(
+                "open-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                missingKeyFile.toString(),
+                "--entity-name",
+                "Acme Studio",
+                "--functional-currency",
+                "EUR",
+                "--fiscal-year-start",
+                "01-01"));
 
     assertEquals(6, exitCode);
     String outputText = outputStream.toString(StandardCharsets.UTF_8);
