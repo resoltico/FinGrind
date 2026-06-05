@@ -8,6 +8,19 @@ die() {
     exit 1
 }
 
+die_with_output() {
+    local message=$1
+    local command_output=${2-}
+
+    printf 'error: %s\n' "${message}" >&2
+    if [[ -n "${command_output}" ]]; then
+        printf '%s\n' '--- command output ---' >&2
+        printf '%s\n' "${command_output}" >&2
+        printf '%s\n' '--- end command output ---' >&2
+    fi
+    exit 1
+}
+
 note() {
     printf 'jazzer replay wrapper check: %s\n' "$1"
 }
@@ -19,7 +32,7 @@ run_with_lock_retry() {
     local attempt_output=''
     local attempt_status=0
     local attempt=1
-    local max_attempts=60
+    local max_attempts=120
     local retry_sleep_seconds=0.25
     local errexit_enabled=0
 
@@ -77,6 +90,11 @@ readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.
 [[ -x "${list_findings_wrapper}" ]] || die "missing list-findings wrapper at ${list_findings_wrapper}"
 [[ -x "${fuzz_all_wrapper}" ]] || die "missing fuzz-all wrapper at ${fuzz_all_wrapper}"
 [[ -x "${repo_lock_support}" ]] || die "missing repo verification lock helper at ${repo_lock_support}"
+readonly repo_lock_dir="$("${repo_lock_support}" print-default-lock-dir "${repo_root}")"
+
+baseline_repo_lock_present=false
+baseline_repo_lock_pid=''
+baseline_repo_lock_token=''
 
 tmp_dir="$(mktemp -d)"
 lock_holder_pid=''
@@ -107,11 +125,70 @@ wait_for_published_lock_owner() {
     return 1
 }
 
+read_lock_state_value() {
+    local path=$1
+
+    if [[ -f "${path}" ]]; then
+        tr -d '[:space:]' < "${path}"
+    fi
+}
+
+capture_repo_lock_baseline() {
+    if [[ -d "${repo_lock_dir}" ]]; then
+        baseline_repo_lock_present=true
+        baseline_repo_lock_pid="$(read_lock_state_value "${repo_lock_dir}/pid")"
+        baseline_repo_lock_token="$(read_lock_state_value "${repo_lock_dir}/owner-token")"
+        return 0
+    fi
+    baseline_repo_lock_present=false
+    baseline_repo_lock_pid=''
+    baseline_repo_lock_token=''
+}
+
+repo_lock_matches_baseline() {
+    local current_pid=''
+    local current_token=''
+
+    if [[ "${baseline_repo_lock_present}" == false ]]; then
+        [[ ! -d "${repo_lock_dir}" ]]
+        return 0
+    fi
+
+    [[ -d "${repo_lock_dir}" ]] || return 1
+    current_pid="$(read_lock_state_value "${repo_lock_dir}/pid")"
+    current_token="$(read_lock_state_value "${repo_lock_dir}/owner-token")"
+    [[ "${current_pid}" == "${baseline_repo_lock_pid}" ]] &&
+        [[ "${current_token}" == "${baseline_repo_lock_token}" ]]
+}
+
+wait_for_repo_lock_baseline() {
+    local attempt=1
+    local max_attempts=120
+    local sleep_seconds=0.25
+    local lock_pid=''
+    local lock_token=''
+
+    while (( attempt <= max_attempts )); do
+        if repo_lock_matches_baseline; then
+            return 0
+        fi
+        sleep "${sleep_seconds}"
+        attempt=$(( attempt + 1 ))
+    done
+
+    lock_pid="$(read_lock_state_value "${repo_lock_dir}/pid")"
+    lock_token="$(read_lock_state_value "${repo_lock_dir}/owner-token")"
+    die \
+        "repo verification lock did not return to its baseline state before the next replay-wrapper probe${lock_pid:+ (pid ${lock_pid})}${lock_token:+ token ${lock_token}}"
+}
+
 readonly input_path="${tmp_dir}/input.bin"
 printf '%s\n' '{}' > "${input_path}"
 readonly missing_file_path="${tmp_dir}/missing-input.bin"
 readonly missing_parent_file_path="${tmp_dir}/missing-parent/input.bin"
 readonly resolved_missing_file_path="$(cd "${tmp_dir}" && pwd -P)/$(basename "${missing_file_path}")"
+
+capture_repo_lock_baseline
 
 note 'unknown-target fast-fail'
 output=''
@@ -126,6 +203,7 @@ set -e
     die "replay wrapper did not report the unknown target"
 [[ "${output}" != *'Task :'* ]] || die "replay wrapper leaked Gradle task output for an unknown target"
 [[ "${output}" != *'BUILD FAILED'* ]] || die "replay wrapper leaked Gradle failure output for an unknown target"
+wait_for_repo_lock_baseline
 
 note 'missing-file fast-fail'
 set +e
@@ -140,6 +218,7 @@ set -e
     "replay wrapper leaked the Java missing-file stacktrace"
 [[ "${missing_file_output}" != *'Task :'* ]] || die \
     "replay wrapper leaked Gradle task output for a missing file"
+wait_for_repo_lock_baseline
 
 note 'missing-parent fast-fail'
 set +e
@@ -155,6 +234,7 @@ set -e
     "replay wrapper leaked the raw shell cd failure for a missing parent directory"
 [[ "${missing_parent_output}" != *'Task :'* ]] || die \
     "replay wrapper leaked Gradle task output for a missing parent directory"
+wait_for_repo_lock_baseline
 
 note 'valid replay json path'
 valid_replay_output=''
@@ -164,7 +244,9 @@ run_with_lock_retry valid_replay_output \
 valid_replay_status=$?
 set -e
 
-[[ ${valid_replay_status} -eq 0 ]] || die "replay wrapper should accept a valid cli-request replay invocation"
+[[ ${valid_replay_status} -eq 0 ]] || die_with_output \
+    "replay wrapper should accept a valid cli-request replay invocation" \
+    "${valid_replay_output}"
 [[ "${valid_replay_output}" != *'Task :'* ]] || die "replay wrapper leaked Gradle task output for JSON replay"
 [[ "${valid_replay_output}" != *'BUILD SUCCESSFUL'* ]] || die "replay wrapper leaked Gradle success output for JSON replay"
 [[ "${valid_replay_output}" == *'"harnessKey"'* ]] || die "replay wrapper did not print the replay JSON payload"
@@ -176,6 +258,7 @@ import sys
 
 json.loads(sys.argv[1])
 PY
+wait_for_repo_lock_baseline
 
 note 'list-findings json path'
 list_findings_output=''
@@ -185,8 +268,9 @@ run_with_lock_retry list_findings_output \
 list_findings_status=$?
 set -e
 
-[[ ${list_findings_status} -eq 0 ]] || die \
-    "list-findings wrapper should accept the supported positional target grammar; output was: ${list_findings_output}"
+[[ ${list_findings_status} -eq 0 ]] || die_with_output \
+    "list-findings wrapper should accept the supported positional target grammar" \
+    "${list_findings_output}"
 [[ "${list_findings_output}" != *'Task :'* ]] || die "list-findings wrapper leaked Gradle task output for JSON mode"
 [[ "${list_findings_output}" != *'BUILD SUCCESSFUL'* ]] || die "list-findings wrapper leaked Gradle success output for JSON mode"
 [[ "${list_findings_output}" != *'BUILD FAILED'* ]] || die "list-findings wrapper leaked Gradle failure output"
@@ -198,6 +282,7 @@ payload = json.loads(sys.argv[1])
 if not isinstance(payload, list):
     raise SystemExit("list-findings JSON payload was not an array")
 PY
+wait_for_repo_lock_baseline
 
 note 'list-findings plain path'
 plain_list_findings_output=''
@@ -207,10 +292,12 @@ run_with_lock_retry plain_list_findings_output \
 plain_list_findings_status=$?
 set -e
 
-[[ ${plain_list_findings_status} -eq 0 ]] || die \
-    "list-findings wrapper should accept plain output mode; output was: ${plain_list_findings_output}"
+[[ ${plain_list_findings_status} -eq 0 ]] || die_with_output \
+    "list-findings wrapper should accept plain output mode" \
+    "${plain_list_findings_output}"
 [[ "${plain_list_findings_output}" != *'Task :clean'* ]] || die \
     "list-findings wrapper unexpectedly cleaned the nested build before read-only classification"
+wait_for_repo_lock_baseline
 
 note 'inactive-target rejection path'
 inactive_target_output=''
@@ -228,6 +315,7 @@ set -e
     "list-findings wrapper leaked Gradle task output for an inactive target"
 [[ "${inactive_target_output}" != *'BUILD FAILED'* ]] || die \
     "list-findings wrapper leaked Gradle failure output for an inactive target"
+wait_for_repo_lock_baseline
 
 readonly lock_fixture_dir="${tmp_dir}/jazzer-wrapper-lock"
 readonly lock_fixture_pid_file="${lock_fixture_dir}/pid"

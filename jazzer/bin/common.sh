@@ -38,6 +38,7 @@ source "${FG_RUN_LOCK_SUPPORT}"
 
 fg_initialize_wrapper() {
     fg_wrapper_name="$(basename "$1")"
+    lock_owner_pid="${BASHPID:-$$}"
     if [[ ! -x "${FG_GRADLEW}" ]]; then
         printf '%s\n' "FinGrind Gradle wrapper is missing or not executable: ${FG_GRADLEW}" >&2
         exit 1
@@ -178,12 +179,10 @@ fg_fail_wrapper_command() {
 }
 
 fg_active_target_keys() {
-    acquire_lock
     python3 "${FG_TOPOLOGY_READER}" active-target-keys
 }
 
 fg_replayable_target_keys() {
-    acquire_lock
     python3 "${FG_TOPOLOGY_READER}" replayable-target-keys
 }
 

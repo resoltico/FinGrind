@@ -80,7 +80,9 @@ verify_github_release_downloaded_assets() {
     local downloader_output
     local asset_names=()
 
-    mapfile -t asset_names < <(verify_github_release_resolve_asset_names)
+    while IFS= read -r asset_name; do
+        asset_names+=("${asset_name}")
+    done < <(verify_github_release_resolve_asset_names)
     downloader_output="$(
         "${VERIFY_GITHUB_RELEASE_ASSET_DOWNLOADER}" \
             --repo "${VERIFY_GITHUB_RELEASE_REPOSITORY_SLUG}" \
