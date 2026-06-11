@@ -431,10 +431,10 @@ class ProtocolCatalogTest {
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.runtime().sqliteLibraryMode());
     assertEquals(
         "fingrind.bundle.home", ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty());
-    assertEquals("3.53.1", ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion());
-    assertEquals("2.3.4", ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion());
+    assertEquals("3.53.2", ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion());
+    assertEquals("2.3.5", ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion());
     assertEquals(
-        "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+        "2026-06-03 19:12:13 d6e03d8c777cfa2d35e3b60d8ec3e0187f3e9f99d8e2ee9cac695fd6fcdf1a24",
         ProtocolCatalog.managedSqlite().requiredSqliteSourceId());
     assertEquals(
         List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),

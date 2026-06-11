@@ -296,8 +296,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
                     "<redacted>/libsqlite3.dylib",
-                    "3.53.1",
-                    "2.3.4",
+                    "3.53.2",
+                    "2.3.5",
                     "source-id",
                     "compile options mismatch")));
     String unavailableRendered =
@@ -320,8 +320,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(incompatibleRendered.contains("Runtime status"));
     assertTrue(incompatibleRendered.contains("incompatible"));
     assertTrue(incompatibleRendered.contains("compile options mismatch"));
-    assertTrue(incompatibleRendered.contains("3.53.1"));
-    assertTrue(incompatibleRendered.contains("2.3.4"));
+    assertTrue(incompatibleRendered.contains("3.53.2"));
+    assertTrue(incompatibleRendered.contains("2.3.5"));
     assertFalse(incompatibleRendered.contains("source-id"));
 
     assertTrue(unavailableRendered.contains("Runtime status"));
@@ -339,7 +339,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.52.0"));
+    assertTrue(rendered.contains("0.50.0"));
   }
 
   private static dev.erst.fingrind.contract.runtime.EnvironmentDescriptor

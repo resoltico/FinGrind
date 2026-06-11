@@ -138,7 +138,6 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "query-book-not-initialized",
                 "posting-workflow",
                 "promote-seed",
-                "published-unix-bundle-smoke",
                 "replace-before-commit-effective-date",
                 "regression-input",
                 "semver-major",
@@ -168,7 +167,6 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "ubuntu-latest",
                 "unexpected-failure",
                 "windows-bundle-smoke",
-                "windows-nonpublic-bundle-smoke",
                 "windows-2022",
                 "windows-latest",
                 "report-pdf"));

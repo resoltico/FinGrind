@@ -172,8 +172,8 @@ internal object DistributionContractReaderTestSupport {
             }
         return """
             {
-              "requiredMinimumSqliteVersion": "3.53.1",
-              "requiredSqlite3mcVersion": "2.3.4",
+              "requiredMinimumSqliteVersion": "3.53.2",
+              "requiredSqlite3mcVersion": "2.3.5",
               "requiredSqliteSourceId": "2026-04-09 sqlite-source-id",
               "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
               "vendoredReleaseFiles": {

@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.50.0"
 domain: USER_CLI
 updated: "2026-06-05"
 route:
@@ -15,7 +15,7 @@ route:
 unpack it on a glibc Linux host. No separate Java install is required for that path. On macOS or
 Windows, use the published container workflow in [USER_CONTAINER.md](./USER_CONTAINER.md) or a
 source checkout. For source-driven local runs,
-`./gradlew :cli:run` manages SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 automatically.
+`./gradlew :cli:run` manages SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 automatically.
 For exact public package names, checksum commands, and the published container reference, start
 with [USER_INSTALL.md](./USER_INSTALL.md). The source-checkout wrapper
 `./scripts/source-checkout-cli.sh` or `.\scripts\source-checkout-cli.ps1` and the direct-Java
@@ -97,7 +97,7 @@ accounts for every journal line they touch, and surface those failures as
 the write transaction before `post-entry` succeeds.
 Every journal entry is single-currency; mixed-currency lines inside one entry are not supported.
 Every journal-line amount must be greater than zero.
-Protected books use SQLite3 Multiple Ciphers 2.3.4 with the upstream default `chacha20` cipher.
+Protected books use SQLite3 Multiple Ciphers 2.3.5 with the upstream default `chacha20` cipher.
 The operation catalog rendered in `help` and `capabilities` is contract-owned protocol metadata,
 so CLI help, parser aliases, output modes, summaries, query limits, and the separation between
 executable examples and operator notes share one source.
@@ -388,8 +388,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   reopen the restored `--book-file` path with that same key file after the replacement completes.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
-- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.1 /
-  SQLite3 Multiple Ciphers 2.3.4 native library.
+- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.2 /
+  SQLite3 Multiple Ciphers 2.3.5 native library.
 - `environment.runtime.runtimeDistribution` tells you whether the current process is running from a
   self-contained bundle, container image, source-checkout Gradle launch, or direct Java wrapper
   invocation.
@@ -470,7 +470,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `currencyModel` so agents can discover the advisory preflight contract and single-currency
   scope without reading source code.
 - Gradle-driven local runs, the source-checkout wrapper, and the container image use a
-  managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library.
+  managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 shared library.
 - The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped
   native access when they run from a prepared checkout. Direct-Java launches outside that checkout
   shape are unsupported.

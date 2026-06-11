@@ -19,7 +19,6 @@ class FinGrindJavaConventionsPlugin : Plugin<Project> {
             configureFinGrindArtifactRepositories()
 
             val buildMetadata = FinGrindBuildMetadata.load(this)
-            configurePinnedJacocoSnapshotArtifacts(buildMetadata)
             val fingrindJavaVersion = buildMetadata.javaVersion
             val implementationVendor = buildMetadata.implementationVendor
             val implementationLicense = buildMetadata.implementationLicense

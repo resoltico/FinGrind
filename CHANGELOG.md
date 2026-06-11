@@ -5,12 +5,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.52.0] - 2026-06-05
-
 ### Changed
 
-- Bumped the repository-owned static-analysis baseline to NullAway `0.13.5` and Ruff
-  `0.15.16`.
+- Bumped the repository-owned dependency baseline to Error Prone `2.50.0`, JaCoCo `0.8.15` GA,
+  Jackson Databind `3.2.0`, NullAway `0.13.6`, PMD `7.25.0`, Ruff `0.15.16`, SQLFluff `4.2.2`,
+  SQLite3 Multiple Ciphers `2.3.5`, SQLite `3.53.2`, `actions/checkout` `v6.0.3`, and the pinned
+  Zulu JDK Alpine builder digest used for managed-SQLite Docker compilation.
 - Hard-broke the live bookkeeping theory onto one explicit doctrine owner. `BookIdentity` now
   carries one composed `BookDoctrine` made from the accounting-kernel profile, accounting basis,
   framework position, entity form, and starter-chart template, and the built-in
@@ -40,14 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   structural evidence from the checkout, tighter PMD and source-shape budgets force earlier file
   splits, managed SQLite packaging and container assembly share one Gradle-owned provenance
   pipeline, and draft-first immutable release publication remains the only supported release path.
+- Hard-broke the coverage toolchain back onto one ordinary GA dependency owner. JaCoCo now lives in
+  the shared version catalog as `0.8.15`, root and module coverage conventions consume that exact
+  line directly, and the repo no longer stages or verifies snapshot-only JaCoCo artifacts through
+  bespoke build wiring.
 
 ### Fixed
 
-- Fixed same-target Linux Docker publication so the Docker build context now stages its own
-  Alpine-linked managed SQLite library instead of reusing the host-managed build, and normal
-  SQLite verification no longer rewrites the committed protected-book compatibility fixtures
-  during every gate run. The long-running Jazzer pruning regressions now emit progress under
-  slower CI runners instead of tripping the release-surface stall watchdog.
 - Fixed operator guidance drift so text help, machine help, discovery ladders, bundle quick-start
   content, Docker/source-checkout hints, and example documents all describe the same live command
   surface instead of overlapping older flows.
@@ -57,20 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed SQLite runtime and lifecycle failure paths so managed-runtime inspection, failed-open
   native cleanup, protected-book security preconditions, passphrase-source reading, and
   source-checkout runtime verification now share deterministic contract-owned failure shapes.
-- Fixed draft-first release replay, staged-asset attestation, helper-root handoff, pinned JaCoCo
-  snapshot verification, Windows publication-lane ownership, and long-running Jazzer release-gate
-  keepalive behavior so post-tag repairs no longer rediscover the `0.51.0` release-control
-  defects one at a time. The aggregate release `Gate` contract now blocks only on the Linux-owned
-  public publication proof surfaces; the Windows non-public bundle smoke lane remains visible as
-  observational coverage without owning release promotion. Jazzer replay and finding-list wrappers
-  now pin repo-verification lock ownership to the wrapper process, so fast-fail and JSON tool
-  paths do not strand stale lock owners during release-surface verification, and the replay-wrapper
-  regression now verifies that wrapper probes return the repo lock to its inherited baseline state
-  when the full repository gate owns the parent verification lock. Jazzer white-box patch staging
-  now depends explicitly on the `executor` and `sqlite` fixture archive producers before those
-  archives are expanded, which closes the hosted release-gate race on cold caches. Release-surface
-  shell verifiers also no longer assume Bash 4-only `mapfile`, which keeps the protocol runnable on the
-  repository's macOS Bash baseline.
+- Fixed draft-first release replay, staged-asset attestation, helper-root handoff, Windows
+  publication-lane ownership, and long-running Jazzer release-gate keepalive behavior while
+  removing the retired JaCoCo snapshot verification lane, so post-tag repairs no longer
+  rediscover the `0.51.0` release-control defects one at a time.
 
 ## [0.51.0] - 2026-06-03
 
@@ -2753,9 +2742,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.52.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.51.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
-[0.52.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.52.0
 [0.50.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.50.0
 [0.49.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.49.0
 [0.48.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.48.0

@@ -61,8 +61,8 @@ class DistributionContractReaderSurfaceTest {
                 "managed-sqlite-contract.json",
                 """
                 {
-                  "minimumSqliteVersion": "3.53.1",
-                  "sqlite3mcVersion": "2.3.4",
+                  "minimumSqliteVersion": "3.53.2",
+                  "sqlite3mcVersion": "2.3.5",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
                   "sourcePackageId": "sqlite3mc-amalgamation-test",
                   "vendoredReleaseFiles": {
@@ -191,8 +191,8 @@ class DistributionContractReaderSurfaceTest {
                 listOf("org.apache.avalon.framework.logger.", "org.apache.logging.log4j."),
                 DistributionContractReader.allowedRuntimeModuleMissingDependencyPrefixes(repositoryRoot),
             )
-            assertEquals("3.53.1", DistributionContractReader.requiredMinimumSqliteVersion(repositoryRoot))
-            assertEquals("2.3.4", DistributionContractReader.requiredSqlite3mcVersion(repositoryRoot))
+            assertEquals("3.53.2", DistributionContractReader.requiredMinimumSqliteVersion(repositoryRoot))
+            assertEquals("2.3.5", DistributionContractReader.requiredSqlite3mcVersion(repositoryRoot))
             assertEquals(
                 "2026-04-09 sqlite-source-id",
                 DistributionContractReader.requiredSqliteSourceId(repositoryRoot),
@@ -262,7 +262,7 @@ class DistributionContractReaderSurfaceTest {
                 DistributionContractReader.requestTemplateOperationName(repositoryRoot),
             )
             assertEquals("print-plan-template", DistributionContractReader.planTemplateOperationName(repositoryRoot))
-            assertEquals("3.53.1", DistributionContractReader.requiredMinimumSqliteVersion(nestedBuildRoot))
+            assertEquals("3.53.2", DistributionContractReader.requiredMinimumSqliteVersion(nestedBuildRoot))
             assertEquals(
                 "windows-aarch64",
                 DistributionBundleTargetReader.hostClassifier(

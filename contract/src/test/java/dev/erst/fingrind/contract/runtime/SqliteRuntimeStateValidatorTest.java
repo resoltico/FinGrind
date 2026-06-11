@@ -22,8 +22,8 @@ class SqliteRuntimeStateValidatorTest {
                 SqliteRuntimeProvenance.BUNDLE_MANAGED,
                 null,
                 "/tmp/libsqlite3mc.dylib",
-                "3.53.1",
-                "2.3.4",
+                "3.53.2",
+                "2.3.5",
                 ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                 null));
 
@@ -42,8 +42,8 @@ class SqliteRuntimeStateValidatorTest {
                 SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                 null,
                 "/tmp/libsqlite3mc.dylib",
-                "3.53.1",
-                "2.3.4",
+                "3.53.2",
+                "2.3.5",
                 ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                 "compile options mismatch"));
 

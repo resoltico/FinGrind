@@ -108,20 +108,21 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
             ): Pair<org.gradle.api.provider.Provider<org.gradle.api.file.Directory>, org.gradle.api.tasks.TaskProvider<Sync>> {
                 val patchDirectory = layout.buildDirectory.dir(directoryName)
                 val fixtureArtifacts =
-                    testSourceSet.runtimeClasspath.filter { runtimeEntry ->
-                        runtimeEntry.isFile && runtimeEntry.name.matches(fixtureJarPattern)
+                    providers.provider {
+                        testSourceSet.runtimeClasspath.files.filter { runtimeEntry ->
+                            runtimeEntry.isFile && runtimeEntry.name.matches(fixtureJarPattern)
+                        }
                     }
                 val patchTask =
                     tasks.register<Sync>(taskName) {
-                        dependsOn(fixtureArtifacts)
                         localOutputDirectories.forEach { outputDirectory ->
                             from(outputDirectory) {
                                 include("$packagePath/**")
                             }
                         }
                         from(
-                            {
-                                fixtureArtifacts.files.map(::zipTree)
+                            fixtureArtifacts.map { runtimeArtifacts ->
+                                runtimeArtifacts.map(::zipTree)
                             },
                         ) {
                             include("$packagePath/**")

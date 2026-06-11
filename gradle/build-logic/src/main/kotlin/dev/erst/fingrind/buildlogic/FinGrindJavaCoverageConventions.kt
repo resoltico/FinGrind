@@ -7,11 +7,18 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.withType
+import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 internal fun Project.configureJavaCoverageConventions() {
+    val libs = versionCatalog()
+
+    extensions.configure(JacocoPluginExtension::class.java) {
+        toolVersion = libs.findVersion("jacoco").get().requiredVersion
+    }
+
     tasks.withType<Test>().configureEach {
         modularity.inferModulePath.set(true)
         useJUnitPlatform()

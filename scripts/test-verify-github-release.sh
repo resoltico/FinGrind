@@ -89,7 +89,7 @@ end = workflow.index("\n  verify-release:\n", start)
 print(workflow[start:end], end="")
 PY
 )"
-printf '%s' "${attest_job_surface}" | grep -Fq 'uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2' || die \
+printf '%s' "${attest_job_surface}" | grep -Fq 'uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3' || die \
     "release workflow attestation job no longer checks out the repository before invoking repo-owned downloader scripts"
 printf '%s' "${attest_job_surface}" | grep -Fq 'path: workflow-owner-surface' || die \
     "release workflow attestation job no longer checks out the workflow-owner helper surface for rerun-safe draft asset downloads"

@@ -3,10 +3,16 @@ package dev.erst.fingrind.buildlogic
 import org.gradle.api.Project
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.register
+import org.gradle.testing.jacoco.plugins.JacocoPluginExtension
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 internal fun Project.configureRootCoverageAggregation() {
+    val libs = versionCatalog()
+    extensions.configure(JacocoPluginExtension::class.java) {
+        toolVersion = libs.findVersion("jacoco").get().requiredVersion
+    }
+
     val aggregatedCoverageReport = tasks.register<JacocoReport>("jacocoAggregatedReport") {
         group = "verification"
         description = "Aggregates JaCoCo coverage reports from all modules into a single report."

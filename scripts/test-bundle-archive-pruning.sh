@@ -115,10 +115,7 @@ if [[ "${legacy_distributions_dir}" != "${distributions_dir}" ]]; then
         "bundleCliArchive left the legacy checkout stale checksum behind"
 fi
 
-versioned_distribution_entries=()
-while IFS= read -r entry_path; do
-    versioned_distribution_entries+=("${entry_path}")
-done < <(
+mapfile -t versioned_distribution_entries < <(
     find "${distributions_dir}" -maxdepth 1 -name 'fingrind-*' -print | sort
 )
 
@@ -135,10 +132,7 @@ for entry_path in "${versioned_distribution_entries[@]}"; do
 done
 
 if [[ "${legacy_distributions_dir}" != "${distributions_dir}" && -d "${legacy_distributions_dir}" ]]; then
-    legacy_versioned_entries=()
-    while IFS= read -r entry_path; do
-        legacy_versioned_entries+=("${entry_path}")
-    done < <(
+    mapfile -t legacy_versioned_entries < <(
         find "${legacy_distributions_dir}" -maxdepth 1 -name 'fingrind-*' -print | sort
     )
     [[ ${#legacy_versioned_entries[@]} -eq 0 ]] || die \

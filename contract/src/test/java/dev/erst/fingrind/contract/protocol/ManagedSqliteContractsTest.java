@@ -18,14 +18,14 @@ class ManagedSqliteContractsTest {
   void current_matchesTheManagedRuntimePins() {
     ManagedSqliteContract current = ManagedSqliteContracts.current();
 
-    assertEquals("3.53.1", current.requiredMinimumSqliteVersion());
-    assertEquals("2.3.4", current.requiredSqlite3mcVersion());
+    assertEquals("3.53.2", current.requiredMinimumSqliteVersion());
+    assertEquals("2.3.5", current.requiredSqlite3mcVersion());
     assertEquals(
-        "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+        "2026-06-03 19:12:13 d6e03d8c777cfa2d35e3b60d8ec3e0187f3e9f99d8e2ee9cac695fd6fcdf1a24",
         current.requiredSqliteSourceId());
-    assertEquals("sqlite3mc-amalgamation-2.3.4-sqlite-3530001", current.requiredSourcePackageId());
+    assertEquals("sqlite3mc-amalgamation-2.3.5-sqlite-3530200", current.requiredSourcePackageId());
     assertEquals(
-        "e4d6fe92d776ccca57e50fc13dec430c64b88b46b05c4ffb97eb2265842f45c2",
+        "330ff26dea1db7e73ffa8a8cebbdf09bf63a2cf731b94b9735c75156618b0329",
         current.vendoredReleaseFiles().get("sqlite3mc_amalgamation.c"));
     assertEquals(
         List.of("-fstack-protector-strong"), current.nativeHardening().unixCompilerFlags());
@@ -58,8 +58,8 @@ class ManagedSqliteContractsTest {
                         new ByteArrayInputStream(
                             """
                             {
-                              "requiredMinimumSqliteVersion": "3.53.1",
-                              "requiredSqlite3mcVersion": "2.3.4",
+                              "requiredMinimumSqliteVersion": "3.53.2",
+                              "requiredSqlite3mcVersion": "2.3.5",
                               "requiredSqliteSourceId": "source-id",
                               "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                               "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -86,7 +86,7 @@ class ManagedSqliteContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
-                          "requiredMinimumSqliteVersion": "3.53.1",
+                          "requiredMinimumSqliteVersion": "3.53.2",
                           "requiredSqlite3mcVersion": " ",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
@@ -117,8 +117,8 @@ class ManagedSqliteContractsTest {
             new ByteArrayInputStream(
                 """
                 {
-                  "requiredMinimumSqliteVersion": "3.53.1",
-                  "requiredSqlite3mcVersion": "2.3.4",
+                  "requiredMinimumSqliteVersion": "3.53.2",
+                  "requiredSqlite3mcVersion": "2.3.5",
                   "requiredSqliteSourceId": "source-id",
                   "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                   "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -137,8 +137,8 @@ class ManagedSqliteContractsTest {
                     .getBytes(StandardCharsets.UTF_8)),
             "/managed-sqlite-contract.json");
 
-    assertEquals("3.53.1", contract.requiredMinimumSqliteVersion());
-    assertEquals("2.3.4", contract.requiredSqlite3mcVersion());
+    assertEquals("3.53.2", contract.requiredMinimumSqliteVersion());
+    assertEquals("2.3.5", contract.requiredSqlite3mcVersion());
     assertEquals("source-id", contract.requiredSqliteSourceId());
     assertEquals("sqlite3mc-amalgamation-test", contract.requiredSourcePackageId());
     assertEquals("sha3-a", contract.vendoredReleaseFiles().get("sqlite3mc_amalgamation.c"));
@@ -157,8 +157,8 @@ class ManagedSqliteContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
-                          "requiredMinimumSqliteVersion": "3.53.1",
-                          "requiredSqlite3mcVersion": "2.3.4",
+                          "requiredMinimumSqliteVersion": "3.53.2",
+                          "requiredSqlite3mcVersion": "2.3.5",
                           "requiredSqliteSourceId": " ",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -190,8 +190,8 @@ class ManagedSqliteContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
-                          "requiredMinimumSqliteVersion": "3.53.1",
-                          "requiredSqlite3mcVersion": "2.3.4",
+                          "requiredMinimumSqliteVersion": "3.53.2",
+                          "requiredSqlite3mcVersion": "2.3.5",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -223,8 +223,8 @@ class ManagedSqliteContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
-                          "requiredMinimumSqliteVersion": "3.53.1",
-                          "requiredSqlite3mcVersion": "2.3.4",
+                          "requiredMinimumSqliteVersion": "3.53.2",
+                          "requiredSqlite3mcVersion": "2.3.5",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {},
@@ -256,8 +256,8 @@ class ManagedSqliteContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
-                          "requiredMinimumSqliteVersion": "3.53.1",
-                          "requiredSqlite3mcVersion": "2.3.4",
+                          "requiredMinimumSqliteVersion": "3.53.2",
+                          "requiredSqlite3mcVersion": "2.3.5",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -289,8 +289,8 @@ class ManagedSqliteContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
-                          "requiredMinimumSqliteVersion": "3.53.1",
-                          "requiredSqlite3mcVersion": "2.3.4",
+                          "requiredMinimumSqliteVersion": "3.53.2",
+                          "requiredSqlite3mcVersion": "2.3.5",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -324,8 +324,8 @@ class ManagedSqliteContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
-                          "requiredMinimumSqliteVersion": "3.53.1",
-                          "requiredSqlite3mcVersion": "2.3.4",
+                          "requiredMinimumSqliteVersion": "3.53.2",
+                          "requiredSqlite3mcVersion": "2.3.5",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"../sqlite3mc_amalgamation.c": "sha3-a"},
@@ -358,8 +358,8 @@ class ManagedSqliteContractsTest {
                     new ByteArrayInputStream(
                         """
                         {
-                          "requiredMinimumSqliteVersion": "3.53.1",
-                          "requiredSqlite3mcVersion": "2.3.4",
+                          "requiredMinimumSqliteVersion": "3.53.2",
+                          "requiredSqlite3mcVersion": "2.3.5",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -388,8 +388,8 @@ class ManagedSqliteContractsTest {
             IllegalArgumentException.class,
             () ->
                 new ManagedSqliteContract(
-                    "3.53.1",
-                    "2.3.4",
+                    "3.53.2",
+                    "2.3.5",
                     "source-id",
                     "sqlite3mc-amalgamation-test",
                     Map.of(),
@@ -408,8 +408,8 @@ class ManagedSqliteContractsTest {
             IllegalArgumentException.class,
             () ->
                 new ManagedSqliteContract(
-                    "3.53.1",
-                    "2.3.4",
+                    "3.53.2",
+                    "2.3.5",
                     "source-id",
                     "sqlite3mc-amalgamation-test",
                     Map.of("/sqlite3mc_amalgamation.c", "sha3-a"),
@@ -453,8 +453,8 @@ class ManagedSqliteContractsTest {
             IllegalArgumentException.class,
             () ->
                 new ManagedSqliteContract(
-                    "3.53.1",
-                    "2.3.4",
+                    "3.53.2",
+                    "2.3.5",
                     "source-id",
                     "sqlite3mc-amalgamation-test",
                     duplicatePathMap,

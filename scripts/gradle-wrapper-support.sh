@@ -177,26 +177,3 @@ fg_gradle_docker_context_dir() {
     fg_gradle_build_dir=$(fg_gradle_project_build_dir "${fg_gradle_repo_root}" "${fg_gradle_project_segment}" "${fg_gradle_is_darwin}")
     printf '%s/docker-context\n' "${fg_gradle_build_dir}"
 }
-
-fg_run_with_log_heartbeat() {
-    fg_heartbeat_label=${1:-}
-    fg_log_path=${2:-}
-    shift 2
-
-    "$@" >"${fg_log_path}" 2>&1 &
-    fg_command_pid=$!
-
-    while kill -0 "${fg_command_pid}" 2>/dev/null; do
-        sleep 15
-        if kill -0 "${fg_command_pid}" 2>/dev/null; then
-            printf '%s\n' "${fg_heartbeat_label}"
-        fi
-    done
-
-    wait "${fg_command_pid}" 2>/dev/null
-    fg_command_status=$?
-    if [ "${fg_command_status}" -ne 0 ]; then
-        cat "${fg_log_path}" >&2
-    fi
-    return "${fg_command_status}"
-}

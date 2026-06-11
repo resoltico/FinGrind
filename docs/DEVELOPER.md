@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.50.0"
 domain: DEVELOPER
 updated: "2026-06-05"
 route:
@@ -96,8 +96,8 @@ executor/     Execution services plus storage seams:
 sqlite/       Durable single-book adapter:
               one protected SQLite file per accounting-entity book, persisted through an
               in-process SQLite
-              adapter backed by Java 26 FFM and a managed SQLite 3.53.1 / SQLite3 Multiple
-              Ciphers 2.3.4 runtime on controlled surfaces, implementing the executor-owned
+              adapter backed by Java 26 FFM and a managed SQLite 3.53.2 / SQLite3 Multiple
+              Ciphers 2.3.5 runtime on controlled surfaces, implementing the executor-owned
               administration, posting, query, and ledger-plan seams over the canonical strict-table
               `book_schema.sql` through focused helpers for connection setup, book-state reading,
               single-row query support, posting reads, and durable writes.
@@ -167,7 +167,7 @@ FinGrind's current public model is:
 - one SQLite file is one book for one accounting entity
 - every book-bound command requires exactly one explicit passphrase source:
   `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
-- book files are protected at rest with SQLite3 Multiple Ciphers 2.3.4 using the upstream default
+- book files are protected at rest with SQLite3 Multiple Ciphers 2.3.5 using the upstream default
   `chacha20` cipher
 - protected book files and same-directory SQLite sidecars are hardened to owner-only filesystem
   permissions during mutation-capable opens when the host platform exposes a supported security
@@ -238,12 +238,12 @@ Generated-state stance:
 | Gradle Wrapper | 9.5.1 |
 | Kotlin build logic | 2.4.0 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
-| Jackson Databind | 3.1.4 |
+| SQLite runtime | managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
+| Jackson Databind | 3.2.0 |
 | JUnit Jupiter | 6.1.0 |
 | Jazzer | 0.30.0 |
-| JaCoCo | published snapshot build 0.8.15.202606030734, consumed from a repo-owned pinned artifact set, and verified against resolved artifact 0.8.15-20260603.073432-117 |
-| PMD | 7.24.0 |
+| JaCoCo | 0.8.15 GA, pinned in `gradle/libs.versions.toml` and consumed directly by the shared coverage conventions |
+| PMD | 7.25.0 |
 
 The build-logic Kotlin pin is now the stable `2.4.0` line.
 
@@ -363,8 +363,8 @@ This matters even when a repo currently has only the default Gradle `test` task:
 [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the canonical build-logic protocol.
 
 Root Gradle verification and the explicit CLI/runtime task owners enable Java native access where
-required, compile a managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library from
-`third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/`, and keep the packaged CLI
+required, compile a managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 shared library from
+`third_party/sqlite/sqlite3mc-amalgamation-2.3.5-sqlite-3530200/`, and keep the packaged CLI
 surfaces on the same managed-runtime contract. The source-checkout wrapper and developer
 direct-Java wrappers discover that prepared checkout runtime without any operator override path
 and now launch through the Gradle-owned Java 26 toolchain executable rather than ambient shell
@@ -425,7 +425,7 @@ through `[JAZZER-PULSE]` lines, including deterministic-tests heartbeats plus
 regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
 
 The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
-source, compiles its own managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library
+source, compiles its own managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 shared library
 from `../third_party/sqlite/`, writes the local-consistency `.sha256` file for that built
 library, and resolves that managed
 runtime from its prepared nested build layout for deterministic tests, regression replay, and
@@ -468,9 +468,8 @@ root-script `subprojects {}` policy blocks.
 The repository ships four workflow files and six named CI jobs:
 
 - `CI` runs on pushes, pull requests to `main`, and manual `workflow_dispatch`, and publishes the
-  aggregate `Gate` required-status job plus the individual `Check`, `Published bundle smoke
-  (linux-x86_64)`, `Published bundle smoke (linux-aarch64)`, `Windows non-public bundle smoke`,
-  `Contributor devcontainer`, and `Detect devcontainer changes` jobs.
+  aggregate `Gate` required-status job plus the individual `Check`, `Windows bundle smoke`,
+  `Docker smoke`, `Contributor devcontainer`, and `Detect devcontainer changes` jobs.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 - `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
@@ -480,22 +479,18 @@ The repository ships four workflow files and six named CI jobs:
 1. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
    Runs on `ubuntu-24.04`.
-2. `windows-nonpublic-bundle-smoke` — runs the Windows-owned support lane on `windows-2022`
-   after `check` passes. It does not rerun the canonical root gate and it does not participate in
-   the release-blocking `Gate` contract because public self-contained bundle publication is
-   Linux-only. It proves the Windows-owned non-public surfaces only: included build-logic tests,
-   direct-Java and source-checkout SQLite runtime verifiers, the self-contained Windows bundle
-   build, and the PowerShell bundle smoke workflow. Uses the repo-owned
+2. `windows-bundle-smoke` — runs the Windows publication lane on `windows-2022` after `check`
+   passes. It does not rerun the canonical root gate. Instead it proves the Windows-owned
+   surfaces only: included build-logic tests, direct-Java and source-checkout SQLite runtime
+   verifiers, the self-contained Windows bundle build, and the PowerShell bundle smoke workflow.
+   Uses the repo-owned
    [configure-windows-defender-build-exclusions.ps1](../scripts/configure-windows-defender-build-exclusions.ps1)
    owner for one best-effort Windows Defender exclusion attempt on the workspace and Gradle user
    home before Gradle work begins. The exclusion attempt is a performance optimization only: an
    unavailable Defender service must warn and continue instead of blocking the product-verification
    lane.
-3. `published-unix-bundle-smoke` — runs the release-owned Linux publication-proof matrix after
-   `check` passes. The matrix covers `linux-x86_64` on `ubuntu-24.04` and `linux-aarch64` on
-   `ubuntu-24.04-arm`, builds the exact published bundle classifier on each runner, reads the
-   emitted archive/checksum paths from the Gradle-owned bundle manifest, and delegates archive
-   acceptance to `./scripts/bundle-smoke.sh`.
+3. `docker-smoke` — builds the application JAR and smokes the Docker image on `ubuntu-24.04`
+   after `check` passes.
 4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
    against the devcontainer trigger paths. Runs independently; no upstream dependency.
 5. `devcontainer` — validates the committed contributor devcontainer surface through
@@ -506,16 +501,13 @@ The repository ships four workflow files and six named CI jobs:
 6. `gate` — aggregate required-status job using `if: always()` with explicit
    `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate
    does not prevent `Gate` from being reported or block merge; only a failed or cancelled job
-   prevents success. It aggregates `check`, the published Linux bundle-smoke matrix, and the
-   devcontainer gate pair. Configure branch protection to require `Gate` as the single required
-   check.
+   prevents success. Configure branch protection to require `Gate` as the single required check.
 
 **Path-based devcontainer gate theory.** The devcontainer gate validates the contributor
 *environment*, not application code. Application code changes are already proven by `check`,
-the published Linux bundle-smoke matrix, plus one observational Windows support lane. Running the
-full Docker build-and-validate cycle on every PR regardless of what changed wastes 15-20 minutes
-per run. The gate therefore fires only when the environment itself changes — specifically when any
-of these paths are touched:
+`windows-bundle-smoke`, and `docker-smoke`. Running the full Docker build-and-validate cycle on
+every PR regardless of what changed wastes 15-20 minutes per run. The gate therefore fires only
+when the environment itself changes — specifically when any of these paths are touched:
 
 - `.devcontainer/` — the Dockerfile and `devcontainer.json`
 - `scripts/validate-devcontainer.sh`
@@ -534,8 +526,8 @@ rerun the full aggregate `Gate` against a branch when GitHub fails to attach the
 workflow on initial PR open.
 
 Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
-the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.1, SQLite3 Multiple
-Ciphers 2.3.4, required protected-book metadata, and wrong-key failure behavior from the managed
+the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.2, SQLite3 Multiple
+Ciphers 2.3.5, required protected-book metadata, and wrong-key failure behavior from the managed
 library path.
 
 GitHub workflows do not run active fuzzing.

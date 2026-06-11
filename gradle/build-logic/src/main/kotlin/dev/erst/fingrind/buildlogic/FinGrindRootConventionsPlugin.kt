@@ -18,7 +18,6 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
 
             description = providers.gradleProperty("fingrindDescription").get()
             configureFinGrindArtifactRepositories()
-            configurePinnedJacocoSnapshotArtifacts(buildMetadata)
 
             allprojects {
                 group = providers.gradleProperty("group").get()

@@ -33,6 +33,7 @@ final class ProtocolUserInstallMarkdownRenderer {
       "contract/src/main/resources/dev/erst/fingrind/contract/protocol/release-publication-contract.json";
   private static final String BUNDLE_LAYOUT_CONTRACT_PATH =
       "contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-layout-contract.json";
+  private static final String GRADLE_PROPERTIES_PATH = "gradle.properties";
   private static final String CONTAINER_IMAGE_REFERENCE = "ghcr.io/resoltico/fingrind";
 
   private ProtocolUserInstallMarkdownRenderer() {}
@@ -120,14 +121,24 @@ final class ProtocolUserInstallMarkdownRenderer {
       throw new IOException(
           RELEASE_PUBLICATION_CONTRACT_PATH + " must declare latestPublicationPolicy.");
     }
+    String projectVersion = projectVersion(repositoryRoot);
     return String.join(
         "\n",
         "- image reference: `%s`".formatted(CONTAINER_IMAGE_REFERENCE),
-        "- published tags: one exact release tag such as `0.52.0` plus `latest`, where %s"
-            .formatted(latestPolicy),
+        "- published tags: one exact release tag such as `%s` plus `latest`, where %s"
+            .formatted(projectVersion, latestPolicy),
         "- published platforms: `%s`".formatted(String.join("`, `", platforms)),
         "- mounted launcher prefix: `docker run --rm -i -v <host-workdir>:/workspace -w /workspace %s:<tag>`"
             .formatted(CONTAINER_IMAGE_REFERENCE));
+  }
+
+  private static String projectVersion(Path repositoryRoot) throws IOException {
+    return Files.readAllLines(repositoryRoot.resolve(GRADLE_PROPERTIES_PATH)).stream()
+        .filter(line -> line.startsWith("version="))
+        .map(line -> line.substring("version=".length()).trim())
+        .filter(version -> !version.isEmpty())
+        .findFirst()
+        .orElseThrow(() -> new IOException("Missing version in " + GRADLE_PROPERTIES_PATH + "."));
   }
 
   private static Map<String, BundleLayoutRow> loadBundleLayoutRows(Path repositoryRoot)

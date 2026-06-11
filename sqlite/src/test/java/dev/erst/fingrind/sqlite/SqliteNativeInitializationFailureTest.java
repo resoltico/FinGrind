@@ -10,7 +10,7 @@ class SqliteNativeInitializationFailureTest extends SqliteNativeBridgeTestSuppor
   @Test
   void nativeInitializationFailure_unwrapsIllegalStateCause() {
     UnsupportedSqliteVersionException cause =
-        new UnsupportedSqliteVersionException("3.51.0", "3.53.1", "system");
+        new UnsupportedSqliteVersionException("3.51.0", "3.53.2", "system");
     IllegalStateException exception =
         SqliteNativeBootstrap.nativeInitializationFailure(new ExceptionInInitializerError(cause));
     assertEquals(cause, exception);

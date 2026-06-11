@@ -22,7 +22,6 @@ readonly gradlew="${repo_root}/gradlew"
 readonly build_logic_dir="${repo_root}/gradle/build-logic"
 readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
 readonly repo_hygiene_verifier="${repo_root}/scripts/verify-repo-hygiene.sh"
-readonly jacoco_snapshot_verifier="${repo_root}/scripts/verify-jacoco-snapshot.sh"
 readonly build_logic_plugin_jar_verifier="${repo_root}/scripts/verify-build-logic-plugin-jar.sh"
 readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly structural_governance_verifier="${repo_root}/scripts/verify-structural-governance.sh"
@@ -33,11 +32,10 @@ print_usage() {
         '' \
         'Runs the canonical Stage 1 verification surface:' \
         '  1. ./scripts/verify-repo-hygiene.sh' \
-        '  2. ./scripts/verify-jacoco-snapshot.sh' \
-        '  3. ./scripts/verify-structural-governance.sh --surface build-logic-kotlin --surface gradle-kts --surface markdown-docs --surface python-support --surface sqlite-sql' \
-        '  4. ./gradlew check coverage' \
-        '  5. ./gradlew -p gradle/build-logic check' \
-        '  6. ./scripts/verify-build-logic-plugin-jar.sh' \
+        '  2. ./scripts/verify-structural-governance.sh --surface build-logic-kotlin --surface gradle-kts --surface markdown-docs --surface python-support --surface sqlite-sql' \
+        '  3. ./gradlew check coverage' \
+        '  4. ./gradlew -p gradle/build-logic check' \
+        '  5. ./scripts/verify-build-logic-plugin-jar.sh' \
         '' \
         'Any remaining arguments are forwarded to both Gradle invocations.' \
         'Use ./check.sh for the full six-stage repository gate.'
@@ -58,10 +56,6 @@ done
 }
 [[ -x "${repo_hygiene_verifier}" ]] || {
     printf 'error: missing executable repo hygiene verifier at %s\n' "${repo_hygiene_verifier}" >&2
-    exit 1
-}
-[[ -x "${jacoco_snapshot_verifier}" ]] || {
-    printf 'error: missing executable JaCoCo snapshot verifier at %s\n' "${jacoco_snapshot_verifier}" >&2
     exit 1
 }
 [[ -x "${build_logic_plugin_jar_verifier}" ]] || {
@@ -94,7 +88,6 @@ acquire_lock
 prepare_python_runtime_env
 
 "${repo_hygiene_verifier}"
-"${jacoco_snapshot_verifier}"
 "${structural_governance_verifier}" \
     --surface build-logic-kotlin \
     --surface gradle-kts \

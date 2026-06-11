@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.50.0"
 domain: DOCUMENTATION_INDEX
 updated: "2026-06-05"
 route:

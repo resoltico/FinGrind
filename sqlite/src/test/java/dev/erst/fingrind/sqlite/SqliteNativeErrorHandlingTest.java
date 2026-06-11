@@ -66,17 +66,17 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                 database -> {
                   try (Arena arena = Arena.ofConfined()) {
                     MethodHandle versionHandle =
-                        MethodHandles.constant(MemorySegment.class, arena.allocateFrom("3.53.1"));
+                        MethodHandles.constant(MemorySegment.class, arena.allocateFrom("3.53.2"));
                     MethodHandle sqlite3mcVersionHandle =
                         MethodHandles.constant(
                             MemorySegment.class,
-                            arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.4"));
+                            arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.5"));
                     assertFalse(database.diagnostics().errorMessage().isBlank());
                     assertFalse(SqliteNativeErrors.errorMessage(database.handle()).isBlank());
                     assertEquals(
-                        "3.53.1", SqliteNativeRuntimeMetadata.sqliteVersion(versionHandle));
+                        "3.53.2", SqliteNativeRuntimeMetadata.sqliteVersion(versionHandle));
                     assertEquals(
-                        "2.3.4",
+                        "2.3.5",
                         SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
                             sqlite3mcVersionHandle));
                     assertEquals(
@@ -118,23 +118,23 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
       MethodHandle errorMessageHandle =
           constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class);
       MethodHandle errorStrlenHandle = constantMethodHandle(4L, MemorySegment.class);
-      MethodHandle sqliteVersionHandle = constantMethodHandle(arena.allocateFrom("3.53.1"));
+      MethodHandle sqliteVersionHandle = constantMethodHandle(arena.allocateFrom("3.53.2"));
       MethodHandle sqliteVersionStrlenHandle = constantMethodHandle(6L, MemorySegment.class);
       MethodHandle sqlite3mcVersionHandle =
-          constantMethodHandle(arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.4"));
+          constantMethodHandle(arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.5"));
       MethodHandle sqlite3mcVersionStrlenHandle =
           constantMethodHandle(
-              (long) "SQLite3 Multiple Ciphers 2.3.4".length(), MemorySegment.class);
+              (long) "SQLite3 Multiple Ciphers 2.3.5".length(), MemorySegment.class);
       assertEquals(
           "boom",
           SqliteNativeErrors.errorMessage(
               MemorySegment.ofAddress(1L), errorMessageHandle, errorStrlenHandle));
       assertEquals(
-          "3.53.1",
+          "3.53.2",
           SqliteNativeRuntimeMetadata.sqliteVersion(
               sqliteVersionHandle, sqliteVersionStrlenHandle));
       assertEquals(
-          "2.3.4",
+          "2.3.5",
           SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
               sqlite3mcVersionHandle, sqlite3mcVersionStrlenHandle));
       assertEquals(
@@ -144,16 +144,16 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
               constantMethodHandle(
                   (long) SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID.length(), MemorySegment.class)));
       assertEquals(
-          "3.53.1",
-          SqliteNativeCompatibilityPolicy.requireSupportedVersion("3.53.1", "managed-only"));
+          "3.53.2",
+          SqliteNativeCompatibilityPolicy.requireSupportedVersion("3.53.2", "managed-only"));
       assertEquals(
-          "2.3.4",
+          "2.3.5",
           SqliteNativeCompatibilityPolicy.requireSupportedSqlite3mcVersion(
-              "2.3.4", "managed-only"));
+              "2.3.5", "managed-only"));
       assertDoesNotThrow(
           () ->
               SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
-                  compileOptionPresenceHandle(), "3.53.1", "2.3.4", "managed-only"));
+                  compileOptionPresenceHandle(), "3.53.2", "2.3.5", "managed-only"));
       assertEquals("ok", SqliteNativeBootstrap.initialize(() -> "ok"));
     }
   }

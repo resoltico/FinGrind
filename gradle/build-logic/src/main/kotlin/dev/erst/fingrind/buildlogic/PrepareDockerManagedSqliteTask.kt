@@ -188,7 +188,7 @@ abstract class PrepareDockerManagedSqliteTask
                 |FROM $builderImage
                 |WORKDIR /work
                 |RUN apk add --no-cache ${packages.joinToString(" ")}
-                |COPY $sourceFileName sqlite3mc_amalgamation.h sqlite3.h sqlite3ext.h /work/
+                |COPY $sourceFileName sqlite3mc_amalgamation.h sqlite3ext.h /work/
                 |RUN ${compilerFlags.joinToString(" ") { shellQuote(it) }}
                 |RUN python3 - <<'PY'
                 |import json

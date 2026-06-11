@@ -1,6 +1,6 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.50.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-06-05"
 route:
@@ -40,7 +40,7 @@ That means:
   Windows ACL views
 - FinGrind intentionally rejects plaintext CLI passphrase arguments and environment-variable
   passphrase transport
-- newly opened books are protected through SQLite3 Multiple Ciphers 2.3.4 using the upstream
+- newly opened books are protected through SQLite3 Multiple Ciphers 2.3.5 using the upstream
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
@@ -95,8 +95,8 @@ Why this is the current design:
 - it gives one real SQLite transaction boundary per commit attempt
 - it keeps prepared statements and typed SQLite result codes close to the actual C API surface
 - the packaged CLI no longer requires an external `sqlite3` binary
-- controlled FinGrind surfaces can now pin one audited SQLite 3.53.1 / SQLite3 Multiple Ciphers
-  2.3.4 source contract instead of inheriting host-library drift
+- controlled FinGrind surfaces can now pin one audited SQLite 3.53.2 / SQLite3 Multiple Ciphers
+  2.3.5 source contract instead of inheriting host-library drift
 
 Observed implementation note:
 - we also reproduced a local `sqlite-jdbc` native-library load failure on this Java 26 macOS
@@ -111,23 +111,26 @@ point for design, configuration, and operator guidance:
 - upstream configuration guidance on URI key transport:
   [https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/](https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/)
 - vendored release asset:
-  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.4/sqlite3mc-2.3.4-sqlite-3.53.1-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.4/sqlite3mc-2.3.4-sqlite-3.53.1-amalgamation.zip)
+  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.5/sqlite3mc-2.3.5-sqlite-3.53.2-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.5/sqlite3mc-2.3.5-sqlite-3.53.2-amalgamation.zip)
 
 License and attribution stance:
 - SQLite3 Multiple Ciphers is MIT-licensed; the upstream text is copied verbatim in
   [LICENSE-SQLITE3MULTIPLECIPHERS](../LICENSE-SQLITE3MULTIPLECIPHERS)
-- bundled original SQLite sources remain in the public domain
+- the SQLite code embedded inside the vendored amalgamation remains in the public domain
 - repository attribution and runtime notes live in [NOTICE](../NOTICE)
 
 ## Current Runtime Policy
 
 - root Gradle verification, the nested Jazzer build, `:cli:run`, GitHub workflows, and the Docker
-  image all build from the vendored official SQLite3 Multiple Ciphers 2.3.4 amalgamation under
-  [third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/](../third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001)
+  image all build from the vendored official SQLite3 Multiple Ciphers 2.3.5 amalgamation under
+  [third_party/sqlite/sqlite3mc-amalgamation-2.3.5-sqlite-3530200/](../third_party/sqlite/sqlite3mc-amalgamation-2.3.5-sqlite-3530200)
 - [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned vendored SQLite3MC release
   manifest, including the amalgamation and companion headers, with LF-normalized digests before the
   managed native library is used, so Git checkout line-ending policy cannot create false integrity
   failures across machines or CI and header drift cannot evade provenance checks
+- the upstream `2.3.5` amalgamation package no longer ships separate `sqlite3.c` / `sqlite3.h`
+  companions, so FinGrind treats `sqlite3mc_amalgamation.c`, `sqlite3mc_amalgamation.h`, and
+  `sqlite3ext.h` as the canonical compiled/header payload
 - [`managed-sqlite-contract.json`](../contract/src/main/resources/dev/erst/fingrind/contract/protocol/managed-sqlite-contract.json)
   is the canonical owner for the managed SQLite version, source-id, required compile options,
   forbidden compile options, and secure-memory requirement; build logic, runtime discovery, bundle
@@ -430,7 +433,7 @@ Reasons for the current design:
 - Java 26 FFM works directly against the managed SQLite3MC library without reintroducing JNI glue
   code into FinGrind itself
 
-Managed runtime targets currently build SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 from the
+Managed runtime targets currently build SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 from the
 vendored amalgamation on macOS and Linux. The public bundle launcher, Docker entrypoint,
 source-checkout wrapper, and developer direct-Java wrappers all grant native access only to the
 `fingrind` module. Selected Gradle `Test` and `JavaExec` task owners keep explicit classpath-era

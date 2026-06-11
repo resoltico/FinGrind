@@ -149,8 +149,8 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
                 "ready",
-                "3.53.1",
-                "2.3.4",
+                "3.53.2",
+                "2.3.5",
                 nullOf()));
     ByteArrayOutputStream jsonOutput = new ByteArrayOutputStream();
     CliResponseWriter jsonWriter = new CliResponseWriter(utf8PrintStream(jsonOutput));
@@ -216,8 +216,8 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
             SqliteCompileOptionsVerificationStatus.VERIFIED,
             "ready",
-            "3.53.1",
-            "2.3.4",
+            "3.53.2",
+            "2.3.5",
             nullOf());
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
     CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));

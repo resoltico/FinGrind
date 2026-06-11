@@ -25,7 +25,7 @@ class CliDistributionBuildContractTest {
 
     assertTrue(
         dockerfile.contains(
-            "FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:46db716f3d5ca5ed35db59c0511b4f7847c4c5c89f53e7fb57fdab0573a762f6 AS builder"));
+            "FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:d5514973a10f0dbdf3c18199465713176316a60ee032d19adacd4812588b611b AS builder"));
     assertTrue(dockerfile.contains("RUN apk add --no-cache binutils=2.45.1-r0 python3=3.12.13-r0"));
     assertTrue(dockerfile.contains("COPY source-root/ /build/source-root/"));
     assertTrue(

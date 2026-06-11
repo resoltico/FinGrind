@@ -175,8 +175,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     write_json(
         protocol_root / "managed-sqlite-contract.json",
         {
-            "requiredMinimumSqliteVersion": "3.53.1",
-            "requiredSqlite3mcVersion": "2.3.4",
+            "requiredMinimumSqliteVersion": "3.53.2",
+            "requiredSqlite3mcVersion": "2.3.5",
             "requiredSqliteSourceId": "2026-04-09 sqlite-source-id",
             "requiredCompileOptions": [
                 "THREADSAFE=1",
@@ -288,12 +288,12 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     loaded = contract_values.load_contract_values(
         fixture_root, os_name="Windows 11", architecture="ARM64"
     )
-    assert loaded["managedSqlite"]["requiredMinimumSqliteVersion"] == "3.53.1"
+    assert loaded["managedSqlite"]["requiredMinimumSqliteVersion"] == "3.53.2"
     assert loaded["protectedBookFormat"]["cipher"] == "chacha20"
     assert loaded["protectedBookFormat"]["legacyMode"] is False
     assert loaded["protectedBookFormat"]["pageSize"] == 4096
     assert loaded["protectedBookFormat"]["reservedBytes"] == 32
-    assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.3.4"
+    assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.3.5"
     assert (
         loaded["managedSqlite"]["requiredSqliteSourceId"]
         == "2026-04-09 sqlite-source-id"
