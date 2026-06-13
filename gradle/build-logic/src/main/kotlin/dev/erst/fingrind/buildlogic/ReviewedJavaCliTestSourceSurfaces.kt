@@ -3,6 +3,7 @@ package dev.erst.fingrind.buildlogic
 internal val reviewedJavaCliTestSourceSurfaces =
     listOf(
         reviewedJavaSourceSurface(
+            projectPath = FinGrindProjectPaths.CLI,
             relativePath = "src/test/java/dev/erst/fingrind/cli/CliMaintenanceCoverageTest.java",
             owner = "cli-maintenance-tests",
             reason =
@@ -20,11 +21,25 @@ internal val reviewedJavaCliTestSourceSurfaces =
             methodLineSpan = 360,
             methodParameters = 10,
             methodDecisionPoints = 32,
-            expiresOn = reviewedExpiry(7, 21),
+            approval =
+                reviewedApproval(
+                    physicalLines = 1002,
+                    logicalLines = 924,
+                    imports = 23,
+                    nestedTypes = 0,
+                    methodsPerTopLevelType = 12,
+                    fieldsPerTopLevelType = 0,
+                    switchArmsPerMethod = 0,
+                    methodLineSpan = 341,
+                    methodParameters = 3,
+                    methodDecisionPoints = 1,
+                    expiresOn = reviewedExpiry("2026-07-21"),
+                ),
             budgetVarianceReason =
                 "The maintenance coverage matrix exceeds the default test-suite budget until maintenance command families are split further.",
         ),
         reviewedJavaSourceSurface(
+            projectPath = FinGrindProjectPaths.CLI,
             relativePath = "src/test/java/dev/erst/fingrind/cli/CliRecordingWorkflow.java",
             owner = "cli-test-support",
             reason =
@@ -42,11 +57,25 @@ internal val reviewedJavaCliTestSourceSurfaces =
             methodLineSpan = 120,
             methodParameters = 10,
             methodDecisionPoints = 18,
-            expiresOn = reviewedExpiry(8, 11),
+            approval =
+                reviewedApproval(
+                    physicalLines = 302,
+                    logicalLines = 259,
+                    imports = 22,
+                    nestedTypes = 0,
+                    methodsPerTopLevelType = 40,
+                    fieldsPerTopLevelType = 32,
+                    switchArmsPerMethod = 0,
+                    methodLineSpan = 14,
+                    methodParameters = 6,
+                    methodDecisionPoints = 1,
+                    expiresOn = reviewedExpiry("2026-08-11"),
+                ),
             budgetVarianceReason =
                 "The recording workflow support owner exceeds the default test-suite budget until bookkeeping, maintenance, and reporting capture families are split further.",
         ),
         reviewedJavaSourceSurface(
+            projectPath = FinGrindProjectPaths.CLI,
             relativePath = "src/test/java/dev/erst/fingrind/cli/CliReportArgumentParsingTest.java",
             owner = "cli-report-tests",
             reason =
@@ -64,7 +93,20 @@ internal val reviewedJavaCliTestSourceSurfaces =
             methodLineSpan = 380,
             methodParameters = 10,
             methodDecisionPoints = 22,
-            expiresOn = reviewedExpiry(8, 18),
+            approval =
+                reviewedApproval(
+                    physicalLines = 562,
+                    logicalLines = 526,
+                    imports = 8,
+                    nestedTypes = 0,
+                    methodsPerTopLevelType = 2,
+                    fieldsPerTopLevelType = 0,
+                    switchArmsPerMethod = 0,
+                    methodLineSpan = 344,
+                    methodParameters = 0,
+                    methodDecisionPoints = 0,
+                    expiresOn = reviewedExpiry("2026-08-18"),
+                ),
             budgetVarianceReason =
                 "The report argument matrix exceeds the default test-suite budget until report families are split further.",
         ),

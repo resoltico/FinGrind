@@ -3,11 +3,13 @@ package dev.erst.fingrind.buildlogic
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import org.gradle.api.DefaultTask
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
@@ -32,6 +34,10 @@ abstract class WriteSourceCheckoutRuntimeManifestTask : DefaultTask() {
     @get:Input
     abstract val applicationModule: Property<String>
 
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val runtimeInputs: ConfigurableFileCollection
+
     @get:OutputFile
     abstract val outputFile: RegularFileProperty
 
@@ -48,7 +54,7 @@ abstract class WriteSourceCheckoutRuntimeManifestTask : DefaultTask() {
         }
         val manifestLines =
             listOf(
-                "formatVersion=1",
+                "formatVersion=3",
                 "ownerTask=${ownerTaskName.get()}",
                 "javaExecutable\t$executablePath",
                 "javaInstallationDirectory\t$installationPath",

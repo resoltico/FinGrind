@@ -105,8 +105,7 @@ cleanup() {
 trap cleanup EXIT
 
 "${repo_root}/gradlew" \
-    :cli:writeSourceCheckoutRuntimeManifest \
-    prepareManagedSqlite \
+    :cli:prepareSourceCheckoutCliRuntime \
     --no-daemon \
     --console=plain >/dev/null
 
@@ -178,9 +177,9 @@ progress 'source-checkout help surface'
     die "source-checkout launcher help failed"
 
 [[ ! -s "${help_stderr}" ]] || die "source-checkout launcher help wrote diagnostics"
-grep -Fq 'First Successful Run' "${help_stdout}" ||
+grep -Fq 'Quick Start' "${help_stdout}" ||
     die "source-checkout launcher help did not render the front-door guidance section"
-grep -Fq 'Command Families' "${help_stdout}" ||
+grep -Fq 'Command Catalog' "${help_stdout}" ||
     die "source-checkout launcher help did not render the grouped command catalog"
 if grep -Fq 'Unsupported runtime distribution: null' "${help_stdout}"; then
     die "source-checkout launcher baked a null runtime distribution into help output"
@@ -454,7 +453,7 @@ progress 'direct-java help surface'
     die "developer direct-Java help failed"
 
 [[ ! -s "${raw_help_stderr}" ]] || die "developer direct-Java help wrote diagnostics"
-grep -Fq 'First Successful Run' "${raw_help_stdout}" ||
+grep -Fq 'Quick Start' "${raw_help_stdout}" ||
     die "developer direct-Java help did not render the front-door guidance section"
 if grep -Fq 'Developer Raw JAR' "${raw_help_stdout}"; then
     die "developer direct-Java help regressed back to the retired runtime-specific quick-start block"
@@ -556,10 +555,10 @@ java -jar "${raw_jar}" help --output text >"${raw_jar_help_stdout}" 2>"${raw_jar
     die "raw java -jar help failed"
 
 [[ ! -s "${raw_jar_help_stderr}" ]] || die "raw java -jar help wrote diagnostics"
-normalized_file_contains 'java --enable-native-access=fingrind --module-path fingrind.jar --module' \
+normalized_file_contains 'java --enable-native-access=dev.erst.fingrind.cli --module-path fingrind.jar --module' \
     "${raw_jar_help_stdout}" || die \
     "raw java -jar help did not publish the modular launcher prefix"
-normalized_file_contains 'fingrind/dev.erst.fingrind.cli.App help <command>' "${raw_jar_help_stdout}" || die \
+normalized_file_contains 'dev.erst.fingrind.cli/dev.erst.fingrind.cli.App help <command>' "${raw_jar_help_stdout}" || die \
     "raw java -jar help did not publish the modular launcher command token"
 if grep -Fq './scripts/direct-java-cli.sh help' "${raw_jar_help_stdout}"; then
     die "raw java -jar help leaked the source-checkout direct-Java wrapper"
@@ -589,7 +588,11 @@ if distribution != sys.argv[2]:
 if runtime["status"] != "unavailable":
     raise SystemExit("raw java -jar environment did not report an unavailable SQLite runtime")
 issue = runtime["runtimeIssue"]
-if "supported FinGrind bundle launcher" not in issue and "prepareManagedSqlite" not in issue:
+if (
+    "supported FinGrind bundle launcher" not in issue
+    and "supported FinGrind launcher surface" not in issue
+    and ":cli:prepareSourceCheckoutCliRuntime" not in issue
+):
     raise SystemExit("raw java -jar environment did not surface the supported-launcher repair guidance")
 PY
 
@@ -623,7 +626,7 @@ if document["code"] != "managed-runtime-failure":
     raise SystemExit("raw java -jar open-book did not classify the failure as managed-runtime-failure")
 message = document["message"]
 hint = document.get("hint", "")
-if "prepareManagedSqlite" not in message and "prepareManagedSqlite" not in hint:
+if ":cli:prepareSourceCheckoutCliRuntime" not in message and ":cli:prepareSourceCheckoutCliRuntime" not in hint:
     raise SystemExit("raw java -jar open-book did not report the source-checkout runtime recovery path")
 if "supported launchers" not in message and "supported launchers" not in hint:
     raise SystemExit("raw java -jar open-book did not direct the operator toward supported launchers")

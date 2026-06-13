@@ -121,7 +121,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
 
     PreflightEntryResult duplicatePreflight =
         mutationWorkflow.preflight(bookAccess, workflowCommand).requireAccepted();
-    SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowPreflightRejected(
+    SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateWorkflowPreflightRejected(
         duplicatePreflight);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicatePreflight),
@@ -132,7 +132,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
 
     CommitEntryResult duplicateCommit =
         mutationWorkflow.commit(bookAccess, workflowCommand).requireAccepted();
-    SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowCommitRejected(
+    SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateWorkflowCommitRejected(
         duplicateCommit);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicateCommit),
@@ -167,7 +167,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
           declareAccountCommand.accountCode().value());
     }
     PreflightAccepted preflightAccepted =
-        SqliteRoundTripWorkflowLifecycleAssertions.requirePreflightAccepted(
+        SqliteRoundTripWorkflowDecisionAssertions.requirePreflightAccepted(
             mutationWorkflow.preflight(bookAccess, command));
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(preflightAccepted),
@@ -175,7 +175,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         (writers, result, mode) -> writers.mutation().writePostEntryResult(result, mode),
         command.requestProvenance().idempotencyKey().value());
     Committed committed =
-        SqliteRoundTripWorkflowLifecycleAssertions.requireCommitted(
+        SqliteRoundTripWorkflowDecisionAssertions.requireCommitted(
             mutationWorkflow.commit(bookAccess, command));
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(committed),
@@ -195,9 +195,9 @@ final class SqliteRoundTripWorkflowCliCoverage {
         SqliteRoundTripWorkflowCommandDerivation.derivedNearMissReversalCommand(
             committedCommand, targetPostingId, "reversal-near-miss");
     CommitRejected nearMissRejected =
-        SqliteRoundTripWorkflowLifecycleAssertions.requireCommitRejected(
+        SqliteRoundTripWorkflowDecisionAssertions.requireCommitRejected(
             mutationWorkflow.commit(bookAccess, nearMiss));
-    SqliteRoundTripWorkflowLifecycleAssertions.assertNearMissReversalRejected(nearMissRejected);
+    SqliteRoundTripWorkflowDecisionAssertions.assertNearMissReversalRejected(nearMissRejected);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(nearMissRejected),
         OutputMode.JSON,
@@ -208,7 +208,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         SqliteRoundTripWorkflowCommandDerivation.derivedExactReversalCommand(
             committedCommand, targetPostingId, "reversal-valid");
     Committed reversalCommitted =
-        SqliteRoundTripWorkflowLifecycleAssertions.requireCommitted(
+        SqliteRoundTripWorkflowDecisionAssertions.requireCommitted(
             mutationWorkflow.commit(bookAccess, validReversal));
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(reversalCommitted),
@@ -220,9 +220,9 @@ final class SqliteRoundTripWorkflowCliCoverage {
         SqliteRoundTripWorkflowCommandDerivation.derivedExactReversalCommand(
             committedCommand, targetPostingId, "reversal-duplicate");
     CommitRejected duplicateRejected =
-        SqliteRoundTripWorkflowLifecycleAssertions.requireCommitRejected(
+        SqliteRoundTripWorkflowDecisionAssertions.requireCommitRejected(
             mutationWorkflow.commit(bookAccess, duplicateReversal));
-    SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateReversalRejected(duplicateRejected);
+    SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateReversalRejected(duplicateRejected);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicateRejected),
         OutputMode.JSON,

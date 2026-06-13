@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.protocol.BookModelFacts;
 import dev.erst.fingrind.contract.protocol.CurrencyFacts;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanExecutionFacts;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolDeclareAccountFields;
@@ -18,7 +17,6 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.util.List;
-import org.jspecify.annotations.Nullable;
 
 /** Builds the non-request/non-response descriptor families in the machine contract. */
 final class MachineContractDomainDescriptors {
@@ -214,7 +212,6 @@ final class MachineContractDomainDescriptors {
         operation.options(),
         operation.executionMode(),
         operation.outputModes(),
-        selectableOutputDefaults(operation),
         operation.artifactOutputs().stream()
             .map(
                 artifact ->
@@ -222,14 +219,6 @@ final class MachineContractDomainDescriptors {
                         artifact.format(), artifact.option(), artifact.description()))
             .toList(),
         operation.analysisSummary());
-  }
-
-  private static @Nullable SelectableOutputDefaultsDescriptor selectableOutputDefaults(
-      ProtocolOperation operation) {
-    if (operation.outputModes().isEmpty()) {
-      return null;
-    }
-    return new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.TEXT);
   }
 
   private static List<CommandDescriptor> commandDescriptors(OperationCategory category) {

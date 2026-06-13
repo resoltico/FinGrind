@@ -76,6 +76,11 @@ internal fun JavaForkOptions.disableClassDataSharing() {
 internal fun VersionCatalog.library(name: String): Any =
     findLibrary(name).orElseThrow { IllegalArgumentException("Missing version-catalog library: $name") }.get()
 
+internal fun VersionCatalog.version(name: String): String =
+    findVersion(name)
+        .orElseThrow { IllegalArgumentException("Missing version-catalog version: $name") }
+        .requiredVersion
+
 internal fun Project.versionCatalog(name: String = "libs"): VersionCatalog =
     extensions
         .getByType(VersionCatalogsExtension::class.java)

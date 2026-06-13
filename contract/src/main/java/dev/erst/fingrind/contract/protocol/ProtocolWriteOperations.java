@@ -33,7 +33,7 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.REQUEST_FILE,
                             ProtocolOptions.RESULT_DETAIL)),
                 ProtocolExampleStep.note(
-                    "plan.json is runnable as emitted for a fresh demo book. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))),
+                    "plan.json starts as a scaffold. Replace every replace-before-commit token before submitting it to a live book."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PREFLIGHT_ENTRY,
             OperationCategory.WRITE,
@@ -61,7 +61,7 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REQUEST_FILE)),
                 ProtocolExampleStep.note(
-                    "request.json is runnable as emitted for a demo book. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))),
+                    "request.json starts as a scaffold. Replace every replace-before-commit token before submitting it to a live book."))),
         ProtocolOperationDefinitions.operation(
             OperationId.POST_ENTRY,
             OperationCategory.WRITE,
@@ -89,6 +89,6 @@ final class ProtocolWriteOperations {
                             ProtocolOptions.BOOK_KEY_FILE,
                             ProtocolOptions.REQUEST_FILE)),
                 ProtocolExampleStep.note(
-                    "request.json is runnable as emitted for a demo book. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))));
+                    "request.json starts as a scaffold. Replace every replace-before-commit token before submitting it to a live book."))));
   }
 }

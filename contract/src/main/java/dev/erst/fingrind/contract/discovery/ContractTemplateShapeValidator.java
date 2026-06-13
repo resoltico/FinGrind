@@ -19,11 +19,11 @@ final class ContractTemplateShapeValidator {
 
   static void validateStepShape(
       LedgerStepKind kind,
-      ContractTemplates.@Nullable OpenBookTemplateDescriptor openBook,
+      ContractPlanTemplates.@Nullable OpenBookTemplateDescriptor openBook,
       ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
       ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
-      ContractTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
-      ContractTemplates.@Nullable LedgerAssertionTemplateDescriptor assertion,
+      ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
+      ContractPlanTemplates.@Nullable LedgerAssertionTemplateDescriptor assertion,
       @Nullable String postingId) {
     ContractTemplateStepShapeRequirements requirements = stepRequirements(kind);
     requirePresence(kind, "openBook", openBook, requirements.openBook());
@@ -33,7 +33,7 @@ final class ContractTemplateShapeValidator {
     requirePresence(kind, "assertion", assertion, requirements.assertion());
     requirePresence(kind, "postingId", postingId, requirements.postingId());
     if (requirements.queryAccountCodeRequired()) {
-      ContractTemplates.LedgerPlanQueryTemplateDescriptor accountBalanceQuery =
+      ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor accountBalanceQuery =
           Objects.requireNonNull(query, "query");
       if (accountBalanceQuery.accountCode() == null) {
         throw new IllegalArgumentException(

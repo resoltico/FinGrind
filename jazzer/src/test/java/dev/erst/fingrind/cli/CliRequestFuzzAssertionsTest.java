@@ -11,19 +11,19 @@ class CliRequestFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             CliRequestFuzzAssertions.readPostEntryCommand(
-                CliFuzzHarnessTestSupport.basicValidRequestBytes()));
+                CliFuzzRequestSeedSupport.basicValidRequestBytes()));
     assertDoesNotThrow(
         () ->
             CliRequestFuzzAssertions.readPostEntryCommand(
-                CliFuzzHarnessTestSupport.validJpyRequestBytes()));
+                CliFuzzRequestSeedSupport.validJpyRequestBytes()));
     assertDoesNotThrow(
         () ->
             CliRequestFuzzAssertions.readPostEntryCommand(
-                CliFuzzHarnessTestSupport.validBhdRequestBytes()));
+                CliFuzzRequestSeedSupport.validBhdRequestBytes()));
     assertDoesNotThrow(
         () ->
             CliRequestFuzzAssertions.readPostEntryCommand(
-                CliFuzzHarnessTestSupport.invalidExponentAmountRequestBytes()));
+                CliFuzzRequestSeedSupport.invalidExponentAmountRequestBytes()));
   }
 
   @Test
@@ -32,22 +32,22 @@ class CliRequestFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             harness.readPostEntryCommand(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.basicValidRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.basicValidRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.readPostEntryCommand(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.validJpyRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.validJpyRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.readPostEntryCommand(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.validBhdRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.validBhdRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.readPostEntryCommand(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.invalidBlankActorRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.invalidBlankActorRequestBytes())));
   }
 }

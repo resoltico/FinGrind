@@ -11,9 +11,8 @@ KOTLIN_LINE_COMMENT_RE = re.compile(r"//.*?$", re.MULTILINE)
 KOTLIN_TRIPLE_STRING_RE = re.compile(r'""".*?"""', re.DOTALL)
 KOTLIN_STRING_RE = re.compile(r'"(?:\\.|[^"\\])*"')
 KOTLIN_CHAR_RE = re.compile(r"'(?:\\.|[^'\\])'")
-KOTLIN_FUNCTION_RE = re.compile(r"\bfun\s+[A-Za-z_`][A-Za-z0-9_`<>,\s]*\(")
-KOTLIN_TYPE_RE = re.compile(r"\b(?:class|interface|object)\s+[A-Z][A-Za-z0-9_`]*")
 KOTLIN_IMPORT_RE = re.compile(r"^\s*import\s+", re.MULTILINE)
+KOTLIN_DECLARATION_TOKEN_RE = re.compile(r"`[^`]+`|[A-Za-z_][A-Za-z0-9_]*|[{}():.]")
 
 SHELL_COMMENT_LINE_RE = re.compile(r"^\s*#")
 SHELL_FUNCTION_RE = re.compile(
@@ -37,13 +36,13 @@ def measure_kotlin_file(path: Path) -> FileMetrics:
     text = path.read_text(encoding="utf-8")
     sanitized = sanitize_kotlin(text)
     normalized_lines = normalized_nonempty_lines(sanitized.splitlines())
-    nested_type_matches = len(KOTLIN_TYPE_RE.findall(sanitized))
+    functions, nested_types = count_kotlin_declarations(sanitized)
     return FileMetrics(
         physical_lines=len(text.splitlines()),
         logical_lines=len(normalized_lines),
         import_like_lines=len(KOTLIN_IMPORT_RE.findall(text)),
-        functions=len(KOTLIN_FUNCTION_RE.findall(sanitized)),
-        nested_types=max(0, nested_type_matches - 1),
+        functions=functions,
+        nested_types=nested_types,
         normalized_nonempty_lines=normalized_lines,
     )
 
@@ -107,6 +106,48 @@ def sanitize_kotlin(text: str) -> str:
     without_strings = KOTLIN_STRING_RE.sub('""', without_triple_strings)
     without_chars = KOTLIN_CHAR_RE.sub("' '", without_strings)
     return KOTLIN_LINE_COMMENT_RE.sub("", without_chars)
+
+
+def count_kotlin_declarations(text: str) -> tuple[int, int]:
+    tokens = KOTLIN_DECLARATION_TOKEN_RE.findall(text)
+    brace_depth = 0
+    functions = 0
+    nested_types = 0
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "{":
+            brace_depth += 1
+        elif token == "}":
+            brace_depth = max(0, brace_depth - 1)
+        elif token == "fun":
+            next_token = tokens[index + 1] if index + 1 < len(tokens) else None
+            if next_token == "interface":
+                type_name = tokens[index + 2] if index + 2 < len(tokens) else None
+                if is_kotlin_identifier(type_name) and brace_depth > 0:
+                    nested_types += 1
+                index += 1
+            else:
+                functions += 1
+        elif token in {"class", "interface"}:
+            next_token = tokens[index + 1] if index + 1 < len(tokens) else None
+            if is_kotlin_identifier(next_token) and brace_depth > 0:
+                nested_types += 1
+        elif token == "object":
+            previous_token = tokens[index - 1] if index > 0 else None
+            next_token = tokens[index + 1] if index + 1 < len(tokens) else None
+            if (
+                previous_token == "companion" or is_kotlin_identifier(next_token)
+            ) and brace_depth > 0:
+                nested_types += 1
+        index += 1
+    return functions, nested_types
+
+
+def is_kotlin_identifier(token: str | None) -> bool:
+    if token is None or token in {"{", "}", "(", ")", ":", "."}:
+        return False
+    return True
 
 
 def strip_shell_comments(text: str) -> str:

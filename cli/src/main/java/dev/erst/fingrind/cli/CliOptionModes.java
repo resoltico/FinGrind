@@ -64,7 +64,7 @@ final class CliOptionModes {
           exception);
     }
     if (!supportedModes.contains(outputMode)) {
-      throw CliArgumentValueParser.invalid(
+      throw CliArgumentValueParser.unsupportedOutputSelection(
           ProtocolOptions.OUTPUT, unsupportedOutputModeMessage(rawOutputMode, supportedModes));
     }
     return outputMode;

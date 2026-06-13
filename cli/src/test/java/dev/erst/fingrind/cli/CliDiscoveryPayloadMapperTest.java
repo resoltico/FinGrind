@@ -98,10 +98,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     assertTrue(minimal.compactDetailHint().contains("--detail compact"));
     assertEquals(DiscoveryDetail.COMPACT, compact.detail());
     assertEquals(DiscoveryFocus.OVERVIEW, compact.focus());
-    assertFalse(compact.commandCounts().isEmpty());
-    assertTrue(
-        compact.commandCounts().stream()
-            .anyMatch(commandCount -> "query".equals(commandCount.category())));
+    assertFalse(compact.commands().isEmpty());
+    assertTrue(compact.commands().stream().anyMatch(command -> "query".equals(command.category())));
     assertNotNull(compact.requestInput());
     assertEquals(DiscoveryDetail.FULL, full.detail());
     assertEquals(DiscoveryFocus.OVERVIEW, full.focus());
@@ -449,6 +447,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 commandScoped, DiscoveryDetail.COMPACT, OperationCategory.ADMINISTRATION));
 
     assertEquals(OperationId.POST_ENTRY, payload.command().name());
+    assertEquals(ProtocolCatalog.operation(OperationId.POST_ENTRY).usage(), payload.syntax());
   }
 
   @Test
@@ -462,6 +461,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     assertNotNull(payload.requestFile());
     assertNull(payload.requestFile().postingTemplate());
     assertNull(payload.requestFile().requestShapes());
+    assertEquals(ProtocolCatalog.operation(OperationId.POST_ENTRY).usage(), payload.syntax());
     assertEquals(
         CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE),
         payload.requestFile().shortcutCommand());
@@ -507,6 +507,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 MachineContract.help(identity(), environment(), OperationId.VERSION)));
 
     assertNull(payload.requestFile());
+    assertEquals(ProtocolCatalog.operation(OperationId.VERSION).usage(), payload.syntax());
   }
 
   @Test
@@ -539,6 +540,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN)));
 
     assertNotNull(declarePayload.requestFile());
+    assertEquals(
+        ProtocolCatalog.operation(OperationId.DECLARE_ACCOUNT).usage(), declarePayload.syntax());
     assertNull(declarePayload.requestFile().postingTemplate());
     assertNotNull(declarePayload.requestFile().declareAccountTemplate());
     assertNull(declarePayload.requestFile().ledgerPlanTemplate());
@@ -555,6 +558,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
             .contains("declare-account"));
 
     assertNotNull(planPayload.requestFile());
+    assertEquals(ProtocolCatalog.operation(OperationId.EXECUTE_PLAN).usage(), planPayload.syntax());
     assertNull(planPayload.requestFile().postingTemplate());
     assertNull(planPayload.requestFile().declareAccountTemplate());
     assertNotNull(planPayload.requestFile().ledgerPlanTemplate());
@@ -927,7 +931,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.52.0",
+        "0.53.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

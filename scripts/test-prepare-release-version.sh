@@ -57,7 +57,8 @@ mkdir -p \
     "${fixture_root}/docs/sqlite" \
     "${fixture_root}/cli/src/test/java/dev/erst/fingrind/cli" \
     "${fixture_root}/contract/src/test/java/dev/erst/fingrind/contract" \
-    "${fixture_root}/report-pdf/src/test/java/dev/erst/fingrind/report/pdf"
+    "${fixture_root}/report-pdf/src/test/java/dev/erst/fingrind/report/pdf" \
+    "${fixture_root}/contract"
 
 cat > "${fixture_root}/gradle.properties" <<'EOF'
 group=dev.erst.fingrind
@@ -104,6 +105,36 @@ tar -xzf fingrind-1.2.3-linux-x86_64.tar.gz
 tar -xzf fingrind-1.2.3-linux-aarch64.tar.gz
 EOF
 
+cat > "${fixture_root}/docs/USER_INSTALL.md" <<'EOF'
+---
+afad: "3.5"
+version: "1.2.3"
+domain: USER_INSTALL
+updated: "2026-04-20"
+---
+
+<!-- BEGIN GENERATED USER_INSTALL PACKAGE MATRIX -->
+old package block
+<!-- END GENERATED USER_INSTALL PACKAGE MATRIX -->
+
+<!-- BEGIN GENERATED USER_INSTALL CONTAINER SURFACE -->
+- published tags: one exact release tag such as `1.2.3` plus `latest`, where `latest` always points at the newest stable public release
+<!-- END GENERATED USER_INSTALL CONTAINER SURFACE -->
+EOF
+
+cat > "${fixture_root}/docs/USER_QUICK_START.md" <<'EOF'
+---
+afad: "3.5"
+version: "1.2.3"
+domain: USER_QUICK_START
+updated: "2026-04-20"
+---
+
+<!-- BEGIN GENERATED USER_QUICK_START BUNDLE MATRIX -->
+old quick-start block
+<!-- END GENERATED USER_QUICK_START BUNDLE MATRIX -->
+EOF
+
 cat > "${fixture_root}/docs/USER_EXAMPLES.md" <<'EOF'
 ---
 afad: "3.5"
@@ -144,6 +175,33 @@ class ExampleTest {
 }
 EOF
 
+cat > "${fixture_root}/contract/build.gradle.kts" <<'EOF'
+// fixture marker that enables the release-prep sync hook
+EOF
+
+cat > "${fixture_root}/gradlew" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf '%s\n' "$*" >> gradlew.log
+version="$(awk -F'"' '/^version: /{print $2; exit}' docs/USER_INSTALL.md)"
+
+python3 - "$version" <<'PY'
+from pathlib import Path
+import sys
+
+version = sys.argv[1]
+path = Path("docs/USER_INSTALL.md")
+text = path.read_text(encoding="utf-8")
+text = text.replace(
+    "one exact release tag such as `1.2.3`",
+    f"one exact release tag such as `{version}`",
+)
+path.write_text(text, encoding="utf-8")
+PY
+EOF
+chmod +x "${fixture_root}/gradlew"
+
 FINGRIND_RELEASE_REPO_ROOT="${fixture_root}" \
     "${prepare_script}" "1.2.4" "2026-04-23" >/dev/null
 
@@ -151,6 +209,8 @@ require_file_contains "${fixture_root}/gradle.properties" 'version=1.2.4'
 require_file_contains "${fixture_root}/docs/RELEASE_PROTOCOL.md" 'version: "1.2.4"'
 require_file_contains "${fixture_root}/docs/RELEASE_PROTOCOL.md" 'updated: "2026-04-23"'
 require_file_contains "${fixture_root}/docs/USER_CLI.md" 'fingrind-1.2.4-linux-x86_64.tar.gz'
+require_file_contains "${fixture_root}/docs/USER_INSTALL.md" 'version: "1.2.4"'
+require_file_contains "${fixture_root}/docs/USER_INSTALL.md" 'one exact release tag such as `1.2.4`'
 require_file_contains "${fixture_root}/docs/USER_EXAMPLES.md" './fingrind-1.2.4-linux-x86_64/bin/fingrind help'
 require_file_contains "${fixture_root}/cli/src/test/java/dev/erst/fingrind/cli/ExampleTest.java" '"1.2.4"'
 require_file_contains "${fixture_root}/report-pdf/src/test/java/dev/erst/fingrind/report/pdf/ExampleTest.java" \
@@ -162,6 +222,7 @@ require_file_contains "${fixture_root}/CHANGELOG.md" \
     '[Unreleased]: https://github.com/resoltico/FinGrind/compare/v1.2.4...HEAD'
 require_file_contains "${fixture_root}/CHANGELOG.md" \
     '[1.2.4]: https://github.com/resoltico/FinGrind/releases/tag/v1.2.4'
+require_file_contains "${fixture_root}/gradlew.log" ':contract:syncUserInstallDocs'
 
 FINGRIND_RELEASE_REPO_ROOT="${fixture_root}" \
     "${prepare_script}" "1.2.4" "2026-04-23" >/dev/null

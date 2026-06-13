@@ -7,8 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
@@ -22,13 +24,15 @@ import org.junit.jupiter.api.Test;
 class MachineContractPlanTemplateTest {
   @Test
   void planTemplatePublishesCanonicalAgentWorkflowMetadata() {
-    ContractTemplates.LedgerPlanTemplateDescriptor template = MachineContract.planTemplate();
-    ContractTemplates.LedgerPlanStepTemplateDescriptor initializeBook = template.steps().get(0);
-    ContractTemplates.OpenBookTemplateDescriptor initializeBookTemplate = initializeBook.openBook();
-    ContractTemplates.LedgerPlanStepTemplateDescriptor postJournal = template.steps().get(1);
+    ContractPlanTemplates.LedgerPlanTemplateDescriptor template = MachineContract.planTemplate();
+    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor initializeBook = template.steps().get(0);
+    ContractPlanTemplates.OpenBookTemplateDescriptor initializeBookTemplate =
+        initializeBook.openBook();
+    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor postJournal = template.steps().get(1);
     ContractTemplates.PostingRequestTemplateDescriptor postJournalTemplate = postJournal.posting();
-    ContractTemplates.LedgerPlanStepTemplateDescriptor assertCashBalance = template.steps().get(2);
-    ContractTemplates.LedgerAssertionTemplateDescriptor assertCashBalanceTemplate =
+    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor assertCashBalance =
+        template.steps().get(2);
+    ContractPlanTemplates.LedgerAssertionTemplateDescriptor assertCashBalanceTemplate =
         assertCashBalance.assertion();
     assertNotNull(initializeBookTemplate);
     assertNotNull(postJournalTemplate);
@@ -47,7 +51,7 @@ class MachineContractPlanTemplateTest {
         dev.erst.fingrind.core.BookkeepingEntryKind.CASH_REVENUE, postJournalTemplate.entryKind());
     assertEquals("cash", postJournalTemplate.cashAccountCode());
     assertEquals("service-revenue", postJournalTemplate.revenueAccountCode());
-    assertEquals("replace-with-actor-id", postJournalTemplate.provenance().actorId());
+    assertEquals(ScaffoldPlaceholders.ACTOR_ID, postJournalTemplate.provenance().actorId());
     assertEquals(ActorType.PERSON, postJournalTemplate.provenance().actorType());
     assertEquals("assert-cash-balance", assertCashBalance.stepId());
     assertEquals(LedgerStepKind.ASSERT, assertCashBalance.kind());
@@ -56,7 +60,7 @@ class MachineContractPlanTemplateTest {
     assertEquals(new MonetaryAmount("EUR", "1000"), assertCashBalanceTemplate.netAmount());
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
-        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.52.0", "test"));
+        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.53.0", "test"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());

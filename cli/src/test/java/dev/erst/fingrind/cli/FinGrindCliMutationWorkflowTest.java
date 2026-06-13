@@ -214,6 +214,64 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_rejectsPlaceholderRequestScaffoldBeforePreflightOrCommit() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("placeholder-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream templateOutput = new ByteArrayOutputStream();
+    FinGrindCli templateCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(templateOutput), fixedClock());
+    assertEquals(0, templateCli.run(new String[] {"print-request-template"}));
+    Path requestFile =
+        writeNamedRequest(
+            "placeholder-request.json", templateOutput.toString(StandardCharsets.UTF_8));
+    FinGrindCli openCli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(new ByteArrayOutputStream()),
+            fixedClock());
+    assertEquals(
+        0, openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+
+    ByteArrayOutputStream preflightOutput = new ByteArrayOutputStream();
+    FinGrindCli preflightCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(preflightOutput), fixedClock());
+    assertEquals(
+        1,
+        preflightCli.run(
+            jsonArguments(
+                "preflight-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString())));
+    assertTrue(
+        preflightOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("Scaffold placeholder must be replaced before submission"));
+
+    ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
+    FinGrindCli commitCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock());
+    assertEquals(
+        1,
+        commitCli.run(
+            jsonArguments(
+                "post-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString())));
+    assertTrue(
+        commitOutput
+            .toString(StandardCharsets.UTF_8)
+            .contains("Scaffold placeholder must be replaced before submission"));
+  }
+
+  @Test
   void run_rekeyBookWithWrongCurrentKey_doesNotEchoCurrentOrReplacementSecret() throws IOException {
     Path bookFilePath = tempDirectory.resolve("wrong-rekey-books").resolve("entity.sqlite");
     Path currentBookKeyFilePath = writeBookKey(bookFilePath, TEST_BOOK_KEY);

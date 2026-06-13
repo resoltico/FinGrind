@@ -16,6 +16,7 @@ fg_cli_wrapper_initialize() {
 
     readonly fg_cli_wrapper_repo_root="$(cd -P -- "${wrapper_script_dir}/.." && pwd)"
     readonly fg_cli_wrapper_gradle_wrapper_support="${fg_cli_wrapper_repo_root}/scripts/gradle-wrapper-support.sh"
+    readonly fg_cli_wrapper_repo_lock_support="${fg_cli_wrapper_repo_root}/scripts/repo-verification-lock-support.sh"
 
     local is_darwin=false
     case "$(uname -s)" in
@@ -25,9 +26,16 @@ fg_cli_wrapper_initialize() {
 
     [[ -f "${fg_cli_wrapper_gradle_wrapper_support}" ]] || fg_cli_wrapper_die \
         "missing Gradle wrapper support helper at ${fg_cli_wrapper_gradle_wrapper_support}"
+    [[ -f "${fg_cli_wrapper_repo_lock_support}" ]] || fg_cli_wrapper_die \
+        "missing repo verification lock helper at ${fg_cli_wrapper_repo_lock_support}"
 
     # shellcheck source=/dev/null
     source "${fg_cli_wrapper_gradle_wrapper_support}"
+    repo_root="${fg_cli_wrapper_repo_root}"
+    lock_scope_name='FinGrind CLI runtime prepare'
+    lock_scope_advice='run one developer launcher prepare at a time'
+    # shellcheck source=/dev/null
+    source "${fg_cli_wrapper_repo_lock_support}"
 
     readonly fg_cli_wrapper_cli_build_dir="$(
         fg_gradle_project_build_dir \
@@ -53,16 +61,24 @@ fg_cli_wrapper_initialize() {
     fg_cli_wrapper_native_access_module=''
 }
 
-fg_cli_wrapper_refresh_raw_jar_if_needed() {
-    local refresh_failure_message=$1
-    (
+fg_cli_wrapper_prepare_runtime_if_needed() {
+    local prepare_failure_message=$1
+    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] && fg_cli_wrapper_runtime_manifest_is_usable; then
+        return 0
+    fi
+    acquire_lock
+    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] && fg_cli_wrapper_runtime_manifest_is_usable; then
+        cleanup_lock
+        return 0
+    fi
+    if ! (
         cd "${fg_cli_wrapper_repo_root}"
-        ./gradlew \
-            :cli:writeSourceCheckoutRuntimeManifest \
-            prepareManagedSqlite \
-            --no-daemon \
-            --quiet >/dev/null
-    ) || fg_cli_wrapper_die "${refresh_failure_message}"
+        ./gradlew :cli:prepareSourceCheckoutCliRuntime --quiet >/dev/null
+    ); then
+        cleanup_lock
+        fg_cli_wrapper_die "${prepare_failure_message}"
+    fi
+    cleanup_lock
 }
 
 fg_cli_wrapper_verify_raw_jar() {
@@ -76,40 +92,58 @@ fg_cli_wrapper_load_runtime_manifest() {
     local stale_message=$2
 
     [[ -f "${fg_cli_wrapper_source_checkout_runtime_manifest}" ]] || fg_cli_wrapper_die "${missing_message}"
+    fg_cli_wrapper_parse_runtime_manifest || fg_cli_wrapper_die "${stale_message}"
 
-    local java_executable=''
-    local application_module=''
-    local native_access_module=''
-    while IFS="$(printf '\t')" read -r record_type record_value || \
-        [[ -n "${record_type}${record_value}" ]]; do
+    [[ -n "${fg_cli_wrapper_java_executable}" ]] || fg_cli_wrapper_die "${stale_message}"
+    [[ -n "${fg_cli_wrapper_application_module}" ]] || fg_cli_wrapper_die "${stale_message}"
+    [[ -n "${fg_cli_wrapper_native_access_module}" ]] || fg_cli_wrapper_die "${stale_message}"
+    [[ -x "${fg_cli_wrapper_java_executable}" ]] || fg_cli_wrapper_die "${stale_message}"
+}
+
+fg_cli_wrapper_runtime_manifest_is_usable() {
+    fg_cli_wrapper_parse_runtime_manifest || return 1
+    [[ -n "${fg_cli_wrapper_java_executable}" ]] || return 1
+    [[ -n "${fg_cli_wrapper_application_module}" ]] || return 1
+    [[ -n "${fg_cli_wrapper_native_access_module}" ]] || return 1
+    [[ -x "${fg_cli_wrapper_java_executable}" ]] || return 1
+    return 0
+}
+
+fg_cli_wrapper_parse_runtime_manifest() {
+    local record_type=''
+    local record_value=''
+    local format_version=''
+
+    [[ -f "${fg_cli_wrapper_source_checkout_runtime_manifest}" ]] || return 1
+
+    fg_cli_wrapper_java_executable=''
+    fg_cli_wrapper_application_module=''
+    fg_cli_wrapper_native_access_module=''
+    while IFS="$(printf '\t')" read -r record_type record_value || [[ -n "${record_type}${record_value}" ]]; do
         case "${record_type}" in
             javaExecutable)
-                java_executable="${record_value}"
+                fg_cli_wrapper_java_executable="${record_value}"
                 ;;
             applicationModule)
-                application_module="${record_value}"
+                fg_cli_wrapper_application_module="${record_value}"
                 ;;
             nativeAccessModule)
-                native_access_module="${record_value}"
+                fg_cli_wrapper_native_access_module="${record_value}"
                 ;;
             javaInstallationDirectory)
                 ;;
-            formatVersion=1|ownerTask=*|'')
+            formatVersion=*)
+                format_version="${record_type#formatVersion=}"
+                ;;
+            ownerTask=*|'')
                 ;;
             *)
-                fg_cli_wrapper_die "${stale_message}"
+                return 1
                 ;;
         esac
     done < "${fg_cli_wrapper_source_checkout_runtime_manifest}"
-
-    [[ -n "${java_executable}" ]] || fg_cli_wrapper_die "${stale_message}"
-    [[ -n "${application_module}" ]] || fg_cli_wrapper_die "${stale_message}"
-    [[ -n "${native_access_module}" ]] || fg_cli_wrapper_die "${stale_message}"
-    [[ -x "${java_executable}" ]] || fg_cli_wrapper_die "${stale_message}"
-
-    fg_cli_wrapper_java_executable="${java_executable}"
-    fg_cli_wrapper_application_module="${application_module}"
-    fg_cli_wrapper_native_access_module="${native_access_module}"
+    [[ "${format_version}" == '3' ]] || return 1
+    return 0
 }
 
 fg_cli_wrapper_exec_java() {

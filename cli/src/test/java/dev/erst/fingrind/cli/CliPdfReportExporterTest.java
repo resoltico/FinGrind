@@ -82,7 +82,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportMethodsWritePdfArtifacts() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.53.0", CLOCK));
 
     Path accountBalancePdf = tempDirectory.resolve("balance.pdf");
     Path trialBalancePdf = tempDirectory.resolve("trial.pdf");
@@ -103,7 +103,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportIgnoresPermissionNormalizationOnNonPosixFileSystems() throws IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.53.0", CLOCK));
     Path archivePath = tempDirectory.resolve("reports.zip");
 
     try (FileSystem zipFileSystem =
@@ -118,7 +118,7 @@ class CliPdfReportExporterTest {
   }
 
   @Test
-  void applyHostReadablePosixPermissionsIfSupportedEnforcesPublicReadMode() throws IOException {
+  void applyPrivatePosixPermissionsIfSupportedEnforcesOwnerOnlyMode() throws IOException {
     Path archivePath = tempDirectory.resolve("reports.zip");
 
     try (FileSystem zipFileSystem =
@@ -134,20 +134,16 @@ class CliPdfReportExporterTest {
       Files.createDirectories(trialBalancePdf.getParent());
       Files.writeString(trialBalancePdf, "%PDF-", StandardCharsets.ISO_8859_1);
 
-      CliPdfReportExporter.applyHostReadablePosixPermissionsIfSupported(trialBalancePdf);
+      CliPdfReportExporter.applyPrivatePosixPermissionsIfSupported(trialBalancePdf);
 
       assertEquals(
-          Set.of(
-              PosixFilePermission.OWNER_READ,
-              PosixFilePermission.OWNER_WRITE,
-              PosixFilePermission.GROUP_READ,
-              PosixFilePermission.OTHERS_READ),
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
           Files.getPosixFilePermissions(trialBalancePdf));
     }
   }
 
   @Test
-  void applyHostReadablePosixPermissionsIfSupportedIgnoresFileSystemsWithoutPosixView()
+  void applyPrivatePosixPermissionsIfSupportedIgnoresFileSystemsWithoutPosixView()
       throws IOException {
     Path archivePath = tempDirectory.resolve("non-posix-reports.zip");
 
@@ -158,7 +154,7 @@ class CliPdfReportExporterTest {
       Files.createDirectories(trialBalancePdf.getParent());
       Files.writeString(trialBalancePdf, "%PDF-", StandardCharsets.ISO_8859_1);
 
-      CliPdfReportExporter.applyHostReadablePosixPermissionsIfSupported(trialBalancePdf);
+      CliPdfReportExporter.applyPrivatePosixPermissionsIfSupported(trialBalancePdf);
 
       assertTrue(Files.isReadable(trialBalancePdf));
     }
@@ -171,23 +167,28 @@ class CliPdfReportExporterTest {
         new CliPdfReportExporter.DefaultFileOperations(observedPath::set);
     Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
 
-    fileOperations.normalizePublishedPdfPermissions(trialBalancePdf);
+    fileOperations.normalizePrivatePdfPermissions(trialBalancePdf);
 
     assertEquals(trialBalancePdf, observedPath.get());
   }
 
   @Test
-  void defaultFileOperationsApplyHostReadablePermissionsOnDefaultFileSystems() throws IOException {
+  void defaultFileOperationsApplyPrivatePermissionsOnDefaultFileSystems() throws IOException {
     CliPdfReportExporter.DefaultFileOperations fileOperations =
         new CliPdfReportExporter.DefaultFileOperations();
     Path trialBalancePdf = tempDirectory.resolve("trial-balance.pdf");
     Files.writeString(trialBalancePdf, "%PDF-", StandardCharsets.ISO_8859_1);
 
-    fileOperations.normalizePublishedPdfPermissions(trialBalancePdf);
+    fileOperations.normalizePrivatePdfPermissions(trialBalancePdf);
 
     assertTrue(Files.isReadable(trialBalancePdf));
     assertTrue(trialBalancePdf.toFile().canRead());
     assertTrue(trialBalancePdf.toFile().canWrite());
+    if (trialBalancePdf.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+      assertEquals(
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+          Files.getPosixFilePermissions(trialBalancePdf));
+    }
   }
 
   @Test
@@ -198,11 +199,11 @@ class CliPdfReportExporterTest {
 
     IOException exception =
         assertThrows(
-            IOException.class, () -> fileOperations.normalizePublishedPdfPermissions(missingPdf));
+            IOException.class, () -> fileOperations.normalizePrivatePdfPermissions(missingPdf));
 
     String message = exception.getMessage();
     assertNotNull(message);
-    assertTrue(message.contains("host-readable after permission normalization"));
+    assertTrue(message.contains("owner-readable after permission normalization"));
   }
 
   @Test
@@ -218,7 +219,7 @@ class CliPdfReportExporterTest {
         assertThrows(
             IOException.class,
             () ->
-                fileOperations.normalizePublishedPdfPermissions(
+                fileOperations.normalizePrivatePdfPermissions(
                     tempDirectory.resolve("trial-balance.pdf")));
 
     assertSame(failure, exception);
@@ -227,7 +228,7 @@ class CliPdfReportExporterTest {
   @Test
   void exportWrapsFilesystemFailuresInCliPdfExportException() throws java.io.IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.53.0", CLOCK));
     Path blockedParent = tempDirectory.resolve("not-a-directory");
     Files.writeString(blockedParent, "nope", StandardCharsets.UTF_8);
     Path outputPath = blockedParent.resolve("trial-balance.pdf");
@@ -244,7 +245,7 @@ class CliPdfReportExporterTest {
   void exportFallsBackToNonAtomicMoveWhenAtomicMoveIsUnsupported() {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.53.0", CLOCK), fileOperations);
 
     exporter.exportTrialBalance(Path.of("trial-balance.pdf"), trialBalanceReport());
 
@@ -253,12 +254,12 @@ class CliPdfReportExporterTest {
   }
 
   @Test
-  void exportStillFailsCleanlyWhenCleanupDeleteAlsoFails() {
+  void exportFailsCleanlyWhenCleanupDeleteAlsoFails() {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     fileOperations.failDuringMove = true;
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.53.0", CLOCK), fileOperations);
 
     CliPdfExportException exception =
         assertThrows(
@@ -279,7 +280,7 @@ class CliPdfReportExporterTest {
   @Test
   void deleteIfPresentRemovesExistingTemporaryFiles() throws IOException {
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK));
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.53.0", CLOCK));
     Path temporaryFile = Files.createTempFile(tempDirectory, "delete-me", ".tmp");
 
     exporter.deleteIfPresent(temporaryFile);
@@ -292,7 +293,7 @@ class CliPdfReportExporterTest {
     RecordingFileOperations fileOperations = new RecordingFileOperations();
     fileOperations.failDuringDelete = true;
     CliPdfReportExporter exporter =
-        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.52.0", CLOCK), fileOperations);
+        new CliPdfReportExporter(new PdfReportService("FinGrind", "0.53.0", CLOCK), fileOperations);
 
     exporter.deleteIfPresent(Path.of("temporary.pdf"));
 
@@ -445,7 +446,7 @@ class CliPdfReportExporterTest {
     }
 
     @Override
-    public void normalizePublishedPdfPermissions(Path path) {
+    public void normalizePrivatePdfPermissions(Path path) {
       // Recording test doubles do not mutate filesystem permissions.
     }
 

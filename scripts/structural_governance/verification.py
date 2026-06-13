@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import subprocess
 from datetime import date
 from pathlib import Path
 
@@ -20,6 +21,13 @@ from .reviewed_surface_verification import (
     reviewed_surface_violations,
 )
 from .reviewed_surfaces import REVIEWED_SURFACES
+
+MARKDOWN_EXCLUDED_PREFIXES = (
+    ".git/",
+    ".gradle/",
+    "build/",
+    "tmp/",
+)
 
 
 def verify_build_logic_kotlin(repo_root: Path) -> list[str]:
@@ -63,26 +71,10 @@ def verify_sqlite_sql(repo_root: Path) -> list[str]:
 
 
 def verify_markdown_docs(repo_root: Path) -> list[str]:
-    include_paths = [
-        repo_root / "docs",
-        repo_root / "README.md",
-        repo_root / "AGENTS.md",
-        repo_root / "CHANGELOG.md",
-        repo_root / "SECURITY.md",
-        repo_root / "PATENTS.md",
-        repo_root / "jazzer" / "README.md",
-        repo_root / "cli" / "src" / "bundle" / "root" / "README.md",
-        repo_root / "third_party" / "sqlite",
-    ]
-    files: list[Path] = []
-    for path in include_paths:
-        if path.is_file() and path.suffix == ".md":
-            files.append(path)
-        elif path.is_dir():
-            files.extend(sorted(path.rglob("*.md")))
+    files = repository_markdown_files(repo_root)
     measurements = _measure_files(
         repo_root,
-        sorted(set(files)),
+        files,
         markdown_budget_for,
         measure_markdown_file,
     )
@@ -213,3 +205,39 @@ def _measurement_violations(
             duplicate_window_violations(duplication_candidates, minimum_window_lines=min_window)
         )
     return violations
+
+
+def repository_markdown_files(repo_root: Path) -> list[Path]:
+    tracked_files = tracked_repository_files(repo_root)
+    if tracked_files is None:
+        return sorted(
+            path
+            for path in repo_root.rglob("*.md")
+            if path.is_file() and include_markdown_path(path.relative_to(repo_root))
+        )
+    return sorted(
+        path
+        for path in tracked_files
+        if path.suffix == ".md" and include_markdown_path(path.relative_to(repo_root))
+    )
+
+
+def tracked_repository_files(repo_root: Path) -> list[Path] | None:
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "ls-files"],
+        capture_output=True,
+        check=False,
+        encoding="utf-8",
+    )
+    if result.returncode != 0:
+        return None
+    return [
+        repo_root / relative_path
+        for relative_path in result.stdout.splitlines()
+        if relative_path.strip()
+    ]
+
+
+def include_markdown_path(relative_path: Path) -> bool:
+    path_text = relative_path.as_posix()
+    return not any(path_text.startswith(prefix) for prefix in MARKDOWN_EXCLUDED_PREFIXES)

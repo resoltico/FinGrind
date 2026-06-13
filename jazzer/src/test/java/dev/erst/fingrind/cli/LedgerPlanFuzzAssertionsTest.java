@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.cashRevenueRequestJson;
-import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.declareOrdinaryAccountStepJson;
+import static dev.erst.fingrind.cli.CliFuzzLedgerPlanFixtureSupport.declareOrdinaryAccountStepJson;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -154,13 +154,13 @@ class LedgerPlanFuzzAssertionsTest {
                 LedgerFact.flag("hasMore", true),
                 LedgerFact.text("nextCursor", "cursor-1"),
                 LedgerFact.group("account", List.of(LedgerFact.text("accountCode", "1000")))));
-    LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(structuredAccountPage);
+    LedgerPlanListQueryAssertions.assertStructuredListQueryFacts(structuredAccountPage);
 
     IllegalStateException missingCursor =
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
+                LedgerPlanListQueryAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-accounts",
                         LedgerStepKind.LIST_ACCOUNTS,
@@ -176,18 +176,18 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.requiredCountFact(
+                LedgerPlanListQueryAssertions.requiredCountFact(
                     List.of(LedgerFact.flag("count", true)), "count"));
     assertTrue(String.valueOf(wrongType.getMessage()).contains("wrong fact kind"));
 
     LedgerJournalEntry.Rejected rejectedEntry =
         rejectedEntry("list-postings", LedgerStepKind.LIST_POSTINGS, List.of());
-    LedgerPlanFuzzAssertions.assertRejectedListQueryFacts(rejectedEntry);
+    LedgerPlanListQueryAssertions.assertRejectedListQueryFacts(rejectedEntry);
     IllegalStateException successOnlyFact =
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.assertRejectedListQueryFacts(
+                LedgerPlanListQueryAssertions.assertRejectedListQueryFacts(
                     rejectedEntry(
                         "list-postings",
                         LedgerStepKind.LIST_POSTINGS,
@@ -435,14 +435,16 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalStateException invalidCount =
         assertThrows(
             IllegalStateException.class,
-            () -> LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(structuredPostingPage));
+            () ->
+                LedgerPlanListQueryAssertions.assertStructuredListQueryFacts(
+                    structuredPostingPage));
     assertTrue(String.valueOf(invalidCount.getMessage()).contains("invalid count"));
 
     IllegalStateException negativeCount =
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
+                LedgerPlanListQueryAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-postings",
                         LedgerStepKind.LIST_POSTINGS,
@@ -456,7 +458,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
+                LedgerPlanListQueryAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-postings",
                         LedgerStepKind.LIST_POSTINGS,
@@ -470,7 +472,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
+                LedgerPlanListQueryAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-postings",
                         LedgerStepKind.LIST_POSTINGS,
@@ -484,7 +486,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.assertStructuredListQueryFacts(
+                LedgerPlanListQueryAssertions.assertStructuredListQueryFacts(
                     succeededEntry(
                         "list-accounts",
                         LedgerStepKind.LIST_ACCOUNTS,
@@ -501,7 +503,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.requiredCountFact(
+                LedgerPlanListQueryAssertions.requiredCountFact(
                     List.of(LedgerFact.count("count", 1), LedgerFact.count("count", 2)), "count"));
     assertTrue(String.valueOf(duplicateCount.getMessage()).contains("exactly one count fact"));
 
@@ -509,7 +511,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.requiredFlagFact(
+                LedgerPlanListQueryAssertions.requiredFlagFact(
                     List.of(LedgerFact.flag("hasMore", true), LedgerFact.flag("hasMore", false)),
                     "hasMore"));
     assertTrue(String.valueOf(duplicateFlag.getMessage()).contains("exactly one flag fact"));
@@ -518,7 +520,7 @@ class LedgerPlanFuzzAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                LedgerPlanFuzzAssertions.assertRejectedListQueryFacts(
+                LedgerPlanListQueryAssertions.assertRejectedListQueryFacts(
                     rejectedEntry(
                         "list-accounts",
                         LedgerStepKind.LIST_ACCOUNTS,
@@ -530,7 +532,9 @@ class LedgerPlanFuzzAssertionsTest {
     IllegalArgumentException wrongListQueryKind =
         assertThrows(
             IllegalArgumentException.class,
-            () -> LedgerPlanFuzzAssertions.expectedListQueryGroupName(LedgerJournalKind.OPEN_BOOK));
+            () ->
+                LedgerPlanListQueryAssertions.expectedListQueryGroupName(
+                    LedgerJournalKind.OPEN_BOOK));
     assertTrue(String.valueOf(wrongListQueryKind.getMessage()).contains("list-query journal kind"));
   }
 

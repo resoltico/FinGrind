@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: USER_EXAMPLES
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -308,7 +308,7 @@ That generated scaffold is byte-identical to the checked-in
 publish one placeholder-first sample document and default to `"entryKind": "CASH_REVENUE"`.
 The scaffold is request-first rather than demo-runnable: `actorType` defaults to `PERSON`,
 `evidence.approvals` starts as an empty array that callers may populate when one posting requires
-explicit approval references, and every `replace-with-...` evidence or provenance token must be
+explicit approval references, and every `replace-before-commit-*` evidence or provenance token must be
 replaced before real-world use.
 A committed `idempotencyKey` is single-use per book.
 

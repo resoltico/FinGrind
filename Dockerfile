@@ -1,4 +1,4 @@
-FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:46db716f3d5ca5ed35db59c0511b4f7847c4c5c89f53e7fb57fdab0573a762f6 AS builder
+FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:d5514973a10f0dbdf3c18199465713176316a60ee032d19adacd4812588b611b AS builder
 
 WORKDIR /build
 
@@ -66,11 +66,11 @@ RUN jlink \
     --compress=zip-6 \
     --output /opt/fingrind/runtime
 
-FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+FROM alpine:3.24@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4
 
 WORKDIR /workdir
 
-RUN apk add --no-cache libstdc++=15.2.0-r2
+RUN apk add --no-cache libstdc++=15.2.0-r5
 
 COPY --from=builder /opt/fingrind/runtime /opt/fingrind/runtime
 COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/native/libsqlite3.so.0

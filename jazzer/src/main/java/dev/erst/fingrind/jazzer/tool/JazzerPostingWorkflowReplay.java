@@ -44,10 +44,10 @@ final class JazzerPostingWorkflowReplay {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.postingWorkflow().key(),
           expected.getClass().getSimpleName(),
-          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayOutcomeSupport.normalizedMessage(expected),
           JazzerReplayDetailsMapper.unparsedPostingWorkflowDetails());
     } catch (RuntimeException unexpected) {
-      return JazzerReplayDetailsMapper.unexpectedFailure(
+      return JazzerReplayOutcomeSupport.unexpectedFailure(
           JazzerHarness.postingWorkflow(),
           unexpected,
           command == null
@@ -66,13 +66,13 @@ final class JazzerPostingWorkflowReplay {
               bookSession, bookSession, CliFuzzFixtures.postingIdGenerator(input));
 
       state.uninitializedPreflightStatus =
-          JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper.requiredPreflightRejected(
+          JazzerReplayOutcomeSupport.rejectionStatus(
+              JazzerReplayOutcomeSupport.requiredPreflightRejected(
                       CliFuzzWorkflowFixtures.preflight(applicationService, command))
                   .rejection());
       state.uninitializedCommitStatus =
-          JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper.requiredCommitRejected(
+          JazzerReplayOutcomeSupport.rejectionStatus(
+              JazzerReplayOutcomeSupport.requiredCommitRejected(
                       CliFuzzWorkflowFixtures.commit(applicationService, command))
                   .rejection());
 
@@ -80,13 +80,13 @@ final class JazzerPostingWorkflowReplay {
           administrationService, CliFuzzFixtures.journalEntry(command).currencyUnit());
 
       state.undeclaredPreflightStatus =
-          JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper.requiredPreflightRejected(
+          JazzerReplayOutcomeSupport.rejectionStatus(
+              JazzerReplayOutcomeSupport.requiredPreflightRejected(
                       CliFuzzWorkflowFixtures.preflight(applicationService, command))
                   .rejection());
       state.undeclaredCommitStatus =
-          JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper.requiredCommitRejected(
+          JazzerReplayOutcomeSupport.rejectionStatus(
+              JazzerReplayOutcomeSupport.requiredCommitRejected(
                       CliFuzzWorkflowFixtures.commit(applicationService, command))
                   .rejection());
 
@@ -98,13 +98,13 @@ final class JazzerPostingWorkflowReplay {
       DeclaredAccount primaryAccount = declaredAccounts.getFirst();
       InMemoryBookFixtureMutations.deactivateAccount(bookSession, primaryAccount.accountCode());
       state.inactivePreflightStatus =
-          JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper.requiredPreflightRejected(
+          JazzerReplayOutcomeSupport.rejectionStatus(
+              JazzerReplayOutcomeSupport.requiredPreflightRejected(
                       CliFuzzWorkflowFixtures.preflight(applicationService, command))
                   .rejection());
       state.inactiveCommitStatus =
-          JazzerReplayDetailsMapper.rejectionStatus(
-              JazzerReplayDetailsMapper.requiredCommitRejected(
+          JazzerReplayOutcomeSupport.rejectionStatus(
+              JazzerReplayOutcomeSupport.requiredCommitRejected(
                       CliFuzzWorkflowFixtures.commit(applicationService, command))
                   .rejection());
 
@@ -132,19 +132,19 @@ final class JazzerPostingWorkflowReplay {
           PostingWorkflowInvariantAssertions.verifyStoredPosting(postingFact, committed, command);
           state.storedFactPresent = true;
           state.duplicateStatus =
-              JazzerReplayDetailsMapper.rejectionStatus(
+              JazzerReplayOutcomeSupport.rejectionStatus(
                   PostingWorkflowInvariantAssertions.requireDuplicateRejection(
                           CliFuzzWorkflowFixtures.commit(applicationService, command))
                       .rejection());
         }
         case PreflightRejected preflightRejected -> {
           state.finalPreflightStatus =
-              JazzerReplayDetailsMapper.rejectionStatus(preflightRejected.rejection());
+              JazzerReplayOutcomeSupport.rejectionStatus(preflightRejected.rejection());
           CommitRejected commitRejected =
               PostingWorkflowInvariantAssertions.verifyRejectedPreflightAndCommit(
                   preflightRejected, committedResult);
           state.finalCommitStatus =
-              JazzerReplayDetailsMapper.rejectionStatus(commitRejected.rejection());
+              JazzerReplayOutcomeSupport.rejectionStatus(commitRejected.rejection());
           PostingWorkflowInvariantAssertions.assertRejectedStateDidNotPersistPosting(
               CliFuzzWorkflowFixtures.publishedStoredPosting(
                   bookSession, command.requestProvenance().idempotencyKey()));

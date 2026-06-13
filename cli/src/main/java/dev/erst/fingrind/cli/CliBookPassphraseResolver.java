@@ -31,10 +31,17 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
 
   private final InputStream inputStream;
   private final Terminal terminal;
+  private final String runtimeDistribution;
 
   CliBookPassphraseResolver(InputStream inputStream, Terminal terminal) {
+    this(inputStream, terminal, FinGrindCli.runtimeDistribution());
+  }
+
+  CliBookPassphraseResolver(
+      InputStream inputStream, Terminal terminal, String runtimeDistribution) {
     this.inputStream = Objects.requireNonNull(inputStream, "inputStream");
     this.terminal = Objects.requireNonNull(terminal, "terminal");
+    this.runtimeDistribution = Objects.requireNonNull(runtimeDistribution, "runtimeDistribution");
   }
 
   /** Resolves the selected book passphrase source for one CLI command invocation. */
@@ -76,8 +83,14 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     try {
       return readStandardInputBytes()
           .fold(
-              bytes ->
-                  SqliteBookPassphrase.fromUtf8BytesDecision(STANDARD_INPUT_SOURCE_LABEL, bytes),
+              bytes -> {
+                if (bytes.length == 0) {
+                  Arrays.fill(bytes, (byte) 0);
+                  return ContractDecision.rejected(emptyStandardInputFailure());
+                }
+                return SqliteBookPassphrase.fromUtf8BytesDecision(
+                    STANDARD_INPUT_SOURCE_LABEL, bytes);
+              },
               ContractDecision::rejected);
     } catch (IOException exception) {
       return ContractDecision.rejected(
@@ -223,6 +236,26 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
             + " within the "
             + ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES
             + "-byte limit, then rerun the command.",
+        null);
+  }
+
+  private ContractFailure emptyStandardInputFailure() {
+    String message =
+        "The FinGrind book passphrase source must contain a non-empty UTF-8 passphrase: "
+            + STANDARD_INPUT_SOURCE_LABEL;
+    if (FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION.equals(runtimeDistribution)) {
+      return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+          message,
+          "If you launched FinGrind through a container, rerun the outer command with attached"
+              + " standard input such as '"
+              + dev.erst.fingrind.contract.protocol.ProtocolCatalog.distribution()
+                  .containerMountedLauncherPrefix()
+              + " <command>', or switch to --book-key-file.",
+          null);
+    }
+    return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+        message,
+        "Provide one non-empty UTF-8 passphrase through the selected key file, standard input, or interactive prompt route.",
         null);
   }
 

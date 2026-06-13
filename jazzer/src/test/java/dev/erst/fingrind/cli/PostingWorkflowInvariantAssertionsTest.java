@@ -380,7 +380,7 @@ class PostingWorkflowInvariantAssertionsTest {
 
   private static PostEntryCommand reversalCommand() {
     return CliFuzzFixtures.readPostEntryCommand(
-        CliFuzzHarnessTestSupport.reversalTargetMissingRequest().getBytes(UTF_8));
+        CliFuzzRequestSeedSupport.reversalTargetMissingRequest().getBytes(UTF_8));
   }
 
   private static Committed committed(PostEntryCommand command, String postingId) {

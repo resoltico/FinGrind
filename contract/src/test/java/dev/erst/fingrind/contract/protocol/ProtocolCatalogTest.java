@@ -401,6 +401,8 @@ class ProtocolCatalogTest {
 
   @Test
   void globalFacts_publishTheCurrentBookModelAndRuntimeContract() {
+    ManagedSqliteContract managedSqliteContract = ManagedSqliteContracts.current();
+
     assertEquals(List.of(StorageEngine.SQLITE), ProtocolCatalog.runtime().storageEngines());
     assertEquals(
         RuntimeDistribution.DIRECT_JAVA_INVOCATION,
@@ -431,13 +433,17 @@ class ProtocolCatalogTest {
     assertEquals(SqliteLibraryMode.MANAGED_ONLY, ProtocolCatalog.runtime().sqliteLibraryMode());
     assertEquals(
         "fingrind.bundle.home", ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty());
-    assertEquals("3.53.1", ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion());
-    assertEquals("2.3.4", ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion());
     assertEquals(
-        "2026-05-05 10:34:17 c88b22011a54b4f6fbd149e9f8e4de77658ce58143a1af0e3785e4e6475127e9",
+        managedSqliteContract.requiredMinimumSqliteVersion(),
+        ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion());
+    assertEquals(
+        managedSqliteContract.requiredSqlite3mcVersion(),
+        ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion());
+    assertEquals(
+        managedSqliteContract.requiredSqliteSourceId(),
         ProtocolCatalog.managedSqlite().requiredSqliteSourceId());
     assertEquals(
-        List.of("THREADSAFE=1", "OMIT_LOAD_EXTENSION", "TEMP_STORE=3", "SECURE_DELETE"),
+        managedSqliteContract.requiredCompileOptions(),
         ProtocolCatalog.managedSqlite().requiredCompileOptions());
     assertEquals(
         List.of(

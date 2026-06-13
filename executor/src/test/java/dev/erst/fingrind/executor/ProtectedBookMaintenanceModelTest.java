@@ -68,7 +68,17 @@ class ProtectedBookMaintenanceModelTest {
         ProtectedBookPassphraseSource.InteractivePrompt.INSTANCE,
         ProtectedBookPassphraseSource.fromPublished(
             BookAccess.PassphraseSource.InteractivePrompt.INSTANCE));
-    assertEquals(book, new ProtectedBookMaintenanceStore.VerifiedBook(book).artifactPath());
+    assertEquals(
+        book,
+        new ProtectedBookMaintenanceStore.VerifiedBook() {
+          @Override
+          public Path artifactPath() {
+            return book;
+          }
+
+          @Override
+          public void close() {}
+        }.artifactPath());
     assertEquals(book, new ProtectedBookMaintenanceStore.LeaseBusy(book).artifactPath());
     assertEquals(
         ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND,

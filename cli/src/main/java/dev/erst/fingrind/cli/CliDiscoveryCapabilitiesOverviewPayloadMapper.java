@@ -3,7 +3,6 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
-import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -44,12 +43,14 @@ final class CliDiscoveryCapabilitiesOverviewPayloadMapper {
         capabilitiesDescriptor.storage().bookBoundary(),
         capabilitiesDescriptor.storage().engines().stream().map(Object::toString).toList(),
         requestInputCompactPayload(capabilitiesDescriptor),
-        commandCounts(capabilitiesDescriptor.commands()),
+        CliDiscoveryCapabilitiesPayloadMapper.commandSurfacePayloads(
+            capabilitiesDescriptor.commands().allCommands(),
+            capabilitiesDescriptor.requestInput().requestFileCommands()),
         "Use '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json "
             + ProtocolOptions.FOCUS
-            + " commands' for command-family retrieval, or rerun with '"
+            + " commands' for category-filtered command families, or rerun with '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json "
             + ProtocolOptions.DETAIL
@@ -87,17 +88,5 @@ final class CliDiscoveryCapabilitiesOverviewPayloadMapper {
         capabilitiesDescriptor.requestInput().requestFileCommands(),
         capabilitiesDescriptor.requestInput().stdinToken(),
         capabilitiesDescriptor.requestInput().outputOption());
-  }
-
-  static List<CliDiscoveryCommonJsonModels.CommandCountPayload> commandCounts(
-      CommandCatalogDescriptor commands) {
-    Objects.requireNonNull(commands, "commands");
-    return List.of(
-        new CliDiscoveryCommonJsonModels.CommandCountPayload(
-            "discovery", commands.discovery().size()),
-        new CliDiscoveryCommonJsonModels.CommandCountPayload(
-            "administration", commands.administration().size()),
-        new CliDiscoveryCommonJsonModels.CommandCountPayload("query", commands.query().size()),
-        new CliDiscoveryCommonJsonModels.CommandCountPayload("write", commands.write().size()));
   }
 }

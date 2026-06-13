@@ -143,12 +143,12 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
       ProtectedBookAccess bookAccess) {
     return verifications.getOrDefault(
         normalized(bookAccess.bookFilePath()),
-        MaintenanceDecision.accepted(new VerifiedBook(normalized(bookAccess.bookFilePath()))));
+        MaintenanceDecision.accepted(new FakeVerifiedBook(normalized(bookAccess.bookFilePath()))));
   }
 
   @Override
   public MaintenanceDecision<StagedBackupPair> stageBackupPair(
-      ProtectedBookAccess sourceAccess,
+      VerifiedBook sourceBook,
       Path normalizedBackupFilePath,
       Path normalizedBackupBookKeyFilePath) {
     if (stageBackupFailure != null) {
@@ -157,7 +157,8 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
     BookVerification stagedBackupVerification =
         switch (verifications.getOrDefault(
             normalized(normalizedBackupFilePath),
-            MaintenanceDecision.accepted(new VerifiedBook(normalized(normalizedBackupFilePath))))) {
+            MaintenanceDecision.accepted(
+                new FakeVerifiedBook(normalized(normalizedBackupFilePath))))) {
           case MaintenanceDecision.Accepted<BookVerification>(BookVerification verification) ->
               verification;
           case MaintenanceDecision.Failed<BookVerification>(MaintenanceFailure failure) ->
@@ -165,6 +166,15 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
                   "Expected accepted staged-backup verification but got " + failure);
         };
     return MaintenanceDecision.accepted(new FakeStagedBackupPair(stagedBackupVerification));
+  }
+
+  @Override
+  public MaintenanceDecision<BookVerification> verifyInitializedReplica(
+      Path normalizedReplicaBookPath, VerifiedBook sourceBook) {
+    Objects.requireNonNull(sourceBook, "sourceBook");
+    return verifications.getOrDefault(
+        normalized(normalizedReplicaBookPath),
+        MaintenanceDecision.accepted(new FakeVerifiedBook(normalized(normalizedReplicaBookPath))));
   }
 
   @Override
@@ -197,28 +207,43 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
 
   @Override
   public MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAudit(
-      ProtectedBookAccess bookAccess,
-      Instant recordedAt,
-      ProtectedBookMaintenanceAuditKind auditKind) {
+      VerifiedBook verifiedBook, Instant recordedAt, ProtectedBookMaintenanceAuditKind auditKind) {
     if (appendAuditFailure != null) {
       return appendAuditFailure;
     }
     recordedAudits.add(
-        new RecordedAudit(normalized(bookAccess.bookFilePath()), recordedAt, auditKind));
+        new RecordedAudit(normalized(verifiedBook.artifactPath()), recordedAt, auditKind));
     return MaintenanceDecision.accepted(MaintenanceCompletion.DONE);
   }
 
   @Override
   public MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAuditCompensation(
-      ProtectedBookAccess bookAccess,
+      VerifiedBook verifiedBook,
       Instant recordedAt,
       ProtectedBookMaintenanceAuditCompensationKind auditKind) {
     if (compensateAuditFailure != null) {
       return compensateAuditFailure;
     }
     compensatedAudits.add(
-        new RecordedAudit(normalized(bookAccess.bookFilePath()), recordedAt, auditKind));
+        new RecordedAudit(normalized(verifiedBook.artifactPath()), recordedAt, auditKind));
     return MaintenanceDecision.accepted(MaintenanceCompletion.DONE);
+  }
+
+  /** Deterministic verified-book fixture that carries one normalized artifact path only. */
+  private static final class FakeVerifiedBook implements VerifiedBook {
+    private final Path artifactPath;
+
+    private FakeVerifiedBook(Path artifactPath) {
+      this.artifactPath = artifactPath;
+    }
+
+    @Override
+    public Path artifactPath() {
+      return artifactPath;
+    }
+
+    @Override
+    public void close() {}
   }
 
   /** Deterministic held-lease fixture for one normalized artifact path. */

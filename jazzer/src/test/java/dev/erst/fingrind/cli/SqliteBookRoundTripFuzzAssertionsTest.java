@@ -13,25 +13,25 @@ class SqliteBookRoundTripFuzzAssertionsTest {
         () ->
             SqliteBookRoundTripFuzzAssertions.roundTripParsedCommand(
                 SqliteRoundTripWorkflowTestSupport.basicValidCommand(),
-                CliFuzzHarnessTestSupport.basicValidRequestBytes()));
+                CliFuzzRequestSeedSupport.basicValidRequestBytes()));
     assertDoesNotThrow(
         () ->
             SqliteBookRoundTripFuzzAssertions.roundTripSingleBook(
-                CliFuzzHarnessTestSupport.validJpyRequestBytes()));
+                CliFuzzRequestSeedSupport.validJpyRequestBytes()));
     assertDoesNotThrow(
         () ->
             SqliteBookRoundTripFuzzAssertions.roundTripSingleBook(
-                CliFuzzHarnessTestSupport.validBhdRequestBytes()));
+                CliFuzzRequestSeedSupport.validBhdRequestBytes()));
     assertDoesNotThrow(
         () ->
             SqliteBookRoundTripFuzzAssertions.roundTripParsedCommand(
                 CliFuzzFixtures.readPostEntryCommand(
-                    CliFuzzHarnessTestSupport.reversalTargetMissingRequest().getBytes(UTF_8)),
-                CliFuzzHarnessTestSupport.reversalTargetMissingRequestBytes()));
+                    CliFuzzRequestSeedSupport.reversalTargetMissingRequest().getBytes(UTF_8)),
+                CliFuzzRequestSeedSupport.reversalTargetMissingRequestBytes()));
     assertDoesNotThrow(
         () ->
             SqliteBookRoundTripFuzzAssertions.roundTripSingleBook(
-                CliFuzzHarnessTestSupport.invalidWrongTypeRequestBytes()));
+                CliFuzzRequestSeedSupport.invalidWrongTypeRequestBytes()));
   }
 
   @Test
@@ -40,22 +40,22 @@ class SqliteBookRoundTripFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             harness.roundTripSingleBook(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.basicValidRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.basicValidRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.roundTripSingleBook(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.validJpyRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.validJpyRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.roundTripSingleBook(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.validBhdRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.validBhdRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.roundTripSingleBook(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.invalidWrongTypeRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.invalidWrongTypeRequestBytes())));
   }
 }

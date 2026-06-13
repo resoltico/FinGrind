@@ -95,7 +95,7 @@ public final class MachineContract {
   }
 
   /** Builds the canonical minimal AI-agent ledger-plan template descriptor. */
-  public static ContractTemplates.LedgerPlanTemplateDescriptor planTemplate() {
+  public static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate() {
     return MachineContractTemplatesCatalog.planTemplate();
   }
 
@@ -109,7 +109,7 @@ public final class MachineContract {
     return MachineContractTemplatesCatalog.declareAccountTemplateFor(selectedOperation);
   }
 
-  private static ContractTemplates.@Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplateFor(
+  private static ContractPlanTemplates.@Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplateFor(
       @Nullable ProtocolOperation selectedOperation) {
     return MachineContractTemplatesCatalog.ledgerPlanTemplateFor(selectedOperation);
   }

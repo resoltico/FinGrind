@@ -5,7 +5,7 @@ $scriptDirectory = $PSScriptRoot
 $appHome = [System.IO.Path]::GetFullPath((Join-Path $scriptDirectory ".."))
 $runtimeJava = Join-Path $appHome "runtime/bin/java.exe"
 $applicationJar = Join-Path $appHome "lib/app/fingrind.jar"
-$applicationModule = "fingrind/dev.erst.fingrind.cli.App"
+$applicationModule = "dev.erst.fingrind.cli/dev.erst.fingrind.cli.App"
 $scriptInvocationArguments = @($args)
 
 function Invoke-FinGrindBundleLauncher {
@@ -20,7 +20,7 @@ function Invoke-FinGrindBundleLauncher {
     }
 
     $javaArguments = @(
-        "--enable-native-access=fingrind",
+        "--enable-native-access=dev.erst.fingrind.cli",
         "-D{{bundleHomeSystemProperty}}=$appHome",
         "-Dfingrind.runtime.distribution={{bundleRuntimeDistribution}}",
         "--module-path",

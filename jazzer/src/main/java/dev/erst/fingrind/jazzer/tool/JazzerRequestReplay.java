@@ -23,10 +23,10 @@ final class JazzerRequestReplay {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.cliRequest().key(),
           expected.getClass().getSimpleName(),
-          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayOutcomeSupport.normalizedMessage(expected),
           JazzerReplayDetailsMapper.unparsedCliRequestDetails());
     } catch (RuntimeException unexpected) {
-      return JazzerReplayDetailsMapper.unexpectedFailure(
+      return JazzerReplayOutcomeSupport.unexpectedFailure(
           JazzerHarness.cliRequest(),
           unexpected,
           JazzerReplayDetailsMapper.unparsedCliRequestDetails());
@@ -51,10 +51,10 @@ final class JazzerRequestReplay {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.ledgerPlanRequest().key(),
           expected.getClass().getSimpleName(),
-          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayOutcomeSupport.normalizedMessage(expected),
           JazzerReplayDetailsMapper.unparsedLedgerPlanDetails());
     } catch (RuntimeException unexpected) {
-      return JazzerReplayDetailsMapper.unexpectedFailure(
+      return JazzerReplayOutcomeSupport.unexpectedFailure(
           JazzerHarness.ledgerPlanRequest(),
           unexpected,
           plan == null

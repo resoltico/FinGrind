@@ -2,18 +2,34 @@ package dev.erst.fingrind.buildlogic
 
 import java.time.LocalDate
 
-internal fun reviewedExpiry(month: Int, dayOfMonth: Int): LocalDate =
-    LocalDate.of(2026, month, dayOfMonth)
+internal fun reviewedExpiry(isoDate: String): LocalDate = LocalDate.parse(isoDate)
 
 internal fun reviewedApproval(
     physicalLines: Int,
     logicalLines: Int,
     imports: Int,
+    nestedTypes: Int,
+    methodsPerTopLevelType: Int,
+    fieldsPerTopLevelType: Int,
+    switchArmsPerMethod: Int,
+    methodLineSpan: Int,
+    methodParameters: Int,
+    methodDecisionPoints: Int,
     expiresOn: LocalDate,
 ) = ReviewedJavaSourceApproval(
-    approvedPhysicalLines = physicalLines,
-    approvedLogicalLines = logicalLines,
-    approvedImports = imports,
+    approvedShape =
+        JavaSourceShapeMetrics(
+            physicalLineCount = physicalLines,
+            logicalLineCount = logicalLines,
+            importCount = imports,
+            nestedTypeCount = nestedTypes,
+            maxMethodsPerTopLevelType = methodsPerTopLevelType,
+            maxFieldsPerTopLevelType = fieldsPerTopLevelType,
+            maxSwitchArmsPerMethod = switchArmsPerMethod,
+            maxMethodLineSpan = methodLineSpan,
+            maxMethodParameters = methodParameters,
+            maxMethodDecisionPoints = methodDecisionPoints,
+        ),
     expiresOn = expiresOn,
 )
 
@@ -44,6 +60,7 @@ internal fun reviewedBudget(
 )
 
 internal fun reviewedJavaSourceSurface(
+    projectPath: String,
     relativePath: String,
     owner: String,
     reason: String,
@@ -59,10 +76,11 @@ internal fun reviewedJavaSourceSurface(
     methodLineSpan: Int,
     methodParameters: Int,
     methodDecisionPoints: Int,
-    expiresOn: LocalDate,
+    approval: ReviewedJavaSourceApproval,
     budgetVarianceReason: String? = null,
     duplicationExemptionReason: String? = null,
 ) = ReviewedJavaSourceSurface(
+    projectPath = projectPath,
     relativePath = relativePath,
     owner = owner,
     reason = reason,
@@ -83,7 +101,7 @@ internal fun reviewedJavaSourceSurface(
         ),
     budgetVarianceReason = budgetVarianceReason,
     duplicationExemptionReason = duplicationExemptionReason,
-    approval = reviewedApproval(physicalLines, logicalLines, imports, expiresOn),
+    approval = approval,
 )
 
 internal val reviewedSurfaceEntries =

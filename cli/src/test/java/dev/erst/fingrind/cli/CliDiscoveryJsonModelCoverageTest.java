@@ -35,7 +35,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload helpOverview =
         new CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload(
             "FinGrind",
-            "0.52.0",
+            "0.53.0",
             "Compact help overview",
             DiscoveryDetail.COMPACT,
             null,
@@ -50,18 +50,29 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload capabilities =
         new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
             "FinGrind",
-            "0.52.0",
+            "0.53.0",
             DiscoveryDetail.COMPACT,
             DiscoveryFocus.OVERVIEW,
             capabilitiesDescriptor.storage().bookBoundary(),
             capabilitiesDescriptor.storage().engines().stream().map(Enum::name).toList(),
             requestInput,
-            java.util.List.of(new CliDiscoveryCommonJsonModels.CommandCountPayload("write", 1)),
+            java.util.List.of(
+                new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
+                    OperationId.POST_ENTRY,
+                    OperationCategory.WRITE.wireValue(),
+                    "Commit one posting request.",
+                    java.util.List.of(),
+                    java.util.List.of("--request-file <path|->"),
+                    "json-envelope",
+                    java.util.List.of("json", "text"),
+                    null,
+                    java.util.List.of("pdf via --pdf-out"),
+                    true)),
             "Run fingrind capabilities --output json --detail full.");
     CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload compactPayload =
         new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
             "FinGrind",
-            "0.52.0",
+            "0.53.0",
             DiscoveryDetail.COMPACT,
             DiscoveryFocus.OVERVIEW,
             capabilitiesDescriptor.storage(),
@@ -78,7 +89,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload(
                 "FinGrind",
-                "0.52.0",
+                "0.53.0",
                 "Compact help overview",
                 DiscoveryDetail.MINIMAL,
                 null,
@@ -91,26 +102,48 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
                 "FinGrind",
-                "0.52.0",
+                "0.53.0",
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage().bookBoundary(),
                 capabilitiesDescriptor.storage().engines().stream().map(Enum::name).toList(),
                 requestInput,
-                java.util.List.of(new CliDiscoveryCommonJsonModels.CommandCountPayload("write", 1)),
+                java.util.List.of(
+                    new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
+                        OperationId.POST_ENTRY,
+                        OperationCategory.WRITE.wireValue(),
+                        "Commit one posting request.",
+                        java.util.List.of(),
+                        java.util.List.of("--request-file <path|->"),
+                        "json-envelope",
+                        java.util.List.of("json", "text"),
+                        null,
+                        java.util.List.of("pdf via --pdf-out"),
+                        true)),
                 "Run fingrind capabilities --output json --detail full."));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
                 "FinGrind",
-                "0.52.0",
+                "0.53.0",
                 DiscoveryDetail.COMPACT,
                 DiscoveryFocus.COMMANDS,
                 capabilitiesDescriptor.storage().bookBoundary(),
                 capabilitiesDescriptor.storage().engines().stream().map(Enum::name).toList(),
                 requestInput,
-                java.util.List.of(new CliDiscoveryCommonJsonModels.CommandCountPayload("write", 1)),
+                java.util.List.of(
+                    new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
+                        OperationId.POST_ENTRY,
+                        OperationCategory.WRITE.wireValue(),
+                        "Commit one posting request.",
+                        java.util.List.of(),
+                        java.util.List.of("--request-file <path|->"),
+                        "json-envelope",
+                        java.util.List.of("json", "text"),
+                        null,
+                        java.util.List.of("pdf via --pdf-out"),
+                        true)),
                 "Run fingrind capabilities --output json --detail full."));
   }
 
@@ -128,7 +161,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload slicePayload =
         new CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload(
             "FinGrind",
-            "0.52.0",
+            "0.53.0",
             DiscoveryDetail.MINIMAL,
             DiscoveryFocus.REQUEST_INPUT,
             null,
@@ -184,7 +217,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
-                "0.52.0",
+                "0.53.0",
                 DiscoveryDetail.MINIMAL,
                 DiscoveryFocus.COMMANDS,
                 "scope",
@@ -200,7 +233,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.52.0",
+                "0.53.0",
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.COMMANDS,
                 capabilitiesDescriptor.storage(),
@@ -213,7 +246,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload(
                 "FinGrind",
-                "0.52.0",
+                "0.53.0",
                 DiscoveryDetail.MINIMAL,
                 DiscoveryFocus.OVERVIEW,
                 null,
@@ -292,6 +325,18 @@ class CliDiscoveryJsonModelCoverageTest {
   }
 
   @Test
+  void commandCountPayload_acceptsNamedCategoriesAndRejectsNegativeCounts() {
+    CliDiscoveryCommonJsonModels.CommandCountPayload countPayload =
+        new CliDiscoveryCommonJsonModels.CommandCountPayload("workflow", 2);
+
+    assertEquals("workflow", countPayload.category());
+    assertEquals(2, countPayload.count());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CliDiscoveryCommonJsonModels.CommandCountPayload("workflow", -1));
+  }
+
+  @Test
   void printRequestTemplate_defaultConstructorLeavesTopicUnsetAndKeepsJsonFailureMode() {
     PrintRequestTemplate command = new PrintRequestTemplate();
 
@@ -302,7 +347,7 @@ class CliDiscoveryJsonModelCoverageTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.52.0",
+        "0.53.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

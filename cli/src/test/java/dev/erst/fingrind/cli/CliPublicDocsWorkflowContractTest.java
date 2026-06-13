@@ -54,7 +54,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals("cash", requestTemplate.path("cashAccountCode").stringValue());
     assertEquals("service-revenue", requestTemplate.path("revenueAccountCode").stringValue());
     assertEquals(
-        "replace-with-cash-receipt-id",
+        "replace-before-commit-source-document-id",
         requestTemplate
             .path("evidence")
             .path("sourceDocuments")
@@ -70,7 +70,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             .path("sourceDocumentType")
             .stringValue());
     assertEquals(
-        "replace-with-secure-storage-locator://cash-receipt",
+        "replace-before-commit-storage-locator",
         requestTemplate
             .path("evidence")
             .path("sourceDocuments")
@@ -80,7 +80,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals(0, requestTemplate.path("evidence").path("approvals").size());
     assertEquals("PERSON", requestTemplate.path("provenance").path("actorType").stringValue());
     assertEquals(
-        "replace-with-idempotency-key",
+        "replace-before-commit-idempotency-key",
         requestTemplate.path("provenance").path("idempotencyKey").stringValue());
     JsonNode preflight =
         runJsonCommand(
@@ -218,7 +218,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
     JsonNode rawPlanPosting = rawPlanTemplate.path("steps").get(1).path("posting");
     assertEquals(
-        "replace-with-cash-receipt-id",
+        "replace-before-commit-source-document-id",
         rawPlanPosting
             .path("evidence")
             .path("sourceDocuments")

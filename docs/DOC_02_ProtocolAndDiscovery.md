@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -587,13 +587,16 @@ public final class ContractTemplates
   `.AuditDescriptor`, `.AccountRegistryDescriptor`, `.InitializationRequirement`,
   `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, `.CurrencyDescriptor`,
   and `.BookkeepingKernelDescriptor` are the nested typed response descriptors
-- `ContractTemplates`: canonical request and ledger-plan template descriptors
+- `ContractTemplates`: canonical request template descriptors
+- `ContractPlanTemplates`: canonical ledger-plan template descriptors
 - `TemplateDescriptorType` is the sealed owner for the published template-descriptor inventory
-- `ContractTemplates.OpenBookTemplateDescriptor`, `.PostingRequestTemplateDescriptor`,
-  `.JournalLineTemplateDescriptor`, `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
-  `.LedgerPlanTemplateDescriptor`, `.LedgerPlanStepTemplateDescriptor`,
-  `.LedgerPlanQueryTemplateDescriptor`, `.DeclareAccountTemplateDescriptor`, and
-  `.LedgerAssertionTemplateDescriptor` are the nested typed template descriptors
+- `ContractPlanTemplates.OpenBookTemplateDescriptor`, `.LedgerPlanTemplateDescriptor`,
+  `.LedgerPlanStepTemplateDescriptor`, `.LedgerPlanQueryTemplateDescriptor`, and
+  `.LedgerAssertionTemplateDescriptor` are the nested typed ledger-plan template descriptors
+- `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
+  `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
+  `.DeclareAccountTemplateDescriptor`, and related evidence descriptors are the nested typed
+  request template descriptors
 - Template descriptors keep actor type, account type, entry side, normal balance, step kind,
   assertion kind, balance side, and exact money typed at the public boundary, and they reject
   structurally impossible ledger plan step or assertion combinations before any renderer publishes

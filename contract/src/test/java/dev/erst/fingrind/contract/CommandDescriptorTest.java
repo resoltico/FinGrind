@@ -116,6 +116,24 @@ class CommandDescriptorTest {
   }
 
   @Test
+  void convenienceConstructor_preservesJsonOnlyOutputContracts() {
+    CommandDescriptor jsonOnly =
+        new CommandDescriptor(
+            OperationId.CAPABILITIES,
+            List.of(),
+            List.of(),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON),
+            List.of(),
+            "Show capabilities");
+
+    assertEquals(
+        new SelectableOutputDefaultsDescriptor(OutputMode.JSON, OutputMode.JSON),
+        jsonOnly.selectableOutputDefaults());
+    assertEquals("json (via --output; default: json)", jsonOnly.stdoutContractSummary());
+  }
+
+  @Test
   void outputModeSummary_distinguishesSelectableAndFixedOutputContracts() {
     CommandDescriptor selectable =
         new CommandDescriptor(

@@ -53,7 +53,7 @@ EOF
 
 markdown_fixture() {
     local fixture_root=$1
-    mkdir -p "${fixture_root}/docs"
+    mkdir -p "${fixture_root}/docs" "${fixture_root}/.codex"
     cat > "${fixture_root}/README.md" <<'EOF'
 # FinGrind
 
@@ -65,6 +65,11 @@ EOF
 ## Start
 
 Run the app.
+EOF
+    cat > "${fixture_root}/.codex/AGENTS_EXTRA.md" <<'EOF'
+# Extra Agents
+
+Focused protocol note.
 EOF
 }
 
@@ -130,6 +135,21 @@ for name in ("OneSupport.kt", "TwoSupport.kt"):
     )
 PY
     run_expect_failure "duplicate normalized" "$1" --surface build-logic-kotlin
+}
+
+fixture_root_build_logic_function_count_failure() {
+    build_logic_fixture "$1"
+    python3 - "$1" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1]) / "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/TooManyReceivers.kt"
+lines = ["package dev.erst.fingrind.buildlogic", ""]
+for index in range(0, 21):
+    lines.append(f"internal fun Path.helper{index}(): Path = this")
+path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+    run_expect_failure "functions exceeds 20" "$1" --surface build-logic-kotlin
 }
 
 fixture_root_shell_budget_failure() {
@@ -229,6 +249,21 @@ PY
     run_expect_failure "oversized.md" "$1" --surface markdown-docs
 }
 
+fixture_root_markdown_protocol_budget_failure() {
+    markdown_fixture "$1"
+    python3 - "$1" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1]) / ".codex/oversized-protocol.md"
+lines = ["# Oversized Protocol", ""]
+for index in range(0, 1150):
+    lines.append(f"Instruction {index}.")
+path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+PY
+    run_expect_failure "oversized-protocol.md" "$1" --surface markdown-docs
+}
+
 fixture_root_gradle_budget_failure() {
     gradle_kts_fixture "$1"
     python3 - "$1" <<'PY'
@@ -248,12 +283,14 @@ run_structural_governance_regressions() {
     run_in_temp_fixture fixture_root_success
     run_in_temp_fixture fixture_root_build_logic_budget_failure
     run_in_temp_fixture fixture_root_build_logic_duplicate_failure
+    run_in_temp_fixture fixture_root_build_logic_function_count_failure
     run_in_temp_fixture fixture_root_shell_budget_failure
     run_in_temp_fixture fixture_root_shell_duplicate_failure
     run_in_temp_fixture fixture_root_python_budget_failure
     run_in_temp_fixture fixture_root_sql_reviewed_surface_growth_failure
     run_in_temp_fixture fixture_root_sql_budget_failure
     run_in_temp_fixture fixture_root_markdown_budget_failure
+    run_in_temp_fixture fixture_root_markdown_protocol_budget_failure
     run_in_temp_fixture fixture_root_gradle_budget_failure
     assert_verifier_usage_mentions_all_supported_surfaces
 }

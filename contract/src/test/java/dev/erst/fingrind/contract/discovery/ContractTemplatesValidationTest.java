@@ -28,16 +28,17 @@ class ContractTemplatesValidationTest {
   void ledgerPlanAndQueryTemplates_validateEmptyAndInRangeCases() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ContractTemplates.LedgerPlanTemplateDescriptor("plan-1", java.util.List.of()));
-    ContractTemplates.LedgerPlanQueryTemplateDescriptor boundedQuery =
-        new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
+        () ->
+            new ContractPlanTemplates.LedgerPlanTemplateDescriptor("plan-1", java.util.List.of()));
+    ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor boundedQuery =
+        new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
             "1000",
             "2026-04-25",
             "2026-04-26",
             ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
             "cursor-1");
-    ContractTemplates.LedgerPlanQueryTemplateDescriptor openQuery =
-        new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
+    ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor openQuery =
+        new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
             null, "2026-04-25", null, null, null);
     assertEquals("1000", boundedQuery.accountCode());
     assertEquals(ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT, boundedQuery.limit());
@@ -47,7 +48,7 @@ class ContractTemplatesValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
+            new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
                 "1000", null, null, ProtocolInteractionLimits.PAGE_LIMIT_MIN - 1, null));
   }
 
@@ -83,18 +84,18 @@ class ContractTemplatesValidationTest {
   void ledgerPlanStepTemplates_coverEveryCanonicalShape() {
     assertDoesNotThrow(
         () -> {
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "open",
               LedgerStepKind.OPEN_BOOK,
-              new ContractTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
+              new ContractPlanTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
               null,
               null,
               null,
               null,
               null);
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null, null);
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "preflight",
               LedgerStepKind.PREFLIGHT_ENTRY,
               null,
@@ -103,9 +104,9 @@ class ContractTemplatesValidationTest {
               null,
               null,
               null);
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "post", LedgerStepKind.POST_ENTRY, null, postingTemplate(), null, null, null, null);
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "declare",
               LedgerStepKind.DECLARE_ACCOUNT,
               null,
@@ -122,38 +123,38 @@ class ContractTemplatesValidationTest {
               null,
               null,
               null);
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "list-accounts", LedgerStepKind.LIST_ACCOUNTS, null, null, null, null, null, null);
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "list-postings",
               LedgerStepKind.LIST_POSTINGS,
               null,
               null,
               null,
-              new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
+              new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
                   "1000", null, null, ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT, null),
               null,
               null);
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "balance",
               LedgerStepKind.ACCOUNT_BALANCE,
               null,
               null,
               null,
-              new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
+              new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
                   "1000", null, null, null, null),
               null,
               null);
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "get-posting", LedgerStepKind.GET_POSTING, null, null, null, null, null, "posting-1");
-          new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "assert",
               LedgerStepKind.ASSERT,
               null,
               null,
               null,
               null,
-              new ContractTemplates.LedgerAssertionTemplateDescriptor(
+              new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
                   LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
                   "1000",
                   null,
@@ -170,20 +171,20 @@ class ContractTemplatesValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "broken-balance",
                 LedgerStepKind.ACCOUNT_BALANCE,
                 null,
                 null,
                 null,
-                new ContractTemplates.LedgerPlanQueryTemplateDescriptor(
+                new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
                     null, null, null, ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT, null),
                 null,
                 null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "missing-posting-id",
                 LedgerStepKind.GET_POSTING,
                 null,
@@ -203,17 +204,17 @@ class ContractTemplatesValidationTest {
 
   @Test
   void ledgerAssertionTemplates_coverEveryCanonicalShape() {
-    ContractTemplates.LedgerAssertionTemplateDescriptor accountDeclared =
-        new ContractTemplates.LedgerAssertionTemplateDescriptor(
+    ContractPlanTemplates.LedgerAssertionTemplateDescriptor accountDeclared =
+        new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
             LedgerAssertionKind.ACCOUNT_DECLARED, "1000", null, null, null, null, null);
-    ContractTemplates.LedgerAssertionTemplateDescriptor accountActive =
-        new ContractTemplates.LedgerAssertionTemplateDescriptor(
+    ContractPlanTemplates.LedgerAssertionTemplateDescriptor accountActive =
+        new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
             LedgerAssertionKind.ACCOUNT_ACTIVE, "2000", null, null, null, null, null);
-    ContractTemplates.LedgerAssertionTemplateDescriptor postingExists =
-        new ContractTemplates.LedgerAssertionTemplateDescriptor(
+    ContractPlanTemplates.LedgerAssertionTemplateDescriptor postingExists =
+        new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
             LedgerAssertionKind.POSTING_EXISTS, null, null, null, null, null, "posting-1");
-    ContractTemplates.LedgerAssertionTemplateDescriptor balanceEquals =
-        new ContractTemplates.LedgerAssertionTemplateDescriptor(
+    ContractPlanTemplates.LedgerAssertionTemplateDescriptor balanceEquals =
+        new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
             LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
             "3000",
             null,
@@ -232,7 +233,7 @@ class ContractTemplatesValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.LedgerAssertionTemplateDescriptor(
+            new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
                 LedgerAssertionKind.ACCOUNT_DECLARED, null, null, null, null, null, null));
   }
 

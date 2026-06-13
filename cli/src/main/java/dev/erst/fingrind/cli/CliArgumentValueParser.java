@@ -71,6 +71,14 @@ final class CliArgumentValueParser {
         cause);
   }
 
+  static CliArgumentsException unsupportedOutputSelection(String argument, String message) {
+    return new CliArgumentsException(
+        ContractErrors.Descriptor.UNSUPPORTED_OUTPUT_SELECTION.code(),
+        argument,
+        message,
+        CliInvocationText.helpSyntaxHint());
+  }
+
   static CliArgumentsException unknownCommand(String commandName) {
     return new CliArgumentsException(
         ContractErrors.Descriptor.UNKNOWN_COMMAND.code(),

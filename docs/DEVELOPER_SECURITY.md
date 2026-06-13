@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -19,7 +19,7 @@ runtime-identity rules, and protected-book failure semantics in one canonical de
 
 FinGrind's current security model is built from four contract owners:
 - one explicit `BookAccess` tuple: durable book path plus one selected passphrase source
-- one managed SQLite runtime contract: SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 plus the
+- one managed SQLite runtime contract: SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 plus the
   required compile options `THREADSAFE=1`, `OMIT_LOAD_EXTENSION`, `TEMP_STORE=3`,
   `SECURE_DELETE`, the forbidden compile option `USE_URI`, and secure-memory support enabled with
   `SQLITE3MC_SECURE_MEMORY=1`

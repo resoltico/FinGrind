@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: USER_INSTALL
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, install, download, bundle, checksum, attestation, container, ghcr]
   questions: ["which fin grind download do i need", "how do i verify a fingrind download", "what container image does fingrind publish"]
@@ -68,7 +68,7 @@ FinGrind also publishes one public container image:
 
 <!-- BEGIN GENERATED USER_INSTALL CONTAINER SURFACE -->
 - image reference: `ghcr.io/resoltico/fingrind`
-- published tags: one exact release tag such as `0.52.0` plus `latest`, where `latest` always points at the newest stable public release
+- published tags: one exact release tag such as `0.53.0` plus `latest`, where `latest` always points at the newest stable public release
 - published platforms: `linux/amd64`, `linux/arm64`
 - mounted launcher prefix: `docker run --rm -i -v <host-workdir>:/workspace -w /workspace ghcr.io/resoltico/fingrind:<tag>`
 <!-- END GENERATED USER_INSTALL CONTAINER SURFACE -->

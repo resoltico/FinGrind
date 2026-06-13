@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -54,8 +54,8 @@ cat docs/examples/request-template.json
 ```
 
 The scaffold is intentionally placeholder-first: `provenance.actorType` defaults to `PERSON`, the
-emitted document carries explicit `replace-with-...` evidence and provenance tokens, and those
-placeholder values must be replaced before real-world use. On one book, an `idempotencyKey`
+emitted document carries explicit `replace-before-commit-*` evidence and provenance tokens, and
+those placeholder values must be replaced before real-world use. On one book, an `idempotencyKey`
 becomes single-use per book after the first committed posting.
 
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
@@ -293,10 +293,11 @@ Discovery output also has two intentionally different JSON scopes:
   and exit codes
 - `help --output json --detail compact` returns the concise stable discovery payload with usage,
   getting-started hints, and exit codes
-- `help <command> --output json` returns one narrow command-local payload with usage, options,
-  examples, operator notes, and request-file guidance when that command accepts `--request-file`
+- `help <command> --output json` returns one narrow command-local payload with canonical syntax,
+  usage, options, examples, operator notes, and request-file guidance when that command accepts
+  `--request-file`
 - `help <command> --output json --detail compact` returns the stable command-local descriptor with
-  usage, options, examples, operator notes, and request-file guidance
+  canonical syntax, usage, options, examples, operator notes, and request-file guidance
 - `help --output json --detail full` and `help <command> --output json --detail full` include the
   extended discovery body such as embedded templates, enum vocabularies, and request-shape details
 - `capabilities --output json` defaults to the compact command, storage, and request-entry

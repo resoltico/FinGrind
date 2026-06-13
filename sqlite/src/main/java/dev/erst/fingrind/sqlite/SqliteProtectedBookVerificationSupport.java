@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.BookVerification;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerificationFailure;
 import java.nio.file.Path;
@@ -14,14 +13,20 @@ import java.util.Objects;
 final class SqliteProtectedBookVerificationSupport {
   MaintenanceDecision<BookVerification> verifyResolvedBook(
       Path normalizedBookPath, SqliteBookPassphrase bookPassphrase) {
-    try (SqliteBookPassphrase ignored = bookPassphrase) {
-      return SqliteReadSessions.openResolved(normalizedBookPath, bookPassphrase)
+    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
+    Objects.requireNonNull(bookPassphrase, "bookPassphrase");
+    try (SqliteBookPassphrase verificationPassphrase = bookPassphrase.copy()) {
+      return SqliteReadSessions.openResolved(normalizedBookPath, verificationPassphrase)
           .fold(
-              bookSession -> inspectOpenedBook(normalizedBookPath, bookSession),
+              bookSession -> inspectOpenedBook(normalizedBookPath, bookSession, bookPassphrase),
               failure ->
-                  MaintenanceDecision.accepted(
-                      new VerificationFailure(
-                          normalizedBookPath, protectedBookVerificationFailure(failure))));
+                  verificationFailure(
+                      normalizedBookPath,
+                      bookPassphrase,
+                      protectedBookVerificationFailure(failure)));
+    } catch (RuntimeException | Error exception) {
+      bookPassphrase.close();
+      throw exception;
     }
   }
 
@@ -29,7 +34,8 @@ final class SqliteProtectedBookVerificationSupport {
     Objects.requireNonNull(inspection, "inspection");
     return switch (inspection) {
       case BookLifecycleInspection.Initialized _ ->
-          new ProtectedBookMaintenanceStore.VerifiedBook(normalizedBookPath);
+          throw new IllegalArgumentException(
+              "Initialized inspection requires one resolved verified-book handle.");
       case BookLifecycleInspection.Missing _ ->
           new VerificationFailure(normalizedBookPath, ProtectedBookVerificationFailure.MISSING);
       case BookLifecycleInspection.Existing existing ->
@@ -63,10 +69,32 @@ final class SqliteProtectedBookVerificationSupport {
   }
 
   private MaintenanceDecision<BookVerification> inspectOpenedBook(
-      Path normalizedBookPath, SqliteReadSession bookSession) {
+      Path normalizedBookPath, SqliteReadSession bookSession, SqliteBookPassphrase bookPassphrase) {
     try (SqliteReadSession ignored = bookSession) {
       BookLifecycleInspection inspection = bookSession.inspectBook();
-      return MaintenanceDecision.accepted(mapInspection(normalizedBookPath, inspection));
+      return switch (inspection) {
+        case BookLifecycleInspection.Initialized _ ->
+            MaintenanceDecision.accepted(
+                new SqliteVerifiedBook(normalizedBookPath, bookPassphrase));
+        case BookLifecycleInspection.Missing _ ->
+            verificationFailure(
+                normalizedBookPath, bookPassphrase, ProtectedBookVerificationFailure.MISSING);
+        case BookLifecycleInspection.Existing existing ->
+            verificationFailure(
+                normalizedBookPath, bookPassphrase, mapInspectionFailure(existing.status()));
+      };
+    } catch (RuntimeException | Error exception) {
+      bookPassphrase.close();
+      throw exception;
     }
+  }
+
+  private static MaintenanceDecision<BookVerification> verificationFailure(
+      Path normalizedBookPath,
+      SqliteBookPassphrase bookPassphrase,
+      ProtectedBookVerificationFailure verificationFailure) {
+    bookPassphrase.close();
+    return MaintenanceDecision.accepted(
+        new VerificationFailure(normalizedBookPath, verificationFailure));
   }
 }

@@ -24,20 +24,14 @@ import org.jspecify.annotations.Nullable;
 
 /** CLI adapter that exports successful FinGrind reports as atomic PDF artifacts. */
 final class CliPdfReportExporter {
-  private static final Set<PosixFilePermission> HOST_READABLE_PDF_POSIX_PERMISSIONS =
-      Set.of(
-          PosixFilePermission.OWNER_READ,
-          PosixFilePermission.OWNER_WRITE,
-          PosixFilePermission.GROUP_READ,
-          PosixFilePermission.OTHERS_READ);
+  private static final Set<PosixFilePermission> PRIVATE_PDF_POSIX_PERMISSIONS =
+      Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
 
   private final PdfReportService pdfReportService;
   private final FileOperations fileOperations;
 
   CliPdfReportExporter(PdfReportService pdfReportService) {
-    this(
-        pdfReportService,
-        new DefaultFileOperations(CliPdfReportExporter::normalizePublishedPdfPermissions));
+    this(pdfReportService, new DefaultFileOperations(CliPdfReportExporter::normalizePrivatePdf));
   }
 
   CliPdfReportExporter(PdfReportService pdfReportService, FileOperations fileOperations) {
@@ -85,7 +79,7 @@ final class CliPdfReportExporter {
       fileOperations.write(
           temporaryFile, pdfBytes, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
       moveAtomically(temporaryFile, normalizedOutputPath);
-      fileOperations.normalizePublishedPdfPermissions(normalizedOutputPath);
+      fileOperations.normalizePrivatePdfPermissions(normalizedOutputPath);
     } catch (IOException exception) {
       deleteIfPresent(temporaryFile);
       throw new CliPdfExportException(normalizedOutputPath, exception);
@@ -121,33 +115,33 @@ final class CliPdfReportExporter {
     java.util.Objects.requireNonNull(exception, "exception");
   }
 
-  private static void normalizePublishedPdfPermissions(Path path) throws IOException {
+  private static void normalizePrivatePdf(Path path) throws IOException {
     if (!path.getFileSystem().equals(FileSystems.getDefault())) {
       return;
     }
     File pdfFile = path.toFile();
-    pdfFile.setReadable(true, false);
+    pdfFile.setReadable(true, true);
     pdfFile.setWritable(true, true);
-    applyHostReadablePosixPermissionsIfSupported(path);
-    requireHostReadablePublishedPdf(path);
+    applyPrivatePosixPermissionsIfSupported(path);
+    requireOwnerReadablePrivatePdf(path);
   }
 
-  static void applyHostReadablePosixPermissionsIfSupported(Path path) throws IOException {
+  static void applyPrivatePosixPermissionsIfSupported(Path path) throws IOException {
     if (Files.notExists(path)) {
       return;
     }
     if (Files.getFileAttributeView(path, PosixFileAttributeView.class) == null) {
       return;
     }
-    Files.setPosixFilePermissions(path, HOST_READABLE_PDF_POSIX_PERMISSIONS);
+    Files.setPosixFilePermissions(path, PRIVATE_PDF_POSIX_PERMISSIONS);
   }
 
-  static void requireHostReadablePublishedPdf(Path path) throws IOException {
+  static void requireOwnerReadablePrivatePdf(Path path) throws IOException {
     if (Files.isReadable(path)) {
       return;
     }
     throw new IOException(
-        "Published PDF artifact is not host-readable after permission normalization: "
+        "Published PDF artifact is not owner-readable after permission normalization: "
             + path.toAbsolutePath());
   }
 
@@ -174,29 +168,28 @@ final class CliPdfReportExporter {
       return move(source, target, options);
     }
 
-    /** Normalizes the finished PDF artifact permissions for public mounted-volume workflows. */
-    void normalizePublishedPdfPermissions(Path path) throws IOException;
+    /** Normalizes the finished PDF artifact permissions for protected report publication. */
+    void normalizePrivatePdfPermissions(Path path) throws IOException;
   }
 
-  /** One strategy seam that applies the published-PDF permission policy for one filesystem. */
+  /** One strategy seam that applies the protected-PDF permission policy for one filesystem. */
   @FunctionalInterface
-  interface PublishedPdfPermissionNormalizer {
-    /** Applies the mounted-volume PDF permission policy to one finished artifact path. */
+  interface PrivatePdfPermissionNormalizer {
+    /** Applies the protected PDF permission policy to one finished artifact path. */
     void normalize(Path path) throws IOException;
   }
 
   /** Default `java.nio.file.Files` implementation for real CLI PDF export. */
   static final class DefaultFileOperations implements FileOperations {
-    private final PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer;
+    private final PrivatePdfPermissionNormalizer privatePdfPermissionNormalizer;
 
     DefaultFileOperations() {
-      this(CliPdfReportExporter::normalizePublishedPdfPermissions);
+      this(CliPdfReportExporter::normalizePrivatePdf);
     }
 
-    DefaultFileOperations(PublishedPdfPermissionNormalizer publishedPdfPermissionNormalizer) {
-      this.publishedPdfPermissionNormalizer =
-          Objects.requireNonNull(
-              publishedPdfPermissionNormalizer, "publishedPdfPermissionNormalizer");
+    DefaultFileOperations(PrivatePdfPermissionNormalizer privatePdfPermissionNormalizer) {
+      this.privatePdfPermissionNormalizer =
+          Objects.requireNonNull(privatePdfPermissionNormalizer, "privatePdfPermissionNormalizer");
     }
 
     @Override
@@ -225,8 +218,8 @@ final class CliPdfReportExporter {
     }
 
     @Override
-    public void normalizePublishedPdfPermissions(Path path) throws IOException {
-      publishedPdfPermissionNormalizer.normalize(path);
+    public void normalizePrivatePdfPermissions(Path path) throws IOException {
+      privatePdfPermissionNormalizer.normalize(path);
     }
   }
 }

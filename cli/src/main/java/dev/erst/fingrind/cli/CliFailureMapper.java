@@ -35,7 +35,7 @@ final class CliFailureMapper {
           new CliFailure(
               ContractErrors.Descriptor.MANAGED_RUNTIME_FAILURE.code(),
               message,
-              "Run a supported FinGrind launcher surface: the extracted published Linux bundle launcher (bin/fingrind), the published container image, or from a local source checkout run ./gradlew prepareManagedSqlite and rerun the generated launcher or developer direct-Java wrapper from that checkout.",
+              "Run a supported FinGrind launcher surface: the extracted published Linux bundle launcher (bin/fingrind), the published container image, or from a local source checkout run ./gradlew :cli:prepareSourceCheckoutCliRuntime and rerun the generated launcher or developer direct-Java wrapper from that checkout.",
               null);
       case STORAGE ->
           new CliFailure(

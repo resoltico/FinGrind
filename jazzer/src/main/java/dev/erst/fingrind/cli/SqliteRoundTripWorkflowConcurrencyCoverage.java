@@ -115,7 +115,7 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
         "\"initializedAt\"");
     for (var declareAccountCommand :
         CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(concurrentCommand)) {
-      SqliteRoundTripWorkflowLifecycleAssertions.requireDeclared(
+      SqliteRoundTripWorkflowDecisionAssertions.requireDeclared(
           mutationWorkflow.declareAccount(bookAccess, declareAccountCommand));
     }
 

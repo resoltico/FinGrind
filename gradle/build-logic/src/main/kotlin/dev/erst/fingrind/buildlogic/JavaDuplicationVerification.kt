@@ -13,6 +13,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputFile
@@ -30,6 +31,7 @@ internal fun Project.registerJavaSourceDuplicationTask() =
             group = "verification"
             description =
                 "Fails the build when Java source files contain duplicate token sequences."
+            moduleName.set(this@registerJavaSourceDuplicationTask.name)
             projectDirectoryPath.set(fileInvariantPath(projectDir))
             sourceRoots.from(
                 listOf(
@@ -48,7 +50,10 @@ internal fun Project.registerJavaSourceDuplicationTask() =
 
 abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
     @get:Input
-    abstract val projectDirectoryPath: org.gradle.api.provider.Property<String>
+    abstract val moduleName: Property<String>
+
+    @get:Input
+    abstract val projectDirectoryPath: Property<String>
 
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -64,6 +69,7 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
     fun verify() {
         val existingSourceRoots = sourceRoots.files.filter(File::isDirectory).sortedBy { it.path }
         val projectDirectory = File(projectDirectoryPath.get())
+        val projectPath = moduleName.get()
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
         val report = reportFile.get().asFile
         val auditMirror = auditMirrorFile.get().asFile
@@ -100,6 +106,7 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
                         .filter { sourceFile ->
                             val relativePath = projectDisplayPath(sourceFile, projectDirectory)
                             JavaSourceStructuralContracts.includeInDuplicationCheck(
+                                projectPath = projectPath,
                                 relativePath = relativePath,
                                 packageName = JavaSourceStructuralContracts.packageNameFor(sourceFile),
                                 exportedPackages = exportedPackages,

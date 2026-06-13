@@ -16,8 +16,9 @@ internal data class JavaSourceShapeMetrics(
 ) {
     companion object {
         fun measure(file: File): JavaSourceShapeMetrics {
-            val sanitizedSource = sanitize(file.readText())
-            val lines = sanitizedSource.lines()
+            val source = file.readText()
+            val sanitizedSource = sanitize(source)
+            val lines = physicalLines(sanitizedSource)
             val logicalLineCount =
                 lines.count { line ->
                     val trimmed = line.trim()
@@ -26,7 +27,7 @@ internal data class JavaSourceShapeMetrics(
             val importCount = lines.count { it.trim().startsWith("import ") }
             val astMetrics = JavaAstShapeMetrics.measure(file)
             return JavaSourceShapeMetrics(
-                physicalLineCount = lines.size,
+                physicalLineCount = physicalLineCount(source),
                 logicalLineCount = logicalLineCount,
                 importCount = importCount,
                 nestedTypeCount = astMetrics.nestedTypeCount,
@@ -38,6 +39,20 @@ internal data class JavaSourceShapeMetrics(
                 maxMethodDecisionPoints = astMetrics.maxMethodDecisionPoints,
             )
         }
+
+        private fun physicalLineCount(source: String): Int =
+            if (source.isEmpty()) {
+                0
+            } else {
+                source.count { it == '\n' } + if (source.endsWith('\n')) 0 else 1
+            }
+
+        private fun physicalLines(source: String): List<String> =
+            if (source.isEmpty()) {
+                emptyList()
+            } else {
+                source.split('\n')
+            }
 
         private fun sanitize(source: String): String {
             val builder = StringBuilder(source.length)

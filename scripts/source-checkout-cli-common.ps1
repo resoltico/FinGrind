@@ -14,10 +14,12 @@ function Get-FinGrindCliWrapperContext {
     $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot ".."))
     $cliBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "cli"
     $rootBuildDir = Get-FinGrindProjectBuildDir -RepositoryRoot $repoRoot -ProjectSegment "root"
+    $lockDirectory = Join-Path $rootBuildDir "repo-locks/cli-runtime-prepare.lock"
     [pscustomobject]@{
         RepoRoot = $repoRoot
         CliBuildDir = $cliBuildDir
         RootBuildDir = $rootBuildDir
+        LockDirectory = $lockDirectory
         RawJar = Join-Path $cliBuildDir "libs/fingrind.jar"
         SourceCheckoutRuntimeManifest =
             Get-FinGrindSourceCheckoutRuntimeManifestPath -RepositoryRoot $repoRoot -ProjectSegment "cli"
@@ -43,8 +45,13 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
     $javaExecutable = $null
     $applicationModule = $null
     $nativeAccessModule = $null
+    $formatVersion = $null
     foreach ($line in [System.IO.File]::ReadAllLines($ManifestPath, [System.Text.Encoding]::UTF8)) {
-        if ([string]::IsNullOrWhiteSpace($line) -or $line -eq "formatVersion=1" -or $line.StartsWith("ownerTask=")) {
+        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("ownerTask=")) {
+            continue
+        }
+        if ($line.StartsWith("formatVersion=")) {
+            $formatVersion = $line.Substring("formatVersion=".Length)
             continue
         }
         $parts = $line.Split("`t", 2)
@@ -60,7 +67,8 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($javaExecutable) -or
+    if ($formatVersion -ne "3" -or
+        [string]::IsNullOrWhiteSpace($javaExecutable) -or
         [string]::IsNullOrWhiteSpace($applicationModule) -or
         [string]::IsNullOrWhiteSpace($nativeAccessModule)) {
         throw $StaleMessage
@@ -73,6 +81,36 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
         JavaExecutable = $javaExecutable
         ApplicationModule = $applicationModule
         NativeAccessModule = $nativeAccessModule
+    }
+}
+
+function Invoke-FinGrindCliWrapperRefreshLock {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LockDirectory,
+
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Action
+    )
+
+    $lockParent = Split-Path -Parent $LockDirectory
+    if (-not [string]::IsNullOrWhiteSpace($lockParent)) {
+        [System.IO.Directory]::CreateDirectory($lockParent) | Out-Null
+    }
+    while ($true) {
+        try {
+            New-Item -ItemType Directory -Path $LockDirectory -ErrorAction Stop | Out-Null
+            break
+        }
+        catch {
+            Start-Sleep -Milliseconds 50
+        }
+    }
+    try {
+        & $Action
+    }
+    finally {
+        Remove-Item -LiteralPath $LockDirectory -Recurse -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -94,24 +132,56 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
         [string]$RuntimeManifestStaleMessage
     )
 
+    if ((Test-Path -LiteralPath $Context.RawJar -PathType Leaf) -and
+        (Test-Path -LiteralPath $Context.SourceCheckoutRuntimeManifest -PathType Leaf)) {
+        try {
+            return Read-FinGrindSourceCheckoutRuntimeManifest `
+                -ManifestPath $Context.SourceCheckoutRuntimeManifest `
+                -MissingMessage $RuntimeManifestMissingMessage `
+                -StaleMessage $RuntimeManifestStaleMessage
+        }
+        catch {
+        }
+    }
+
     $gradleWrapper =
         if (Get-FinGrindIsWindowsHost) {
             Join-Path $Context.RepoRoot "gradlew.bat"
         } else {
             Join-Path $Context.RepoRoot "gradlew"
         }
-    Push-Location $Context.RepoRoot
-    try {
-        & $gradleWrapper @GradleTasks "--no-daemon" "--quiet" *> $null
-        if ($LASTEXITCODE -ne 0) {
-            throw "failed to refresh $ArtifactLabel via $gradleWrapper $($GradleTasks -join ' ')"
+    Invoke-FinGrindCliWrapperRefreshLock -LockDirectory $Context.LockDirectory -Action {
+        if ((Test-Path -LiteralPath $Context.RawJar -PathType Leaf) -and
+            (Test-Path -LiteralPath $Context.SourceCheckoutRuntimeManifest -PathType Leaf)) {
+            try {
+                Read-FinGrindSourceCheckoutRuntimeManifest `
+                    -ManifestPath $Context.SourceCheckoutRuntimeManifest `
+                    -MissingMessage $RuntimeManifestMissingMessage `
+                    -StaleMessage $RuntimeManifestStaleMessage | Out-Null
+                return
+            }
+            catch {
+            }
         }
-    } finally {
-        Pop-Location
+        Push-Location $Context.RepoRoot
+        try {
+            & $gradleWrapper @GradleTasks "--quiet" *> $null
+            if ($LASTEXITCODE -ne 0) {
+                throw "failed to prepare $ArtifactLabel via $gradleWrapper $($GradleTasks -join ' ')"
+            }
+        } finally {
+            Pop-Location
+        }
     }
 
     if (-not (Test-Path -LiteralPath $Context.RawJar -PathType Leaf)) {
-        throw "missing $ArtifactLabel at $($Context.RawJar); run .\\gradlew.bat $($GradleTasks -join ' ')"
+        $gradleCommandHint =
+            if (Get-FinGrindIsWindowsHost) {
+                ".\\gradlew.bat"
+            } else {
+                "./gradlew"
+            }
+        throw "missing $ArtifactLabel at $($Context.RawJar); run $gradleCommandHint $($GradleTasks -join ' ')"
     }
 
     return Read-FinGrindSourceCheckoutRuntimeManifest `

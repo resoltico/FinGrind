@@ -9,6 +9,7 @@ import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
@@ -63,11 +64,12 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
     assertFalse(Files.exists(backupBookKeyFilePath));
     assertNoStageArtifacts(backupBookKeyFilePath, ".backup-key-", ".tmp");
 
-    try (StagedBackupPair stagedBackupPair =
-        acceptedValue(
-            maintenanceStore()
-                .stageBackupPair(
-                    localAccess(sourceAccess), backupFilePath, backupBookKeyFilePath))) {
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
+            verifiedBook(store, sourceAccess);
+        StagedBackupPair stagedBackupPair =
+            acceptedValue(
+                store.stageBackupPair(verifiedSourceBook, backupFilePath, backupBookKeyFilePath))) {
       stagedBackupPair.commit();
     }
 
@@ -123,6 +125,16 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
 
   private SqliteProtectedBookMaintenanceStore maintenanceStore() {
     return new SqliteProtectedBookMaintenanceStore(KEY_FILE_RESOLVER);
+  }
+
+  private static ProtectedBookMaintenanceStore.VerifiedBook verifiedBook(
+      SqliteProtectedBookMaintenanceStore store, BookAccess bookAccess) {
+    return switch (acceptedValue(store.verifyInitializedBook(localAccess(bookAccess)))) {
+      case ProtectedBookMaintenanceStore.VerifiedBook verifiedBook -> verifiedBook;
+      case ProtectedBookMaintenanceStore.VerificationFailure verificationFailure ->
+          throw new AssertionError(
+              "Expected one verified book but got " + verificationFailure.failure());
+    };
   }
 
   private static ProtectedBookAccess localAccess(BookAccess bookAccess) {

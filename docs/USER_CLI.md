@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: USER_CLI
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -15,7 +15,7 @@ route:
 unpack it on a glibc Linux host. No separate Java install is required for that path. On macOS or
 Windows, use the published container workflow in [USER_CONTAINER.md](./USER_CONTAINER.md) or a
 source checkout. For source-driven local runs,
-`./gradlew :cli:run` manages SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 automatically.
+`./gradlew :cli:run` manages SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 automatically.
 For exact public package names, checksum commands, and the published container reference, start
 with [USER_INSTALL.md](./USER_INSTALL.md). The source-checkout wrapper
 `./scripts/source-checkout-cli.sh` or `.\scripts\source-checkout-cli.ps1` and the direct-Java
@@ -97,12 +97,13 @@ accounts for every journal line they touch, and surface those failures as
 the write transaction before `post-entry` succeeds.
 Every journal entry is single-currency; mixed-currency lines inside one entry are not supported.
 Every journal-line amount must be greater than zero.
-Protected books use SQLite3 Multiple Ciphers 2.3.4 with the upstream default `chacha20` cipher.
+Protected books use SQLite3 Multiple Ciphers 2.3.5 with the upstream default `chacha20` cipher.
 The operation catalog rendered in `help` and `capabilities` is contract-owned protocol metadata,
 so CLI help, parser aliases, output modes, summaries, query limits, and the separation between
 executable examples and operator notes share one source.
-`capabilities --output json --detail compact` and `--detail full` publish those command
-contracts as grouped `CommandDescriptor` objects, so automation can read the per-command
+`capabilities --output json` defaults to the compact grouped command surface, and
+`capabilities --output json --detail full` publishes the exhaustive grouped `CommandDescriptor`
+contract, so automation can read the per-command
 `executionMode`, `outputModes`, `artifactOutputs`, aliases, options, and summary directly
 instead of inferring stdout behavior from one global mode list.
 Commands that advertise `--output` default successful stdout to text on an interactive
@@ -388,8 +389,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   reopen the restored `--book-file` path with that same key file after the replacement completes.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
-- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.1 /
-  SQLite3 Multiple Ciphers 2.3.4 native library.
+- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.2 /
+  SQLite3 Multiple Ciphers 2.3.5 native library.
 - `environment.runtime.runtimeDistribution` tells you whether the current process is running from a
   self-contained bundle, container image, source-checkout Gradle launch, or direct Java wrapper
   invocation.
@@ -470,13 +471,13 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `currencyModel` so agents can discover the advisory preflight contract and single-currency
   scope without reading source code.
 - Gradle-driven local runs, the source-checkout wrapper, and the container image use a
-  managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library.
+  managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 shared library.
 - The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped
   native access when they run from a prepared checkout. Direct-Java launches outside that checkout
   shape are unsupported.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while
-  `capabilities --output json --detail compact|full` publishes the authoritative per-command
+  `capabilities --output json` and `capabilities --output json --detail full` publish the authoritative per-command
   stdout and artifact contract through grouped `CommandDescriptor` objects.
 - `capabilities.commands`, command groups, usage lines, aliases, output modes, artifact outputs,
   and summaries are rendered from the contract protocol catalog rather than copied into the CLI

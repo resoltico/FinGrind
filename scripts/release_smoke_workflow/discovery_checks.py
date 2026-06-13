@@ -62,8 +62,8 @@ def verify_help_and_template_surfaces(
     help_text = run_cli(config, operation_ids["help"], "--output", "text")
     require_match(
         help_text,
-        r"First Successful Run",
-        f"{config.label} help text did not publish the front-door first-success section",
+        r"Quick Start",
+        f"{config.label} help text did not publish the front-door quick-start section",
     )
     require_match(
         help_text,

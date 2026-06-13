@@ -164,9 +164,9 @@ verify_mounted_book_surface() {
 
     [[ -f "${pdf_path}" ]] || die "published container did not write trial-balance.pdf"
     [[ -r "${pdf_path}" ]] || die \
-        "published container wrote trial-balance.pdf without host-readable permissions"
+        "published container wrote trial-balance.pdf without owner-readable mounted permissions"
     if ! pdf_signature="$(head -c 5 "${pdf_path}")"; then
-        die "published container wrote trial-balance.pdf without host-readable permissions"
+        die "published container wrote trial-balance.pdf without owner-readable mounted permissions"
     fi
     [[ "${pdf_signature}" == '%PDF-' ]] || die \
         "published container wrote a non-PDF trial-balance artifact"

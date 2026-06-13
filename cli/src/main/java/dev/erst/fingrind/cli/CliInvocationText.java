@@ -15,8 +15,9 @@ import org.jspecify.annotations.Nullable;
 /** User-facing command-text helpers for neutral launcher examples and hints. */
 final class CliInvocationText {
   private static final String NEUTRAL_LAUNCHER_COMMAND = "fingrind";
-  private static final String RAW_JAR_MODULE_NAME = "fingrind";
-  private static final String RAW_JAR_APPLICATION_MODULE = "fingrind/dev.erst.fingrind.cli.App";
+  private static final String RAW_JAR_MODULE_NAME = "dev.erst.fingrind.cli";
+  private static final String RAW_JAR_APPLICATION_MODULE =
+      "dev.erst.fingrind.cli/dev.erst.fingrind.cli.App";
   private static final Pattern COMMAND_PREFIX_PATTERN =
       Pattern.compile(
           "(^|\\|\\s*)(?:fingrind|\\./bin/fingrind|\\.\\\\bin\\\\fingrind\\.ps1|\\./scripts/source-checkout-cli\\.sh|\\.\\\\scripts\\\\source-checkout-cli\\.ps1|\\./scripts/direct-java-cli\\.sh|\\.\\\\scripts\\\\direct-java-cli\\.ps1)(?=\\s|$)");
@@ -79,7 +80,7 @@ final class CliInvocationText {
           ProtocolCatalog.distribution().directJavaLauncherCommand(windows);
       case SOURCE_CHECKOUT_GRADLE ->
           ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(windows);
-      case CONTAINER_IMAGE -> ProtocolCatalog.distribution().containerLauncherCommand();
+      case CONTAINER_IMAGE -> ProtocolCatalog.distribution().containerMountedLauncherPrefix();
       case SELF_CONTAINED_BUNDLE -> NEUTRAL_LAUNCHER_COMMAND;
     };
   }

@@ -7,23 +7,16 @@ import org.gradle.api.Project
 import org.gradle.api.attributes.LibraryElements
 import org.gradle.api.attributes.Usage
 import org.gradle.api.tasks.Copy
-import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.Sync
-import org.gradle.api.tasks.application.CreateStartScripts
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.api.tasks.bundling.Compression
-import org.gradle.api.tasks.bundling.Tar
-import org.gradle.api.tasks.bundling.Zip
 import org.gradle.api.tasks.bundling.Jar
-import org.gradle.api.tasks.testing.Test
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaToolchainService
-import org.gradle.language.jvm.tasks.ProcessResources
 import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
-import org.gradle.kotlin.dsl.withType
 
 class FinGrindCliDistributionPlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -117,6 +110,29 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     rootProject.layout.projectDirectory.file("gradle/build-logic/settings.gradle.kts"),
                     rootProject.layout.projectDirectory.dir("gradle/build-logic/src/main"),
                 )
+            val sourceCheckoutRuntimeInputs =
+                objects.fileCollection().from(
+                    rootProject.fileTree("cli/src/main"),
+                    rootProject.fileTree("contract/src/main"),
+                    rootProject.fileTree("core/src/main"),
+                    rootProject.fileTree("executor/src/main"),
+                    rootProject.fileTree("report-pdf/src/main"),
+                    rootProject.fileTree("sqlite/src/main"),
+                    rootProject.fileTree("gradle/build-logic/src/main"),
+                    rootProject.fileTree("third_party/sqlite/$managedSqlitePackageId"),
+                    rootProject.layout.projectDirectory.file("build.gradle.kts"),
+                    rootProject.layout.projectDirectory.file("settings.gradle.kts"),
+                    rootProject.layout.projectDirectory.file("gradle.properties"),
+                    rootProject.layout.projectDirectory.file("gradle/libs.versions.toml"),
+                    rootProject.layout.projectDirectory.file("gradle/fingrind-build.properties"),
+                    rootProject.layout.projectDirectory.file("gradle/build-logic/build.gradle.kts"),
+                    rootProject.layout.projectDirectory.file("gradle/build-logic/settings.gradle.kts"),
+                    rootProject.layout.projectDirectory.file("LICENSE"),
+                    rootProject.layout.projectDirectory.file("LICENSE-APACHE-2.0"),
+                    rootProject.layout.projectDirectory.file("LICENSE-SIL-OFL-1.1"),
+                    rootProject.layout.projectDirectory.file("LICENSE-SQLITE3MULTIPLECIPHERS"),
+                    rootProject.layout.projectDirectory.file("NOTICE"),
+                )
             val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
             val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
             val bundleRootDirectory =
@@ -194,9 +210,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 )
             }
 
-            tasks.named<org.gradle.api.tasks.JavaExec>("run") {
-                workingDir = rootProject.projectDir
-            }
+            configureCliExecutionSurfaceConventions(cliContractBuildLogicInputs)
 
             val writeSourceCheckoutRuntimeManifest =
                 tasks.register<WriteSourceCheckoutRuntimeManifestTask>(
@@ -211,45 +225,23 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     javaInstallationDirectory.set(
                         sourceCheckoutJavaLauncher.map { it.metadata.installationPath },
                     )
-                    nativeAccessModule.set("fingrind")
-                    applicationModule.set("fingrind/dev.erst.fingrind.cli.App")
+                    nativeAccessModule.set("dev.erst.fingrind.cli")
+                    applicationModule.set("dev.erst.fingrind.cli/dev.erst.fingrind.cli.App")
+                    runtimeInputs.from(sourceCheckoutRuntimeInputs)
                     outputFile.set(sourceCheckoutRuntimeManifestOutputFile)
                 }
 
+            tasks.register("prepareSourceCheckoutCliRuntime") {
+                group = "distribution"
+                description =
+                    "Builds the prepared source-checkout CLI runtime consumed by the developer launcher wrappers."
+                dependsOn(shadowJarTask)
+                dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
+                dependsOn(writeSourceCheckoutRuntimeManifest)
+            }
+
             shadowJarTask.configure {
                 finalizedBy(writeSourceCheckoutRuntimeManifest)
-            }
-
-            tasks.named<ProcessResources>("processResources") {
-                dependsOn(rootProject.tasks.named("prepareManagedSqlite"))
-                val description: String = providers.gradleProperty("fingrindDescription").get()
-                val version: String = project.version.toString()
-                inputs.property("fingrindDescription", description)
-                inputs.property("fingrindVersion", version)
-                filesMatching("fingrind.properties") {
-                    expand(
-                        mapOf(
-                            "fingrindDescription" to description,
-                            "version" to version,
-                        ),
-                    )
-                }
-            }
-
-            tasks.named<CreateStartScripts>("startScripts") {
-                enabled = false
-            }
-
-            tasks.named<Sync>("installDist") {
-                enabled = false
-            }
-
-            tasks.named<Tar>("distTar") {
-                enabled = false
-            }
-
-            tasks.named<Zip>("distZip") {
-                enabled = false
             }
 
             val writeRuntimeModuleList =
@@ -397,27 +389,6 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
 
             tasks.named("assemble") {
                 dependsOn(bundleArchiveTasks.manifestTask)
-            }
-
-            tasks.named<Test>("test") {
-                inputs.file(rootProject.layout.projectDirectory.file("Dockerfile"))
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.file(rootProject.layout.projectDirectory.file(".gitignore"))
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.file(rootProject.layout.projectDirectory.file(".gitattributes"))
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.file(rootProject.layout.projectDirectory.file("AGENTS.md"))
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.file(rootProject.layout.projectDirectory.file(".codex/UNIVERSAL_ENGINEERING_CONTRACT.md"))
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.file(layout.projectDirectory.file("build.gradle.kts"))
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.dir(rootProject.layout.projectDirectory.dir("docs"))
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.dir(rootProject.layout.projectDirectory.dir("scripts"))
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
-                inputs.files(cliContractBuildLogicInputs)
-                    .withPathSensitivity(PathSensitivity.RELATIVE)
             }
         }
     }

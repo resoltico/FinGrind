@@ -31,7 +31,7 @@ When opening a repository, load context in this order:
 5. Load the application-framework protocol for each touched surface:
    - Tauri 2.10.x: `.codex/AGENTS_TAURI210.md` (v2.0.0+)
 6. Load the database/native dependency protocol for each touched surface:
-   - SQLite3 Multiple Ciphers 2.3.4 / SQLite 3.53.1: `.codex/AGENTS_SQLITE3MC234_SQLITE3531.md` (v2.0.1+)
+   - SQLite3 Multiple Ciphers 2.3.5 / SQLite 3.53.2: `.codex/AGENTS_SQLITE3MC235_SQLITE3532.md` (v2.0.2+)
 7. Load the domain-modeling lens **only when the change touches business meaning**: `.codex/DOMAIN_DRIVEN_DESIGN_LENS.md` (v1.0.0+). Triggers include domain state, business rules, workflow names, commands, domain events, permissions, policies, calculations, lifecycle transitions, user-facing business terms, or integration contracts between models. Do not load for purely mechanical work — build wiring, generic plumbing, infrastructure with no domain meaning. The Universal Engineering Contract §1.7 *Domain meaning gate* is the formal trigger.
 8. For documentation authoring, documentation refactoring, or code changes that alter documented public contracts, load `.codex/PROTOCOL_AFAD.md` unless the only touched document is the repository root `README.md`.
 
@@ -88,7 +88,7 @@ Application-framework surfaces:
 
 Database/native dependency surfaces:
 
-- SQLite3 Multiple Ciphers 2.3.4 / SQLite 3.53.1 surfaces use `.codex/AGENTS_SQLITE3MC234_SQLITE3531.md` in addition to any applicable language or framework protocol.
+- SQLite3 Multiple Ciphers 2.3.5 / SQLite 3.53.2 surfaces use `.codex/AGENTS_SQLITE3MC235_SQLITE3532.md` in addition to any applicable language or framework protocol.
 
 Domain-modeling surfaces:
 

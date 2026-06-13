@@ -57,7 +57,7 @@ class CliFailureMapperTest {
     assertNotNull(managedFailure);
     assertEquals("managed-runtime-failure", managedFailure.code());
     assertNotNull(managedFailure.hint());
-    assertTrue(managedFailure.hint().contains("prepareManagedSqlite"));
+    assertTrue(managedFailure.hint().contains(":cli:prepareSourceCheckoutCliRuntime"));
     assertNotNull(storageFailure);
     assertEquals("storage-runtime-failure", storageFailure.code());
     assertNotNull(storageFailure.hint());

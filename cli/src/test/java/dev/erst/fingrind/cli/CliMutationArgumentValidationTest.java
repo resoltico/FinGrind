@@ -422,9 +422,28 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
                       "book.key",
                       "--request-file",
                       "plan.json",
+                      "--output",
+                      "json"
+                    }));
+    assertEquals("--output", unsupportedArgument.argument());
+    assertEquals("Unsupported argument: --output", unsupportedArgument.getMessage());
+
+    CliArgumentsException unknownArgument =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "execute-plan",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--request-file",
+                      "plan.json",
                       "--verbose"
                     }));
-    assertEquals("--verbose", unsupportedArgument.argument());
-    assertEquals("Unsupported argument: --verbose", unsupportedArgument.getMessage());
+    assertEquals("--verbose", unknownArgument.argument());
+    assertEquals("Unsupported argument: --verbose", unknownArgument.getMessage());
   }
 }

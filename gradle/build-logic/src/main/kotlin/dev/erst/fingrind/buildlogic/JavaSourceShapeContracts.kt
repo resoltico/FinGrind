@@ -1,11 +1,15 @@
 package dev.erst.fingrind.buildlogic
 
 import java.io.File
-import java.time.LocalDate
 
 internal object JavaSourceStructuralContracts {
-    private val reviewedSurfaceByPath =
-        reviewedSurfaceEntries.associateBy(ReviewedJavaSourceSurface::relativePath)
+    private val reviewedSurfaceByKey =
+        reviewedSurfaceEntries.associateBy { reviewedSurface ->
+            ReviewedSurfaceKey(
+                projectPath = reviewedSurface.projectPath,
+                relativePath = reviewedSurface.relativePath,
+            )
+        }
 
     fun baselineBudgetFor(
         relativePath: String,
@@ -19,14 +23,15 @@ internal object JavaSourceStructuralContracts {
             "src/main/java/dev/erst/fingrind/cli/json/" in relativePath -> cliJsonFamilyBudget
             packageName != null && packageName in exportedPackages -> exportedPublicSeamBudget
             else -> productionMainBudget
-        }
+    }
 
     fun contractFor(
+        projectPath: String,
         relativePath: String,
         packageName: String?,
         exportedPackages: Set<String>,
     ): JavaSourceStructuralContract {
-        reviewedSurfaceByPath[relativePath]?.let { reviewedSurface ->
+        reviewedSurfaceByKey[ReviewedSurfaceKey(projectPath, relativePath)]?.let { reviewedSurface ->
             return JavaSourceStructuralContract(
                 budget = reviewedSurface.budget,
                 reviewedSurface = reviewedSurface,
@@ -57,47 +62,32 @@ internal object JavaSourceStructuralContracts {
 
     fun reviewedSurfaces(): List<ReviewedJavaSourceSurface> = reviewedSurfaceEntries
 
+    fun reviewedSurfaces(projectPath: String): List<ReviewedJavaSourceSurface> =
+        reviewedSurfaceEntries.filter { it.projectPath == projectPath }
+
     fun includeInDuplicationCheck(
+        projectPath: String,
         relativePath: String,
         packageName: String?,
         exportedPackages: Set<String>,
     ): Boolean =
-        reviewedSurfaceByPath[relativePath]?.duplicationExemptionReason == null
+        reviewedSurfaceByKey[ReviewedSurfaceKey(projectPath, relativePath)]?.duplicationExemptionReason == null
+
+    fun missingReviewedSurfaceViolations(
+        projectPath: String,
+        existingRelativePaths: Set<String>,
+    ): List<String> =
+        reviewedSurfaces(projectPath)
+            .filterNot { it.relativePath in existingRelativePaths }
+            .map { reviewedSurface ->
+                "${reviewedSurface.relativePath}: reviewed surface for ${reviewedSurface.owner} no longer resolves inside $projectPath; remove or rewrite the orphaned waiver instead of carrying dead metadata."
+            }
 }
 
-internal fun reviewedSurfaceDefinitionViolations(
-    reviewedSurface: ReviewedJavaSourceSurface,
-    defaultBudget: JavaSourceShapeBudget,
-): List<String> {
-    val budget = reviewedSurface.budget
-    if (budgetExceedsDefaultBudget(budget, defaultBudget) && reviewedSurface.budgetVarianceReason == null) {
-        return listOf(
-            "${reviewedSurface.relativePath}: reviewed surface for ${reviewedSurface.owner} widens the ${defaultBudget.roleName} budget without an explicit variance reason.",
-        )
-    }
-    return emptyList()
-}
-
-private fun budgetExceedsDefaultBudget(
-    reviewedBudget: JavaSourceShapeBudget,
-    defaultBudget: JavaSourceShapeBudget,
-): Boolean =
-    reviewedBudget.maxPhysicalLines > defaultBudget.maxPhysicalLines ||
-        reviewedBudget.maxLogicalLines > defaultBudget.maxLogicalLines ||
-        reviewedBudget.maxImports > defaultBudget.maxImports ||
-        reviewedBudget.maxNestedTypes > defaultBudget.maxNestedTypes ||
-        reviewedBudget.maxMethodsPerTopLevelType > defaultBudget.maxMethodsPerTopLevelType ||
-        reviewedBudget.maxFieldsPerTopLevelType > defaultBudget.maxFieldsPerTopLevelType ||
-        reviewedBudget.maxSwitchArmsPerMethod > defaultBudget.maxSwitchArmsPerMethod ||
-        reviewedBudget.maxMethodLineSpan > defaultBudget.maxMethodLineSpan ||
-        reviewedBudget.maxMethodParameters > defaultBudget.maxMethodParameters ||
-        reviewedBudget.maxMethodDecisionPoints > defaultBudget.maxMethodDecisionPoints
-
-private fun reviewedWaiverIsUnnecessary(
-    relativePath: String,
-    metrics: JavaSourceShapeMetrics,
-    defaultBudget: JavaSourceShapeBudget,
-): Boolean = javaShapeViolations(relativePath, metrics, defaultBudget).isEmpty()
+private data class ReviewedSurfaceKey(
+    val projectPath: String,
+    val relativePath: String,
+)
 
 internal fun javaShapeViolations(
     relativePath: String,
@@ -144,41 +134,6 @@ internal fun javaShapeViolations(
     if (metrics.maxMethodDecisionPoints > budget.maxMethodDecisionPoints) {
         violations +=
             "$relativePath: one method owns ${metrics.maxMethodDecisionPoints} decision points, exceeding ${budget.maxMethodDecisionPoints} for ${budget.roleName}; split the control flow into narrower owners."
-    }
-    return violations
-}
-
-internal fun reviewedSurfaceViolations(
-    relativePath: String,
-    metrics: JavaSourceShapeMetrics,
-    reviewedSurface: ReviewedJavaSourceSurface,
-    defaultBudget: JavaSourceShapeBudget,
-    currentDate: LocalDate = LocalDate.now(),
-): List<String> {
-    val violations = mutableListOf<String>()
-    val approval = reviewedSurface.approval
-    if (currentDate.isAfter(approval.expiresOn)) {
-        violations +=
-            "$relativePath: reviewed surface waiver for ${reviewedSurface.owner} expired on ${approval.expiresOn}; ${reviewedSurface.splitTrigger}"
-    }
-    if (metrics.physicalLineCount > approval.approvedPhysicalLines) {
-        violations +=
-            "$relativePath: reviewed surface for ${reviewedSurface.owner} grew from ${approval.approvedPhysicalLines} to ${metrics.physicalLineCount} physical lines before the waiver expiry ${approval.expiresOn}; ${reviewedSurface.splitTrigger}"
-    }
-    if (metrics.logicalLineCount > approval.approvedLogicalLines) {
-        violations +=
-            "$relativePath: reviewed surface for ${reviewedSurface.owner} grew from ${approval.approvedLogicalLines} to ${metrics.logicalLineCount} logical lines before the waiver expiry ${approval.expiresOn}; ${reviewedSurface.splitTrigger}"
-    }
-    if (metrics.importCount > approval.approvedImports) {
-        violations +=
-            "$relativePath: reviewed surface for ${reviewedSurface.owner} grew from ${approval.approvedImports} to ${metrics.importCount} imports before the waiver expiry ${approval.expiresOn}; ${reviewedSurface.splitTrigger}"
-    }
-    if (
-        reviewedSurface.duplicationExemptionReason == null &&
-            reviewedWaiverIsUnnecessary(relativePath, metrics, defaultBudget)
-    ) {
-        violations +=
-            "$relativePath: reviewed surface waiver for ${reviewedSurface.owner} is no longer needed because the file fits the ${defaultBudget.roleName} budget; remove the reviewed waiver instead of carrying a stale exception."
     }
     return violations
 }

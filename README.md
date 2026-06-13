@@ -4,17 +4,20 @@ FinGrind is a command-line bookkeeping tool for one accounting entity per protec
 The current public kernel is one narrow internal-management cash-bookkeeping profile with one
 seeded owner-managed service starter chart. You initialize the book explicitly, extend that chart
 when needed, seed first balances through one structured opening-position flow, commit typed
-cash-kernel bookkeeping entries or explicit reversal adjustments, and query the same file for
-balances, ledgers, and built-in statements. Humans use the task guide in `help`; automation uses
-`capabilities --output json`. Invalid writes are rejected before they change the book.
+cash-kernel bookkeeping entries or one ordered AI-agent ledger plan, manage the same protected book
+through explicit rekey and backup-recovery commands, and query that file for balances, ledgers, and
+built-in statements. Humans use the task guide in `help`; automation uses `capabilities --output json`.
+Invalid writes and invalid maintenance mutations are rejected before they change the selected book.
 
 - Open one encrypted book per accounting entity, protected by a generated key file
 - Start from one seeded owner-managed service starter chart, then declare supplemental accounts
   and chart nodes when the built-in template is not enough
 - Post typed cash-kernel bookkeeping entries with retained evidence, provenance, and idempotency
-  keys; use the structured opening-position flow for first balances and reserve administrative
-  entries for explicit reversals
-- Scaffold runnable request and plan documents with `print-request-template` and
+  keys, or run one ordered AI-agent ledger plan; use the structured opening-position flow for first
+  balances and reserve administrative entries for explicit reversals
+- Rekey protected books, export verified encrypted backup pairs, and inspect, restore, or delete
+  interrupted rekey rollback artifacts through explicit maintenance commands
+- Scaffold placeholder-first request and plan documents with `print-request-template` and
   `print-plan-template`
 - Read back account balances, trial balances with totals and balanced verdicts, account ledgers,
   period summaries, and the built-in financial position, income statement, and changes in equity
@@ -51,14 +54,14 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --limit 10
 
-# Copy the concrete first-post sample that ships with public bundles, or use
-# `fingrind print-request-template post-entry > ./request.json` on source-checkout and container
-# paths.
+# Copy the concrete first-post sample that ships with public bundles, or emit the canonical
+# placeholder-first request scaffold directly on source-checkout and container paths.
 cp ./quick-start-request.json ./request.json
 # Alternative when that bundled sample is not present:
 fingrind print-request-template > ./request.json
 
-# Edit ./request.json so it uses one real evidence/provenance set, then post one balanced entry
+# Edit ./request.json so it replaces every replace-before-commit token with real evidence and
+# provenance values, then post one balanced entry
 fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --request-file ./request.json
 
@@ -67,14 +70,16 @@ fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets
   --effective-date-as-of 2026-04-08 --output text
 ```
 
-The interface is layered: `help` is the operator guide, `print-request-template` scaffolds one
-runnable sample document, and `capabilities --output json` exposes the machine-readable discovery
-surface. Rerun discovery with `--detail compact` for stable command and output descriptors or
-`--detail full` for the exhaustive embedded schemas and doctrine surface.
+The interface is layered: `help` is the operator guide, `print-request-template` and
+`print-plan-template` emit placeholder-first scaffold documents, and `capabilities --output json`
+exposes the machine-readable discovery surface. The default JSON discovery detail is compact; rerun
+with `--detail minimal` for the terse overview or `--detail full` for the exhaustive embedded
+schemas and doctrine surface.
 
 ```bash
 fingrind help post-entry
-fingrind print-request-template post-entry > request.json
+fingrind print-request-template > request.json
+fingrind print-plan-template > plan.json
 fingrind capabilities --output json
 ```
 

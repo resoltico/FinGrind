@@ -22,21 +22,22 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
+import dev.erst.fingrind.jazzer.support.PostingLifecycleStatusMapper;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-class SqliteRoundTripWorkflowLifecycleAssertionsTest {
+class SqliteRoundTripWorkflowAssertionSupportTest {
   @Test
   void storage_and_duplicate_helpers_cover_failure_guards() {
     assertThrows(
         IllegalStateException.class,
-        () -> SqliteRoundTripWorkflowLifecycleAssertions.requireStoredPosting(Optional.empty()));
+        () -> SqliteRoundTripWorkflowPersistenceAssertions.requireStoredPosting(Optional.empty()));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.verifyDeclaredAccountListing(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyDeclaredAccountListing(
                 List.of(
                     SqliteRoundTripWorkflowTestSupport.declaredAccount(
                         new AccountCode("1000"), true)),
@@ -48,13 +49,13 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.requireDuplicateRejection(
+            SqliteRoundTripWorkflowPersistenceAssertions.requireDuplicateRejection(
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
                     new PostingRejection.ReversalTargetNotFound(new PostingId("posting-9")))));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.verifyRejectedCommitConsistency(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyRejectedCommitConsistency(
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
                     new PostingRejection.DuplicateIdempotencyKey()),
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
@@ -71,7 +72,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 SqliteRoundTripWorkflowTestSupport.matchingPostingFact(
                     command, new PostingId("posting-2")),
                 committed,
@@ -79,7 +80,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 new PostingFact(
                     baseFact.postingId(),
                     new JournalEntry(
@@ -103,7 +104,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 new PostingFact(
                     baseFact.postingId(),
                     baseFact.journalEntry(),
@@ -119,7 +120,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 new PostingFact(
                     baseFact.postingId(),
                     baseFact.journalEntry(),
@@ -144,7 +145,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 new PostingFact(
                     baseFact.postingId(),
                     baseFact.journalEntry(),
@@ -167,7 +168,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 new PostingFact(
                     baseFact.postingId(),
                     baseFact.journalEntry(),
@@ -187,28 +188,27 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
   void rejection_status_helpers_cover_every_rejection_family() {
     assertEquals(
         PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
-            new PostingRejection.BookNotInitialized()));
+        PostingLifecycleStatusMapper.forRejection(new PostingRejection.BookNotInitialized()));
     assertEquals(
         PostingLifecycleStatus.UNKNOWN_ACCOUNT,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.AccountStateViolations(
                 List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))));
     assertEquals(
         PostingLifecycleStatus.INACTIVE_ACCOUNT,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.AccountStateViolations(
                 List.of(new PostingRejection.InactiveAccount(new AccountCode("1000"))))));
     assertEquals(
         PostingLifecycleStatus.ACCOUNT_STATE_VIOLATIONS,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.AccountStateViolations(
                 List.of(
                     new PostingRejection.UnknownAccount(new AccountCode("1000")),
                     new PostingRejection.InactiveAccount(new AccountCode("2000"))))));
     assertEquals(
         PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.EntrySemanticsViolations(
                 List.of(
                     new PostingRejection.EntrySemanticsViolation(
@@ -217,45 +217,44 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
                         "Cash revenue requires an asset account.")))));
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
-            new PostingRejection.DuplicateIdempotencyKey()));
+        PostingLifecycleStatusMapper.forRejection(new PostingRejection.DuplicateIdempotencyKey()));
     assertEquals(
         PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.BookFunctionalCurrencyMismatch(
                 dev.erst.fingrind.core.CurrencyUnit.of("USD"),
                 dev.erst.fingrind.core.CurrencyUnit.of("EUR"))));
     assertEquals(
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.TransferredPeriodResultViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.OpeningBalanceWindowClosed(
                 dev.erst.fingrind.core.PostingKind.STANDARD,
                 java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.OpeningBalanceTouchesNominalAccount(
                 new AccountCode("4100"), dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
         PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3200"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET,
-        SqliteRoundTripWorkflowLifecycleAssertions.rejectionStatus(
+        PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))));
   }
 
@@ -264,37 +263,37 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowPreflightRejected(
+            SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateWorkflowPreflightRejected(
                 new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted(
                     new IdempotencyKey("idem-1"), java.time.LocalDate.parse("2026-04-07"))));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowPreflightRejected(
+            SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateWorkflowPreflightRejected(
                 new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected(
                     new IdempotencyKey("idem-1"),
                     new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")))));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowCommitRejected(
+            SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateWorkflowCommitRejected(
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateWorkflowCommitRejected(
+            SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateWorkflowCommitRejected(
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
                     new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")))));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.assertNearMissReversalRejected(
+            SqliteRoundTripWorkflowDecisionAssertions.assertNearMissReversalRejected(
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
                     new PostingRejection.DuplicateIdempotencyKey())));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.assertDuplicateReversalRejected(
+            SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateReversalRejected(
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
                     new PostingRejection.DuplicateIdempotencyKey())));
   }
@@ -304,7 +303,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.assertRejectedStateDidNotPersistPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.assertRejectedStateDidNotPersistPosting(
                 Optional.of(
                     SqliteRoundTripWorkflowTestSupport.matchingPostingFact(
                         SqliteRoundTripWorkflowTestSupport.basicValidCommand(),
@@ -314,7 +313,7 @@ class SqliteRoundTripWorkflowLifecycleAssertionsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteRoundTripWorkflowLifecycleAssertions.assertAccountReactivationPersisted(
+                SqliteRoundTripWorkflowPersistenceAssertions.assertAccountReactivationPersisted(
                     new SqliteRoundTripWorkflowTestSupport.StubSqliteReadSession(
                         Optional.of(
                             SqliteRoundTripWorkflowTestSupport.declaredAccount(

@@ -157,21 +157,21 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
 
     assertInstanceOf(
         PreflightAccepted.class,
-        SqliteRoundTripWorkflowLifecycleAssertions.requirePreflightAccepted(
+        SqliteRoundTripWorkflowDecisionAssertions.requirePreflightAccepted(
             ContractDecision.accepted(
                 new PreflightAccepted(
                     new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")))));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.requirePreflightAccepted(
+            SqliteRoundTripWorkflowDecisionAssertions.requirePreflightAccepted(
                 ContractDecision.accepted(
                     new PreflightRejected(
                         new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()))));
 
     assertEquals(
         "posting-1",
-        SqliteRoundTripWorkflowLifecycleAssertions.requireCommitted(
+        SqliteRoundTripWorkflowDecisionAssertions.requireCommitted(
                 ContractDecision.accepted(
                     SqliteRoundTripWorkflowTestSupport.committed("posting-1")))
             .postingId()
@@ -179,7 +179,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.requireCommitted(
+            SqliteRoundTripWorkflowDecisionAssertions.requireCommitted(
                 ContractDecision.accepted(
                     SqliteRoundTripWorkflowTestSupport.commitRejected(
                         new PostingRejection.DuplicateIdempotencyKey()))));
@@ -187,12 +187,12 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.requiredCommitRejected(
+            SqliteRoundTripWorkflowDecisionAssertions.requiredCommitRejected(
                 SqliteRoundTripWorkflowTestSupport.committed("posting-2")));
 
     assertInstanceOf(
         DeclareAccountResult.Declared.class,
-        SqliteRoundTripWorkflowLifecycleAssertions.requireDeclared(
+        SqliteRoundTripWorkflowDecisionAssertions.requireDeclared(
             ContractDecision.accepted(
                 new DeclareAccountResult.Declared(
                     SqliteRoundTripWorkflowTestSupport.declaredAccount(
@@ -200,7 +200,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowLifecycleAssertions.requireDeclared(
+            SqliteRoundTripWorkflowDecisionAssertions.requireDeclared(
                 ContractDecision.accepted(
                     new DeclareAccountResult.Rejected(
                         new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection

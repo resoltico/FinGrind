@@ -46,7 +46,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(rendered.contains("Query and report commands"));
     assertTrue(rendered.contains("Write commands"));
     assertTrue(rendered.contains("PDF-capable reports"));
-    assertFalse(rendered.contains("First Successful Run"));
+    assertFalse(rendered.contains("Quick Start"));
     assertFalse(rendered.contains("Targeted Retrieval"));
     assertFalse(rendered.contains("Timestamp"));
     assertFalse(rendered.contains("Reporting position"));
@@ -128,11 +128,11 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Try It"));
-    assertTrue(rendered.contains("Before You Run"));
+    assertTrue(rendered.contains("Examples"));
+    assertTrue(rendered.contains("Preparation"));
     assertTrue(rendered.contains("--pdf-out <path>"));
     assertTrue(rendered.contains("Command"));
-    assertFalse(rendered.contains("Request File"));
+    assertFalse(rendered.contains("Input Contract"));
     assertFalse(rendered.contains("Starter file command"));
     assertTrue(rendered.contains("Artifact outputs"));
     assertFalse(rendered.contains("Selectable defaults"));
@@ -296,8 +296,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
                     "<redacted>/libsqlite3.dylib",
-                    "3.53.1",
-                    "2.3.4",
+                    "3.53.2",
+                    "2.3.5",
                     "source-id",
                     "compile options mismatch")));
     String unavailableRendered =
@@ -320,8 +320,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(incompatibleRendered.contains("Runtime status"));
     assertTrue(incompatibleRendered.contains("incompatible"));
     assertTrue(incompatibleRendered.contains("compile options mismatch"));
-    assertTrue(incompatibleRendered.contains("3.53.1"));
-    assertTrue(incompatibleRendered.contains("2.3.4"));
+    assertTrue(incompatibleRendered.contains("3.53.2"));
+    assertTrue(incompatibleRendered.contains("2.3.5"));
     assertFalse(incompatibleRendered.contains("source-id"));
 
     assertTrue(unavailableRendered.contains("Runtime status"));
@@ -339,7 +339,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.52.0"));
+    assertTrue(rendered.contains("0.53.0"));
   }
 
   private static dev.erst.fingrind.contract.runtime.EnvironmentDescriptor

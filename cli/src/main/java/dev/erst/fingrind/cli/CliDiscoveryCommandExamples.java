@@ -66,7 +66,7 @@ final class CliDiscoveryCommandExamples {
     }
     if (!notes.isEmpty()) {
       sections.add(
-          "Notes:"
+          "Operational notes:"
               + System.lineSeparator()
               + CliTextFormat.renderBulletedBlock(notes, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
     }

@@ -43,9 +43,9 @@ final class ProtectedBookRecoveryWorkflow {
     return support.continueWithVerifiedBook(
         normalizedAccess,
         ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
-        ignoredVerified ->
+        verifiedLiveBook ->
             deleteVerifiedRollbackArtifact(
-                normalizedBookPath, normalizedAccess, selectedRollbackArtifact),
+                normalizedBookPath, verifiedLiveBook, selectedRollbackArtifact),
         ProtectedBookRecoveryOutcome.Rejected::new);
   }
 
@@ -79,18 +79,19 @@ final class ProtectedBookRecoveryWorkflow {
     return support.continueWithVerifiedBook(
         rollbackAccess,
         ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT,
-        ignoredVerified ->
+        verifiedRollbackArtifact ->
             restoreVerifiedRollbackArtifact(
-                normalizedBookPath, rollbackAccess, selectedRollbackArtifact),
+                normalizedBookPath, verifiedRollbackArtifact, selectedRollbackArtifact),
         ProtectedBookRecoveryOutcome.Rejected::new);
   }
 
   private MaintenanceDecision<ProtectedBookRecoveryOutcome> restoreVerifiedRollbackArtifact(
-      Path normalizedBookPath, ProtectedBookAccess rollbackAccess, Path selectedRollbackArtifact) {
+      Path normalizedBookPath,
+      ProtectedBookMaintenanceStore.VerifiedBook verifiedRollbackArtifact,
+      Path selectedRollbackArtifact) {
     return support.restoreVerifiedSourceArtifact(
         normalizedBookPath,
-        selectedRollbackArtifact,
-        rollbackAccess.passphraseSource(),
+        verifiedRollbackArtifact,
         ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT,
         ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_RESTORED,
         ProtectedBookRecoveryOutcome.Rejected::new,
@@ -100,7 +101,9 @@ final class ProtectedBookRecoveryWorkflow {
   }
 
   private MaintenanceDecision<ProtectedBookRecoveryOutcome> deleteVerifiedRollbackArtifact(
-      Path normalizedBookPath, ProtectedBookAccess liveBookAccess, Path selectedRollbackArtifact) {
+      Path normalizedBookPath,
+      ProtectedBookMaintenanceStore.VerifiedBook verifiedLiveBook,
+      Path selectedRollbackArtifact) {
     ProtectedBookMaintenanceStore store = support.store();
     ProtectedBookMaintenanceStore.LeaseAcquisition liveBookLeaseAcquisition =
         store.acquireExistingArtifactLease(normalizedBookPath);
@@ -131,12 +134,14 @@ final class ProtectedBookRecoveryWorkflow {
       Instant recordedAt = support.recordedAt();
       return store
           .appendMaintenanceAudit(
-              liveBookAccess, recordedAt, ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_DELETED)
+              verifiedLiveBook,
+              recordedAt,
+              ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_DELETED)
           .fold(
               ignoredAudit ->
                   commitDeletedRollbackArtifact(
                       normalizedBookPath,
-                      liveBookAccess,
+                      verifiedLiveBook,
                       recordedAt,
                       selectedRollbackArtifact,
                       stagedDeletion),
@@ -146,7 +151,7 @@ final class ProtectedBookRecoveryWorkflow {
 
   private MaintenanceDecision<ProtectedBookRecoveryOutcome> commitDeletedRollbackArtifact(
       Path normalizedBookPath,
-      ProtectedBookAccess liveBookAccess,
+      ProtectedBookMaintenanceStore.VerifiedBook verifiedLiveBook,
       Instant recordedAt,
       Path selectedRollbackArtifact,
       StagedRollbackArtifactDeletion stagedDeletion) {
@@ -156,7 +161,7 @@ final class ProtectedBookRecoveryWorkflow {
           new ProtectedBookRecoveryOutcome.Deleted(normalizedBookPath, selectedRollbackArtifact));
     } catch (RuntimeException commitFailure) {
       return support.compensateAuditAfterExternalCommitFailure(
-          liveBookAccess,
+          verifiedLiveBook,
           recordedAt,
           ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED,
           "Failed to delete the staged FinGrind rollback artifact.",

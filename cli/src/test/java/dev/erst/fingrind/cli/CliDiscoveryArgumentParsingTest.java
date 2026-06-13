@@ -190,7 +190,7 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
                 new String[] {"capabilities", "--output", "json", "--category", "query"}));
 
     assertEquals(OutputMode.JSON, command.outputMode());
-    assertEquals(DiscoveryDetail.MINIMAL, command.detail());
+    assertEquals(DiscoveryDetail.COMPACT, command.detail());
     assertEquals(DiscoveryFocus.COMMANDS, command.selections().focus());
     assertEquals(OperationCategory.QUERY, command.selections().category());
   }

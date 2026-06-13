@@ -16,30 +16,18 @@ final class CliDiscoveryCommandHelpSupport {
     CommandDescriptor command = helpDescriptor.commands().getFirst();
     ProtocolOperation operation = ProtocolCatalog.operation(command.name());
     String summary = CliTextFormat.wrap(command.summary(), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
-    String usage =
-        helpDescriptor.usage().isEmpty()
-            ? "(none)"
-            : CliTextFormat.renderLiteralBlock(helpDescriptor.usage(), "");
-    String options =
-        command.options().isEmpty()
-            ? "(none)"
-            : CliTextFormat.renderLiteralBlock(command.options(), "");
-    String run = CliDiscoveryTextSupport.section("Command Syntax", usage);
-    String renderedOptions =
-        "(none)".equals(options) ? "" : CliDiscoveryTextSupport.section("Options", options);
     return CliTextFormat.renderTitledBlock(
         command.name().wireName(),
         CliDiscoveryTextSupport.joinSections(
             summary,
-            CliDiscoveryCommandGuidance.renderPreparation(command.name()),
+            renderGrammar(operation, command),
             CliDiscoveryCommandGuidance.renderRequestGuidance(helpDescriptor, command.name()),
+            CliDiscoveryCommandGuidance.renderPreparation(command.name()),
             renderOutputContract(command),
             CliDiscoveryCommandGuidance.renderExitBehavior(helpDescriptor.exitCodes()),
-            renderRepairGuidance(command.name()),
             CliDiscoveryTextSupport.section(
-                "Try It", CliDiscoveryCommandExamples.renderCommandExamples(operation)),
-            run,
-            renderedOptions));
+                "Examples", CliDiscoveryCommandExamples.renderCommandExamples(operation)),
+            renderRepairGuidance(command.name())));
   }
 
   static String primaryCommandExample(OperationId operationId) {
@@ -73,9 +61,31 @@ final class CliDiscoveryCommandHelpSupport {
         "Output Contract", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
+  private static String renderGrammar(ProtocolOperation operation, CommandDescriptor command) {
+    String syntaxBlock =
+        CliTextFormat.renderLiteralBlock(
+            List.of(CliInvocationText.rewriteInvocationPrefix(operation.usage())), "");
+    String optionsBlock =
+        command.options().isEmpty()
+            ? ""
+            : "Options"
+                + System.lineSeparator()
+                + CliTextFormat.renderLiteralBlock(command.options(), "")
+                + System.lineSeparator()
+                + System.lineSeparator();
+    return CliDiscoveryTextSupport.section(
+        "Grammar",
+        "Canonical syntax"
+            + System.lineSeparator()
+            + syntaxBlock
+            + (optionsBlock.isEmpty()
+                ? ""
+                : System.lineSeparator() + System.lineSeparator() + optionsBlock.trim()));
+  }
+
   private static String renderRepairGuidance(OperationId operationId) {
     return CliDiscoveryTextSupport.section(
-        "Inspect And Repair",
+        "Support",
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(

@@ -201,4 +201,11 @@ if re.search(rf"^\[{re.escape(target_version)}\]: ", changelog_text, flags=re.MU
 write_if_changed(changelog_path, changelog_text)
 PY
 
+if [[ -x "${repo_root}/gradlew" ]] && [[ -f "${repo_root}/contract/build.gradle.kts" ]]; then
+    (
+        cd "${repo_root}"
+        ./gradlew --quiet --no-configuration-cache :contract:syncUserInstallDocs
+    )
+fi
+
 printf 'Prepared release version %s (%s)\n' "${target_version}" "${release_date}"

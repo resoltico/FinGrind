@@ -65,7 +65,7 @@ tasks.named<ShadowJar>("shadowJar") {
             "Implementation-Version" to project.version,
             "Implementation-Vendor" to buildMetadata.implementationVendor,
             "Implementation-License" to buildMetadata.implementationLicense,
-            "Automatic-Module-Name" to "fingrind",
+            "Automatic-Module-Name" to "dev.erst.fingrind.cli",
         )
     }
 }

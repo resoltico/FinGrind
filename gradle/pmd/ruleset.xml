@@ -21,23 +21,22 @@
     <rule ref="category/java/bestpractices.xml"/>
 
     <rule ref="category/java/design.xml">
-        <!-- Demeter violations are too noisy for a layered facade API -->
+        <!-- Demeter violations are too noisy for a layered facade API. -->
         <exclude name="LawOfDemeter"/>
-        <!-- Requires explicit package configurations to be useful -->
+        <!-- LoosePackageCoupling requires explicit package configurations to be useful. -->
         <exclude name="LoosePackageCoupling"/>
-        <!-- Produces false positives on well-structured value/command objects -->
+        <!-- DataClass produces false positives on well-structured value and command objects. -->
         <exclude name="DataClass"/>
         <exclude name="GodClass"/>
         <exclude name="TooManyMethods"/>
         <exclude name="CyclomaticComplexity"/>
         <exclude name="CognitiveComplexity"/>
         <exclude name="CouplingBetweenObjects"/>
-        <!-- FinGrind bans wildcard imports through a dedicated source-policy gate. Retaining
-             ExcessiveImports here would push developers back toward forbidden wildcard imports
-             instead of enforcing the real rule we care about. -->
+        <!-- File and method size governance lives in FinGrind's structural-governance engine rather than PMD's ambient NCSS defaults. -->
+        <exclude name="NcssCount"/>
+        <!-- FinGrind bans wildcard imports through a dedicated source-policy gate. Retaining ExcessiveImports here would push developers back toward forbidden wildcard imports instead of enforcing the real rule we care about. -->
         <exclude name="ExcessiveImports"/>
-        <!-- withExceptionData() takes 3-4 nullable Strings representing distinct exception
-             location fields. A wrapper record would add ceremony for no semantic gain. -->
+        <!-- withExceptionData() takes 3-4 nullable Strings representing distinct exception location fields. A wrapper record would add ceremony for no semantic gain. -->
         <exclude name="UseObjectForClearerAPI"/>
     </rule>
 

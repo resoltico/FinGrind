@@ -23,7 +23,6 @@ internal fun registerLocalManagedSqliteTarget(
 ): ManagedSqliteProvisioning {
     val sqliteSourceFile = sqliteSourceDirectory.file("sqlite3mc_amalgamation.c")
     val headerFile = sqliteSourceDirectory.file("sqlite3mc_amalgamation.h")
-    val sqliteHeaderFile = sqliteSourceDirectory.file("sqlite3.h")
     val extensionHeaderFile = sqliteSourceDirectory.file("sqlite3ext.h")
     val activeOperatingSystemId = bundleTarget.operatingSystemId
     val defaultCompiler =
@@ -77,7 +76,7 @@ internal fun registerLocalManagedSqliteTarget(
             dependsOn(verifyManagedSqliteSource)
             dependsOn(probeManagedSqliteToolchain)
             sourceFile.set(sqliteSourceFile.asFile)
-            supportFiles.from(headerFile.asFile, sqliteHeaderFile.asFile, extensionHeaderFile.asFile)
+            supportFiles.from(headerFile.asFile, extensionHeaderFile.asFile)
             compiler.set(sqliteCompiler)
             operatingSystemId.set(activeOperatingSystemId)
             sqliteVersion.set(sqliteVersionValue)

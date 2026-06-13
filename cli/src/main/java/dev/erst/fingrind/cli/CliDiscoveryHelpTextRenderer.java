@@ -56,9 +56,9 @@ final class CliDiscoveryHelpTextRenderer {
         "FinGrind Help",
         CliDiscoveryTextSupport.joinSections(
             header,
-            CliDiscoveryTextSupport.section("First Successful Run", firstSuccessfulRun),
-            CliDiscoveryTextSupport.section("Reference Commands", reference),
-            CliDiscoveryTextSupport.section("Command Families", commandFamilies)));
+            CliDiscoveryTextSupport.section("Quick Start", firstSuccessfulRun),
+            CliDiscoveryTextSupport.section("Reference", reference),
+            CliDiscoveryTextSupport.section("Command Catalog", commandFamilies)));
   }
 
   static String renderJsonTemplate(
@@ -142,7 +142,7 @@ final class CliDiscoveryHelpTextRenderer {
             .toList();
     if (!notes.isEmpty()) {
       sections.add(
-          "Notes:"
+          "Operator guidance:"
               + System.lineSeparator()
               + CliTextFormat.renderBulletedBlock(notes, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
     }
