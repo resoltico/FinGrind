@@ -31,10 +31,10 @@ final class JazzerSqliteBookRoundTripReplay {
       return new ReplayOutcome.ExpectedInvalid(
           JazzerHarness.sqliteBookRoundTrip().key(),
           expected.getClass().getSimpleName(),
-          JazzerReplayDetailsMapper.normalizedMessage(expected),
+          JazzerReplayOutcomeSupport.normalizedMessage(expected),
           JazzerReplayDetailsMapper.unparsedSqliteBookRoundTripDetails());
     } catch (IOException | RuntimeException unexpected) {
-      return JazzerReplayDetailsMapper.unexpectedFailure(
+      return JazzerReplayOutcomeSupport.unexpectedFailure(
           JazzerHarness.sqliteBookRoundTrip(),
           unexpected,
           command == null

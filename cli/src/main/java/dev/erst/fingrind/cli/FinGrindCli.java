@@ -153,8 +153,9 @@ final class FinGrindCli {
       failureOutputMode = command.failureOutputMode();
       return command.execute(executionContext);
     } catch (CliArgumentsException | CliRequestException exception) {
-      failureWriter.writeFailure(CliFailureMapper.cliFailure(exception), failureOutputMode);
-      return CliExecutionPolicy.invalidInvocationExitCode();
+      CliFailure failure = CliFailureMapper.cliFailure(exception);
+      failureWriter.writeFailure(failure, failureOutputMode);
+      return CliExecutionPolicy.failureExitCode(failure);
     } catch (ContractFailureException exception) {
       CliFailure failure = CliFailureMapper.contractFailure(exception.failure());
       failureWriter.writeDeterministicFailure(failure, failureOutputMode);

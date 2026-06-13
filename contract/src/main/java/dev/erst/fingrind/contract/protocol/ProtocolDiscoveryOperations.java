@@ -82,7 +82,7 @@ final class ProtocolDiscoveryOperations {
                     "fingrind %s declare-account > declare-account.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
-                    "The emitted JSON is a runnable sample document. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))),
+                    "The emitted JSON is a placeholder-first scaffold. Replace every replace-before-commit token before submitting it to a live book."))),
         ProtocolOperationDefinitions.operation(
             OperationId.PRINT_PLAN_TEMPLATE,
             OperationCategory.DISCOVERY,
@@ -96,6 +96,6 @@ final class ProtocolDiscoveryOperations {
                     "fingrind %s > plan.json"
                         .formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
-                    "The emitted plan is a runnable sample workflow for a fresh book. Replace the placeholder evidence and provenance values before using it for real-world bookkeeping."))));
+                    "The emitted plan is a placeholder-first scaffold. Replace every replace-before-commit token before submitting it to a live book."))));
   }
 }

@@ -132,6 +132,7 @@ final class CliDiscoveryHelpPayloadMapper {
         helpDescriptor.description(),
         detail,
         command,
+        operation.usage(),
         helpDescriptor.usage(),
         command.options(),
         requestFileGuidance(helpDescriptor, command.name(), detail).orElse(null),

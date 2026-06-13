@@ -105,6 +105,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
       String description,
       DiscoveryDetail detail,
       CommandDescriptor command,
+      String syntax,
       List<String> usage,
       List<String> options,
       @Nullable RequestFileGuidancePayload requestFile,
@@ -118,6 +119,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
       description = requireText(description, "description");
       detail = requireValue(detail, "detail");
       command = requireValue(command, "command");
+      syntax = requireText(syntax, "syntax");
       usage = copyList(usage, "usage");
       options = copyList(options, "options");
       examples = copyList(examples, "examples");

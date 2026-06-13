@@ -60,7 +60,7 @@ def verify_distributed_module_identity(bundle_root: Path, contract: dict[str, ob
     )
     require_match(
         describe_output,
-        r"^fingrind automatic$",
+        r"^dev\.erst\.fingrind\.cli automatic$",
         "bundled application JAR did not publish the canonical automatic module identity",
     )
     require_match(
@@ -72,12 +72,12 @@ def verify_distributed_module_identity(bundle_root: Path, contract: dict[str, ob
     launcher_text = normalize_newlines(launcher_path.read_text(encoding="utf-8"))
     require_match(
         launcher_text,
-        r"--enable-native-access=fingrind",
+        r"--enable-native-access=dev\.erst\.fingrind\.cli",
         "bundle launcher did not grant native access to the canonical module identity",
     )
     require_match(
         launcher_text,
-        r"fingrind/dev\.erst\.fingrind\.cli\.App",
+        r"dev\.erst\.fingrind\.cli/dev\.erst\.fingrind\.cli\.App",
         "bundle launcher did not declare the canonical JPMS application module identity",
     )
     require_match(

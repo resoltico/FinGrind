@@ -51,8 +51,10 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     ProtectedBookAccess sourceAccess =
         new ProtectedBookAccess(bookPath, new ProtectedBookPassphraseSource.KeyFile(bookKeyPath));
-    try (StagedBackupPair ignored =
-        acceptedValue(store.stageBackupPair(sourceAccess, backupPath, backupKeyPath))) {
+    try (dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerifiedBook
+            verifiedSourceBook = verifiedBook(store, sourceAccess);
+        StagedBackupPair ignored =
+            acceptedValue(store.stageBackupPair(verifiedSourceBook, backupPath, backupKeyPath))) {
       signalReady(signalPath);
       sleepUntilKilled();
     }
@@ -119,6 +121,18 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
       case MaintenanceDecision.Failed<T>(MaintenanceFailure failure) ->
           throw new IllegalStateException(
               "Expected accepted maintenance decision but got " + failure);
+    };
+  }
+
+  private static dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerifiedBook
+      verifiedBook(SqliteProtectedBookMaintenanceStore store, ProtectedBookAccess sourceAccess) {
+    return switch (acceptedValue(store.verifyInitializedBook(sourceAccess))) {
+      case dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerifiedBook verifiedBook ->
+          verifiedBook;
+      case dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerificationFailure
+              verificationFailure ->
+          throw new IllegalStateException(
+              "Expected one verified book but got " + verificationFailure.failure());
     };
   }
 }

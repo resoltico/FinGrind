@@ -1,8 +1,8 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.discovery.ContractPlanTemplates.LedgerPlanTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.LedgerPlanTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.runtime.ContractResponse;

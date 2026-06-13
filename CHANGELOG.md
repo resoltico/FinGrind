@@ -1,27 +1,53 @@
 # Changelog
 
-Notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+Notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.53.0] - 2026-06-13
+
+### Changed
+
+- Bumped the repo-owned baseline to SQLite3 Multiple Ciphers `2.3.5` with SQLite `3.53.2`, JaCoCo `0.8.15`, Error Prone `2.50.0`,
+  NullAway `0.13.6`, Jackson Databind `3.2.0`, PMD `7.25.0`, SQLFluff `4.2.2`, and Alpine `3.24`; the managed runtime, container,
+  docs, and verification surfaces now describe one current baseline, and the legacy JaCoCo snapshot metadata/scripts plus
+  the retired vendored SQLite3 Multiple Ciphers `2.3.4` / SQLite `3.53.1` tree are gone.
+- Hard-broke scaffold and discovery ownership again: `ContractTemplates` now owns posting and account-declaration scaffolds,
+  `ContractPlanTemplates` owns AI-agent ledger-plan scaffolds, placeholder values use one `replace-before-commit-*` vocabulary,
+  `capabilities --output json` defaults to the compact grouped descriptor surface, and help plus launcher guidance now names the
+  canonical raw-module and container-mounted invocation forms.
+- Hard-broke the contract protocol catalog and protected-book maintenance together: per-operation builders now own help/examples/discovery,
+  while backup, restore, and rekey-rollback recovery now stage from verified books, verify restored targets before commit, and keep
+  encrypted maintenance audit compensation tied to the verified live book.
+- Hard-broke structural governance onto canonical owners: reviewed Java surfaces now use full-snapshot approvals with execution-time expiry
+  and orphan detection, PMD derives from one build-logic source across main, test, and Jazzer, tracked Markdown scans the repository
+  with explicit exclusions, and coverage verification reads the shared GA JaCoCo pin directly.
+
+### Fixed
+
+- Fixed Java source-shape evidence so newline-terminated files no longer overcount physical lines,
+  duplication-exempt reviewed waivers no longer bypass stale-waiver removal, and reviewed-surface
+  reports publish the approved full snapshot beside the live measurement.
+- Fixed Kotlin and PMD structural-governance drift so receiver functions, `fun interface` owners,
+  and nested-type counts use a token-aware collector, Jazzer production inherits the main production
+  policy, Jazzer test re-adds `GodClass` deliberately, and `NcssCount` remains excluded because file
+  and method size ownership lives in structural governance.
+- Fixed maintenance verification, public-doc drift, and release-promotion wait churn so staged backup, restore, and rollback recovery reject invalid artifacts deterministically; the storefront README, install and quick-start guides, release protocol, launchers, and managed-SQLite contract docs agree on discovery defaults, template vocabulary, launcher grammar, runtime provenance, and release-prep generated-block sync; and the PR and merge-handoff verifiers now return as soon as the canonical `Gate` passes on the target commit, even when the observational Windows non-public bundle smoke lane is still running.
 
 ## [0.52.0] - 2026-06-05
 
 ### Changed
 
-- Bumped the repository-owned static-analysis baseline to NullAway `0.13.5` and Ruff
-  `0.15.16`.
-- Hard-broke the live bookkeeping theory onto one explicit doctrine owner. `BookIdentity` now
-  carries one composed `BookDoctrine` made from the accounting-kernel profile, accounting basis,
-  framework position, entity form, and starter-chart template, and the built-in
-  owner-managed-service cash doctrine now drives discovery, examples, and operator-facing labels
-  from one source.
-- Hard-broke the public bookkeeping operation surface onto one narrower cash-bookkeeping kernel.
-  Typed cash revenue, cash expense, equity contribution, and equity withdrawal remain the primary
-  operating entries; opening balances now enter through the structured
-  `OPEN_ACCOUNTING_POSITION` flow; direct administrative entries are reversal-only; and public
-  request and workflow surfaces reject retired mixed-branch and legacy adjustment fields instead
-  of tolerating them.
+- Bumped the repository-owned static-analysis baseline to NullAway `0.13.5` and Ruff `0.15.16`.
+- Hard-broke the live bookkeeping theory onto one explicit doctrine owner. `BookIdentity` now carries
+  one composed `BookDoctrine` made from the accounting-kernel profile, accounting basis, framework
+  position, entity form, and starter-chart template, and the built-in owner-managed-service cash
+  doctrine now drives discovery, examples, and operator-facing labels from one source.
+- Hard-broke the public bookkeeping operation surface onto one narrower cash-bookkeeping kernel. Typed
+  cash revenue, cash expense, equity contribution, and equity withdrawal remain the primary operating
+  entries; opening balances now enter through the structured `OPEN_ACCOUNTING_POSITION` flow; direct
+  administrative entries are reversal-only; and public request and workflow surfaces reject retired
+  mixed-branch and legacy adjustment fields instead of tolerating them.
 - Hard-broke the operator and runtime surface onto deterministic contracts. `help`, `version`, and
   `environment` now default predictably instead of switching by stdout interactivity; runtime facts
   and publication facts are split in the environment descriptor; prompt-plus-machine-output
@@ -30,11 +56,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one human display grammar with lighter doctrine wording and explicit financial-position equation
   verdicts.
 - Hard-broke onboarding and package guidance onto one canonical first-run story. The storefront
-  README, bundle README, quick-start guide, request templates, and checked-in examples now share
-  the seeded owner-managed service starter chart and one concrete first-post request; public
-  self-contained bundles are Linux-only; macOS and Windows are routed to the published container
-  or source-checkout paths; and source-checkout plus direct-Java launchers now use one
-  Gradle-owned Java 26 toolchain manifest instead of shell-local Java discovery.
+  README, bundle README, quick-start guide, request templates, and checked-in examples now share the
+  seeded owner-managed service starter chart and one concrete first-post request; public self-contained
+  bundles are Linux-only; macOS and Windows are routed to the published container or source-checkout
+  paths; and source-checkout plus direct-Java launchers now use one Gradle-owned Java 26 toolchain
+  manifest instead of shell-local Java discovery.
 - Hard-broke structural-governance and release-control ownership farther across the repository.
   Reviewed waivers are now self-removing and time-aware, repo-local audit mirrors publish
   structural evidence from the checkout, tighter PMD and source-shape budgets force earlier file
@@ -2753,8 +2779,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.52.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.53.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
+[0.53.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.53.0
 [0.52.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.52.0
 [0.50.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.50.0
 [0.49.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.49.0

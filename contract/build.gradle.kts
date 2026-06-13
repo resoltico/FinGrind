@@ -78,6 +78,16 @@ tasks.register<JavaExec>("syncUserCliDocs") {
     args(rootProject.layout.projectDirectory.file("docs/USER_CLI.md").asFile.absolutePath)
 }
 
+tasks.register<JavaExec>("syncUserInstallDocs") {
+    group = "documentation"
+    description =
+        "Synchronizes docs/USER_INSTALL.md and docs/USER_QUICK_START.md generated install blocks from the canonical publication contracts."
+    dependsOn(tasks.named("testClasses"))
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("dev.erst.fingrind.contract.protocol.ProtocolUserInstallDocumentSyncMain")
+    args(rootProject.layout.projectDirectory.asFile.absolutePath)
+}
+
 tasks.named<Test>("test") {
     inputs.file(rootProject.layout.projectDirectory.file("README.md"))
         .withPathSensitivity(PathSensitivity.RELATIVE)

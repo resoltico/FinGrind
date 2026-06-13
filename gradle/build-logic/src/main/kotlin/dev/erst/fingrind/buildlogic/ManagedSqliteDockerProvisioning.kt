@@ -41,7 +41,6 @@ internal fun registerDockerManagedSqliteTarget(
         project.layout.buildDirectory.file("$provisioningPathPrefix/build-contract.json")
     val sqliteSourceFile = sqliteSourceDirectory.file("sqlite3mc_amalgamation.c")
     val headerFile = sqliteSourceDirectory.file("sqlite3mc_amalgamation.h")
-    val sqliteHeaderFile = sqliteSourceDirectory.file("sqlite3.h")
     val extensionHeaderFile = sqliteSourceDirectory.file("sqlite3ext.h")
 
     val prepareDockerManagedSqlite =
@@ -51,7 +50,7 @@ internal fun registerDockerManagedSqliteTarget(
                 "Builds the managed SQLite $sqliteVersionValue / SQLite3 Multiple Ciphers $sqlite3mcVersionValue shared library for the Linux Docker target."
             dependsOn(verifyManagedSqliteSource)
             sourceFile.set(sqliteSourceFile.asFile)
-            supportFiles.from(headerFile.asFile, sqliteHeaderFile.asFile, extensionHeaderFile.asFile)
+            supportFiles.from(headerFile.asFile, extensionHeaderFile.asFile)
             architectureId.set(dockerBundleTarget.architectureId)
             sqliteVersion.set(sqliteVersionValue)
             requiredCompileOptions.set(

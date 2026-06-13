@@ -1,8 +1,6 @@
 package dev.erst.fingrind.buildlogic
 
 import java.nio.file.Path
-import javax.xml.parsers.DocumentBuilderFactory
-import kotlin.io.path.inputStream
 import kotlin.io.path.readText
 import kotlin.test.assertEquals
 import kotlin.test.Test
@@ -10,8 +8,6 @@ import kotlin.test.assertTrue
 
 class StructuralGovernanceContractTest {
     private val repositoryRoot = Path.of("").toAbsolutePath().normalize().parent.parent
-    private val productionRuleset = repositoryRoot.resolve("gradle/pmd/ruleset.xml")
-    private val testRuleset = repositoryRoot.resolve("gradle/pmd/test-ruleset.xml")
     private val structuralVerifier = repositoryRoot.resolve("scripts/verify-structural-governance.sh")
     private val stageOneGate = repositoryRoot.resolve("scripts/run-quality-gates.sh")
     private val structuralCli = repositoryRoot.resolve("scripts/structural_governance/cli.py")
@@ -23,79 +19,73 @@ class StructuralGovernanceContractTest {
         repositoryRoot.resolve(
             "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/JavaDuplicationVerification.kt",
         )
+    private val javaShapeVerifier =
+        repositoryRoot.resolve(
+            "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/JavaSourceShapeVerification.kt",
+        )
 
     @Test
-    fun productionRuleset_enforcesAdvertisedStructuralPmdFamilies() {
-        val document = parseRuleset(productionRuleset)
-        val explicitRules = explicitRuleRefs(document)
-        assertTrue(
-            "category/java/design.xml/GodClass" in explicitRules,
-            "Production PMD ruleset must enforce GodClass explicitly.",
-        )
-        assertTrue(
-            "category/java/design.xml/TooManyMethods" in explicitRules,
-            "Production PMD ruleset must enforce TooManyMethods explicitly.",
-        )
-        assertTrue(
-            "category/java/design.xml/CyclomaticComplexity" in explicitRules,
-            "Production PMD ruleset must enforce CyclomaticComplexity explicitly.",
-        )
-        assertTrue(
-            "category/java/design.xml/CognitiveComplexity" in explicitRules,
-            "Production PMD ruleset must enforce CognitiveComplexity explicitly.",
-        )
-        assertTrue(
-            "category/java/design.xml/CouplingBetweenObjects" in explicitRules,
-            "Production PMD ruleset must enforce CouplingBetweenObjects explicitly.",
-        )
-        assertEquals("16", ruleProperty(document, "category/java/design.xml/TooManyMethods", "maxmethods"))
-        assertEquals(
-            "14",
-            ruleProperty(document, "category/java/design.xml/CyclomaticComplexity", "methodReportLevel"),
-        )
-        assertEquals(
-            "110",
-            ruleProperty(document, "category/java/design.xml/CyclomaticComplexity", "classReportLevel"),
-        )
-        assertEquals("18", ruleProperty(document, "category/java/design.xml/CognitiveComplexity", "reportLevel"))
-        assertEquals("50", ruleProperty(document, "category/java/design.xml/CouplingBetweenObjects", "threshold"))
+    fun checkedInPmdRulesets_matchCanonicalRenderings() {
+        FinGrindPmdRulesets.surfaces().forEach { surface ->
+            val checkedInRuleset = repositoryRoot.resolve(surface.repositoryRelativePath).readText()
+            assertEquals(
+                FinGrindPmdRulesets.render(surface),
+                checkedInRuleset,
+                "Checked-in PMD ruleset ${surface.repositoryRelativePath} drifted from the canonical PMD policy.",
+            )
+        }
     }
 
     @Test
-    fun testRuleset_keepsMethodCountRelaxedWhileExplicitlyReAddingOtherStructuralRules() {
-        val document = parseRuleset(testRuleset)
-        val explicitRules = explicitRuleRefs(document)
-        val excludedRules = excludedRuleNames(document)
-        assertTrue(
-            "category/java/design.xml/GodClass" in explicitRules,
-            "Test PMD ruleset must keep GodClass enforced explicitly.",
+    fun canonicalPmdRulesets_keepIntendedStructuralVariantsExplicit() {
+        val production = FinGrindPmdRulesets.render(FinGrindPmdRulesetSurface.MAIN_PRODUCTION)
+        val mainTest = FinGrindPmdRulesets.render(FinGrindPmdRulesetSurface.MAIN_TEST)
+        val jazzerProduction = FinGrindPmdRulesets.render(FinGrindPmdRulesetSurface.JAZZER_PRODUCTION)
+        val jazzerTest = FinGrindPmdRulesets.render(FinGrindPmdRulesetSurface.JAZZER_TEST)
+        val fuzz = FinGrindPmdRulesets.render(FinGrindPmdRulesetSurface.JAZZER_FUZZ)
+
+        assertEquals(
+            production,
+            jazzerProduction,
+            "Production Java and Jazzer production code must inherit the same canonical PMD policy.",
         )
         assertTrue(
-            "category/java/design.xml/CouplingBetweenObjects" in explicitRules,
-            "Test PMD ruleset must keep CouplingBetweenObjects enforced explicitly.",
+            "<exclude name=\"NcssCount\"/>" in production,
+            "Production PMD policy must explicitly exclude NcssCount so file-size ownership stays with structural governance.",
         )
         assertTrue(
-            "category/java/design.xml/CyclomaticComplexity" in explicitRules,
-            "Test PMD ruleset must keep CyclomaticComplexity enforced explicitly.",
+            "value=\"16\"" in production,
+            "Production PMD policy must pin TooManyMethods explicitly.",
         )
         assertTrue(
-            "category/java/design.xml/CognitiveComplexity" in explicitRules,
-            "Test PMD ruleset must keep CognitiveComplexity enforced explicitly.",
+            "<exclude name=\"TooManyMethods\"/>" in mainTest,
+            "Main test PMD policy must relax TooManyMethods explicitly for test suites.",
         )
         assertTrue(
-            "TooManyMethods" in excludedRules,
-            "Test PMD ruleset may relax TooManyMethods explicitly for test suites.",
+            """<rule ref="category/java/design.xml/GodClass"/>""" in mainTest,
+            "Main test PMD policy must re-add GodClass explicitly.",
+        )
+        assertTrue(
+            "value=\"72\"" in mainTest,
+            "Main test PMD policy must keep CouplingBetweenObjects explicitly pinned.",
         )
         assertEquals(
-            "16",
-            ruleProperty(document, "category/java/design.xml/CyclomaticComplexity", "methodReportLevel"),
+            1,
+            """<rule ref="category/java/design.xml/GodClass"/>""".toRegex().findAll(jazzerTest).count(),
+            "Jazzer test PMD policy must keep GodClass enforced exactly once.",
         )
-        assertEquals(
-            "130",
-            ruleProperty(document, "category/java/design.xml/CyclomaticComplexity", "classReportLevel"),
+        assertTrue(
+            "<exclude name=\"NcssCount\"/>" in jazzerTest,
+            "Jazzer test PMD policy must explicitly exclude NcssCount so file-size ownership stays with structural governance.",
         )
-        assertEquals("20", ruleProperty(document, "category/java/design.xml/CognitiveComplexity", "reportLevel"))
-        assertEquals("72", ruleProperty(document, "category/java/design.xml/CouplingBetweenObjects", "threshold"))
+        assertTrue(
+            "value=\"72\"" in jazzerTest,
+            "Jazzer test PMD policy must keep CouplingBetweenObjects explicitly pinned instead of silently dropping the rule.",
+        )
+        assertTrue(
+            "<exclude name=\"TestClassWithoutTestCases\"/>" in fuzz,
+            "Fuzz PMD policy must document the @FuzzTest entrypoint relaxation explicitly.",
+        )
     }
 
     @Test
@@ -171,69 +161,18 @@ class StructuralGovernanceContractTest {
         )
     }
 
-    private fun explicitRuleRefs(document: org.w3c.dom.Document): Set<String> =
-        document
-            .getElementsByTagName("rule")
-            .let { rules ->
-                buildSet {
-                    for (index in 0 until rules.length) {
-                        val node = rules.item(index)
-                        val ref = node.attributes?.getNamedItem("ref")?.nodeValue ?: continue
-                        if (!ref.endsWith(".xml")) {
-                            add(ref)
-                        }
-                    }
-                }
-            }
-
-    private fun excludedRuleNames(document: org.w3c.dom.Document): Set<String> =
-        document
-            .getElementsByTagName("exclude")
-            .let { excludes ->
-                buildSet {
-                    for (index in 0 until excludes.length) {
-                        val node = excludes.item(index)
-                        val name = node.attributes?.getNamedItem("name")?.nodeValue ?: continue
-                        add(name)
-                    }
-                }
-            }
-
-    private fun ruleProperty(
-        document: org.w3c.dom.Document,
-        ruleRef: String,
-        propertyName: String,
-    ): String {
-        val rules = document.getElementsByTagName("rule")
-        for (index in 0 until rules.length) {
-            val rule = rules.item(index)
-            val ref = rule.attributes?.getNamedItem("ref")?.nodeValue ?: continue
-            if (ref != ruleRef) {
-                continue
-            }
-            val properties = rule.childNodes
-            for (propertyIndex in 0 until properties.length) {
-                val propertyNode = properties.item(propertyIndex)
-                if (propertyNode.nodeName != "properties") {
-                    continue
-                }
-                val propertyNodes = propertyNode.childNodes
-                for (childIndex in 0 until propertyNodes.length) {
-                    val property = propertyNodes.item(childIndex)
-                    if (property.nodeName != "property") {
-                        continue
-                    }
-                    val name = property.attributes?.getNamedItem("name")?.nodeValue ?: continue
-                    if (name == propertyName) {
-                        return property.attributes?.getNamedItem("value")?.nodeValue
-                            ?: error("Missing value for $ruleRef::$propertyName")
-                    }
-                }
-            }
+    @Test
+    fun javaVerificationTasks_captureModuleIdentityAsDeclaredInputs() {
+        listOf(javaDuplicationVerifier, javaShapeVerifier).forEach { verifier ->
+            val verifierSource = verifier.readText()
+            assertTrue(
+                "abstract val moduleName: Property<String>" in verifierSource,
+                "Java verification task ${verifier.fileName} must declare module identity as an input for configuration-cache-safe execution.",
+            )
+            assertTrue(
+                "project.name" !in verifierSource,
+                "Java verification task ${verifier.fileName} must not read project.name during task execution.",
+            )
         }
-        error("Missing property $ruleRef::$propertyName")
     }
-
-    private fun parseRuleset(path: Path) =
-        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(path.inputStream())
 }

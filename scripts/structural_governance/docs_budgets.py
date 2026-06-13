@@ -8,6 +8,17 @@ from .models import FileBudget
 def markdown_budget_for(relative_path: Path) -> FileBudget:
     path_text = relative_path.as_posix()
     name = relative_path.name
+    if path_text.startswith(".codex/"):
+        return FileBudget(
+            role_name="docs-protocol-manual",
+            max_physical_lines=1100,
+            max_logical_lines=980,
+            max_import_like_lines=170,
+            max_functions=0,
+            max_nested_types=0,
+            max_duplicate_window_lines=40,
+            split_hint="split the protocol manual by one language, framework, or contract owner before it grows into a mixed instruction surface.",
+        )
     if name == "CHANGELOG.md":
         return FileBudget(
             role_name="docs-changelog-history",

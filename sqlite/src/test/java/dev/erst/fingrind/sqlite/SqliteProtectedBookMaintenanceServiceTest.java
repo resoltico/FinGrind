@@ -12,10 +12,12 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -23,6 +25,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
@@ -108,6 +111,32 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
     assertOwnerOnlyDirectoryIfPosix(
         java.util.Objects.requireNonNull(
             backupBookKeyFilePath.getParent(), "backupBookKeyFilePath parent"));
+  }
+
+  @Test
+  void backupBook_acceptsOneShotStandardInputWithoutReReadingThePassphraseSource() {
+    Path bookPath = tempDirectory.resolve("books").resolve("stdin-backup.sqlite");
+    BookAccess liveBookAccess = bookAccess(bookPath);
+    initializeBook(liveBookAccess);
+    Path backupFilePath = tempDirectory.resolve("backup").resolve("stdin-backup.sqlite");
+    Path backupBookKeyFilePath = tempDirectory.resolve("backup").resolve("stdin-backup.key");
+    AtomicInteger resolveCalls = new AtomicInteger();
+
+    BackupBookResult.BackedUp backedUp =
+        assertInstanceOf(
+            BackupBookResult.BackedUp.class,
+            maintenanceService(
+                    oneShotStandardInputResolver(
+                        TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8), resolveCalls))
+                .backupBook(
+                    new BookAccess(bookPath, BookAccess.PassphraseSource.StandardInput.INSTANCE),
+                    backupFilePath,
+                    backupBookKeyFilePath)
+                .requireAccepted());
+
+    assertEquals(hint(backupFilePath), backedUp.backupFilePath());
+    assertEquals(1, resolveCalls.get());
+    assertEquals(1, auditEventCount(liveBookAccess, "BACKUP_CREATED"));
   }
 
   @Test
@@ -255,6 +284,32 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
   }
 
   @Test
+  void deleteRekeyRollback_acceptsOneShotStandardInputWithoutReReadingThePassphraseSource() {
+    Path bookPath = tempDirectory.resolve("books").resolve("stdin-delete-rollback.sqlite");
+    BookAccess liveBookAccess = bookAccess(bookPath);
+    initializeBook(liveBookAccess);
+    SqliteRekeyRollbackFile rollbackFile =
+        SqliteRekeyRollbackFile.create(bookPath.toAbsolutePath().normalize());
+    AtomicInteger resolveCalls = new AtomicInteger();
+
+    RekeyRollbackResult.Deleted deleted =
+        assertInstanceOf(
+            RekeyRollbackResult.Deleted.class,
+            maintenanceService(
+                    oneShotStandardInputResolver(
+                        TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8), resolveCalls))
+                .deleteRekeyRollback(
+                    new BookAccess(bookPath, BookAccess.PassphraseSource.StandardInput.INSTANCE),
+                    rollbackFile.path())
+                .requireAccepted());
+
+    assertEquals(hint(rollbackFile.path()), deleted.rollbackArtifactPath());
+    assertFalse(Files.exists(rollbackFile.path()));
+    assertEquals(1, resolveCalls.get());
+    assertEquals(1, auditEventCount(liveBookAccess, "REKEY_ROLLBACK_DELETED"));
+  }
+
+  @Test
   void restoreRekeyRollback_rejectsOneInvalidRollbackArtifact() throws Exception {
     Path bookPath = tempDirectory.resolve("books").resolve("invalid-rollback.sqlite");
     BookAccess liveBookAccess = bookAccess(bookPath);
@@ -280,9 +335,41 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
     assertEquals(0, auditEventCount(liveBookAccess, "REKEY_ROLLBACK_RESTORED"));
   }
 
+  @Test
+  void restoreRekeyRollback_acceptsOneShotStandardInputWithoutReReadingThePassphraseSource() {
+    Path bookPath = tempDirectory.resolve("books").resolve("stdin-restore-rollback.sqlite");
+    BookAccess liveBookAccess = bookAccess(bookPath);
+    initializeBook(liveBookAccess);
+    SqliteRekeyRollbackFile rollbackFile =
+        SqliteRekeyRollbackFile.create(bookPath.toAbsolutePath().normalize());
+    AtomicInteger resolveCalls = new AtomicInteger();
+
+    RekeyRollbackResult.Restored restored =
+        assertInstanceOf(
+            RekeyRollbackResult.Restored.class,
+            maintenanceService(
+                    oneShotStandardInputResolver(
+                        TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8), resolveCalls))
+                .restoreRekeyRollback(
+                    bookPath,
+                    rollbackFile.path(),
+                    BookAccess.PassphraseSource.StandardInput.INSTANCE)
+                .requireAccepted());
+
+    assertEquals(hint(bookPath), restored.bookFilePath());
+    assertEquals(hint(rollbackFile.path()), restored.rollbackArtifactPath());
+    assertEquals(1, resolveCalls.get());
+    assertEquals(1, auditEventCount(liveBookAccess, "REKEY_ROLLBACK_RESTORED"));
+  }
+
   private ProtectedBookMaintenanceService maintenanceService() {
+    return maintenanceService(KEY_FILE_RESOLVER);
+  }
+
+  private static ProtectedBookMaintenanceService maintenanceService(
+      SqlitePassphraseResolver passphraseResolver) {
     return new ProtectedBookMaintenanceService(
-        FIXED_CLOCK, new SqliteProtectedBookMaintenanceStore(KEY_FILE_RESOLVER));
+        FIXED_CLOCK, new SqliteProtectedBookMaintenanceStore(passphraseResolver));
   }
 
   private static PublicPathHint hint(Path path) {
@@ -338,6 +425,26 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
       case BookAccess.PassphraseSource.InteractivePrompt _ ->
           throw new AssertionError("Expected one key-file-backed access tuple.");
     };
+  }
+
+  private static SqlitePassphraseResolver oneShotStandardInputResolver(
+      byte[] passphraseBytes, AtomicInteger resolveCalls) {
+    return (bookFilePath, passphraseSource, intent) ->
+        switch (passphraseSource) {
+          case BookAccess.PassphraseSource.KeyFile keyFile ->
+              SqliteBookKeyFile.loadDecision(keyFile.bookKeyFilePath());
+          case BookAccess.PassphraseSource.StandardInput _ -> {
+            if (resolveCalls.incrementAndGet() != 1) {
+              throw new AssertionError(
+                  "The maintenance workflow attempted to reread one-shot standard input.");
+            }
+            yield ContractDecision.accepted(
+                SqliteBookPassphrase.fromUtf8Bytes("test standard input", passphraseBytes.clone()));
+          }
+          case BookAccess.PassphraseSource.InteractivePrompt _ ->
+              throw new AssertionError(
+                  "This regression helper covers one-shot standard input only.");
+        };
   }
 
   private static void assertOwnerOnlyDirectoryIfPosix(Path directoryPath) {

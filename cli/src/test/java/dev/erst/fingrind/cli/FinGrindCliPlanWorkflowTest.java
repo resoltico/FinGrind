@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -243,6 +244,39 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     assertEquals("ASSET", data.path("accounts").get(0).path("accountType").stringValue());
     assertEquals("ORDINARY", data.path("accounts").get(0).path("accountRole").stringValue());
     assertEquals("DEBIT", data.path("accounts").get(0).path("normalBalance").stringValue());
+  }
+
+  @Test
+  void run_rejectsPlaceholderPlanScaffoldBeforeExecution() throws IOException {
+    Path planBookFile = tempDirectory.resolve("plans").resolve("placeholder-plan.sqlite");
+    Path bookKeyFilePath = writeBookKey(planBookFile);
+    ByteArrayOutputStream templateOutput = new ByteArrayOutputStream();
+    FinGrindCli templateCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(templateOutput), fixedClock());
+    assertEquals(0, templateCli.run(new String[] {"print-plan-template"}));
+    Path planFile =
+        writeNamedRequest("placeholder-plan.json", templateOutput.toString(StandardCharsets.UTF_8));
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli executeCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode =
+        executeCli.run(
+            new String[] {
+              "execute-plan",
+              "--book-file",
+              planBookFile.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--request-file",
+              planFile.toString()
+            });
+
+    assertEquals(1, exitCode);
+    assertTrue(
+        outputStream
+            .toString(java.nio.charset.StandardCharsets.UTF_8)
+            .contains("Scaffold placeholder must be replaced before submission"));
   }
 
   private static String openThenFailAssertionPlanJson() {

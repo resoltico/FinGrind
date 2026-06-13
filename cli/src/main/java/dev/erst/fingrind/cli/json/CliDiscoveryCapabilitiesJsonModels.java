@@ -95,7 +95,7 @@ public interface CliDiscoveryCapabilitiesJsonModels extends CliDiscoveryCommonJs
       String bookBoundary,
       List<String> storageEngines,
       RequestInputCompactPayload requestInput,
-      List<CommandCountPayload> commandCounts,
+      List<CommandSurfacePayload> commands,
       String fullDetailHint)
       implements ProtocolSuccessPayload {
     public CapabilitiesCompactPayload {
@@ -106,7 +106,7 @@ public interface CliDiscoveryCapabilitiesJsonModels extends CliDiscoveryCommonJs
       bookBoundary = requireText(bookBoundary, "bookBoundary");
       storageEngines = copyList(storageEngines, "storageEngines");
       requestInput = requireValue(requestInput, "requestInput");
-      commandCounts = copyList(commandCounts, "commandCounts");
+      commands = copyList(commands, "commands");
       fullDetailHint = requireText(fullDetailHint, "fullDetailHint");
       if (detail != DiscoveryDetail.COMPACT) {
         throw new IllegalArgumentException("compact capabilities payload requires compact detail.");

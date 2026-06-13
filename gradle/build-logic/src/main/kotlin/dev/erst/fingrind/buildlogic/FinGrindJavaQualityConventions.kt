@@ -30,7 +30,10 @@ internal fun Project.configureJavaQualityConventions() {
         isConsoleOutput = true
         isIgnoreFailures = false
         rulesMinimumPriority.set(3)
-        ruleSetFiles = files(rootProject.file("gradle/pmd/ruleset.xml"))
+        ruleSetFiles =
+            files(
+                rootProject.file(FinGrindPmdRulesetSurface.MAIN_PRODUCTION.projectRelativePath),
+            )
         ruleSets = emptyList()
     }
 
@@ -42,7 +45,10 @@ internal fun Project.configureJavaQualityConventions() {
     }
 
     tasks.withType<Pmd>().matching { it.name == "pmdTest" }.configureEach {
-        ruleSetFiles = files(rootProject.file("gradle/pmd/test-ruleset.xml"))
+        ruleSetFiles =
+            files(
+                rootProject.file(FinGrindPmdRulesetSurface.MAIN_TEST.projectRelativePath),
+            )
         ruleSets = emptyList()
     }
 

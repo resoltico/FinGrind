@@ -99,9 +99,15 @@ final class CliDiscoveryArguments {
     DiscoveryFocus resolvedFocus = resolvedCapabilitiesFocus(options.focus(), options.category());
     requireCapabilitiesCategoryFocusCompatibility(
         options.category(), options.focus(), resolvedFocus);
+    DiscoveryDetail resolvedDetail =
+        options.detail() == null
+            ? (resolvedOutputMode == OutputMode.JSON
+                ? DiscoveryDetail.COMPACT
+                : DiscoveryDetail.MINIMAL)
+            : options.detail();
     return new Capabilities(
         resolvedOutputMode,
-        options.detail() == null ? DiscoveryDetail.MINIMAL : options.detail(),
+        resolvedDetail,
         new CliDiscoverySelections(resolvedFocus, options.category()));
   }
 

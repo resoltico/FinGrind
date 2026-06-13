@@ -5,48 +5,51 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.github.io/pmd-7.0.0/ruleset_xml_schema.xsd">
     <description>
-        High-signal PMD rules for FinGrind test code. Structural, design, performance, security,
-        and concurrency checks are enforced to the same standard as production code. Test-specific
-        relaxations are limited to assertion volume and method count only.
+        High-signal PMD rules for FinGrind Jazzer support and regression tests. Structural, design,
+        performance, security, and concurrency checks stay aligned with repository-wide standards,
+        while narrowly-scoped relaxations cover reflective fixtures and test-only failure plumbing.
     </description>
 
     <rule ref="category/java/errorprone.xml">
         <exclude name="AvoidCatchingGenericException"/>
-        <exclude name="AvoidAccessibilityAlteration"/>
         <exclude name="AvoidDuplicateLiterals"/>
         <exclude name="AvoidFieldNameMatchingMethodName"/>
         <exclude name="AvoidLiteralsInIfCondition"/>
         <exclude name="NullAssignment"/>
+        <!-- Harness-side reflective fixtures intentionally widen access for white-box fault injection. -->
+        <exclude name="AvoidAccessibilityAlteration"/>
     </rule>
 
     <rule ref="category/java/bestpractices.xml">
+        <!-- Fault-injection helpers sometimes replace stack traces to assert normalized wrapper output. -->
         <exclude name="PreserveStackTrace"/>
+        <!-- Jazzer regression tests optimize for assertion locality over repeated message boilerplate. -->
         <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
+        <!-- One regression often checks several correlated crash-shape facets in one executable flow. -->
         <exclude name="UnitTestContainsTooManyAsserts"/>
     </rule>
 
     <rule ref="category/java/design.xml">
-        <!-- Demeter violations are too noisy for a layered facade API -->
+        <!-- Demeter violations are too noisy for a layered facade API. -->
         <exclude name="LawOfDemeter"/>
-        <!-- Requires explicit package configurations to be useful -->
+        <!-- LoosePackageCoupling requires explicit package configurations to be useful. -->
         <exclude name="LoosePackageCoupling"/>
-        <!-- Produces false positives on well-structured value/command objects -->
+        <!-- DataClass produces false positives on well-structured value and command objects. -->
         <exclude name="DataClass"/>
-        <!-- Test helpers legitimately import many assertion/fixture types -->
+        <!-- Test helpers legitimately import many assertion and fixture types. -->
         <exclude name="ExcessiveImports"/>
-        <!-- Test classes legitimately contain many test methods -->
+        <!-- Test classes legitimately contain many test methods. -->
         <exclude name="TooManyMethods"/>
-        <!-- Integration tests couple to both the production API and test framework
-             types, legitimately exceeding the default threshold -->
-        <exclude name="CouplingBetweenObjects"/>
-        <!-- Test suites legitimately exercise boundary adapters and translation-heavy fixtures -->
         <exclude name="GodClass"/>
-        <!-- Reflection-heavy tests often declare throws Exception helpers for readability. -->
+        <!-- File and method size governance lives in FinGrind's structural-governance engine rather than PMD's ambient NCSS defaults. -->
+        <exclude name="NcssCount"/>
+        <!-- Reflection-heavy tests sometimes declare broad throws clauses to keep fixture control flow readable. -->
         <exclude name="SignatureDeclareThrowsException"/>
-        <!-- Some enum fixtures intentionally expose public wire-value factories on package-private
-             types to simulate reflective contracts under test. -->
+        <!-- Some enum fixtures intentionally expose public wire-value factories on package-private types to simulate reflective contracts under test. -->
         <exclude name="PublicMemberInNonPublicType"/>
     </rule>
+
+    <rule ref="category/java/design.xml/GodClass"/>
 
     <rule ref="category/java/design.xml/CyclomaticComplexity">
         <properties>
@@ -61,12 +64,19 @@
         </properties>
     </rule>
 
+    <rule ref="category/java/design.xml/CouplingBetweenObjects">
+        <properties>
+            <property name="threshold" value="72"/>
+        </properties>
+    </rule>
+
     <rule ref="category/java/multithreading.xml">
-        <!-- Tests are allowed to create threads explicitly for concurrency scenarios -->
+        <!-- Tests are allowed to create threads explicitly for concurrency scenarios. -->
         <exclude name="DoNotUseThreads"/>
     </rule>
 
     <rule ref="category/java/performance.xml"/>
 
     <rule ref="category/java/security.xml"/>
+
 </ruleset>

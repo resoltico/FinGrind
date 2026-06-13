@@ -444,7 +444,7 @@ if [[ ${permission_failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted an unreadable mounted PDF artifact"
 fi
 printf '%s\n' "${permission_failure_output}" | grep -Fq \
-    'published container wrote trial-balance.pdf without host-readable permissions' || die \
+    'published container wrote trial-balance.pdf without owner-readable mounted permissions' || die \
     "public container surface verifier did not report unreadable mounted PDF permissions"
 
 set +e
@@ -462,7 +462,7 @@ if [[ ${head_failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted a mounted PDF whose bytes could not be read"
 fi
 printf '%s\n' "${head_failure_output}" | grep -Fq \
-    'published container wrote trial-balance.pdf without host-readable permissions' || die \
+    'published container wrote trial-balance.pdf without owner-readable mounted permissions' || die \
     "public container surface verifier misclassified one mounted PDF read failure"
 
 printf 'public container surface verifier regression: success\n'

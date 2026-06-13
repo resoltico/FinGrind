@@ -1,6 +1,8 @@
 package dev.erst.fingrind.contract.discovery;
 
-/** Sealed inventory root for the request-template descriptor namespace. */
+import java.util.List;
+
+/** Sealed inventory root for published request and ledger-plan template descriptors. */
 public sealed interface TemplateDescriptorType
     permits ContractTemplates.PostingRequestTemplateDescriptor,
         ContractTemplates.JournalLineTemplateDescriptor,
@@ -10,9 +12,14 @@ public sealed interface TemplateDescriptorType
         ContractTemplates.ApprovalTemplateDescriptor,
         ContractTemplates.ProvenanceTemplateDescriptor,
         ContractTemplates.ReversalTemplateDescriptor,
-        ContractTemplates.LedgerPlanTemplateDescriptor,
-        ContractTemplates.LedgerPlanStepTemplateDescriptor,
-        ContractTemplates.OpenBookTemplateDescriptor,
-        ContractTemplates.LedgerPlanQueryTemplateDescriptor,
+        ContractPlanTemplates.LedgerPlanTemplateDescriptor,
+        ContractPlanTemplates.LedgerPlanStepTemplateDescriptor,
+        ContractPlanTemplates.OpenBookTemplateDescriptor,
+        ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor,
         ContractTemplates.DeclareAccountTemplateDescriptor,
-        ContractTemplates.LedgerAssertionTemplateDescriptor {}
+        ContractPlanTemplates.LedgerAssertionTemplateDescriptor {
+  /** Returns the published descriptor record types for request and ledger-plan templates. */
+  static List<Class<?>> descriptorTypes() {
+    return DescriptorNamespaceSupport.descriptorTypes(TemplateDescriptorType.class);
+  }
+}

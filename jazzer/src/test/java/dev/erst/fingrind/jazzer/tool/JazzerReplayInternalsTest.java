@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
+import dev.erst.fingrind.cli.SqliteRoundTripWorkflowPersistenceAssertions;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
@@ -125,7 +126,7 @@ class JazzerReplayInternalsTest {
         assertInstanceOf(ReplayOutcome.UnexpectedFailure.class, exerciseFailure);
     assertEquals(
         new PostingWorkflowReplayDetails(
-            JazzerReplayDetailsMapper.parsedPostingCommandDetails(command),
+            JazzerReplayShapeDetails.parsedPostingCommandDetails(command),
             new PostingWorkflowLifecycleDetails(
                 new PostingGateDetails(
                     PostingLifecycleStatus.NOT_RUN, PostingLifecycleStatus.NOT_RUN),
@@ -210,27 +211,27 @@ class JazzerReplayInternalsTest {
 
     assertEquals(
         PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
-        JazzerReplayDetailsMapper.rejectionStatus(new PostingRejection.BookNotInitialized()));
+        JazzerReplayOutcomeSupport.rejectionStatus(new PostingRejection.BookNotInitialized()));
     assertEquals(
         PostingLifecycleStatus.UNKNOWN_ACCOUNT,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.AccountStateViolations(
                 java.util.List.of(new PostingRejection.UnknownAccount(accountCode)))));
     assertEquals(
         PostingLifecycleStatus.INACTIVE_ACCOUNT,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.AccountStateViolations(
                 java.util.List.of(new PostingRejection.InactiveAccount(accountCode)))));
     assertEquals(
         PostingLifecycleStatus.ACCOUNT_STATE_VIOLATIONS,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.AccountStateViolations(
                 java.util.List.of(
                     new PostingRejection.UnknownAccount(accountCode),
                     new PostingRejection.InactiveAccount(accountCode)))));
     assertEquals(
         PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.EntrySemanticsViolations(
                 java.util.List.of(
                     new PostingRejection.EntrySemanticsViolation(
@@ -239,56 +240,56 @@ class JazzerReplayInternalsTest {
                         "Cash revenue does not accept invoice evidence.")))));
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        JazzerReplayDetailsMapper.rejectionStatus(new PostingRejection.DuplicateIdempotencyKey()));
+        JazzerReplayOutcomeSupport.rejectionStatus(new PostingRejection.DuplicateIdempotencyKey()));
     assertEquals(
         PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.BookFunctionalCurrencyMismatch(
                 dev.erst.fingrind.core.CurrencyUnit.of("USD"),
                 dev.erst.fingrind.core.CurrencyUnit.of("EUR"))));
     assertEquals(
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.TransferredPeriodResultViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.OpeningBalanceWindowClosed(
                 PostingKind.STANDARD, java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
         PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.OpeningBalanceTouchesNominalAccount(
                 accountCode, dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
         PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.ResultHoldingAccountReserved(accountCode)));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-2"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
-        JazzerReplayDetailsMapper.rejectionStatus(
+        JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.ReversalTargetNotFound(new PostingId("posting-3"))));
 
     PostEntryCommand command = parsedCommand();
     assertEquals(
         command.requestProvenance().idempotencyKey().value(),
-        JazzerReplayDetailsMapper.parsedPostingCommandDetails(command).idempotencyKey());
+        JazzerReplayShapeDetails.parsedPostingCommandDetails(command).idempotencyKey());
     assertEquals(
         RuntimeException.class.getSimpleName(),
-        JazzerReplayDetailsMapper.normalizedMessage(new RuntimeException()));
+        JazzerReplayOutcomeSupport.normalizedMessage(new RuntimeException()));
     ReplayOutcome.UnexpectedFailure unexpectedFailure =
         assertInstanceOf(
             ReplayOutcome.UnexpectedFailure.class,
-            JazzerReplayDetailsMapper.unexpectedFailure(
+            JazzerReplayOutcomeSupport.unexpectedFailure(
                 dev.erst.fingrind.jazzer.support.JazzerHarness.cliRequest(),
                 new IllegalStateException("boom"),
                 new UnparsedCliRequestReplayDetails()));
@@ -297,14 +298,14 @@ class JazzerReplayInternalsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            JazzerReplayDetailsMapper.requiredPreflightRejected(
+            JazzerReplayOutcomeSupport.requiredPreflightRejected(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate())));
     assertThrows(
         IllegalStateException.class,
         () ->
-            JazzerReplayDetailsMapper.requiredCommitRejected(
+            JazzerReplayOutcomeSupport.requiredCommitRejected(
                 new Committed(
                     new PostingId("posting-1"),
                     command.requestProvenance().idempotencyKey(),
@@ -320,7 +321,7 @@ class JazzerReplayInternalsTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteRoundTripReplayVerifier.verifyReloadedPosting(
+                SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                     postingFact(command, "posting-2"), committed(command, "posting-1"), command));
 
     assertTrue(String.valueOf(mismatch.getMessage()).contains("posting id differs"));
@@ -336,7 +337,7 @@ class JazzerReplayInternalsTest {
             command.requestProvenance().idempotencyKey(),
             new PostingRejection.DuplicateIdempotencyKey());
 
-    SqliteRoundTripReplayVerifier.verifyDeclaredAccountListing(
+    SqliteRoundTripWorkflowPersistenceAssertions.verifyDeclaredAccountListing(
         java.util.List.of(
             declaredAccount(new AccountCode("cash"), true),
             declaredAccount(new AccountCode("1000"), true),
@@ -346,32 +347,35 @@ class JazzerReplayInternalsTest {
             declaredAccount(new AccountCode("2000"), true)));
     assertEquals(
         postingFact,
-        SqliteRoundTripReplayVerifier.requireStoredPosting(java.util.Optional.of(postingFact)));
-    SqliteRoundTripReplayVerifier.verifyReloadedPosting(
+        SqliteRoundTripWorkflowPersistenceAssertions.requireStoredPosting(
+            java.util.Optional.of(postingFact)));
+    SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
         postingFact, committed(command, "posting-1"), command);
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        SqliteRoundTripReplayVerifier.requireDuplicateRejection(duplicateRejected));
+        SqliteRoundTripWorkflowPersistenceAssertions.requireDuplicateRejection(duplicateRejected));
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        SqliteRoundTripReplayVerifier.verifyRejectedCommitConsistency(
+        SqliteRoundTripWorkflowPersistenceAssertions.verifyRejectedCommitConsistency(
             duplicateRejected, duplicateRejected));
 
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.verifyDeclaredAccountListing(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyDeclaredAccountListing(
                 java.util.List.of(declaredAccount(new AccountCode("1000"), true)),
                 java.util.List.of(
                     declaredAccount(new AccountCode("1000"), true),
                     declaredAccount(new AccountCode("2000"), true))));
     assertThrows(
         IllegalStateException.class,
-        () -> SqliteRoundTripReplayVerifier.requireStoredPosting(java.util.Optional.empty()));
+        () ->
+            SqliteRoundTripWorkflowPersistenceAssertions.requireStoredPosting(
+                java.util.Optional.empty()));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 new PostingFact(
                     new PostingId("posting-1"),
                     CliFuzzFixtures.journalEntry(command),
@@ -388,7 +392,7 @@ class JazzerReplayInternalsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 postingFact(
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
@@ -402,7 +406,7 @@ class JazzerReplayInternalsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 postingFact(
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
@@ -416,7 +420,7 @@ class JazzerReplayInternalsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 postingFact(
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
@@ -430,7 +434,7 @@ class JazzerReplayInternalsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.verifyReloadedPosting(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 postingFact(
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
@@ -444,24 +448,24 @@ class JazzerReplayInternalsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.requireDuplicateRejection(
+            SqliteRoundTripWorkflowPersistenceAssertions.requireDuplicateRejection(
                 committed(command, "posting-1")));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.requireDuplicateRejection(
+            SqliteRoundTripWorkflowPersistenceAssertions.requireDuplicateRejection(
                 new CommitRejected(
                     command.requestProvenance().idempotencyKey(),
                     new PostingRejection.BookNotInitialized())));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.verifyRejectedCommitConsistency(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyRejectedCommitConsistency(
                 duplicateRejected, committed(command, "posting-1")));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripReplayVerifier.verifyRejectedCommitConsistency(
+            SqliteRoundTripWorkflowPersistenceAssertions.verifyRejectedCommitConsistency(
                 duplicateRejected,
                 new CommitRejected(
                     command.requestProvenance().idempotencyKey(),

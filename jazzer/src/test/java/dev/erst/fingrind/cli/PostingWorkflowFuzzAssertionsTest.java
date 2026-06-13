@@ -13,15 +13,15 @@ class PostingWorkflowFuzzAssertionsTest {
         () ->
             PostingWorkflowFuzzAssertions.exerciseParsedPostingWorkflow(
                 SqliteRoundTripWorkflowTestSupport.basicValidCommand(),
-                CliFuzzHarnessTestSupport.basicValidRequestBytes()));
+                CliFuzzRequestSeedSupport.basicValidRequestBytes()));
     assertDoesNotThrow(
         () ->
             PostingWorkflowFuzzAssertions.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.validJpyRequestBytes()));
+                CliFuzzRequestSeedSupport.validJpyRequestBytes()));
     assertDoesNotThrow(
         () ->
             PostingWorkflowFuzzAssertions.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.validBhdRequestBytes()));
+                CliFuzzRequestSeedSupport.validBhdRequestBytes()));
   }
 
   @Test
@@ -30,8 +30,8 @@ class PostingWorkflowFuzzAssertionsTest {
         () ->
             PostingWorkflowFuzzAssertions.exerciseParsedPostingWorkflow(
                 CliFuzzFixtures.readPostEntryCommand(
-                    CliFuzzHarnessTestSupport.reversalTargetMissingRequest().getBytes(UTF_8)),
-                CliFuzzHarnessTestSupport.reversalTargetMissingRequestBytes()));
+                    CliFuzzRequestSeedSupport.reversalTargetMissingRequest().getBytes(UTF_8)),
+                CliFuzzRequestSeedSupport.reversalTargetMissingRequestBytes()));
   }
 
   @Test
@@ -39,11 +39,11 @@ class PostingWorkflowFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             PostingWorkflowFuzzAssertions.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.invalidExponentAmountRequestBytes()));
+                CliFuzzRequestSeedSupport.invalidExponentAmountRequestBytes()));
     assertDoesNotThrow(
         () ->
             PostingWorkflowFuzzAssertions.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.missingReversalReasonRequestBytes()));
+                CliFuzzRequestSeedSupport.missingReversalReasonRequestBytes()));
   }
 
   @Test
@@ -52,27 +52,27 @@ class PostingWorkflowFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             harness.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.basicValidRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.basicValidRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.validJpyRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.validJpyRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.validBhdRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.validBhdRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.reversalTargetMissingRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.reversalTargetMissingRequestBytes())));
     assertDoesNotThrow(
         () ->
             harness.exercisePostingWorkflow(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.invalidBlankActorRequestBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzRequestSeedSupport.invalidBlankActorRequestBytes())));
   }
 }

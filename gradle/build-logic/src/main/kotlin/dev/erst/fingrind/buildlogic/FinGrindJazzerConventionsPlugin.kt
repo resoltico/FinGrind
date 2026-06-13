@@ -84,10 +84,10 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 outputs.upToDateWhen { false }
                 doFirst {
                     // The nested Jazzer build also mirrors committed regression seeds and metadata
-                    // through Gradle resource outputs. Copy-style resource processing does not
-                    // prune renamed or removed inputs on its own, so clear the destination
-                    // directory before each real resource sync to keep packaged corpora aligned
-                    // with src/fuzz/resources instead of retaining stale historical seeds.
+                    // through Gradle resource outputs. Copy-style resource processing does not prune
+                    // renamed or removed inputs on its own, so clear the destination directory
+                    // before each real resource sync to keep packaged corpora aligned with
+                    // src/fuzz/resources instead of retaining stale historical seeds.
                     destinationDir.deleteRecursively()
                 }
             }
@@ -204,7 +204,10 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
             }
 
             tasks.withType<Pmd>().matching { it.name == "pmdFuzz" }.configureEach {
-                ruleSetFiles = files(rootProject.file("gradle/pmd/fuzz-ruleset.xml"))
+                ruleSetFiles =
+                    files(
+                        rootProject.file(FinGrindPmdRulesetSurface.JAZZER_FUZZ.projectRelativePath),
+                    )
                 ruleSets = emptyList()
             }
 
@@ -448,7 +451,6 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
         }
     }
 }
-
 private const val JAZZER_PREMAIN_CLASS = "dev.erst.fingrind.jazzer.tool.JazzerPremainAgent"
 
 private class ProviderBackedArguments(

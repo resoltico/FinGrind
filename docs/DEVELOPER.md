@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: DEVELOPER
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -96,8 +96,8 @@ executor/     Execution services plus storage seams:
 sqlite/       Durable single-book adapter:
               one protected SQLite file per accounting-entity book, persisted through an
               in-process SQLite
-              adapter backed by Java 26 FFM and a managed SQLite 3.53.1 / SQLite3 Multiple
-              Ciphers 2.3.4 runtime on controlled surfaces, implementing the executor-owned
+              adapter backed by Java 26 FFM and a managed SQLite 3.53.2 / SQLite3 Multiple
+              Ciphers 2.3.5 runtime on controlled surfaces, implementing the executor-owned
               administration, posting, query, and ledger-plan seams over the canonical strict-table
               `book_schema.sql` through focused helpers for connection setup, book-state reading,
               single-row query support, posting reads, and durable writes.
@@ -167,7 +167,7 @@ FinGrind's current public model is:
 - one SQLite file is one book for one accounting entity
 - every book-bound command requires exactly one explicit passphrase source:
   `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
-- book files are protected at rest with SQLite3 Multiple Ciphers 2.3.4 using the upstream default
+- book files are protected at rest with SQLite3 Multiple Ciphers 2.3.5 using the upstream default
   `chacha20` cipher
 - protected book files and same-directory SQLite sidecars are hardened to owner-only filesystem
   permissions during mutation-capable opens when the host platform exposes a supported security
@@ -238,11 +238,11 @@ Generated-state stance:
 | Gradle Wrapper | 9.5.1 |
 | Kotlin build logic | 2.4.0 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
+| SQLite runtime | managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
 | Jackson Databind | 3.1.4 |
 | JUnit Jupiter | 6.1.0 |
 | Jazzer | 0.30.0 |
-| JaCoCo | published snapshot build 0.8.15.202606030734, consumed from a repo-owned pinned artifact set, and verified against resolved artifact 0.8.15-20260603.073432-117 |
+| JaCoCo | stable `0.8.15`, pinned in the shared version catalog and verified against the published Maven Central GA jars before Gradle quality gates run |
 | PMD | 7.24.0 |
 
 The build-logic Kotlin pin is now the stable `2.4.0` line.
@@ -363,8 +363,8 @@ This matters even when a repo currently has only the default Gradle `test` task:
 [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the canonical build-logic protocol.
 
 Root Gradle verification and the explicit CLI/runtime task owners enable Java native access where
-required, compile a managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library from
-`third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/`, and keep the packaged CLI
+required, compile a managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 shared library from
+`third_party/sqlite/sqlite3mc-amalgamation-2.3.5-sqlite-3530200/`, and keep the packaged CLI
 surfaces on the same managed-runtime contract. The source-checkout wrapper and developer
 direct-Java wrappers discover that prepared checkout runtime without any operator override path
 and now launch through the Gradle-owned Java 26 toolchain executable rather than ambient shell
@@ -377,7 +377,9 @@ without ambient Java or any retired SQLite runtime override variables. That smok
 verifies the top-level archive bootstrap files and the trimmed `jlink` runtime-image contract.
 The bundle task prints the exact archive path and checksum path it produced under the active build
 directory so operators and agents can pick up the right artifact without guessing where Gradle
-placed it.
+placed it. Stage 1 structural governance now scans tracked Markdown across the repository, which
+includes the `.codex` protocol manuals under their own documentation budget instead of only the
+user-facing `docs/` tree.
 
 For local developer-only raw-JAR verification, remember that `:cli:shadowJar` packages only the
 Java surface. If you want that JAR to run from the checkout, prepare the managed runtime first:
@@ -425,7 +427,7 @@ through `[JAZZER-PULSE]` lines, including deterministic-tests heartbeats plus
 regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
 
 The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
-source, compiles its own managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 shared library
+source, compiles its own managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 shared library
 from `../third_party/sqlite/`, writes the local-consistency `.sha256` file for that built
 library, and resolves that managed
 runtime from its prepared nested build layout for deterministic tests, regression replay, and
@@ -534,8 +536,8 @@ rerun the full aggregate `Gate` against a branch when GitHub fails to attach the
 workflow on initial PR open.
 
 Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
-the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.1, SQLite3 Multiple
-Ciphers 2.3.4, required protected-book metadata, and wrong-key failure behavior from the managed
+the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.2, SQLite3 Multiple
+Ciphers 2.3.5, required protected-book metadata, and wrong-key failure behavior from the managed
 library path.
 
 GitHub workflows do not run active fuzzing.

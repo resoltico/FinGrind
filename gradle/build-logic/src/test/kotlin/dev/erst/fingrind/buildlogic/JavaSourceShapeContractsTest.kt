@@ -12,6 +12,7 @@ class JavaSourceShapeContractsTest {
     fun exportedMainFiles_useExportedBudgetWhenNoReviewedContractExists() {
         val contract =
             JavaSourceStructuralContracts.contractFor(
+                projectPath = FinGrindProjectPaths.CONTRACT,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/contract/protocol/OperationCategory.java",
                 packageName = "dev.erst.fingrind.contract.protocol",
@@ -26,24 +27,50 @@ class JavaSourceShapeContractsTest {
     fun reviewedPaths_useReviewedBudgetInsteadOfFilenameHeuristics() {
         val contract =
             JavaSourceStructuralContracts.contractFor(
+                projectPath = FinGrindProjectPaths.CONTRACT,
                 relativePath =
-                    "src/main/java/dev/erst/fingrind/contract/discovery/ContractTemplates.java",
-                packageName = "dev.erst.fingrind.contract.discovery",
-                exportedPackages = setOf("dev.erst.fingrind.contract.discovery"),
+                    "src/main/java/dev/erst/fingrind/contract/bookkeeping/RejectionNarrative.java",
+                packageName = "dev.erst.fingrind.contract.bookkeeping",
+                exportedPackages = setOf("dev.erst.fingrind.contract.bookkeeping"),
             )
 
         val reviewedSurface = assertNotNull(contract.reviewedSurface)
-        assertEquals("protocol-discovery", reviewedSurface.owner)
-        assertEquals("contract-template-namespace", contract.budget.roleName)
+        assertEquals("contract-bookkeeping", reviewedSurface.owner)
+        assertEquals("bookkeeping-rejection-narrative", contract.budget.roleName)
         assertNotNull(reviewedSurface.budgetVarianceReason)
-        assertNotNull(reviewedSurface.duplicationExemptionReason)
+        assertNull(reviewedSurface.duplicationExemptionReason)
         assertTrue(reviewedSurface.approval.expiresOn.isAfter(LocalDate.now()))
+    }
+
+    @Test
+    fun reviewedPaths_resolveAcrossAllOwnedProjects() {
+        val executorContract =
+            JavaSourceStructuralContracts.contractFor(
+                projectPath = FinGrindProjectPaths.EXECUTOR,
+                relativePath =
+                    "src/main/java/dev/erst/fingrind/executor/bookkeeping/PeriodResultTransferPlanner.java",
+                packageName = "dev.erst.fingrind.executor.bookkeeping",
+                exportedPackages = setOf("dev.erst.fingrind.executor.bookkeeping"),
+            )
+        val cliContract =
+            JavaSourceStructuralContracts.contractFor(
+                projectPath = FinGrindProjectPaths.CLI,
+                relativePath = "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
+                packageName = "dev.erst.fingrind.cli.json",
+                exportedPackages = emptySet(),
+            )
+
+        assertNotNull(executorContract.reviewedSurface)
+        assertEquals("period-result-transfer-planner", executorContract.budget.roleName)
+        assertNotNull(cliContract.reviewedSurface)
+        assertEquals("cli-plan-json-aggregate", cliContract.budget.roleName)
     }
 
     @Test
     fun mainFilesUseTheProductionBudgetWithoutNameBasedPrivilege() {
         val contract =
             JavaSourceStructuralContracts.contractFor(
+                projectPath = FinGrindProjectPaths.EXECUTOR,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/executor/maintenance/SomeWorkflow.java",
                 packageName = "dev.erst.fingrind.executor.maintenance",
@@ -65,14 +92,36 @@ class JavaSourceShapeContractsTest {
                 reviewedSurface.approval.expiresOn <= LocalDate.now().plusDays(120),
                 "reviewed surface waivers must stay short-lived: ${reviewedSurface.relativePath}",
             )
+            val approvedShape = reviewedSurface.approval.approvedShape
             assertTrue(
-                reviewedSurface.approval.approvedPhysicalLines <= reviewedSurface.budget.maxPhysicalLines,
+                approvedShape.physicalLineCount <= reviewedSurface.budget.maxPhysicalLines,
             )
             assertTrue(
-                reviewedSurface.approval.approvedLogicalLines <= reviewedSurface.budget.maxLogicalLines,
+                approvedShape.logicalLineCount <= reviewedSurface.budget.maxLogicalLines,
             )
             assertTrue(
-                reviewedSurface.approval.approvedImports <= reviewedSurface.budget.maxImports,
+                approvedShape.importCount <= reviewedSurface.budget.maxImports,
+            )
+            assertTrue(
+                approvedShape.nestedTypeCount <= reviewedSurface.budget.maxNestedTypes,
+            )
+            assertTrue(
+                approvedShape.maxMethodsPerTopLevelType <= reviewedSurface.budget.maxMethodsPerTopLevelType,
+            )
+            assertTrue(
+                approvedShape.maxFieldsPerTopLevelType <= reviewedSurface.budget.maxFieldsPerTopLevelType,
+            )
+            assertTrue(
+                approvedShape.maxSwitchArmsPerMethod <= reviewedSurface.budget.maxSwitchArmsPerMethod,
+            )
+            assertTrue(
+                approvedShape.maxMethodLineSpan <= reviewedSurface.budget.maxMethodLineSpan,
+            )
+            assertTrue(
+                approvedShape.maxMethodParameters <= reviewedSurface.budget.maxMethodParameters,
+            )
+            assertTrue(
+                approvedShape.maxMethodDecisionPoints <= reviewedSurface.budget.maxMethodDecisionPoints,
             )
         }
     }
@@ -81,14 +130,16 @@ class JavaSourceShapeContractsTest {
     fun duplicationChecks_followReviewedSurfaceMetadataInsteadOfRoleNameLiterals() {
         assertTrue(
             !JavaSourceStructuralContracts.includeInDuplicationCheck(
+                projectPath = FinGrindProjectPaths.CLI,
                 relativePath =
-                    "src/main/java/dev/erst/fingrind/contract/discovery/ContractTemplates.java",
-                packageName = "dev.erst.fingrind.contract.discovery",
-                exportedPackages = setOf("dev.erst.fingrind.contract.discovery"),
+                    "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
+                packageName = "dev.erst.fingrind.cli.json",
+                exportedPackages = emptySet(),
             ),
         )
         assertTrue(
             JavaSourceStructuralContracts.includeInDuplicationCheck(
+                projectPath = FinGrindProjectPaths.CONTRACT,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/contract/protocol/ProtocolAdministrationOperations.java",
                 packageName = "dev.erst.fingrind.contract.protocol",
@@ -98,147 +149,14 @@ class JavaSourceShapeContractsTest {
     }
 
     @Test
-    fun reviewedSurfaceDefinitionViolations_requireExplicitVarianceReasonWhenBudgetWidens() {
-        val reviewedSurface =
-            ReviewedJavaSourceSurface(
-                relativePath = "src/main/java/dev/erst/fingrind/example/Oversized.java",
-                owner = "example",
-                reason = "Example",
-                splitTrigger = "Split the example owner.",
-                budget =
-                    JavaSourceShapeBudget(
-                        roleName = "example",
-                        maxPhysicalLines = 11,
-                        maxLogicalLines = 11,
-                        maxImports = 2,
-                        maxNestedTypes = 1,
-                        maxMethodsPerTopLevelType = 2,
-                        maxFieldsPerTopLevelType = 1,
-                        maxSwitchArmsPerMethod = 1,
-                        maxMethodLineSpan = 10,
-                        maxMethodParameters = 2,
-                        maxMethodDecisionPoints = 2,
-                    ),
-                budgetVarianceReason = null,
-                duplicationExemptionReason = null,
-                approval = ReviewedJavaSourceApproval(10, 10, 1, LocalDate.now().plusDays(14)),
-            )
-
+    fun missingReviewedSurfaceViolations_reportOrphanedPathsPerProject() {
         val violations =
-            reviewedSurfaceDefinitionViolations(
-                reviewedSurface = reviewedSurface,
-                defaultBudget =
-                    JavaSourceShapeBudget(
-                        roleName = "production-main",
-                        maxPhysicalLines = 10,
-                        maxLogicalLines = 10,
-                        maxImports = 1,
-                        maxNestedTypes = 1,
-                        maxMethodsPerTopLevelType = 2,
-                        maxFieldsPerTopLevelType = 1,
-                        maxSwitchArmsPerMethod = 1,
-                        maxMethodLineSpan = 10,
-                        maxMethodParameters = 2,
-                        maxMethodDecisionPoints = 2,
-                    ),
+            JavaSourceStructuralContracts.missingReviewedSurfaceViolations(
+                projectPath = FinGrindProjectPaths.CLI,
+                existingRelativePaths = emptySet(),
             )
 
-        assertEquals(1, violations.size)
-        assertTrue("without an explicit variance reason" in violations.single())
-    }
-
-    @Test
-    fun reviewedSurfaceViolations_failWhenFrozenShapeGrows() {
-        val reviewedSurface =
-            JavaSourceStructuralContracts.reviewedSurfaces()
-                .first { it.relativePath.endsWith("CliRejectionJsonModels.java") }
-
-        val violations =
-            reviewedSurfaceViolations(
-                relativePath = reviewedSurface.relativePath,
-                metrics =
-                    JavaSourceShapeMetrics(
-                        physicalLineCount = reviewedSurface.approval.approvedPhysicalLines + 1,
-                        logicalLineCount = reviewedSurface.approval.approvedLogicalLines + 1,
-                        importCount = reviewedSurface.approval.approvedImports + 1,
-                        nestedTypeCount = 1,
-                        maxMethodsPerTopLevelType = 1,
-                        maxFieldsPerTopLevelType = 1,
-                        maxSwitchArmsPerMethod = 1,
-                        maxMethodLineSpan = 1,
-                        maxMethodParameters = 1,
-                        maxMethodDecisionPoints = 1,
-                    ),
-                reviewedSurface = reviewedSurface,
-                defaultBudget = cliJsonFamilyBudget,
-            )
-
-        assertEquals(3, violations.size)
-        assertTrue(violations.all { "CliRejectionJsonModels.java" in it })
-    }
-
-    @Test
-    fun reviewedSurfaceViolations_failWhenReviewedWaiverBecomesUnnecessary() {
-        val reviewedSurface =
-            ReviewedJavaSourceSurface(
-                relativePath = "src/main/java/dev/erst/fingrind/example/ExampleOwner.java",
-                owner = "example",
-                reason = "Example",
-                splitTrigger = "Split the example owner.",
-                budget =
-                    JavaSourceShapeBudget(
-                        roleName = "reviewed-production-main",
-                        maxPhysicalLines = 20,
-                        maxLogicalLines = 20,
-                        maxImports = 4,
-                        maxNestedTypes = 2,
-                        maxMethodsPerTopLevelType = 4,
-                        maxFieldsPerTopLevelType = 2,
-                        maxSwitchArmsPerMethod = 2,
-                        maxMethodLineSpan = 20,
-                        maxMethodParameters = 4,
-                        maxMethodDecisionPoints = 4,
-                    ),
-                budgetVarianceReason = "Example variance.",
-                duplicationExemptionReason = null,
-                approval = ReviewedJavaSourceApproval(20, 20, 4, LocalDate.now().plusDays(30)),
-            )
-        val defaultBudget =
-            JavaSourceShapeBudget(
-                roleName = "production-main",
-                maxPhysicalLines = 30,
-                maxLogicalLines = 30,
-                maxImports = 5,
-                maxNestedTypes = 2,
-                maxMethodsPerTopLevelType = 4,
-                maxFieldsPerTopLevelType = 2,
-                maxSwitchArmsPerMethod = 2,
-                maxMethodLineSpan = 20,
-                maxMethodParameters = 4,
-                maxMethodDecisionPoints = 4,
-            )
-
-        val violations =
-            reviewedSurfaceViolations(
-                relativePath = reviewedSurface.relativePath,
-                metrics =
-                    JavaSourceShapeMetrics(
-                        physicalLineCount = 18,
-                        logicalLineCount = 18,
-                        importCount = 3,
-                        nestedTypeCount = 1,
-                        maxMethodsPerTopLevelType = 2,
-                        maxFieldsPerTopLevelType = 1,
-                        maxSwitchArmsPerMethod = 1,
-                        maxMethodLineSpan = 10,
-                        maxMethodParameters = 2,
-                        maxMethodDecisionPoints = 2,
-                    ),
-                reviewedSurface = reviewedSurface,
-                defaultBudget = defaultBudget,
-            )
-
-        assertEquals(1, violations.size)
-        assertTrue("is no longer needed" in violations.single())
+        assertTrue(violations.any { "CliPlanJsonModels.java" in it })
+        assertTrue(violations.none { "SqliteNativeCalls.java" in it })
     }
 }

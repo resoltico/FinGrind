@@ -89,6 +89,3 @@ internal val fuzzBudget =
         maxMethodParameters = 10,
         maxMethodDecisionPoints = 26,
     )
-
-internal val forbiddenGenericClassNamePattern =
-    Regex("""^(?:[A-Z][A-Za-z0-9]*)?(?:Manager|Helper|Util|Common|Processor)\.java$""")

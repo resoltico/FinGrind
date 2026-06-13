@@ -32,6 +32,7 @@ internal fun Project.configureRootFormattingConventions() {
                         "**/.claude/**",
                         "**/.gradle/**",
                         "**/.local/**",
+                        "third_party/sqlite/sqlite3mc-amalgamation-*/**",
                         "tmp/**",
                     )
                 },

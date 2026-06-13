@@ -111,6 +111,61 @@ class CliBookPassphraseResolverTest {
   }
 
   @Test
+  void resolve_rejectsEmptyContainerStandardInputWithMountedDockerHint() {
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]),
+            prompt -> failPrompt(prompt),
+            FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION);
+
+    ContractFailureException exception =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                resolver
+                    .resolve(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                    .requireAccepted());
+
+    assertEquals(
+        "The FinGrind book passphrase source must contain a non-empty UTF-8 passphrase: standard input",
+        exception.getMessage());
+    assertEquals(
+        "If you launched FinGrind through a container, rerun the outer command with attached standard input such as '"
+            + dev.erst.fingrind.contract.protocol.ProtocolCatalog.distribution()
+                .containerMountedLauncherPrefix()
+            + " <command>', or switch to --book-key-file.",
+        exception.failure().hint());
+  }
+
+  @Test
+  void resolve_rejectsEmptyStandardInputWithTheGeneralPassphraseHintOutsideContainers() {
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]), prompt -> failPrompt(prompt));
+
+    ContractFailureException exception =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                resolver
+                    .resolve(
+                        new BookAccess(
+                            Path.of("book.sqlite"),
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                    .requireAccepted());
+
+    assertEquals(
+        "The FinGrind book passphrase source must contain a non-empty UTF-8 passphrase: standard input",
+        exception.getMessage());
+    assertEquals(
+        "Provide one non-empty UTF-8 passphrase through the selected key file, standard input, or interactive prompt route.",
+        exception.failure().hint());
+  }
+
+  @Test
   void resolve_readsPromptPassphraseFromTerminal() throws Exception {
     CliBookPassphraseResolver resolver =
         new CliBookPassphraseResolver(

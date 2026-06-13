@@ -19,7 +19,7 @@ readonly script_dir="$(resolve_script_dir)"
 readonly app_home="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly runtime_java="${app_home}/runtime/bin/java"
 readonly application_jar="${app_home}/lib/app/fingrind.jar"
-readonly application_module='fingrind/dev.erst.fingrind.cli.App'
+readonly application_module='dev.erst.fingrind.cli/dev.erst.fingrind.cli.App'
 
 if [[ ! -x "${runtime_java}" ]]; then
     printf 'error: missing bundled Java runtime at %s\n' "${runtime_java}" >&2
@@ -38,7 +38,7 @@ unset FINGRIND_BUNDLE_STDIN_FILE
 unset FINGRIND_BUNDLE_RETURN_EXIT_CODE
 
 exec "${runtime_java}" \
-    --enable-native-access=fingrind \
+    --enable-native-access=dev.erst.fingrind.cli \
     -D{{bundleHomeSystemProperty}}="${app_home}" \
     -Dfingrind.runtime.distribution={{bundleRuntimeDistribution}} \
     --module-path "${application_jar}" \

@@ -6,10 +6,10 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractPlanTemplates.LedgerPlanTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestInputDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.LedgerPlanTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;

@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import java.util.List;
@@ -104,12 +105,12 @@ class CliDiscoveryHelpTextRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("FinGrind Help"));
-    assertTrue(rendered.contains("First Successful Run"));
+    assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("Generate one key file"));
     assertTrue(rendered.contains("Review the seeded starter chart"));
     assertTrue(rendered.contains("Create the first request"));
-    assertTrue(rendered.contains("Command Families"));
-    assertTrue(rendered.contains("Reference Commands"));
+    assertTrue(rendered.contains("Command Catalog"));
+    assertTrue(rendered.contains("Reference"));
   }
 
   @Test
@@ -180,7 +181,7 @@ class CliDiscoveryHelpTextRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("FinGrind Help"));
-    assertTrue(rendered.contains("First Successful Run"));
+    assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("bundle bootstrap note body"));
   }
 
@@ -222,14 +223,17 @@ class CliDiscoveryHelpTextRendererTest {
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
                 canonical.requestShapes()));
 
-    assertTrue(rendered.contains("Try It"));
-    assertTrue(rendered.contains("Before You Run"));
-    assertTrue(rendered.contains("Command Syntax"));
+    assertTrue(rendered.contains("Examples"));
+    assertTrue(rendered.contains("Preparation"));
+    assertTrue(rendered.contains("Grammar"));
     assertTrue(rendered.contains("Options"));
-    assertTrue(rendered.contains("Request File"));
+    assertTrue(rendered.contains("Input Contract"));
     assertTrue(rendered.contains("print-request-template post-entry > request.json"));
     assertTrue(rendered.contains("Starter file command"));
-    assertTrue(rendered.contains("post-entry --book-file <path> --request-file <path|->"));
+    assertTrue(
+        rendered.contains(
+            CliInvocationText.rewriteInvocationPrefix(
+                ProtocolCatalog.operation(OperationId.POST_ENTRY).usage())));
   }
 
   @Test
@@ -264,11 +268,11 @@ class CliDiscoveryHelpTextRendererTest {
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
-    assertTrue(rendered.contains("Try It"));
-    assertTrue(rendered.contains("Command Syntax"));
+    assertTrue(rendered.contains("Examples"));
+    assertTrue(rendered.contains("Grammar"));
     assertTrue(rendered.contains("(none)"));
     assertFalse(rendered.contains("Options"));
-    assertFalse(rendered.contains("Request File"));
+    assertFalse(rendered.contains("Input Contract"));
   }
 
   @Test
@@ -365,12 +369,18 @@ class CliDiscoveryHelpTextRendererTest {
                 executePlanCanonical.currencyModel(),
                 Objects.requireNonNull(executePlanCanonical.requestShapes())));
 
-    assertTrue(declareRendered.contains("Request File"));
+    assertTrue(declareRendered.contains("Input Contract"));
     assertTrue(declareRendered.contains("Starter file command"));
-    assertTrue(declareRendered.contains("declare-account --request-file <path|->"));
-    assertTrue(executePlanRendered.contains("Request File"));
+    assertTrue(
+        declareRendered.contains(
+            CliInvocationText.rewriteInvocationPrefix(
+                ProtocolCatalog.operation(OperationId.DECLARE_ACCOUNT).usage())));
+    assertTrue(executePlanRendered.contains("Input Contract"));
     assertTrue(executePlanRendered.contains("Starter file command"));
-    assertTrue(executePlanRendered.contains("execute-plan --request-file <path|->"));
+    assertTrue(
+        executePlanRendered.contains(
+            CliInvocationText.rewriteInvocationPrefix(
+                ProtocolCatalog.operation(OperationId.EXECUTE_PLAN).usage())));
   }
 
   @Test
@@ -401,6 +411,26 @@ class CliDiscoveryHelpTextRendererTest {
                   OperationId.POST_ENTRY));
 
       assertTrue(rendered.contains("cp ./quick-start-request.json ./request.json"));
+    } finally {
+      restoreRuntimeDistribution(previousDistribution);
+    }
+  }
+
+  @Test
+  void renderHelpText_rewritesCanonicalSyntaxForDirectJavaRuntime() {
+    String previousDistribution = System.getProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
+    System.setProperty(
+        FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION);
+    try {
+      String rendered =
+          CliDiscoveryOutputRenderer.renderHelpText(
+              MachineContract.help(
+                  CliDiscoveryTestSupport.identity(),
+                  CliDiscoveryTestSupport.environment(),
+                  OperationId.OPEN_BOOK));
+
+      assertTrue(rendered.contains("./scripts/direct-java-cli.sh open-book --book-file <path>"));
+      assertFalse(rendered.contains("fingrind open-book --book-file <path>"));
     } finally {
       restoreRuntimeDistribution(previousDistribution);
     }

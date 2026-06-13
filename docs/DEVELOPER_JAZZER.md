@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -26,8 +26,8 @@ That separation is deliberate:
 - committed regression replay remains explicit
 - the nested build imports the root version catalog and shared build logic instead of carrying its
   own parallel dependency authority
-- the nested build compiles and injects its own managed SQLite 3.53.1 / SQLite3 Multiple Ciphers
-  2.3.4 runtime from the same vendored source used by the root build
+- the nested build compiles and injects its own managed SQLite 3.53.2 / SQLite3 Multiple Ciphers
+  2.3.5 runtime from the same vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 FinGrind now has two distinct Jazzer operator surfaces of its own:
@@ -171,7 +171,9 @@ replay engine, CLI tooling, wrapper-facing support code, and deterministic tests
 already gate production modules.
 The fuzz source set uses a dedicated PMD ruleset on top of that shared stack so single-method
 `@FuzzTest` harnesses are linted as fuzz executables rather than misclassified as empty JUnit
-test suites.
+test suites. All five checked-in PMD XML surfaces now derive from one canonical
+`gradle/build-logic` policy owner, so Jazzer production cannot drift away from the main
+production modules and any Jazzer-only relaxations remain explicit.
 
 ## Committed Seed Inventory
 

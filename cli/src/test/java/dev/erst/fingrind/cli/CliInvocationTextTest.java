@@ -39,7 +39,7 @@ class CliInvocationTextTest {
         CliInvocationText.launcherCommandFor(
             FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
-        ProtocolCatalog.distribution().containerLauncherCommand(),
+        ProtocolCatalog.distribution().containerMountedLauncherPrefix(),
         CliInvocationText.launcherCommandFor(FinGrindCli.CONTAINER_RUNTIME_DISTRIBUTION, "Linux"));
   }
 
@@ -109,16 +109,16 @@ class CliInvocationTextTest {
             null, "Linux", unnamedModule, "fingrind.jar");
 
     assertEquals(
-        "java --enable-native-access=fingrind --module-path fingrind.jar --module"
-            + " fingrind/dev.erst.fingrind.cli.App",
+        "java --enable-native-access=dev.erst.fingrind.cli --module-path fingrind.jar --module"
+            + " dev.erst.fingrind.cli/dev.erst.fingrind.cli.App",
         launcherCommand);
     assertEquals(
-        "java --enable-native-access=fingrind --module-path fingrind.jar --module"
-            + " fingrind/dev.erst.fingrind.cli.App help",
+        "java --enable-native-access=dev.erst.fingrind.cli --module-path fingrind.jar --module"
+            + " dev.erst.fingrind.cli/dev.erst.fingrind.cli.App help",
         CliInvocationText.rewriteInvocationPrefix("fingrind help", launcherCommand));
     assertEquals(
-        "cat ./secrets/acme.book-key | java --enable-native-access=fingrind --module-path"
-            + " fingrind.jar --module fingrind/dev.erst.fingrind.cli.App open-book --book-file"
+        "cat ./secrets/acme.book-key | java --enable-native-access=dev.erst.fingrind.cli"
+            + " --module-path fingrind.jar --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App open-book --book-file"
             + " ./books/acme.sqlite --book-passphrase-stdin",
         CliInvocationText.rewriteInvocationPrefix(
             "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",

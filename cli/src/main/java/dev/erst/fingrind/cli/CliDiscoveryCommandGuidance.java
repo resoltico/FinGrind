@@ -29,8 +29,7 @@ final class CliDiscoveryCommandGuidance {
     List<List<String>> rows = preparationRows(operationId);
     return rows.isEmpty()
         ? ""
-        : CliDiscoveryTextSupport.section(
-            "Before You Run", CliTextFormat.renderKeyValueBlock(rows));
+        : CliDiscoveryTextSupport.section("Preparation", CliTextFormat.renderKeyValueBlock(rows));
   }
 
   static String renderRequestGuidance(HelpDescriptor helpDescriptor, OperationId operationId) {
@@ -109,7 +108,7 @@ final class CliDiscoveryCommandGuidance {
       return "";
     }
     return CliDiscoveryTextSupport.section(
-        "Request File",
+        "Input Contract",
         requestFileGuidance(
             "Pass one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -124,7 +123,7 @@ final class CliDiscoveryCommandGuidance {
       return "";
     }
     return CliDiscoveryTextSupport.section(
-        "Request File",
+        "Input Contract",
         requestFileGuidance(
             "Pass one JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -139,7 +138,7 @@ final class CliDiscoveryCommandGuidance {
       return "";
     }
     return CliDiscoveryTextSupport.section(
-        "Request File",
+        "Input Contract",
         requestFileGuidance(
             "Pass one ledger plan JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));

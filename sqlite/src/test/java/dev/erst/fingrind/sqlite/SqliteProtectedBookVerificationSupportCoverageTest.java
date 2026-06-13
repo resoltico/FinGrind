@@ -1,0 +1,248 @@
+package dev.erst.fingrind.sqlite;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Proxy;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+import org.junit.jupiter.api.Test;
+
+/** Focused branch coverage for SQLite protected-book verification support seams. */
+class SqliteProtectedBookVerificationSupportCoverageTest
+    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+  private static final MethodHandle INSPECT_OPENED_BOOK = bindInspectOpenedBook();
+
+  @Test
+  void verifyResolvedBook_closesOneCallerSecretWhenPassphraseCopyRejects() {
+    try (SqliteBookPassphrase closedPassphrase =
+        SqliteBookPassphrase.fromUtf8Bytes(
+            "closed-passphrase", "secret".getBytes(StandardCharsets.UTF_8))) {
+      closedPassphrase.close();
+
+      ContractFailureException exception =
+          assertThrows(
+              ContractFailureException.class,
+              () ->
+                  VERIFICATION_SUPPORT.verifyResolvedBook(
+                      Path.of("closed.sqlite"), closedPassphrase));
+
+      assertEquals(
+          ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE,
+          exception.failure().descriptor());
+      assertPassphraseZeroized(closedPassphrase);
+    }
+  }
+
+  @Test
+  void mapInspection_rejectsInitializedSnapshotsAndMapsExistingFailures() {
+    Path normalizedBookPath =
+        tempDirectory.resolve("inspection.sqlite").toAbsolutePath().normalize();
+
+    IllegalArgumentException initializedFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                VERIFICATION_SUPPORT.mapInspection(
+                    normalizedBookPath,
+                    SqlitePostingFactFixtureSupport.initializedLifecycleInspection(
+                        SqliteBookContract.APPLICATION_ID,
+                        SqliteBookContract.FORMAT_VERSION,
+                        SqliteBookContract.FORMAT_VERSION,
+                        Instant.parse("2026-06-12T10:15:00Z"))));
+    assertTrue(
+        NullTestSupport.messageOf(initializedFailure)
+            .contains("requires one resolved verified-book handle"));
+
+    ProtectedBookMaintenanceStore.BookVerification blankVerification =
+        VERIFICATION_SUPPORT.mapInspection(
+            normalizedBookPath,
+            new BookLifecycleInspection.Existing(
+                BookLifecycleInspection.Status.BLANK_SQLITE,
+                0,
+                0,
+                SqliteBookContract.FORMAT_VERSION));
+    assertVerificationFailure(
+        blankVerification, normalizedBookPath, ProtectedBookVerificationFailure.BLANK_SQLITE);
+  }
+
+  @Test
+  void inspectOpenedBook_mapsMissingLifecycleInspectionsAndClosesTheSession() {
+    AtomicBoolean sessionClosed = new AtomicBoolean(false);
+    Path normalizedBookPath =
+        tempDirectory.resolve("missing-inspection.sqlite").toAbsolutePath().normalize();
+    try (SqliteBookPassphrase bookPassphrase =
+        SqliteBookPassphrase.fromUtf8Bytes(
+            "missing-inspection", "secret".getBytes(StandardCharsets.UTF_8))) {
+      ProtectedBookMaintenanceStore.BookVerification verification =
+          acceptedValue(
+              invokeInspectOpenedBook(
+                  normalizedBookPath,
+                  readSession(
+                      () -> new BookLifecycleInspection.Missing(SqliteBookContract.FORMAT_VERSION),
+                      () -> sessionClosed.set(true)),
+                  bookPassphrase));
+
+      assertVerificationFailure(
+          verification, normalizedBookPath, ProtectedBookVerificationFailure.MISSING);
+      assertTrue(sessionClosed.get());
+      assertPassphraseZeroized(bookPassphrase);
+    }
+  }
+
+  @Test
+  void inspectOpenedBook_rethrowsInspectionFailuresAfterClosingResources() {
+    AtomicBoolean sessionClosed = new AtomicBoolean(false);
+    Path normalizedBookPath =
+        tempDirectory.resolve("inspection-failure.sqlite").toAbsolutePath().normalize();
+    try (SqliteBookPassphrase bookPassphrase =
+        SqliteBookPassphrase.fromUtf8Bytes(
+            "inspection-failure", "secret".getBytes(StandardCharsets.UTF_8))) {
+      AssertionError inspectionFailure =
+          assertThrows(
+              AssertionError.class,
+              () ->
+                  invokeInspectOpenedBook(
+                      normalizedBookPath,
+                      readSession(
+                          () -> {
+                            throw new AssertionError("inspection-boom");
+                          },
+                          () -> sessionClosed.set(true)),
+                      bookPassphrase));
+
+      assertEquals("inspection-boom", inspectionFailure.getMessage());
+      assertTrue(sessionClosed.get());
+      assertPassphraseZeroized(bookPassphrase);
+    }
+  }
+
+  @Test
+  void maintenanceStore_verifiesMissingReplicasAndRejectsForeignVerificationHandles() {
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    Path sourceBookPath = tempDirectory.resolve("replica-source").resolve("book.sqlite");
+    BookAccess sourceAccess = bookAccess(sourceBookPath);
+    initializeBook(sourceAccess);
+    Path missingReplicaPath = tempDirectory.resolve("replica-target").resolve("missing.sqlite");
+
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
+        verifiedBook(store, sourceAccess)) {
+      assertVerificationFailure(
+          acceptedValue(store.verifyInitializedReplica(missingReplicaPath, verifiedSourceBook)),
+          missingReplicaPath,
+          ProtectedBookVerificationFailure.MISSING);
+    }
+
+    try (ProtectedBookMaintenanceStore.VerifiedBook foreignHandle =
+        new ProtectedBookMaintenanceStore.VerifiedBook() {
+          @Override
+          public Path artifactPath() {
+            return Path.of("foreign.sqlite");
+          }
+
+          @Override
+          public void close() {}
+        }) {
+      IllegalArgumentException foreignHandleFailure =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> store.verifyInitializedReplica(missingReplicaPath, foreignHandle));
+      assertTrue(
+          NullTestSupport.messageOf(foreignHandleFailure)
+              .contains("requires one verified SQLite book handle"));
+    }
+  }
+
+  private static dev.erst.fingrind.executor.maintenance.MaintenanceDecision<
+          ProtectedBookMaintenanceStore.BookVerification>
+      invokeInspectOpenedBook(
+          Path normalizedBookPath, SqliteReadSession session, SqliteBookPassphrase bookPassphrase) {
+    try {
+      @SuppressWarnings("unchecked")
+      dev.erst.fingrind.executor.maintenance.MaintenanceDecision<
+              ProtectedBookMaintenanceStore.BookVerification>
+          decision =
+              (dev.erst.fingrind.executor.maintenance.MaintenanceDecision<
+                      ProtectedBookMaintenanceStore.BookVerification>)
+                  INSPECT_OPENED_BOOK.invoke(
+                      VERIFICATION_SUPPORT, normalizedBookPath, session, bookPassphrase);
+      return decision;
+    } catch (RuntimeException runtimeException) {
+      throw runtimeException;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new LinkageError(
+          "Failed to invoke SQLite protected-book verification helper for tests.", throwable);
+    }
+  }
+
+  private static SqliteReadSession readSession(
+      Supplier<BookLifecycleInspection> inspectionSupplier, Runnable closeAction) {
+    ClassLoader proxyClassLoader =
+        Objects.requireNonNull(
+            Thread.currentThread().getContextClassLoader(), "context class loader");
+    return (SqliteReadSession)
+        Proxy.newProxyInstance(
+            proxyClassLoader,
+            new Class<?>[] {SqliteReadSession.class},
+            (proxy, method, arguments) ->
+                switch (method.getName()) {
+                  case "inspectBook" -> inspectionSupplier.get();
+                  case "close" -> {
+                    closeAction.run();
+                    yield null;
+                  }
+                  case "toString" -> "SqliteReadSession[test-double]";
+                  case "hashCode" -> System.identityHashCode(proxy);
+                  case "equals" ->
+                      arguments != null
+                          && arguments.length == 1
+                          && arguments[0] != null
+                          && Proxy.isProxyClass(arguments[0].getClass())
+                          && Objects.equals(
+                              Proxy.getInvocationHandler(proxy),
+                              Proxy.getInvocationHandler(arguments[0]));
+                  default ->
+                      throw new AssertionError("Unexpected SQLite read-session method: " + method);
+                });
+  }
+
+  private static void assertPassphraseZeroized(SqliteBookPassphrase passphrase) {
+    assertArrayEquals(new byte[passphrase.byteLength()], passphrase.utf8BytesCopy());
+  }
+
+  private static MethodHandle bindInspectOpenedBook() {
+    try {
+      MethodHandles.Lookup lookup =
+          MethodHandles.privateLookupIn(
+              SqliteProtectedBookVerificationSupport.class, MethodHandles.lookup());
+      return lookup.findVirtual(
+          SqliteProtectedBookVerificationSupport.class,
+          "inspectOpenedBook",
+          MethodType.methodType(
+              dev.erst.fingrind.executor.maintenance.MaintenanceDecision.class,
+              Path.class,
+              SqliteReadSession.class,
+              SqliteBookPassphrase.class));
+    } catch (IllegalAccessException | NoSuchMethodException exception) {
+      throw new LinkageError(
+          "Failed to bind SQLite protected-book verification helper for tests.", exception);
+    }
+  }
+}

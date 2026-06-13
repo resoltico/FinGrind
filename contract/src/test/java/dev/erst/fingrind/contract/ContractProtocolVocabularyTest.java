@@ -12,12 +12,14 @@ import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractDiscovery;
+import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
+import dev.erst.fingrind.contract.discovery.TemplateDescriptorType;
 import dev.erst.fingrind.contract.protocol.BookCipher;
 import dev.erst.fingrind.contract.protocol.BookProtectionMode;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
@@ -199,13 +201,13 @@ class ContractProtocolVocabularyTest {
             ContractTemplates.ApprovalTemplateDescriptor.class,
             ContractTemplates.ProvenanceTemplateDescriptor.class,
             ContractTemplates.ReversalTemplateDescriptor.class,
-            ContractTemplates.LedgerPlanTemplateDescriptor.class,
-            ContractTemplates.LedgerPlanStepTemplateDescriptor.class,
-            ContractTemplates.OpenBookTemplateDescriptor.class,
-            ContractTemplates.LedgerPlanQueryTemplateDescriptor.class,
+            ContractPlanTemplates.LedgerPlanTemplateDescriptor.class,
+            ContractPlanTemplates.LedgerPlanStepTemplateDescriptor.class,
+            ContractPlanTemplates.OpenBookTemplateDescriptor.class,
+            ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor.class,
             ContractTemplates.DeclareAccountTemplateDescriptor.class,
-            ContractTemplates.LedgerAssertionTemplateDescriptor.class),
-        ContractTemplates.descriptorTypes());
+            ContractPlanTemplates.LedgerAssertionTemplateDescriptor.class),
+        TemplateDescriptorType.descriptorTypes());
     assertEquals(
         List.of(), new ContractResponse.ErrorDescriptor("code", 4, "description").detailFields());
     assertThrows(
@@ -308,7 +310,7 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "open",
                 LedgerStepKind.OPEN_BOOK,
                 null,
@@ -328,11 +330,13 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.LedgerAssertionTemplateDescriptor(
+            new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
                 LedgerAssertionKind.POSTING_EXISTS, "1000", null, null, null, null, "posting-1"));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ContractTemplates.LedgerPlanQueryTemplateDescriptor(null, null, null, 999, null));
+        () ->
+            new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
+                null, null, null, 999, null));
   }
 
   private static ContractTemplates.AccountingEvidenceTemplateDescriptor evidenceTemplate() {

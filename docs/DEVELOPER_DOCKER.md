@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -136,7 +136,7 @@ Then the supported local gates are:
 - runs mounted-path container commands under the caller's UID:GID so generated key files and book
   files stay owned by the invoking operator on both macOS Docker Desktop and Linux CI runners
 - verifies `version`
-- verifies the managed SQLite 3.53.1 / SQLite3 Multiple Ciphers 2.3.4 runtime contract through
+- verifies the managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 runtime contract through
   `capabilities`
 - verifies `open-book` against a mounted path with spaces and punctuation
 - creates the mounted book-key fixtures with owner-only permissions (`0600`) so containerized

@@ -12,6 +12,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import org.junit.jupiter.api.Assumptions;
@@ -21,11 +23,18 @@ import org.junit.jupiter.api.Test;
 class CliDistributionBuildContractTest {
   @Test
   void dockerBuild_reusesTheStagedRuntimeModuleList() throws IOException {
+    String dockerEnvironment =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/DockerManagedSqliteBuildEnvironment.kt"));
     String dockerfile = Files.readString(repositoryRoot().resolve("Dockerfile"));
+    String builderImage = kotlinStringConstant(dockerEnvironment, "builderImage");
+    String runtimeImage = kotlinStringConstant(dockerEnvironment, "runtimeImage");
+    String runtimeLibStdCppPackage =
+        kotlinStringConstant(dockerEnvironment, "runtimeLibStdCppPackage");
 
-    assertTrue(
-        dockerfile.contains(
-            "FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:46db716f3d5ca5ed35db59c0511b4f7847c4c5c89f53e7fb57fdab0573a762f6 AS builder"));
+    assertTrue(dockerfile.contains("FROM " + builderImage + " AS builder"));
     assertTrue(dockerfile.contains("RUN apk add --no-cache binutils=2.45.1-r0 python3=3.12.13-r0"));
     assertTrue(dockerfile.contains("COPY source-root/ /build/source-root/"));
     assertTrue(
@@ -52,10 +61,8 @@ class CliDistributionBuildContractTest {
         dockerfile.contains(
             "COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/"));
     assertFalse(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256"));
-    assertTrue(
-        dockerfile.contains(
-            "FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11"));
-    assertTrue(dockerfile.contains("RUN apk add --no-cache libstdc++=15.2.0-r2"));
+    assertTrue(dockerfile.contains("FROM " + runtimeImage));
+    assertTrue(dockerfile.contains("RUN apk add --no-cache " + runtimeLibStdCppPackage));
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/native/libsqlite3.so.0.sha256"));
@@ -97,6 +104,11 @@ class CliDistributionBuildContractTest {
             repositoryRoot()
                 .resolve(
                     "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"));
+    String executionSurfaceConventions =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliExecutionSurfaceConventions.kt"));
     String dockerContextRegistration =
         Files.readString(
             repositoryRoot()
@@ -122,7 +134,7 @@ class CliDistributionBuildContractTest {
 
     assertCliBuildScriptDelegatesDistribution(buildScript);
     assertDistributionPluginOwnsDistributionContracts(
-        distributionPlugin, dockerContextRegistration);
+        distributionPlugin, executionSurfaceConventions, dockerContextRegistration);
     assertManagedSqliteProvisioningUsesNamedModuleAccess(
         managedSqliteProvisioning, managedSqliteConsumerPlugin, rootConventionsPlugin);
     assertSqliteBuildScriptOwnsWhiteBoxModulePatch(sqliteBuildScript);
@@ -137,7 +149,12 @@ class CliDistributionBuildContractTest {
   }
 
   private static void assertDistributionPluginOwnsDistributionContracts(
-      String distributionPlugin, String dockerContextRegistration) {
+      String distributionPlugin,
+      String executionSurfaceConventions,
+      String dockerContextRegistration) {
+    assertTrue(
+        distributionPlugin.contains(
+            "configureCliExecutionSurfaceConventions(cliContractBuildLogicInputs)"));
     assertTrue(distributionPlugin.contains("stageDockerBuildContext"));
     assertTrue(distributionPlugin.contains("docker-context"));
     assertTrue(distributionPlugin.contains("docker-build-context-manifest.json"));
@@ -168,10 +185,6 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("finalizedBy(writeSourceCheckoutRuntimeManifest)"));
     assertTrue(distributionPlugin.contains("javaExecutable.set(sourceCheckoutJavaLauncher.map"));
     assertTrue(distributionPlugin.contains("javaInstallationDirectory.set("));
-    assertTrue(distributionPlugin.contains("tasks.named<ProcessResources>(\"processResources\")"));
-    assertTrue(
-        distributionPlugin.contains(
-            "dependsOn(rootProject.tasks.named(\"prepareManagedSqlite\"))"));
     assertTrue(distributionPlugin.contains("additionalModules.set(listOf(\"jdk.unsupported\"))"));
     assertTrue(
         distributionPlugin.contains(
@@ -195,6 +208,13 @@ class CliDistributionBuildContractTest {
     assertFalse(distributionPlugin.contains("managedSqliteHostClassifier("));
     assertFalse(distributionPlugin.contains("managedSqliteLibraryFileNameForHost("));
     assertTrue(
+        executionSurfaceConventions.contains(
+            "tasks.named<ProcessResources>(\"processResources\")"));
+    assertTrue(
+        executionSurfaceConventions.contains(
+            "dependsOn(rootProject.tasks.named(\"prepareManagedSqlite\"))"));
+    assertTrue(executionSurfaceConventions.contains("disableLegacyCliDistributionTasks()"));
+    assertTrue(
         dockerContextRegistration.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
     assertTrue(
         dockerContextRegistration.contains("dependsOn(managedSqliteProvisioning.prepareTask)"));
@@ -209,6 +229,16 @@ class CliDistributionBuildContractTest {
             "from(managedSqliteProvisioning.toolchainFingerprintPath)"));
     assertTrue(
         dockerContextRegistration.contains("from(managedSqliteProvisioning.buildContractPath)"));
+  }
+
+  private static String kotlinStringConstant(String kotlinSource, String constantName) {
+    Matcher matcher =
+        Pattern.compile(
+                "const val " + Pattern.quote(constantName) + "\\s*=\\s*\"([^\"]+)\"",
+                Pattern.MULTILINE)
+            .matcher(kotlinSource);
+    assertTrue(matcher.find(), "Expected Kotlin constant " + constantName + " to exist.");
+    return matcher.group(1);
   }
 
   private static void assertManagedSqliteProvisioningUsesNamedModuleAccess(
@@ -276,7 +306,7 @@ class CliDistributionBuildContractTest {
   }
 
   @Test
-  void sourceCheckoutWrappers_refreshCachedRawJarAgainstLiveSourceHashes() throws IOException {
+  void sourceCheckoutWrappers_prepareAndLaunchOnePreparedRuntimeSurface() throws IOException {
     Path repositoryRoot = repositoryRoot();
     String shellSupport =
         Files.readString(repositoryRoot.resolve("scripts/gradle-wrapper-support.sh"));
@@ -303,11 +333,19 @@ class CliDistributionBuildContractTest {
     assertTrue(shellWrapperEntrypoint.contains("source-checkout-cli-common.sh"));
     assertTrue(shellWrapperCommon.contains("fg_gradle_source_checkout_runtime_manifest_path"));
     assertTrue(shellWrapperCommon.contains("fg_cli_wrapper_load_runtime_manifest"));
+    assertTrue(shellWrapperCommon.contains("fg_cli_wrapper_prepare_runtime_if_needed"));
+    assertTrue(shellWrapperCommon.contains("./gradlew :cli:prepareSourceCheckoutCliRuntime"));
+    assertFalse(shellWrapperCommon.contains("fg_cli_wrapper_runtime_is_current"));
+    assertFalse(shellWrapperCommon.contains("runtimeInput)"));
     assertTrue(
         shellWrapperCommon.contains(
-            "./gradlew \\\n            :cli:writeSourceCheckoutRuntimeManifest \\\n            prepareManagedSqlite"));
+            "./gradlew :cli:prepareSourceCheckoutCliRuntime --quiet >/dev/null"));
     assertTrue(powerShellWrapperCommon.contains("Invoke-FinGrindEnsureCliWrapperRuntime"));
     assertTrue(powerShellWrapperCommon.contains("Read-FinGrindSourceCheckoutRuntimeManifest"));
+    assertTrue(powerShellWrapperCommon.contains("repo-locks/cli-runtime-prepare.lock"));
+    assertFalse(powerShellWrapperCommon.contains("Test-FinGrindCliWrapperRuntimeIsCurrent"));
+    assertFalse(powerShellWrapperCommon.contains("RuntimeInputs = @($runtimeInputs)"));
+    assertTrue(powerShellWrapperCommon.contains("New-Item -ItemType Directory"));
     assertTrue(sourceCheckoutPowerShell.contains("source-checkout-cli-common.ps1"));
     assertTrue(directJavaPowerShell.contains("source-checkout-cli-common.ps1"));
   }
@@ -317,7 +355,7 @@ class CliDistributionBuildContractTest {
       throws IOException {
     String buildScript = Files.readString(repositoryRoot().resolve("cli/build.gradle.kts"));
 
-    assertTrue(buildScript.contains("\"Automatic-Module-Name\" to \"fingrind\""));
+    assertTrue(buildScript.contains("\"Automatic-Module-Name\" to \"dev.erst.fingrind.cli\""));
     assertFalse(buildScript.contains("\"Enable-Native-Access\" to \"ALL-UNNAMED\""));
     assertFalse(buildScript.contains("FinGrind-Source-Checkout-Root"));
     assertFalse(buildScript.contains("FinGrind-Source-Checkout-Build-Root"));
@@ -334,20 +372,22 @@ class CliDistributionBuildContractTest {
     String dockerEntrypoint =
         Files.readString(repositoryRoot.resolve("cli/src/docker/docker-entrypoint.sh"));
 
-    assertTrue(buildScript.contains("\"Automatic-Module-Name\" to \"fingrind\""));
+    assertTrue(buildScript.contains("\"Automatic-Module-Name\" to \"dev.erst.fingrind.cli\""));
     assertTrue(
-        posixBundleLauncher.contains("application_module='fingrind/dev.erst.fingrind.cli.App'"));
-    assertTrue(posixBundleLauncher.contains("--enable-native-access=fingrind"));
+        posixBundleLauncher.contains(
+            "application_module='dev.erst.fingrind.cli/dev.erst.fingrind.cli.App'"));
+    assertTrue(posixBundleLauncher.contains("--enable-native-access=dev.erst.fingrind.cli"));
     assertTrue(posixBundleLauncher.contains("--module \"${application_module}\""));
     assertTrue(
         powerShellBundleLauncher.contains(
-            "$applicationModule = \"fingrind/dev.erst.fingrind.cli.App\""));
-    assertTrue(powerShellBundleLauncher.contains("--enable-native-access=fingrind"));
+            "$applicationModule = \"dev.erst.fingrind.cli/dev.erst.fingrind.cli.App\""));
+    assertTrue(powerShellBundleLauncher.contains("--enable-native-access=dev.erst.fingrind.cli"));
     assertTrue(powerShellBundleLauncher.contains("\"--module\","));
     assertTrue(powerShellBundleLauncher.contains("$applicationModule"));
     assertTrue(
-        dockerEntrypoint.contains("application_module=\"fingrind/dev.erst.fingrind.cli.App\""));
-    assertTrue(dockerEntrypoint.contains("--enable-native-access=fingrind"));
+        dockerEntrypoint.contains(
+            "application_module=\"dev.erst.fingrind.cli/dev.erst.fingrind.cli.App\""));
+    assertTrue(dockerEntrypoint.contains("--enable-native-access=dev.erst.fingrind.cli"));
     assertTrue(dockerEntrypoint.contains("--module \"${application_module}\""));
   }
 

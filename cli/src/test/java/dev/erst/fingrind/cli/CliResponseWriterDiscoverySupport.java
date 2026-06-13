@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
@@ -59,7 +60,7 @@ class CliResponseWriterDiscoverySupport extends CliResponseWriterBaseSupport {
     discoveryWriter.writeRawTemplate(requestTemplate);
   }
 
-  void writePlanTemplate(ContractTemplates.LedgerPlanTemplateDescriptor planTemplate) {
+  void writePlanTemplate(ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate) {
     discoveryWriter.writeRawTemplate(planTemplate);
   }
 

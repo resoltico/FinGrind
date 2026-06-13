@@ -20,22 +20,26 @@
     </rule>
 
     <rule ref="category/java/bestpractices.xml">
+        <!-- Tests optimize for assertion intent and locality rather than repeated message boilerplate. -->
         <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
+        <!-- Wide CLI and protocol matrices legitimately assert several facets of one scenario. -->
         <exclude name="UnitTestContainsTooManyAsserts"/>
     </rule>
 
     <rule ref="category/java/design.xml">
-        <!-- Demeter violations are too noisy for a layered facade API -->
+        <!-- Demeter violations are too noisy for a layered facade API. -->
         <exclude name="LawOfDemeter"/>
-        <!-- Requires explicit package configurations to be useful -->
+        <!-- LoosePackageCoupling requires explicit package configurations to be useful. -->
         <exclude name="LoosePackageCoupling"/>
-        <!-- Produces false positives on well-structured value/command objects -->
+        <!-- DataClass produces false positives on well-structured value and command objects. -->
         <exclude name="DataClass"/>
-        <!-- Test helpers legitimately import many assertion/fixture types -->
+        <!-- Test helpers legitimately import many assertion and fixture types. -->
         <exclude name="ExcessiveImports"/>
-        <!-- Test classes legitimately contain many test methods -->
+        <!-- Test classes legitimately contain many test methods. -->
         <exclude name="TooManyMethods"/>
         <exclude name="GodClass"/>
+        <!-- File and method size governance lives in FinGrind's structural-governance engine rather than PMD's ambient NCSS defaults. -->
+        <exclude name="NcssCount"/>
     </rule>
 
     <rule ref="category/java/design.xml/GodClass"/>
@@ -60,7 +64,7 @@
     </rule>
 
     <rule ref="category/java/multithreading.xml">
-        <!-- Tests are allowed to create threads explicitly for concurrency scenarios -->
+        <!-- Tests are allowed to create threads explicitly for concurrency scenarios. -->
         <exclude name="DoNotUseThreads"/>
     </rule>
 

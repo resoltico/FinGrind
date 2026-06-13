@@ -48,20 +48,23 @@ final class ProtectedBookRestoreWorkflow {
     return support.continueWithVerifiedBook(
         backupAccess,
         ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
-        ignoredVerified ->
+        verifiedBackup ->
             restoreVerifiedBook(
-                normalizedBookPath, normalizedBackupFilePath, normalizedBackupBookKeyFilePath),
+                normalizedBookPath,
+                verifiedBackup,
+                normalizedBackupFilePath,
+                normalizedBackupBookKeyFilePath),
         ProtectedBookRestoreOutcome.Rejected::new);
   }
 
   private MaintenanceDecision<ProtectedBookRestoreOutcome> restoreVerifiedBook(
       Path normalizedBookPath,
+      ProtectedBookMaintenanceStore.VerifiedBook verifiedBackup,
       Path normalizedBackupFilePath,
       Path normalizedBackupBookKeyFilePath) {
     return support.restoreVerifiedSourceArtifact(
         normalizedBookPath,
-        normalizedBackupFilePath,
-        new ProtectedBookPassphraseSource.KeyFile(normalizedBackupBookKeyFilePath),
+        verifiedBackup,
         ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
         ProtectedBookMaintenanceAuditKind.BACKUP_RESTORED,
         ProtectedBookRestoreOutcome.Rejected::new,

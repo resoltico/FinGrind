@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: DEVELOPER_AGGREGATES
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, aggregates, consistency boundary, bookkeeping, workflow, account registry, posting ledger, audit stream, idempotency]
   questions: ["what are fingrind's aggregate boundaries", "which service owns a bookkeeping invariant in fingrind", "where is transaction consistency enforced in fingrind"]

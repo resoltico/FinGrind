@@ -143,12 +143,8 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
                               command.name(),
                               ProtocolCatalog.operation(command.name()).category().wireValue()))
                   .toList(),
-              filteredCommands.stream()
-                  .map(
-                      command ->
-                          commandSurfacePayload(
-                              command, capabilitiesDescriptor.requestInput().requestFileCommands()))
-                  .toList(),
+              commandSurfacePayloads(
+                  filteredCommands, capabilitiesDescriptor.requestInput().requestFileCommands()),
               null);
       case FULL ->
           new CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload(
@@ -163,6 +159,13 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               null,
               filteredCommands);
     };
+  }
+
+  static List<CliDiscoveryCommonJsonModels.CommandSurfacePayload> commandSurfacePayloads(
+      List<CommandDescriptor> commands, List<String> requestFileCommands) {
+    return commands.stream()
+        .map(command -> commandSurfacePayload(command, requestFileCommands))
+        .toList();
   }
 
   private static CliDiscoveryCommonJsonModels.CommandSurfacePayload commandSurfacePayload(
@@ -212,7 +215,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
     return List.of(
         "Run '"
             + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-            + "' for a runnable request scaffold.");
+            + "' for a placeholder-first request scaffold.");
   }
 
   private static ProtocolSuccessPayload responseContractSlicePayload(

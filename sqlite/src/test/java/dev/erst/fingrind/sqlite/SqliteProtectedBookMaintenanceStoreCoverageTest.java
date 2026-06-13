@@ -14,11 +14,8 @@ import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEventKind;
 import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
-import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
@@ -26,36 +23,17 @@ import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.AclEntry;
-import java.nio.file.attribute.AclEntryPermission;
-import java.nio.file.attribute.AclEntryType;
-import java.nio.file.attribute.AclFileAttributeView;
-import java.nio.file.attribute.UserPrincipal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Focused coverage tests for staged SQLite protected-book maintenance storage. */
-class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridgeTestSupport {
-  private static final SqliteProtectedBookVerificationSupport VERIFICATION_SUPPORT =
-      new SqliteProtectedBookVerificationSupport();
-  private static final SqlitePassphraseResolver KEY_FILE_RESOLVER =
-      (resolvedBookPath, passphraseSource, intent) ->
-          switch (passphraseSource) {
-            case BookAccess.PassphraseSource.KeyFile keyFile ->
-                SqliteBookKeyFile.loadDecision(keyFile.bookKeyFilePath());
-            case BookAccess.PassphraseSource.StandardInput _ ->
-                throw new AssertionError("This coverage suite uses key-file-backed access only.");
-            case BookAccess.PassphraseSource.InteractivePrompt _ ->
-                throw new AssertionError("This coverage suite uses key-file-backed access only.");
-          };
+class SqliteProtectedBookMaintenanceStoreCoverageTest
+    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
 
   @Test
   void verifyInitializedBook_mapsMissingBlankAndWrongKeyFailures() throws Exception {
@@ -131,10 +109,11 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     Path backupFilePath = tempDirectory.resolve("backup").resolve("source.sqlite");
     Path backupBookKeyFilePath = tempDirectory.resolve("backup").resolve("source.key");
 
-    try (StagedBackupPair stagedBackupPair =
-        acceptedValue(
-            store.stageBackupPair(
-                localAccess(sourceAccess), backupFilePath, backupBookKeyFilePath))) {
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
+            verifiedBook(store, sourceAccess);
+        StagedBackupPair stagedBackupPair =
+            acceptedValue(
+                store.stageBackupPair(verifiedSourceBook, backupFilePath, backupBookKeyFilePath))) {
       assertFalse(Files.exists(backupFilePath));
       assertFalse(Files.exists(backupBookKeyFilePath));
       assertInstanceOf(
@@ -145,13 +124,13 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
 
     assertTrue(Files.exists(backupFilePath));
     assertTrue(Files.exists(backupBookKeyFilePath));
-    assertInstanceOf(
-        ProtectedBookMaintenanceStore.VerifiedBook.class,
-        acceptedValue(
-            store.verifyInitializedBook(
-                new ProtectedBookAccess(
-                    backupFilePath,
-                    new ProtectedBookPassphraseSource.KeyFile(backupBookKeyFilePath)))));
+    try (ProtectedBookMaintenanceStore.VerifiedBook ignored =
+        verifiedBook(
+            store,
+            new BookAccess(
+                backupFilePath, new BookAccess.PassphraseSource.KeyFile(backupBookKeyFilePath)))) {
+      assertEquals(backupFilePath.toAbsolutePath().normalize(), ignored.artifactPath());
+    }
   }
 
   @Test
@@ -199,12 +178,16 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     BookAccess bookAccess = bookAccess(bookPath);
     initializeBook(bookAccess);
 
-    MaintenanceCompletion completion =
-        acceptedValue(
-            store.appendMaintenanceAudit(
-                localAccess(bookAccess),
-                Instant.parse("2026-05-19T11:45:00Z"),
-                ProtectedBookMaintenanceAuditKind.BACKUP_CREATED));
+    MaintenanceCompletion completion;
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
+        verifiedBook(store, bookAccess)) {
+      completion =
+          acceptedValue(
+              store.appendMaintenanceAudit(
+                  verifiedBook,
+                  Instant.parse("2026-05-19T11:45:00Z"),
+                  ProtectedBookMaintenanceAuditKind.BACKUP_CREATED));
+    }
 
     assertEquals(MaintenanceCompletion.DONE, completion);
     assertEquals(1, auditEventCount(bookAccess, "BACKUP_CREATED"));
@@ -227,24 +210,6 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
 
     assertFailedDescriptor(
         failingStore.verifyInitializedBook(localAccess(access)),
-        ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE);
-    assertFailedDescriptor(
-        failingStore.stageBackupPair(
-            localAccess(access),
-            tempDirectory.resolve("resolver-failure").resolve("backup.sqlite"),
-            tempDirectory.resolve("resolver-failure").resolve("backup.key")),
-        ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE);
-    assertFailedDescriptor(
-        failingStore.appendMaintenanceAudit(
-            localAccess(access),
-            Instant.parse("2026-05-19T12:10:00Z"),
-            ProtectedBookMaintenanceAuditKind.BACKUP_CREATED),
-        ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE);
-    assertFailedDescriptor(
-        failingStore.appendMaintenanceAuditCompensation(
-            localAccess(access),
-            Instant.parse("2026-05-19T12:11:00Z"),
-            ProtectedBookMaintenanceAuditCompensationKind.BACKUP_CREATED),
         ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE);
 
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
@@ -308,10 +273,12 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
 
     Path closedBackupFilePath = tempDirectory.resolve("guarded-stage").resolve("closed.sqlite");
     Path closedBackupKeyFilePath = tempDirectory.resolve("guarded-stage").resolve("closed.key");
-    try (StagedBackupPair stagedBackupPair =
-        acceptedValue(
-            store.stageBackupPair(
-                localAccess(sourceAccess), closedBackupFilePath, closedBackupKeyFilePath))) {
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
+            verifiedBook(store, sourceAccess);
+        StagedBackupPair stagedBackupPair =
+            acceptedValue(
+                store.stageBackupPair(
+                    verifiedSourceBook, closedBackupFilePath, closedBackupKeyFilePath))) {
       stagedBackupPair.close();
     }
     assertFalse(Files.exists(closedBackupFilePath));
@@ -320,12 +287,14 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     Path backupDirectoryTarget = tempDirectory.resolve("guarded-stage").resolve("backup-directory");
     Files.createDirectories(backupDirectoryTarget);
     Files.writeString(backupDirectoryTarget.resolve("child.txt"), "child");
-    try (StagedBackupPair stagedBackupPair =
-        acceptedValue(
-            store.stageBackupPair(
-                localAccess(sourceAccess),
-                backupDirectoryTarget,
-                tempDirectory.resolve("guarded-stage").resolve("backup-directory.key")))) {
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
+            verifiedBook(store, sourceAccess);
+        StagedBackupPair stagedBackupPair =
+            acceptedValue(
+                store.stageBackupPair(
+                    verifiedSourceBook,
+                    backupDirectoryTarget,
+                    tempDirectory.resolve("guarded-stage").resolve("backup-directory.key")))) {
       IllegalStateException publishFailure =
           assertThrows(IllegalStateException.class, stagedBackupPair::commit);
       assertTrue(
@@ -340,10 +309,12 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     Path failingKeyDirectory = tempDirectory.resolve("guarded-stage").resolve("key-directory");
     Files.createDirectories(failingKeyDirectory);
     Files.writeString(failingKeyDirectory.resolve("child.txt"), "child");
-    try (StagedBackupPair stagedBackupPair =
-        acceptedValue(
-            store.stageBackupPair(
-                localAccess(sourceAccess), publishedBackupFilePath, failingKeyDirectory))) {
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
+            verifiedBook(store, sourceAccess);
+        StagedBackupPair stagedBackupPair =
+            acceptedValue(
+                store.stageBackupPair(
+                    verifiedSourceBook, publishedBackupFilePath, failingKeyDirectory))) {
       IllegalStateException publishFailure =
           assertThrows(IllegalStateException.class, stagedBackupPair::commit);
       assertTrue(
@@ -419,74 +390,76 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     Path bookPath = tempDirectory.resolve("helpers").resolve("book.sqlite");
     BookAccess access = bookAccess(bookPath);
     initializeBook(access);
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedBook = verifiedBook(store, access)) {
+      Path walPath = bookPath.resolveSibling(bookPath.getFileName().toString() + "-wal");
+      Path rollbackArtifactPath =
+          bookPath.resolveSibling(
+              bookPath.getFileName().toString() + ".rekey-rollback-test.sqlite");
+      Files.writeString(walPath, "wal");
+      Files.writeString(rollbackArtifactPath, "rollback");
 
-    Path walPath = bookPath.resolveSibling(bookPath.getFileName().toString() + "-wal");
-    Path rollbackArtifactPath =
-        bookPath.resolveSibling(bookPath.getFileName().toString() + ".rekey-rollback-test.sqlite");
-    Files.writeString(walPath, "wal");
-    Files.writeString(rollbackArtifactPath, "rollback");
-
-    assertEquals(
-        List.of(
-            walPath.toAbsolutePath().normalize(),
-            rollbackArtifactPath.toAbsolutePath().normalize()),
-        store.blockingArtifactsForBook(bookPath.toAbsolutePath().normalize()));
-    assertEquals(
-        List.of(
-            walPath.toAbsolutePath().normalize(),
-            rollbackArtifactPath.toAbsolutePath().normalize()),
-        store.blockingArtifactsForBackupSource(bookPath.toAbsolutePath().normalize()));
-    assertEquals(
-        List.of(rollbackArtifactPath.toAbsolutePath().normalize()),
-        store.staleRollbackArtifacts(bookPath.toAbsolutePath().normalize()));
-    assertTrue(
-        store.isRollbackArtifactForBook(
-            bookPath.toAbsolutePath().normalize(),
-            rollbackArtifactPath.toAbsolutePath().normalize()));
-
-    try (ProtectedBookMaintenanceStore.HeldLease managedLease =
-            acceptedLease(
-                store.acquireManagedArtifactLease(
-                    tempDirectory.resolve("managed").resolve("book.sqlite")));
-        ProtectedBookMaintenanceStore.HeldLease existingLease =
-            acceptedLease(
-                store.acquireExistingArtifactLease(bookPath.toAbsolutePath().normalize()))) {
+      assertEquals(
+          List.of(
+              walPath.toAbsolutePath().normalize(),
+              rollbackArtifactPath.toAbsolutePath().normalize()),
+          store.blockingArtifactsForBook(bookPath.toAbsolutePath().normalize()));
+      assertEquals(
+          List.of(
+              walPath.toAbsolutePath().normalize(),
+              rollbackArtifactPath.toAbsolutePath().normalize()),
+          store.blockingArtifactsForBackupSource(bookPath.toAbsolutePath().normalize()));
+      assertEquals(
+          List.of(rollbackArtifactPath.toAbsolutePath().normalize()),
+          store.staleRollbackArtifacts(bookPath.toAbsolutePath().normalize()));
       assertTrue(
-          Files.exists(
-              managedLease
-                  .artifactPath()
-                  .resolveSibling(
-                      managedLease.artifactPath().getFileName() + ".fingrind-maintenance.lock")));
-      assertEquals(bookPath.toAbsolutePath().normalize(), existingLease.artifactPath());
-    }
+          store.isRollbackArtifactForBook(
+              bookPath.toAbsolutePath().normalize(),
+              rollbackArtifactPath.toAbsolutePath().normalize()));
 
-    acceptedValue(
-        store.appendMaintenanceAudit(
-            localAccess(access),
-            Instant.parse("2026-05-19T12:00:00Z"),
-            ProtectedBookMaintenanceAuditKind.BACKUP_CREATED));
-    acceptedValue(
-        store.appendMaintenanceAudit(
-            localAccess(access),
-            Instant.parse("2026-05-19T12:05:00Z"),
-            ProtectedBookMaintenanceAuditKind.BACKUP_CREATED));
-    assertEquals(2, auditEventCount(access, "BACKUP_CREATED"));
-    assertEquals(
-        MaintenanceCompletion.DONE,
-        acceptedValue(
-            store.appendMaintenanceAuditCompensation(
-                localAccess(access),
-                Instant.parse("2026-05-19T12:05:00Z"),
-                ProtectedBookMaintenanceAuditCompensationKind.BACKUP_CREATED)));
-    assertEquals(2, auditEventCount(access, "BACKUP_CREATED"));
-    assertEquals(1, auditEventCount(access, "BACKUP_CREATED_COMPENSATED"));
-    assertEquals(
-        MaintenanceCompletion.DONE,
-        acceptedValue(
-            store.appendMaintenanceAuditCompensation(
-                localAccess(access),
-                Instant.parse("2026-05-19T12:06:00Z"),
-                ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED)));
+      try (ProtectedBookMaintenanceStore.HeldLease managedLease =
+              acceptedLease(
+                  store.acquireManagedArtifactLease(
+                      tempDirectory.resolve("managed").resolve("book.sqlite")));
+          ProtectedBookMaintenanceStore.HeldLease existingLease =
+              acceptedLease(
+                  store.acquireExistingArtifactLease(bookPath.toAbsolutePath().normalize()))) {
+        assertTrue(
+            Files.exists(
+                managedLease
+                    .artifactPath()
+                    .resolveSibling(
+                        managedLease.artifactPath().getFileName() + ".fingrind-maintenance.lock")));
+        assertEquals(bookPath.toAbsolutePath().normalize(), existingLease.artifactPath());
+      }
+
+      acceptedValue(
+          store.appendMaintenanceAudit(
+              verifiedBook,
+              Instant.parse("2026-05-19T12:00:00Z"),
+              ProtectedBookMaintenanceAuditKind.BACKUP_CREATED));
+      acceptedValue(
+          store.appendMaintenanceAudit(
+              verifiedBook,
+              Instant.parse("2026-05-19T12:05:00Z"),
+              ProtectedBookMaintenanceAuditKind.BACKUP_CREATED));
+      assertEquals(2, auditEventCount(access, "BACKUP_CREATED"));
+      assertEquals(
+          MaintenanceCompletion.DONE,
+          acceptedValue(
+              store.appendMaintenanceAuditCompensation(
+                  verifiedBook,
+                  Instant.parse("2026-05-19T12:05:00Z"),
+                  ProtectedBookMaintenanceAuditCompensationKind.BACKUP_CREATED)));
+      assertEquals(2, auditEventCount(access, "BACKUP_CREATED"));
+      assertEquals(1, auditEventCount(access, "BACKUP_CREATED_COMPENSATED"));
+      assertEquals(
+          MaintenanceCompletion.DONE,
+          acceptedValue(
+              store.appendMaintenanceAuditCompensation(
+                  verifiedBook,
+                  Instant.parse("2026-05-19T12:06:00Z"),
+                  ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED)));
+    }
     assertEquals(1, auditEventCount(access, "REKEY_ROLLBACK_DELETED_COMPENSATED"));
   }
 
@@ -634,9 +607,15 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     BookAccess bogusSourceAccess = bookAccess(bogusSourcePath);
     Path backupFilePath = tempDirectory.resolve("failed-stage").resolve("backup.sqlite");
     Path backupKeyPath = tempDirectory.resolve("failed-stage").resolve("backup.key");
-    assertThrows(
-        RuntimeException.class,
-        () -> store.stageBackupPair(localAccess(bogusSourceAccess), backupFilePath, backupKeyPath));
+    try (SqliteBookPassphrase bogusPassphrase =
+            SqliteStoreFixtureSupport.loadPassphrase(bogusSourceAccess);
+        SqliteVerifiedBook bogusVerifiedBook =
+            new SqliteVerifiedBook(
+                bogusSourcePath.toAbsolutePath().normalize(), bogusPassphrase.copy())) {
+      assertThrows(
+          RuntimeException.class,
+          () -> store.stageBackupPair(bogusVerifiedBook, backupFilePath, backupKeyPath));
+    }
     try (var children =
         Files.list(java.util.Objects.requireNonNull(backupFilePath.getParent(), "backup parent"))) {
       assertFalse(children.anyMatch(path -> path.getFileName().toString().contains(".backup-")));
@@ -645,23 +624,25 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     Path auditFailureBookPath = tempDirectory.resolve("audit-failure").resolve("book.sqlite");
     BookAccess auditFailureAccess = bookAccess(auditFailureBookPath);
     initializeBook(auditFailureAccess);
-    withOpenDatabase(
-        auditFailureAccess, database -> database.executeStatement("drop table audit_event"));
-
-    assertThrows(
-        SqliteNativeException.class,
-        () ->
-            store.appendMaintenanceAudit(
-                localAccess(auditFailureAccess),
-                Instant.parse("2026-05-19T12:30:00Z"),
-                ProtectedBookMaintenanceAuditKind.BACKUP_RESTORED));
-    assertThrows(
-        SqliteNativeException.class,
-        () ->
-            store.appendMaintenanceAuditCompensation(
-                localAccess(auditFailureAccess),
-                Instant.parse("2026-05-19T12:31:00Z"),
-                ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED));
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
+        verifiedBook(store, auditFailureAccess)) {
+      withOpenDatabase(
+          auditFailureAccess, database -> database.executeStatement("drop table audit_event"));
+      assertThrows(
+          SqliteNativeException.class,
+          () ->
+              store.appendMaintenanceAudit(
+                  verifiedBook,
+                  Instant.parse("2026-05-19T12:30:00Z"),
+                  ProtectedBookMaintenanceAuditKind.BACKUP_RESTORED));
+      assertThrows(
+          SqliteNativeException.class,
+          () ->
+              store.appendMaintenanceAuditCompensation(
+                  verifiedBook,
+                  Instant.parse("2026-05-19T12:31:00Z"),
+                  ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED));
+    }
     withOpenDatabase(
         auditFailureAccess,
         database ->
@@ -677,10 +658,12 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
     Path finalBackupFilePath = tempDirectory.resolve("nested-rollback").resolve("backup.sqlite");
     Path finalBackupKeyFilePath = tempDirectory.resolve("nested-rollback").resolve("backup.key");
 
-    try (StagedBackupPair stagedBackupPair =
-        acceptedValue(
-            store.stageBackupPair(
-                localAccess(sourceAccess), finalBackupFilePath, finalBackupKeyFilePath))) {
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
+            verifiedBook(store, sourceAccess);
+        StagedBackupPair stagedBackupPair =
+            acceptedValue(
+                store.stageBackupPair(
+                    verifiedSourceBook, finalBackupFilePath, finalBackupKeyFilePath))) {
       Files.writeString(finalBackupFilePath, "published-backup");
       Files.writeString(finalBackupKeyFilePath, "published-key");
       setPrivateField(stagedBackupPair, "backupPassphrase", null);
@@ -845,182 +828,5 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest extends SqliteNativeBridge
       assertFalse(sourcePath.exists);
       assertTrue(targetPath.exists);
     }
-  }
-
-  private static ProtectedBookMaintenanceStore.HeldLease acceptedLease(
-      ProtectedBookMaintenanceStore.LeaseAcquisition acquisition) {
-    return switch (acquisition) {
-      case ProtectedBookMaintenanceStore.HeldLease heldLease -> heldLease;
-      case ProtectedBookMaintenanceStore.LeaseBusy leaseBusy ->
-          throw new AssertionError(
-              "Expected one acquired lease but got busy: " + leaseBusy.artifactPath());
-    };
-  }
-
-  private SqliteProtectedBookMaintenanceStore maintenanceStore() {
-    return new SqliteProtectedBookMaintenanceStore(KEY_FILE_RESOLVER);
-  }
-
-  private static ProtectedBookAccess localAccess(BookAccess bookAccess) {
-    return ProtectedBookAccess.fromPublished(bookAccess);
-  }
-
-  private void initializeBook(BookAccess bookAccess) {
-    try {
-      Path parentDirectory = bookAccess.bookFilePath().getParent();
-      if (parentDirectory != null) {
-        Files.createDirectories(parentDirectory);
-        SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parentDirectory);
-      }
-    } catch (IOException exception) {
-      throw new IllegalStateException("Failed to create the test book directory.", exception);
-    }
-    withOpenDatabase(
-        bookAccess,
-        database -> {
-          SqliteBookSchemaBootstrap.initializeBook(database);
-          SqliteStoreFixtureSupport.insertCanonicalInitializedBookMetadata(database);
-          SqliteAuditEventWriter.insertAuditEvent(
-              database, BookAuditEvent.bookOpened(Instant.parse("2026-05-19T09:00:00Z")));
-        });
-  }
-
-  private Path writeArtifact(String fileName, String content) throws IOException {
-    Path artifactPath = tempDirectory.resolve(fileName);
-    Path parent = artifactPath.getParent();
-    if (parent != null) {
-      Files.createDirectories(parent);
-      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
-    }
-    Files.writeString(artifactPath, content);
-    return artifactPath;
-  }
-
-  private int auditEventCount(BookAccess bookAccess, String eventKind) {
-    final int[] count = new int[1];
-    withOpenDatabase(
-        bookAccess,
-        database -> {
-          try (SqliteNativeStatement statement =
-              SqliteNativeStatements.prepare(
-                  database,
-                  "select count(*) from audit_event where event_kind = '" + eventKind + "'")) {
-            assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
-            count[0] = statement.columnInt(0);
-            assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
-          }
-        });
-    return count[0];
-  }
-
-  private static Path maintenanceJournalPath(Path bookPath) {
-    return bookPath.resolveSibling(bookPath.getFileName().toString() + ".maintenance-log.jsonl");
-  }
-
-  private static <T> T acceptedValue(MaintenanceDecision<T> decision) {
-    return switch (decision) {
-      case MaintenanceDecision.Accepted<T>(T value) -> value;
-      case MaintenanceDecision.Failed<T>(MaintenanceFailure failure) ->
-          throw new AssertionError("Expected accepted maintenance decision but got " + failure);
-    };
-  }
-
-  private static void assertFailedDescriptor(
-      MaintenanceDecision<?> decision, ContractErrors.Descriptor expectedDescriptor) {
-    MaintenanceFailure failure =
-        switch (decision) {
-          case MaintenanceDecision.Accepted<?> accepted ->
-              throw new AssertionError("Expected failed maintenance decision but got " + accepted);
-          case MaintenanceDecision.Failed<?> failed -> failed.failure();
-        };
-    assertEquals(expectedDescriptor, failure.descriptor());
-  }
-
-  private static void assertVerificationFailure(
-      ProtectedBookMaintenanceStore.BookVerification verification,
-      Path expectedArtifactPath,
-      ProtectedBookVerificationFailure expectedFailure) {
-    ProtectedBookMaintenanceStore.VerificationFailure failure =
-        assertInstanceOf(ProtectedBookMaintenanceStore.VerificationFailure.class, verification);
-    assertEquals(expectedArtifactPath.toAbsolutePath().normalize(), failure.artifactPath());
-    assertEquals(expectedFailure, failure.failure());
-  }
-
-  private static StagedBookReplacement newStagedReplacement(
-      Path stagedBookPath, Path targetBookPath, @Nullable Path previousTargetBackupPath) {
-    return new SqliteStagedBookReplacement(
-        stagedBookPath, targetBookPath, previousTargetBackupPath);
-  }
-
-  private static void setPrivateField(Object target, String fieldName, @Nullable Object value) {
-    try {
-      MethodHandles.Lookup lookup =
-          MethodHandles.privateLookupIn(target.getClass(), MethodHandles.lookup());
-      switch (fieldName) {
-        case "backupPassphrase" -> {
-          VarHandle field =
-              lookup.findVarHandle(target.getClass(), fieldName, SqliteBookPassphrase.class);
-          field.set(target, value);
-        }
-        case "backupFilePublished", "backupKeyFilePublished" -> {
-          VarHandle field = lookup.findVarHandle(target.getClass(), fieldName, boolean.class);
-          field.set(
-              target,
-              ((Boolean) java.util.Objects.requireNonNull(value, fieldName)).booleanValue());
-        }
-        default ->
-            throw new IllegalArgumentException("Unsupported private test field: " + fieldName);
-      }
-    } catch (IllegalAccessException | NoSuchFieldException exception) {
-      throw new LinkageError(
-          "Failed to set one private field on the maintenance test fixture: " + fieldName + ".",
-          exception);
-    }
-  }
-
-  private static AclEntry ownerDirectoryAccessEntry(UserPrincipal owner) {
-    return AclEntry.newBuilder()
-        .setType(AclEntryType.ALLOW)
-        .setPrincipal(owner)
-        .setPermissions(
-            Set.of(
-                AclEntryPermission.LIST_DIRECTORY,
-                AclEntryPermission.ADD_FILE,
-                AclEntryPermission.EXECUTE))
-        .build();
-  }
-
-  /** ACL view test double that throws while hardening attempts to rewrite ACL entries. */
-  private static final class ThrowingAclFileAttributeView implements AclFileAttributeView {
-    private final UserPrincipal owner;
-    private final String message;
-
-    private ThrowingAclFileAttributeView(UserPrincipal owner, String message) {
-      this.owner = java.util.Objects.requireNonNull(owner, "owner");
-      this.message = java.util.Objects.requireNonNull(message, "message");
-    }
-
-    @Override
-    public String name() {
-      return "acl";
-    }
-
-    @Override
-    public List<AclEntry> getAcl() {
-      return List.of();
-    }
-
-    @Override
-    public void setAcl(List<AclEntry> acl) throws IOException {
-      throw new IOException(message);
-    }
-
-    @Override
-    public UserPrincipal getOwner() {
-      return owner;
-    }
-
-    @Override
-    public void setOwner(UserPrincipal owner) {}
   }
 }

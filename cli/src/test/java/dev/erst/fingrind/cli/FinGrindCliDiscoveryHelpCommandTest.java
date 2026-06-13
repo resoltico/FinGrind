@@ -36,8 +36,8 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     assertTrue(help.contains("open-book"));
     assertTrue(help.contains("declare-account"));
     assertTrue(help.contains("list-accounts"));
-    assertTrue(help.contains("Command Families"));
-    assertTrue(help.contains("First Successful Run"));
+    assertTrue(help.contains("Command Catalog"));
+    assertTrue(help.contains("Quick Start"));
     assertTrue(help.contains("Generate one key file"));
     assertTrue(help.contains("Review the seeded starter chart"));
     assertTrue(help.contains("Create the first request"));
@@ -63,10 +63,10 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     int exitCode = cli.run(new String[] {"help", "post-entry", "--output", "text"});
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(help.contains("Try It"));
-    assertTrue(help.contains("Before You Run"));
-    assertTrue(help.contains("Request File"));
-    assertTrue(help.contains("Command Syntax"));
+    assertTrue(help.contains("Examples"));
+    assertTrue(help.contains("Preparation"));
+    assertTrue(help.contains("Input Contract"));
+    assertTrue(help.contains("Grammar"));
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("--request-file <path|->"));
     assertTrue(
@@ -170,8 +170,8 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("post-entry"));
-    assertTrue(help.contains("Try It"));
-    assertTrue(help.contains("Request File"));
+    assertTrue(help.contains("Examples"));
+    assertTrue(help.contains("Input Contract"));
   }
 
   @Test
@@ -183,8 +183,11 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     assertEquals(0, exitCode);
     String help = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(help.contains("declare-account"));
-    assertTrue(help.contains("runnable sample document"));
-    assertTrue(containsCollapsedText(help, "placeholder evidence and provenance values"));
+    assertTrue(help.contains("placeholder-first scaffold"));
+    assertTrue(
+        containsCollapsedText(
+            help,
+            "Replace every replace-before-commit token before submitting it to a live book."));
   }
 
   @Test

@@ -17,13 +17,12 @@ internal data class JavaSourceShapeBudget(
 )
 
 internal data class ReviewedJavaSourceApproval(
-    val approvedPhysicalLines: Int,
-    val approvedLogicalLines: Int,
-    val approvedImports: Int,
+    val approvedShape: JavaSourceShapeMetrics,
     val expiresOn: LocalDate,
 )
 
 internal data class ReviewedJavaSourceSurface(
+    val projectPath: String,
     val relativePath: String,
     val owner: String,
     val reason: String,

@@ -5,14 +5,20 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot "source-checkout-cli-common.ps1")
 
 $context = Get-FinGrindCliWrapperContext -ScriptRoot $PSScriptRoot
+$gradlePrepareCommand =
+    if (Get-FinGrindIsWindowsHost) {
+        ".\\gradlew.bat :cli:prepareSourceCheckoutCliRuntime"
+    } else {
+        "./gradlew :cli:prepareSourceCheckoutCliRuntime"
+    }
 
 $runtimeManifest =
     Invoke-FinGrindEnsureCliWrapperRuntime `
         -Context $context `
         -ArtifactLabel "developer raw JAR" `
-        -GradleTasks @(":cli:writeSourceCheckoutRuntimeManifest", "prepareManagedSqlite") `
-        -RuntimeManifestMissingMessage "missing source-checkout runtime manifest at $($context.SourceCheckoutRuntimeManifest); run .\\gradlew.bat :cli:writeSourceCheckoutRuntimeManifest" `
-        -RuntimeManifestStaleMessage "source-checkout runtime manifest at $($context.SourceCheckoutRuntimeManifest) is not synchronized with the current checkout; rerun .\\gradlew.bat :cli:writeSourceCheckoutRuntimeManifest"
+        -GradleTasks @(":cli:prepareSourceCheckoutCliRuntime") `
+        -RuntimeManifestMissingMessage "missing source-checkout runtime manifest at $($context.SourceCheckoutRuntimeManifest); run $gradlePrepareCommand" `
+        -RuntimeManifestStaleMessage "source-checkout runtime manifest at $($context.SourceCheckoutRuntimeManifest) is not synchronized with the prepared runtime; rerun $gradlePrepareCommand"
 
 Invoke-FinGrindCliWrapper `
     -Context $context `

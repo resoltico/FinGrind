@@ -77,40 +77,39 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
       return MaintenanceDecision.accepted(
           new VerificationFailure(normalizedBookPath, ProtectedBookVerificationFailure.MISSING));
     }
-    SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(normalizedBookPath);
     return passphraseResolver
         .resolve(
             normalizedBookPath,
             normalizedAccess.passphraseSource().toPublished(),
             SqlitePassphraseIntent.EXISTING_SECRET)
         .fold(
-            bookPassphrase ->
-                verificationSupport.verifyResolvedBook(normalizedBookPath, bookPassphrase),
+            bookPassphrase -> verifyInitializedResolvedBook(normalizedBookPath, bookPassphrase),
             failure -> MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(failure)));
   }
 
   @Override
   public MaintenanceDecision<StagedBackupPair> stageBackupPair(
-      ProtectedBookAccess sourceAccess,
+      VerifiedBook sourceBook,
       Path normalizedBackupFilePath,
       Path normalizedBackupBookKeyFilePath) {
-    Objects.requireNonNull(sourceAccess, "sourceAccess");
+    SqliteVerifiedBook verifiedSourceBook = requireVerifiedBook(sourceBook);
     Objects.requireNonNull(normalizedBackupFilePath, "normalizedBackupFilePath");
     Objects.requireNonNull(normalizedBackupBookKeyFilePath, "normalizedBackupBookKeyFilePath");
-    return passphraseResolver
-        .resolve(
-            sourceAccess.bookFilePath(),
-            sourceAccess.passphraseSource().toPublished(),
-            SqlitePassphraseIntent.EXISTING_SECRET)
-        .fold(
-            sourcePassphrase ->
-                SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
-                    sourceAccess.bookFilePath(),
-                    normalizedBackupFilePath,
-                    normalizedBackupBookKeyFilePath,
-                    sourcePassphrase,
-                    verificationSupport),
-            failure -> MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(failure)));
+    return SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
+        verifiedSourceBook.artifactPath(),
+        normalizedBackupFilePath,
+        normalizedBackupBookKeyFilePath,
+        verifiedSourceBook.passphraseCopy(),
+        verificationSupport);
+  }
+
+  @Override
+  public MaintenanceDecision<BookVerification> verifyInitializedReplica(
+      Path normalizedReplicaBookPath, VerifiedBook sourceBook) {
+    Objects.requireNonNull(normalizedReplicaBookPath, "normalizedReplicaBookPath");
+    SqliteVerifiedBook verifiedSourceBook = requireVerifiedBook(sourceBook);
+    return verifyInitializedResolvedBook(
+        normalizedReplicaBookPath, verifiedSourceBook.passphraseCopy());
   }
 
   @Override
@@ -149,43 +148,49 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
 
   @Override
   public MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAudit(
-      ProtectedBookAccess bookAccess,
-      Instant recordedAt,
-      ProtectedBookMaintenanceAuditKind auditKind) {
-    Objects.requireNonNull(bookAccess, "bookAccess");
+      VerifiedBook verifiedBook, Instant recordedAt, ProtectedBookMaintenanceAuditKind auditKind) {
     Objects.requireNonNull(recordedAt, "recordedAt");
     Objects.requireNonNull(auditKind, "auditKind");
-    Path normalizedBookPath = normalize(bookAccess.bookFilePath(), "bookFilePath");
-    return passphraseResolver
-        .resolve(
-            normalizedBookPath,
-            bookAccess.passphraseSource().toPublished(),
-            SqlitePassphraseIntent.EXISTING_SECRET)
-        .fold(
-            passphrase ->
-                auditSupport.appendResolvedMaintenanceAudit(
-                    normalizedBookPath, passphrase, recordedAt, auditKind),
-            failure -> MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(failure)));
+    SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
+    return auditSupport.appendResolvedMaintenanceAudit(
+        sqliteVerifiedBook.artifactPath(),
+        sqliteVerifiedBook.passphraseCopy(),
+        recordedAt,
+        auditKind);
   }
 
   @Override
   public MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAuditCompensation(
-      ProtectedBookAccess bookAccess,
+      VerifiedBook verifiedBook,
       Instant recordedAt,
       ProtectedBookMaintenanceAuditCompensationKind auditKind) {
-    Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(recordedAt, "recordedAt");
     Objects.requireNonNull(auditKind, "auditKind");
-    Path normalizedBookPath = normalize(bookAccess.bookFilePath(), "bookFilePath");
-    return passphraseResolver
-        .resolve(
-            normalizedBookPath,
-            bookAccess.passphraseSource().toPublished(),
-            SqlitePassphraseIntent.EXISTING_SECRET)
-        .fold(
-            passphrase ->
-                auditSupport.appendResolvedMaintenanceAuditCompensation(
-                    normalizedBookPath, passphrase, recordedAt, auditKind),
-            failure -> MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(failure)));
+    SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
+    return auditSupport.appendResolvedMaintenanceAuditCompensation(
+        sqliteVerifiedBook.artifactPath(),
+        sqliteVerifiedBook.passphraseCopy(),
+        recordedAt,
+        auditKind);
+  }
+
+  private MaintenanceDecision<BookVerification> verifyInitializedResolvedBook(
+      Path normalizedBookPath, SqliteBookPassphrase bookPassphrase) {
+    if (!Files.exists(normalizedBookPath, LinkOption.NOFOLLOW_LINKS)) {
+      bookPassphrase.close();
+      return MaintenanceDecision.accepted(
+          new VerificationFailure(normalizedBookPath, ProtectedBookVerificationFailure.MISSING));
+    }
+    SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(normalizedBookPath);
+    return verificationSupport.verifyResolvedBook(normalizedBookPath, bookPassphrase);
+  }
+
+  private static SqliteVerifiedBook requireVerifiedBook(VerifiedBook verifiedBook) {
+    Objects.requireNonNull(verifiedBook, "verifiedBook");
+    if (verifiedBook instanceof SqliteVerifiedBook sqliteVerifiedBook) {
+      return sqliteVerifiedBook;
+    }
+    throw new IllegalArgumentException(
+        "The SQLite maintenance store requires one verified SQLite book handle.");
   }
 }

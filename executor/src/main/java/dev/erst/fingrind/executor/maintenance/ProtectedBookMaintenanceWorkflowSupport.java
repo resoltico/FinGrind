@@ -45,14 +45,14 @@ final class ProtectedBookMaintenanceWorkflowSupport {
   }
 
   <T> MaintenanceDecision<T> compensateAuditAfterExternalCommitFailure(
-      ProtectedBookAccess liveBookAccess,
+      ProtectedBookMaintenanceStore.VerifiedBook verifiedBook,
       Instant recordedAt,
       ProtectedBookMaintenanceAuditCompensationKind auditKind,
       String failureMessage,
       String argumentName,
       RuntimeException commitFailure) {
     return store
-        .appendMaintenanceAuditCompensation(liveBookAccess, recordedAt, auditKind)
+        .appendMaintenanceAuditCompensation(verifiedBook, recordedAt, auditKind)
         .fold(
             ignoredCompletion ->
                 MaintenanceDecision.failed(
@@ -113,23 +113,23 @@ final class ProtectedBookMaintenanceWorkflowSupport {
                 return MaintenanceDecision.accepted(
                     rejectedOutcome.apply(verificationFailed(artifactRole, verificationFailure)));
               }
-              return verifiedAction.apply(
-                  (ProtectedBookMaintenanceStore.VerifiedBook) verification);
+              try (ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
+                  (ProtectedBookMaintenanceStore.VerifiedBook) verification) {
+                return verifiedAction.apply(verifiedBook);
+              }
             },
             MaintenanceDecision::failed);
   }
 
   <T> MaintenanceDecision<T> restoreVerifiedSourceArtifact(
       Path normalizedBookPath,
-      Path sourceArtifactPath,
-      ProtectedBookPassphraseSource sourcePassphraseSource,
+      ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook,
       ProtectedBookMaintenanceArtifactRole sourceArtifactRole,
       ProtectedBookMaintenanceAuditKind auditKind,
       Function<ProtectedBookMaintenanceRejection, T> rejectedOutcome,
       Supplier<T> restoredOutcome) {
     Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
-    Objects.requireNonNull(sourceArtifactPath, "sourceArtifactPath");
-    Objects.requireNonNull(sourcePassphraseSource, "sourcePassphraseSource");
+    Objects.requireNonNull(verifiedSourceBook, "verifiedSourceBook");
     Objects.requireNonNull(sourceArtifactRole, "sourceArtifactRole");
     Objects.requireNonNull(auditKind, "auditKind");
     Objects.requireNonNull(rejectedOutcome, "rejectedOutcome");
@@ -143,7 +143,7 @@ final class ProtectedBookMaintenanceWorkflowSupport {
                   ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, leaseBusy.artifactPath())));
     }
     ProtectedBookMaintenanceStore.LeaseAcquisition sourceLeaseAcquisition =
-        store.acquireExistingArtifactLease(sourceArtifactPath);
+        store.acquireExistingArtifactLease(verifiedSourceBook.artifactPath());
     if (sourceLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
       try (ProtectedBookMaintenanceStore.HeldLease ignored =
           (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition) {
@@ -156,22 +156,33 @@ final class ProtectedBookMaintenanceWorkflowSupport {
         ProtectedBookMaintenanceStore.HeldLease ignoredSourceArtifact =
             (ProtectedBookMaintenanceStore.HeldLease) sourceLeaseAcquisition;
         StagedBookReplacement stagedReplacement =
-            store.stageReplacement(sourceArtifactPath, normalizedBookPath)) {
-      ProtectedBookAccess stagedAccess =
-          new ProtectedBookAccess(stagedReplacement.stagedBookPath(), sourcePassphraseSource);
-      return continueWithVerifiedBook(
-          stagedAccess,
-          ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
-          ignoredVerified ->
-              store
-                  .appendMaintenanceAudit(stagedAccess, recordedAt(), auditKind)
-                  .fold(
-                      ignoredAudit -> {
-                        stagedReplacement.commit();
-                        return MaintenanceDecision.accepted(restoredOutcome.get());
-                      },
-                      MaintenanceDecision::failed),
-          rejectedOutcome::apply);
+            store.stageReplacement(verifiedSourceBook.artifactPath(), normalizedBookPath)) {
+      return store
+          .verifyInitializedReplica(stagedReplacement.stagedBookPath(), verifiedSourceBook)
+          .fold(
+              verification -> {
+                if (verification
+                    instanceof
+                    ProtectedBookMaintenanceStore.VerificationFailure verificationFailure) {
+                  return MaintenanceDecision.accepted(
+                      rejectedOutcome.apply(
+                          verificationFailed(
+                              ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+                              verificationFailure)));
+                }
+                try (ProtectedBookMaintenanceStore.VerifiedBook verifiedStagedBook =
+                    (ProtectedBookMaintenanceStore.VerifiedBook) verification) {
+                  return store
+                      .appendMaintenanceAudit(verifiedStagedBook, recordedAt(), auditKind)
+                      .fold(
+                          ignoredAudit -> {
+                            stagedReplacement.commit();
+                            return MaintenanceDecision.accepted(restoredOutcome.get());
+                          },
+                          MaintenanceDecision::failed);
+                }
+              },
+              MaintenanceDecision::failed);
     }
   }
 

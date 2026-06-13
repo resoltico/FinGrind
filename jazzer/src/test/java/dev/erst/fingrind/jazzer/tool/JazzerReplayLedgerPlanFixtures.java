@@ -1,8 +1,8 @@
 package dev.erst.fingrind.jazzer.tool;
 
-import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.canonicalOpenBookJson;
 import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.cashRevenueRequestJson;
-import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.declareOrdinaryAccountStepJson;
+import static dev.erst.fingrind.cli.CliFuzzLedgerPlanFixtureSupport.canonicalOpenBookJson;
+import static dev.erst.fingrind.cli.CliFuzzLedgerPlanFixtureSupport.declareOrdinaryAccountStepJson;
 
 import dev.erst.fingrind.core.AccountType;
 

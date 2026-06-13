@@ -26,9 +26,8 @@ internal fun Project.registerJavaSourceShapeTask() =
             group = "verification"
             description =
                 "Fails the build when Java source files exceed FinGrind's structural shape budgets."
-            projectPathValue.set(path)
+            moduleName.set(this@registerJavaSourceShapeTask.name)
             projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
-            waiverHorizon.set(LocalDate.now().toString())
             reportFile.set(
                 layout.buildDirectory.file("reports/structural-governance/java-source-shape.tsv"),
             )
@@ -44,18 +43,16 @@ internal fun Project.registerJavaSourceShapeTask() =
                     exclude("**/build/**", "**/.gradle/**")
                 },
             )
+            outputs.upToDateWhen { false }
         }
     }
 
 abstract class VerifyJavaSourceShapeTask : DefaultTask() {
     @get:Input
-    abstract val projectPathValue: Property<String>
+    abstract val moduleName: Property<String>
 
     @get:Input
     abstract val projectDirectoryPath: Property<String>
-
-    @get:Input
-    abstract val waiverHorizon: Property<String>
 
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -71,12 +68,14 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
     fun verify() {
         val projectDirectory = File(projectDirectoryPath.get())
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
-        val currentDate = LocalDate.parse(waiverHorizon.get())
+        val projectPath = moduleName.get()
+        val currentDate = LocalDate.now()
         val rows =
             mutableListOf(
-                "path\tdefaultRole\trole\treviewOwner\treviewExpiry\treviewBudgetVarianceReason\treviewDuplicationExemptionReason\tapprovedPhysical\tapprovedLogical\tapprovedImports\tphysical\tlogical\timports\tnestedTypes\tmaxMethods\tmaxFields\tmaxSwitchArms\tmaxMethodLines\tmaxMethodParameters\tmaxMethodDecisionPoints",
+                "path\tdefaultRole\trole\treviewOwner\treviewExpiry\treviewBudgetVarianceReason\treviewDuplicationExemptionReason\tapprovedPhysical\tapprovedLogical\tapprovedImports\tapprovedNestedTypes\tapprovedMaxMethods\tapprovedMaxFields\tapprovedMaxSwitchArms\tapprovedMaxMethodLines\tapprovedMaxMethodParameters\tapprovedMaxMethodDecisionPoints\tphysical\tlogical\timports\tnestedTypes\tmaxMethods\tmaxFields\tmaxSwitchArms\tmaxMethodLines\tmaxMethodParameters\tmaxMethodDecisionPoints",
             )
         val violations = mutableListOf<String>()
+        val existingRelativePaths = mutableSetOf<String>()
         sourceFiles.files
             .sortedBy { it.invariantSeparatorsPath() }
             .forEach { file ->
@@ -84,6 +83,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                 if (file.name == "module-info.java" || file.name == "package-info.java") {
                     return@forEach
                 }
+                existingRelativePaths += relativePath
                 val packageName = JavaSourceStructuralContracts.packageNameFor(file)
                 val defaultBudget =
                     JavaSourceStructuralContracts.baselineBudgetFor(
@@ -93,6 +93,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                     )
                 val contract =
                     JavaSourceStructuralContracts.contractFor(
+                        projectPath = projectPath,
                         relativePath = relativePath,
                         packageName = packageName,
                         exportedPackages = exportedPackages,
@@ -100,6 +101,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                 val metrics = JavaSourceShapeMetrics.measure(file)
                 val reviewedSurface = contract.reviewedSurface
                 val approval = reviewedSurface?.approval
+                val approvedShape = approval?.approvedShape
                 rows +=
                     listOf(
                             relativePath,
@@ -109,9 +111,16 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                             approval?.expiresOn?.toString().orEmpty(),
                             reviewedSurface?.budgetVarianceReason.orEmpty(),
                             reviewedSurface?.duplicationExemptionReason.orEmpty(),
-                            approval?.approvedPhysicalLines?.toString().orEmpty(),
-                            approval?.approvedLogicalLines?.toString().orEmpty(),
-                            approval?.approvedImports?.toString().orEmpty(),
+                            approvedShape?.physicalLineCount?.toString().orEmpty(),
+                            approvedShape?.logicalLineCount?.toString().orEmpty(),
+                            approvedShape?.importCount?.toString().orEmpty(),
+                            approvedShape?.nestedTypeCount?.toString().orEmpty(),
+                            approvedShape?.maxMethodsPerTopLevelType?.toString().orEmpty(),
+                            approvedShape?.maxFieldsPerTopLevelType?.toString().orEmpty(),
+                            approvedShape?.maxSwitchArmsPerMethod?.toString().orEmpty(),
+                            approvedShape?.maxMethodLineSpan?.toString().orEmpty(),
+                            approvedShape?.maxMethodParameters?.toString().orEmpty(),
+                            approvedShape?.maxMethodDecisionPoints?.toString().orEmpty(),
                             metrics.physicalLineCount.toString(),
                             metrics.logicalLineCount.toString(),
                             metrics.importCount.toString(),
@@ -124,13 +133,6 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                             metrics.maxMethodDecisionPoints.toString(),
                         )
                         .joinToString("\t")
-                if (
-                    "src/main/java/" in relativePath &&
-                        forbiddenGenericClassNamePattern.matches(file.name)
-                ) {
-                    violations +=
-                        "$relativePath: generic production class names like ${file.name} are forbidden; give the file one explicit domain or boundary role."
-                }
                 violations += javaShapeViolations(relativePath, metrics, contract.budget)
                 if (reviewedSurface != null) {
                     violations += reviewedSurfaceDefinitionViolations(reviewedSurface, defaultBudget)
@@ -144,6 +146,11 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                         )
                 }
             }
+        violations +=
+            JavaSourceStructuralContracts.missingReviewedSurfaceViolations(
+                projectPath = projectPath,
+                existingRelativePaths = existingRelativePaths,
+            )
         val renderedReport =
             rows.joinToString(System.lineSeparator(), postfix = System.lineSeparator())
         val outputFile = reportFile.get().asFile

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -187,6 +187,10 @@ fuzzing runs against the exact working tree under review.
 The nested Jazzer build now also applies the same `dev.erst.fingrind.java-conventions` plugin that
 the main Java modules use, so its own replay engine, CLI utilities, and tests no longer bypass
 Spotless, Error Prone, NullAway, PMD, JaCoCo, or the shared source/Jackson policy tasks.
+The checked-in PMD XML files under `gradle/pmd/` and `jazzer/gradle/pmd/` are derived from the
+canonical `FinGrindPmdRulesets.kt` owner in `gradle/build-logic`, and that canonical policy
+excludes PMD `NcssCount` explicitly because FinGrind's structural-governance engine owns file and
+method size budgets.
 
 ### One dependency authority
 
@@ -195,23 +199,20 @@ nested Jazzer build imports that catalog instead of repeating overlapping coordi
 avoids silent version skew between the main product modules and Jazzer support code.
 
 The shared repository owner now also lives in `gradle/build-logic`: FinGrind uses Maven Central as
-the default repository. FinGrind now treats the JaCoCo snapshot as one pinned artifact-set
-contract owned by `gradle/fingrind-build.properties` instead of resolving a floating Maven alias
-at build time. The build metadata pins the snapshot base version `0.8.15-SNAPSHOT`, the published
-build label `0.8.15.202606030734`, and the resolved artifact version `0.8.15-20260603.073432-117`;
-the shared build logic stages that exact JaCoCo jar set under the wrapper-owned build root; and
-`./scripts/verify-jacoco-snapshot.sh` proves those exact published artifacts exist before any
-Gradle verification stage runs.
+the default repository. JaCoCo now follows that same one-owner rule: the shared version catalog
+pins the stable `0.8.15` line, the root and Java Gradle conventions read that exact version
+directly, and `./scripts/verify-jacoco-artifacts.sh` proves the four published GA jars exist in
+Maven Central before any Gradle verification stage runs.
 
 ### One managed-SQLite contract
 
-Both the root build and the nested Jazzer build compile the managed SQLite 3.53.1 / SQLite3
-Multiple Ciphers 2.3.4 runtime from the same vendored official amalgamation, through the same
+Both the root build and the nested Jazzer build compile the managed SQLite 3.53.2 / SQLite3
+Multiple Ciphers 2.3.5 runtime from the same vendored official amalgamation, through the same
 typed Gradle tasks. That keeps tests, CLI runs, and fuzzing on one native runtime contract instead
 of letting Gradle surfaces drift onto whatever system `libsqlite3` happened to be present.
 
 That contract now has a few explicit rules:
-- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.4-sqlite-3530001/`
+- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.5-sqlite-3530200/`
 - `verifyManagedSqliteSource` hashes `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c`
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
   `SQLITE_TEMP_STORE=3`, `SQLITE_SECURE_DELETE=1`, and `SQLITE3MC_SECURE_MEMORY=1`
@@ -462,8 +463,8 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 - Are root and nested verification scopes still cleanly separated?
 - Are long-running test pulses still emitted from shared infrastructure rather than copy-pasted
   listeners?
-- Are root and nested builds still using the same managed SQLite 3.53.1 / SQLite3 Multiple
-  Ciphers 2.3.4 runtime contract?
+- Are root and nested builds still using the same managed SQLite 3.53.2 / SQLite3 Multiple
+  Ciphers 2.3.5 runtime contract?
 - Is source verification still pinned to the official SQLite3 Multiple Ciphers release input rather
   than an ad-hoc host library or repackaged archive?
 - Do the `jazzer/bin/*` wrappers still work on stock macOS `/bin/bash` 3.2 when no optional

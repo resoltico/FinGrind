@@ -31,11 +31,19 @@ public interface ProtectedBookMaintenanceStore {
   /** Verifies that the supplied protected book opens as one initialized FinGrind book. */
   MaintenanceDecision<BookVerification> verifyInitializedBook(ProtectedBookAccess bookAccess);
 
-  /** Stages one encrypted backup pair without publishing it to the final destination yet. */
+  /**
+   * Stages one encrypted backup pair from one already verified protected book without publishing it
+   * to the final destination yet.
+   */
   MaintenanceDecision<StagedBackupPair> stageBackupPair(
-      ProtectedBookAccess sourceAccess,
-      Path normalizedBackupFilePath,
-      Path normalizedBackupBookKeyFilePath);
+      VerifiedBook sourceBook, Path normalizedBackupFilePath, Path normalizedBackupBookKeyFilePath);
+
+  /**
+   * Verifies that the supplied replicated book path opens with the same secret material as the
+   * already verified source book.
+   */
+  MaintenanceDecision<BookVerification> verifyInitializedReplica(
+      Path normalizedReplicaBookPath, VerifiedBook sourceBook);
 
   /** Stages one reversible replacement of the selected live book path with one verified source. */
   StagedBookReplacement stageReplacement(
@@ -52,13 +60,11 @@ public interface ProtectedBookMaintenanceStore {
 
   /** Appends one durable maintenance audit event into the selected initialized protected book. */
   MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAudit(
-      ProtectedBookAccess bookAccess,
-      Instant recordedAt,
-      ProtectedBookMaintenanceAuditKind auditKind);
+      VerifiedBook verifiedBook, Instant recordedAt, ProtectedBookMaintenanceAuditKind auditKind);
 
   /** Appends one compensating maintenance audit event after external publish compensation. */
   MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAuditCompensation(
-      ProtectedBookAccess bookAccess,
+      VerifiedBook verifiedBook,
       Instant recordedAt,
       ProtectedBookMaintenanceAuditCompensationKind auditKind);
 
@@ -87,11 +93,10 @@ public interface ProtectedBookMaintenanceStore {
     Path artifactPath();
   }
 
-  /** Successful verification for one initialized protected book. */
-  record VerifiedBook(Path artifactPath) implements BookVerification {
-    public VerifiedBook {
-      Objects.requireNonNull(artifactPath, "artifactPath");
-    }
+  /** Successful verification handle for one initialized protected book. */
+  non-sealed interface VerifiedBook extends BookVerification, AutoCloseable {
+    @Override
+    void close();
   }
 
   /** Failed verification for one protected-book artifact. */

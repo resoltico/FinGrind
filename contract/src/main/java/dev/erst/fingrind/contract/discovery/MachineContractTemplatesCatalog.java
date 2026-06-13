@@ -18,18 +18,16 @@ import org.jspecify.annotations.Nullable;
 /** Canonical machine-contract templates and scaffold examples. */
 final class MachineContractTemplatesCatalog {
   private static final String SAMPLE_EFFECTIVE_DATE = "2026-01-15";
-  private static final String SAMPLE_SOURCE_DOCUMENT_ID = "replace-with-cash-receipt-id";
+  private static final String SAMPLE_SOURCE_DOCUMENT_ID = ScaffoldPlaceholders.SOURCE_DOCUMENT_ID;
   private static final String SAMPLE_SOURCE_DOCUMENT_TYPE = "cash-receipt";
   private static final String SAMPLE_DOCUMENT_DATE = "2026-01-15";
   private static final String SAMPLE_CAPTURED_AT = "2026-01-15T09:00:00Z";
-  private static final String SAMPLE_STORAGE_LOCATOR =
-      "replace-with-secure-storage-locator://cash-receipt";
-  private static final String SAMPLE_CONTENT_SHA256 =
-      "0000000000000000000000000000000000000000000000000000000000000000";
-  private static final String SAMPLE_ACTOR_ID = "replace-with-actor-id";
-  private static final String SAMPLE_COMMAND_ID = "replace-with-command-id";
-  private static final String SAMPLE_IDEMPOTENCY_KEY = "replace-with-idempotency-key";
-  private static final String SAMPLE_CAUSATION_ID = "replace-with-causation-id";
+  private static final String SAMPLE_STORAGE_LOCATOR = ScaffoldPlaceholders.STORAGE_LOCATOR;
+  private static final String SAMPLE_CONTENT_SHA256 = ScaffoldPlaceholders.CONTENT_SHA256;
+  private static final String SAMPLE_ACTOR_ID = ScaffoldPlaceholders.ACTOR_ID;
+  private static final String SAMPLE_COMMAND_ID = ScaffoldPlaceholders.COMMAND_ID;
+  private static final String SAMPLE_IDEMPOTENCY_KEY = ScaffoldPlaceholders.IDEMPOTENCY_KEY;
+  private static final String SAMPLE_CAUSATION_ID = ScaffoldPlaceholders.CAUSATION_ID;
   private static final String DECLARE_ACCOUNT_CASH_JSON =
       """
       {
@@ -107,20 +105,20 @@ final class MachineContractTemplatesCatalog {
         null);
   }
 
-  static ContractTemplates.LedgerPlanTemplateDescriptor planTemplate() {
-    return new ContractTemplates.LedgerPlanTemplateDescriptor(
+  static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate() {
+    return new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
         "plan-1",
         List.of(
-            new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "initialize-book",
                 LedgerStepKind.OPEN_BOOK,
-                new ContractTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
+                new ContractPlanTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
                 null,
                 null,
                 null,
                 null,
                 null),
-            new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "post-journal",
                 LedgerStepKind.POST_ENTRY,
                 null,
@@ -129,14 +127,14 @@ final class MachineContractTemplatesCatalog {
                 null,
                 null,
                 null),
-            new ContractTemplates.LedgerPlanStepTemplateDescriptor(
+            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "assert-cash-balance",
                 LedgerStepKind.ASSERT,
                 null,
                 null,
                 null,
                 null,
-                new ContractTemplates.LedgerAssertionTemplateDescriptor(
+                new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
                     LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
                     "cash",
                     null,
@@ -187,7 +185,7 @@ final class MachineContractTemplatesCatalog {
     return selectedOperation.id() == OperationId.DECLARE_ACCOUNT ? declareAccountTemplate() : null;
   }
 
-  static ContractTemplates.@Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplateFor(
+  static ContractPlanTemplates.@Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplateFor(
       @Nullable ProtocolOperation selectedOperation) {
     if (selectedOperation == null) {
       return null;

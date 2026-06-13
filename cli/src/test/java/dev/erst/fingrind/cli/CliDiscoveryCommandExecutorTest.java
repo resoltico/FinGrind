@@ -68,7 +68,7 @@ class CliDiscoveryCommandExecutorTest {
         new ByteArrayInputStream(
             """
             name=FinGrind
-            version=0.52.0
+            version=0.53.0
             description=Command-line double-entry bookkeeping
             """
                 .getBytes(StandardCharsets.UTF_8)));

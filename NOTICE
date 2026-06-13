@@ -103,8 +103,8 @@ SQLite3 Multiple Ciphers
 
   Licensed under the MIT License (see LICENSE-SQLITE3MULTIPLECIPHERS).
 
-  FinGrind vendors the official SQLite3 Multiple Ciphers 2.3.4 amalgamation,
-  based on SQLite 3.53.1, and builds managed native SQLite libraries from that
+  FinGrind vendors the official SQLite3 Multiple Ciphers 2.3.5 amalgamation,
+  based on SQLite 3.53.2, and builds managed native SQLite libraries from that
   source for Gradle, Jazzer, CI, and container runtime surfaces.
 
   FinGrind protects book files with SQLite3 Multiple Ciphers using the upstream
@@ -124,8 +124,8 @@ SQLite
     May you find forgiveness for yourself and forgive others.
     May you share freely, never taking more than you give.
 
-  FinGrind vendors SQLite 3.53.1 through the official SQLite3 Multiple Ciphers
-  2.3.4 amalgamation and builds managed native SQLite libraries from that
+  FinGrind vendors SQLite 3.53.2 through the official SQLite3 Multiple Ciphers
+  2.3.5 amalgamation and builds managed native SQLite libraries from that
   source for Gradle, Jazzer, CI, and container runtime surfaces.
 
   FinGrind does not bundle a native SQLite library inside the CLI JAR itself.

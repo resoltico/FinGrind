@@ -11,23 +11,23 @@ class LedgerPlanRequestFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             LedgerPlanRequestFuzzAssertions.readLedgerPlan(
-                CliFuzzHarnessTestSupport.basicValidLedgerPlanBytes()));
+                CliFuzzLedgerPlanFixtureSupport.basicValidLedgerPlanBytes()));
     assertDoesNotThrow(
         () ->
             LedgerPlanRequestFuzzAssertions.readLedgerPlan(
-                CliFuzzHarnessTestSupport.validJpyLedgerPlanBytes()));
+                CliFuzzLedgerPlanFixtureSupport.validJpyLedgerPlanBytes()));
     assertDoesNotThrow(
         () ->
             LedgerPlanRequestFuzzAssertions.readLedgerPlan(
-                CliFuzzHarnessTestSupport.validBhdLedgerPlanBytes()));
+                CliFuzzLedgerPlanFixtureSupport.validBhdLedgerPlanBytes()));
     assertDoesNotThrow(
         () ->
             LedgerPlanRequestFuzzAssertions.readLedgerPlan(
-                CliFuzzHarnessTestSupport.rejectedMissingBookListPostingsLedgerPlanBytes()));
+                CliFuzzLedgerPlanFixtureSupport.rejectedMissingBookListPostingsLedgerPlanBytes()));
     assertDoesNotThrow(
         () ->
             LedgerPlanRequestFuzzAssertions.readLedgerPlan(
-                CliFuzzHarnessTestSupport.invalidLedgerPlanBytes()));
+                CliFuzzLedgerPlanFixtureSupport.invalidLedgerPlanBytes()));
   }
 
   @Test
@@ -36,22 +36,22 @@ class LedgerPlanRequestFuzzAssertionsTest {
     assertDoesNotThrow(
         () ->
             harness.readLedgerPlan(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.basicValidLedgerPlanBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzLedgerPlanFixtureSupport.basicValidLedgerPlanBytes())));
     assertDoesNotThrow(
         () ->
             harness.readLedgerPlan(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.validJpyLedgerPlanBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzLedgerPlanFixtureSupport.validJpyLedgerPlanBytes())));
     assertDoesNotThrow(
         () ->
             harness.readLedgerPlan(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.validBhdLedgerPlanBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzLedgerPlanFixtureSupport.validBhdLedgerPlanBytes())));
     assertDoesNotThrow(
         () ->
             harness.readLedgerPlan(
-                CliFuzzHarnessTestSupport.fuzzedBytes(
-                    CliFuzzHarnessTestSupport.invalidLedgerPlanBytes())));
+                CliFuzzHarnessInvocationSupport.fuzzedBytes(
+                    CliFuzzLedgerPlanFixtureSupport.invalidLedgerPlanBytes())));
   }
 }

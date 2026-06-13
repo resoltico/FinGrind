@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.52.0"
+version: "0.53.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-06-05"
+updated: "2026-06-13"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -139,11 +139,10 @@ any owned lock as proof that another Git owner has the checkout open. If it repo
 `git gc` or equivalent cleanup.
 
 Then run `./check.sh`. It must exit 0. If it fails, fix all failures before proceeding.
-That gate now also proves the repo-owned JaCoCo snapshot contract: the pinned snapshot base
-version, the published build label in `gradle/fingrind-build.properties`, and the resolved
-artifact coordinates must align through `./scripts/verify-jacoco-snapshot.sh`, and the exact
-pinned jars must stage successfully through `prepareJacocoSnapshotArtifacts`, before the Gradle
-stages run.
+That gate now also proves the repo-owned JaCoCo GA pin: the shared `jacoco` version in
+`gradle/libs.versions.toml` must resolve through `./scripts/verify-jacoco-artifacts.sh` before
+the Gradle stages run, so release promotion never depends on an implicit or floating coverage
+tool version.
 Because this baseline gate runs before `./scripts/prepare-release-version.sh X.Y.Z YYYY-MM-DD`,
 any bundle archive names, Docker smoke echoes, or distribution manifests produced in Step 1 will
 reflect the checkout's pre-sweep version string. That is expected. Treat Step 1 as a payload
@@ -312,6 +311,7 @@ If GitHub Actions queueing is unusually slow, extend the wait explicitly instead
 The separate Windows non-public bundle smoke job remains an observational lane only. It does not
 participate in the release-blocking `Gate` contract because public self-contained bundle
 publication is Linux-only.
+Do not wait for the observational Windows lane once `Gate` is green on the release PR head commit.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
@@ -353,6 +353,8 @@ is unusually slow, extend the wait explicitly instead of guessing:
 
 The separate Windows non-public bundle smoke lane remains observational. The canonical release
 gate remains single-owned by `Check` plus the Linux publication-proof matrix.
+Do not wait for the observational Windows lane once `Gate` is green on the merged `origin/main`
+commit.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-merge-handoff.sh

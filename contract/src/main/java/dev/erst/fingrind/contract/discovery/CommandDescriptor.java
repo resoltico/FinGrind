@@ -100,6 +100,9 @@ public record CommandDescriptor(
     if (outputModes.isEmpty()) {
       return null;
     }
+    if (outputModes.equals(List.of(OutputMode.JSON))) {
+      return new SelectableOutputDefaultsDescriptor(OutputMode.JSON, OutputMode.JSON);
+    }
     return new SelectableOutputDefaultsDescriptor(OutputMode.TEXT, OutputMode.TEXT);
   }
 }
