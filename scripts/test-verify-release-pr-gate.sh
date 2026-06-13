@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reproduce and guard the release-PR Gate verifier so a green Check job cannot be mistaken for a
-# complete aggregate Gate on release PRs.
+# complete aggregate Gate on release PRs, while observational jobs cannot delay a green Gate.
 
 set -euo pipefail
 
@@ -53,6 +53,8 @@ grep -Fq 'therefore show `Check` green while `Gate` is absent. Treat a missing `
     "release protocol no longer documents missing-Gate-as-pending semantics"
 grep -Fq 'success. The verifier is the canonical owner of that waiting logic.' "${release_protocol}" || die \
     "release protocol no longer documents missing-Gate-as-pending semantics"
+grep -Fq 'Do not wait for the observational Windows lane once `Gate` is green on the release PR head commit.' "${release_protocol}" || die \
+    "release protocol no longer documents Gate-first PR completion semantics"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "PR Gate verifier no longer sources the canonical release-check owner"
 grep -Fq 'release-check-verification-support.sh' "${verifier}" || die \
@@ -101,6 +103,8 @@ required_ci_jobs_json="${FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON:-[]}"
 required_ci_workflow_name="${FAKE_GH_REQUIRED_CI_WORKFLOW_NAME:-CI}"
 required_ci_workflow_path="${FAKE_GH_REQUIRED_CI_WORKFLOW_PATH:-.github/workflows/ci.yml}"
 workflow_run_id="${FAKE_GH_WORKFLOW_RUN_ID:-7001}"
+workflow_status="${FAKE_GH_WORKFLOW_STATUS:-completed}"
+workflow_conclusion="${FAKE_GH_WORKFLOW_CONCLUSION:-success}"
 
 if [[ "${1:-}" == "repo" && "${2:-}" == "view" ]]; then
     [[ "${3:-}" == "--json" && "${4:-}" == "nameWithOwner" && "${5:-}" == "--jq" && "${6:-}" == ".nameWithOwner" ]] || exit 1
@@ -135,8 +139,10 @@ print(
                     "id": int(os.environ.get("FAKE_GH_WORKFLOW_RUN_ID", "7001")),
                     "name": os.environ.get("FAKE_GH_REQUIRED_CI_WORKFLOW_NAME", "CI"),
                     "path": os.environ.get("FAKE_GH_REQUIRED_CI_WORKFLOW_PATH", ".github/workflows/ci.yml"),
-                    "status": "completed",
-                    "conclusion": "success",
+                    "status": os.environ.get("FAKE_GH_WORKFLOW_STATUS", "completed"),
+                    "conclusion": None
+                    if os.environ.get("FAKE_GH_WORKFLOW_CONCLUSION", "success") == "null"
+                    else os.environ.get("FAKE_GH_WORKFLOW_CONCLUSION", "success"),
                     "event": "pull_request",
                     "html_url": "https://example.invalid/actions/runs/7001",
                     "run_number": 88,
@@ -188,6 +194,14 @@ elif mode == "gate-failure":
         if job["name"] == "Gate":
             job["conclusion"] = "failure"
             break
+elif mode == "gate-success-observational-pending":
+    jobs.append(
+        {
+            "name": "Windows non-public bundle smoke",
+            "status": "in_progress",
+            "conclusion": None,
+        }
+    )
 elif mode != "pending-then-success":
     raise SystemExit(f"unsupported check mode: {mode}")
 
@@ -210,6 +224,22 @@ PATH="${fixture_root}/bin:${PATH}" \
 check_runs_count="$(cat "${fixture_root}/state/check-runs-count")"
 (( check_runs_count >= 2 )) || die \
     "PR Gate verifier accepted a missing Gate instead of waiting for the aggregate check run"
+
+rm -f "${fixture_root}/state/check-runs-count"
+
+PATH="${fixture_root}/bin:${PATH}" \
+    FAKE_GH_STATE_DIR="${fixture_root}/state" \
+    FAKE_GH_CHECK_MODE='gate-success-observational-pending' \
+    FAKE_GH_WORKFLOW_STATUS='in_progress' \
+    FAKE_GH_WORKFLOW_CONCLUSION='null' \
+    FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \
+    FAKE_GH_REQUIRED_CI_WORKFLOW_NAME="${required_ci_workflow_name}" \
+    FAKE_GH_REQUIRED_CI_WORKFLOW_PATH="${required_ci_workflow_path}" \
+    bash "${verifier}" 52 >/dev/null
+
+check_runs_count="$(cat "${fixture_root}/state/check-runs-count")"
+(( check_runs_count == 1 )) || die \
+    "PR Gate verifier waited for an observational job after Gate success"
 
 rm -f "${fixture_root}/state/check-runs-count"
 

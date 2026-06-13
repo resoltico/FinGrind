@@ -311,6 +311,7 @@ If GitHub Actions queueing is unusually slow, extend the wait explicitly instead
 The separate Windows non-public bundle smoke job remains an observational lane only. It does not
 participate in the release-blocking `Gate` contract because public self-contained bundle
 publication is Linux-only.
+Do not wait for the observational Windows lane once `Gate` is green on the release PR head commit.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
@@ -352,6 +353,8 @@ is unusually slow, extend the wait explicitly instead of guessing:
 
 The separate Windows non-public bundle smoke lane remains observational. The canonical release
 gate remains single-owned by `Check` plus the Linux publication-proof matrix.
+Do not wait for the observational Windows lane once `Gate` is green on the merged `origin/main`
+commit.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-merge-handoff.sh

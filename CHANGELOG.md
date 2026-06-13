@@ -19,10 +19,9 @@ Notable changes to this project are documented in this file. The format is based
 - Hard-broke the contract protocol catalog and protected-book maintenance together: per-operation builders now own help/examples/discovery,
   while backup, restore, and rekey-rollback recovery now stage from verified books, verify restored targets before commit, and keep
   encrypted maintenance audit compensation tied to the verified live book.
-- Hard-broke structural governance onto canonical owners: reviewed Java surfaces now use full-snapshot
-  approvals with execution-time expiry and orphan detection, PMD derives from one build-logic source
-  across main, test, and Jazzer, tracked Markdown scans the repository with explicit exclusions, and
-  coverage verification reads the shared GA JaCoCo pin directly.
+- Hard-broke structural governance onto canonical owners: reviewed Java surfaces now use full-snapshot approvals with execution-time expiry
+  and orphan detection, PMD derives from one build-logic source across main, test, and Jazzer, tracked Markdown scans the repository
+  with explicit exclusions, and coverage verification reads the shared GA JaCoCo pin directly.
 
 ### Fixed
 
@@ -33,9 +32,7 @@ Notable changes to this project are documented in this file. The format is based
   and nested-type counts use a token-aware collector, Jazzer production inherits the main production
   policy, Jazzer test re-adds `GodClass` deliberately, and `NcssCount` remains excluded because file
   and method size ownership lives in structural governance.
-- Fixed maintenance verification and public-doc drift so staged backup, restore, and rollback recovery reject invalid artifacts deterministically,
-  and the storefront README, install and quick-start guides, release protocol, launchers, and managed-SQLite contract docs agree on discovery defaults,
-  template vocabulary, launcher grammar, runtime provenance, and release-prep generated-block sync.
+- Fixed maintenance verification, public-doc drift, and release-promotion wait churn so staged backup, restore, and rollback recovery reject invalid artifacts deterministically; the storefront README, install and quick-start guides, release protocol, launchers, and managed-SQLite contract docs agree on discovery defaults, template vocabulary, launcher grammar, runtime provenance, and release-prep generated-block sync; and the PR and merge-handoff verifiers now return as soon as the canonical `Gate` passes on the target commit, even when the observational Windows non-public bundle smoke lane is still running.
 
 ## [0.52.0] - 2026-06-05
 
