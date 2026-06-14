@@ -1,21 +1,10 @@
 {
+  "documentType": "case",
   "caseType": "orphan",
   "id": "orphaned-waiver",
   "relativePath": "src/main/java/dev/erst/fingrind/example/OrphanedWaiver.java",
-  "owner": "example-owner",
-  "splitTrigger": "Split the example owner.",
-  "reviewedRoleName": "example-reviewed",
-  "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
-  "approval": {
-    "physicalLines": 11,
-    "logicalLines": 10,
-    "importLikeLines": 1,
-    "nestedTypes": 1,
-    "functions": 2,
-    "expiresOn": "2026-07-01"
-  },
+  "reviewedSurfaceProfile": "example-reviewed",
+  "approvalProfile": "tight-future",
   "existingRelativePaths": [],
-  "expectedDescriptors": [
-    "orphaned-waiver"
-  ]
+  "expectedDescriptors": ["orphaned-waiver"]
 }

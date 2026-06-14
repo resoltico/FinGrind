@@ -1,0 +1,21 @@
+{
+  "documentType": "budget-profiles",
+  "profiles": {
+    "tight-main": {
+      "roleName": "production-main",
+      "physicalLines": 10,
+      "logicalLines": 10,
+      "importLikeLines": 1,
+      "nestedTypes": 1,
+      "functions": 2
+    },
+    "wide-main": {
+      "roleName": "production-main",
+      "physicalLines": 30,
+      "logicalLines": 30,
+      "importLikeLines": 5,
+      "nestedTypes": 2,
+      "functions": 4
+    }
+  }
+}

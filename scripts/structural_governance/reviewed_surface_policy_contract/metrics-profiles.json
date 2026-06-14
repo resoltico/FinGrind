@@ -1,0 +1,26 @@
+{
+  "documentType": "metrics-profiles",
+  "profiles": {
+    "tight-baseline": {
+      "physicalLines": 11,
+      "logicalLines": 10,
+      "importLikeLines": 1,
+      "nestedTypes": 1,
+      "functions": 2
+    },
+    "tight-drifted": {
+      "physicalLines": 12,
+      "logicalLines": 9,
+      "importLikeLines": 2,
+      "nestedTypes": 1,
+      "functions": 2
+    },
+    "wide-fitting": {
+      "physicalLines": 18,
+      "logicalLines": 18,
+      "importLikeLines": 2,
+      "nestedTypes": 1,
+      "functions": 1
+    }
+  }
+}

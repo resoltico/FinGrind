@@ -16,11 +16,12 @@ class ReviewedSurfacePolicyContractTest {
 
     @Test
     fun reviewedSurfacePolicyContract_casesStayAlignedWithKotlinWaiverSemantics() {
+        val profiles = profilesByDocumentType()
         contractCases().forEach { case ->
             when (case.path("caseType").requiredText()) {
-                "definition" -> assertDefinitionCase(case)
-                "runtime" -> assertRuntimeCase(case)
-                "orphan" -> assertOrphanCase(case)
+                "definition" -> assertDefinitionCase(case, profiles)
+                "runtime" -> assertRuntimeCase(case, profiles)
+                "orphan" -> assertOrphanCase(case, profiles)
                 else ->
                     error(
                         "Unsupported reviewed-surface policy contract case type ${case.path("caseType").requiredText()}."
@@ -29,7 +30,7 @@ class ReviewedSurfacePolicyContractTest {
         }
     }
 
-    private fun contractCases(): List<JsonNode> =
+    private fun contractDocuments(): List<JsonNode> =
         contractDirectory
             .toFile()
             .listFiles { file -> file.isFile && file.extension == "json" }
@@ -37,11 +38,37 @@ class ReviewedSurfacePolicyContractTest {
             ?.map(objectMapper::readTree)
             ?: error("No reviewed-surface policy contract cases found in $contractDirectory")
 
-    private fun assertDefinitionCase(case: JsonNode) {
+    private fun contractCases(): List<JsonNode> =
+        contractDocuments().filter { it.path("documentType").requiredText() == "case" }
+
+    private fun profilesByDocumentType(): Map<String, Map<String, JsonNode>> =
+        contractDocuments()
+            .filter { it.path("documentType").requiredText() != "case" }
+            .associate { document ->
+                document.path("documentType").requiredText() to
+                    document
+                        .path("profiles")
+                        .properties()
+                        .asSequence()
+                        .associate { entry -> entry.key to entry.value }
+            }
+
+    private fun profile(
+        profiles: Map<String, Map<String, JsonNode>>,
+        documentType: String,
+        profileName: String,
+    ): JsonNode =
+        profiles[documentType]?.get(profileName)
+            ?: error("Missing reviewed-surface policy contract profile $documentType/$profileName")
+
+    private fun assertDefinitionCase(
+        case: JsonNode,
+        profiles: Map<String, Map<String, JsonNode>>,
+    ) {
         val actual =
             reviewedSurfaceDefinitionViolations(
-                reviewedSurface = reviewedSurface(case),
-                defaultBudget = defaultBudget(case.path("defaultBudget")),
+                reviewedSurface = reviewedSurface(case, profiles),
+                defaultBudget = defaultBudget(case, profiles),
             ).map(::normalizeViolation)
         assertEquals(
             expectedDescriptors(case),
@@ -50,13 +77,16 @@ class ReviewedSurfacePolicyContractTest {
         )
     }
 
-    private fun assertRuntimeCase(case: JsonNode) {
+    private fun assertRuntimeCase(
+        case: JsonNode,
+        profiles: Map<String, Map<String, JsonNode>>,
+    ) {
         val actual =
             reviewedSurfaceViolations(
                 relativePath = case.path("relativePath").requiredText(),
-                metrics = liveMetrics(case.path("liveMetrics")),
-                reviewedSurface = reviewedSurface(case),
-                defaultBudget = defaultBudget(case.path("defaultBudget")),
+                metrics = liveMetrics(case, profiles),
+                reviewedSurface = reviewedSurface(case, profiles),
+                defaultBudget = defaultBudget(case, profiles),
                 currentDate = LocalDate.parse(case.path("currentDate").requiredText()),
             ).map(::normalizeViolation)
         assertEquals(
@@ -66,8 +96,11 @@ class ReviewedSurfacePolicyContractTest {
         )
     }
 
-    private fun assertOrphanCase(case: JsonNode) {
-        val reviewedSurface = reviewedSurface(case)
+    private fun assertOrphanCase(
+        case: JsonNode,
+        profiles: Map<String, Map<String, JsonNode>>,
+    ) {
+        val reviewedSurface = reviewedSurface(case, profiles)
         val actual =
             missingReviewedSurfaceViolations(
                 reviewedSurfaces = listOf(reviewedSurface),
@@ -86,25 +119,54 @@ class ReviewedSurfacePolicyContractTest {
     private fun textArray(node: JsonNode): List<String> =
         (0 until node.size()).map { index -> node.get(index).requiredText() }
 
-    private fun reviewedSurface(case: JsonNode): ReviewedJavaSourceSurface =
-        reviewedJavaSourceSurface(
+    private fun reviewedSurface(
+        case: JsonNode,
+        profiles: Map<String, Map<String, JsonNode>>,
+    ): ReviewedJavaSourceSurface {
+        val reviewedSurfaceProfile =
+            profile(
+                profiles,
+                "reviewed-surface-profiles",
+                case.path("reviewedSurfaceProfile").requiredText(),
+            )
+        val approvalProfile =
+            profile(
+                profiles,
+                "approval-profiles",
+                case.path("approvalProfile").requiredText(),
+            )
+        val budgetVarianceReason =
+            if (case.has("budgetVarianceReason")) {
+                case.path("budgetVarianceReason").takeUnless(JsonNode::isNull)?.requiredText()
+            } else {
+                reviewedSurfaceProfile
+                    .path("budgetVarianceReason")
+                    .takeUnless(JsonNode::isNull)
+                    ?.requiredText()
+            }
+        return reviewedJavaSourceSurface(
             projectPath = FinGrindProjectPaths.CONTRACT,
             relativePath = case.path("relativePath").requiredText(),
-            owner = case.path("owner").requiredText(),
+            owner = reviewedSurfaceProfile.path("owner").requiredText(),
             reason = "Shared reviewed-surface policy contract case.",
-            splitTrigger = case.path("splitTrigger").requiredText(),
-            roleName = case.path("reviewedRoleName").requiredText(),
-            budgetVarianceReason =
-                case
-                    .path("budgetVarianceReason")
-                    .takeUnless(JsonNode::isMissingNode)
-                    ?.takeUnless(JsonNode::isNull)
-                    ?.requiredText(),
-            approval = approval(case.path("approval")),
+            splitTrigger = reviewedSurfaceProfile.path("splitTrigger").requiredText(),
+            roleName = reviewedSurfaceProfile.path("reviewedRoleName").requiredText(),
+            budgetVarianceReason = budgetVarianceReason,
+            approval = approval(approvalProfile),
         )
+    }
 
-    private fun defaultBudget(node: JsonNode): JavaSourceShapeBudget =
-        JavaSourceShapeBudget(
+    private fun defaultBudget(
+        case: JsonNode,
+        profiles: Map<String, Map<String, JsonNode>>,
+    ): JavaSourceShapeBudget {
+        val node =
+            profile(
+                profiles,
+                "budget-profiles",
+                case.path("defaultBudgetProfile").requiredText(),
+            )
+        return JavaSourceShapeBudget(
             roleName = node.path("roleName").requiredText(),
             maxPhysicalLines = node.path("physicalLines").asInt(),
             maxLogicalLines = node.path("logicalLines").asInt(),
@@ -117,6 +179,7 @@ class ReviewedSurfacePolicyContractTest {
             maxMethodParameters = 2,
             maxMethodDecisionPoints = 2,
         )
+    }
 
     private fun approval(node: JsonNode): ReviewedJavaSourceApproval =
         reviewedApproval(
@@ -133,8 +196,17 @@ class ReviewedSurfacePolicyContractTest {
             expiresOn = LocalDate.parse(node.path("expiresOn").requiredText()),
         )
 
-    private fun liveMetrics(node: JsonNode): JavaSourceShapeMetrics =
-        JavaSourceShapeMetrics(
+    private fun liveMetrics(
+        case: JsonNode,
+        profiles: Map<String, Map<String, JsonNode>>,
+    ): JavaSourceShapeMetrics {
+        val node =
+            profile(
+                profiles,
+                "metrics-profiles",
+                case.path("liveMetricsProfile").requiredText(),
+            )
+        return JavaSourceShapeMetrics(
             physicalLineCount = node.path("physicalLines").asInt(),
             logicalLineCount = node.path("logicalLines").asInt(),
             importCount = node.path("importLikeLines").asInt(),
@@ -146,6 +218,7 @@ class ReviewedSurfacePolicyContractTest {
             maxMethodParameters = 2,
             maxMethodDecisionPoints = 2,
         )
+    }
 
     private fun normalizeViolation(violation: String): String =
         when {

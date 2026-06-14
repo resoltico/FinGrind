@@ -1,26 +1,10 @@
 {
+  "documentType": "case",
   "caseType": "definition",
   "id": "variance-reason-present",
   "relativePath": "src/main/java/dev/erst/fingrind/example/OversizedApproval.java",
-  "owner": "example-owner",
-  "splitTrigger": "Split the example owner.",
-  "reviewedRoleName": "example-reviewed",
-  "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
-  "defaultBudget": {
-    "roleName": "production-main",
-    "physicalLines": 10,
-    "logicalLines": 10,
-    "importLikeLines": 1,
-    "nestedTypes": 1,
-    "functions": 2
-  },
-  "approval": {
-    "physicalLines": 11,
-    "logicalLines": 10,
-    "importLikeLines": 1,
-    "nestedTypes": 1,
-    "functions": 2,
-    "expiresOn": "2026-07-01"
-  },
+  "reviewedSurfaceProfile": "example-reviewed",
+  "defaultBudgetProfile": "tight-main",
+  "approvalProfile": "tight-future",
   "expectedDescriptors": []
 }

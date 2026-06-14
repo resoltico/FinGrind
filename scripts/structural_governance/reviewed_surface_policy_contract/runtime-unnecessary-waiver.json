@@ -1,36 +1,12 @@
 {
+  "documentType": "case",
   "caseType": "runtime",
   "id": "unnecessary-waiver",
   "relativePath": "src/main/java/dev/erst/fingrind/example/ExampleOwner.java",
-  "owner": "example-owner",
-  "splitTrigger": "Split the example owner.",
-  "reviewedRoleName": "example-reviewed",
-  "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
-  "defaultBudget": {
-    "roleName": "production-main",
-    "physicalLines": 30,
-    "logicalLines": 30,
-    "importLikeLines": 5,
-    "nestedTypes": 2,
-    "functions": 4
-  },
-  "approval": {
-    "physicalLines": 20,
-    "logicalLines": 20,
-    "importLikeLines": 3,
-    "nestedTypes": 1,
-    "functions": 2,
-    "expiresOn": "2026-07-01"
-  },
-  "liveMetrics": {
-    "physicalLines": 18,
-    "logicalLines": 18,
-    "importLikeLines": 2,
-    "nestedTypes": 1,
-    "functions": 1
-  },
+  "reviewedSurfaceProfile": "example-reviewed",
+  "defaultBudgetProfile": "wide-main",
+  "approvalProfile": "wide-future",
+  "liveMetricsProfile": "wide-fitting",
   "currentDate": "2026-06-14",
-  "expectedDescriptors": [
-    "waiver-unnecessary"
-  ]
+  "expectedDescriptors": ["waiver-unnecessary"]
 }

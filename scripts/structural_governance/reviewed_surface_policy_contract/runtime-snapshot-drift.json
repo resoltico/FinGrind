@@ -1,34 +1,12 @@
 {
+  "documentType": "case",
   "caseType": "runtime",
   "id": "snapshot-drift",
   "relativePath": "src/main/java/dev/erst/fingrind/example/DriftedWaiver.java",
-  "owner": "example-owner",
-  "splitTrigger": "Split the example owner.",
-  "reviewedRoleName": "example-reviewed",
-  "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
-  "defaultBudget": {
-    "roleName": "production-main",
-    "physicalLines": 10,
-    "logicalLines": 10,
-    "importLikeLines": 1,
-    "nestedTypes": 1,
-    "functions": 2
-  },
-  "approval": {
-    "physicalLines": 11,
-    "logicalLines": 10,
-    "importLikeLines": 1,
-    "nestedTypes": 1,
-    "functions": 2,
-    "expiresOn": "2026-07-01"
-  },
-  "liveMetrics": {
-    "physicalLines": 12,
-    "logicalLines": 9,
-    "importLikeLines": 2,
-    "nestedTypes": 1,
-    "functions": 2
-  },
+  "reviewedSurfaceProfile": "example-reviewed",
+  "defaultBudgetProfile": "tight-main",
+  "approvalProfile": "tight-future",
+  "liveMetricsProfile": "tight-drifted",
   "currentDate": "2026-06-14",
   "expectedDescriptors": [
     "snapshot-drift:physical-lines:11:12",

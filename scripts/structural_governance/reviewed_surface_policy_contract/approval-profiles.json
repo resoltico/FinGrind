@@ -1,0 +1,29 @@
+{
+  "documentType": "approval-profiles",
+  "profiles": {
+    "tight-expired": {
+      "physicalLines": 11,
+      "logicalLines": 10,
+      "importLikeLines": 1,
+      "nestedTypes": 1,
+      "functions": 2,
+      "expiresOn": "2026-06-01"
+    },
+    "tight-future": {
+      "physicalLines": 11,
+      "logicalLines": 10,
+      "importLikeLines": 1,
+      "nestedTypes": 1,
+      "functions": 2,
+      "expiresOn": "2026-07-01"
+    },
+    "wide-future": {
+      "physicalLines": 20,
+      "logicalLines": 20,
+      "importLikeLines": 3,
+      "nestedTypes": 1,
+      "functions": 2,
+      "expiresOn": "2026-07-01"
+    }
+  }
+}

@@ -25,15 +25,43 @@ _EXPIRED_PATTERN = re.compile(r"expired on (\d{4}-\d{2}-\d{2})")
 _DRIFT_PATTERN = re.compile(r"live file on (.+?) \(approved (\d+), live (\d+)\)")
 
 
-def _contract_cases() -> list[dict[str, object]]:
-    contract_paths = sorted(_CONTRACT_DIRECTORY.glob("*.json"))
-    if not contract_paths:
+def _contract_documents() -> list[dict[str, object]]:
+    document_paths = sorted(_CONTRACT_DIRECTORY.glob("*.json"))
+    if not document_paths:
         raise AssertionError(
             f"No reviewed-surface policy contract cases found in {_CONTRACT_DIRECTORY}"
         )
     return [
-        json.loads(contract_path.read_text(encoding="utf-8")) for contract_path in contract_paths
+        json.loads(document_path.read_text(encoding="utf-8")) for document_path in document_paths
     ]
+
+
+def _contract_cases() -> list[dict[str, object]]:
+    return [
+        document for document in _contract_documents() if str(document["documentType"]) == "case"
+    ]
+
+
+def _profiles_by_group() -> dict[str, dict[str, dict[str, object]]]:
+    profiles: dict[str, dict[str, dict[str, object]]] = {}
+    for document in _contract_documents():
+        document_type = str(document["documentType"])
+        if document_type == "case":
+            continue
+        document_profiles = document["profiles"]
+        assert isinstance(document_profiles, dict)
+        profiles[document_type] = {
+            str(profile_name): profile for profile_name, profile in document_profiles.items()
+        }
+    return profiles
+
+
+def _profile(
+    profiles: dict[str, dict[str, dict[str, object]]],
+    profile_group_name: str,
+    profile_name: str,
+) -> dict[str, object]:
+    return profiles[profile_group_name][profile_name]
 
 
 def _normalize_violation(violation: str) -> str:
@@ -70,16 +98,33 @@ def _normalize_violations(violations: list[str]) -> list[str]:
     return [_normalize_violation(violation) for violation in violations]
 
 
-def _reviewed_surface(case: dict[str, object]) -> ReviewedSurface:
-    approval = case["approval"]
+def _reviewed_surface(
+    case: dict[str, object],
+    profiles: dict[str, dict[str, dict[str, object]]],
+) -> ReviewedSurface:
+    reviewed_surface_profile = _profile(
+        profiles,
+        "reviewed-surface-profiles",
+        str(case["reviewedSurfaceProfile"]),
+    )
+    approval = _profile(
+        profiles,
+        "approval-profiles",
+        str(case["approvalProfile"]),
+    )
+    budget_variance_reason = (
+        case["budgetVarianceReason"]
+        if "budgetVarianceReason" in case
+        else reviewed_surface_profile["budgetVarianceReason"]
+    )
     assert isinstance(approval, dict)
     return ReviewedSurface(
         relative_path=str(case["relativePath"]),
-        owner=str(case["owner"]),
+        owner=str(reviewed_surface_profile["owner"]),
         reason="Shared reviewed-surface policy contract case.",
-        split_trigger=str(case["splitTrigger"]),
-        reviewed_role_name=str(case["reviewedRoleName"]),
-        budget_variance_reason=case.get("budgetVarianceReason"),
+        split_trigger=str(reviewed_surface_profile["splitTrigger"]),
+        reviewed_role_name=str(reviewed_surface_profile["reviewedRoleName"]),
+        budget_variance_reason=budget_variance_reason,
         approval=ReviewedSurfaceApproval(
             approved_physical_lines=int(approval["physicalLines"]),
             approved_logical_lines=int(approval["logicalLines"]),
@@ -91,7 +136,15 @@ def _reviewed_surface(case: dict[str, object]) -> ReviewedSurface:
     )
 
 
-def _budget(budget: dict[str, object]) -> FileBudget:
+def _budget(
+    case: dict[str, object],
+    profiles: dict[str, dict[str, dict[str, object]]],
+) -> FileBudget:
+    budget = _profile(
+        profiles,
+        "budget-profiles",
+        str(case["defaultBudgetProfile"]),
+    )
     return FileBudget(
         role_name=str(budget["roleName"]),
         max_physical_lines=int(budget["physicalLines"]),
@@ -104,7 +157,15 @@ def _budget(budget: dict[str, object]) -> FileBudget:
     )
 
 
-def _metrics(metrics: dict[str, object]) -> FileMetrics:
+def _metrics(
+    case: dict[str, object],
+    profiles: dict[str, dict[str, dict[str, object]]],
+) -> FileMetrics:
+    metrics = _profile(
+        profiles,
+        "metrics-profiles",
+        str(case["liveMetricsProfile"]),
+    )
     return FileMetrics(
         physical_lines=int(metrics["physicalLines"]),
         logical_lines=int(metrics["logicalLines"]),
@@ -115,9 +176,12 @@ def _metrics(metrics: dict[str, object]) -> FileMetrics:
     )
 
 
-def _run_definition_case(case: dict[str, object]) -> None:
-    reviewed = _reviewed_surface(case)
-    default_budget = _budget(case["defaultBudget"])
+def _run_definition_case(
+    case: dict[str, object],
+    profiles: dict[str, dict[str, dict[str, object]]],
+) -> None:
+    reviewed = _reviewed_surface(case, profiles)
+    default_budget = _budget(case, profiles)
     actual = _normalize_violations(
         reviewed_surface_definition_violations(
             Path(reviewed.relative_path),
@@ -132,10 +196,13 @@ def _run_definition_case(case: dict[str, object]) -> None:
         )
 
 
-def _run_runtime_case(case: dict[str, object]) -> None:
-    reviewed = _reviewed_surface(case)
-    default_budget = _budget(case["defaultBudget"])
-    metrics = _metrics(case["liveMetrics"])
+def _run_runtime_case(
+    case: dict[str, object],
+    profiles: dict[str, dict[str, dict[str, object]]],
+) -> None:
+    reviewed = _reviewed_surface(case, profiles)
+    default_budget = _budget(case, profiles)
+    metrics = _metrics(case, profiles)
     relative_path = Path(reviewed.relative_path)
     baseline_violations = check_metrics(relative_path, default_budget, metrics)
     actual = _normalize_violations(
@@ -155,8 +222,11 @@ def _run_runtime_case(case: dict[str, object]) -> None:
         )
 
 
-def _run_orphan_case(case: dict[str, object]) -> None:
-    reviewed = _reviewed_surface(case)
+def _run_orphan_case(
+    case: dict[str, object],
+    profiles: dict[str, dict[str, dict[str, object]]],
+) -> None:
+    reviewed = _reviewed_surface(case, profiles)
     actual = _normalize_violations(
         missing_reviewed_surface_violations(
             reviewed_surfaces={reviewed.relative_path: reviewed},
@@ -171,16 +241,17 @@ def _run_orphan_case(case: dict[str, object]) -> None:
 
 
 def main() -> int:
+    profiles = _profiles_by_group()
     for case in _contract_cases():
         case_type = str(case["caseType"])
         if case_type == "definition":
-            _run_definition_case(case)
+            _run_definition_case(case, profiles)
             continue
         if case_type == "runtime":
-            _run_runtime_case(case)
+            _run_runtime_case(case, profiles)
             continue
         if case_type == "orphan":
-            _run_orphan_case(case)
+            _run_orphan_case(case, profiles)
             continue
         raise AssertionError(f"Unsupported reviewed-surface policy contract case type: {case_type}")
     return 0
