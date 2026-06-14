@@ -228,7 +228,7 @@ public interface CliBookQueryJsonModels {
   }
 
   record AccountBalancePayload(
-      CliReportJsonModels.ReportContextPayload context,
+      CliReportSupportJsonModels.ReportContextPayload context,
       String accountCode,
       String accountName,
       String accountType,

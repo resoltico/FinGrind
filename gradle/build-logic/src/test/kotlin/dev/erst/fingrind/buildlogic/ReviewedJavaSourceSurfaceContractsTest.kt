@@ -7,7 +7,7 @@ import kotlin.test.assertTrue
 
 class ReviewedJavaSourceSurfaceContractsTest {
     @Test
-    fun reviewedSurfaceDefinitionViolations_requireExplicitVarianceReasonWhenBudgetWidens() {
+    fun reviewedSurfaceDefinitionViolations_requireExplicitVarianceReasonWhenApprovalSnapshotWidensDefaultBudget() {
         val reviewedSurface =
             ReviewedJavaSourceSurface(
                 projectPath = FinGrindProjectPaths.CONTRACT,
@@ -15,25 +15,12 @@ class ReviewedJavaSourceSurfaceContractsTest {
                 owner = "example",
                 reason = "Example",
                 splitTrigger = "Split the example owner.",
-                budget =
-                    JavaSourceShapeBudget(
-                        roleName = "example",
-                        maxPhysicalLines = 11,
-                        maxLogicalLines = 11,
-                        maxImports = 2,
-                        maxNestedTypes = 1,
-                        maxMethodsPerTopLevelType = 2,
-                        maxFieldsPerTopLevelType = 1,
-                        maxSwitchArmsPerMethod = 1,
-                        maxMethodLineSpan = 10,
-                        maxMethodParameters = 2,
-                        maxMethodDecisionPoints = 2,
-                    ),
+                reviewedRoleName = "example",
                 budgetVarianceReason = null,
                 duplicationExemptionReason = null,
                 approval =
                     reviewedApproval(
-                        physicalLines = 10,
+                        physicalLines = 11,
                         logicalLines = 10,
                         imports = 1,
                         nestedTypes = 1,
@@ -71,7 +58,7 @@ class ReviewedJavaSourceSurfaceContractsTest {
     }
 
     @Test
-    fun reviewedSurfaceDefinitionViolations_requireApprovalSnapshotToFitReviewedBudget() {
+    fun reviewedSurfaceDefinitionViolations_acceptExplicitVarianceReasonWhenApprovalSnapshotWidensDefaultBudget() {
         val reviewedSurface =
             ReviewedJavaSourceSurface(
                 projectPath = FinGrindProjectPaths.CONTRACT,
@@ -79,20 +66,7 @@ class ReviewedJavaSourceSurfaceContractsTest {
                 owner = "example",
                 reason = "Example",
                 splitTrigger = "Split the example owner.",
-                budget =
-                    JavaSourceShapeBudget(
-                        roleName = "example",
-                        maxPhysicalLines = 10,
-                        maxLogicalLines = 10,
-                        maxImports = 1,
-                        maxNestedTypes = 1,
-                        maxMethodsPerTopLevelType = 2,
-                        maxFieldsPerTopLevelType = 1,
-                        maxSwitchArmsPerMethod = 1,
-                        maxMethodLineSpan = 10,
-                        maxMethodParameters = 2,
-                        maxMethodDecisionPoints = 2,
-                    ),
+                reviewedRoleName = "example",
                 budgetVarianceReason = "Example variance.",
                 duplicationExemptionReason = null,
                 approval =
@@ -117,12 +91,11 @@ class ReviewedJavaSourceSurfaceContractsTest {
                 defaultBudget = productionMainBudget,
             )
 
-        assertEquals(1, violations.size)
-        assertTrue("approval snapshot" in violations.single())
+        assertTrue(violations.isEmpty())
     }
 
     @Test
-    fun reviewedSurfaceViolations_failWhenFrozenShapeGrows() {
+    fun reviewedSurfaceViolations_failWhenFrozenShapeDriftsInEitherDirection() {
         val reviewedSurface =
             JavaSourceStructuralContracts.reviewedSurfaces()
                 .first { it.relativePath.endsWith("CliRejectionJsonModels.java") }
@@ -134,7 +107,7 @@ class ReviewedJavaSourceSurfaceContractsTest {
                 metrics =
                     JavaSourceShapeMetrics(
                         physicalLineCount = approvedShape.physicalLineCount + 1,
-                        logicalLineCount = approvedShape.logicalLineCount + 1,
+                        logicalLineCount = approvedShape.logicalLineCount - 1,
                         importCount = approvedShape.importCount + 1,
                         nestedTypeCount = approvedShape.nestedTypeCount,
                         maxMethodsPerTopLevelType = approvedShape.maxMethodsPerTopLevelType,
@@ -150,6 +123,7 @@ class ReviewedJavaSourceSurfaceContractsTest {
 
         assertEquals(3, violations.size)
         assertTrue(violations.all { "CliRejectionJsonModels.java" in it })
+        assertTrue(violations.any { "approved ${approvedShape.logicalLineCount}, live ${approvedShape.logicalLineCount - 1}" in it })
     }
 
     @Test
@@ -161,20 +135,7 @@ class ReviewedJavaSourceSurfaceContractsTest {
                 owner = "example",
                 reason = "Example",
                 splitTrigger = "Split the example owner.",
-                budget =
-                    JavaSourceShapeBudget(
-                        roleName = "reviewed-production-main",
-                        maxPhysicalLines = 20,
-                        maxLogicalLines = 20,
-                        maxImports = 4,
-                        maxNestedTypes = 2,
-                        maxMethodsPerTopLevelType = 4,
-                        maxFieldsPerTopLevelType = 2,
-                        maxSwitchArmsPerMethod = 2,
-                        maxMethodLineSpan = 20,
-                        maxMethodParameters = 4,
-                        maxMethodDecisionPoints = 4,
-                    ),
+                reviewedRoleName = "reviewed-production-main",
                 budgetVarianceReason = "Example variance.",
                 duplicationExemptionReason = null,
                 approval =

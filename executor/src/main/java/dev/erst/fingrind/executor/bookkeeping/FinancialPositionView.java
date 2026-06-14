@@ -12,6 +12,7 @@ import java.util.Optional;
 public record FinancialPositionView(
     BookIdentity bookIdentity,
     Optional<LocalDate> effectiveDateAsOf,
+    Optional<LocalDate> resolvedEffectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     boolean accountingEquationBalanced,
@@ -20,6 +21,7 @@ public record FinancialPositionView(
   public FinancialPositionView {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
+    Objects.requireNonNull(resolvedEffectiveDateAsOf, "resolvedEffectiveDateAsOf");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     sections = List.copyOf(Objects.requireNonNull(sections, "sections"));

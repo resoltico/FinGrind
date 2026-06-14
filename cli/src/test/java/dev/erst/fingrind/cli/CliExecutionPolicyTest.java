@@ -27,7 +27,7 @@ class CliExecutionPolicyTest {
         CliExecutionPolicy.inferredFailureOutputMode(
             new String[] {"post-entry", "--output", "csv"}));
     assertEquals(
-        CliOutputModeDefaults.defaultSelectableOutputMode(),
+        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE).mode(),
         CliExecutionPolicy.inferredFailureOutputMode(
             new String[] {"post-entry", "--output", "bogus"}));
   }

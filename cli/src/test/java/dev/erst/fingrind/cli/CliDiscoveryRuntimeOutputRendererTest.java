@@ -29,6 +29,11 @@ import org.junit.jupiter.api.Test;
 
 /** Focused tests for runtime and capability discovery rendering. */
 class CliDiscoveryRuntimeOutputRendererTest {
+  private static String renderHelpText(dev.erst.fingrind.contract.discovery.HelpDescriptor help) {
+    return CliDiscoveryOutputRenderer.renderHelpText(
+        help, CliDiscoveryTestSupport.environment(), false);
+  }
+
   @Test
   void renderCapabilitiesText_rendersCommandGroupsContractsAndRequestInput() {
     String rendered =
@@ -98,7 +103,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
   @Test
   void renderHelpText_commandHelpRendersArtifactOutputsAndCollapsedSelectableDefaults() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind trial-balance --output json --pdf-out report.pdf"),
@@ -269,6 +274,23 @@ class CliDiscoveryRuntimeOutputRendererTest {
   }
 
   @Test
+  void renderEnvironmentText_rendersConfiguredDefaultOutputSource() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderEnvironmentText(
+            new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
+                new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(
+                    RuntimeDistribution.SELF_CONTAINED_BUNDLE,
+                    OutputMode.JSON,
+                    "FINGRIND_DEFAULT_OUTPUT"),
+                CliDiscoveryTestSupport.environment().publication(),
+                CliDiscoveryTestSupport.environment().storage(),
+                CliDiscoveryTestSupport.environment().sqlite()));
+
+    assertTrue(rendered.contains("Default output mode"));
+    assertTrue(rendered.contains("json via FINGRIND_DEFAULT_OUTPUT"));
+  }
+
+  @Test
   void renderEnvironmentText_coversExplicitRuntimeStateFamilies() {
     String readyRendered =
         CliDiscoveryOutputRenderer.renderEnvironmentText(
@@ -339,13 +361,14 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.53.0"));
+    assertTrue(rendered.contains("0.54.0"));
   }
 
   private static dev.erst.fingrind.contract.runtime.EnvironmentDescriptor
       environmentForDistribution(RuntimeDistribution distribution) {
     return new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
-        new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(distribution),
+        new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(
+            distribution, OutputMode.TEXT, null),
         new dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             List.of(),

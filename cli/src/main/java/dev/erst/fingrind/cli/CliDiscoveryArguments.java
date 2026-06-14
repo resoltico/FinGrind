@@ -14,6 +14,18 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses discovery-style CLI commands that do not target a selected book. */
 final class CliDiscoveryArguments {
+  private static final List<String> HELP_OPTIONS =
+      List.of(ProtocolOptions.OUTPUT, ProtocolOptions.DETAIL, ProtocolOptions.CATEGORY);
+  private static final List<String> COMMAND_HELP_OPTIONS =
+      List.of(ProtocolOptions.OUTPUT, ProtocolOptions.DETAIL);
+  private static final List<String> CAPABILITIES_OPTIONS =
+      List.of(
+          ProtocolOptions.OUTPUT,
+          ProtocolOptions.DETAIL,
+          ProtocolOptions.FOCUS,
+          ProtocolOptions.CATEGORY);
+  private static final List<String> SIMPLE_DISCOVERY_OPTIONS = List.of(ProtocolOptions.OUTPUT);
+
   private CliDiscoveryArguments() {}
 
   static CliCommand parseHelp(List<String> arguments) {
@@ -41,7 +53,10 @@ final class CliDiscoveryArguments {
         continue;
       }
       if (commandTopic != null) {
-        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+        throw CliArgumentValueParser.unsupportedArgument(argument, HELP_OPTIONS);
+      }
+      if (argument.startsWith("-")) {
+        throw CliArgumentValueParser.unsupportedArgument(argument, HELP_OPTIONS);
       }
       commandTopic = requiredCommandTopic(argument, "help");
     }
@@ -57,7 +72,8 @@ final class CliDiscoveryArguments {
         commandTopic,
         resolvedOutputMode,
         detail == null ? DiscoveryDetail.MINIMAL : detail,
-        category);
+        category,
+        false);
   }
 
   static CliCommand parseCommandHelp(OperationId commandTopic, List<String> arguments) {
@@ -78,12 +94,16 @@ final class CliDiscoveryArguments {
         detail = CliOptionModes.requireDiscoveryDetail(detail, argumentIterator);
         continue;
       }
-      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      throw CliArgumentValueParser.unsupportedArgument(argument, COMMAND_HELP_OPTIONS);
     }
     OutputMode resolvedOutputMode = CliOptionModes.resolvedDiscoveryOutputMode(outputMode);
     requireJsonDiscoverySelections(detail, null, null, resolvedOutputMode);
     return new Help(
-        commandTopic, resolvedOutputMode, detail == null ? DiscoveryDetail.MINIMAL : detail, null);
+        commandTopic,
+        resolvedOutputMode,
+        detail == null ? DiscoveryDetail.MINIMAL : detail,
+        null,
+        false);
   }
 
   static CliCommand parseVersion(List<String> arguments) {
@@ -151,7 +171,7 @@ final class CliDiscoveryArguments {
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       if (!ProtocolOptions.OUTPUT.equals(argument)) {
-        throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+        throw CliArgumentValueParser.unsupportedArgument(argument, SIMPLE_DISCOVERY_OPTIONS);
       }
       outputMode =
           CliOptionModes.requireOutputMode(
@@ -229,7 +249,7 @@ final class CliDiscoveryArguments {
         category = CliOptionModes.requireOperationCategory(category, argumentIterator);
         continue;
       }
-      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      throw CliArgumentValueParser.unsupportedArgument(argument, CAPABILITIES_OPTIONS);
     }
     return new CapabilitiesOptionState(outputMode, detail, focus, category);
   }

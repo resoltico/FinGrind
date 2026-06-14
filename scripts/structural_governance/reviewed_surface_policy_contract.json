@@ -1,0 +1,179 @@
+{
+  "definitionCases": [
+    {
+      "id": "variance-reason-required",
+      "relativePath": "src/main/java/dev/erst/fingrind/example/Oversized.java",
+      "owner": "example-owner",
+      "splitTrigger": "Split the example owner.",
+      "reviewedRoleName": "example-reviewed",
+      "budgetVarianceReason": null,
+      "defaultBudget": {
+        "roleName": "production-main",
+        "physicalLines": 10,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2
+      },
+      "approval": {
+        "physicalLines": 11,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2,
+        "expiresOn": "2026-07-01"
+      },
+      "expectedDefinitionDescriptors": ["variance-reason-required"]
+    },
+    {
+      "id": "variance-reason-present",
+      "relativePath": "src/main/java/dev/erst/fingrind/example/OversizedApproval.java",
+      "owner": "example-owner",
+      "splitTrigger": "Split the example owner.",
+      "reviewedRoleName": "example-reviewed",
+      "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
+      "defaultBudget": {
+        "roleName": "production-main",
+        "physicalLines": 10,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2
+      },
+      "approval": {
+        "physicalLines": 11,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2,
+        "expiresOn": "2026-07-01"
+      },
+      "expectedDefinitionDescriptors": []
+    }
+  ],
+  "runtimeCases": [
+    {
+      "id": "expired-waiver",
+      "relativePath": "src/main/java/dev/erst/fingrind/example/ExpiredWaiver.java",
+      "owner": "example-owner",
+      "splitTrigger": "Split the example owner.",
+      "reviewedRoleName": "example-reviewed",
+      "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
+      "defaultBudget": {
+        "roleName": "production-main",
+        "physicalLines": 10,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2
+      },
+      "approval": {
+        "physicalLines": 11,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2,
+        "expiresOn": "2026-06-01"
+      },
+      "liveMetrics": {
+        "physicalLines": 11,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2
+      },
+      "currentDate": "2026-06-14",
+      "expectedRuntimeDescriptors": ["waiver-expired:2026-06-01"]
+    },
+    {
+      "id": "unnecessary-waiver",
+      "relativePath": "src/main/java/dev/erst/fingrind/example/ExampleOwner.java",
+      "owner": "example-owner",
+      "splitTrigger": "Split the example owner.",
+      "reviewedRoleName": "example-reviewed",
+      "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
+      "defaultBudget": {
+        "roleName": "production-main",
+        "physicalLines": 30,
+        "logicalLines": 30,
+        "importLikeLines": 5,
+        "nestedTypes": 2,
+        "functions": 4
+      },
+      "approval": {
+        "physicalLines": 20,
+        "logicalLines": 20,
+        "importLikeLines": 3,
+        "nestedTypes": 1,
+        "functions": 2,
+        "expiresOn": "2026-07-01"
+      },
+      "liveMetrics": {
+        "physicalLines": 18,
+        "logicalLines": 18,
+        "importLikeLines": 2,
+        "nestedTypes": 1,
+        "functions": 1
+      },
+      "currentDate": "2026-06-14",
+      "expectedRuntimeDescriptors": ["waiver-unnecessary"]
+    },
+    {
+      "id": "snapshot-drift",
+      "relativePath": "src/main/java/dev/erst/fingrind/example/DriftedWaiver.java",
+      "owner": "example-owner",
+      "splitTrigger": "Split the example owner.",
+      "reviewedRoleName": "example-reviewed",
+      "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
+      "defaultBudget": {
+        "roleName": "production-main",
+        "physicalLines": 10,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2
+      },
+      "approval": {
+        "physicalLines": 11,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2,
+        "expiresOn": "2026-07-01"
+      },
+      "liveMetrics": {
+        "physicalLines": 12,
+        "logicalLines": 9,
+        "importLikeLines": 2,
+        "nestedTypes": 1,
+        "functions": 2
+      },
+      "currentDate": "2026-06-14",
+      "expectedRuntimeDescriptors": [
+        "snapshot-drift:physical-lines:11:12",
+        "snapshot-drift:logical-lines:10:9",
+        "snapshot-drift:imports:1:2"
+      ]
+    }
+  ],
+  "orphanCases": [
+    {
+      "id": "orphaned-waiver",
+      "relativePath": "src/main/java/dev/erst/fingrind/example/OrphanedWaiver.java",
+      "owner": "example-owner",
+      "splitTrigger": "Split the example owner.",
+      "reviewedRoleName": "example-reviewed",
+      "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
+      "approval": {
+        "physicalLines": 11,
+        "logicalLines": 10,
+        "importLikeLines": 1,
+        "nestedTypes": 1,
+        "functions": 2,
+        "expiresOn": "2026-07-01"
+      },
+      "existingRelativePaths": [],
+      "expectedRuntimeDescriptors": ["orphaned-waiver"]
+    }
+  ]
+}

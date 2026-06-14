@@ -68,6 +68,7 @@ class StatementAndCloseContractTypesTest {
         new FinancialPositionReport(
             ContractFixtures.bookIdentity(),
             Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
             true,
@@ -207,6 +208,7 @@ class StatementAndCloseContractTypesTest {
         () ->
             new FinancialPositionReport(
                 ContractFixtures.bookIdentity(),
+                Optional.empty(),
                 Optional.empty(),
                 EffectiveDateRange.unbounded(),
                 PostingCoverage.ALL_POSTING_KINDS,

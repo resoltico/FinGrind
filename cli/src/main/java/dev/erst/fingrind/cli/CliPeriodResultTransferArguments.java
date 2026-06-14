@@ -10,6 +10,11 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses CLI arguments for `transfer-period-result`. */
 final class CliPeriodResultTransferArguments {
+  private static final List<String> TRANSFER_PERIOD_RESULT_OPTIONS =
+      List.of(
+          ProtocolOptions.EFFECTIVE_DATE_FROM,
+          ProtocolOptions.EFFECTIVE_DATE_TO,
+          ProtocolOptions.OUTPUT);
   private static final CliBookArgumentParser.CommandArgumentSpec TRANSFER_PERIOD_RESULT_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
@@ -60,7 +65,7 @@ final class CliPeriodResultTransferArguments {
                 CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
-      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      throw CliArgumentValueParser.unsupportedArgument(argument, TRANSFER_PERIOD_RESULT_OPTIONS);
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(

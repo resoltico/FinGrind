@@ -1,9 +1,10 @@
-# Kotlin 2.4+ / Gradle Agent Protocol
+# Kotlin 2.4+ Agent Protocol
 
-**Version:** 2.0.0
-**Updated:** 2026-04-27
-**Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v2.0.0+
-**Scope:** Kotlin repositories that intentionally use Kotlin **2.4+** or are being migrated to it. This includes Kotlin/JVM, Kotlin Multiplatform, Kotlin/Native, Kotlin/Wasm, Kotlin/JS, Android Kotlin modules, libraries, CLIs, services, plugins, and multi-module Gradle builds.
+**Version:** 2.1.0
+**Updated:** 2026-06-13
+**Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v3.0.0+
+**Companion:** [.codex/PROTOCOL_GRADLE.md](./PROTOCOL_GRADLE.md) for Gradle build logic.
+**Scope:** Kotlin repositories that intentionally use Kotlin **2.4+** or are being migrated to it. This includes Kotlin/JVM, Kotlin Multiplatform, Kotlin/Native, Kotlin/Wasm, Kotlin/JS, Android Kotlin modules, libraries, CLIs, services, plugins, and multi-module builds. For Gradle builds, load alongside the Gradle protocol.
 
 ## 0. Scope and inheritance
 
@@ -11,7 +12,7 @@ This protocol inherits the Universal Engineering Contract. The universal contrac
 
 This protocol adds Kotlin- and Gradle-specific content for which the universal contract is intentionally silent: Kotlin language and compiler posture, multiplatform and interop boundaries, coroutines and Flow semantics, Gradle Kotlin DSL build wiring, and verification patterns appropriate to Kotlin 2.4+.
 
-**Current posture:** Kotlin 2.4 may be an EAP/Beta in the target repository. Treat EAP adoption as an explicit repository decision, not as a default upgrade path. If the project is on Kotlin 2.3.x or lower, do not silently migrate it to Kotlin 2.4+ unless the task is a migration or the repository already opts in.
+**Current posture:** Kotlin 2.4.0 reached GA in June 2026; it is the stable baseline this protocol targets. Earlier-numbered 2.4 builds (M1/Beta/RC) carried features that did not all ship stable, so verify against the repository's actual pinned version rather than assuming Beta-era posture. If the project is on Kotlin 2.3.x or lower, do not silently migrate it to Kotlin 2.4+ unless the task is a migration or the repository already opts in.
 
 **Build default:** Gradle Kotlin DSL. Do not introduce Groovy build logic. Use Maven guidance only when the repository is already Maven-based.
 
@@ -31,9 +32,9 @@ Per the Naurian frame, some theory the agent typically does not bring in cold an
 
 - Whether Kotlin 2.4 in this repository is GA, RC, Beta, or EAP — and whether the repository has a deliberate EAP policy or just inherited a version pin.
 - Whether K2 is on, and whether any K1-era workaround is still load-bearing.
-- Which experimental flags (`-Xcontext-parameters`, `-Xexplicit-context-arguments`, `-Xcollection-literals`, `-XXLanguage:+IntrinsicConstEvaluation`, etc.) are actually enabled in this slice. Compile, test, IDE, KSP, and CI must agree.
+- Which experimental flags (`-Xexplicit-context-arguments`, `-Xcollection-literals`, `-Xintrinsic-const-evaluation`, etc.) are actually enabled in this slice. Compile, test, IDE, KSP, and CI must agree. (Context parameters themselves are stable in 2.4.0 and need no flag; only explicit context arguments and callable references remain experimental.)
 - Whether the repository is an internal app, a published library, a Gradle plugin, or a multiplatform package — this changes the meaning of "public" and "compatible."
-- Whether **Rich Errors** are an available compiler feature (they are not as of Kotlin 2.4-Beta2). The agent must not invent the syntax. This is the most common Kotlin hallucination class.
+- Whether **Rich Errors** are an available compiler feature (they are not in Kotlin 2.4.0 GA; the feature appeared only in pre-release M1+ experiments and did not ship in the release). The agent must not invent the syntax. This is the most common Kotlin hallucination class.
 - Whether Kotlin 2.4's annotation defaulting changes silently shifted serialization, validation, DI, or reflection behavior in this codebase.
 - Whether `commonMain` is genuinely platform-neutral, or quietly leaking JVM/Android/Foundation/Node types.
 - Whether old Kotlin/Native freezing or memory-manager folklore is still embedded in code or tests; the new memory manager has different rules.
@@ -69,7 +70,7 @@ Do not infer the baseline from file names alone. The version catalog and convent
 
 Use Kotlin 2.4+ features only according to their stability and repository opt-in status.
 
-### 2.1 Stable in Kotlin 2.4.0-Beta2
+### 2.1 Stable in Kotlin 2.4.0
 
 When the repository is intentionally on Kotlin 2.4+, these can be treated as normal language or library tools unless project policy says otherwise:
 
@@ -82,18 +83,19 @@ When the repository is intentionally on Kotlin 2.4+, these can be treated as nor
 - JVM `UInt.toBigInteger()` and `ULong.toBigInteger()`.
 - Kotlin/JVM support for Java 26 bytecode.
 - Kotlin metadata annotations enabled by default on JVM.
+- Kotlin/Native CMS garbage collector enabled by default; Swift export with CMS GC.
 - Kotlin/Wasm incremental compilation enabled by default.
 - Kotlin/JS value class export to JavaScript/TypeScript and ES2015 support inside `js()` inline code.
 
 Use these features only when they improve the system's theory, not merely because they are new.
 
-### 2.2 Experimental in Kotlin 2.4.0-Beta2
+### 2.2 Experimental in Kotlin 2.4.0
 
 Do not introduce these unless the repository already enables the flag or the task explicitly asks for adoption:
 
-- Explicit context arguments: `-Xexplicit-context-arguments`.
+- Explicit context arguments: `-Xexplicit-context-arguments`, and callable references for context parameters.
 - Collection literals: `-Xcollection-literals`.
-- Improved compile-time constant evaluation: `-XXLanguage:+IntrinsicConstEvaluation`.
+- Improved compile-time constant evaluation: `-Xintrinsic-const-evaluation`.
 - WebAssembly Component Model support.
 - UUID V4/V7 generation APIs.
 - Any Kotlin/Native, Swift export, JS, Wasm, or metadata feature still marked Experimental by the compiler or documentation.
@@ -574,7 +576,7 @@ Accept external inputs defensively where the boundary requires tolerance. Emit o
 
 ### 11.1 Java 26 and JVM target alignment
 
-Kotlin 2.4.0-Beta2 can generate Java 26 bytecode. Use Java 26 only when the repository's deployment, Gradle wrapper, toolchain, test runtime, static analysis, and downstream consumers support it.
+Kotlin 2.4.0 can generate Java 26 bytecode. Use Java 26 only when the repository's deployment, Gradle wrapper, toolchain, test runtime, static analysis, and downstream consumers support it.
 
 Align:
 
@@ -661,23 +663,11 @@ Do not use JavaScript dynamic interop where typed declarations or generated bind
 
 ---
 
-## 13. Build logic and Gradle
+## 13. Kotlin build wiring (Gradle)
 
-### 13.1 Default build posture
+The language-independent Gradle rules — wrapper and toolchains, Kotlin-DSL authoring, version catalogs and dependency hygiene, repositories, convention plugins, multi-module structure, performance features, and build isolation/daemon management — are owned by `.codex/PROTOCOL_GRADLE.md`. Load it for any Gradle build change. The subsections below are the Kotlin-specific build wiring that sits on top of it.
 
-Use:
-
-- `settings.gradle.kts`, `build.gradle.kts`, and convention plugins,
-- `gradle/libs.versions.toml` for plugin and dependency versions,
-- `build-logic` included build for substantial shared build policy,
-- explicit Java toolchains,
-- centralized Kotlin `compilerOptions`,
-- explicit test tasks and quality gate,
-- type-safe project accessors for multi-module projects when appropriate.
-
-Do not hardcode versions in module build files.
-
-### 13.2 Kotlin and plugin version alignment
+### 13.1 Kotlin and plugin version alignment
 
 Kotlin compiler plugins must be version-compatible with the Kotlin compiler:
 
@@ -691,21 +681,21 @@ Kotlin compiler plugins must be version-compatible with the Kotlin compiler:
 
 Before upgrading Kotlin, verify every compiler plugin and static analysis tool. If a stable tool does not yet support Kotlin 2.4, prefer postponing that tool or the migration over adding unstable tooling to production.
 
-### 13.3 Compiler options
+### 13.2 Compiler options
 
-Put shared compiler options in convention plugins, not copy-pasted module blocks.
+Put shared compiler options in convention plugins, not copy-pasted module blocks. Centralize Kotlin `compilerOptions` there.
 
 Use `compilerOptions {}` rather than deprecated configuration surfaces.
 
 Keep opt-ins explicit and scoped. A broad project-wide opt-in is a design decision and must be justified by the repository policy.
 
-### 13.4 Explicit API mode
+### 13.3 Explicit API mode
 
 Enable explicit API mode for libraries and SDKs. Application modules usually do not need it.
 
 Use warning mode only as a migration step. Published libraries should converge to strict explicit API mode.
 
-### 13.5 Warning policy
+### 13.4 Warning policy
 
 Warnings are feedback. Do not globally disable them.
 
@@ -713,30 +703,11 @@ Use `-Werror` only when the repository can keep it green consistently. If specif
 
 The return-value checker is especially useful for command-style APIs, persistence writes, validation results, and domain operations where ignored results are dangerous.
 
-### 13.6 Build isolation and daemon management
+### 13.5 Kotlin daemon and dependency specifics
 
-The Gradle daemon and Kotlin compile daemon are shared machine resources.
+The Kotlin compile daemon is a shared resource on top of the Gradle daemon (PROTOCOL_GRADLE §8). Treat "Could not connect to Kotlin compile daemon" and similar failures as infrastructure first: retry cleanly before editing build logic.
 
-Rules:
-
-- Do not run multiple Gradle invocations concurrently in the same project directory.
-- In multi-agent/multi-project environments, isolate daemon pools with project-local `GRADLE_USER_HOME` when needed.
-- Add project-local Gradle homes to `.gitignore`.
-- Use `./gradlew --stop` only to recover from confirmed daemon corruption, not as routine build hygiene.
-- Treat "Could not connect to Kotlin compile daemon" and similar failures as infrastructure first. Retry cleanly before editing build logic.
-
-### 13.7 Dependency anti-hallucination
-
-Before adding or updating any dependency:
-
-- verify exact group, artifact, and version in the declared repository,
-- verify Kotlin version compatibility,
-- verify platform compatibility,
-- verify license and security posture if relevant,
-- verify scope: `implementation`, `api`, `compileOnly`, `runtimeOnly`, `testImplementation`, `ksp`, `kapt`, or platform-specific source set,
-- verify whether the standard library, JDK, kotlinx library, or existing stack already covers the need.
-
-Do not invent coordinates or assume APIs from memory.
+When verifying a dependency per PROTOCOL_GRADLE §3, additionally confirm Kotlin and platform compatibility and the correct Kotlin scope: `implementation`, `api`, `compileOnly`, `runtimeOnly`, `testImplementation`, `ksp`, `kapt`, or a platform-specific source set.
 
 ---
 

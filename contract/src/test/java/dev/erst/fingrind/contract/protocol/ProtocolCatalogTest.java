@@ -252,12 +252,14 @@ class ProtocolCatalogTest {
   }
 
   @Test
-  void asOfReportDescriptions_publishCurrentBookHorizonLanguage() {
+  void asOfReportDescriptions_publishResolvedLatestDateLanguage() {
     ProtocolOperation trialBalance = ProtocolCatalog.operation(OperationId.TRIAL_BALANCE);
     ProtocolOperation financialPosition = ProtocolCatalog.operation(OperationId.FINANCIAL_POSITION);
 
-    assertTrue(trialBalance.analysisSummary().contains("current book horizon"));
-    assertTrue(financialPosition.analysisSummary().contains("current book horizon"));
+    assertTrue(
+        trialBalance.analysisSummary().contains("latest effective date in the selected book"));
+    assertTrue(
+        financialPosition.analysisSummary().contains("latest effective date in the selected book"));
   }
 
   @Test

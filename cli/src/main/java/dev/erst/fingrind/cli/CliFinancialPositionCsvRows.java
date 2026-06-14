@@ -35,7 +35,7 @@ final class CliFinancialPositionCsvRows {
             .effectiveDateTo()
             .map(LocalDate::toString)
             .orElse("")
-        : report.effectiveDateAsOf().map(LocalDate::toString).orElse("");
+        : report.resolvedEffectiveDateAsOf().map(LocalDate::toString).orElse("");
   }
 
   private static List<List<String>> sectionRows(

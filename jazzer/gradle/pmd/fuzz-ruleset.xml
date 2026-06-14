@@ -34,7 +34,7 @@
         <exclude name="CyclomaticComplexity"/>
         <exclude name="CognitiveComplexity"/>
         <exclude name="CouplingBetweenObjects"/>
-        <!-- File and method size governance lives in FinGrind's structural-governance engine rather than PMD's ambient NCSS defaults. -->
+        <!-- File and method size governance lives in FinGrind's structural-governance verifiers rather than PMD's ambient NCSS defaults. -->
         <exclude name="NcssCount"/>
         <!-- FinGrind bans wildcard imports through a dedicated source-policy gate. Retaining ExcessiveImports here would push developers back toward forbidden wildcard imports instead of enforcing the real rule we care about. -->
         <exclude name="ExcessiveImports"/>

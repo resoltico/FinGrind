@@ -1,9 +1,9 @@
-# Rust 1.95+ / Cargo Agent Protocol
+# Rust 1.96+ / Cargo Agent Protocol
 
-**Version:** 2.0.0
-**Updated:** 2026-04-27
-**Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v2.0.0+
-**Scope:** Rust projects targeting **Rust 1.95+** built with **Cargo** — libraries, services, CLIs, daemons, backends, systems tools, proc-macro crates, FFI crates, WebAssembly crates, embedded or `no_std` crates, Rust-backed desktop apps, and mixed-language repositories with Rust surfaces.
+**Version:** 2.2.0
+**Updated:** 2026-06-13
+**Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v3.0.0+
+**Scope:** Rust projects targeting **Rust 1.96+** built with **Cargo** — libraries, services, CLIs, daemons, backends, systems tools, proc-macro crates, FFI crates, WebAssembly crates, embedded or `no_std` crates, Rust-backed desktop apps, and mixed-language repositories with Rust surfaces.
 
 ## 0. Scope and inheritance
 
@@ -17,7 +17,7 @@ This protocol adds Rust- and Cargo-specific content for which the universal cont
 
 Terseness loses to explicitness. Local convenience loses to correctness. Borrow-checker workarounds lose to a clear ownership model. Passing `cargo check` is not the finish line.
 
-### 0.1 Rust 1.95 + Cargo tacit gaps
+### 0.1 Rust 1.96 + Cargo tacit gaps
 
 Per the Naurian frame, some theory the agent typically does not bring in cold and must surface rather than paper over. Watch especially for:
 
@@ -30,7 +30,7 @@ Per the Naurian frame, some theory the agent typically does not bring in cold an
 - That a transitive dependency can pull in an async runtime; a "runtime-agnostic" library may not be.
 - That doc tests run in their own crate and do not see internal items, dev-dependencies, or test-only helpers without explicit setup.
 - That `clippy::pedantic` / `nursery` / `restriction` lint groups change between releases. Denying them can silently break on the next toolchain bump.
-- That Rust 1.95's newly stable tools (`cfg_select!`, `if let` guards, `Vec::push_mut`, `Atomic*::update`, `std::hint::cold_path`) may be undeployed *or* underused — the agent may avoid them as if still nightly, or use them where MSRV forbids.
+- That recent newly stable tools (1.95: `cfg_select!`, `if let` guards, `Vec::push_mut`, `Atomic*::update`, `core::hint::cold_path`; 1.96: `core::range` Copy ranges, `assert_matches!`) may be undeployed *or* underused — the agent may avoid them as if still nightly, or use them where MSRV forbids.
 - That edition 2024 denies references to `static mut` by default. Pre-existing `static mut` modules in the repo are invisible until touched.
 - That `build.rs` shapes the build the agent never sees. Read it before assuming the build is hermetic.
 
@@ -79,7 +79,7 @@ Apply the universal contract §1 system map to the touched surface. Rust-specifi
 
 - **Truth:** source of truth for the relevant state, config, schema, generated artifact, feature flag, or protocol value; mutation paths; derived/cached/generated copies (bindgen, prost, sqlx, build-script outputs).
 - **Evidence:** existing checks (`cargo check`/`test`/`doc`/`clippy`/`fmt`, contract tests, integration tests, property tests, fuzz/Miri/Loom, CI); missing feedback worth adding.
-- **Consequence:** direct Rust dependencies (callers, trait impls, re-exports, features, cfg arms, tests); indirect (serialization, FFI, generated code, build scripts, CLI output, docs, dashboards, manual workflows).
+- **Consequence:** direct Rust dependencies (callers, trait impls, re-exports, features, cfg arms, tests); indirect (serialization, FFI, generated code, build scripts, CLI output, docs, dashboards, human workflows).
 - **Invariant:** type, ownership, concurrency, memory-safety, protocol, or compatibility rule that must remain true.
 - **Justification:** why each touched type, lifetime, trait bound, feature, and `unsafe` block is the way it is — and which are inherited rather than chosen. If the answer is not available, surface that gap.
 - **Re-cueing:** where the learned theory should live — type, test, rustdoc, `SAFETY:` comment, module name, build check, generated artifact, README, runbook. Flag the parts of the theory that cannot be written down, and who currently holds them.
@@ -135,18 +135,18 @@ Do not:
 
 ---
 
-## 3. Rust 1.95+ baseline posture
+## 3. Rust 1.96+ baseline posture
 
 ### 3.1 Stable toolchain
 
-Use the repository's pinned toolchain when present. Otherwise, assume stable Rust 1.95+ for projects governed by this protocol.
+Use the repository's pinned toolchain when present. Otherwise, assume stable Rust 1.96+ for projects governed by this protocol.
 
 For new crates created under this protocol:
 
 ```toml
 [package]
 edition = "2024"
-rust-version = "1.95"
+rust-version = "1.96"
 ```
 
 For existing crates:
@@ -170,18 +170,32 @@ When using edition 2024, account for the edition's safety and semantics changes:
 - `Future` and `IntoFuture` are in the prelude; avoid redundant imports unless they improve local readability.
 - migration fixes are conservative. Review temporary lifetime changes, macro fragment changes, and never-type fallback implications deliberately.
 
-### 3.3 Rust 1.95 language and library posture
+### 3.3 Rust 1.95–1.96 language and library posture
 
-Rust 1.95 adds useful stable tools. Use them when they make the code clearer, not merely because they are new. Do not avoid them as if still nightly.
+Recent stable releases add useful tools. Use them when they make the code clearer, not merely because they are new. Do not avoid them as if still nightly.
 
-- Prefer `cfg_select!` for readable compile-time configuration selection when the repository baseline is Rust 1.95+ and the pattern would otherwise need ad hoc `#[cfg]` branching or the `cfg-if` crate.
+Stable since 1.95:
+
+- Prefer `cfg_select!` for readable compile-time configuration selection when the repository baseline supports it and the pattern would otherwise need ad hoc `#[cfg]` branching or the `cfg-if` crate.
 - Use `if let` guards in `match` arms when they make pattern-dependent conditions clearer. Remember that these guards do not contribute to exhaustiveness; the remaining arms must still handle all cases.
 - Use collection insertion helpers such as `Vec::push_mut`, `Vec::insert_mut`, and the analogous `VecDeque`/`LinkedList` helpers when they avoid awkward indexing or double lookup while preserving clarity.
 - Use `Atomic*::update` and `Atomic*::try_update` when they express an atomic read-modify-write loop more clearly than handwritten compare-exchange loops. State the ordering rationale.
-- Use `std::hint::cold_path` only for genuinely cold paths where the intent is clearer than relying on profiling folklore.
-- Custom JSON target specifications are not stable on Rust 1.95. If a custom target is required, pin and justify nightly rather than pretending the stable toolchain supports it.
+- Use `core::hint::cold_path` only for genuinely cold paths where the intent is clearer than relying on profiling folklore.
 
-### 3.4 Lint posture
+Stable since 1.96:
+
+- The `core::range` types (`Range`, `RangeFrom`, `RangeInclusive`, `RangeToInclusive`) implement `IntoIterator` rather than `Iterator`, so they are `Copy` and can live in `Copy` structs; the new `RangeInclusive` also exposes public fields. Prefer them when a range must be stored in a `Copy` type. Do not churn existing `std::ops::Range` usage to the new types without a reason — the legacy ranges remain the idiomatic default for `for` loops and slicing.
+- Use `assert_matches!` and `debug_assert_matches!` in tests for clearer pattern-match assertions; both must be imported from `core` or `std` explicitly (they are not in the prelude).
+- `From<T>` is now implemented for `AssertUnwindSafe<T>`, `LazyCell<T, F>`, and `LazyLock<T, F>`.
+
+Custom JSON target specifications remain unstable on the 1.96 baseline. If a custom target is required, pin and justify nightly rather than pretending the stable toolchain supports it.
+
+### 3.4 Rust 1.96 behavior changes to account for
+
+- **WebAssembly linking is stricter.** WebAssembly targets no longer pass `--allow-undefined` to the linker: undefined symbols are now a link error instead of being silently converted to imports from the `"env"` module. When touching WASM crates, expect previously-tolerated undefined symbols to fail the build, and declare intended host imports explicitly rather than relying on the old implicit behavior.
+- **Cargo registry security fixes.** Rust 1.96 fixes two vulnerabilities affecting users of third-party registries: CVE-2026-5223 (medium; crate-tarball symlink extraction) and CVE-2026-5222 (low; authentication with normalized URLs). crates.io users are unaffected. For repositories that consume alternate registries, treat a toolchain at or above 1.96 as the security baseline (see §11.3).
+
+### 3.5 Lint posture
 
 For new crates, prefer a strong but practical lint baseline:
 
@@ -491,7 +505,7 @@ For CLIs and process integration:
 
 - exit codes are contracts;
 - stdout/stderr separation is a contract;
-- operator-readable output and machine-readable output should not be casually mixed;
+- human output and machine-readable output should not be casually mixed;
 - environment variables and config keys must have canonical owners (per universal contract §5);
 - secrets must not appear in logs, panic messages, debug output, or error chains.
 
@@ -631,7 +645,7 @@ Per universal contract §8. Rust-specific blast-radius surfaces beyond the unive
 - proc macro or generated references;
 - serialization formats and stored data;
 - FFI symbols, `no_mangle`, exported names, and linker scripts;
-- build scripts, examples, tests, benches, docs, CI, and manual workflows.
+- build scripts, examples, tests, benches, docs, CI, and human workflows.
 
 Deleting dead code is good. Deleting untraced contract surface is breakage.
 
@@ -639,9 +653,9 @@ Deleting dead code is good. Deleting untraced contract surface is breakage.
 
 ## 11. CI and project automation
 
-### 11.1 CI mirrors local verification
+### 11.1 Cross-language CI rules
 
-The canonical verification path must be runnable locally and in CI with the same strictness. Do not create CI-only checks that developers or agents cannot reproduce.
+Mirroring local verification, pinning third-party actions to commit SHAs, timeouts and stale-run cancellation, and dependency-freshness automation are owned by `.codex/PROTOCOL_CI.md`. Load it when CI, workflow, or pipeline configuration is touched. The subsections below are Rust-specific.
 
 ### 11.2 Toolchain pinning
 
@@ -656,10 +670,10 @@ CI should install the same toolchain and components used locally, such as:
 
 ### 11.3 Supply-chain discipline
 
-- Pin third-party CI actions to immutable commit SHAs where repository policy requires supply-chain hardening.
 - Do not add Git dependencies casually.
 - Use `cargo audit`, `cargo deny`, SBOM generation, or equivalent checks when the repository already has them or the risk profile justifies them.
 - Treat dependency updates as behavior changes unless proven otherwise.
+- For repositories that pull from third-party (non-crates.io) registries, keep the toolchain at Rust 1.96+, which fixes CVE-2026-5223 (tarball symlink extraction) and CVE-2026-5222 (normalized-URL authentication). Do not pin an older toolchain for an alternate-registry project without recording the accepted risk.
 
 ### 11.4 Build reproducibility
 
@@ -691,39 +705,13 @@ Good comments explain why a seemingly simpler change is wrong, where an invarian
 
 ### 12.3 Self-containment
 
-Source code, rustdoc, comments, and project documentation must never reference the agent directive file by name, section, or as justification for a design decision.
-
-Agent directive files are operational instructions for agents. Code and docs must stand on their own.
-
-```rust
-// Forbidden: references the agent protocol as justification.
-// Per AGENTS.md, do not use a wildcard match here.
-
-// Correct: self-contained engineering reason.
-// No wildcard arm: adding a new state must force every transition table to be reviewed.
-```
+Source code, rustdoc, comments, and project documentation must not reference agent directive files as justification; `AGENTS.md` §5.7 owns this rule. State the self-contained engineering reason instead.
 
 ---
 
 ## 13. Incidental observation protocol
 
-When reading a file surfaces a defect, rule violation, or clear improvement opportunity unrelated to the active task, record it in the project's designated observation log and continue the active task. This is the Rust-side practice for honoring the universal contract's rule that the next improvement is a separate slice (§10).
-
-Do not fix unrelated observations in the current change unless they are prerequisites for correctness. Do not interrupt the workflow to discuss every incidental finding.
-
-Each observation should record:
-
-- stable ID;
-- date;
-- status;
-- file and line range;
-- category;
-- what is wrong and why it matters;
-- current pattern or excerpt;
-- resolving change;
-- effort level.
-
-If the project has no observation log, include only high-value observations in the final summary when they affect future safety or maintainability.
+Owned by `AGENTS.md` §5.2, including the log entry schema. If the project has no observation log, include only high-value observations in the final summary when they affect future safety or maintainability.
 
 ---
 

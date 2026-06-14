@@ -1,12 +1,12 @@
 # PROTOCOL_AFAD.md — Agent-First Documentation Protocol
 
-**Version:** 4.0
-**Updated:** 2026-04-24
+**Version:** 5.0.1
+**Updated:** 2026-06-13
 **Applies to:** all languages, runtimes, frameworks, tools, and repositories.
 
 This protocol governs documentation that agents must maintain, retrieve, validate, or keep synchronized with code and system behavior. It is optimized for documentation that can be used by humans, retrieval systems, and future coding agents without requiring hidden context.
 
-It inherits the Universal Engineering Contract. Documentation work must still identify truth, evidence, consequence, invariants, and preservation.
+It inherits the Universal Engineering Contract (v3.0.0+). Documentation work must still identify truth, evidence, consequence, invariants, justification, and re-cueing.
 
 ---
 
@@ -29,7 +29,7 @@ The root `README.md` exemption is defined in `AGENTS.md` because it is a reposit
 
 Nested README files are not automatically exempt. Classify them by function:
 
-- user-facing landing page for a package/example/integration: keep reader-first and light;
+- user-facing landing page for a package/example/integration: keep human-first and light;
 - component guide or operational documentation: use the auxiliary-doc rules;
 - API/reference material disguised as a README: convert or link to AFAD reference docs.
 
@@ -56,8 +56,13 @@ Consequence:
 Invariant:
 - What must remain true about the documented behavior, API, procedure, or constraint?
 
-Preservation:
+Justification:
+- Why does the documented behavior or constraint exist? Can the explanation be grounded in the canonical owner?
+- If the why is not recoverable from code, history, or conversation, mark it unknown rather than writing confident filler.
+
+Re-cueing:
 - Where should the knowledge live after this change: code, type, test, generated file, reference atom, guide, runbook, ADR, comment, or README link?
+- What part of the relevant theory cannot be captured in the document, and who currently holds it?
 ```
 
 A documentation change is incomplete when it makes text nicer but leaves truth ownership, verification, or drift risk unclear.
@@ -88,7 +93,7 @@ docs/DOC_06_Testing.md
 
 ### 2.2 Auxiliary documents
 
-Auxiliary documents are reader-guided but still agent-maintainable. They may be narrative when narrative improves understanding.
+Auxiliary documents are human-guided but still agent-maintainable. They may be narrative when narrative improves understanding.
 
 Examples:
 
@@ -176,9 +181,8 @@ Deprecated: vX.Y. Use <replacement>. Removal: vZ.0.
 Markdown must render cleanly on the repository's normal platform.
 
 - Use language tags on code fences.
-- Avoid decorative emoji in AFAD-managed docs.
 - Avoid pseudo-code unless explicitly labeled conceptual.
-- Avoid frontmatter in files where it degrades the user-facing rendering, especially root `README.md`.
+- Avoid frontmatter in files where it degrades the user-facing rendering.
 
 ---
 
@@ -190,7 +194,7 @@ Every AFAD reference document should start with frontmatter.
 
 ```yaml
 ---
-afad: "4.0"
+afad: "5.0.0"
 domain: CORE
 updated: "YYYY-MM-DD"
 scope:
@@ -230,8 +234,6 @@ AFAD:
     questions: ["how do I roll back the service?"]
 -->
 ```
-
-Never add AFAD metadata to the root `README.md` unless the repository already has a deliberate convention for hidden metadata there.
 
 ### 4.3 Route guidance
 
@@ -299,36 +301,25 @@ Rules:
 
 ## 6. Reference atom rules
 
-All reference atoms share the following shape unless a specific schema says otherwise.
-
-~~~markdown
-## `ContractName`
-
-One sentence stating what this thing is.
-
-### Signature
-```language
-exact signature, declaration, schema fragment, route, config key, or event shape
-```
-
-### Constraints
-- Return/Output: What is produced, including empty, null, sentinel, or error cases.
-- State: Pure, read-only, mutates X, persists Y, emits Z, or derived from owner.
-- Failure: Error, exception, result variant, status code, or never-fails rule.
-- Thread/Async/Concurrency: Safety, blocking, cancellation, ordering, or not applicable.
-- Compatibility: Public contract, internal, experimental, deprecated, or migration note.
-
----
-~~~
+These rules apply to every reference atom, regardless of schema. The concrete shapes live in §8; when no §7 row fits, use the Callable shape without the parameter table.
 
 General rules:
 
 - Heading uses backticks for named symbols and contract facts.
 - First sentence says what the thing is, not a vague action phrase.
-- Signature or definition is required for symbol, schema, route, config, and event atoms.
+- A signature, shape, or definition block is required for symbol, schema, route, config, and event atoms.
 - Constraints are semantic; they preserve the invariant users and agents need.
-- Optional sections may be added when they aid decisions: `Parameters`, `Members`, `Fields`, `Usage`, `Example`, `Recovery`, `Operations`, `Deprecation`.
+- Optional sections may be added when they aid decisions: `Parameters`, `Members`, `Fields`, `Usage`, `Example`, `Recovery`, `Operations`, `Deprecation`. Omit them when they add no decision value.
 - Examples in reference atoms must be minimal: usually 5 lines or fewer.
+- Atoms end with a horizontal rule.
+
+Parameter, field, and member tables:
+
+- Columns are `Name | Req | Semantics`, in that order.
+- `Name` is the exact name in backticks.
+- `Req` is `Y` or `N` only.
+- `Semantics` is a short phrase, ideally 10 words or fewer.
+- Do not include a Type column. Types live in the signature.
 
 ---
 
@@ -391,14 +382,7 @@ minimal runnable example
 ---
 ~~~
 
-Parameter table rules:
-
-- `Name` is the exact parameter name in backticks.
-- `Req` is `Y` or `N` only.
-- `Semantics` is a short phrase, ideally 10 words or fewer.
-- Do not include a Type column. Types live in the signature.
-
-Omit `Usage` and `Example` when they do not add decision value.
+Parameter tables and optional sections follow the §6 rules.
 
 ### 8.2 Type / data object
 
@@ -677,7 +661,7 @@ Rejected options and why.
 
 Nested READMEs should serve their directory's user.
 
-- Package/example landing page: short, reader-first, no AFAD atom structure.
+- Package/example landing page: short, human-first, no AFAD atom structure.
 - Component guide: guide structure is appropriate.
 - Reference material: move or link to `DOC_*.md` instead of embedding full API docs.
 
@@ -727,7 +711,7 @@ Run this loop when code changes may affect AFAD-managed docs, or when docs are s
 4. Validate
    Check metadata, signatures, links, examples, routes, and token-sized atoms.
 
-5. Preserve
+5. Re-cue
    Put newly discovered theory in the most durable place: test, type, schema, doc atom, guide, runbook, ADR, or root README link.
 ```
 
@@ -791,12 +775,11 @@ Recovery:
 | Anti-pattern | Why it is wrong | Fix |
 |---|---|---|
 | Long quick index listing every section | Consumes tokens and goes stale | Use compact routing gateway and clear headings |
-| Root `README.md` forced into AFAD | Damages storefront role | Keep root README reader-first and link to docs |
+| Root `README.md` forced into AFAD | Damages storefront role | Keep root README human-first and link to docs |
 | Types repeated in parameter tables | Creates second drift source | Keep types in signature only |
 | Full API reference inside a guide | Duplicates reference docs | Link to `DOC_*.md` atoms |
 | Generic route keywords | Poor retrieval disambiguation | Use distinctive domain terms |
 | `see above` as required context | Breaks atom self-containment | Repeat the minimal needed fact |
-| Decorative emoji in AFAD docs | Adds noise and rendering variance | Use plain text |
 | Historical `Added vX.Y` in reference atom | Wrong current-state surface | Put history in changelog/release notes |
 | Pseudo-code presented as runnable | Misleads users and agents | Make it runnable or label conceptual |
 | Documentation as second source of contract truth | Creates drift | Derive from or identify canonical owner |
@@ -814,7 +797,7 @@ P0 Accuracy and safety
 P1 Canonical ownership
 P2 Completeness of intended contract surface
 P3 Retrieval structure
-P4 Reader readability
+P4 Human readability
 P5 Style economy
 ```
 
@@ -833,7 +816,7 @@ Examples:
 
 ## 15. Agent output contract
 
-For non-trivial documentation work, the work summary should state:
+For non-trivial documentation work, add this block to the UEC §9 report. It supplements the six-axis template; it does not replace it.
 
 ```text
 Documentation scope:
@@ -859,7 +842,7 @@ Do not dump this template into trivial summaries. Use it to ensure the agent did
 
 ## 16. Worked examples
 
-### 16.1 Callable atom, Java
+### 16.1 Callable atom
 
 ~~~markdown
 ## `Registry.resolve`
@@ -887,34 +870,7 @@ public Item resolve(String key, boolean strict) throws KeyNotFoundException
 ---
 ~~~
 
-### 16.2 Callable atom, Rust
-
-~~~markdown
-## `Registry::resolve`
-
-Method that resolves a registered item by key.
-
-### Signature
-```rust
-pub fn resolve(&self, key: &str) -> Result<Option<Item>, ResolveError>
-```
-
-### Parameters
-| Name | Req | Semantics |
-|:--|:--:|:--|
-| `key` | Y | Registration key; non-empty |
-
-### Constraints
-- Return/Output: `Ok(Some(Item))` when registered; `Ok(None)` when absent and absence is allowed.
-- Failure: Returns `Err(ResolveError)` for invalid keys or unavailable backing store.
-- State: Read-only.
-- Concurrency: Safe for shared access when the registry is shared immutably.
-- Compatibility: Public crate API.
-
----
-~~~
-
-### 16.3 Protocol surface atom
+### 16.2 Protocol surface atom
 
 ~~~markdown
 ## `order.created`

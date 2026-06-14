@@ -12,6 +12,7 @@ import java.util.Optional;
 public record TrialBalanceView(
     BookIdentity bookIdentity,
     Optional<LocalDate> effectiveDateAsOf,
+    Optional<LocalDate> resolvedEffectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     List<TrialBalanceRowView> rows,
@@ -19,6 +20,7 @@ public record TrialBalanceView(
   public TrialBalanceView {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
+    Objects.requireNonNull(resolvedEffectiveDateAsOf, "resolvedEffectiveDateAsOf");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     rows = List.copyOf(Objects.requireNonNull(rows, "rows"));

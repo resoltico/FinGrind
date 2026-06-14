@@ -20,7 +20,8 @@ final class CliTrialBalanceReportRenderer {
                     List.of(
                         "As of",
                         CliQueryScopeText.upperDateBoundaryLabel(
-                            report.effectiveDateAsOf().orElse(null))),
+                            report.effectiveDateAsOf().orElse(null),
+                            report.resolvedEffectiveDateAsOf().orElse(null))),
                     List.of(
                         "Balance state",
                         CliBalanceOutputFormatter.displayBalanceStateLabel(report.balanced())))
@@ -28,7 +29,8 @@ final class CliTrialBalanceReportRenderer {
                     List.of(
                         "As of",
                         CliQueryScopeText.upperDateBoundaryLabel(
-                            report.effectiveDateAsOf().orElse(null))),
+                            report.effectiveDateAsOf().orElse(null),
+                            report.resolvedEffectiveDateAsOf().orElse(null))),
                     List.of("Outcome", CliQueryScopeText.noMatchesLabel("account balances"))));
     String totals =
         hasCurrent
@@ -143,14 +145,20 @@ final class CliTrialBalanceReportRenderer {
                         row ->
                             csvRow(
                                 "current",
-                                report.effectiveDateAsOf().map(LocalDate::toString).orElse(""),
+                                report
+                                    .resolvedEffectiveDateAsOf()
+                                    .map(LocalDate::toString)
+                                    .orElse(""),
                                 row)),
                 report.totals().stream()
                     .map(
                         total ->
                             totalCsvRow(
                                 "current",
-                                report.effectiveDateAsOf().map(LocalDate::toString).orElse(""),
+                                report
+                                    .resolvedEffectiveDateAsOf()
+                                    .map(LocalDate::toString)
+                                    .orElse(""),
                                 report.balanced(),
                                 total)),
                 report.comparativeRows().stream()
@@ -219,7 +227,7 @@ final class CliTrialBalanceReportRenderer {
       rows.add(
           emptyCsvRow(
               "current",
-              report.effectiveDateAsOf().map(LocalDate::toString).orElse(""),
+              report.resolvedEffectiveDateAsOf().map(LocalDate::toString).orElse(""),
               report.bookIdentity().functionalCurrency().code(),
               CliQueryScopeText.noMatchesLabel("account balances")));
     }

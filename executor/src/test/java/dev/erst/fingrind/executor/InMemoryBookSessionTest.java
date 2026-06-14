@@ -453,6 +453,7 @@ class InMemoryBookSessionTest {
           new TrialBalanceView(
               bookIdentity(),
               Optional.of(LocalDate.parse("2026-04-07")),
+              Optional.of(LocalDate.parse("2026-04-07")),
               EffectiveDateRange.of(null, null),
               allPostingKinds(),
               List.of(

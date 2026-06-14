@@ -1,17 +1,15 @@
 # Domain-Driven Design Lens
 
-**Version:** 1.0.0
-**Updated:** 2026-04-30
-**Companion to:** `UNIVERSAL_ENGINEERING_CONTRACT.md` v2.1+
+**Version:** 1.1.0
+**Updated:** 2026-06-13
+**Companion to:** `UNIVERSAL_ENGINEERING_CONTRACT.md` v3.0+
 **Loaded:** on demand, when a change fires the UEC §1.7 domain-meaning gate
 
 ## 0. Placement
 
 The Universal Engineering Contract governs safe engineering work — truth, evidence, consequence, invariant, justification, re-cueing. This file governs domain-modeling work — language, model boundaries, strategic and tactical design, consistency boundaries, integration between models.
 
-Use it when a change touches business meaning, business rules, business state, workflows, commands, domain events, policies, permissions, calculations, lifecycle transitions, user-facing business terms, or integration between domain models.
-
-Do not use it for purely mechanical work — build-script cleanup, generic plumbing, static UI cosmetics, infrastructure changes with no domain meaning. Domain ceremony on mechanical work is the failure mode this discipline most often produces in agent hands.
+It loads when a change fires the UEC §1.7 domain-meaning gate; the trigger list is owned there and is not restated here. Do not use it for purely mechanical work: domain ceremony on mechanical work is the failure mode this discipline most often produces in agent hands. When in doubt, run the §1 triage.
 
 This is a reference manual loaded on demand, not a checklist to complete. Apply only what the change actually needs.
 
@@ -63,6 +61,7 @@ If the team cannot answer "which Bounded Context is this in?", "what is the loca
 - The model is not the database. Data matters; the database does not get to dictate the language of the domain.
 - Domain experts and developers are one team. Do not translate business language into a private technical vocabulary and treat the translation as superior.
 - Examples beat abstractions. When a term or rule is unclear, ask for concrete cases.
+- Evidence uses business examples, not merely technical assertions. Prefer tests and executable examples that state the local language: given a domain situation, when a command or event occurs, then the invariant or state transition holds. If domain-expert validation is required and unavailable, record that gap explicitly.
 - Modeling is iterative. Expect the first model to be wrong. Improve through conversation, examples, tests, and refactoring.
 
 ## 4. Strategic design
@@ -260,6 +259,8 @@ Cross-context integration is not local object collaboration. Latency, partial fa
 
 Do not share domain objects across contexts casually. Sharing internal classes creates Shared Kernel or Conformist coupling accidentally. Consumers begin to use foreign concepts as if they were local.
 
+Canonical ownership (UEC §5) is context-sensitive across boundaries. A term, status, event, or identifier may have one meaning in one Bounded Context and a different meaning in another; do not create a false global owner for language that is only locally true. Across contexts, the canonical owner is a Published Language, stable API resource, event schema, command contract, Open Host Service, or translation map — not a shared domain class.
+
 Prefer: Published Language, Open Host Service, DTOs as integration contracts, Anticorruption Layer, local Value Objects created from foreign data, explicit translators.
 
 For REST integration:
@@ -415,4 +416,22 @@ Context Map edge:
 
 ## 11. Output for domain-touching work
 
-Use the UEC §9 output template plus the proportional domain-design block (also defined in UEC §9). The "Known model gaps" line is a first-class output, not an optional caveat — silence on it claims a model the agent does not have.
+Use the UEC §9 output template plus this proportional domain-design block:
+
+```text
+Domain design lens:
+- Domain / subdomain:
+- Core / Supporting / Generic / non-domain judgment:
+- Bounded Context:
+- Ubiquitous Language terms changed or clarified:
+- Term collisions or foreign concepts:
+- Aggregate or consistency boundary affected:
+- Entity / Value Object / Domain Service / Factory / Repository choices:
+- Commands, workflows, or Domain Events affected:
+- Cross-context relationship, if any:
+- Published Language, Open Host Service, or Anticorruption Layer, if any:
+- Domain examples, tests, or expert validation used:
+- Known model gaps:
+```
+
+Keep the block proportional to the change. The "Known model gaps" line is a first-class output, not an optional caveat — silence on it claims a model the agent does not have.

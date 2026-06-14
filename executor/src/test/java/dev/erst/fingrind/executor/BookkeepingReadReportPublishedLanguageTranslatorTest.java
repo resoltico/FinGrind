@@ -48,6 +48,7 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
         new TrialBalanceView(
             bookIdentity(),
             Optional.of(EFFECTIVE_DATE),
+            Optional.of(EFFECTIVE_DATE),
             EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
             PostingCoverage.ALL_POSTING_KINDS,
             List.of(
@@ -59,6 +60,7 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
     assertEquals(
         new TrialBalanceReport(
             bookIdentity(),
+            Optional.of(EFFECTIVE_DATE),
             Optional.of(EFFECTIVE_DATE),
             EffectiveDateRange.of(EFFECTIVE_DATE.minusYears(1), EFFECTIVE_DATE.minusYears(1)),
             PostingCoverage.ALL_POSTING_KINDS,

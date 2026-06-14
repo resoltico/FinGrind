@@ -114,6 +114,11 @@ class CliDistributionBuildContractTest {
             repositoryRoot()
                 .resolve(
                     "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/CliDistributionDockerContextRegistration.kt"));
+    String pruneLegacyDockerBuildContextTask =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/PruneLegacyDockerBuildContextTask.kt"));
     String sqliteBuildScript =
         Files.readString(repositoryRoot().resolve("sqlite/build.gradle.kts"));
     String managedSqliteProvisioning =
@@ -134,7 +139,10 @@ class CliDistributionBuildContractTest {
 
     assertCliBuildScriptDelegatesDistribution(buildScript);
     assertDistributionPluginOwnsDistributionContracts(
-        distributionPlugin, executionSurfaceConventions, dockerContextRegistration);
+        distributionPlugin,
+        executionSurfaceConventions,
+        dockerContextRegistration,
+        pruneLegacyDockerBuildContextTask);
     assertManagedSqliteProvisioningUsesNamedModuleAccess(
         managedSqliteProvisioning, managedSqliteConsumerPlugin, rootConventionsPlugin);
     assertSqliteBuildScriptOwnsWhiteBoxModulePatch(sqliteBuildScript);
@@ -151,7 +159,8 @@ class CliDistributionBuildContractTest {
   private static void assertDistributionPluginOwnsDistributionContracts(
       String distributionPlugin,
       String executionSurfaceConventions,
-      String dockerContextRegistration) {
+      String dockerContextRegistration,
+      String pruneLegacyDockerBuildContextTask) {
     assertTrue(
         distributionPlugin.contains(
             "configureCliExecutionSurfaceConventions(cliContractBuildLogicInputs)"));
@@ -218,6 +227,15 @@ class CliDistributionBuildContractTest {
         dockerContextRegistration.contains("sourceFiles.from(dockerBuildContextSourceInputs)"));
     assertTrue(
         dockerContextRegistration.contains("dependsOn(managedSqliteProvisioning.prepareTask)"));
+    assertTrue(dockerContextRegistration.contains("pruneLegacyCheckoutDockerContext"));
+    assertTrue(dockerContextRegistration.contains("dependsOn(pruneLegacyCheckoutDockerContext)"));
+    assertTrue(
+        dockerContextRegistration.contains(
+            "layout.projectDirectory.dir(\"build/docker-context\")"));
+    assertTrue(pruneLegacyDockerBuildContextTask.contains("legacy-do-not-use-"));
+    assertTrue(
+        pruneLegacyDockerBuildContextTask.contains(
+            "failed to quarantine stale legacy Docker build context"));
     assertTrue(
         dockerContextRegistration.contains(
             "from(rootProject.layout.projectDirectory.file(\"Dockerfile\"))"));

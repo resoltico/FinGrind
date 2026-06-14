@@ -27,8 +27,7 @@ class BookWorkflowExecutionServiceInvariantTest {
 
   private static MethodHandle stepExecutionStateConstructor() {
     try {
-      Class<?> stateClass =
-          Class.forName(BookWorkflowExecutionService.class.getName() + "$StepExecutionState");
+      Class<?> stateClass = Class.forName(BookWorkflowStepExecutionState.class.getName());
       MethodHandles.Lookup lookup =
           MethodHandles.privateLookupIn(stateClass, MethodHandles.lookup());
       return lookup.findConstructor(

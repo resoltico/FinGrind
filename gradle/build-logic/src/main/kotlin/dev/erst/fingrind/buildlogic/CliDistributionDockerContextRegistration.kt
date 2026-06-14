@@ -22,6 +22,15 @@ internal fun Project.registerCliDockerBuildContextTasks(
     sqliteBundleHomeSystemProperty: String,
     containerRuntimeDistribution: String,
 ): org.gradle.api.tasks.TaskProvider<Sync> {
+    val pruneLegacyCheckoutDockerContext =
+        tasks.register<PruneLegacyDockerBuildContextTask>("pruneLegacyCheckoutDockerContext") {
+            group = "distribution"
+            description =
+                "Deletes the legacy checkout-local Docker build context when the active CLI build root lives elsewhere."
+            activeDockerBuildContextDirectory.set(dockerBuildContextDirectory)
+            legacyDockerBuildContextDirectory.set(layout.projectDirectory.dir("build/docker-context"))
+        }
+
     val writeDockerBuildContextManifest =
         tasks.register<WriteDockerBuildContextManifestTask>("writeDockerBuildContextManifest") {
             group = "distribution"
@@ -39,6 +48,7 @@ internal fun Project.registerCliDockerBuildContextTasks(
             group = "distribution"
             description =
                 "Stages the complete Docker build context consumed by the container image build."
+            dependsOn(pruneLegacyCheckoutDockerContext)
             dependsOn(shadowJarTask)
             dependsOn(writeRuntimeModuleList)
             dependsOn(writeDockerBuildContextManifest)

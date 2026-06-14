@@ -27,13 +27,16 @@ internal data class ReviewedJavaSourceSurface(
     val owner: String,
     val reason: String,
     val splitTrigger: String,
-    val budget: JavaSourceShapeBudget,
+    val reviewedRoleName: String,
     val budgetVarianceReason: String?,
     val duplicationExemptionReason: String?,
     val approval: ReviewedJavaSourceApproval,
 )
 
 internal data class JavaSourceStructuralContract(
-    val budget: JavaSourceShapeBudget,
+    val defaultBudget: JavaSourceShapeBudget,
     val reviewedSurface: ReviewedJavaSourceSurface?,
-)
+) {
+    val activeRoleName: String
+        get() = reviewedSurface?.reviewedRoleName ?: defaultBudget.roleName
+}

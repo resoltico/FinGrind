@@ -118,6 +118,7 @@ class CliAccountingReportFixtureSupport extends CliRequestDocumentFixtureSupport
     return new TrialBalanceReport(
         bookIdentity,
         effectiveDateAsOf,
+        effectiveDateAsOf,
         comparativeEffectiveDateRange,
         postingCoverage,
         rows,

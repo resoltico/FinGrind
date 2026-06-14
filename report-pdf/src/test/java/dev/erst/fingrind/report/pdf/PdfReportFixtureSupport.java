@@ -76,7 +76,7 @@ final class PdfReportFixtureSupport {
       "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
   static final Clock CLOCK = Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.53.0", CLOCK);
+      new PdfReportService("FinGrind", "0.54.0", CLOCK);
   static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Acme Studio")),
@@ -95,7 +95,7 @@ final class PdfReportFixtureSupport {
       PDDocumentInformation information = document.getDocumentInformation();
       PDRectangle mediaBox = document.getPage(0).getMediaBox();
       assertEquals(title, information.getTitle());
-      assertEquals("FinGrind 0.53.0", information.getCreator());
+      assertEquals("FinGrind 0.54.0", information.getCreator());
       assertEquals(title, information.getSubject());
       assertEquals(portrait, mediaBox.getHeight() > mediaBox.getWidth());
     }
@@ -308,6 +308,7 @@ final class PdfReportFixtureSupport {
     List<CurrencyBalance> comparativeTotals = trialBalanceTotals(comparativeRows);
     return new TrialBalanceReport(
         bookIdentity,
+        effectiveDateTo,
         effectiveDateTo,
         comparativeEffectiveDateRange,
         postingCoverage,

@@ -107,6 +107,7 @@ class StructuralGovernanceContractTest {
             setOf(
                 "build-logic-kotlin",
                 "gradle-kts",
+                "json-resource",
                 "markdown-docs",
                 "shell-release",
                 "python-support",
@@ -123,6 +124,7 @@ class StructuralGovernanceContractTest {
         setOf(
                 "build-logic-kotlin",
                 "gradle-kts",
+                "json-resource",
                 "markdown-docs",
                 "python-support",
                 "sqlite-sql",

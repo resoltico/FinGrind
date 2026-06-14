@@ -20,14 +20,19 @@ final class CliDiscoveryResponseWriter {
 
   void writeHelp(
       HelpDescriptor helpDescriptor,
+      EnvironmentDescriptor environmentDescriptor,
       OutputMode outputMode,
       DiscoveryDetail detail,
-      @org.jspecify.annotations.Nullable OperationCategory category) {
+      @org.jspecify.annotations.Nullable OperationCategory category,
+      boolean terseTopLevel) {
     outputMode.run(
         () ->
-            outputChannel.writePrettySuccess(
+            outputChannel.writeSuccess(
                 CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, detail, category)),
-        () -> outputChannel.writeText(CliDiscoveryOutputRenderer.renderHelpText(helpDescriptor)),
+        () ->
+            outputChannel.writeText(
+                CliDiscoveryOutputRenderer.renderHelpText(
+                    helpDescriptor, environmentDescriptor, terseTopLevel)),
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.HELP));
@@ -41,7 +46,7 @@ final class CliDiscoveryResponseWriter {
       CliDiscoverySelections selections) {
     outputMode.run(
         () ->
-            outputChannel.writePrettySuccess(
+            outputChannel.writeSuccess(
                 CliDiscoveryPayloadMapper.capabilitiesPayloadAny(
                     capabilitiesDescriptor, detail, selections)),
         () ->
@@ -55,7 +60,7 @@ final class CliDiscoveryResponseWriter {
 
   void writeEnvironment(EnvironmentDescriptor environmentDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writePrettySuccess(environmentDescriptor),
+        () -> outputChannel.writeSuccess(environmentDescriptor),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderEnvironmentText(environmentDescriptor)),
@@ -67,7 +72,7 @@ final class CliDiscoveryResponseWriter {
 
   void writeVersion(VersionDescriptor versionDescriptor, OutputMode outputMode) {
     outputMode.run(
-        () -> outputChannel.writePrettySuccess(versionDescriptor),
+        () -> outputChannel.writeSuccess(versionDescriptor),
         () ->
             outputChannel.writeText(
                 CliDiscoveryOutputRenderer.renderVersionText(versionDescriptor)),
@@ -78,6 +83,6 @@ final class CliDiscoveryResponseWriter {
   }
 
   void writeRawTemplate(Object template) {
-    outputChannel.writePrettyJson(template);
+    outputChannel.writeJson(template);
   }
 }

@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
@@ -282,7 +283,9 @@ final class ContractFixtures {
   static EnvironmentDescriptor environmentDescriptor() {
     return new EnvironmentDescriptor(
         new EnvironmentRuntimeDescriptor(
-            ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution()),
+            ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution(),
+            OutputMode.TEXT,
+            null),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),

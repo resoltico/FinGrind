@@ -370,6 +370,11 @@ class BookkeepingReportingServiceCoverageTest {
     }
 
     @Override
+    public Optional<java.time.LocalDate> latestPostingEffectiveDate() {
+      return Optional.empty();
+    }
+
+    @Override
     public dev.erst.fingrind.executor.bookkeeping.TrialBalanceView trialBalance(
         TrialBalanceCriteria query) {
       throw new UnsupportedOperationException();

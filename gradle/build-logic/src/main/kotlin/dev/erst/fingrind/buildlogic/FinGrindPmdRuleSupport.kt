@@ -97,7 +97,7 @@ internal fun structuralBaseDesignExclusions(): List<PmdRuleExclusion> =
         excludedRule("CouplingBetweenObjects"),
         excludedRule(
             "NcssCount",
-            "File and method size governance lives in FinGrind's structural-governance engine rather than PMD's ambient NCSS defaults.",
+            "File and method size governance lives in FinGrind's structural-governance verifiers rather than PMD's ambient NCSS defaults.",
         ),
     )
 
@@ -123,7 +123,7 @@ internal fun sharedTestDesignExclusions(): List<PmdRuleExclusion> =
         excludedRule("GodClass"),
         excludedRule(
             "NcssCount",
-            "File and method size governance lives in FinGrind's structural-governance engine rather than PMD's ambient NCSS defaults.",
+            "File and method size governance lives in FinGrind's structural-governance verifiers rather than PMD's ambient NCSS defaults.",
         ),
     )
 

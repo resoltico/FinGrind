@@ -9,12 +9,53 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import java.util.Collections;
 
-/** Builds behavioral SQL statements on top of the reviewed literal catalog. */
-final class SqlitePostingSqlQueryBuilder {
-  private SqlitePostingSqlQueryBuilder() {}
+/** Behavioral SQL assembly on top of the canonical posting SQL owners. */
+final class SqlitePostingQuerySql {
+  static final String FIND_LATEST_POSTING_EFFECTIVE_DATE =
+      """
+      select effective_date
+      from posting_fact
+      order by effective_date desc
+      limit 1
+      """;
+
+  private static final String BASE_REPORT_LINE_SELECT =
+      """
+      select
+          account.account_code,
+          account.account_name,
+          account.account_type,
+          account.account_role,
+          account.account_node_kind,
+          account.parent_account_code,
+          account.financial_position_line_classification,
+          account.profit_and_loss_line_classification,
+          account.active,
+          account.declared_at,
+          posting_fact.posting_id,
+          journal_line.entry_side,
+          journal_line.currency_code,
+          journal_line.amount_minor
+      from journal_line
+      join posting_fact on posting_fact.posting_id = journal_line.posting_id
+      join account on account.account_code = journal_line.account_code
+      """;
+
+  private static final String LOAD_ACCOUNT_LINES_FOR_BALANCE =
+      """
+      select
+          journal_line.entry_side,
+          journal_line.currency_code,
+          journal_line.amount_minor
+      from journal_line
+      join posting_fact on posting_fact.posting_id = journal_line.posting_id
+      where journal_line.account_code = ?
+      """;
+
+  private SqlitePostingQuerySql() {}
 
   static String listAccounts() {
-    return SqlitePostingSqlLiterals.BASE_ACCOUNT_SELECT
+    return SqlitePostingReadWriteSql.BASE_ACCOUNT_SELECT
         + " where (? is null or account_code > ?) order by account_code limit ?";
   }
 
@@ -22,7 +63,7 @@ final class SqlitePostingSqlQueryBuilder {
     if (accountCount < 1) {
       throw new IllegalArgumentException("Account lookup count must be at least one.");
     }
-    return SqlitePostingSqlLiterals.BASE_ACCOUNT_SELECT
+    return SqlitePostingReadWriteSql.BASE_ACCOUNT_SELECT
         + " where account_code in ("
         + String.join(", ", Collections.nCopies(accountCount, "?"))
         + ")";
@@ -30,8 +71,8 @@ final class SqlitePostingSqlQueryBuilder {
 
   static String listPostings(PostingHistoryQuery query) {
     StringBuilder sql =
-        new StringBuilder(SqlitePostingSqlLiterals.BASE_POSTING_SELECT.length() + 256)
-            .append(SqlitePostingSqlLiterals.BASE_POSTING_SELECT)
+        new StringBuilder(SqlitePostingReadWriteSql.BASE_POSTING_SELECT.length() + 256)
+            .append(SqlitePostingReadWriteSql.BASE_POSTING_SELECT)
             .append(" where 1 = 1");
     if (query.accountCode().isPresent()) {
       sql.append(
@@ -66,8 +107,8 @@ final class SqlitePostingSqlQueryBuilder {
 
   static String loadAccountLinesForBalance(AccountBalanceCriteria query) {
     StringBuilder sql =
-        new StringBuilder(SqlitePostingSqlLiterals.LOAD_ACCOUNT_LINES_FOR_BALANCE.length() + 96)
-            .append(SqlitePostingSqlLiterals.LOAD_ACCOUNT_LINES_FOR_BALANCE);
+        new StringBuilder(LOAD_ACCOUNT_LINES_FOR_BALANCE.length() + 96)
+            .append(LOAD_ACCOUNT_LINES_FOR_BALANCE);
     if (query.postingCoverage().isNonClosingOnly()) {
       sql.append(" and posting_fact.posting_kind <> ?");
     }
@@ -84,8 +125,8 @@ final class SqlitePostingSqlQueryBuilder {
 
   static String loadTrialBalanceLines(TrialBalanceCriteria query) {
     StringBuilder sql =
-        new StringBuilder(SqlitePostingSqlLiterals.BASE_REPORT_LINE_SELECT.length() + 96)
-            .append(SqlitePostingSqlLiterals.BASE_REPORT_LINE_SELECT)
+        new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 96)
+            .append(BASE_REPORT_LINE_SELECT)
             .append(" where 1 = 1");
     if (query.postingCoverage().isNonClosingOnly()) {
       sql.append(" and posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'");
@@ -110,7 +151,7 @@ final class SqlitePostingSqlQueryBuilder {
   static String loadAccountTotals(
       EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
     StringBuilder sql =
-        new StringBuilder(SqlitePostingSqlLiterals.BASE_REPORT_LINE_SELECT.length() + 256)
+        new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 256)
             .append(
                 """
                 select
@@ -162,8 +203,8 @@ final class SqlitePostingSqlQueryBuilder {
 
   static String loadPeriodSummaryLines(PeriodSummaryCriteria query) {
     StringBuilder sql =
-        new StringBuilder(SqlitePostingSqlLiterals.BASE_REPORT_LINE_SELECT.length() + 128)
-            .append(SqlitePostingSqlLiterals.BASE_REPORT_LINE_SELECT)
+        new StringBuilder(BASE_REPORT_LINE_SELECT.length() + 128)
+            .append(BASE_REPORT_LINE_SELECT)
             .append(
                 """
                  where posting_fact.effective_date >= ?
@@ -181,8 +222,8 @@ final class SqlitePostingSqlQueryBuilder {
 
   static String listPostingsForAccountLedger(AccountLedgerCriteria query) {
     StringBuilder sql =
-        new StringBuilder(SqlitePostingSqlLiterals.BASE_POSTING_SELECT.length() + 192)
-            .append(SqlitePostingSqlLiterals.BASE_POSTING_SELECT)
+        new StringBuilder(SqlitePostingReadWriteSql.BASE_POSTING_SELECT.length() + 192)
+            .append(SqlitePostingReadWriteSql.BASE_POSTING_SELECT)
             .append(
                 """
                  where exists (

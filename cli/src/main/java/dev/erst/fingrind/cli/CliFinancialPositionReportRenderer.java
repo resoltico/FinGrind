@@ -75,7 +75,9 @@ final class CliFinancialPositionReportRenderer {
     rows.add(
         List.of(
             "As of",
-            CliQueryScopeText.upperDateBoundaryLabel(report.effectiveDateAsOf().orElse(null))));
+            CliQueryScopeText.upperDateBoundaryLabel(
+                report.effectiveDateAsOf().orElse(null),
+                report.resolvedEffectiveDateAsOf().orElse(null))));
     rows.add(
         List.of(
             "Accounting equation",

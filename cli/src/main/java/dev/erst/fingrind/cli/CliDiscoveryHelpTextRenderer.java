@@ -8,6 +8,8 @@ import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,9 +18,15 @@ import java.util.Map;
 final class CliDiscoveryHelpTextRenderer {
   private CliDiscoveryHelpTextRenderer() {}
 
-  static String renderHelpText(HelpDescriptor helpDescriptor) {
+  static String renderHelpText(
+      HelpDescriptor helpDescriptor,
+      EnvironmentDescriptor environmentDescriptor,
+      boolean terseTopLevel) {
     if (isCommandScoped(helpDescriptor)) {
       return renderCommandHelpText(helpDescriptor);
+    }
+    if (terseTopLevel) {
+      return renderTopLevelSynopsis(helpDescriptor, environmentDescriptor);
     }
     CommandCatalogDescriptor commandCatalog = groupedCommands(helpDescriptor.commands());
     String header =
@@ -27,8 +35,7 @@ final class CliDiscoveryHelpTextRenderer {
                 List.of("Version", helpDescriptor.version()),
                 List.of("Description", helpDescriptor.description()),
                 List.of(
-                    "Default text mode",
-                    "Commands default to text unless you explicitly select --output.")),
+                    "Default output mode", defaultOutputLabel(environmentDescriptor.runtime()))),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     String firstSuccessfulRun = renderQuickStart(helpDescriptor.quickStart());
     String reference =
@@ -58,6 +65,44 @@ final class CliDiscoveryHelpTextRenderer {
             header,
             CliDiscoveryTextSupport.section("Quick Start", firstSuccessfulRun),
             CliDiscoveryTextSupport.section("Reference", reference),
+            CliDiscoveryTextSupport.section("Command Catalog", commandFamilies)));
+  }
+
+  private static String renderTopLevelSynopsis(
+      HelpDescriptor helpDescriptor, EnvironmentDescriptor environmentDescriptor) {
+    CommandCatalogDescriptor commandCatalog = groupedCommands(helpDescriptor.commands());
+    String header =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of("Version", helpDescriptor.version()),
+                List.of("Description", helpDescriptor.description()),
+                List.of("Default output mode", defaultOutputLabel(environmentDescriptor.runtime())),
+                List.of("Full guide", CliInvocationText.commandExample(OperationId.HELP))),
+            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+    String shortcuts =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "One command",
+                    CliInvocationText.commandExample(OperationId.HELP) + " <command>"),
+                List.of(
+                    "Commands",
+                    joinCommandNames(helpDescriptor.commands().stream().limit(8).toList())),
+                List.of("Categories", "discovery, administration, query/report, write")),
+            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+    String commandFamilies =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of("Discovery", joinCommandNames(commandCatalog.discovery())),
+                List.of("Administration", joinCommandNames(commandCatalog.administration())),
+                List.of("Query and reports", joinCommandNames(commandCatalog.query())),
+                List.of("Write", joinCommandNames(commandCatalog.write()))),
+            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+    return CliTextFormat.renderTitledBlock(
+        "FinGrind",
+        CliDiscoveryTextSupport.joinSections(
+            header,
+            CliDiscoveryTextSupport.section("Shortcuts", shortcuts),
             CliDiscoveryTextSupport.section("Command Catalog", commandFamilies)));
   }
 
@@ -190,6 +235,13 @@ final class CliDiscoveryHelpTextRenderer {
 
   private static String joinCommandNames(List<CommandDescriptor> commands) {
     return String.join(", ", commands.stream().map(command -> command.name().wireName()).toList());
+  }
+
+  private static String defaultOutputLabel(EnvironmentRuntimeDescriptor runtimeDescriptor) {
+    String mode = runtimeDescriptor.defaultOutputMode().wireValue();
+    return runtimeDescriptor.defaultOutputModeSource() == null
+        ? mode + " (built in)"
+        : mode + " via " + runtimeDescriptor.defaultOutputModeSource();
   }
 
   private static CommandCatalogDescriptor groupedCommands(List<CommandDescriptor> commands) {

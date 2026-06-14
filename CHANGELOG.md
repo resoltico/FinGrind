@@ -3,31 +3,36 @@
 Notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [0.54.0] - 2026-06-14
+
+### Changed
+
+- Bumped the repo-owned Python lint baseline to Ruff `0.15.17`.
+- Hard-broke structural-governance waivers onto one exact-snapshot contract across both Java and Python verifier surfaces. Reviewed waivers now carry one approved live snapshot plus one named reviewed role, not a second hand-maintained budget copy, and Stage 1 structural governance now scans tracked JSON resources through explicit contract-catalog, example-payload, tooling-config, and harness-topology families.
+- Hard-broke three reviewed production god-file owners into narrower seams. Period-result close planning now delegates close-horizon validation, holding-account selection, draft construction, and debit-credit tallying to dedicated owners; workflow execution now isolates boundary-failure context and step-state lifecycle; and SQLite posting SQL now lives in query-family owners instead of one oversized literal catalog.
+- Hard-broke the CLI discovery and machine-output surface onto one tighter contract. Commands that advertise `--output` now honor one session-wide `FINGRIND_DEFAULT_OUTPUT=text|json` selector instead of switching by stdout capture state, bare invocation now opens with one terse front-door help view, and structured stdout uses one compact canonical JSON layout across discovery envelopes plus raw request and plan template emission.
+- Hard-broke report as-of semantics away from the vague “current book horizon” label. Trial-balance and financial-position outputs now resolve the effective date explicitly to either the selected date, the latest posting effective date in the selected book, or the no-postings state, and comparative windows derive from that resolved boundary instead of one unresolved null placeholder.
+- Hard-broke the supported CLI packaging surface again so the retired Gradle distribution tasks now fail fast with guidance toward `:cli:bundleCliArchive` or the source-checkout launcher, and bundle packaging prints the archive, checksum, and manifest paths directly after each successful build.
+
+### Fixed
+
+- Fixed reviewed-surface drift and orphan handling so Python reviewed waivers now fail when a tracked file disappears or when any approved metric changes in either direction, matching the Java source-shape verifier instead of letting the two engines diverge.
+- Fixed structural-governance ownership drift so the Python verifier no longer carries JSON inventory, duplication, and reviewed-surface orchestration in one oversized module, and the canonical PMD XML artifacts now stay synchronized with the build-logic rule owner wording.
+- Fixed distribution/operator traps so `scripts/structural_governance/cli.py` now works as a direct repo script as well as a package module, and `:cli:stageDockerBuildContext` now removes the misleading checkout-local `cli/build/docker-context` path from the supported build surface by quarantining stale legacy contexts before current staging runs.
+- Fixed discovery parser and help/report ergonomics so mistyped discovery flags now surface nearest-option suggestions even on the top-level `help` entrypoint, checked-in request and ledger-plan template fixtures stay synchronized with the live compact JSON output, and the CLI guide now documents the session-default output contract plus the resolved as-of language.
 
 ## [0.53.0] - 2026-06-13
 
 ### Changed
 
-- Bumped the repo-owned baseline to SQLite3 Multiple Ciphers `2.3.5` with SQLite `3.53.2`, JaCoCo `0.8.15`, Error Prone `2.50.0`,
-  NullAway `0.13.6`, Jackson Databind `3.2.0`, PMD `7.25.0`, SQLFluff `4.2.2`, and Alpine `3.24`; the managed runtime, container,
-  docs, and verification surfaces now describe one current baseline, and the legacy JaCoCo snapshot metadata/scripts plus
-  the retired vendored SQLite3 Multiple Ciphers `2.3.4` / SQLite `3.53.1` tree are gone.
-- Hard-broke scaffold and discovery ownership again: `ContractTemplates` now owns posting and account-declaration scaffolds,
-  `ContractPlanTemplates` owns AI-agent ledger-plan scaffolds, placeholder values use one `replace-before-commit-*` vocabulary,
-  `capabilities --output json` defaults to the compact grouped descriptor surface, and help plus launcher guidance now names the
-  canonical raw-module and container-mounted invocation forms.
-- Hard-broke the contract protocol catalog and protected-book maintenance together: per-operation builders now own help/examples/discovery,
-  while backup, restore, and rekey-rollback recovery now stage from verified books, verify restored targets before commit, and keep
-  encrypted maintenance audit compensation tied to the verified live book.
-- Hard-broke structural governance onto canonical owners: reviewed Java surfaces now use full-snapshot approvals with execution-time expiry
-  and orphan detection, PMD derives from one build-logic source across main, test, and Jazzer, tracked Markdown scans the repository
-  with explicit exclusions, and coverage verification reads the shared GA JaCoCo pin directly.
+- Bumped the repo-owned baseline to SQLite3 Multiple Ciphers `2.3.5` with SQLite `3.53.2`, JaCoCo `0.8.15`, Error Prone `2.50.0`, NullAway `0.13.6`, Jackson Databind `3.2.0`, PMD `7.25.0`, SQLFluff `4.2.2`, and Alpine `3.24`; the managed runtime, container, docs, and verification surfaces now describe one current baseline, and the legacy JaCoCo snapshot metadata/scripts plus the retired vendored SQLite3 Multiple Ciphers `2.3.4` / SQLite `3.53.1` tree are gone.
+- Hard-broke scaffold and discovery ownership again: `ContractTemplates` now owns posting and account-declaration scaffolds, `ContractPlanTemplates` owns AI-agent ledger-plan scaffolds, placeholder values use one `replace-before-commit-*` vocabulary, `capabilities --output json` defaults to the compact grouped descriptor surface, and help plus launcher guidance now names the canonical raw-module and container-mounted invocation forms.
+- Hard-broke the contract protocol catalog and protected-book maintenance together: per-operation builders now own help/examples/discovery, while backup, restore, and rekey-rollback recovery now stage from verified books, verify restored targets before commit, and keep encrypted maintenance audit compensation tied to the verified live book.
+- Hard-broke structural governance onto canonical owners: reviewed Java surfaces now use full-snapshot approvals with execution-time expiry and orphan detection, PMD derives from one build-logic source across main, test, and Jazzer, tracked Markdown scans the repository with explicit exclusions, and coverage verification reads the shared GA JaCoCo pin directly.
 
 ### Fixed
 
-- Fixed Java source-shape evidence so newline-terminated files no longer overcount physical lines,
-  duplication-exempt reviewed waivers no longer bypass stale-waiver removal, and reviewed-surface
-  reports publish the approved full snapshot beside the live measurement.
+- Fixed Java source-shape evidence so newline-terminated files no longer overcount physical lines, duplication-exempt reviewed waivers no longer bypass stale-waiver removal, and reviewed-surface reports publish the approved full snapshot beside the live measurement.
 - Fixed Kotlin and PMD structural-governance drift so receiver functions, `fun interface` owners,
   and nested-type counts use a token-aware collector, Jazzer production inherits the main production
   policy, Jazzer test re-adds `GodClass` deliberately, and `NcssCount` remains excluded because file
@@ -2779,8 +2784,9 @@ Notable changes to this project are documented in this file. The format is based
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.53.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.54.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
+[0.54.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.54.0
 [0.53.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.53.0
 [0.52.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.52.0
 [0.50.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.50.0

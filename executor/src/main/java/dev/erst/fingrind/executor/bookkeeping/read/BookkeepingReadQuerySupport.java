@@ -33,10 +33,11 @@ final class BookkeepingReadQuerySupport {
     var comparativeRange =
         accountingRules
             .statementComparativePolicy()
-            .comparativeAsOf(currentView.bookIdentity(), currentView.effectiveDateAsOf());
+            .comparativeAsOf(currentView.bookIdentity(), currentView.resolvedEffectiveDateAsOf());
     return new TrialBalanceView(
         currentView.bookIdentity(),
         currentView.effectiveDateAsOf(),
+        currentView.resolvedEffectiveDateAsOf(),
         comparativeRange,
         currentView.postingCoverage(),
         currentView.rows(),

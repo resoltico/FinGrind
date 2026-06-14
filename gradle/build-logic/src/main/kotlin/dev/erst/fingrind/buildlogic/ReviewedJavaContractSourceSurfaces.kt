@@ -11,16 +11,6 @@ internal val reviewedJavaContractSourceSurfaces =
             splitTrigger =
                 "Split by rejection family before adding another unrelated narrative vocabulary branch.",
             roleName = "bookkeeping-rejection-narrative",
-            physicalLines = 231,
-            logicalLines = 223,
-            imports = 4,
-            nestedTypes = 8,
-            methodsPerTopLevelType = 20,
-            fieldsPerTopLevelType = 10,
-            switchArmsPerMethod = 20,
-            methodLineSpan = 140,
-            methodParameters = 12,
-            methodDecisionPoints = 24,
             approval =
                 reviewedApproval(
                     physicalLines = 230,

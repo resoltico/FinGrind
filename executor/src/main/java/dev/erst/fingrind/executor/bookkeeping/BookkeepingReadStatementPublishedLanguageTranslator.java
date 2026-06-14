@@ -20,6 +20,7 @@ public final class BookkeepingReadStatementPublishedLanguageTranslator {
     return new FinancialPositionReport(
         view.bookIdentity(),
         view.effectiveDateAsOf(),
+        view.resolvedEffectiveDateAsOf(),
         view.comparativeEffectiveDateRange(),
         view.postingCoverage(),
         view.accountingEquationBalanced(),

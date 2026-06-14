@@ -42,6 +42,7 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
         new FinancialPositionView(
             bookIdentity(),
             Optional.of(EFFECTIVE_DATE),
+            Optional.of(EFFECTIVE_DATE),
             EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
             PostingCoverage.ALL_POSTING_KINDS,
             true,
@@ -145,6 +146,7 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
     assertEquals(
         new FinancialPositionReport(
             bookIdentity(),
+            Optional.of(EFFECTIVE_DATE),
             Optional.of(EFFECTIVE_DATE),
             EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
             PostingCoverage.ALL_POSTING_KINDS,

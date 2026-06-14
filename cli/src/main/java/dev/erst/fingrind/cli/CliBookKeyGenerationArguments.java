@@ -9,6 +9,9 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses CLI arguments for `generate-book-key-file`. */
 final class CliBookKeyGenerationArguments {
+  private static final List<String> GENERATE_BOOK_KEY_FILE_OPTIONS =
+      List.of(ProtocolOptions.BOOK_KEY_FILE, ProtocolOptions.OUTPUT);
+
   private CliBookKeyGenerationArguments() {}
 
   static CliCommand parseGenerateBookKeyFileCommand(List<String> arguments) {
@@ -35,7 +38,8 @@ final class CliBookKeyGenerationArguments {
                     CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
                     CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         default ->
-            throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+            throw CliArgumentValueParser.unsupportedArgument(
+                argument, GENERATE_BOOK_KEY_FILE_OPTIONS);
       }
     }
     if (bookKeyFilePath == null) {

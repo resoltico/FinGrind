@@ -26,6 +26,9 @@ final class CliDiscoveryRuntimeTextRenderer {
                     "Current launcher",
                     displayRuntimeDistribution(environmentDescriptor.runtime())),
                 List.of(
+                    "Default output mode",
+                    displayDefaultOutputMode(environmentDescriptor.runtime())),
+                List.of(
                     "Public package surface",
                     displayPublicationSurface(environmentDescriptor.publication())),
                 List.of("Book storage", displayStorage(environmentDescriptor.storage())),
@@ -103,6 +106,13 @@ final class CliDiscoveryRuntimeTextRenderer {
       case DIRECT_JAVA_INVOCATION -> "Developer direct-Java launcher";
       case CONTAINER_IMAGE -> "Container image launcher";
     };
+  }
+
+  private static String displayDefaultOutputMode(EnvironmentRuntimeDescriptor runtimeDescriptor) {
+    String defaultOutputMode = runtimeDescriptor.defaultOutputMode().wireValue();
+    return runtimeDescriptor.defaultOutputModeSource() == null
+        ? defaultOutputMode + " (built in)"
+        : defaultOutputMode + " via " + runtimeDescriptor.defaultOutputModeSource();
   }
 
   private static String displayPublicationSurface(

@@ -23,8 +23,13 @@ final class CliRuntimeContractDescriptors {
 
   static EnvironmentDescriptor environmentDescriptor(
       SqliteRuntime.Probe runtimeProbe, String runtimeDistribution) {
+    CliOutputModeDefaults.OutputDefault outputDefault =
+        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE);
     return new EnvironmentDescriptor(
-        new EnvironmentRuntimeDescriptor(RuntimeDistribution.fromWireValue(runtimeDistribution)),
+        new EnvironmentRuntimeDescriptor(
+            RuntimeDistribution.fromWireValue(runtimeDistribution),
+            outputDefault.mode(),
+            outputDefault.source()),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),

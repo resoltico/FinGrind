@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliReportJsonModels;
+import dev.erst.fingrind.cli.json.CliStatementJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
@@ -69,9 +70,9 @@ final class CliReportRowPayloadMapper {
         row.movement().balanceSide().wireValue());
   }
 
-  static CliReportJsonModels.FinancialPositionSectionPayload financialPositionSectionPayload(
+  static CliStatementJsonModels.FinancialPositionSectionPayload financialPositionSectionPayload(
       FinancialPositionSection section) {
-    return new CliReportJsonModels.FinancialPositionSectionPayload(
+    return new CliStatementJsonModels.FinancialPositionSectionPayload(
         section.accountType().wireValue(),
         section.rows().stream()
             .map(CliReportRowPayloadMapper::financialPositionRowPayload)
@@ -79,9 +80,9 @@ final class CliReportRowPayloadMapper {
         section.totals().stream().map(CliPayloadAssembler::balancePayload).toList());
   }
 
-  static CliReportJsonModels.FinancialPositionRowPayload financialPositionRowPayload(
+  static CliStatementJsonModels.FinancialPositionRowPayload financialPositionRowPayload(
       FinancialPositionRow row) {
-    return new CliReportJsonModels.FinancialPositionRowPayload(
+    return new CliStatementJsonModels.FinancialPositionRowPayload(
         row.lineCode(),
         row.lineName(),
         row.lineType().wireValue(),
@@ -93,17 +94,17 @@ final class CliReportRowPayloadMapper {
         CliPayloadAssembler.balancePayload(row.balance()));
   }
 
-  static CliReportJsonModels.IncomeStatementSectionPayload incomeStatementSectionPayload(
+  static CliStatementJsonModels.IncomeStatementSectionPayload incomeStatementSectionPayload(
       IncomeStatementSection section) {
-    return new CliReportJsonModels.IncomeStatementSectionPayload(
+    return new CliStatementJsonModels.IncomeStatementSectionPayload(
         section.accountType().wireValue(),
         section.rows().stream().map(CliReportRowPayloadMapper::incomeStatementRowPayload).toList(),
         section.totals().stream().map(CliPayloadAssembler::balancePayload).toList());
   }
 
-  static CliReportJsonModels.IncomeStatementRowPayload incomeStatementRowPayload(
+  static CliStatementJsonModels.IncomeStatementRowPayload incomeStatementRowPayload(
       IncomeStatementRow row) {
-    return new CliReportJsonModels.IncomeStatementRowPayload(
+    return new CliStatementJsonModels.IncomeStatementRowPayload(
         row.lineCode(),
         row.lineName(),
         row.lineType().wireValue(),
@@ -113,9 +114,9 @@ final class CliReportRowPayloadMapper {
         CliPayloadAssembler.balancePayload(row.movement()));
   }
 
-  static CliReportJsonModels.ChangesInEquityRowPayload changesInEquityRowPayload(
+  static CliStatementJsonModels.ChangesInEquityRowPayload changesInEquityRowPayload(
       ChangesInEquityRow row) {
-    return new CliReportJsonModels.ChangesInEquityRowPayload(
+    return new CliStatementJsonModels.ChangesInEquityRowPayload(
         row.lineCode(),
         row.lineName(),
         row.lineType().map(dev.erst.fingrind.core.AccountType::wireValue).orElse(null),

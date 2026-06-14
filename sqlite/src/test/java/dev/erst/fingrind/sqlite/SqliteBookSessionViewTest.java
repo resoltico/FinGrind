@@ -604,6 +604,8 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.findReversalFor(new PostingId("posting-1")),
           readSession.findReversalFor(new PostingId("posting-1")));
       assertEquals(
+          postingFactStore.latestPostingEffectiveDate(), readSession.latestPostingEffectiveDate());
+      assertEquals(
           postingFactStore.accountTotals(allDates, allPostingKinds()),
           readSession.accountTotals(allDates, allPostingKinds()));
       assertEquals(
@@ -631,6 +633,9 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(
           postingFactStore.earliestPostingEffectiveDate(),
           postingSession.earliestPostingEffectiveDate());
+      assertEquals(
+          postingFactStore.latestPostingEffectiveDate(),
+          postingSession.latestPostingEffectiveDate());
       assertEquals(
           postingFactStore.transferredThroughEffectiveDate(),
           postingSession.transferredThroughEffectiveDate());

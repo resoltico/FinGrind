@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.53.0"
+version: "0.54.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-06-13"
+updated: "2026-06-14"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -227,6 +227,9 @@ executor, report, SQLite, and Gradle build inputs that feed that staged runtime.
 silently packaging an older `fingrind.jar`, entrypoint script, or Dockerfile after local source
 edits. Repository-root `docker build .` is intentionally unsupported; the hygiene boundary is the
 staged context, not the whole checkout.
+When the active CLI build root lives outside the checkout, `:cli:stageDockerBuildContext` also
+quarantines any lingering legacy `cli/build/docker-context` tree before it stages the current
+context, so the old checkout-local path cannot masquerade as the live container assembly input.
 The resulting image mirrors the bundle-owned runtime layout as well: `/opt/fingrind/` now
 contains `runtime/`, `lib/app/fingrind.jar`, and `lib/native/libsqlite3.so.0` plus its
 `.sha256` sidecar, and the rendered entrypoint sets

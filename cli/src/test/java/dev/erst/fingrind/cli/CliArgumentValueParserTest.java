@@ -1,144 +1,71 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
-import dev.erst.fingrind.contract.protocol.PlanResultDetail;
-import dev.erst.fingrind.contract.protocol.ProtocolOptions;
-import dev.erst.fingrind.core.BookEntityName;
-import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.PostingCoverage;
 import java.util.List;
-import java.util.ListIterator;
-import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for low-level CLI argument helper branches. */
+/** Focused unit tests for CLI argument-value parser diagnostics. */
 class CliArgumentValueParserTest {
   @Test
-  void requirePageLimit_acceptsBoundaryValuesAndRejectsOutOfRangeValues() {
+  void unsupportedArgument_suggestsNearestOptionAcrossEditAndPrefixCases() {
+    assertEquals(
+        "Unsupported argument: --outpt. Did you mean --output?",
+        CliArgumentValueParser.unsupportedArgument(
+                "--outpt", List.of("--output", "--detail", "--pdf-out"))
+            .getMessage());
+    assertEquals(
+        "Unsupported argument: --output-extra. Did you mean --output?",
+        CliArgumentValueParser.unsupportedArgument("--output-extra", List.of("--output"))
+            .getMessage());
+    assertEquals(
+        "Unsupported argument: positional-token",
+        CliArgumentValueParser.unsupportedArgument("positional-token", List.of("--output"))
+            .getMessage());
+    assertEquals(
+        "Unsupported argument: --z",
+        CliArgumentValueParser.unsupportedArgument("--z", List.of("--output", "--detail"))
+            .getMessage());
+    assertEquals(
+        "Unsupported argument: --outpu. Did you mean --output?",
+        CliArgumentValueParser.unsupportedArgument(
+                "--outpu", List.of("--output", "--outline", "--outbox"))
+            .getMessage());
+    assertEquals(
+        "Unsupported argument: --o. Did you mean --output?",
+        CliArgumentValueParser.unsupportedArgument("--o", List.of("--outline", "--output"))
+            .getMessage());
+  }
+
+  @Test
+  void invalidEnvironmentSelection_recommendsAcceptedValues() {
+    CliArgumentsException exception =
+        CliArgumentValueParser.invalidEnvironmentSelection(
+            "FINGRIND_DEFAULT_OUTPUT",
+            "Unsupported configured output.",
+            new IllegalArgumentException("bad"));
+
+    assertEquals("FINGRIND_DEFAULT_OUTPUT", exception.argument());
+    assertTrue(exception.hint().contains("Unset FINGRIND_DEFAULT_OUTPUT"));
+    assertTrue(exception.hint().contains("json, text"));
+  }
+
+  @Test
+  void requirePageLimit_rejectsOutOfRangeValuesAndAcceptsBoundaries() {
     assertEquals(1, CliArgumentValueParser.requirePageLimit(1, "--limit"));
     assertEquals(200, CliArgumentValueParser.requirePageLimit(200, "--limit"));
 
-    CliArgumentsException belowMinimum =
-        assertThrows(
+    CliArgumentsException low =
+        org.junit.jupiter.api.Assertions.assertThrows(
             CliArgumentsException.class,
             () -> CliArgumentValueParser.requirePageLimit(0, "--limit"));
-    CliArgumentsException aboveMaximum =
-        assertThrows(
+    CliArgumentsException high =
+        org.junit.jupiter.api.Assertions.assertThrows(
             CliArgumentsException.class,
             () -> CliArgumentValueParser.requirePageLimit(201, "--limit"));
 
-    assertEquals("--limit", belowMinimum.argument());
-    assertEquals("--limit", aboveMaximum.argument());
-  }
-
-  @Test
-  void parseDomainValueOptions_acceptValidValuesAndRejectInvalidOnes() {
-    assertEquals(
-        CurrencyUnit.of("EUR"),
-        CliOptionValues.parseCurrencyUnitOption("EUR", "--functional-currency"));
-    assertEquals(
-        new BookEntityName("Acme Studio"),
-        CliOptionValues.parseBookEntityNameOption("Acme Studio", "--entity-name"));
-    assertEquals(
-        FiscalYearStart.parse("01-01"),
-        CliOptionValues.parseFiscalYearStartOption("01-01", "--fiscal-year-start"));
-
-    assertEquals(
-        "--functional-currency",
-        assertThrows(
-                CliArgumentsException.class,
-                () -> CliOptionValues.parseCurrencyUnitOption("ZZZ", "--functional-currency"))
-            .argument());
-    assertEquals(
-        "--entity-name",
-        assertThrows(
-                CliArgumentsException.class,
-                () -> CliOptionValues.parseBookEntityNameOption(" ", "--entity-name"))
-            .argument());
-    assertEquals(
-        "--fiscal-year-start",
-        assertThrows(
-                CliArgumentsException.class,
-                () -> CliOptionValues.parseFiscalYearStartOption("13-40", "--fiscal-year-start"))
-            .argument());
-  }
-
-  @Test
-  void requirePostingCoverage_acceptsOneValueAndRejectsDuplicateOrUnknownValues() {
-    ListIterator<String> validIterator = List.of("non-closing-postings").listIterator();
-    assertEquals(
-        PostingCoverage.NON_CLOSING_POSTINGS,
-        CliOptionModes.requirePostingCoverage(null, validIterator));
-
-    CliArgumentsException duplicateException =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliOptionModes.requirePostingCoverage(
-                    PostingCoverage.ALL_POSTING_KINDS, List.<String>of().listIterator()));
-    assertEquals(ProtocolOptions.POSTING_COVERAGE, duplicateException.argument());
-
-    CliArgumentsException invalidException =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliOptionModes.requirePostingCoverage(
-                    null, List.of("unknown-coverage").listIterator()));
-    assertEquals(ProtocolOptions.POSTING_COVERAGE, invalidException.argument());
-  }
-
-  @Test
-  void requirePlanResultDetail_acceptsOneValueAndRejectsDuplicateOrUnknownValues() {
-    assertEquals(
-        PlanResultDetail.FULL,
-        CliOptionModes.requirePlanResultDetail(
-            null, List.of(PlanResultDetail.FULL.wireValue()).listIterator()));
-
-    CliArgumentsException duplicateException =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliOptionModes.requirePlanResultDetail(
-                    PlanResultDetail.SUMMARY, List.<String>of().listIterator()));
-    assertEquals(ProtocolOptions.RESULT_DETAIL, duplicateException.argument());
-
-    CliArgumentsException invalidException =
-        assertThrows(
-            CliArgumentsException.class,
-            () -> CliOptionModes.requirePlanResultDetail(null, List.of("verbose").listIterator()));
-    assertEquals(ProtocolOptions.RESULT_DETAIL, invalidException.argument());
-    assertTrue(
-        Objects.requireNonNull(invalidException.getMessage())
-            .contains("Accepted values: summary, full."));
-  }
-
-  @Test
-  void requireDiscoveryDetail_acceptsOneValueAndRejectsDuplicateOrUnknownValues() {
-    assertEquals(
-        DiscoveryDetail.FULL,
-        CliOptionModes.requireDiscoveryDetail(
-            null, List.of(DiscoveryDetail.FULL.wireValue()).listIterator()));
-
-    CliArgumentsException duplicateException =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliOptionModes.requireDiscoveryDetail(
-                    DiscoveryDetail.COMPACT, List.<String>of().listIterator()));
-    assertEquals(ProtocolOptions.DETAIL, duplicateException.argument());
-
-    CliArgumentsException invalidException =
-        assertThrows(
-            CliArgumentsException.class,
-            () -> CliOptionModes.requireDiscoveryDetail(null, List.of("expanded").listIterator()));
-    assertEquals(ProtocolOptions.DETAIL, invalidException.argument());
-    assertTrue(
-        Objects.requireNonNull(invalidException.getMessage())
-            .contains("Accepted values: minimal, compact, full."));
+    assertEquals("--limit", low.argument());
+    assertEquals("--limit", high.argument());
   }
 }

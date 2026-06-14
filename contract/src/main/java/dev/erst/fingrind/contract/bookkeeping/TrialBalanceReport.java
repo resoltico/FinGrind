@@ -14,6 +14,7 @@ import java.util.Optional;
 public record TrialBalanceReport(
     BookIdentity bookIdentity,
     Optional<LocalDate> effectiveDateAsOf,
+    Optional<LocalDate> resolvedEffectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     List<TrialBalanceRow> rows,
@@ -26,6 +27,7 @@ public record TrialBalanceReport(
   public TrialBalanceReport {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
+    Objects.requireNonNull(resolvedEffectiveDateAsOf, "resolvedEffectiveDateAsOf");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     rows = ContractDescriptorValidation.copyList(rows, "rows");

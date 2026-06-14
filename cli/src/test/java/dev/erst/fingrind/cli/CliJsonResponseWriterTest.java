@@ -118,7 +118,9 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   void writeRequestTemplate_writesCanonicalRawJsonTemplate() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    String expected = CliWireJson.prettyJsonText(MachineContract.requestTemplate());
+    String expected =
+        new String(
+            CliWireJson.writeJsonBytes(MachineContract.requestTemplate()), StandardCharsets.UTF_8);
 
     responseWriter.writeRequestTemplate(MachineContract.requestTemplate());
 
@@ -129,7 +131,9 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   void writePlanTemplate_writesCanonicalRawJsonTemplate() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    String expected = CliWireJson.prettyJsonText(MachineContract.planTemplate());
+    String expected =
+        new String(
+            CliWireJson.writeJsonBytes(MachineContract.planTemplate()), StandardCharsets.UTF_8);
 
     responseWriter.writePlanTemplate(MachineContract.planTemplate());
 

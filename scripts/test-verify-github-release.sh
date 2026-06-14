@@ -25,12 +25,14 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly verifier="${script_dir}/verify-github-release.sh"
 readonly archive_verifier="${script_dir}/verify-source-archive.py"
+readonly release_test_support="${script_dir}/github_release_test_support.py"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly release_workflow="${repo_root}/.github/workflows/release.yml"
 
 [[ -x "${verifier}" ]] || die "missing executable release verifier"
 [[ -f "${archive_verifier}" ]] || die "missing source archive verifier helper"
+[[ -f "${release_test_support}" ]] || die "missing GitHub release test support helper"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
 grep -Fq 'scripts/test-verify-github-release.sh' "${stage_contract_script}" || die \
@@ -79,15 +81,11 @@ grep -Fq './scripts/verify-public-container-surface.sh' "${repo_root}/docs/RELEA
     "release protocol no longer requires public-container surface verification"
 
 attest_job_surface="$(
-    python3 - <<'PY' "${release_workflow}"
-from pathlib import Path
-import sys
-
-workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
-start = workflow.index("  attest-release-assets:\n")
-end = workflow.index("\n  verify-release:\n", start)
-print(workflow[start:end], end="")
-PY
+    python3 "${release_test_support}" \
+        extract-job-surface \
+        --workflow "${release_workflow}" \
+        --job attest-release-assets \
+        --next-job verify-release
 )"
 printf '%s' "${attest_job_surface}" | grep -Fq 'uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2' || die \
     "release workflow attestation job no longer checks out the repository before invoking repo-owned downloader scripts"
@@ -99,15 +97,11 @@ printf '%s' "${attest_job_surface}" | grep -Fq '${FINGRIND_WORKFLOW_HELPER_ROOT}
     "release workflow attestation job no longer invokes the helper-rooted draft-aware asset downloader inside the attestation job surface"
 
 verify_job_surface="$(
-    python3 - <<'PY' "${release_workflow}"
-from pathlib import Path
-import sys
-
-workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
-start = workflow.index("  verify-release:\n")
-end = workflow.index("\n  build-staging-container:\n", start)
-print(workflow[start:end], end="")
-PY
+    python3 "${release_test_support}" \
+        extract-job-surface \
+        --workflow "${release_workflow}" \
+        --job verify-release \
+        --next-job build-staging-container
 )"
 printf '%s' "${verify_job_surface}" | grep -Fq 'contents: write' || die \
     "release workflow verifier job no longer keeps write-scoped contents permission for staged draft asset verification downloads"
@@ -115,15 +109,11 @@ printf '%s' "${verify_job_surface}" | grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_A
     "release workflow verifier job no longer verifies the staged draft release before container publication"
 
 container_job_surface="$(
-    python3 - <<'PY' "${release_workflow}"
-from pathlib import Path
-import sys
-
-workflow = Path(sys.argv[1]).read_text(encoding="utf-8")
-start = workflow.index("  build-staging-container:\n")
-end = workflow.index("\n  promote-container:\n", start)
-print(workflow[start:end], end="")
-PY
+    python3 "${release_test_support}" \
+        extract-job-surface \
+        --workflow "${release_workflow}" \
+        --job build-staging-container \
+        --next-job promote-container
 )"
 printf '%s' "${container_job_surface}" | grep -Fq 'FINGRIND_DOCKER_SMOKE_REPO_ROOT: ${{ github.workspace }}' || die \
     "release workflow no longer passes the tagged checkout root into helper-rooted Docker smoke during staged-container publication"
@@ -140,260 +130,15 @@ trap cleanup EXIT
 
 mkdir -p "${fixture_root}/bin" "${fixture_root}/release-assets"
 
-python3 - <<'PY' "${fixture_root}" "${release_assets_json}"
-from __future__ import annotations
+python3 "${release_test_support}" \
+    build-release-fixtures \
+    --fixture-root "${fixture_root}" \
+    --release-assets-json "${release_assets_json}"
 
-from hashlib import sha256
-from pathlib import Path
-import io
-import json
-import sys
-import tarfile
-import zipfile
-
-fixture_root = Path(sys.argv[1])
-asset_names = json.loads(sys.argv[2])
-release_assets_root = fixture_root / "release-assets"
-archive_digests: dict[str, str] = {}
-
-for asset_name in asset_names:
-    asset_path = release_assets_root / asset_name
-    if asset_name.endswith(".sha256"):
-        continue
-    if asset_name.endswith(".zip"):
-        with zipfile.ZipFile(asset_path, "w") as archive:
-            archive.writestr("payload.txt", f"{asset_name}\n")
-    else:
-        asset_path.write_text(f"{asset_name}\n", encoding="utf-8")
-    archive_digests[asset_name] = sha256(asset_path.read_bytes()).hexdigest()
-
-for asset_name in asset_names:
-    asset_path = release_assets_root / asset_name
-    if asset_name.endswith(".sha256"):
-        archive_name = asset_name[: -len(".sha256")]
-        asset_path.write_text(
-            f"{archive_digests[archive_name]}  {archive_name}\n",
-            encoding="utf-8",
-        )
-
-good_zip = fixture_root / "good-source.zip"
-good_tar = fixture_root / "good-source.tar.gz"
-bad_zip = fixture_root / "bad-source.zip"
-bad_checksum_root = fixture_root / "bad-checksum-assets"
-bad_checksum_root.mkdir(parents=True, exist_ok=True)
-
-with zipfile.ZipFile(good_zip, "w") as archive:
-    archive.writestr("owner-repo-123456/README.md", "public archive\n")
-
-with tarfile.open(good_tar, "w:gz") as archive:
-    data = b"public archive\n"
-    member = tarfile.TarInfo("owner-repo-123456/README.md")
-    member.size = len(data)
-    archive.addfile(member, io.BytesIO(data))
-
-with zipfile.ZipFile(bad_zip, "w") as archive:
-    archive.writestr("owner-repo-123456/AGENTS.md", "should not ship\n")
-
-for asset_name in asset_names:
-    source = release_assets_root / asset_name
-    target = bad_checksum_root / asset_name
-    target.write_bytes(source.read_bytes())
-if asset_names:
-    first_archive = next(name for name in asset_names if not name.endswith(".sha256"))
-    checksum_path = bad_checksum_root / f"{first_archive}.sha256"
-    checksum_path.write_text(
-        f"{'0' * 64}  {first_archive}\n",
-        encoding="utf-8",
-    )
-PY
-
-cat > "${fixture_root}/bin/gh" <<'EOF'
+cat > "${fixture_root}/bin/gh" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-
-mode="${FAKE_GH_MODE:-success}"
-tag="${FAKE_GH_TAG:-v0.0.0}"
-repo="${FAKE_GH_REPOSITORY:-resoltico/FinGrind}"
-release_url="${FAKE_GH_RELEASE_URL:-https://example.invalid/release}"
-good_zip="${FAKE_GH_GOOD_ZIP:-}"
-good_tar="${FAKE_GH_GOOD_TAR:-}"
-bad_zip="${FAKE_GH_BAD_ZIP:-}"
-asset_root="${FAKE_GH_ASSET_ROOT:-}"
-bad_checksum_root="${FAKE_GH_BAD_CHECKSUM_ROOT:-}"
-asset_listing_json="${FAKE_GH_ASSETS_JSON:-[]}"
-private_reporting_enabled="${FAKE_GH_PRIVATE_REPORTING_ENABLED:-true}"
-
-if [[ "${1:-}" == "repo" && "${2:-}" == "view" ]]; then
-    [[ "${3:-}" == "--json" && "${4:-}" == "nameWithOwner" && "${5:-}" == "--jq" && "${6:-}" == ".nameWithOwner" ]] || exit 1
-    printf '%s\n' "${repo}"
-    exit 0
-fi
-
-if [[ "${1:-}" == "release" && "${2:-}" == "view" ]]; then
-    requested_tag="${3:-}"
-    [[ "${requested_tag}" == "${tag}" ]] || exit 1
-    shift 3
-    requested_repo=''
-    if [[ "${1:-}" == "--repo" ]]; then
-        requested_repo="${2:-}"
-        shift 2
-    fi
-    [[ -z "${requested_repo}" || "${requested_repo}" == "${repo}" ]] || exit 1
-    [[ "${1:-}" == "--json" ]] || exit 1
-    json_field="${2:-}"
-    if [[ $# -eq 2 ]]; then
-        case "${json_field}" in
-            assets)
-                ASSET_LISTING_JSON="${asset_listing_json}" python3 - <<'PY'
-import json
-import os
-
-asset_names = json.loads(os.environ["ASSET_LISTING_JSON"])
-assets = [
-    {
-        "name": name,
-        "apiUrl": f"https://api.github.com/repos/resoltico/FinGrind/releases/assets/{index + 1}",
-    }
-    for index, name in enumerate(asset_names)
-]
-print(json.dumps({"assets": assets}))
-PY
-                ;;
-            *)
-                exit 1
-                ;;
-        esac
-        exit 0
-    fi
-    [[ "${3:-}" == "--jq" ]] || exit 1
-    jq_query="${4:-}"
-    case "${json_field}:${jq_query}" in
-        tagName:.tagName)
-            printf '%s\n' "${tag}"
-            ;;
-        isDraft:.isDraft)
-            printf 'false\n'
-            ;;
-        isPrerelease:.isPrerelease)
-            printf 'false\n'
-            ;;
-        url:.url)
-            printf '%s\n' "${release_url}"
-            ;;
-        assets:*)
-            asset_name="${jq_query#*index(\"}"
-            asset_name="${asset_name%%\")*}"
-            ASSET_LISTING_JSON="${asset_listing_json}" python3 - "${asset_name}" <<'PY'
-import json
-import os
-import sys
-
-asset_name = sys.argv[1]
-assets = json.loads(os.environ["ASSET_LISTING_JSON"])
-print("true" if asset_name in assets else "false")
-PY
-            ;;
-        *)
-            exit 1
-            ;;
-    esac
-    exit 0
-fi
-
-if [[ "${1:-}" == "release" && "${2:-}" == "download" ]]; then
-    requested_tag="${3:-}"
-    [[ "${requested_tag}" == "${tag}" ]] || exit 1
-    shift 3
-    requested_asset=''
-    destination_dir=''
-    while [[ $# -gt 0 ]]; do
-        case "${1}" in
-            --pattern)
-                requested_asset="${2:-}"
-                shift 2
-                ;;
-            --dir)
-                destination_dir="${2:-}"
-                shift 2
-                ;;
-            --repo|--clobber)
-                if [[ "${1}" == "--repo" ]]; then
-                    shift 2
-                else
-                    shift
-                fi
-                ;;
-            *)
-                exit 1
-                ;;
-        esac
-    done
-    [[ -n "${requested_asset}" && -n "${destination_dir}" ]] || exit 1
-    mkdir -p "${destination_dir}"
-    source_root="${asset_root}"
-    if [[ "${mode}" == "bad-checksum" && "${requested_asset}" == *.sha256 ]]; then
-        source_root="${bad_checksum_root}"
-    fi
-    cp "${source_root}/${requested_asset}" "${destination_dir}/${requested_asset}"
-    exit 0
-fi
-
-if [[ "${1:-}" == "attestation" && "${2:-}" == "verify" ]]; then
-    [[ "${mode}" == "bad-attestation" ]] && exit 1
-    exit 0
-fi
-
-if [[ "${1:-}" == "api" ]]; then
-    shift
-    if [[ "${1:-}" == "--method" && "${2:-}" == "GET" ]]; then
-        shift 2
-    fi
-    if [[ "${1:-}" == "-H" && "${2:-}" == "Accept: application/octet-stream" ]]; then
-        shift 2
-    fi
-    endpoint="${1:-}"
-    case "${endpoint}" in
-        /repos/"${repo}"/private-vulnerability-reporting)
-            [[ "${2:-}" == "--jq" && "${3:-}" == ".enabled" ]] || exit 1
-            printf '%s\n' "${private_reporting_enabled}"
-            ;;
-        /repos/"${repo}"/zipball/"${tag}")
-            if [[ "${mode}" == "bad-archive" ]]; then
-                cat "${bad_zip}"
-            else
-                cat "${good_zip}"
-            fi
-            ;;
-        /repos/"${repo}"/tarball/"${tag}")
-            cat "${good_tar}"
-            ;;
-        /repos/"${repo}"/releases/assets/*)
-            asset_id="${endpoint##*/}"
-            asset_name="$(
-                ASSET_LISTING_JSON="${asset_listing_json}" python3 - "${asset_id}" <<'PY'
-import json
-import os
-import sys
-
-asset_id = int(sys.argv[1])
-assets = json.loads(os.environ["ASSET_LISTING_JSON"])
-print(assets[asset_id - 1])
-PY
-            )"
-            source_root="${asset_root}"
-            if [[ "${mode}" == "bad-checksum" && "${asset_name}" == *.sha256 ]]; then
-                source_root="${bad_checksum_root}"
-            fi
-            cat "${source_root}/${asset_name}"
-            ;;
-        *)
-            exit 1
-            ;;
-    esac
-    exit 0
-fi
-
-exit 1
+exec python3 "${release_test_support}" fake-gh "\$@"
 EOF
 chmod +x "${fixture_root}/bin/gh"
 

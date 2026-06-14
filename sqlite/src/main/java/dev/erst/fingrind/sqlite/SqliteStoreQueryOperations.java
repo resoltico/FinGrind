@@ -169,6 +169,18 @@ final class SqliteStoreQueryOperations {
                 .map(LocalDate::parse));
   }
 
+  Optional<LocalDate> latestPostingEffectiveDate() {
+    lifecycle.ensureOpenSession();
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase ->
+            SqliteStatementQueries.loadOptionalText(
+                    activeDatabase,
+                    SqlitePostingSql.FIND_LATEST_POSTING_EFFECTIVE_DATE,
+                    statement -> {})
+                .map(LocalDate::parse));
+  }
+
   Optional<LocalDate> transferredThroughEffectiveDate() {
     lifecycle.ensureOpenSession();
     return queryInitialized(

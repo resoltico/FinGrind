@@ -201,6 +201,7 @@ class SqliteBalanceAndSummaryQueryTest extends SqlitePostingFactStoreTestSupport
           new TrialBalanceReport(
               bookIdentity(),
               Optional.of(LocalDate.parse("2026-04-08")),
+              Optional.of(LocalDate.parse("2026-04-08")),
               EffectiveDateRange.of(null, null),
               allPostingKinds(),
               List.of(

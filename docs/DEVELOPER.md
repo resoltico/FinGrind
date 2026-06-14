@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.53.0"
+version: "0.54.0"
 domain: DEVELOPER
-updated: "2026-06-13"
+updated: "2026-06-14"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -377,9 +377,10 @@ without ambient Java or any retired SQLite runtime override variables. That smok
 verifies the top-level archive bootstrap files and the trimmed `jlink` runtime-image contract.
 The bundle task prints the exact archive path and checksum path it produced under the active build
 directory so operators and agents can pick up the right artifact without guessing where Gradle
-placed it. Stage 1 structural governance now scans tracked Markdown across the repository, which
-includes the `.codex` protocol manuals under their own documentation budget instead of only the
-user-facing `docs/` tree.
+placed it. Stage 1 structural governance now scans tracked Markdown and tracked JSON resources
+across the repository, which includes the `.codex` protocol manuals plus contract catalogs,
+bundle-root payload examples, and other repo-owned JSON surfaces under explicit family budgets
+instead of only the user-facing `docs/` tree.
 
 For local developer-only raw-JAR verification, remember that `:cli:shadowJar` packages only the
 Java surface. If you want that JAR to run from the checkout, prepare the managed runtime first:

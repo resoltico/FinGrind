@@ -10,6 +10,7 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import java.nio.file.Files;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -24,10 +25,12 @@ final class SqliteStoreReportOperations {
 
   private final SqliteStoreContext context;
   private final SqliteStoreLifecycle lifecycle;
+  private final SqliteStoreQueryOperations queryOperations;
 
   SqliteStoreReportOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
     this.context = Objects.requireNonNull(context, "context");
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
+    this.queryOperations = new SqliteStoreQueryOperations(this.context, this.lifecycle);
   }
 
   Optional<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
@@ -35,6 +38,10 @@ final class SqliteStoreReportOperations {
     return queryReport(
         "Failed to query SQLite book.",
         activeDatabase -> context.postingBalanceReader().accountBalance(activeDatabase, query));
+  }
+
+  Optional<LocalDate> latestPostingEffectiveDate() {
+    return queryOperations.latestPostingEffectiveDate();
   }
 
   TrialBalanceView trialBalance(TrialBalanceCriteria query) {

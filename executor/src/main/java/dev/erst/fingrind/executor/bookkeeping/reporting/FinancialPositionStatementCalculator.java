@@ -34,11 +34,12 @@ final class FinancialPositionStatementCalculator {
   FinancialPositionView view(FinancialPositionCriteria criteria) {
     BookIdentity bookIdentity = context.bookIdentity();
     PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
+    var resolvedEffectiveDateAsOf = context.resolvedEffectiveDateAsOf(criteria.effectiveDateAsOf());
     EffectiveDateRange comparativeRange =
         context
             .accountingRules()
             .statementComparativePolicy()
-            .comparativeAsOf(bookIdentity, criteria.effectiveDateAsOf());
+            .comparativeAsOf(bookIdentity, resolvedEffectiveDateAsOf);
     List<FinancialPositionSectionView> sections =
         sections(
             bookIdentity,
@@ -63,6 +64,7 @@ final class FinancialPositionStatementCalculator {
     return new FinancialPositionView(
         bookIdentity,
         criteria.effectiveDateAsOf(),
+        resolvedEffectiveDateAsOf,
         comparativeRange,
         postingCoverage,
         true,

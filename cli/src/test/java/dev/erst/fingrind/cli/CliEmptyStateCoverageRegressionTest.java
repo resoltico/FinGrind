@@ -112,6 +112,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
         new TrialBalanceReport(
             bookIdentity(),
             Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             allPostingKinds(),
             List.of(),
@@ -148,6 +149,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
         new TrialBalanceReport(
             bookIdentity(),
             Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             allPostingKinds(),
             List.of(row),
@@ -170,6 +172,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
         new TrialBalanceReport(
             bookIdentity(),
             Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
             List.of(),
@@ -188,6 +191,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     TrialBalanceReport report =
         new TrialBalanceReport(
             bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
@@ -224,6 +228,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
         new FinancialPositionReport(
             bookIdentity(),
             Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             allPostingKinds(),
             true,
@@ -244,6 +249,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     FinancialPositionReport report =
         new FinancialPositionReport(
             bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             allPostingKinds(),

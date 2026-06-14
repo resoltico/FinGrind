@@ -352,6 +352,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
     return new FinancialPositionReport(
         bookIdentity(),
         Optional.of(LocalDate.parse("2026-04-30")),
+        Optional.of(LocalDate.parse("2026-04-30")),
         EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
         allPostingKinds(),
         true,

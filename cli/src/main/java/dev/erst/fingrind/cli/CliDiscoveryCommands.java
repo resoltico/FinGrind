@@ -12,7 +12,8 @@ record Help(
     @Nullable OperationId commandTopic,
     OutputMode outputMode,
     DiscoveryDetail detail,
-    @Nullable OperationCategory category)
+    @Nullable OperationCategory category,
+    boolean terseTopLevel)
     implements CliCommand.OutputModeCommand {
   Help {
     Objects.requireNonNull(outputMode, "outputMode");
@@ -23,7 +24,7 @@ record Help(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writeHelp(commandTopic, outputMode, detail, category);
+        .writeHelp(commandTopic, outputMode, detail, category, terseTopLevel);
   }
 }
 

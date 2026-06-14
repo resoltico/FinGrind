@@ -2,14 +2,24 @@ package dev.erst.fingrind.contract.runtime;
 
 import dev.erst.fingrind.contract.discovery.ContractDiscoveryDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
+import org.jspecify.annotations.Nullable;
 
 /** Descriptor for the launcher/runtime identity backing the active CLI process. */
-public record EnvironmentRuntimeDescriptor(RuntimeDistribution runtimeDistribution)
+public record EnvironmentRuntimeDescriptor(
+    RuntimeDistribution runtimeDistribution,
+    OutputMode defaultOutputMode,
+    @Nullable String defaultOutputModeSource)
     implements ContractDiscoveryDescriptor {
   /** Validates one runtime descriptor payload. */
   public EnvironmentRuntimeDescriptor {
     runtimeDistribution =
         ContractDescriptorValidation.requireValue(runtimeDistribution, "runtimeDistribution");
+    defaultOutputMode =
+        ContractDescriptorValidation.requireValue(defaultOutputMode, "defaultOutputMode");
+    defaultOutputModeSource =
+        ContractDescriptorValidation.requireOptionalText(
+            defaultOutputModeSource, "defaultOutputModeSource");
   }
 }

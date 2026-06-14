@@ -9,6 +9,12 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses CLI arguments for backup and restore maintenance commands. */
 final class CliBackupRestoreArguments {
+  private static final List<String> RESTORE_BOOK_OPTIONS =
+      List.of(
+          ProtocolOptions.BOOK_FILE,
+          ProtocolOptions.BACKUP_FILE,
+          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          ProtocolOptions.OUTPUT);
   private static final CliBookArgumentParser.CommandArgumentSpec BACKUP_BOOK_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
@@ -132,8 +138,7 @@ final class CliBackupRestoreArguments {
                   argumentValues.outputMode,
                   CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-      default ->
-          throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      default -> throw CliArgumentValueParser.unsupportedArgument(argument, RESTORE_BOOK_OPTIONS);
     }
   }
 

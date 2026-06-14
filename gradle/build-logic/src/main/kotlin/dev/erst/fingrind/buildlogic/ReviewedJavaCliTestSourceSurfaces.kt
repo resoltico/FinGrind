@@ -11,16 +11,6 @@ internal val reviewedJavaCliTestSourceSurfaces =
             splitTrigger =
                 "Split by maintenance command family before adding another broad matrix branch.",
             roleName = "cli-maintenance-coverage-test",
-            physicalLines = 1015,
-            logicalLines = 955,
-            imports = 23,
-            nestedTypes = 48,
-            methodsPerTopLevelType = 40,
-            fieldsPerTopLevelType = 32,
-            switchArmsPerMethod = 20,
-            methodLineSpan = 360,
-            methodParameters = 10,
-            methodDecisionPoints = 32,
             approval =
                 reviewedApproval(
                     physicalLines = 1002,
@@ -47,16 +37,6 @@ internal val reviewedJavaCliTestSourceSurfaces =
             splitTrigger =
                 "Split by bookkeeping, maintenance, and reporting capture families before adding another support concern.",
             roleName = "cli-recording-workflow-test-support",
-            physicalLines = 303,
-            logicalLines = 260,
-            imports = 22,
-            nestedTypes = 8,
-            methodsPerTopLevelType = 44,
-            fieldsPerTopLevelType = 36,
-            switchArmsPerMethod = 10,
-            methodLineSpan = 120,
-            methodParameters = 10,
-            methodDecisionPoints = 18,
             approval =
                 reviewedApproval(
                     physicalLines = 302,
@@ -83,16 +63,6 @@ internal val reviewedJavaCliTestSourceSurfaces =
             splitTrigger =
                 "Split by report family before adding another major argument matrix branch.",
             roleName = "cli-report-argument-test",
-            physicalLines = 563,
-            logicalLines = 558,
-            imports = 8,
-            nestedTypes = 24,
-            methodsPerTopLevelType = 28,
-            fieldsPerTopLevelType = 12,
-            switchArmsPerMethod = 12,
-            methodLineSpan = 380,
-            methodParameters = 10,
-            methodDecisionPoints = 22,
             approval =
                 reviewedApproval(
                     physicalLines = 562,
