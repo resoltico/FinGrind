@@ -19,10 +19,21 @@ from structural_governance.reviewed_surface_verification import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_CONTRACT_PATH = _REPO_ROOT / "scripts/structural_governance/reviewed_surface_policy_contract.json"
+_CONTRACT_DIRECTORY = _REPO_ROOT / "scripts/structural_governance/reviewed_surface_policy_contract"
 
 _EXPIRED_PATTERN = re.compile(r"expired on (\d{4}-\d{2}-\d{2})")
 _DRIFT_PATTERN = re.compile(r"live file on (.+?) \(approved (\d+), live (\d+)\)")
+
+
+def _contract_cases() -> list[dict[str, object]]:
+    contract_paths = sorted(_CONTRACT_DIRECTORY.glob("*.json"))
+    if not contract_paths:
+        raise AssertionError(
+            f"No reviewed-surface policy contract cases found in {_CONTRACT_DIRECTORY}"
+        )
+    return [
+        json.loads(contract_path.read_text(encoding="utf-8")) for contract_path in contract_paths
+    ]
 
 
 def _normalize_violation(violation: str) -> str:
@@ -114,7 +125,7 @@ def _run_definition_case(case: dict[str, object]) -> None:
             default_budget,
         )
     )
-    expected = [str(descriptor) for descriptor in case["expectedDefinitionDescriptors"]]
+    expected = [str(descriptor) for descriptor in case["expectedDescriptors"]]
     if actual != expected:
         raise AssertionError(
             f"Definition case {case['id']} drifted: expected {expected}, actual {actual}"
@@ -137,7 +148,7 @@ def _run_runtime_case(case: dict[str, object]) -> None:
             baseline_violations=baseline_violations,
         )
     )
-    expected = [str(descriptor) for descriptor in case["expectedRuntimeDescriptors"]]
+    expected = [str(descriptor) for descriptor in case["expectedDescriptors"]]
     if actual != expected:
         raise AssertionError(
             f"Runtime case {case['id']} drifted: expected {expected}, actual {actual}"
@@ -152,7 +163,7 @@ def _run_orphan_case(case: dict[str, object]) -> None:
             existing_relative_paths={str(path) for path in case["existingRelativePaths"]},
         )
     )
-    expected = [str(descriptor) for descriptor in case["expectedRuntimeDescriptors"]]
+    expected = [str(descriptor) for descriptor in case["expectedDescriptors"]]
     if actual != expected:
         raise AssertionError(
             f"Orphan case {case['id']} drifted: expected {expected}, actual {actual}"
@@ -160,13 +171,18 @@ def _run_orphan_case(case: dict[str, object]) -> None:
 
 
 def main() -> int:
-    contract = json.loads(_CONTRACT_PATH.read_text(encoding="utf-8"))
-    for case in contract["definitionCases"]:
-        _run_definition_case(case)
-    for case in contract["runtimeCases"]:
-        _run_runtime_case(case)
-    for case in contract["orphanCases"]:
-        _run_orphan_case(case)
+    for case in _contract_cases():
+        case_type = str(case["caseType"])
+        if case_type == "definition":
+            _run_definition_case(case)
+            continue
+        if case_type == "runtime":
+            _run_runtime_case(case)
+            continue
+        if case_type == "orphan":
+            _run_orphan_case(case)
+            continue
+        raise AssertionError(f"Unsupported reviewed-surface policy contract case type: {case_type}")
     return 0
 
 

@@ -1,0 +1,36 @@
+{
+  "caseType": "runtime",
+  "id": "expired-waiver",
+  "relativePath": "src/main/java/dev/erst/fingrind/example/ExpiredWaiver.java",
+  "owner": "example-owner",
+  "splitTrigger": "Split the example owner.",
+  "reviewedRoleName": "example-reviewed",
+  "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands.",
+  "defaultBudget": {
+    "roleName": "production-main",
+    "physicalLines": 10,
+    "logicalLines": 10,
+    "importLikeLines": 1,
+    "nestedTypes": 1,
+    "functions": 2
+  },
+  "approval": {
+    "physicalLines": 11,
+    "logicalLines": 10,
+    "importLikeLines": 1,
+    "nestedTypes": 1,
+    "functions": 2,
+    "expiresOn": "2026-06-01"
+  },
+  "liveMetrics": {
+    "physicalLines": 11,
+    "logicalLines": 10,
+    "importLikeLines": 1,
+    "nestedTypes": 1,
+    "functions": 2
+  },
+  "currentDate": "2026-06-14",
+  "expectedDescriptors": [
+    "waiver-expired:2026-06-01"
+  ]
+}

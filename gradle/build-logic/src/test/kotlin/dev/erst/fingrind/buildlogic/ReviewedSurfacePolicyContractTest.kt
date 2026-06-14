@@ -11,16 +11,31 @@ import tools.jackson.databind.json.JsonMapper
 class ReviewedSurfacePolicyContractTest {
     private val objectMapper = JsonMapper.builder().build()
     private val repositoryRoot = Path.of("").toAbsolutePath().normalize().parent.parent
-    private val contractPath =
-        repositoryRoot.resolve("scripts/structural_governance/reviewed_surface_policy_contract.json")
+    private val contractDirectory =
+        repositoryRoot.resolve("scripts/structural_governance/reviewed_surface_policy_contract")
 
     @Test
     fun reviewedSurfacePolicyContract_casesStayAlignedWithKotlinWaiverSemantics() {
-        val contract = objectMapper.readTree(contractPath.toFile())
-        contract.path("definitionCases").forEach(::assertDefinitionCase)
-        contract.path("runtimeCases").forEach(::assertRuntimeCase)
-        contract.path("orphanCases").forEach(::assertOrphanCase)
+        contractCases().forEach { case ->
+            when (case.path("caseType").requiredText()) {
+                "definition" -> assertDefinitionCase(case)
+                "runtime" -> assertRuntimeCase(case)
+                "orphan" -> assertOrphanCase(case)
+                else ->
+                    error(
+                        "Unsupported reviewed-surface policy contract case type ${case.path("caseType").requiredText()}."
+                    )
+            }
+        }
     }
+
+    private fun contractCases(): List<JsonNode> =
+        contractDirectory
+            .toFile()
+            .listFiles { file -> file.isFile && file.extension == "json" }
+            ?.sortedBy { it.name }
+            ?.map(objectMapper::readTree)
+            ?: error("No reviewed-surface policy contract cases found in $contractDirectory")
 
     private fun assertDefinitionCase(case: JsonNode) {
         val actual =
@@ -29,7 +44,7 @@ class ReviewedSurfacePolicyContractTest {
                 defaultBudget = defaultBudget(case.path("defaultBudget")),
             ).map(::normalizeViolation)
         assertEquals(
-            expectedDescriptors(case, "expectedDefinitionDescriptors"),
+            expectedDescriptors(case),
             actual,
             "Definition case ${case.path("id").asText()} drifted from the shared reviewed-surface policy contract.",
         )
@@ -45,7 +60,7 @@ class ReviewedSurfacePolicyContractTest {
                 currentDate = LocalDate.parse(case.path("currentDate").requiredText()),
             ).map(::normalizeViolation)
         assertEquals(
-            expectedDescriptors(case, "expectedRuntimeDescriptors"),
+            expectedDescriptors(case),
             actual,
             "Runtime case ${case.path("id").asText()} drifted from the shared reviewed-surface policy contract.",
         )
@@ -60,16 +75,13 @@ class ReviewedSurfacePolicyContractTest {
                 existingRelativePaths = textArray(case.path("existingRelativePaths")).toSet(),
             ).map(::normalizeViolation)
         assertEquals(
-            expectedDescriptors(case, "expectedRuntimeDescriptors"),
+            expectedDescriptors(case),
             actual,
             "Orphan case ${case.path("id").asText()} drifted from the shared reviewed-surface policy contract.",
         )
     }
 
-    private fun expectedDescriptors(
-        case: JsonNode,
-        fieldName: String,
-    ): List<String> = textArray(case.path(fieldName))
+    private fun expectedDescriptors(case: JsonNode): List<String> = textArray(case.path("expectedDescriptors"))
 
     private fun textArray(node: JsonNode): List<String> =
         (0 until node.size()).map { index -> node.get(index).requiredText() }

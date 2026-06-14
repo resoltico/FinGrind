@@ -1,0 +1,28 @@
+{
+  "caseType": "definition",
+  "id": "variance-reason-required",
+  "relativePath": "src/main/java/dev/erst/fingrind/example/Oversized.java",
+  "owner": "example-owner",
+  "splitTrigger": "Split the example owner.",
+  "reviewedRoleName": "example-reviewed",
+  "budgetVarianceReason": null,
+  "defaultBudget": {
+    "roleName": "production-main",
+    "physicalLines": 10,
+    "logicalLines": 10,
+    "importLikeLines": 1,
+    "nestedTypes": 1,
+    "functions": 2
+  },
+  "approval": {
+    "physicalLines": 11,
+    "logicalLines": 10,
+    "importLikeLines": 1,
+    "nestedTypes": 1,
+    "functions": 2,
+    "expiresOn": "2026-07-01"
+  },
+  "expectedDescriptors": [
+    "variance-reason-required"
+  ]
+}
