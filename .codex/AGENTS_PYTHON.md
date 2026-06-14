@@ -1,8 +1,8 @@
 # Python 3.13+ Agent Protocol
 
-**Version:** 2.0.0
-**Updated:** 2026-04-27
-**Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v2.0.0+
+**Version:** 2.1.0
+**Updated:** 2026-06-13
+**Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v3.0.0+
 **Scope:** Python projects targeting **Python 3.13+** or using Python 3.13 as the lowest supported runtime — libraries, services, CLIs, daemons, data pipelines, notebooks, web APIs, test suites, build scripts, code generators, Python-backed plugins, C/Rust extension packages, and mixed-language repositories with Python surfaces.
 
 ## 0. Scope and inheritance
@@ -30,7 +30,7 @@ Per the Naurian frame, some theory the agent typically does not bring in cold an
 - Which package manager actually owns the environment (uv, pip, Poetry, PDM, Hatch, conda) — `pip install` into a uv project, or uv into a Poetry project, can silently corrupt the lockfile contract.
 - Whether `requires-python`, the CI matrix, the Dockerfile, the lockfile, and the `.python-version` agree. The actual minimum is the most restrictive across all of them; the contract is split across files.
 - Whether `requirements.txt` is the source of truth or a derived artifact. Editing the wrong one is invisible until release.
-- The annotation-evaluation policy: `from __future__ import annotations` (PEP 563), PEP 649 deferred evaluation, PEP 695 generic syntax — runtime tools like Pydantic, dataclasses, and frameworks that introspect annotations behave differently per file.
+- The annotation-evaluation policy in effect for the file: eager evaluation (the 3.13 default), stringized via `from __future__ import annotations` (PEP 563), or deferred (PEP 649, the default only on Python 3.14+). Runtime tools like Pydantic, dataclasses, and frameworks that introspect annotations behave differently per policy, and a 3.13-floor project may run on a 3.14 interpreter where PEP 649 is active. PEP 695 generic syntax is a separate axis (declaration syntax, not evaluation timing); do not conflate it with the evaluation policy.
 - Which type checker the repository uses. Pyright / basedpyright / mypy / pytype disagree on `TypedDict`, narrowing, generics, and overloads. "Passes the type checker" is not portable.
 - Whether the deployed dependency set has Python 3.13 (and especially free-threaded) wheels for every C extension. A pure-Python upgrade can strand a C dep.
 - Whether old code or copy-pasted recipes still reference modules removed in 3.13 (`cgi`, `crypt`, `imghdr`, `nntplib`, etc.). Agents trained pre-3.13 will still suggest them.
@@ -150,6 +150,8 @@ Do not:
 
 Use the repository's declared interpreter policy. If the repository is governed by this protocol and no stronger local policy exists, assume Python 3.13+ as the baseline.
 
+`requires-python = ">=3.13"` is a *floor*, not a build version: Python 3.14 (released 2025-10-07) is the current stable release, so a 3.13-floor project is routinely run on a 3.14 (or newer) interpreter. Keep the floor conservative — do not raise it casually — but write code that is correct on the whole supported range, not only on 3.13. Where 3.13 and 3.14 runtime semantics differ (annotation evaluation, free-threading support level, removed-then-changed APIs), handle both unless the repository pins a single runtime.
+
 For new Python packages created under this protocol, prefer:
 
 ```toml
@@ -189,7 +191,7 @@ Python 3.13 includes experimental implementation paths. Treat them as opt-in run
 
 #### Free-threaded CPython
 
-Free-threaded CPython disables the GIL in a separate experimental build.
+Free-threaded CPython disables the GIL in a separate build. On Python 3.13 it is experimental; on Python 3.14 it became an officially supported configuration (PEP 779), though still not the default interpreter install. The concurrency rules below apply identically across both — official support means the build is maintained, not that GIL-dependent code is suddenly safe on it.
 
 Rules:
 
@@ -224,6 +226,17 @@ nntplib, ossaudiodev, pipes, sndhdr, spwd, sunau, telnetlib, uu, xdrlib
 Also avoid `lib2to3`, the `2to3` tool, `tkinter.tix`, `locale.resetlocale()`, `typing.io`, `typing.re`, and chained `classmethod` descriptor patterns.
 
 When migrating old code, remove the dependency, choose a maintained replacement, and add compatibility tests around the behavior that mattered. Do not vendor dead stdlib behavior by copying unreviewed code.
+
+### 3.5 Python 3.14 awareness at a 3.13 floor
+
+Python 3.14 is the current stable release above the 3.13 floor. Its new syntax and APIs must not be used unconditionally in a 3.13-baseline project — guard, backport, or raise the floor deliberately. The features most likely to be reached for prematurely:
+
+- **PEP 750 template strings (t-strings):** `t"..."` is a syntax error before 3.14. Do not use it in 3.13-floor code.
+- **PEP 649 deferred annotations:** the default on 3.14+, eager on 3.13. Code that relies on annotations being lazy (e.g. forward references without quoting or `__future__`) can pass on 3.14 and fail on 3.13. Test on the actual floor.
+- **PEP 758 / 765:** parenthesis-free `except`/`except*` and the ban on `return`/`break`/`continue` in `finally` are 3.14 behaviors; do not assume them on 3.13.
+- **PEP 734 `interpreters` module** and **PEP 784 `compression.zstd`:** present only on 3.14+. Behind a version guard or floor bump if used.
+
+Conversely, a 3.13-floor project frequently *runs* on 3.14, so do not write code that breaks under deferred annotations or official free-threading. Correctness across the supported range is the contract (§3.1).
 
 ---
 
@@ -312,7 +325,7 @@ Rules:
 - use `Literal` for small protocol strings only when the set is stable and public;
 - use `Final` and `ClassVar` where mutation semantics matter;
 - use `ReadOnly` for `TypedDict` items that callers must not mutate;
-- keep annotations import-safe under the repository's chosen annotation policy (PEP 563 / 649 / 695 differ; runtime tools like Pydantic care);
+- keep annotations import-safe under the repository's chosen evaluation policy — eager (3.13 default), stringized (PEP 563 `from __future__`), or deferred (PEP 649, default on 3.14+) — since runtime tools like Pydantic introspect annotations and behave differently per policy;
 - avoid runtime type introspection on annotations without understanding postponed annotation behavior and `typing.get_type_hints()` consequences.
 
 Avoid:
@@ -714,7 +727,7 @@ For SQLAlchemy, Django ORM, async ORMs, migrations, or raw SQL:
 For CLIs:
 
 - treat flags, env vars, config files, output, and exit codes as public contracts;
-- keep operator-readable and machine-readable output distinct;
+- keep human-readable and machine-readable output distinct;
 - avoid logging to stdout when stdout is data;
 - test help text only where it is a maintained contract;
 - preserve shell completion and packaging entry points.
@@ -746,7 +759,7 @@ Python-specific documentation rules:
 - use docstrings for local API semantics and AFAD-managed docs for broader contract theory;
 - inline comments are reserved for the *why* (per universal contract §1.5 Justification) — non-obvious invariants, safety constraints, framework gotchas, or external-contract reasons. Do not restate what the code says.
 
-Root `README.md` remains a storefront. Keep it reader-first and link to detailed docs rather than turning it into a reference database.
+Root `README.md` remains a storefront. Keep it human-first and link to detailed docs rather than turning it into a reference database.
 
 ---
 

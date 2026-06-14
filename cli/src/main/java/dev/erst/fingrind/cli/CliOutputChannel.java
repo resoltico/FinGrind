@@ -19,10 +19,6 @@ final class CliOutputChannel {
     writeDocument(CliWireJson.writeJsonBytes(value));
   }
 
-  void writePrettyJson(Object value) {
-    writeDocument(CliWireJson.writePrettyJsonBytes(value));
-  }
-
   private void writeDocument(byte[] document) {
     outputStream.write(document, 0, document.length);
     outputStream.println();
@@ -39,8 +35,8 @@ final class CliOutputChannel {
     writeJson(envelope);
   }
 
-  void writePrettySuccess(ProtocolSuccessPayload payload) {
-    writePrettyJson(CliEnvelopeMapper.successEnvelope(payload));
+  void writeSuccess(ProtocolSuccessPayload payload) {
+    writeEnvelope(CliEnvelopeMapper.successEnvelope(payload));
   }
 
   void writeMutationRejection(

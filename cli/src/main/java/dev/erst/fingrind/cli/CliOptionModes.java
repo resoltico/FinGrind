@@ -166,11 +166,13 @@ final class CliOptionModes {
   }
 
   static OutputMode resolvedOutputMode(@Nullable OutputMode outputMode) {
-    return CliOutputModeDefaults.resolved(outputMode);
+    return CliOutputModeDefaults.resolved(
+        outputMode, CliOutputModeDefaults.OutputSurface.SELECTABLE);
   }
 
   static OutputMode resolvedDiscoveryOutputMode(@Nullable OutputMode outputMode) {
-    return CliOutputModeDefaults.resolvedDiscovery(outputMode);
+    return CliOutputModeDefaults.resolved(
+        outputMode, CliOutputModeDefaults.OutputSurface.DISCOVERY);
   }
 
   static CliCommand.ReportOutput resolvedReportOutput(

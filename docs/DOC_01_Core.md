@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.53.0"
+version: "0.54.0"
 domain: CORE
-updated: "2026-06-13"
+updated: "2026-06-14"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]

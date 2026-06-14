@@ -40,8 +40,10 @@ final class CliExecutionPolicy {
       return OutputMode.JSON;
     }
     return switch (normalized) {
-      case "help", "version", "capabilities" -> CliOutputModeDefaults.defaultDiscoveryOutputMode();
-      default -> CliOutputModeDefaults.defaultSelectableOutputMode();
+      case "help", "version", "capabilities", "environment" ->
+          CliOutputModeDefaults.inferredDefault(CliOutputModeDefaults.OutputSurface.DISCOVERY);
+      default ->
+          CliOutputModeDefaults.inferredDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE);
     };
   }
 

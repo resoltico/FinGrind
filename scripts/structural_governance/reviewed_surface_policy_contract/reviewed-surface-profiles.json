@@ -1,0 +1,11 @@
+{
+  "documentType": "reviewed-surface-profiles",
+  "profiles": {
+    "example-reviewed": {
+      "owner": "example-owner",
+      "splitTrigger": "Split the example owner.",
+      "reviewedRoleName": "example-reviewed",
+      "budgetVarianceReason": "Reviewed aggregate remains oversized until the split lands."
+    }
+  }
+}

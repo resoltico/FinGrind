@@ -79,7 +79,13 @@ final class CliOpenBookArguments {
                   CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
       default ->
-          throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+          throw CliArgumentValueParser.unsupportedArgument(
+              argument,
+              List.of(
+                  ProtocolOptions.ENTITY_NAME,
+                  ProtocolOptions.FUNCTIONAL_CURRENCY,
+                  ProtocolOptions.FISCAL_YEAR_START,
+                  ProtocolOptions.OUTPUT));
     }
   }
 

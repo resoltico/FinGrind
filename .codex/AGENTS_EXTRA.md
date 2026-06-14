@@ -13,7 +13,7 @@ refactor the file to match the system. Remove superseded language instead of lay
 
 ## Preflight
 
-Do not read `AGENTS_KOTLIN24_GRADLE.md` for FinGrind application work. FinGrind is a Java
+Do not read `AGENTS_KOTLIN.md` for FinGrind application work. FinGrind is a Java
 application. Kotlin in this repository is Gradle build tooling, not an application-language or
 domain-modeling authority.
 

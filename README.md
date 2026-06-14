@@ -74,7 +74,9 @@ The interface is layered: `help` is the operator guide, `print-request-template`
 `print-plan-template` emit placeholder-first scaffold documents, and `capabilities --output json`
 exposes the machine-readable discovery surface. The default JSON discovery detail is compact; rerun
 with `--detail minimal` for the terse overview or `--detail full` for the exhaustive embedded
-schemas and doctrine surface.
+schemas and doctrine surface. For shell automation or agent sessions that prefer structured stdout
+by default, set `FINGRIND_DEFAULT_OUTPUT=json`; an explicit per-command `--output ...` flag still
+wins when you need a one-off text or CSV result.
 
 ```bash
 fingrind help post-entry

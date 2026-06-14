@@ -14,6 +14,8 @@ import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,16 @@ class CliDiscoveryHelpTextRendererTest {
   /** Deliberately non-wire-safe enum used to exercise JSON template failure handling. */
   private enum BrokenEnum {
     BROKEN
+  }
+
+  private static String renderHelpText(HelpDescriptor helpDescriptor) {
+    return CliDiscoveryOutputRenderer.renderHelpText(
+        helpDescriptor, CliDiscoveryTestSupport.environment(), false);
+  }
+
+  private static String renderHelpText(
+      HelpDescriptor helpDescriptor, EnvironmentDescriptor environmentDescriptor, boolean terse) {
+    return CliDiscoveryOutputRenderer.renderHelpText(helpDescriptor, environmentDescriptor, terse);
   }
 
   @Test
@@ -59,7 +71,7 @@ class CliDiscoveryHelpTextRendererTest {
   @Test
   void renderHelpText_rendersRootHelpSections() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind help"),
@@ -114,9 +126,34 @@ class CliDiscoveryHelpTextRendererTest {
   }
 
   @Test
+  void renderHelpText_rendersTerseTopLevelSynopsisWithConfiguredOutputSource() {
+    HelpDescriptor helpDescriptor =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment());
+    EnvironmentDescriptor environmentDescriptor =
+        new EnvironmentDescriptor(
+            new EnvironmentRuntimeDescriptor(
+                CliDiscoveryTestSupport.environment().runtime().runtimeDistribution(),
+                dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                "FINGRIND_DEFAULT_OUTPUT"),
+            CliDiscoveryTestSupport.environment().publication(),
+            CliDiscoveryTestSupport.environment().storage(),
+            CliDiscoveryTestSupport.environment().sqlite());
+
+    String rendered = renderHelpText(helpDescriptor, environmentDescriptor, true);
+
+    assertTrue(rendered.contains("FinGrind"));
+    assertTrue(rendered.contains("Shortcuts"));
+    assertTrue(rendered.contains("Full guide"));
+    assertTrue(rendered.contains("json via FINGRIND_DEFAULT_OUTPUT"));
+    assertFalse(rendered.contains("Quick Start"));
+    assertFalse(rendered.contains("Reference"));
+  }
+
+  @Test
   void renderHelpText_placesKeyGenerationBeforeBookOpeningInRootHelp() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             MachineContract.help(
                 CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment()));
 
@@ -146,7 +183,7 @@ class CliDiscoveryHelpTextRendererTest {
   @Test
   void renderHelpText_treatsSingleCommandWithQuickStartAsGeneralHelp() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind help"),
@@ -193,7 +230,7 @@ class CliDiscoveryHelpTextRendererTest {
             CliDiscoveryTestSupport.environment(),
             OperationId.POST_ENTRY);
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind post-entry --book-file <path> --request-file <path|->"),
@@ -239,7 +276,7 @@ class CliDiscoveryHelpTextRendererTest {
   @Test
   void renderHelpText_rendersFallbackSectionsWhenUsageOptionsAndExamplesAreAbsent() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of(),
@@ -278,7 +315,7 @@ class CliDiscoveryHelpTextRendererTest {
   @Test
   void renderHelpText_omitsExitBehaviorWhenNoExitCodesArePublished() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of(),
@@ -324,7 +361,7 @@ class CliDiscoveryHelpTextRendererTest {
             OperationId.EXECUTE_PLAN);
 
     String declareRendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind declare-account --request-file <path|->"),
@@ -347,7 +384,7 @@ class CliDiscoveryHelpTextRendererTest {
                 CliDiscoveryTestSupport.withoutDeclareAccountEnumVocabulary(
                     Objects.requireNonNull(declareCanonical.requestShapes()))));
     String executePlanRendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind execute-plan --request-file <path|->"),
@@ -386,7 +423,7 @@ class CliDiscoveryHelpTextRendererTest {
   @Test
   void renderHelpText_includesCsvContractForCsvCapableCommands() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             MachineContract.help(
                 CliDiscoveryTestSupport.identity(),
                 CliDiscoveryTestSupport.environment(),
@@ -404,7 +441,7 @@ class CliDiscoveryHelpTextRendererTest {
         FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
     try {
       String rendered =
-          CliDiscoveryOutputRenderer.renderHelpText(
+          renderHelpText(
               MachineContract.help(
                   CliDiscoveryTestSupport.identity(),
                   CliDiscoveryTestSupport.environment(),
@@ -423,7 +460,7 @@ class CliDiscoveryHelpTextRendererTest {
         FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.DIRECT_JAVA_RUNTIME_DISTRIBUTION);
     try {
       String rendered =
-          CliDiscoveryOutputRenderer.renderHelpText(
+          renderHelpText(
               MachineContract.help(
                   CliDiscoveryTestSupport.identity(),
                   CliDiscoveryTestSupport.environment(),
@@ -455,7 +492,7 @@ class CliDiscoveryHelpTextRendererTest {
             OperationId.EXECUTE_PLAN);
 
     String postEntryWithoutRequestShapes =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 postEntryCanonical.application(),
                 postEntryCanonical.version(),
@@ -473,7 +510,7 @@ class CliDiscoveryHelpTextRendererTest {
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel()));
     String postEntryWithoutShape =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 postEntryCanonical.application(),
                 postEntryCanonical.version(),
@@ -495,7 +532,7 @@ class CliDiscoveryHelpTextRendererTest {
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel()));
     String postEntryWithoutTemplate =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 postEntryCanonical.application(),
                 postEntryCanonical.version(),
@@ -513,7 +550,7 @@ class CliDiscoveryHelpTextRendererTest {
                 postEntryCanonical.preflight(),
                 postEntryCanonical.currencyModel()));
     String declareWithoutRequestShapes =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
@@ -531,7 +568,7 @@ class CliDiscoveryHelpTextRendererTest {
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel()));
     String declareWithoutShape =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
@@ -553,7 +590,7 @@ class CliDiscoveryHelpTextRendererTest {
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel()));
     String declareWithoutTemplate =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
@@ -571,7 +608,7 @@ class CliDiscoveryHelpTextRendererTest {
                 declareCanonical.preflight(),
                 declareCanonical.currencyModel()));
     String executePlanWithoutRequestShapes =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
@@ -589,7 +626,7 @@ class CliDiscoveryHelpTextRendererTest {
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel()));
     String executePlanWithoutShape =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
@@ -611,7 +648,7 @@ class CliDiscoveryHelpTextRendererTest {
                 executePlanCanonical.preflight(),
                 executePlanCanonical.currencyModel()));
     String executePlanWithoutTemplate =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
@@ -643,7 +680,7 @@ class CliDiscoveryHelpTextRendererTest {
   @Test
   void renderHelpText_labelsUnrecognizedWorkflowCommandsAsNumberedSteps() {
     String rendered =
-        CliDiscoveryOutputRenderer.renderHelpText(
+        renderHelpText(
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind help"),

@@ -11,16 +11,6 @@ internal val reviewedJavaSqliteAndPdfTestSourceSurfaces =
             splitTrigger =
                 "Split by runtime state family before adding another probe-status branch.",
             roleName = "sqlite-runtime-probe-test",
-            physicalLines = 1003,
-            logicalLines = 962,
-            imports = 23,
-            nestedTypes = 48,
-            methodsPerTopLevelType = 40,
-            fieldsPerTopLevelType = 32,
-            switchArmsPerMethod = 20,
-            methodLineSpan = 380,
-            methodParameters = 10,
-            methodDecisionPoints = 32,
             approval =
                 reviewedApproval(
                     physicalLines = 962,

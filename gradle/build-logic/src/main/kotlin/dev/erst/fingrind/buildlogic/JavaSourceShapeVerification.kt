@@ -85,12 +85,6 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                 }
                 existingRelativePaths += relativePath
                 val packageName = JavaSourceStructuralContracts.packageNameFor(file)
-                val defaultBudget =
-                    JavaSourceStructuralContracts.baselineBudgetFor(
-                        relativePath = relativePath,
-                        packageName = packageName,
-                        exportedPackages = exportedPackages,
-                    )
                 val contract =
                     JavaSourceStructuralContracts.contractFor(
                         projectPath = projectPath,
@@ -98,6 +92,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                         packageName = packageName,
                         exportedPackages = exportedPackages,
                     )
+                val defaultBudget = contract.defaultBudget
                 val metrics = JavaSourceShapeMetrics.measure(file)
                 val reviewedSurface = contract.reviewedSurface
                 val approval = reviewedSurface?.approval
@@ -106,7 +101,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                     listOf(
                             relativePath,
                             defaultBudget.roleName,
-                            contract.budget.roleName,
+                            contract.activeRoleName,
                             reviewedSurface?.owner.orEmpty(),
                             approval?.expiresOn?.toString().orEmpty(),
                             reviewedSurface?.budgetVarianceReason.orEmpty(),
@@ -133,8 +128,9 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                             metrics.maxMethodDecisionPoints.toString(),
                         )
                         .joinToString("\t")
-                violations += javaShapeViolations(relativePath, metrics, contract.budget)
-                if (reviewedSurface != null) {
+                if (reviewedSurface == null) {
+                    violations += javaShapeViolations(relativePath, metrics, defaultBudget)
+                } else {
                     violations += reviewedSurfaceDefinitionViolations(reviewedSurface, defaultBudget)
                     violations +=
                         reviewedSurfaceViolations(

@@ -37,6 +37,7 @@ public final class BookkeepingReadReportPublishedLanguageTranslator {
     return new TrialBalanceReport(
         view.bookIdentity(),
         view.effectiveDateAsOf(),
+        view.resolvedEffectiveDateAsOf(),
         view.comparativeEffectiveDateRange(),
         view.postingCoverage(),
         rows,

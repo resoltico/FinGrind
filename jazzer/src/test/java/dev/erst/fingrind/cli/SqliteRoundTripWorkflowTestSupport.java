@@ -302,6 +302,11 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
+    public Optional<java.time.LocalDate> latestPostingEffectiveDate() {
+      return Optional.empty();
+    }
+
+    @Override
     public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
       throw new UnsupportedOperationException();
     }

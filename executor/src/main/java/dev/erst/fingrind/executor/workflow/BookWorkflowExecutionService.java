@@ -16,92 +16,6 @@ import org.jspecify.annotations.Nullable;
 
 /** Executes local workflow plans against one atomic book session. */
 public final class BookWorkflowExecutionService {
-  /** Immutable outcome of running the workflow steps before the final commit boundary. */
-  private record StepExecutionState(
-      @Nullable BookWorkflowExecutionResult terminalResult,
-      BookWorkflowJournalEntry.@Nullable Succeeded pendingSuccessfulStep) {
-    private StepExecutionState {
-      if ((terminalResult == null) == (pendingSuccessfulStep == null)) {
-        throw new IllegalArgumentException(
-            "Exactly one of terminalResult or pendingSuccessfulStep must be present.");
-      }
-    }
-
-    private static StepExecutionState terminal(BookWorkflowExecutionResult terminalResult) {
-      return new StepExecutionState(Objects.requireNonNull(terminalResult, "terminalResult"), null);
-    }
-
-    private static StepExecutionState pending(BookWorkflowJournalEntry.Succeeded successfulStep) {
-      return new StepExecutionState(null, Objects.requireNonNull(successfulStep, "successfulStep"));
-    }
-  }
-
-  /** Immutable context for one plan-boundary failure that must produce a terminal journal entry. */
-  private record BoundaryFailureContext(
-      BookWorkflowPlanId planId,
-      Instant planStartedAt,
-      List<BookWorkflowJournalEntry> entries,
-      BookWorkflowBoundaryPhase phase,
-      Instant phaseStartedAt,
-      @Nullable BookWorkflowStepId triggerStepId,
-      @Nullable BookWorkflowJournalDescriptor triggerDescriptor) {
-    private BoundaryFailureContext {
-      Objects.requireNonNull(planId, "planId");
-      Objects.requireNonNull(planStartedAt, "planStartedAt");
-      Objects.requireNonNull(entries, "entries");
-      Objects.requireNonNull(phase, "phase");
-      Objects.requireNonNull(phaseStartedAt, "phaseStartedAt");
-    }
-
-    private static BoundaryFailureContext begin(
-        BookWorkflowPlanId planId, Instant planStartedAt, List<BookWorkflowJournalEntry> entries) {
-      return new BoundaryFailureContext(
-          planId,
-          planStartedAt,
-          entries,
-          BookWorkflowBoundaryPhase.BEGIN,
-          planStartedAt,
-          null,
-          null);
-    }
-
-    private static BoundaryFailureContext beforeStep(
-        BookWorkflowPlanId planId,
-        Instant planStartedAt,
-        List<BookWorkflowJournalEntry> entries,
-        BookWorkflowBoundaryPhase phase,
-        BookWorkflowStep step,
-        Instant phaseStartedAt) {
-      Objects.requireNonNull(step, "step");
-      return new BoundaryFailureContext(
-          planId,
-          planStartedAt,
-          entries,
-          phase,
-          phaseStartedAt,
-          step.stepId(),
-          new BookWorkflowJournalDescriptor.Step(step));
-    }
-
-    private static BoundaryFailureContext afterJournalEntry(
-        BookWorkflowPlanId planId,
-        Instant planStartedAt,
-        List<BookWorkflowJournalEntry> entries,
-        BookWorkflowBoundaryPhase phase,
-        BookWorkflowJournalEntry entry,
-        Instant phaseStartedAt) {
-      Objects.requireNonNull(entry, "entry");
-      return new BoundaryFailureContext(
-          planId,
-          planStartedAt,
-          entries,
-          phase,
-          phaseStartedAt,
-          entry.stepId(),
-          entry.descriptor());
-    }
-  }
-
   private final LedgerPlanTransaction transactionStore;
   private final Clock clock;
   private final LedgerPlanStepExecutor stepExecutor;
@@ -149,7 +63,8 @@ public final class BookWorkflowExecutionService {
       return initializationFailure;
     }
 
-    StepExecutionState stepExecutionState = executeSteps(plan, startedAt, steps, entries);
+    BookWorkflowStepExecutionState stepExecutionState =
+        executeSteps(plan, startedAt, steps, entries);
     if (stepExecutionState.terminalResult() != null) {
       return Objects.requireNonNull(stepExecutionState.terminalResult(), "terminalResult");
     }
@@ -168,7 +83,10 @@ public final class BookWorkflowExecutionService {
       return null;
     } catch (RuntimeException exception) {
       return boundaryFailureResult(
-          BoundaryFailureContext.begin(plan.planId(), startedAt, entries), exception, null, null);
+          BookWorkflowBoundaryFailureContext.begin(plan.planId(), startedAt, entries),
+          exception,
+          null,
+          null);
     }
   }
 
@@ -188,7 +106,7 @@ public final class BookWorkflowExecutionService {
           plan.planId(), startedAt, entries, stepExecutor.missingBookEntry(firstStep, startedAt));
     } catch (RuntimeException exception) {
       return boundaryFailureAfterRollback(
-          BoundaryFailureContext.beforeStep(
+          BookWorkflowBoundaryFailureContext.beforeStep(
               plan.planId(),
               startedAt,
               entries,
@@ -200,7 +118,7 @@ public final class BookWorkflowExecutionService {
     }
   }
 
-  private StepExecutionState executeSteps(
+  private BookWorkflowStepExecutionState executeSteps(
       BookWorkflowPlan plan,
       Instant startedAt,
       List<BookWorkflowStep> steps,
@@ -214,11 +132,11 @@ public final class BookWorkflowExecutionService {
       pendingSuccessfulStep =
           Objects.requireNonNull(stepOutcome.pendingSuccessfulStep(), "pendingSuccessfulStep");
     }
-    return StepExecutionState.pending(
+    return BookWorkflowStepExecutionState.pending(
         Objects.requireNonNull(pendingSuccessfulStep, "pendingSuccessfulStep"));
   }
 
-  private StepExecutionState executeStep(
+  private BookWorkflowStepExecutionState executeStep(
       BookWorkflowPlanId planId,
       Instant planStartedAt,
       List<BookWorkflowJournalEntry> entries,
@@ -230,17 +148,17 @@ public final class BookWorkflowExecutionService {
       return switch (stepEntry) {
         case BookWorkflowJournalEntry.Succeeded succeeded -> {
           appendPendingSuccess(entries, pendingSuccessfulStep);
-          yield StepExecutionState.pending(succeeded);
+          yield BookWorkflowStepExecutionState.pending(succeeded);
         }
         case BookWorkflowJournalEntry.Failed failed -> {
           appendPendingSuccess(entries, pendingSuccessfulStep);
-          yield StepExecutionState.terminal(
+          yield BookWorkflowStepExecutionState.terminal(
               failedResultWithRollback(planId, planStartedAt, entries, failed));
         }
       };
     } catch (RuntimeException exception) {
       appendPendingSuccess(entries, pendingSuccessfulStep);
-      return StepExecutionState.terminal(
+      return BookWorkflowStepExecutionState.terminal(
           unexpectedStepFailure(planId, planStartedAt, entries, step, stepStartedAt, exception));
     }
   }
@@ -258,7 +176,7 @@ public final class BookWorkflowExecutionService {
     RuntimeException rollbackFailure = rollbackFailure();
     if (rollbackFailure != null) {
       return boundaryFailureResult(
-          BoundaryFailureContext.afterJournalEntry(
+          BookWorkflowBoundaryFailureContext.afterJournalEntry(
               planId,
               planStartedAt,
               entries,
@@ -283,7 +201,7 @@ public final class BookWorkflowExecutionService {
       transactionStore.commitLedgerPlanTransaction();
     } catch (RuntimeException exception) {
       return boundaryFailureAfterRollback(
-          BoundaryFailureContext.afterJournalEntry(
+          BookWorkflowBoundaryFailureContext.afterJournalEntry(
               planId,
               startedAt,
               entries,
@@ -313,7 +231,7 @@ public final class BookWorkflowExecutionService {
     RuntimeException rollbackFailure = rollbackFailure();
     if (rollbackFailure != null) {
       return boundaryFailureResult(
-          BoundaryFailureContext.afterJournalEntry(
+          BookWorkflowBoundaryFailureContext.afterJournalEntry(
               planId,
               startedAt,
               entries,
@@ -329,7 +247,7 @@ public final class BookWorkflowExecutionService {
   }
 
   private BookWorkflowExecutionResult boundaryFailureAfterRollback(
-      BoundaryFailureContext context,
+      BookWorkflowBoundaryFailureContext context,
       RuntimeException exception,
       @Nullable BookWorkflowFailure priorFailure) {
     RuntimeException rollbackFailure = rollbackFailure();
@@ -337,7 +255,7 @@ public final class BookWorkflowExecutionService {
   }
 
   private BookWorkflowExecutionResult boundaryFailureResult(
-      BoundaryFailureContext context,
+      BookWorkflowBoundaryFailureContext context,
       RuntimeException exception,
       @Nullable RuntimeException cleanupFailure,
       @Nullable BookWorkflowFailure priorFailure) {

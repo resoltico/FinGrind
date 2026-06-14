@@ -25,7 +25,8 @@ class CliResponseWriterDiscoverySupport extends CliResponseWriterBaseSupport {
   }
 
   void writeHelp(HelpDescriptor helpDescriptor, OutputMode outputMode, DiscoveryDetail detail) {
-    discoveryWriter.writeHelp(helpDescriptor, outputMode, detail, null);
+    discoveryWriter.writeHelp(
+        helpDescriptor, CliDiscoveryTestSupport.environment(), outputMode, detail, null, false);
   }
 
   void writeCapabilities(CapabilitiesDescriptor capabilitiesDescriptor) {

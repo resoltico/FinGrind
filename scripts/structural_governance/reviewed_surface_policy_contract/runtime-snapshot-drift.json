@@ -1,0 +1,16 @@
+{
+  "documentType": "case",
+  "caseType": "runtime",
+  "id": "snapshot-drift",
+  "relativePath": "src/main/java/dev/erst/fingrind/example/DriftedWaiver.java",
+  "reviewedSurfaceProfile": "example-reviewed",
+  "defaultBudgetProfile": "tight-main",
+  "approvalProfile": "tight-future",
+  "liveMetricsProfile": "tight-drifted",
+  "currentDate": "2026-06-14",
+  "expectedDescriptors": [
+    "snapshot-drift:physical-lines:11:12",
+    "snapshot-drift:logical-lines:10:9",
+    "snapshot-drift:imports:1:2"
+  ]
+}

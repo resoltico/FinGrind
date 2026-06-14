@@ -21,6 +21,7 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -86,6 +87,11 @@ class SqliteReadCapabilitySession extends SqliteDelegatingSession implements Sql
   public List<AccountCurrencyTotals> accountTotals(
       EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
     return store.accountTotals(effectiveDateRange, postingCoverage);
+  }
+
+  @Override
+  public Optional<LocalDate> latestPostingEffectiveDate() {
+    return store.latestPostingEffectiveDate();
   }
 
   @Override

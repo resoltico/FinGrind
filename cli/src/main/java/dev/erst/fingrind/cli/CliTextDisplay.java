@@ -44,7 +44,20 @@ final class CliTextDisplay {
   }
 
   static String upperDateBoundary(@Nullable LocalDate effectiveDateTo) {
-    return effectiveDateTo == null ? "current book horizon" : effectiveDateTo.toString();
+    return effectiveDateTo == null
+        ? "current book horizon (latest effective date in the selected book)"
+        : effectiveDateTo.toString();
+  }
+
+  static String resolvedUpperDateBoundary(
+      @Nullable LocalDate selectedEffectiveDateTo, @Nullable LocalDate resolvedEffectiveDateTo) {
+    if (selectedEffectiveDateTo != null) {
+      return selectedEffectiveDateTo.toString();
+    }
+    if (resolvedEffectiveDateTo != null) {
+      return resolvedEffectiveDateTo + " (latest effective date in the selected book)";
+    }
+    return "no postings in selected book";
   }
 
   static String dateRange(

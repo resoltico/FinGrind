@@ -91,6 +91,10 @@ final class SqliteStoreReadOperations {
     return queryOperations.accountTotals(effectiveDateRange, postingCoverage);
   }
 
+  Optional<LocalDate> latestPostingEffectiveDate() {
+    return reportOperations.latestPostingEffectiveDate();
+  }
+
   TrialBalanceView trialBalance(TrialBalanceCriteria query) {
     return reportOperations.trialBalance(query);
   }

@@ -19,7 +19,8 @@ final class CliArguments {
           null,
           dev.erst.fingrind.contract.protocol.OutputMode.TEXT,
           dev.erst.fingrind.contract.protocol.DiscoveryDetail.MINIMAL,
-          null);
+          null,
+          true);
     }
     @Nullable CliCommand commandHelp = parseCommandSpecificHelp(arguments);
     if (commandHelp != null) {

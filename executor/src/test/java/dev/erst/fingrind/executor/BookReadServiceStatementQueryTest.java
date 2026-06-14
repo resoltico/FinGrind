@@ -850,6 +850,13 @@ class BookReadServiceStatementQueryTest {
     }
 
     @Override
+    public Optional<LocalDate> latestPostingEffectiveDate() {
+      return postings.stream()
+          .map(posting -> posting.journalEntry().effectiveDate())
+          .max(LocalDate::compareTo);
+    }
+
+    @Override
     public dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage listAccounts(
         dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery query) {
       throw unsupported();

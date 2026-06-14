@@ -22,6 +22,7 @@ abstract class WriteBundleArchiveManifestTask : DefaultTask() {
     fun writeManifest() {
         val archivePath = normalizedPath(archiveFile.get().asFile)
         val checksumPath = normalizedPath(checksumFile.get().asFile)
+        val manifestPath = normalizedPath(outputFile.get().asFile)
         outputFile.get().asFile.apply {
             parentFile.mkdirs()
             writeText(
@@ -34,6 +35,9 @@ abstract class WriteBundleArchiveManifestTask : DefaultTask() {
                 StandardCharsets.UTF_8,
             )
         }
+        logger.lifecycle("FinGrind CLI bundle archive: $archivePath")
+        logger.lifecycle("FinGrind CLI bundle checksum: $checksumPath")
+        logger.lifecycle("FinGrind CLI bundle manifest: $manifestPath")
     }
 
     private fun normalizedPath(file: File): String = file.path.replace(File.separatorChar, '/')

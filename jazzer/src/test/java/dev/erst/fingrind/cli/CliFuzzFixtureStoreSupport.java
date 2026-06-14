@@ -183,6 +183,11 @@ final class CliFuzzFixtureStoreSupport {
     }
 
     @Override
+    public Optional<java.time.LocalDate> latestPostingEffectiveDate() {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
     public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
       throw new UnsupportedOperationException("not used");
     }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.buildlogic
 
+import java.nio.file.Path
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,6 +9,8 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class JavaSourceShapeContractsTest {
+    private val repositoryRoot = Path.of("").toAbsolutePath().normalize().parent.parent
+
     @Test
     fun exportedMainFiles_useExportedBudgetWhenNoReviewedContractExists() {
         val contract =
@@ -19,12 +22,13 @@ class JavaSourceShapeContractsTest {
                 exportedPackages = setOf("dev.erst.fingrind.contract.protocol"),
             )
 
-        assertEquals("exported-public-seam", contract.budget.roleName)
+        assertEquals("exported-public-seam", contract.defaultBudget.roleName)
+        assertEquals("exported-public-seam", contract.activeRoleName)
         assertNull(contract.reviewedSurface)
     }
 
     @Test
-    fun reviewedPaths_useReviewedBudgetInsteadOfFilenameHeuristics() {
+    fun reviewedPaths_publishReviewedRolesInsteadOfSmugglingReviewedBudgets() {
         val contract =
             JavaSourceStructuralContracts.contractFor(
                 projectPath = FinGrindProjectPaths.CONTRACT,
@@ -36,7 +40,8 @@ class JavaSourceShapeContractsTest {
 
         val reviewedSurface = assertNotNull(contract.reviewedSurface)
         assertEquals("contract-bookkeeping", reviewedSurface.owner)
-        assertEquals("bookkeeping-rejection-narrative", contract.budget.roleName)
+        assertEquals("exported-public-seam", contract.defaultBudget.roleName)
+        assertEquals("bookkeeping-rejection-narrative", contract.activeRoleName)
         assertNotNull(reviewedSurface.budgetVarianceReason)
         assertNull(reviewedSurface.duplicationExemptionReason)
         assertTrue(reviewedSurface.approval.expiresOn.isAfter(LocalDate.now()))
@@ -50,7 +55,14 @@ class JavaSourceShapeContractsTest {
                 relativePath =
                     "src/main/java/dev/erst/fingrind/executor/bookkeeping/PeriodResultTransferPlanner.java",
                 packageName = "dev.erst.fingrind.executor.bookkeeping",
-                exportedPackages = setOf("dev.erst.fingrind.executor.bookkeeping"),
+                exportedPackages = emptySet(),
+            )
+        val sqliteContract =
+            JavaSourceStructuralContracts.contractFor(
+                projectPath = FinGrindProjectPaths.SQLITE,
+                relativePath = "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeCalls.java",
+                packageName = "dev.erst.fingrind.sqlite.internal",
+                exportedPackages = emptySet(),
             )
         val cliContract =
             JavaSourceStructuralContracts.contractFor(
@@ -60,10 +72,12 @@ class JavaSourceShapeContractsTest {
                 exportedPackages = emptySet(),
             )
 
-        assertNotNull(executorContract.reviewedSurface)
-        assertEquals("period-result-transfer-planner", executorContract.budget.roleName)
+        assertNull(executorContract.reviewedSurface)
+        assertEquals("production-main", executorContract.activeRoleName)
+        assertNotNull(sqliteContract.reviewedSurface)
+        assertEquals("sqlite-native-call-table", sqliteContract.activeRoleName)
         assertNotNull(cliContract.reviewedSurface)
-        assertEquals("cli-plan-json-aggregate", cliContract.budget.roleName)
+        assertEquals("cli-plan-json-aggregate", cliContract.activeRoleName)
     }
 
     @Test
@@ -77,7 +91,8 @@ class JavaSourceShapeContractsTest {
                 exportedPackages = emptySet(),
             )
 
-        assertEquals("production-main", contract.budget.roleName)
+        assertEquals("production-main", contract.defaultBudget.roleName)
+        assertEquals("production-main", contract.activeRoleName)
         assertNull(contract.reviewedSurface)
     }
 
@@ -92,36 +107,16 @@ class JavaSourceShapeContractsTest {
                 reviewedSurface.approval.expiresOn <= LocalDate.now().plusDays(120),
                 "reviewed surface waivers must stay short-lived: ${reviewedSurface.relativePath}",
             )
-            val approvedShape = reviewedSurface.approval.approvedShape
+            val sourceFile =
+                repositoryRoot.resolve(reviewedSurface.projectPath).resolve(reviewedSurface.relativePath)
             assertTrue(
-                approvedShape.physicalLineCount <= reviewedSurface.budget.maxPhysicalLines,
+                sourceFile.toFile().isFile,
+                "reviewed surface source file must resolve inside the repository: ${reviewedSurface.relativePath}",
             )
-            assertTrue(
-                approvedShape.logicalLineCount <= reviewedSurface.budget.maxLogicalLines,
-            )
-            assertTrue(
-                approvedShape.importCount <= reviewedSurface.budget.maxImports,
-            )
-            assertTrue(
-                approvedShape.nestedTypeCount <= reviewedSurface.budget.maxNestedTypes,
-            )
-            assertTrue(
-                approvedShape.maxMethodsPerTopLevelType <= reviewedSurface.budget.maxMethodsPerTopLevelType,
-            )
-            assertTrue(
-                approvedShape.maxFieldsPerTopLevelType <= reviewedSurface.budget.maxFieldsPerTopLevelType,
-            )
-            assertTrue(
-                approvedShape.maxSwitchArmsPerMethod <= reviewedSurface.budget.maxSwitchArmsPerMethod,
-            )
-            assertTrue(
-                approvedShape.maxMethodLineSpan <= reviewedSurface.budget.maxMethodLineSpan,
-            )
-            assertTrue(
-                approvedShape.maxMethodParameters <= reviewedSurface.budget.maxMethodParameters,
-            )
-            assertTrue(
-                approvedShape.maxMethodDecisionPoints <= reviewedSurface.budget.maxMethodDecisionPoints,
+            assertEquals(
+                reviewedSurface.approval.approvedShape,
+                JavaSourceShapeMetrics.measure(sourceFile.toFile()),
+                "reviewed surface approvals must match the exact live snapshot: ${reviewedSurface.relativePath}",
             )
         }
     }

@@ -123,7 +123,7 @@ final class ProtocolUserInstallMarkdownRenderer {
     return String.join(
         "\n",
         "- image reference: `%s`".formatted(CONTAINER_IMAGE_REFERENCE),
-        "- published tags: one exact release tag such as `0.53.0` plus `latest`, where %s"
+        "- published tags: one exact release tag such as `0.54.0` plus `latest`, where %s"
             .formatted(latestPolicy),
         "- published platforms: `%s`".formatted(String.join("`, `", platforms)),
         "- mounted launcher prefix: `docker run --rm -i -v <host-workdir>:/workspace -w /workspace %s:<tag>`"

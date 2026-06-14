@@ -88,15 +88,43 @@ class BookReadServiceReportQueryTest {
 
       assertEquals(
           new TrialBalanceResult.Reported(
-              trialBalanceReport(
+              new TrialBalanceReport(
                   bookIdentity(),
                   Optional.empty(),
-                  EffectiveDateRange.of(null, null),
+                  Optional.of(EFFECTIVE_DATE),
+                  EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
                   allPostingKinds(),
                   List.of(
                       new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE),
                       new TrialBalanceRow(REVENUE_ACCOUNT, EUR_CREDIT_BALANCE)),
-                  List.of())),
+                  List.of(EUR_NET_ZERO),
+                  true,
+                  List.of(),
+                  List.of(),
+                  true)),
+          service.trialBalance(new TrialBalanceQuery(Optional.empty(), allPostingKinds())));
+    }
+  }
+
+  @Test
+  void trialBalance_withoutPostings_keepsComparativeRangeUnresolved() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      BookReadService service = readService(bookSession);
+
+      assertEquals(
+          new TrialBalanceResult.Reported(
+              new TrialBalanceReport(
+                  bookIdentity(),
+                  Optional.empty(),
+                  Optional.empty(),
+                  EffectiveDateRange.unbounded(),
+                  allPostingKinds(),
+                  List.of(),
+                  List.of(),
+                  true,
+                  List.of(),
+                  List.of(),
+                  true)),
           service.trialBalance(new TrialBalanceQuery(Optional.empty(), allPostingKinds())));
     }
   }
@@ -227,6 +255,7 @@ class BookReadServiceReportQueryTest {
     List<CurrencyBalance> comparativeTotals = trialBalanceTotals(comparativeRows);
     return new TrialBalanceReport(
         bookIdentity,
+        effectiveDateAsOf,
         effectiveDateAsOf,
         comparativeEffectiveDateRange,
         postingCoverage,

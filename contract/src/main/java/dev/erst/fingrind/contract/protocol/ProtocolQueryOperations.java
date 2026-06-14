@@ -136,7 +136,7 @@ final class ProtocolQueryOperations {
     return ProtocolQueryReportOperations.asOfReportOperation(
         OperationId.TRIAL_BALANCE,
         "Trial Balance",
-        "Compute one book-wide trial balance as of the selected effective date or the current book horizon when no date filter is supplied.",
+        "Compute one book-wide trial balance as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
         ProtocolQueryOperationExamples.trialBalanceExample());
   }
 
@@ -161,7 +161,7 @@ final class ProtocolQueryOperations {
     return ProtocolQueryReportOperations.asOfReportOperation(
         OperationId.FINANCIAL_POSITION,
         "Financial Position",
-        "Compute one statement of financial position as of the selected effective date or the current book horizon when no date filter is supplied.",
+        "Compute one statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
         ProtocolQueryOperationExamples.financialPositionExample());
   }
 

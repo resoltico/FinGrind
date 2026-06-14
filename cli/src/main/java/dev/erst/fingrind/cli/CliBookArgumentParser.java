@@ -34,6 +34,12 @@ final class CliBookArgumentParser {
         arguments, BookArgumentMode.BOOK_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
   }
 
+  static List<String> requestBoundCommandSupportedArguments(
+      @Nullable CommandArgumentSpec commandArgumentSpec) {
+    return supportedArguments(
+        BookArgumentMode.REQUEST_BOUND_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
+  }
+
   private static ParsedBookArguments parseBookArguments(
       List<String> arguments,
       BookArgumentMode mode,
@@ -110,7 +116,7 @@ final class CliBookArgumentParser {
                   argumentValues.passphraseSourceKind,
                   CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
       case ProtocolOptions.REQUEST_FILE ->
-          applyRequestFileArgument(argumentValues, mode, argumentIterator);
+          applyRequestFileArgument(argumentValues, mode, commandArgumentSpec, argumentIterator);
       default ->
           applyCommandArgument(
               argumentValues, mode, commandArgumentSpec, argument, argumentIterator);
@@ -120,10 +126,11 @@ final class CliBookArgumentParser {
   private static void applyRequestFileArgument(
       ParsedBookArgumentValues argumentValues,
       BookArgumentMode mode,
+      @Nullable CommandArgumentSpec commandArgumentSpec,
       ListIterator<String> argumentIterator) {
     if (!mode.acceptsRequestFile()) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.REQUEST_FILE, "Unsupported argument: " + ProtocolOptions.REQUEST_FILE);
+      throw CliArgumentValueParser.unsupportedArgument(
+          ProtocolOptions.REQUEST_FILE, supportedArguments(mode, commandArgumentSpec));
     }
     if (argumentValues.requestFile != null) {
       throw CliArgumentValueParser.invalid(
@@ -140,12 +147,14 @@ final class CliBookArgumentParser {
       String argument,
       ListIterator<String> argumentIterator) {
     if (!mode.collectsCommandArguments()) {
-      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      throw CliArgumentValueParser.unsupportedArgument(
+          argument, supportedArguments(mode, commandArgumentSpec));
     }
     CommandArgumentSpec requiredCommandArgumentSpec =
         Objects.requireNonNull(commandArgumentSpec, "commandArgumentSpec");
     if (!requiredCommandArgumentSpec.supports(argument)) {
-      throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      throw CliArgumentValueParser.unsupportedArgument(
+          argument, supportedArguments(mode, requiredCommandArgumentSpec));
     }
     argumentValues.commandArguments.add(argument);
     if (requiredCommandArgumentSpec.requiresValue(argument)) {
@@ -216,6 +225,24 @@ final class CliBookArgumentParser {
   enum OptionArity {
     FLAG,
     VALUE
+  }
+
+  private static List<String> supportedArguments(
+      BookArgumentMode mode, @Nullable CommandArgumentSpec commandArgumentSpec) {
+    List<String> requiredArguments =
+        List.of(
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.BOOK_PASSPHRASE_STDIN,
+            ProtocolOptions.BOOK_PASSPHRASE_PROMPT);
+    List<String> supportedArguments = new ArrayList<>(requiredArguments);
+    if (mode.acceptsRequestFile()) {
+      supportedArguments.add(ProtocolOptions.REQUEST_FILE);
+    }
+    if (mode.collectsCommandArguments() && commandArgumentSpec != null) {
+      supportedArguments.addAll(commandArgumentSpec.options().keySet());
+    }
+    return List.copyOf(supportedArguments);
   }
 
   /** Supported parser shapes for commands that address one selected book file. */

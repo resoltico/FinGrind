@@ -13,6 +13,7 @@ import java.util.Optional;
 public record FinancialPositionReport(
     BookIdentity bookIdentity,
     Optional<LocalDate> effectiveDateAsOf,
+    Optional<LocalDate> resolvedEffectiveDateAsOf,
     EffectiveDateRange comparativeEffectiveDateRange,
     PostingCoverage postingCoverage,
     boolean accountingEquationBalanced,
@@ -22,6 +23,7 @@ public record FinancialPositionReport(
   public FinancialPositionReport {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
+    Objects.requireNonNull(resolvedEffectiveDateAsOf, "resolvedEffectiveDateAsOf");
     Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     sections = ContractDescriptorValidation.copyList(sections, "sections");

@@ -1,9 +1,10 @@
-# Java 26+ / Gradle Agent Protocol
+# Java 26+ Agent Protocol
 
-**Version:** 2.0.0
-**Updated:** 2026-04-27
-**Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v2.0.0+
-**Scope:** Java **26+** projects built with **Gradle** — applications, libraries, CLIs, services, frameworks, plugins, tools, and multi-module builds.
+**Version:** 2.2.0
+**Updated:** 2026-06-13
+**Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v3.0.0+
+**Companion:** [.codex/PROTOCOL_GRADLE.md](./PROTOCOL_GRADLE.md) for Gradle build logic.
+**Scope:** Java **26+** projects — applications, libraries, CLIs, services, frameworks, plugins, tools, and multi-module builds. For Gradle builds, load alongside the Gradle protocol.
 
 ## 0. Scope and inheritance
 
@@ -417,72 +418,27 @@ The universal contract §5 defines the canonical-ownership rule. Java/Gradle-rel
 
 Every surface that exposes the fact must derive from that owner or from generated artifacts rooted in it.
 
-## 9. Gradle and build logic
+## 9. Java build wiring (Gradle)
 
-### 9.1 Wrapper, toolchains, and Java 26 compatibility
+The language-independent Gradle rules — wrapper and toolchains, Kotlin-DSL authoring, version catalogs and dependency hygiene, repositories, convention plugins, multi-module structure, performance features, and build isolation/daemon management — are owned by `.codex/PROTOCOL_GRADLE.md`. Load it for any Gradle build change. The subsections below are the Java-specific build wiring that sits on top of it.
 
-Use the Gradle wrapper. Do not invoke a globally installed `gradle`.
+### 9.1 Java 26 toolchain compatibility
 
-Use Java toolchains for compilation and, where appropriate, test and runtime tasks. The build must not depend on whichever JDK happens to be installed on the machine.
+Gradle must be new enough to support Java 26 toolchains and, if needed, running Gradle on Java 26. Use Gradle **9.4.0+** for Java 26 support.
 
-For Java 26:
+Verify Kotlin, Groovy, Android Gradle Plugin, JaCoCo, Error Prone, NullAway, Checkstyle, PMD, SpotBugs, and other tooling against the configured Java toolchain before relying on a Java 26 toolchain.
 
-- Gradle must be new enough to support Java 26 toolchains and, if needed, running Gradle on Java 26. Use Gradle **9.4.0+** for Java 26 support.
-- When upgrading the wrapper, prefer the current stable Gradle version supported by the repository's plugins rather than a minimal version alone.
-- Verify Kotlin, Groovy, Android Gradle Plugin, JaCoCo, Error Prone, NullAway, Checkstyle, PMD, SpotBugs, and other tooling against the configured Java toolchain.
-
-### 9.2 Build authoring language
-
-For new build logic, prefer Gradle Kotlin DSL. If the repository uses Groovy DSL, preserve that choice unless migration is part of the task.
-
-Do not turn a Java task into an accidental DSL migration.
-
-### 9.3 Bytecode targeting
+### 9.2 Bytecode targeting
 
 For libraries, reusable modules, plugins, or mixed-JDK ecosystems, use explicit bytecode targeting with `--release`. Do not assume `sourceCompatibility` and `targetCompatibility` alone express compatibility intent precisely enough.
 
-### 9.4 Dependencies
-
-Prefer version catalogs (`libs.versions.toml`) for shared dependency coordinates. Do not scatter repeated version strings across build files.
-
-Pin versions. Avoid floating versions such as `latest.release`, `latest.integration`, or `1.+`.
-
-Before adding a dependency:
-
-- verify exact group ID, artifact ID, and version in the declared repository;
-- verify it is not EOL or incompatible with Java 26;
-- verify it is not already provided by the JDK, existing stack, or an existing dependency;
-- verify the API from current documentation, not memory.
-
-Do not add a library to avoid writing a small amount of straightforward code.
-
-### 9.5 Repositories
-
-Keep repositories minimal and explicit. Do not add broad or duplicate repositories casually.
-
-### 9.6 Shared build logic
-
-For substantial shared build logic, prefer convention plugins in an included build such as `build-logic`.
-
-`buildSrc` is acceptable when the repository already uses it, the logic is small and local, or migration cost exceeds benefit.
-
-Convention plugin IDs must be qualified (`com.example.project.java-library`), not generic (`java-library`, `jvm-conventions`).
-
-### 9.7 Preview-feature wiring
+### 9.3 Preview-feature wiring
 
 If preview syntax or APIs are used, synchronize configuration across compilation, test execution, runtime tasks, CI, IDE/developer workflow, packaging, and documentation.
 
 Do not wire preview support for only one phase. A preview feature enabled in `compileJava` but not `test` is the canonical way to ship an unverified change.
 
-### 9.8 Build performance features
-
-Configuration cache, build cache, parallelism, and test distribution are good when correct for the repository. Correctness first. Do not cargo-cult performance flags.
-
-### 9.9 Multi-module structure
-
-Keep module responsibilities sharp. Avoid circular dependencies. Put shared policy in convention plugins rather than duplicated snippets. Do not create modules that exist only to look clean without reducing coupling.
-
-### 9.10 Null annotation build wiring
+### 9.4 Null annotation build wiring
 
 When adopting JSpecify:
 
@@ -491,22 +447,6 @@ When adopting JSpecify:
 - enable JSpecify mode where supported;
 - enforce consistently across modules;
 - avoid partial annotation that produces false confidence.
-
-### 9.11 Build isolation and daemon management
-
-Never run multiple Gradle invocations concurrently against the same project directory.
-
-For concurrent builds across different projects, isolate Gradle user homes:
-
-```bash
-GRADLE_USER_HOME="$PROJECT_ROOT/.gradle-home" ./gradlew check
-```
-
-Add `.gradle-home/` to `.gitignore` if this convention is adopted.
-
-Do not use `./gradlew --stop` routinely. Stop daemons only to recover from confirmed daemon corruption.
-
-Keep `org.gradle.jvmargs` at the minimum heap the project actually requires.
 
 ## 10. Testing and coverage
 
@@ -599,69 +539,15 @@ Record component accessors usually do not need Javadoc beyond clear component na
 
 ### 12.3 Self-containment
 
-Source code, Javadoc, comments, and product documentation must not reference agent directive files by name, section number, or as justification for a design decision.
-
-```java
-// Forbidden
-// Per AGENTS.md, no default on sealed switch.
-
-// Correct
-// No default: compiler enforces exhaustiveness over sealed subtypes.
-```
-
-Agent directive files are operational instructions, not developer-facing design records.
+Source code, Javadoc, comments, and product documentation must not reference agent directive files as justification; `AGENTS.md` §5.7 owns this rule. State the self-contained engineering reason instead.
 
 ## 13. CI and project automation
 
-### 13.1 CI mirrors local verification
-
-The canonical verification command must pass locally and in CI with identical strictness. Do not create CI-only checks that cannot be reproduced locally. Do not soften local checks based on `CI=true`.
-
-### 13.2 Pin third-party actions
-
-Third-party CI actions should be pinned to full-length commit SHAs, not mutable tags.
-
-```yaml
-# Prefer
-uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-
-# Avoid
-uses: actions/checkout@v4
-```
-
-### 13.3 Timeouts and stale runs
-
-Every CI job should declare `timeout-minutes` appropriate to observed runtime.
-
-Use concurrency groups with `cancel-in-progress: true` to abort obsolete runs on the same branch.
-
-```yaml
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-```
-
-### 13.4 Dependency freshness
-
-Use either asynchronous dependency automation or a sync gate paired with automation. A blocking dependency-freshness gate without automated PR creation turns unrelated work into manual dependency maintenance.
+The cross-language CI rules — mirroring local verification, pinning third-party actions to commit SHAs, timeouts and stale-run cancellation, dependency-freshness automation — are owned by `.codex/PROTOCOL_CI.md`. Load it when CI, workflow, or pipeline configuration is touched. Java/Gradle build verification stays in §9 and §10.
 
 ## 14. Incidental observation protocol
 
-When reading a file surfaces a defect, rule violation, or clear improvement outside the active task, record it in the project's designated observation log if one exists. Do not derail the active task unless the issue blocks correctness or safety. This is the Java-side practice for honoring the universal contract's rule that the next improvement is a separate slice (§10).
-
-Each entry should record:
-
-- stable ID;
-- date;
-- status;
-- file and line range;
-- category;
-- what is wrong and why it matters;
-- current pattern or excerpt;
-- resolving change;
-- effort level.
-
-When resolved, update the entry in place rather than deleting it. If no observation log is defined, mention material observations in the work summary only when relevant.
+Owned by `AGENTS.md` §5.2, including the log entry schema. If no observation log is defined, mention material observations in the work summary only when relevant.
 
 ## 15. Pre-output checklist
 

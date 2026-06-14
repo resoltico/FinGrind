@@ -38,7 +38,7 @@
         <!-- Test classes legitimately contain many test methods. -->
         <exclude name="TooManyMethods"/>
         <exclude name="GodClass"/>
-        <!-- File and method size governance lives in FinGrind's structural-governance engine rather than PMD's ambient NCSS defaults. -->
+        <!-- File and method size governance lives in FinGrind's structural-governance verifiers rather than PMD's ambient NCSS defaults. -->
         <exclude name="NcssCount"/>
     </rule>
 

@@ -25,12 +25,24 @@ final class CliQueryTextFormatAccess {
     return CliQueryScopeText.upperDateBoundaryMeaning(effectiveDateTo);
   }
 
+  static String upperDateBoundaryMeaning(
+      @Nullable LocalDate selectedEffectiveDateTo, @Nullable LocalDate resolvedEffectiveDateTo) {
+    return CliQueryScopeText.upperDateBoundaryMeaning(
+        selectedEffectiveDateTo, resolvedEffectiveDateTo);
+  }
+
   static String lowerDateBoundaryLabel(@Nullable LocalDate effectiveDateFrom) {
     return CliQueryScopeText.lowerDateBoundaryLabel(effectiveDateFrom);
   }
 
   static String upperDateBoundaryLabel(@Nullable LocalDate effectiveDateTo) {
     return CliQueryScopeText.upperDateBoundaryLabel(effectiveDateTo);
+  }
+
+  static String upperDateBoundaryLabel(
+      @Nullable LocalDate selectedEffectiveDateTo, @Nullable LocalDate resolvedEffectiveDateTo) {
+    return CliQueryScopeText.upperDateBoundaryLabel(
+        selectedEffectiveDateTo, resolvedEffectiveDateTo);
   }
 
   static String displayBooleanLabel(boolean value) {

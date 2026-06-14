@@ -12,6 +12,14 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses CLI arguments for rekey-rollback inspection, restore, and deletion commands. */
 final class CliRekeyRollbackArguments {
+  private static final List<String> REKEY_ROLLBACK_OPTIONS =
+      List.of(
+          ProtocolOptions.BOOK_FILE,
+          ProtocolOptions.BOOK_KEY_FILE,
+          ProtocolOptions.BOOK_PASSPHRASE_STDIN,
+          ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
+          ProtocolOptions.ROLLBACK_FILE,
+          ProtocolOptions.OUTPUT);
   private static final String DELETE_REKEY_ROLLBACK_COMMAND =
       ProtocolCatalog.operationName(OperationId.DELETE_REKEY_ROLLBACK);
   private static final String RESTORE_REKEY_ROLLBACK_COMMAND =
@@ -136,8 +144,7 @@ final class CliRekeyRollbackArguments {
                   argumentValues.outputMode,
                   CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-      default ->
-          throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      default -> throw CliArgumentValueParser.unsupportedArgument(argument, REKEY_ROLLBACK_OPTIONS);
     }
   }
 

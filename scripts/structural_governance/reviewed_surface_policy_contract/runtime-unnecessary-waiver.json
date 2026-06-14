@@ -1,0 +1,12 @@
+{
+  "documentType": "case",
+  "caseType": "runtime",
+  "id": "unnecessary-waiver",
+  "relativePath": "src/main/java/dev/erst/fingrind/example/ExampleOwner.java",
+  "reviewedSurfaceProfile": "example-reviewed",
+  "defaultBudgetProfile": "wide-main",
+  "approvalProfile": "wide-future",
+  "liveMetricsProfile": "wide-fitting",
+  "currentDate": "2026-06-14",
+  "expectedDescriptors": ["waiver-unnecessary"]
+}

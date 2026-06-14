@@ -1,0 +1,12 @@
+{
+  "documentType": "case",
+  "caseType": "runtime",
+  "id": "expired-waiver",
+  "relativePath": "src/main/java/dev/erst/fingrind/example/ExpiredWaiver.java",
+  "reviewedSurfaceProfile": "example-reviewed",
+  "defaultBudgetProfile": "tight-main",
+  "approvalProfile": "tight-expired",
+  "liveMetricsProfile": "tight-baseline",
+  "currentDate": "2026-06-14",
+  "expectedDescriptors": ["waiver-expired:2026-06-01"]
+}

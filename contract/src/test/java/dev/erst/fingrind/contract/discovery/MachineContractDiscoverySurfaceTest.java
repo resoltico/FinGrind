@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.Test;
 /** Coverage and contract tests for the published machine-discovery surfaces. */
 class MachineContractDiscoverySurfaceTest {
   private static final ApplicationIdentity IDENTITY =
-      new ApplicationIdentity("FinGrind", "0.53.0", "Protected bookkeeping kernel");
+      new ApplicationIdentity("FinGrind", "0.54.0", "Protected bookkeeping kernel");
 
   @Test
   void helpWithoutTopicPublishesCanonicalQuickStartForEveryRuntimeDistribution() {
@@ -301,7 +302,7 @@ class MachineContractDiscoverySurfaceTest {
 
   private static EnvironmentDescriptor environment(RuntimeDistribution runtimeDistribution) {
     return new EnvironmentDescriptor(
-        new EnvironmentRuntimeDescriptor(runtimeDistribution),
+        new EnvironmentRuntimeDescriptor(runtimeDistribution, OutputMode.TEXT, null),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),

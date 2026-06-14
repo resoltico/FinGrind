@@ -99,6 +99,7 @@ class PdfReportServiceTest {
         new FinancialPositionReport(
             BOOK_IDENTITY,
             Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             PostingCoverage.ALL_POSTING_KINDS,
             true,
@@ -158,6 +159,7 @@ class PdfReportServiceTest {
     FinancialPositionReport financialPositionReport =
         new FinancialPositionReport(
             BOOK_IDENTITY,
+            Optional.of(LocalDate.parse("2026-04-30")),
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
@@ -292,6 +294,7 @@ class PdfReportServiceTest {
     FinancialPositionReport imbalancedReport =
         new FinancialPositionReport(
             BOOK_IDENTITY,
+            Optional.of(LocalDate.parse("2026-04-30")),
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             PostingCoverage.ALL_POSTING_KINDS,
@@ -435,6 +438,7 @@ class PdfReportServiceTest {
         new FinancialPositionReport(
             BOOK_IDENTITY,
             Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
             true,
@@ -504,10 +508,10 @@ class PdfReportServiceTest {
   @Test
   @org.jspecify.annotations.NullUnmarked
   void constructorAndRenderMethodsRejectNullInputs() {
-    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.53.0", CLOCK));
+    assertThrows(NullPointerException.class, () -> new PdfReportService(null, "0.54.0", CLOCK));
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
-        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.53.0", null));
+        NullPointerException.class, () -> new PdfReportService("FinGrind", "0.54.0", null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));

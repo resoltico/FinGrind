@@ -202,6 +202,25 @@ elif mode == "gate-success-observational-pending":
             "conclusion": None,
         }
     )
+elif mode == "check-failure-before-matrix":
+    filtered_jobs = []
+    for job in jobs:
+        name = job["name"]
+        if name == "Check":
+            job["conclusion"] = "failure"
+        elif name == "Gate":
+            job["conclusion"] = "failure"
+        elif name.startswith("Published bundle smoke (linux-"):
+            continue
+        filtered_jobs.append(job)
+    filtered_jobs.append(
+        {
+            "name": "Published bundle smoke (${{ matrix.classifier }})",
+            "status": "completed",
+            "conclusion": "skipped",
+        }
+    )
+    jobs = filtered_jobs
 elif mode != "pending-then-success":
     raise SystemExit(f"unsupported check mode: {mode}")
 
@@ -261,5 +280,28 @@ if [[ ${failure_exit} -eq 0 ]]; then
 fi
 printf '%s\n' "${failure_output}" | grep -Fq 'required CI jobs did not conclude with success: Gate=failure' || die \
     "PR Gate verifier did not report the failed Gate check"
+
+set +e
+failure_before_matrix_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        FAKE_GH_STATE_DIR="${fixture_root}/state" \
+        FAKE_GH_CHECK_MODE='check-failure-before-matrix' \
+        FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \
+        FAKE_GH_REQUIRED_CI_WORKFLOW_NAME="${required_ci_workflow_name}" \
+        FAKE_GH_REQUIRED_CI_WORKFLOW_PATH="${required_ci_workflow_path}" \
+        bash "${verifier}" 52 2>&1
+)"
+failure_before_matrix_exit=$?
+set -e
+
+if [[ ${failure_before_matrix_exit} -eq 0 ]]; then
+    die "PR Gate verifier accepted a failed Check/Gate workflow with an unmaterialized matrix shell"
+fi
+printf '%s\n' "${failure_before_matrix_output}" | grep -Fq 'required CI jobs did not conclude with success:' || die \
+    "PR Gate verifier did not prioritize the failing required jobs"
+printf '%s\n' "${failure_before_matrix_output}" | grep -Fq 'Check=failure' || die \
+    "PR Gate verifier hid the failed Check owner behind the skipped matrix shell"
+printf '%s\n' "${failure_before_matrix_output}" | grep -Fq 'Gate=failure' || die \
+    "PR Gate verifier hid the failed Gate owner behind the skipped matrix shell"
 
 printf 'verify-release-pr-gate regression: success\n'

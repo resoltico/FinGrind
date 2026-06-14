@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.53.0"
+version: "0.54.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-06-13"
+updated: "2026-06-14"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -75,6 +75,9 @@ The container image itself also stays on the same managed-runtime policy as the 
   fingerprint before trusting the staged context, so Docker and bundle publication cannot drift
   onto competing private-runtime closures, private compile-option inputs, or stale checkout-local
   leftovers
+- if an older checkout-local `cli/build/docker-context` tree lingers after the active Gradle build
+  root moved elsewhere, `:cli:stageDockerBuildContext` quarantines that stale tree before staging
+  the current context so the old path cannot be mistaken for the supported container assembly input
 - it generates the Docker entrypoint and verifies the image's runtime-surface disclosure from the
   same protocol-owned contract resources that drive bundle metadata, so the container does not
   carry a parallel handwritten runtime-distribution or storage contract

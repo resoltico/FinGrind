@@ -6,7 +6,9 @@ import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolv
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.BookkeepingReportStore;
+import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Holds the canonical statement-computation seams for one selected bookkeeping book. */
 final class ReportingContext {
@@ -34,5 +36,12 @@ final class ReportingContext {
       case BookLifecycleInspection.Existing _ ->
           throw new IllegalStateException("Statement computation requires one initialized book.");
     };
+  }
+
+  Optional<LocalDate> resolvedEffectiveDateAsOf(Optional<LocalDate> selectedEffectiveDateAsOf) {
+    Objects.requireNonNull(selectedEffectiveDateAsOf, "selectedEffectiveDateAsOf");
+    return selectedEffectiveDateAsOf.isPresent()
+        ? selectedEffectiveDateAsOf
+        : reportStore.latestPostingEffectiveDate();
   }
 }

@@ -392,6 +392,18 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_rejectsFlagLookingHelpTopicAsUnsupportedArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"help", "--outpt", "json"}));
+
+    assertEquals("invalid-request", exception.code());
+    assertEquals("--outpt", exception.argument());
+    assertEquals("Unsupported argument: --outpt. Did you mean --output?", exception.getMessage());
+  }
+
+  @Test
   void parse_rejectsUnknownCommandEvenWhenSecondTokenLooksLikeHelp() {
     CliArgumentsException exception =
         assertThrows(

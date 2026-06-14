@@ -10,6 +10,17 @@ import org.jspecify.annotations.Nullable;
 
 /** Parses CLI arguments for `rekey-book`. */
 final class CliRekeyBookArguments {
+  private static final List<String> REKEY_BOOK_OPTIONS =
+      List.of(
+          ProtocolOptions.BOOK_FILE,
+          ProtocolOptions.BOOK_KEY_FILE,
+          ProtocolOptions.BOOK_PASSPHRASE_STDIN,
+          ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
+          ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE,
+          ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_STDIN,
+          ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT,
+          ProtocolOptions.OUTPUT);
+
   private CliRekeyBookArguments() {}
 
   static CliCommand parseRekeyBookCommand(List<String> arguments) {
@@ -113,8 +124,7 @@ final class CliRekeyBookArguments {
                   argumentValues.outputMode,
                   CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-      default ->
-          throw CliArgumentValueParser.invalid(argument, "Unsupported argument: " + argument);
+      default -> throw CliArgumentValueParser.unsupportedArgument(argument, REKEY_BOOK_OPTIONS);
     }
   }
 

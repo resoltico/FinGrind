@@ -4,18 +4,32 @@ import argparse
 import sys
 from pathlib import Path
 
-from .verification import (
-    verify_build_logic_kotlin,
-    verify_gradle_kts,
-    verify_markdown_docs,
-    verify_python_support,
-    verify_shell_release,
-    verify_sqlite_sql,
-)
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from structural_governance.verification import (
+        verify_build_logic_kotlin,
+        verify_gradle_kts,
+        verify_json_resource,
+        verify_markdown_docs,
+        verify_python_support,
+        verify_shell_release,
+        verify_sqlite_sql,
+    )
+else:
+    from .verification import (
+        verify_build_logic_kotlin,
+        verify_gradle_kts,
+        verify_json_resource,
+        verify_markdown_docs,
+        verify_python_support,
+        verify_shell_release,
+        verify_sqlite_sql,
+    )
 
 SUPPORTED_SURFACES = (
     "build-logic-kotlin",
     "gradle-kts",
+    "json-resource",
     "markdown-docs",
     "shell-release",
     "python-support",
@@ -48,6 +62,8 @@ def main(argv: list[str]) -> int:
             violations.extend(verify_build_logic_kotlin(repo_root))
         elif surface == "gradle-kts":
             violations.extend(verify_gradle_kts(repo_root))
+        elif surface == "json-resource":
+            violations.extend(verify_json_resource(repo_root))
         elif surface == "markdown-docs":
             violations.extend(verify_markdown_docs(repo_root))
         elif surface == "shell-release":
@@ -62,3 +78,7 @@ def main(argv: list[str]) -> int:
             print(violation, file=sys.stderr)
         return 1
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

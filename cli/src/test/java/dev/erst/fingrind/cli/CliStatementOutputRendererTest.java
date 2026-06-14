@@ -51,6 +51,7 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
         new FinancialPositionReport(
             bookIdentity(),
             Optional.empty(),
+            Optional.empty(),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
             true,
@@ -91,6 +92,7 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     FinancialPositionReport report =
         new FinancialPositionReport(
             bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
@@ -133,6 +135,7 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     FinancialPositionReport financialPositionReport =
         new FinancialPositionReport(
             bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
@@ -238,6 +241,7 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     FinancialPositionReport financialPositionReport =
         new FinancialPositionReport(
             bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
             Optional.of(LocalDate.parse("2026-04-30")),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             allPostingKinds(),

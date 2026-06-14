@@ -284,6 +284,11 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
+    public Optional<LocalDate> latestPostingEffectiveDate() {
+      return delegate.latestPostingEffectiveDate();
+    }
+
+    @Override
     public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
       return delegate.trialBalance(query);
     }

@@ -25,10 +25,6 @@ final class CliWireJson {
     return writeBytes(WRITER, value);
   }
 
-  static byte[] writePrettyJsonBytes(Object value) {
-    return writeBytes(PRETTY_WRITER, value);
-  }
-
   static String prettyJsonText(Object value) {
     try {
       return PRETTY_WRITER.writeValueAsString(value);

@@ -304,6 +304,11 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
+    public Optional<LocalDate> latestPostingEffectiveDate() {
+      return delegate.latestPostingEffectiveDate();
+    }
+
+    @Override
     public List<dev.erst.fingrind.executor.bookkeeping.RegisteredAccount> allAccounts() {
       return delegate.allAccounts();
     }

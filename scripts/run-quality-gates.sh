@@ -34,7 +34,7 @@ print_usage() {
         'Runs the canonical Stage 1 verification surface:' \
         '  1. ./scripts/verify-repo-hygiene.sh' \
         '  2. ./scripts/verify-jacoco-artifacts.sh' \
-        '  3. ./scripts/verify-structural-governance.sh --surface build-logic-kotlin --surface gradle-kts --surface markdown-docs --surface python-support --surface sqlite-sql' \
+        '  3. ./scripts/verify-structural-governance.sh --surface build-logic-kotlin --surface gradle-kts --surface json-resource --surface markdown-docs --surface python-support --surface sqlite-sql' \
         '  4. ./gradlew check coverage' \
         '  5. ./gradlew -p gradle/build-logic check' \
         '  6. ./scripts/verify-build-logic-plugin-jar.sh' \
@@ -98,6 +98,7 @@ prepare_python_runtime_env
 "${structural_governance_verifier}" \
     --surface build-logic-kotlin \
     --surface gradle-kts \
+    --surface json-resource \
     --surface markdown-docs \
     --surface python-support \
     --surface sqlite-sql

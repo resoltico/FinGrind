@@ -32,13 +32,17 @@ final class CliDiscoveryCommandExecutor {
       @Nullable OperationId commandTopic,
       OutputMode outputMode,
       DiscoveryDetail detail,
-      @Nullable OperationCategory category) {
+      @Nullable OperationCategory category,
+      boolean terseTopLevel) {
+    EnvironmentDescriptor environmentDescriptor = environmentDescriptor();
     responseWriter.writeHelp(
         launcherAwareHelp(
-            MachineContract.help(applicationIdentity(), environmentDescriptor(), commandTopic)),
+            MachineContract.help(applicationIdentity(), environmentDescriptor, commandTopic)),
+        environmentDescriptor,
         outputMode,
         detail,
-        category);
+        category,
+        terseTopLevel);
     return 0;
   }
 

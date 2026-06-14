@@ -21,7 +21,25 @@ class CliTextDisplayTest {
         "<redacted>/book.sqlite",
         CliTextDisplay.path(new PublicPathHint("<redacted>/book.sqlite")));
     assertEquals("book start", CliQueryTextFormatAccess.lowerDateBoundaryLabel(null));
-    assertEquals("current book horizon", CliQueryTextFormatAccess.upperDateBoundaryLabel(null));
+    assertEquals(
+        "current book horizon (latest effective date in the selected book)",
+        CliQueryTextFormatAccess.upperDateBoundaryLabel(null));
+    assertEquals(
+        "no postings in selected book",
+        CliQueryTextFormatAccess.upperDateBoundaryLabel(null, null));
+    assertEquals(
+        "2026-05-14 (latest effective date in the selected book)",
+        CliQueryTextFormatAccess.upperDateBoundaryLabel(
+            null, java.time.LocalDate.parse("2026-05-14")));
+    assertEquals("no-postings", CliQueryTextFormatAccess.upperDateBoundaryMeaning(null, null));
+    assertEquals(
+        "latest-posting-effective-date",
+        CliQueryTextFormatAccess.upperDateBoundaryMeaning(
+            null, java.time.LocalDate.parse("2026-05-14")));
+    assertEquals(
+        "selected-date",
+        CliQueryTextFormatAccess.upperDateBoundaryMeaning(
+            java.time.LocalDate.parse("2026-05-31"), java.time.LocalDate.parse("2026-05-14")));
     assertEquals(
         "tmp/book.sqlite", CliQueryTextFormatAccess.absolutePath(Path.of("/tmp/book.sqlite")));
   }

@@ -117,4 +117,18 @@ class CliBookArgumentParserTest extends CliArgumentParsingTestSupport {
     assertEquals("--output", exception.argument());
     assertEquals("Unsupported argument: --output", exception.getMessage());
   }
+
+  @Test
+  void supportedArguments_handlesCommandCollectingModesWithoutCommandSpec() {
+    List<String> result = CliBookArgumentParser.requestBoundCommandSupportedArguments(null);
+
+    assertEquals(
+        List.of(
+            "--book-file",
+            "--book-key-file",
+            "--book-passphrase-stdin",
+            "--book-passphrase-prompt",
+            "--request-file"),
+        result);
+  }
 }

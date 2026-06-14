@@ -31,14 +31,15 @@ internal object JavaSourceStructuralContracts {
         packageName: String?,
         exportedPackages: Set<String>,
     ): JavaSourceStructuralContract {
+        val defaultBudget = baselineBudgetFor(relativePath, packageName, exportedPackages)
         reviewedSurfaceByKey[ReviewedSurfaceKey(projectPath, relativePath)]?.let { reviewedSurface ->
             return JavaSourceStructuralContract(
-                budget = reviewedSurface.budget,
+                defaultBudget = defaultBudget,
                 reviewedSurface = reviewedSurface,
             )
         }
         return JavaSourceStructuralContract(
-            budget = baselineBudgetFor(relativePath, packageName, exportedPackages),
+            defaultBudget = defaultBudget,
             reviewedSurface = null,
         )
     }
@@ -77,11 +78,11 @@ internal object JavaSourceStructuralContracts {
         projectPath: String,
         existingRelativePaths: Set<String>,
     ): List<String> =
-        reviewedSurfaces(projectPath)
-            .filterNot { it.relativePath in existingRelativePaths }
-            .map { reviewedSurface ->
-                "${reviewedSurface.relativePath}: reviewed surface for ${reviewedSurface.owner} no longer resolves inside $projectPath; remove or rewrite the orphaned waiver instead of carrying dead metadata."
-            }
+        missingReviewedSurfaceViolations(
+            reviewedSurfaces = reviewedSurfaces(projectPath),
+            projectScope = projectPath,
+            existingRelativePaths = existingRelativePaths,
+        )
 }
 
 private data class ReviewedSurfaceKey(

@@ -471,13 +471,13 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   @Test
   void executionPolicy_coversMaintenanceFailureModesAndTypedExitCodes() {
     assertEquals(
-        CliOutputModeDefaults.defaultDiscoveryOutputMode(),
+        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.DISCOVERY).mode(),
         CliExecutionPolicy.inferredFailureOutputMode(new String[] {"help"}));
     assertEquals(
-        CliOutputModeDefaults.defaultDiscoveryOutputMode(),
+        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.DISCOVERY).mode(),
         CliExecutionPolicy.inferredFailureOutputMode(new String[] {"version"}));
     assertEquals(
-        CliOutputModeDefaults.defaultDiscoveryOutputMode(),
+        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.DISCOVERY).mode(),
         CliExecutionPolicy.inferredFailureOutputMode(new String[] {"capabilities"}));
     assertEquals(
         OutputMode.JSON,

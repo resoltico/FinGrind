@@ -23,6 +23,7 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -155,41 +156,59 @@ abstract class AbstractInMemoryBookReadSession extends AbstractInMemoryPostingSe
   }
 
   @Override
-  public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
+  public Optional<LocalDate> latestPostingEffectiveDate() {
     return InMemoryBookSessionSupport.withLock(
         lock,
         () ->
-            new TrialBalanceView(
-                bookIdentity,
-                query.effectiveDateAsOf(),
-                EffectiveDateRange.of(null, null),
-                query.postingCoverage(),
-                accountsByCode.values().stream()
-                    .sorted(Comparator.comparing(account -> account.accountCode().value()))
-                    .flatMap(
-                        account ->
-                            InMemoryBookSessionSupport.balancesFor(
-                                    account,
-                                    postingsByPostingId.values().stream()
-                                        .filter(
-                                            posting ->
-                                                query
-                                                    .postingCoverage()
-                                                    .includes(posting.postingKind()))
-                                        .filter(
-                                            posting ->
-                                                query.effectiveDateAsOf().stream()
-                                                    .allMatch(
-                                                        date ->
-                                                            !posting
-                                                                .journalEntry()
-                                                                .effectiveDate()
-                                                                .isAfter(date)))
-                                        .toList())
-                                .stream()
-                                .map(balance -> new TrialBalanceRowView(account, balance)))
-                    .toList(),
-                List.of()));
+            postingsByPostingId.values().stream()
+                .map(posting -> posting.journalEntry().effectiveDate())
+                .max(LocalDate::compareTo));
+  }
+
+  @Override
+  public TrialBalanceView trialBalance(TrialBalanceCriteria query) {
+    return InMemoryBookSessionSupport.withLock(
+        lock,
+        () -> {
+          Optional<LocalDate> resolvedEffectiveDateAsOf =
+              query.effectiveDateAsOf().isPresent()
+                  ? query.effectiveDateAsOf()
+                  : postingsByPostingId.values().stream()
+                      .map(posting -> posting.journalEntry().effectiveDate())
+                      .max(LocalDate::compareTo);
+          return new TrialBalanceView(
+              bookIdentity,
+              query.effectiveDateAsOf(),
+              resolvedEffectiveDateAsOf,
+              EffectiveDateRange.of(null, null),
+              query.postingCoverage(),
+              accountsByCode.values().stream()
+                  .sorted(Comparator.comparing(account -> account.accountCode().value()))
+                  .flatMap(
+                      account ->
+                          InMemoryBookSessionSupport.balancesFor(
+                                  account,
+                                  postingsByPostingId.values().stream()
+                                      .filter(
+                                          posting ->
+                                              query
+                                                  .postingCoverage()
+                                                  .includes(posting.postingKind()))
+                                      .filter(
+                                          posting ->
+                                              query.effectiveDateAsOf().stream()
+                                                  .allMatch(
+                                                      date ->
+                                                          !posting
+                                                              .journalEntry()
+                                                              .effectiveDate()
+                                                              .isAfter(date)))
+                                      .toList())
+                              .stream()
+                              .map(balance -> new TrialBalanceRowView(account, balance)))
+                  .toList(),
+              List.of());
+        });
   }
 
   @Override

@@ -2,6 +2,7 @@ package dev.erst.fingrind.buildlogic
 
 import org.gradle.api.Project
 import org.gradle.api.file.FileCollection
+import org.gradle.api.GradleException
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.JavaExec
@@ -61,19 +62,27 @@ internal fun Project.configureCliExecutionSurfaceConventions(
 
 private fun Project.disableLegacyCliDistributionTasks() {
     tasks.named<CreateStartScripts>("startScripts") {
-        enabled = false
+        description =
+            "Unsupported legacy CLI distribution surface. Use :cli:bundleCliArchive or ./scripts/source-checkout-cli.sh instead."
+        doFirst { throw legacyCliDistributionTaskFailure(name) }
     }
 
     tasks.named<Sync>("installDist") {
-        enabled = false
+        description =
+            "Unsupported legacy CLI distribution surface. Use :cli:bundleCliArchive or ./scripts/source-checkout-cli.sh instead."
+        doFirst { throw legacyCliDistributionTaskFailure(name) }
     }
 
     tasks.named<Tar>("distTar") {
-        enabled = false
+        description =
+            "Unsupported legacy CLI distribution surface. Use :cli:bundleCliArchive or ./scripts/source-checkout-cli.sh instead."
+        doFirst { throw legacyCliDistributionTaskFailure(name) }
     }
 
     tasks.named<Zip>("distZip") {
-        enabled = false
+        description =
+            "Unsupported legacy CLI distribution surface. Use :cli:bundleCliArchive or ./scripts/source-checkout-cli.sh instead."
+        doFirst { throw legacyCliDistributionTaskFailure(name) }
     }
 
     tasks.matching {
@@ -82,6 +91,13 @@ private fun Project.disableLegacyCliDistributionTasks() {
             it.name == "shadowDistTar" ||
             it.name == "shadowDistZip"
     }.configureEach {
-        enabled = false
+        description =
+            "Unsupported legacy CLI distribution surface. Use :cli:bundleCliArchive or ./scripts/source-checkout-cli.sh instead."
+        doFirst { throw legacyCliDistributionTaskFailure(name) }
     }
 }
+
+private fun legacyCliDistributionTaskFailure(taskName: String): GradleException =
+    GradleException(
+        "$taskName is a removed legacy CLI distribution task. Use :cli:bundleCliArchive for the supported public bundle artifact, or run ./scripts/source-checkout-cli.sh for the source-checkout launcher surface.",
+    )

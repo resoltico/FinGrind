@@ -7,13 +7,8 @@ import java.util.List;
 import java.util.Optional;
 
 /** Posting-history date range surface over one SQLite posting-fact store. */
-interface SqlitePostingFactStorePostingHistoryView {
-  /** Returns the thread-ownership guard for this store. */
-  SqliteThreadOwner storeThreadOwner();
-
-  /** Returns the read operations owner for this store. */
-  SqliteStoreReadOperations storeReadOperations();
-
+interface SqlitePostingFactStorePostingHistoryView
+    extends SqlitePostingFactStoreReadOperationsView {
   /** Returns committed postings inside the requested effective-date range. */
   default List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
     storeThreadOwner().requireOwnerThread();

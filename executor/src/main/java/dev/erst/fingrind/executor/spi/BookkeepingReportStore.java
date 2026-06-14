@@ -12,6 +12,7 @@ import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +24,9 @@ public interface BookkeepingReportStore {
   /** Aggregates exact debit and credit totals by account and currency for one read-time window. */
   List<AccountCurrencyTotals> accountTotals(
       EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage);
+
+  /** Returns the latest committed posting effective date in one initialized book when present. */
+  Optional<LocalDate> latestPostingEffectiveDate();
 
   /** Computes one canonical trial-balance report. */
   TrialBalanceView trialBalance(TrialBalanceCriteria query);

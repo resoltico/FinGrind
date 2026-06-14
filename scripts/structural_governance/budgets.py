@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from .models import FileBudget
-from .reviewed_surfaces import REVIEWED_SURFACES
 
 
 def kotlin_budget_for(relative_path: Path) -> FileBudget:
@@ -135,9 +134,6 @@ def shell_budget_for(relative_path: Path) -> FileBudget:
 
 
 def python_budget_for(relative_path: Path) -> FileBudget:
-    reviewed = REVIEWED_SURFACES.get(relative_path.as_posix())
-    if reviewed is not None:
-        return reviewed.budget
     path_text = relative_path.as_posix()
     if path_text.startswith("scripts/release_smoke_workflow/"):
         return python_release_smoke_support_budget()
@@ -186,9 +182,6 @@ def python_support_budget() -> FileBudget:
 
 
 def sql_budget_for(relative_path: Path) -> FileBudget:
-    reviewed = REVIEWED_SURFACES.get(relative_path.as_posix())
-    if reviewed is not None:
-        return reviewed.budget
     return sqlite_sql_support_budget()
 
 
@@ -202,4 +195,62 @@ def sqlite_sql_support_budget() -> FileBudget:
         max_nested_types=0,
         max_duplicate_window_lines=24,
         split_hint="split the SQL support surface by one schema or query responsibility family.",
+    )
+
+
+def json_budget_for(relative_path: Path) -> FileBudget:
+    path_text = relative_path.as_posix()
+    if path_text.startswith("contract/src/main/resources/") and path_text.endswith(".json"):
+        return FileBudget(
+            role_name="json-contract-catalog",
+            max_physical_lines=180,
+            max_logical_lines=150,
+            max_import_like_lines=110,
+            max_functions=0,
+            max_nested_types=12,
+            max_duplicate_window_lines=40,
+            split_hint="split the JSON contract catalog by one published protocol owner instead of growing one umbrella registry.",
+        )
+    if path_text.startswith("docs/examples/") or path_text.startswith("cli/src/bundle/root/"):
+        return FileBudget(
+            role_name="json-example-payload",
+            max_physical_lines=260,
+            max_logical_lines=220,
+            max_import_like_lines=160,
+            max_functions=0,
+            max_nested_types=24,
+            max_duplicate_window_lines=52,
+            split_hint="split example payloads by one operator scenario family instead of one broad sample catalog.",
+        )
+    if path_text.startswith("jazzer/src/main/resources/"):
+        return FileBudget(
+            role_name="json-harness-topology",
+            max_physical_lines=120,
+            max_logical_lines=100,
+            max_import_like_lines=70,
+            max_functions=0,
+            max_nested_types=18,
+            max_duplicate_window_lines=40,
+            split_hint="split fuzzing topology and harness metadata by one runtime-owner family instead of one umbrella support catalog.",
+        )
+    if path_text == ".devcontainer/devcontainer.json":
+        return FileBudget(
+            role_name="json-tooling-config",
+            max_physical_lines=160,
+            max_logical_lines=130,
+            max_import_like_lines=90,
+            max_functions=0,
+            max_nested_types=16,
+            max_duplicate_window_lines=26,
+            split_hint="keep tooling JSON declarative and move repeated workflow detail into named scripts or shared contracts.",
+        )
+    return FileBudget(
+        role_name="json-support",
+        max_physical_lines=160,
+        max_logical_lines=130,
+        max_import_like_lines=100,
+        max_functions=0,
+        max_nested_types=10,
+        max_duplicate_window_lines=26,
+        split_hint="split the JSON surface by one owned payload family before it becomes a mixed data catalog.",
     )

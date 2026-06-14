@@ -132,37 +132,48 @@ reason = ""
 
 status = workflow.get("status")
 conclusion = workflow.get("conclusion")
-missing_jobs = [name for name in required_job_names if name not in jobs]
 failed_jobs = []
 pending_jobs = []
+missing_jobs = []
 
-if missing_jobs:
+for job_name in required_job_names:
+    job = jobs.get(job_name)
+    if job is None:
+        missing_jobs.append(job_name)
+        continue
+    job_status = job.get("status")
+    job_conclusion = job.get("conclusion")
+    if job_status != "completed":
+        pending_jobs.append(job_name)
+    elif job_conclusion != "success":
+        failed_jobs.append(f"{job_name}={job_conclusion or '<missing>'}")
+
+if failed_jobs:
+    state = "failure"
+    reason = "required CI jobs did not conclude with success: " + ", ".join(failed_jobs)
+elif pending_jobs:
+    state = "pending"
+    reason = "required CI jobs are not complete yet: " + ", ".join(pending_jobs)
+elif missing_jobs:
     if status == "completed":
-        state = "failure"
-        reason = "required CI workflow omitted expected jobs: " + ", ".join(missing_jobs)
+        if conclusion not in ("success", None):
+            state = "failure"
+            reason = (
+                "required CI workflow concluded "
+                f"{conclusion or '<missing>'} before all required jobs materialized: "
+                + ", ".join(missing_jobs)
+            )
+        else:
+            state = "failure"
+            reason = "required CI workflow omitted expected jobs: " + ", ".join(missing_jobs)
     else:
         state = "pending"
         reason = "required CI jobs are not visible yet: " + ", ".join(missing_jobs)
-else:
-    for job_name in required_job_names:
-        job = jobs[job_name]
-        job_status = job.get("status")
-        job_conclusion = job.get("conclusion")
-        if job_status != "completed":
-            pending_jobs.append(job_name)
-        elif job_conclusion != "success":
-            failed_jobs.append(f"{job_name}={job_conclusion or '<missing>'}")
-    if pending_jobs:
-        state = "pending"
-        reason = "required CI jobs are not complete yet: " + ", ".join(pending_jobs)
-    elif failed_jobs:
-        state = "failure"
-        reason = "required CI jobs did not conclude with success: " + ", ".join(failed_jobs)
-    elif status == "completed" and conclusion not in ("success", None):
-        reason = (
-            "required CI jobs passed while non-blocking workflow jobs concluded "
-            f"{conclusion or '<missing>'}"
-        )
+elif status == "completed" and conclusion not in ("success", None):
+    reason = (
+        "required CI jobs passed while non-blocking workflow jobs concluded "
+        f"{conclusion or '<missing>'}"
+    )
 
 print(json.dumps({"state": state, "reason": reason}))
 PY

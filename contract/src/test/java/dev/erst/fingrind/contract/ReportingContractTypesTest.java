@@ -84,6 +84,7 @@ class ReportingContractTypesTest {
         new TrialBalanceReport(
             ContractFixtures.bookIdentity(),
             trialBalanceQuery.effectiveDateAsOf(),
+            trialBalanceQuery.effectiveDateAsOf(),
             EffectiveDateRange.of(null, LocalDate.parse("2025-04-30")),
             trialBalanceQuery.postingCoverage(),
             List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)),
@@ -226,6 +227,7 @@ class ReportingContractTypesTest {
                 () ->
                     new TrialBalanceReport(
                         ContractFixtures.bookIdentity(),
+                        Optional.empty(),
                         Optional.empty(),
                         EffectiveDateRange.unbounded(),
                         PostingCoverage.ALL_POSTING_KINDS,

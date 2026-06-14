@@ -1,0 +1,10 @@
+{
+  "documentType": "case",
+  "caseType": "orphan",
+  "id": "orphaned-waiver",
+  "relativePath": "src/main/java/dev/erst/fingrind/example/OrphanedWaiver.java",
+  "reviewedSurfaceProfile": "example-reviewed",
+  "approvalProfile": "tight-future",
+  "existingRelativePaths": [],
+  "expectedDescriptors": ["orphaned-waiver"]
+}

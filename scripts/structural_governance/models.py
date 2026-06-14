@@ -23,7 +23,7 @@ class ReviewedSurface:
     owner: str
     reason: str
     split_trigger: str
-    budget: FileBudget
+    reviewed_role_name: str
     budget_variance_reason: str | None
     approval: "ReviewedSurfaceApproval"
 

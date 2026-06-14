@@ -16,6 +16,10 @@ import java.util.Map;
 /** Loads canonical trial-balance rows from SQLite. */
 final class SqliteTrialBalanceReader {
   TrialBalanceView trialBalance(SqliteNativeDatabase activeDatabase, TrialBalanceCriteria query) {
+    var resolvedEffectiveDateAsOf =
+        query.effectiveDateAsOf().isPresent()
+            ? query.effectiveDateAsOf()
+            : latestPostingEffectiveDate(activeDatabase);
     Map<AccountCode, SqliteReportRowValues.AccountTotals> totalsByAccount =
         SqliteReportRowValues.insertionOrderedMap();
     try (SqliteNativeStatement statement =
@@ -48,9 +52,17 @@ final class SqliteTrialBalanceReader {
     return new TrialBalanceView(
         bookIdentity,
         query.effectiveDateAsOf(),
+        resolvedEffectiveDateAsOf,
         dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
         query.postingCoverage(),
         rows,
         List.of());
+  }
+
+  private static java.util.Optional<java.time.LocalDate> latestPostingEffectiveDate(
+      SqliteNativeDatabase activeDatabase) {
+    return SqliteStatementQueries.loadOptionalText(
+            activeDatabase, SqlitePostingSql.FIND_LATEST_POSTING_EFFECTIVE_DATE, statement -> {})
+        .map(java.time.LocalDate::parse);
   }
 }

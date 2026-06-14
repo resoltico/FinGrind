@@ -25,12 +25,26 @@ final class CliQueryScopeText {
     return effectiveDateTo == null ? "current-book-horizon" : "selected-date";
   }
 
+  static String upperDateBoundaryMeaning(
+      @Nullable LocalDate selectedEffectiveDateTo, @Nullable LocalDate resolvedEffectiveDateTo) {
+    if (selectedEffectiveDateTo != null) {
+      return "selected-date";
+    }
+    return resolvedEffectiveDateTo == null ? "no-postings" : "latest-posting-effective-date";
+  }
+
   static String lowerDateBoundaryLabel(@Nullable LocalDate effectiveDateFrom) {
     return CliTextDisplay.lowerDateBoundary(effectiveDateFrom);
   }
 
   static String upperDateBoundaryLabel(@Nullable LocalDate effectiveDateTo) {
     return CliTextDisplay.upperDateBoundary(effectiveDateTo);
+  }
+
+  static String upperDateBoundaryLabel(
+      @Nullable LocalDate selectedEffectiveDateTo, @Nullable LocalDate resolvedEffectiveDateTo) {
+    return CliTextDisplay.resolvedUpperDateBoundary(
+        selectedEffectiveDateTo, resolvedEffectiveDateTo);
   }
 
   static String displayBooleanLabel(boolean value) {

@@ -43,6 +43,7 @@ final class MachineContractRequestInputDescriptors {
             operation(OperationId.PRINT_PLAN_TEMPLATE)),
         ProtocolOptions.OUTPUT,
         List.of(
+            "set FINGRIND_DEFAULT_OUTPUT=text|json to choose one session default for commands that advertise selectable output modes; explicit --output on one command always overrides the session default",
             "commands in capabilities.commands that advertise non-empty outputModes publish their interactive-terminal and redirected-stdout defaults on each command descriptor, unless callers select a different public value explicitly through --output",
             "commands listed in requestFileCommands accept one structured JSON request document through --request-file <path|->, while commands listed in directArgumentCommands accept typed CLI flags instead of a request document",
             "commands in capabilities.commands with empty outputModes still publish one fixed stdout contract through executionMode, so agents can distinguish fixed raw JSON from fixed JSON envelopes",

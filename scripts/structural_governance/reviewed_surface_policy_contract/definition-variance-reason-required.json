@@ -1,0 +1,11 @@
+{
+  "documentType": "case",
+  "caseType": "definition",
+  "id": "variance-reason-required",
+  "relativePath": "src/main/java/dev/erst/fingrind/example/Oversized.java",
+  "reviewedSurfaceProfile": "example-reviewed",
+  "budgetVarianceReason": null,
+  "defaultBudgetProfile": "tight-main",
+  "approvalProfile": "tight-future",
+  "expectedDescriptors": ["variance-reason-required"]
+}

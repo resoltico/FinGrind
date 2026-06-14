@@ -15,15 +15,7 @@ progress() {
 normalized_file_contains() {
     local needle="$1"
     local file_path="$2"
-    python3 - "$needle" "$file_path" <<'PY'
-import pathlib
-import re
-import sys
-
-needle = re.sub(r"\s+", " ", sys.argv[1]).strip()
-haystack = re.sub(r"\s+", " ", pathlib.Path(sys.argv[2]).read_text(encoding="utf-8")).strip()
-raise SystemExit(0 if needle in haystack else 1)
-PY
+    python3 "${launcher_contract_test_support}" normalized-contains "$needle" "$file_path"
 }
 
 resolve_script_dir() {
@@ -42,6 +34,7 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly contract_values_reader="${repo_root}/scripts/read-contract-values.py"
+readonly launcher_contract_test_support="${repo_root}/scripts/source_checkout_launcher_contract_test_support.py"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
 readonly launcher_wrapper="${repo_root}/scripts/source-checkout-cli.sh"
 readonly launcher_wrapper_entrypoint="${repo_root}/scripts/source-checkout-cli-entrypoint.sh"
@@ -54,6 +47,7 @@ readonly gradle_wrapper_support_ps1="${repo_root}/scripts/gradle-wrapper-support
 readonly repo_tmp_dir="${repo_root}/tmp"
 
 [[ -f "${contract_values_reader}" ]] || die "missing contract-values reader"
+[[ -f "${launcher_contract_test_support}" ]] || die "missing source-checkout launcher test support helper"
 [[ -f "${gradle_wrapper_support}" ]] || die "missing Gradle wrapper support helper"
 [[ -x "${launcher_wrapper}" ]] || die "missing POSIX source-checkout launcher wrapper"
 [[ -f "${launcher_wrapper_entrypoint}" ]] || die "missing POSIX source-checkout launcher entrypoint helper"
@@ -113,22 +107,12 @@ trap cleanup EXIT
     "missing source-checkout runtime manifest"
 
 readonly expected_runtime_distribution="$(
-    FINGRIND_CONTRACT_VALUES_JSON="$(python3 "${contract_values_reader}")" python3 - <<'PY'
-import json
-import os
-
-contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
-print(contract["runtimeSurface"]["sourceCheckoutRuntimeDistribution"])
-PY
+    python3 "${contract_values_reader}" \
+        | python3 "${launcher_contract_test_support}" contract-value sourceCheckoutRuntimeDistribution
 )"
 readonly expected_direct_java_runtime_distribution="$(
-    FINGRIND_CONTRACT_VALUES_JSON="$(python3 "${contract_values_reader}")" python3 - <<'PY'
-import json
-import os
-
-contract = json.loads(os.environ["FINGRIND_CONTRACT_VALUES_JSON"])
-print(contract["runtimeSurface"]["directJavaRuntimeDistribution"])
-PY
+    python3 "${contract_values_reader}" \
+        | python3 "${launcher_contract_test_support}" contract-value directJavaRuntimeDistribution
 )"
 
 help_stdout="${tmp_dir}/help.out"
@@ -193,37 +177,13 @@ progress 'source-checkout environment surface'
     die "source-checkout launcher environment failed"
 
 [[ ! -s "${environment_stderr}" ]] || die "source-checkout launcher environment wrote diagnostics"
-python3 - "${environment_stdout}" "${expected_runtime_distribution}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-expected_runtime_distribution = sys.argv[2]
-sqlite = document["payload"]["sqlite"]
-runtime = sqlite["runtime"]
-actual_runtime_distribution = document["payload"]["runtime"]["runtimeDistribution"]
-status = runtime.get("status")
-if actual_runtime_distribution != expected_runtime_distribution:
-    raise SystemExit(
-        "unexpected runtime distribution: "
-        + actual_runtime_distribution
-        + " != "
-        + expected_runtime_distribution
-    )
-if status != "ready":
-    raise SystemExit(
-        "unexpected runtime status: "
-        + repr(status)
-        + " != 'ready'"
-    )
-if runtime.get("runtimeProvenance") != "source-checkout-managed":
-    raise SystemExit(
-        "unexpected runtime provenance: "
-        + repr(runtime.get("runtimeProvenance"))
-        + " != source-checkout-managed"
-    )
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-runtime-environment \
+    --document "${environment_stdout}" \
+    --expected-distribution "${expected_runtime_distribution}" \
+    --expected-status ready \
+    --expected-provenance source-checkout-managed \
+    --label 'source-checkout launcher'
 
 progress 'source-checkout capabilities surface'
 "${launcher_wrapper}" capabilities --output json --detail full >"${capabilities_stdout}" \
@@ -231,31 +191,8 @@ progress 'source-checkout capabilities surface'
 
 [[ ! -s "${capabilities_stderr}" ]] || die "source-checkout launcher capabilities wrote diagnostics"
 readonly expected_managed_runtime_failure_exit="$(
-    python3 - "${capabilities_stdout}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-payload = document["payload"]
-if payload["detail"] != "full":
-    raise SystemExit("source-checkout launcher capabilities did not expose the full contract")
-response_model = payload["fullContract"]["responseModel"]
-for descriptor in response_model["errorDescriptors"]:
-    if descriptor["code"] != "managed-runtime-failure":
-        continue
-    exit_code = descriptor.get("exitCode")
-    if not isinstance(exit_code, int) or isinstance(exit_code, bool) or exit_code < 0:
-        raise SystemExit(
-            "source-checkout launcher capabilities published an invalid managed-runtime-failure exitCode"
-        )
-    print(exit_code)
-    break
-else:
-    raise SystemExit(
-        "source-checkout launcher capabilities omitted the managed-runtime-failure error descriptor"
-    )
-PY
+    python3 "${launcher_contract_test_support}" \
+        managed-runtime-failure-exit "${capabilities_stdout}"
 )"
 
 progress 'source-checkout request template'
@@ -264,26 +201,12 @@ progress 'source-checkout request template'
 
 [[ ! -s "${template_request_stderr}" ]] || die \
     "source-checkout launcher print-request-template wrote diagnostics"
-python3 - "${template_request_stdout}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-if document["entryKind"] != "CASH_REVENUE":
-    raise SystemExit("source-checkout launcher request template did not expose CASH_REVENUE")
-if "postingKind" in document:
-    raise SystemExit("source-checkout launcher request template leaked retired postingKind")
-if "lines" in document:
-    raise SystemExit("source-checkout launcher request template leaked retired journal lines")
-evidence = document["evidence"]["sourceDocuments"][0]
-for required_field in ("documentDate", "capturedAt", "storageLocator", "contentSha256"):
-    if required_field not in evidence:
-        raise SystemExit(
-            "source-checkout launcher request template omitted retained evidence field "
-            + required_field
-        )
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-request-template \
+    --document "${template_request_stdout}" \
+    --label 'source-checkout launcher' \
+    --forbid-lines \
+    --require-evidence-fields
 
 progress 'source-checkout plan template'
 "${launcher_wrapper}" print-plan-template >"${template_plan_stdout}" \
@@ -291,26 +214,7 @@ progress 'source-checkout plan template'
 
 [[ ! -s "${template_plan_stderr}" ]] || die \
     "source-checkout launcher print-plan-template wrote diagnostics"
-python3 - "${template_plan_stdout}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-open_book = document["steps"][0]["openBook"]
-if "businessActivityTags" in open_book:
-    raise SystemExit("source-checkout launcher plan template leaked retired business activity tags")
-if "accountingBasis" in open_book:
-    raise SystemExit("source-checkout launcher plan template leaked doctrine-owned identity fields into open-book input")
-post_entry = document["steps"][1]["posting"]
-if post_entry["entryKind"] != "CASH_REVENUE":
-    raise SystemExit("source-checkout launcher plan template did not expose typed post-entry")
-if "postingKind" in post_entry:
-    raise SystemExit("source-checkout launcher plan template leaked retired postingKind")
-assertion = document["steps"][2]["assertion"]
-if assertion["accountCode"] != "cash":
-    raise SystemExit("source-checkout launcher plan template did not target the seeded cash account")
-PY
+python3 "${launcher_contract_test_support}" assert-plan-template "${template_plan_stdout}"
 
 progress 'direct-java request template'
 "${raw_java_wrapper}" print-request-template >"${raw_template_request_stdout}" \
@@ -318,33 +222,13 @@ progress 'direct-java request template'
 
 [[ ! -s "${raw_template_request_stderr}" ]] || die \
     "developer direct-Java print-request-template wrote diagnostics"
-python3 - "${raw_template_request_stdout}" <<'PY'
-import json
-import pathlib
-import sys
+python3 "${launcher_contract_test_support}" \
+    assert-request-template \
+    --document "${raw_template_request_stdout}" \
+    --label 'developer direct-Java'
 
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-if document["entryKind"] != "CASH_REVENUE":
-    raise SystemExit("developer direct-Java request template did not expose CASH_REVENUE")
-if "postingKind" in document:
-    raise SystemExit("developer direct-Java request template leaked retired postingKind")
-PY
-
-python3 - "${source_checkout_runtime_manifest}" <<'PY'
-import pathlib
-import sys
-
-manifest_path = pathlib.Path(sys.argv[1])
-lines = manifest_path.read_text(encoding="utf-8").splitlines()
-for index, line in enumerate(lines):
-    if not line.startswith("javaExecutable\t"):
-        continue
-    lines[index] = "javaExecutable\t/definitely/missing/fingrind-java"
-    break
-else:
-    raise SystemExit("source-checkout runtime manifest omitted javaExecutable")
-manifest_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-PY
+python3 "${launcher_contract_test_support}" \
+    corrupt-runtime-manifest "${source_checkout_runtime_manifest}"
 
 progress 'source-checkout self-refresh'
 "${launcher_wrapper}" print-request-template >"${healed_template_request_stdout}" \
@@ -353,45 +237,24 @@ progress 'source-checkout self-refresh'
 
 [[ ! -s "${healed_template_request_stderr}" ]] || die \
     "source-checkout launcher self-refresh wrote diagnostics"
-python3 - "${healed_template_request_stdout}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-if document["entryKind"] != "CASH_REVENUE":
-    raise SystemExit("source-checkout launcher self-refresh did not restore the typed template")
-if "postingKind" in document:
-    raise SystemExit("source-checkout launcher self-refresh restored a retired postingKind")
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-request-template \
+    --document "${healed_template_request_stdout}" \
+    --label 'source-checkout launcher self-refresh'
 
 progress 'source-checkout key generation'
 "${launcher_wrapper}" generate-book-key-file --book-key-file "${key_file}" --output json >"${key_stdout}" 2>"${key_stderr}" ||
     die "source-checkout launcher key generation failed"
 
 [[ ! -s "${key_stderr}" ]] || die "source-checkout launcher key generation wrote diagnostics"
-python3 - "${key_stdout}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-if document["status"] != "ok":
-    raise SystemExit("source-checkout launcher key generation did not return ok")
-PY
-python3 - "${key_file}" <<'PY'
-import os
-import pathlib
-import stat
-import sys
-
-key_path = pathlib.Path(sys.argv[1])
-parent_mode = stat.S_IMODE(os.stat(key_path.parent).st_mode)
-if parent_mode != 0o700:
-    raise SystemExit(
-        "source-checkout launcher key generation did not create an owner-only parent directory"
-    )
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-status-ok \
+    --document "${key_stdout}" \
+    --label 'source-checkout launcher key generation'
+python3 "${launcher_contract_test_support}" \
+    assert-owner-only-parent \
+    --path "${key_file}" \
+    --label 'source-checkout launcher key generation'
 
 progress 'source-checkout open-book'
 "${launcher_wrapper}" \
@@ -405,46 +268,17 @@ progress 'source-checkout open-book'
     die "source-checkout launcher open-book failed"
 
 [[ ! -s "${open_stderr}" ]] || die "source-checkout launcher open-book wrote diagnostics"
-python3 - "${book_file}" <<'PY'
-import os
-import pathlib
-import stat
-import sys
-
-book_path = pathlib.Path(sys.argv[1])
-parent_mode = stat.S_IMODE(os.stat(book_path.parent).st_mode)
-if parent_mode != 0o700:
-    raise SystemExit(
-        "source-checkout launcher open-book did not create an owner-only parent directory"
-    )
-PY
-python3 - "${open_stdout}" "${entity_name}" "${functional_currency}" "${fiscal_year_start}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-payload = document["payload"]
-book_identity = payload["bookIdentity"]
-if document["status"] != "ok":
-    raise SystemExit("source-checkout launcher open-book did not return ok")
-if book_identity["entityName"] != sys.argv[2]:
-    raise SystemExit("source-checkout launcher open-book returned the wrong entity name")
-if book_identity["accountingKernelProfile"] != "internal-management-cash-bookkeeping-kernel":
-    raise SystemExit("source-checkout launcher open-book returned the wrong accounting kernel")
-if book_identity["accountingBasis"] != "CASH_BASIS":
-    raise SystemExit("source-checkout launcher open-book returned the wrong accounting basis")
-if book_identity["accountingFrameworkPosition"] != "NON_STATUTORY_INTERNAL_MANAGEMENT":
-    raise SystemExit("source-checkout launcher open-book returned the wrong framework posture")
-if book_identity["entityForm"] != "OWNER_MANAGED_SINGLE_ENTITY":
-    raise SystemExit("source-checkout launcher open-book returned the wrong entity form")
-if book_identity["bookTemplateId"] != "OWNER_MANAGED_SERVICE_CASH":
-    raise SystemExit("source-checkout launcher open-book returned the wrong book template")
-if book_identity["functionalCurrency"] != sys.argv[3]:
-    raise SystemExit("source-checkout launcher open-book returned the wrong functional currency")
-if book_identity["fiscalYearStart"] != sys.argv[4]:
-    raise SystemExit("source-checkout launcher open-book returned the wrong fiscal year start")
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-owner-only-parent \
+    --path "${book_file}" \
+    --label 'source-checkout launcher open-book'
+python3 "${launcher_contract_test_support}" \
+    assert-open-book \
+    --document "${open_stdout}" \
+    --label 'source-checkout launcher' \
+    --entity-name "${entity_name}" \
+    --functional-currency "${functional_currency}" \
+    --fiscal-year-start "${fiscal_year_start}"
 
 [[ -f "${raw_jar}" ]] || die "missing developer application JAR"
 
@@ -478,37 +312,13 @@ progress 'direct-java environment surface'
     die "developer direct-Java environment failed"
 
 [[ ! -s "${raw_environment_stderr}" ]] || die "developer direct-Java environment wrote diagnostics"
-python3 - "${raw_environment_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-expected_distribution = sys.argv[2]
-distribution = document["payload"]["runtime"]["runtimeDistribution"]
-runtime = document["payload"]["sqlite"]["runtime"]
-status = runtime.get("status")
-if distribution != expected_distribution:
-    raise SystemExit(
-        "unexpected direct-Java runtime distribution: "
-        + distribution
-        + " != "
-        + expected_distribution
-    )
-if status != "ready":
-    raise SystemExit(
-        "unexpected direct-Java runtime status: "
-        + repr(status)
-        + " != 'ready'"
-    )
-provenance = runtime.get("runtimeProvenance")
-if provenance != "source-checkout-managed":
-    raise SystemExit(
-        "unexpected direct-Java runtime provenance: "
-        + repr(provenance)
-        + " != source-checkout-managed"
-    )
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-runtime-environment \
+    --document "${raw_environment_stdout}" \
+    --expected-distribution "${expected_direct_java_runtime_distribution}" \
+    --expected-status ready \
+    --expected-provenance source-checkout-managed \
+    --label 'developer direct-Java'
 
 progress 'direct-java open-book'
 "${raw_java_wrapper}" \
@@ -522,33 +332,13 @@ progress 'direct-java open-book'
     die "developer direct-Java open-book failed"
 
 [[ ! -s "${raw_open_stderr}" ]] || die "developer direct-Java open-book wrote diagnostics"
-python3 - "${raw_open_stdout}" "${entity_name}" "${functional_currency}" "${fiscal_year_start}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-payload = document["payload"]
-book_identity = payload["bookIdentity"]
-if document["status"] != "ok":
-    raise SystemExit("developer direct-Java open-book did not return ok")
-if book_identity["entityName"] != sys.argv[2]:
-    raise SystemExit("developer direct-Java open-book returned the wrong entity name")
-if book_identity["accountingKernelProfile"] != "internal-management-cash-bookkeeping-kernel":
-    raise SystemExit("developer direct-Java open-book returned the wrong accounting kernel")
-if book_identity["accountingBasis"] != "CASH_BASIS":
-    raise SystemExit("developer direct-Java open-book returned the wrong accounting basis")
-if book_identity["accountingFrameworkPosition"] != "NON_STATUTORY_INTERNAL_MANAGEMENT":
-    raise SystemExit("developer direct-Java open-book returned the wrong framework posture")
-if book_identity["entityForm"] != "OWNER_MANAGED_SINGLE_ENTITY":
-    raise SystemExit("developer direct-Java open-book returned the wrong entity form")
-if book_identity["bookTemplateId"] != "OWNER_MANAGED_SERVICE_CASH":
-    raise SystemExit("developer direct-Java open-book returned the wrong book template")
-if book_identity["functionalCurrency"] != sys.argv[3]:
-    raise SystemExit("developer direct-Java open-book returned the wrong functional currency")
-if book_identity["fiscalYearStart"] != sys.argv[4]:
-    raise SystemExit("developer direct-Java open-book returned the wrong fiscal year start")
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-open-book \
+    --document "${raw_open_stdout}" \
+    --label 'developer direct-Java' \
+    --entity-name "${entity_name}" \
+    --functional-currency "${functional_currency}" \
+    --fiscal-year-start "${fiscal_year_start}"
 
 progress 'raw java -jar help surface'
 java -jar "${raw_jar}" help --output text >"${raw_jar_help_stdout}" 2>"${raw_jar_help_stderr}" ||
@@ -569,32 +359,15 @@ java -jar "${raw_jar}" environment --output json >"${raw_jar_environment_stdout}
     2>"${raw_jar_environment_stderr}" || die "raw java -jar environment failed"
 
 [[ ! -s "${raw_jar_environment_stderr}" ]] || die "raw java -jar environment wrote diagnostics"
-python3 - "${raw_jar_environment_stdout}" "${expected_direct_java_runtime_distribution}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-payload = document["payload"]
-distribution = payload["runtime"]["runtimeDistribution"]
-runtime = payload["sqlite"]["runtime"]
-if distribution != sys.argv[2]:
-    raise SystemExit(
-        "unexpected raw java -jar runtime distribution: "
-        + distribution
-        + " != "
-        + sys.argv[2]
-    )
-if runtime["status"] != "unavailable":
-    raise SystemExit("raw java -jar environment did not report an unavailable SQLite runtime")
-issue = runtime["runtimeIssue"]
-if (
-    "supported FinGrind bundle launcher" not in issue
-    and "supported FinGrind launcher surface" not in issue
-    and ":cli:prepareSourceCheckoutCliRuntime" not in issue
-):
-    raise SystemExit("raw java -jar environment did not surface the supported-launcher repair guidance")
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-runtime-environment \
+    --document "${raw_jar_environment_stdout}" \
+    --expected-distribution "${expected_direct_java_runtime_distribution}" \
+    --expected-status unavailable \
+    --label 'raw java -jar' \
+    --issue-substring 'supported FinGrind bundle launcher' \
+    --issue-substring 'supported FinGrind launcher surface' \
+    --issue-substring ':cli:prepareSourceCheckoutCliRuntime'
 
 progress 'raw java -jar runtime failure envelope'
 set +e
@@ -614,22 +387,7 @@ set -e
 [[ ! -s "${raw_jar_open_stderr}" ]] || die "raw java -jar open-book wrote diagnostics"
 [[ ! -f "${tmp_dir}/raw-jar-direct.sqlite" ]] || die \
     "raw java -jar open-book created a book despite missing native access"
-python3 - "${raw_jar_open_stdout}" <<'PY'
-import json
-import pathlib
-import sys
-
-document = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-if document["status"] != "error":
-    raise SystemExit("raw java -jar open-book did not fail with an error envelope")
-if document["code"] != "managed-runtime-failure":
-    raise SystemExit("raw java -jar open-book did not classify the failure as managed-runtime-failure")
-message = document["message"]
-hint = document.get("hint", "")
-if ":cli:prepareSourceCheckoutCliRuntime" not in message and ":cli:prepareSourceCheckoutCliRuntime" not in hint:
-    raise SystemExit("raw java -jar open-book did not report the source-checkout runtime recovery path")
-if "supported launchers" not in message and "supported launchers" not in hint:
-    raise SystemExit("raw java -jar open-book did not direct the operator toward supported launchers")
-PY
+python3 "${launcher_contract_test_support}" \
+    assert-runtime-failure-envelope "${raw_jar_open_stdout}"
 
 printf 'source-checkout launcher regression: success\n'

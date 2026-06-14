@@ -30,6 +30,7 @@ SQL_COMMENT_LINE_RE = re.compile(r"^\s*--")
 SQL_IMPORT_RE = re.compile(r"^\s*(?:create|alter|drop)\s+", re.MULTILINE)
 MARKDOWN_COMMENT_BLOCK_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 MARKDOWN_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+", re.MULTILINE)
+JSON_KEY_RE = re.compile(r'^\s*"(?:\\.|[^"\\])*"\s*:', re.MULTILINE)
 
 
 def measure_kotlin_file(path: Path) -> FileMetrics:
@@ -96,6 +97,19 @@ def measure_markdown_file(path: Path) -> FileMetrics:
         import_like_lines=len(MARKDOWN_HEADING_RE.findall(text)),
         functions=0,
         nested_types=0,
+        normalized_nonempty_lines=normalized_lines,
+    )
+
+
+def measure_json_file(path: Path) -> FileMetrics:
+    text = path.read_text(encoding="utf-8")
+    normalized_lines = normalized_nonempty_lines(text.splitlines())
+    return FileMetrics(
+        physical_lines=len(text.splitlines()),
+        logical_lines=len(normalized_lines),
+        import_like_lines=len(JSON_KEY_RE.findall(text)),
+        functions=0,
+        nested_types=count_json_nested_structures(text),
         normalized_nonempty_lines=normalized_lines,
     )
 
@@ -181,6 +195,33 @@ def strip_sql_comments(text: str) -> str:
         comment_index = line.find(" --")
         cleaned.append(line[:comment_index] if comment_index >= 0 else line)
     return "\n".join(cleaned)
+
+
+def count_json_nested_structures(text: str) -> int:
+    in_string = False
+    escape = False
+    container_depth = 0
+    nested_structures = 0
+    for character in text:
+        if in_string:
+            if escape:
+                escape = False
+            elif character == "\\":
+                escape = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+            continue
+        if character in "{[":
+            if container_depth > 0:
+                nested_structures += 1
+            container_depth += 1
+            continue
+        if character in "}]" and container_depth > 0:
+            container_depth -= 1
+    return nested_structures
 
 
 def normalized_nonempty_lines(lines: Iterable[str]) -> tuple[str, ...]:

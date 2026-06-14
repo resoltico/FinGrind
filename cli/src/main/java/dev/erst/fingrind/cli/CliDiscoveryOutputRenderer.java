@@ -9,9 +9,14 @@ import java.util.Objects;
 final class CliDiscoveryOutputRenderer {
   private CliDiscoveryOutputRenderer() {}
 
-  static String renderHelpText(HelpDescriptor helpDescriptor) {
+  static String renderHelpText(
+      HelpDescriptor helpDescriptor,
+      EnvironmentDescriptor environmentDescriptor,
+      boolean terseTopLevel) {
     Objects.requireNonNull(helpDescriptor, "helpDescriptor");
-    return CliDiscoveryHelpTextRenderer.renderHelpText(helpDescriptor);
+    Objects.requireNonNull(environmentDescriptor, "environmentDescriptor");
+    return CliDiscoveryHelpTextRenderer.renderHelpText(
+        helpDescriptor, environmentDescriptor, terseTopLevel);
   }
 
   static String renderCapabilitiesText(

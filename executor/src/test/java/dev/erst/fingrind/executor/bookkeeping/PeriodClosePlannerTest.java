@@ -46,9 +46,10 @@ class PeriodResultTransferPlannerTest {
   private static MethodHandle plannerHelper(String methodName) {
     try {
       MethodHandles.Lookup lookup =
-          MethodHandles.privateLookupIn(PeriodResultTransferPlanner.class, MethodHandles.lookup());
+          MethodHandles.privateLookupIn(
+              PeriodResultTransferCloseDraftFactory.class, MethodHandles.lookup());
       return lookup.findStatic(
-          PeriodResultTransferPlanner.class,
+          PeriodResultTransferCloseDraftFactory.class,
           methodName,
           MethodType.methodType(String.class, String.class));
     } catch (IllegalAccessException | NoSuchMethodException exception) {

@@ -216,13 +216,13 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.53.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.54.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
     return new EnvironmentDescriptor(
         new EnvironmentRuntimeDescriptor(
-            ProtocolCatalog.distribution().bundleRuntimeDistribution()),
+            ProtocolCatalog.distribution().bundleRuntimeDistribution(), OutputMode.TEXT, null),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
