@@ -9,11 +9,13 @@ import kotlin.test.assertTrue
 class DockerManagedSqliteContainerBuildPlanTest {
     @Test
     fun dockerRunCommand_usesDirectContainerCompilationAndAnonymousFriendlyPulls() {
+        val inputDirectory = Path.of("/tmp/input directory")
+        val outputDirectory = Path.of("/tmp/output directory")
         val command =
             DockerManagedSqliteContainerBuildPlan.dockerRunCommand(
                 platform = "linux/arm64",
-                inputDirectory = Path.of("/tmp/input directory"),
-                outputDirectory = Path.of("/tmp/output directory"),
+                inputDirectory = inputDirectory,
+                outputDirectory = outputDirectory,
                 builderImage = "example/builder@sha256:abc123",
                 buildBasePackage = "build-base",
                 pythonPackage = "python3",
@@ -36,15 +38,14 @@ class DockerManagedSqliteContainerBuildPlanTest {
         assertTrue(command.contains("--pull=always"))
         assertTrue(command.contains("--rm"))
         assertTrue(command.contains("--platform"))
+        val inputMount =
+            "type=bind,source=${inputDirectory.toAbsolutePath()},target=/input,readonly"
         assertTrue(
-            command.contains(
-                "type=bind,source=/tmp/input directory,target=/input,readonly",
-            ),
+            command.contains(inputMount),
         )
+        val outputMount = "type=bind,source=${outputDirectory.toAbsolutePath()},target=/output"
         assertTrue(
-            command.contains(
-                "type=bind,source=/tmp/output directory,target=/output",
-            ),
+            command.contains(outputMount),
         )
         assertTrue(command.contains("example/builder@sha256:abc123"))
         assertFalse(command.contains("buildx"))
