@@ -13,17 +13,18 @@ final class CliFailureResponseWriter {
 
   void writeFailure(CliFailure failure, OutputMode outputMode) {
     if (outputMode == OutputMode.TEXT) {
-      outputChannel.writeText(CliFailureOutputRenderer.renderFailureText(failure));
+      outputChannel.writeFailureText(CliFailureOutputRenderer.renderFailureText(failure));
       return;
     }
-    outputChannel.writeEnvelope(CliEnvelopeMapper.failureEnvelope(failure));
+    outputChannel.writeDiagnosticEnvelope(CliEnvelopeMapper.failureEnvelope(failure));
   }
 
   void writeDeterministicFailure(CliFailure failure, OutputMode outputMode) {
     if (outputMode == OutputMode.TEXT) {
-      outputChannel.writeText(CliFailureOutputRenderer.renderDeterministicFailureText(failure));
+      outputChannel.writeFailureText(
+          CliFailureOutputRenderer.renderDeterministicFailureText(failure));
       return;
     }
-    outputChannel.writeEnvelope(CliEnvelopeMapper.failureEnvelope(failure));
+    outputChannel.writeDiagnosticEnvelope(CliEnvelopeMapper.failureEnvelope(failure));
   }
 }

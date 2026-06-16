@@ -24,8 +24,8 @@ System.getProperty("fingrind.gradle.build-logic-dir")
         ?.let(layout.buildDirectory::set)
 
 plugins {
-    kotlin("jvm") version "2.4.0"
-    kotlin("plugin.sam.with.receiver") version "2.4.0"
+    kotlin("jvm")
+    kotlin("plugin.sam.with.receiver")
     `java-gradle-plugin`
 }
 

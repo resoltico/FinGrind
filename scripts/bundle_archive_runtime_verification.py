@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-import shutil
+import zipfile
 from pathlib import Path
 
 from bundle_archive_contract_support import (
     bundled_java_command,
     joined_path,
+    load_bundle_manifest,
     normalize_newlines,
     normalized_command_output,
     require,
     require_match,
     require_no_match,
+    resolve_bundle_target,
     verify_java_version,
 )
 
@@ -45,27 +47,17 @@ def verify_bundled_runtime(bundle_root: Path, contract: dict[str, object]) -> No
 
 
 def verify_distributed_module_identity(bundle_root: Path, contract: dict[str, object]) -> None:
-    host_bundle_target = contract["bundleLayout"]["hostBundleTarget"]
-    assert isinstance(host_bundle_target, dict)
-    launcher_path = joined_path(bundle_root, str(host_bundle_target["launcherPath"]))
+    manifest = load_bundle_manifest(bundle_root)
+    _, bundle_target = resolve_bundle_target(contract, manifest)
+    launcher_path = joined_path(bundle_root, str(bundle_target["launcherPath"]))
     application_jar = bundle_root / "lib" / "app" / "fingrind.jar"
-    jar_command = shutil.which("jar")
+    jar_manifest = bundled_jar_manifest_attributes(application_jar)
     require(
-        jar_command is not None,
-        "missing host jar command while verifying the bundled module identity",
-    )
-
-    describe_output = normalized_command_output(
-        [jar_command, "--describe-module", "--file", str(application_jar)],
-    )
-    require_match(
-        describe_output,
-        r"^dev\.erst\.fingrind\.cli automatic$",
+        jar_manifest.get("Automatic-Module-Name") == "dev.erst.fingrind.cli",
         "bundled application JAR did not publish the canonical automatic module identity",
     )
-    require_match(
-        describe_output,
-        r"^main-class dev\.erst\.fingrind\.cli\.App$",
+    require(
+        jar_manifest.get("Main-Class") == "dev.erst.fingrind.cli.App",
         "bundled application JAR did not publish the canonical main class",
     )
 
@@ -85,3 +77,35 @@ def verify_distributed_module_identity(bundle_root: Path, contract: dict[str, ob
         r"--module",
         "bundle launcher did not target the canonical JPMS application module",
     )
+    require_no_match(
+        launcher_text,
+        r"\{\{[A-Za-z0-9]+\}\}",
+        "bundle launcher contained unresolved template placeholders",
+    )
+
+
+def bundled_jar_manifest_attributes(application_jar: Path) -> dict[str, str]:
+    require(application_jar.is_file(), f"missing bundled application JAR at {application_jar}")
+    with zipfile.ZipFile(application_jar) as jar_file:
+        manifest_text = normalize_newlines(jar_file.read("META-INF/MANIFEST.MF").decode("utf-8"))
+
+    attributes: dict[str, str] = {}
+    current_key: str | None = None
+    for raw_line in manifest_text.splitlines():
+        if not raw_line:
+            continue
+        if raw_line.startswith(" "):
+            require(
+                current_key is not None,
+                "bundled application JAR manifest began one continuation line without one attribute",
+            )
+            attributes[current_key] += raw_line[1:]
+            continue
+        key, separator, value = raw_line.partition(":")
+        require(
+            separator == ":" and key.strip(),
+            "bundled application JAR manifest contained one malformed attribute line",
+        )
+        current_key = key
+        attributes[current_key] = value.lstrip()
+    return attributes

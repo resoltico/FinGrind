@@ -9,16 +9,14 @@ import java.util.Set;
 final class SqliteHeldLease
     implements SqliteProtectedBookLeaseAcquisition, ProtectedBookMaintenanceStore.HeldLease {
   private final Path artifactPath;
-  private final SqliteLeaseFileHandle leaseFileHandle;
+  private final SqliteLeaseHandle leaseHandle;
   private final ThreadLocal<Set<Path>> ownedArtifactPaths;
   private boolean closed;
 
   SqliteHeldLease(
-      Path artifactPath,
-      SqliteLeaseFileHandle leaseFileHandle,
-      ThreadLocal<Set<Path>> ownedArtifactPaths) {
+      Path artifactPath, SqliteLeaseHandle leaseHandle, ThreadLocal<Set<Path>> ownedArtifactPaths) {
     this.artifactPath = Objects.requireNonNull(artifactPath, "artifactPath");
-    this.leaseFileHandle = Objects.requireNonNull(leaseFileHandle, "leaseFileHandle");
+    this.leaseHandle = Objects.requireNonNull(leaseHandle, "leaseHandle");
     this.ownedArtifactPaths = Objects.requireNonNull(ownedArtifactPaths, "ownedArtifactPaths");
   }
 
@@ -34,6 +32,6 @@ final class SqliteHeldLease
     }
     closed = true;
     ownedArtifactPaths.get().remove(artifactPath);
-    leaseFileHandle.closeAndDelete();
+    leaseHandle.closeAndDelete();
   }
 }

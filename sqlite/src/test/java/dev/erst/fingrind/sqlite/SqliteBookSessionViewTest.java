@@ -225,8 +225,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(
           new PeriodResultTransferOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          assertInstanceOf(
-                  SqlitePeriodResultTransferCapabilitySession.class, periodResultTransferSession)
+          SqliteCapabilitySessions.storeOf(periodResultTransferSession)
               .transferPeriodResult(
                   emptyPeriodResultTransferDraft(effectiveDate, transferredAt),
                   () -> new PostingId("unused")));

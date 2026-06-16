@@ -20,6 +20,10 @@ class CliResponseWriterMutationSupport extends CliResponseWriterDiscoverySupport
     super(outputStream);
   }
 
+  CliResponseWriterMutationSupport(PrintStream outputStream, PrintStream diagnosticsStream) {
+    super(outputStream, diagnosticsStream);
+  }
+
   void writePostEntryResult(PostEntryResult result) {
     writePostEntryResult(result, OutputMode.JSON);
   }

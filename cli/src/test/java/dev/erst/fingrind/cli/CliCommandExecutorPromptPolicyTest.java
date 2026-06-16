@@ -144,7 +144,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runExecutePlanCommand(
-                PROMPT_BOOK_ACCESS, REQUEST_FILE, PlanResultDetail.FULL));
+                PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON, PlanResultDetail.FULL));
   }
 
   @Test
@@ -160,7 +160,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
             failureWriter(outputStream),
             new CliDiagnosticsWriter(utf8PrintStream(diagnosticsStream)),
             workflow,
-            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.54.0", fixedClock())));
+            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.55.0", fixedClock())));
     CliCommand.ReportOutput jsonOutput = new CliCommand.ReportOutput(OutputMode.JSON, null);
 
     assertPromptFailure(

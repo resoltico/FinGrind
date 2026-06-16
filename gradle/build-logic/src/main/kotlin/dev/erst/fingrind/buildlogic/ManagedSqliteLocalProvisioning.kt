@@ -14,7 +14,7 @@ internal fun registerLocalManagedSqliteTarget(
     sqliteVersionValue: String,
     sqlite3mcVersionValue: String,
     sourcePackageId: String,
-    bundleTarget: DistributionContractReader.BundleTargetContract,
+    bundleTarget: BundleTargetContract,
     taskName: String,
     sourceVerificationTaskName: String,
     toolchainProbeTaskName: String,

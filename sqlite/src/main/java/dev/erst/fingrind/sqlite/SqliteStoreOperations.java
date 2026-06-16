@@ -4,10 +4,14 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import org.jspecify.annotations.Nullable;
 
 /** Shared transaction and failure helpers for SQLite-backed store adapters. */
 final class SqliteStoreOperations {
+  private static final int TRANSIENT_LOCK_MAX_ATTEMPTS = 8;
+  private static final long TRANSIENT_LOCK_RETRY_BASE_MILLIS = 50L;
+
   private SqliteStoreOperations() {}
 
   static void rollbackQuietly(SqliteNativeDatabase activeDatabase) {
@@ -50,6 +54,22 @@ final class SqliteStoreOperations {
         message + " " + exception.resultName() + ": " + detail, exception);
   }
 
+  static <T> T retryTransientLockFailures(SqliteNativeWork<T> work) {
+    Objects.requireNonNull(work, "work");
+    int attempt = 0;
+    while (true) {
+      try {
+        return work.run();
+      } catch (SqliteNativeException exception) {
+        if (!isTransientLockFailure(exception) || attempt >= TRANSIENT_LOCK_MAX_ATTEMPTS - 1) {
+          throw exception;
+        }
+        pauseBeforeTransientLockRetry(attempt + 1);
+        attempt++;
+      }
+    }
+  }
+
   static Optional<ContractFailure> protectedBookVerificationFailure(
       SqliteNativeException exception) {
     if (isProtectedBookVerificationResultCode(exception.resultCode())) {
@@ -87,5 +107,39 @@ final class SqliteStoreOperations {
             + " is unsupported. Expected version "
             + expectedBookVersion
             + ".");
+  }
+
+  private static boolean isTransientLockFailure(SqliteNativeException exception) {
+    return SqliteNativeResultCode.matchesAny(
+        Objects.requireNonNull(exception, "exception").resultCode(),
+        "BUSY",
+        "BUSY_RECOVERY",
+        "BUSY_SNAPSHOT",
+        "BUSY_TIMEOUT",
+        "LOCKED",
+        "LOCKED_SHAREDCACHE",
+        "READONLY_CANTLOCK",
+        "IOERR_BLOCKED",
+        "IOERR_CHECKRESERVEDLOCK",
+        "IOERR_LOCK",
+        "IOERR_RDLOCK",
+        "IOERR_SHMLOCK",
+        "IOERR_UNLOCK");
+  }
+
+  private static void pauseBeforeTransientLockRetry(int attemptNumber) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(TRANSIENT_LOCK_RETRY_BASE_MILLIS * attemptNumber);
+    } catch (InterruptedException exception) {
+      throw new IllegalStateException(
+          "Interrupted while retrying one transient SQLite lock failure.", exception);
+    }
+  }
+
+  /** One SQLite-native unit of work that participates in transient-lock retry handling. */
+  @FunctionalInterface
+  interface SqliteNativeWork<T> {
+    /** Executes one SQLite-native unit of work for transient-lock retry handling. */
+    T run();
   }
 }

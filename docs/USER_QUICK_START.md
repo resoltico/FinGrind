@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: USER_QUICK_START
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, quick start, first run, open book, starter chart, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -11,14 +11,16 @@ route:
 # Quick Start
 
 **Purpose**: Get one protected FinGrind book running, post one entry, and read one report back.
-**Prerequisites**: Download one public FinGrind Linux bundle and unpack it on a glibc Linux host.
-The public download already includes what it needs to run. On macOS or Windows, use the published
-container workflow in [USER_CONTAINER.md](./USER_CONTAINER.md) instead of the bundle path.
+**Prerequisites**: Download one public FinGrind bundle that matches your host and unpack it. The
+published Linux bundles require glibc `2.34` or newer; use the compatibility matrix below as the
+authoritative target check. The public bundle already includes what it needs to run. The examples
+below use the extracted bundle launcher directly. If you prefer the mounted-workspace container
+surface instead, use [USER_CONTAINER.md](./USER_CONTAINER.md).
 
-In the examples below, `fingrind` means a session-local shell function backed by the launcher
-inside the extracted Linux bundle. The commands use relative paths in the current working
-directory. The public bundle does not include the repository's `docs/examples/` fixtures, but it
-does ship one offline `./quick-start-request.json` sample document for the first posting flow.
+In the examples below, `fingrind` means a session-local wrapper around the launcher inside the
+extracted bundle. The commands use relative paths in the current working directory. The public
+bundle does not include the repository's `docs/examples/` fixtures, but it does ship one offline
+`./quick-start-request.json` sample document for the first posting flow.
 
 ## 1. Pick And Verify The Download
 
@@ -27,11 +29,11 @@ Choose the archive that matches your host:
 <!-- BEGIN GENERATED USER_QUICK_START BUNDLE MATRIX -->
 | Target | Archive name pattern | Launcher path | Compatibility | Status |
 |:-------|:---------------------|:--------------|:--------------|:-------|
-| `linux-x86_64` | `fingrind-<version>-linux-x86_64.tar.gz` | `bin/fingrind` | `glibc Linux x86_64` | published |
-| `linux-aarch64` | `fingrind-<version>-linux-aarch64.tar.gz` | `bin/fingrind` | `glibc Linux aarch64` | published |
-| `macos-aarch64` | `fingrind-<version>-macos-aarch64.tar.gz` | `bin/fingrind` | `macOS aarch64` | not published |
-| `macos-x86_64` | `fingrind-<version>-macos-x86_64.tar.gz` | `bin/fingrind` | `macOS x86_64` | not published |
-| `windows-x86_64` | `fingrind-<version>-windows-x86_64.zip` | `bin/fingrind.ps1` | `Windows x86_64` | not published |
+| `macos-aarch64` | `fingrind-<version>-macos-aarch64.tar.gz` | `bin/fingrind` | `macOS aarch64` | published |
+| `macos-x86_64` | `fingrind-<version>-macos-x86_64.tar.gz` | `bin/fingrind` | `macOS x86_64` | published |
+| `linux-x86_64` | `fingrind-<version>-linux-x86_64.tar.gz` | `bin/fingrind` | `glibc 2.34+ Linux x86_64` | published |
+| `linux-aarch64` | `fingrind-<version>-linux-aarch64.tar.gz` | `bin/fingrind` | `glibc 2.34+ Linux aarch64` | published |
+| `windows-x86_64` | `fingrind-<version>-windows-x86_64.zip` | `bin/fingrind.ps1` | `Windows x86_64` | published |
 | `windows-aarch64` | `fingrind-<version>-windows-aarch64.zip` | `bin/fingrind.ps1` | `Windows aarch64` | not published |
 <!-- END GENERATED USER_QUICK_START BUNDLE MATRIX -->
 
@@ -56,18 +58,23 @@ with [USER_INSTALL.md](./USER_INSTALL.md).
 
 ## 2. Check That The Download Runs
 
+Unix shells:
+
 ```bash
 tar -xzf <downloaded-archive>.tar.gz
 ./<extracted-directory>/bin/fingrind version
+fingrind() { "./<extracted-directory>/bin/fingrind" "$@"; }
+```
+
+Windows PowerShell:
+
+```powershell
+Expand-Archive <downloaded-archive>.zip -DestinationPath .
+& .\<extracted-directory>\bin\fingrind.ps1 version
+function fingrind { & ".\<extracted-directory>\bin\fingrind.ps1" @Args }
 ```
 
 Use the actual archive and extracted directory names from the release you downloaded.
-
-For the remaining copy-paste commands below, define `fingrind` once in your current shell session.
-
-```bash
-fingrind() { "./<extracted-directory>/bin/fingrind" "$@"; }
-```
 
 ## 3. Create A Key File
 

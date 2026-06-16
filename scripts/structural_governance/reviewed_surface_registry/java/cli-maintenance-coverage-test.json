@@ -1,0 +1,22 @@
+{
+  "projectPath": "cli",
+  "relativePath": "src/test/java/dev/erst/fingrind/cli/CliMaintenanceCoverageTest.java",
+  "owner": "cli-maintenance-tests",
+  "reason": "The CLI maintenance coverage suite intentionally spans the maintenance command matrix in one reviewed executable contract.",
+  "splitTrigger": "Split by maintenance command family before adding another broad matrix branch.",
+  "reviewedRoleName": "cli-maintenance-coverage-test",
+  "budgetVarianceReason": "The maintenance coverage matrix exceeds the default test-suite budget until maintenance command families are split further.",
+  "approval": {
+    "physicalLines": 1001,
+    "logicalLines": 923,
+    "importLikeLines": 23,
+    "nestedTypes": 0,
+    "functions": 12,
+    "fieldsPerTopLevelType": 0,
+    "switchArmsPerMethod": 0,
+    "methodLineSpan": 341,
+    "methodParameters": 3,
+    "methodDecisionPoints": 1,
+    "expiresOn": "2026-07-21"
+  }
+}

@@ -9,7 +9,6 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
 import dev.erst.fingrind.executor.bookkeeping.ChartOfAccounts;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
-import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import java.time.Clock;
 import java.util.Objects;
@@ -46,8 +45,7 @@ public final class BookAdministrationService {
   /** Declares or reactivates one account in the selected book. */
   public AccountDeclarationOutcome declareAccount(AccountDeclaration command) {
     Objects.requireNonNull(command, "command");
-    BookLifecycleInspection inspection = lifecycleReader.inspectBook();
-    if (!inspection.allowsInitializedWorkflow()) {
+    if (!lifecycleReader.allowsInitializedWorkflow()) {
       return new AccountDeclarationOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
     }

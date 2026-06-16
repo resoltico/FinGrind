@@ -45,12 +45,13 @@ import java.util.function.Function;
 
 /** Application service that owns every read-only book workflow behind one unified seam. */
 public final class BookReadService {
+  private final BookkeepingReadStore bookStore;
   private final BookkeepingReadService bookkeepingReadService;
 
   /** Creates the read service with its application-owned inspection, query, and report seam. */
   public BookReadService(BookkeepingReadStore bookStore) {
-    this.bookkeepingReadService =
-        new BookkeepingReadService(Objects.requireNonNull(bookStore, "bookStore"));
+    this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
+    this.bookkeepingReadService = new BookkeepingReadService(this.bookStore);
   }
 
   /** Inspects the selected book file without mutating it. */
@@ -211,7 +212,7 @@ public final class BookReadService {
   }
 
   private BookIdentity currentBookIdentity() {
-    return requireInitializedBookIdentity(bookkeepingReadService.inspectBook());
+    return bookkeepingReadService.requireInitializedBookIdentity();
   }
 
   private BookInspection.ResultTransferReadiness resultTransferReadiness(
@@ -219,8 +220,7 @@ public final class BookReadService {
     var requiredClassification =
         BookkeepingResultTransferReadSupport.requiredResultHoldingClassification(bookIdentity);
     ResultHoldingSelection selection =
-        BookkeepingResultTransferReadSupport.resultHoldingSelection(
-            bookIdentity, bookkeepingReadService.bookStore());
+        BookkeepingResultTransferReadSupport.resultHoldingSelection(bookIdentity, bookStore);
     return switch (selection) {
       case AcceptedResultHoldingSelection accepted ->
           new BookInspection.ResultTransferReadiness(
@@ -241,23 +241,6 @@ public final class BookReadService {
             RejectionNarrative.message(published),
             rejected.candidateAccountCodes());
       }
-    };
-  }
-
-  static BookIdentity requireInitializedBookIdentity(
-      dev.erst.fingrind.executor.spi.BookLifecycleInspection inspection) {
-    Objects.requireNonNull(inspection, "inspection");
-    return switch (inspection) {
-      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized initialized ->
-          initialized.bookIdentity();
-      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Missing _ ->
-          throw new IllegalStateException(
-              "Book identity is unavailable because the book is missing.");
-      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Existing existing ->
-          throw new IllegalStateException(
-              "Book identity is unavailable for non-initialized book status "
-                  + existing.status().wireValue()
-                  + ".");
     };
   }
 }

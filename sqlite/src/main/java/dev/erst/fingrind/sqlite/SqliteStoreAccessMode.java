@@ -52,6 +52,10 @@ enum SqliteStoreAccessMode {
     return defersMissingBookOpen;
   }
 
+  boolean usesOperationalBookStateGate() {
+    return queryOnly;
+  }
+
   void requireWritableMutation() {
     if (!writable) {
       throw new IllegalStateException(

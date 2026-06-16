@@ -58,10 +58,6 @@ internal object DistributionContractReaderTestSupport {
           "runtimeModuleDiscovery": {
             "allowedMissingDependencyPrefixes": "allowedMissingDependencyPrefixes"
           },
-          "publicDistribution": {
-            "supportedPublicCliBundleTargets": "supportedTargets",
-            "unsupportedPublicCliBundleTargets": "unsupportedTargets"
-          },
           "managedSqlite": {
             "requiredMinimumSqliteVersion": "minimumSqliteVersion",
             "requiredSqlite3mcVersion": "sqlite3mcVersion",
@@ -85,7 +81,15 @@ internal object DistributionContractReaderTestSupport {
             "archiveFormat": "archiveFormat",
             "launcherPath": "launcherPath",
             "launcherCommand": "launcherCommand",
-            "sqliteLibraryFileName": "sqliteLibraryFileName"
+            "sqliteLibraryFileName": "sqliteLibraryFileName",
+            "compatibilityLabel": "compatibilityLabel",
+            "minimumGlibcVersion": "minimumGlibcVersion",
+            "compatibilitySmokeContainerImage": "compatibilitySmokeContainerImage"
+          },
+          "bundlePublication": {
+            "bundleTargets": "bundleTargets",
+            "status": "status",
+            "runnerLabel": "runnerLabel"
           },
           "operationIdContract": {
             "help": "OP_HELP",
@@ -115,10 +119,6 @@ internal object DistributionContractReaderTestSupport {
           "runtimeModuleDiscovery": {
             "allowedMissingDependencyPrefixes": "allowedMissingDependencyPrefixes"
           },
-          "publicDistribution": {
-            "supportedPublicCliBundleTargets": "supportedTargets",
-            "unsupportedPublicCliBundleTargets": "unsupportedTargets"
-          },
           "managedSqlite": {
             "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
             "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
@@ -142,13 +142,118 @@ internal object DistributionContractReaderTestSupport {
             "archiveFormat": "archiveFormat",
             "launcherPath": "launcherPath",
             "launcherCommand": "launcherCommand",
-            "sqliteLibraryFileName": "sqliteLibraryFileName"
+            "sqliteLibraryFileName": "sqliteLibraryFileName",
+            "compatibilityLabel": "compatibilityLabel",
+            "minimumGlibcVersion": "minimumGlibcVersion",
+            "compatibilitySmokeContainerImage": "compatibilitySmokeContainerImage"
+          },
+          "bundlePublication": {
+            "bundleTargets": "bundleTargets",
+            "status": "status",
+            "runnerLabel": "runnerLabel"
           },
           "operationIdContract": {
             "help": "HELP",
             "capabilities": "CAPABILITIES",
             "printRequestTemplate": "PRINT_REQUEST_TEMPLATE",
             "printPlanTemplate": "PRINT_PLAN_TEMPLATE"
+          }
+        }
+        """.trimIndent()
+
+    fun sharedBundleLayoutContractJson(): String =
+        """
+        {
+          "bundleTargets": {
+            "macos-aarch64": {
+              "operatingSystemId": "macos",
+              "architectureId": "aarch64",
+              "archiveFormat": "tar.gz",
+              "launcherPath": "bin/fingrind",
+              "launcherCommand": "./bin/fingrind",
+              "sqliteLibraryFileName": "libsqlite3.dylib",
+              "compatibilityLabel": "macOS aarch64"
+            },
+            "linux-x86_64": {
+              "operatingSystemId": "linux",
+              "architectureId": "x86_64",
+              "archiveFormat": "tar.gz",
+              "launcherPath": "bin/fingrind",
+              "launcherCommand": "./bin/fingrind",
+              "sqliteLibraryFileName": "libsqlite3.so.0",
+              "compatibilityLabel": "glibc 2.34+ Linux x86_64",
+              "minimumGlibcVersion": "2.34",
+              "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof"
+            },
+            "linux-aarch64": {
+              "operatingSystemId": "linux",
+              "architectureId": "aarch64",
+              "archiveFormat": "tar.gz",
+              "launcherPath": "bin/fingrind",
+              "launcherCommand": "./bin/fingrind",
+              "sqliteLibraryFileName": "libsqlite3.so.0",
+              "compatibilityLabel": "glibc 2.34+ Linux aarch64",
+              "minimumGlibcVersion": "2.34",
+              "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof"
+            },
+            "macos-x86_64": {
+              "operatingSystemId": "macos",
+              "architectureId": "x86_64",
+              "archiveFormat": "tar.gz",
+              "launcherPath": "bin/fingrind",
+              "launcherCommand": "./bin/fingrind",
+              "sqliteLibraryFileName": "libsqlite3.dylib",
+              "compatibilityLabel": "macOS x86_64"
+            },
+            "windows-x86_64": {
+              "operatingSystemId": "windows",
+              "architectureId": "x86_64",
+              "archiveFormat": "zip",
+              "launcherPath": "bin/fingrind.ps1",
+              "launcherCommand": ".\\bin\\fingrind.ps1",
+              "sqliteLibraryFileName": "sqlite3.dll",
+              "compatibilityLabel": "Windows x86_64"
+            },
+            "windows-aarch64": {
+              "operatingSystemId": "windows",
+              "architectureId": "aarch64",
+              "archiveFormat": "zip",
+              "launcherPath": "bin/fingrind.ps1",
+              "launcherCommand": ".\\bin\\fingrind.ps1",
+              "sqliteLibraryFileName": "sqlite3.dll",
+              "compatibilityLabel": "Windows aarch64"
+            }
+          }
+        }
+        """.trimIndent()
+
+    fun sharedBundlePublicationContractJson(): String =
+        """
+        {
+          "bundleTargets": {
+            "macos-aarch64": {
+              "status": "published",
+              "runnerLabel": "macos-15"
+            },
+            "linux-x86_64": {
+              "status": "published",
+              "runnerLabel": "ubuntu-24.04"
+            },
+            "linux-aarch64": {
+              "status": "published",
+              "runnerLabel": "ubuntu-24.04-arm"
+            },
+            "macos-x86_64": {
+              "status": "published",
+              "runnerLabel": "macos-15-intel"
+            },
+            "windows-x86_64": {
+              "status": "published",
+              "runnerLabel": "windows-2022"
+            },
+            "windows-aarch64": {
+              "status": "not-published"
+            }
           }
         }
         """.trimIndent()

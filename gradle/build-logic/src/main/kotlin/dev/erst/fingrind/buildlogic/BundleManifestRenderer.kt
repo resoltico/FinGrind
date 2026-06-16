@@ -11,6 +11,7 @@ object BundleManifestRenderer {
         applicationName: String,
         version: String,
         bundleClassifier: String,
+        normalizedArtifactTimestampUtc: String,
     ): String {
         val normalizedApplicationName = applicationName.trim()
         require(normalizedApplicationName.isNotEmpty()) {
@@ -22,12 +23,17 @@ object BundleManifestRenderer {
         require(normalizedBundleClassifier.isNotEmpty()) {
             "Bundle manifest bundle classifier must not be blank."
         }
+        val normalizedTimestamp = normalizedArtifactTimestampUtc.trim()
+        require(normalizedTimestamp.isNotEmpty()) {
+            "Bundle manifest normalized artifact timestamp must not be blank."
+        }
         val bundleTarget =
             DistributionBundleTargetReader.bundleTarget(projectRootDirectory, normalizedBundleClassifier)
         val document =
             BundleManifestDocument(
                 application = normalizedApplicationName,
                 version = normalizedVersion,
+                normalizedArtifactTimestampUtc = normalizedTimestamp,
                 artifactType = "self-contained-cli-bundle",
                 archiveFormat = bundleTarget.archiveFormat,
                 runtimeDistribution =
@@ -39,6 +45,8 @@ object BundleManifestRenderer {
                         classifier = bundleTarget.classifier,
                         operatingSystem = bundleTarget.operatingSystemId,
                         architecture = bundleTarget.architectureId,
+                        compatibilityLabel = bundleTarget.compatibilityLabel,
+                        minimumGlibcVersion = bundleTarget.minimumGlibcVersion,
                     ),
                 supportedPublicCliBundleTargets =
                     DistributionContractReader.publicCliBundleTargets(projectRootDirectory),
@@ -116,6 +124,7 @@ object BundleManifestRenderer {
     private data class BundleManifestDocument(
         val application: String,
         val version: String,
+        val normalizedArtifactTimestampUtc: String,
         val artifactType: String,
         val archiveFormat: String,
         val runtimeDistribution: String,
@@ -135,6 +144,8 @@ object BundleManifestRenderer {
         val classifier: String,
         val operatingSystem: String,
         val architecture: String,
+        val compatibilityLabel: String,
+        val minimumGlibcVersion: String?,
     )
 
     private data class ManagedSqliteDocument(

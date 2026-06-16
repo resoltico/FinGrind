@@ -12,10 +12,12 @@ object FinGrindBuildMetadata {
     data class Values(
         val javaVersion: Int,
         val pythonVersion: String,
+        val kotlinVersion: String,
         val uvVersion: String,
         val implementationVendor: String,
         val implementationLicense: String,
         val foojayResolverConventionVersion: String,
+        val normalizedArtifactEpochSeconds: Long,
     )
 
     fun load(project: Project): Values = load(project.rootProject.projectDir.toPath())
@@ -26,10 +28,13 @@ object FinGrindBuildMetadata {
         return Values(
             javaVersion = property(properties, "fingrindJavaVersion").toInt(),
             pythonVersion = property(properties, "fingrindPythonVersion"),
+            kotlinVersion = property(properties, "fingrindKotlinVersion"),
             uvVersion = property(properties, "fingrindUvVersion"),
             implementationVendor = property(properties, "implementationVendor"),
             implementationLicense = property(properties, "implementationLicense"),
             foojayResolverConventionVersion = property(properties, "foojayResolverConventionVersion"),
+            normalizedArtifactEpochSeconds =
+                property(properties, "normalizedArtifactEpochSeconds").toLong(),
         )
     }
 

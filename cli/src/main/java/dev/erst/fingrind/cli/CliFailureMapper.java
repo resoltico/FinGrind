@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
@@ -22,6 +23,15 @@ final class CliFailureMapper {
   }
 
   static @Nullable CliFailure runtimeFailure(RuntimeException exception) {
+    if (exception instanceof CliArtifactOutputExistsException outputExistsException) {
+      return new CliFailure(
+          ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.code(),
+          message(outputExistsException),
+          "Choose one missing "
+              + outputExistsException.artifactOptionName()
+              + " destination or remove the existing artifact before rerunning the command.",
+          outputExistsException.artifactOptionName());
+    }
     if (exception instanceof CliPdfExportException pdfExportException) {
       return new CliFailure(
           ContractErrors.Descriptor.PDF_EXPORT_FAILURE.code(),
@@ -47,15 +57,22 @@ final class CliFailureMapper {
     };
   }
 
-  static CliFailure internalError(String errorId) {
+  static CliFailure internalError(String errorId, OutputMode outputMode) {
     String normalizedErrorId = requireErrorId(errorId);
     return new CliFailure(
         ContractErrors.Descriptor.INTERNAL_ERROR.code(),
         "FinGrind encountered an internal error. Quote error id "
             + normalizedErrorId
             + " when reporting this defect.",
-        "Inspect the diagnostic stream for the same error id and stack trace, then report the defect instead of retrying unchanged input.",
+        internalErrorHint(Objects.requireNonNull(outputMode, "outputMode")),
         null);
+  }
+
+  private static String internalErrorHint(OutputMode outputMode) {
+    if (outputMode == OutputMode.TEXT) {
+      return "Inspect the diagnostic stream for the same error id and stack trace, then report the defect instead of retrying unchanged input.";
+    }
+    return "FinGrind preserved one machine-readable error envelope on stderr and omitted the raw stack trace for this invocation. Quote the error id when reporting the defect; if you need local crash details, reproduce the failure against a disposable copy with --output text.";
   }
 
   private static String message(Exception exception) {

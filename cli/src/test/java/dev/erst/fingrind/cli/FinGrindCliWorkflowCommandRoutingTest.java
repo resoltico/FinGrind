@@ -195,7 +195,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 bookFilePath.toString(),
                 "--book-key-file",
                 currentBookKeyFilePath.toString(),
-                "--replacement-book-key-file",
+                "--new-book-key-file",
                 replacementBookKeyFilePath.toString())));
     assertEquals(
         List.of(bookAccess(bookFilePath, currentBookKeyFilePath)), workflow.rekeyBookAccesses());
@@ -261,7 +261,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 bookFilePath.toString(),
                 "--book-key-file",
                 currentBookKeyFilePath.toString(),
-                "--backup-file-out",
+                "--backup-book-file-out",
                 backupFilePath.toString(),
                 "--backup-book-key-file-out",
                 backupBookKeyFilePath.toString())));
@@ -272,7 +272,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 "restore-book",
                 "--book-file",
                 bookFilePath.toString(),
-                "--backup-file",
+                "--backup-book-file",
                 backupFilePath.toString(),
                 "--backup-book-key-file",
                 backupBookKeyFilePath.toString())));
@@ -285,7 +285,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 bookFilePath.toString(),
                 "--book-key-file",
                 currentBookKeyFilePath.toString(),
-                "--rollback-file",
+                "--rollback-book-file",
                 rollbackArtifactPath.toString())));
 
     assertEquals(
@@ -357,7 +357,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
-              "--rollback-file",
+              "--rollback-book-file",
               rollbackArtifactPath.toString()
             }));
 

@@ -72,6 +72,9 @@ final class CliPdfReportExporter {
     Objects.requireNonNull(pdfBytes, "pdfBytes");
     Path normalizedOutputPath = outputPath.toAbsolutePath().normalize();
     Path parentDirectory = parentDirectory(normalizedOutputPath);
+    if (Files.exists(normalizedOutputPath)) {
+      throw new CliArtifactOutputExistsException(normalizedOutputPath, "--pdf-out");
+    }
     Path temporaryFile = null;
     try {
       fileOperations.createDirectories(parentDirectory);
@@ -88,10 +91,9 @@ final class CliPdfReportExporter {
 
   private void moveAtomically(Path source, Path target) throws IOException {
     try {
-      fileOperations.moveAtomically(
-          source, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+      fileOperations.moveAtomically(source, target, StandardCopyOption.ATOMIC_MOVE);
     } catch (AtomicMoveNotSupportedException exception) {
-      fileOperations.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+      fileOperations.move(source, target);
     }
   }
 

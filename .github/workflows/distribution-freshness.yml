@@ -1,0 +1,76 @@
+name: Distribution freshness
+
+on:
+  schedule:
+    - cron: "27 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle-and-container-canary:
+    name: Bundle and container canary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Resolve toolchain versions
+        id: build-metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${java_version}" ]
+          [ -n "${python_version}" ]
+          printf 'java-version=%s\n' "${java_version}" >> "$GITHUB_OUTPUT"
+          printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: ${{ steps.build-metadata.outputs.java-version }}
+          distribution: "zulu"
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ steps.build-metadata.outputs.python-version }}
+          cache: "pip"
+          cache-dependency-path: requirements-python-tools.txt
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - name: Install repo-owned Python tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv_version="$(grep '^fingrindUvVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${uv_version}" ]
+          python -m pip install --user "uv==${uv_version}"
+          uv_bin_dir="$(python - <<'PY'
+          import sysconfig
+          print(sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user")))
+          PY
+          )"
+          printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
+          uv_executable="${uv_bin_dir}/uv"
+          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
+          python -m pip install --user -r requirements-python-tools.txt
+
+      - name: Refresh one published Linux bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :cli:bundleCliArchive --no-daemon --console=plain
+          ./scripts/bundle-smoke.sh
+          ./scripts/bundle-smoke.sh --execution-surface compatibility-floor
+
+      - name: Refresh the staged Docker publication surface
+        shell: bash
+        run: ./scripts/docker-smoke.sh

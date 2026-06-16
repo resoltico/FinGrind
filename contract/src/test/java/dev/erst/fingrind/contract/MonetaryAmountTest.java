@@ -29,12 +29,24 @@ class MonetaryAmountTest {
         assertThrows(IllegalArgumentException.class, () -> new MonetaryAmount("EUR", ""))
             .getMessage());
     assertEquals(
-        "minorUnits must contain ASCII decimal digits only.",
+        "minorUnits must contain ASCII decimal digits only after removing signs and separators.",
         assertThrows(IllegalArgumentException.class, () -> new MonetaryAmount("EUR", "10a"))
             .getMessage());
     assertEquals(
-        "minorUnits must contain ASCII decimal digits only.",
+        "minorUnits must contain ASCII decimal digits only after removing signs and separators.",
         assertThrows(IllegalArgumentException.class, () -> new MonetaryAmount("EUR", "10/"))
+            .getMessage());
+    assertEquals(
+        "minorUnits must not be negative.",
+        assertThrows(IllegalArgumentException.class, () -> new MonetaryAmount("EUR", "-10"))
+            .getMessage());
+    assertEquals(
+        "minorUnits must not include a plus sign.",
+        assertThrows(IllegalArgumentException.class, () -> new MonetaryAmount("EUR", "+10"))
+            .getMessage());
+    assertEquals(
+        "minorUnits must be one exact minor-unit integer and must not include a decimal point.",
+        assertThrows(IllegalArgumentException.class, () -> new MonetaryAmount("EUR", "10.5"))
             .getMessage());
     assertEquals(
         "minorUnits must not contain redundant leading zeroes.",

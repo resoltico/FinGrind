@@ -346,20 +346,37 @@ class JazzerRegressionRunnerTest {
   }
 
   @Test
-  void main_replaysCommittedCliSeedsWithoutExiting() {
+  void runMain_replaysCommittedCliSeedsWithoutInvokingExitHandler() throws Exception {
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     ByteArrayOutputStream errors = new ByteArrayOutputStream();
-    try (var ignored = new RedirectedSystemStreams(output, errors)) {
-      assertDoesNotThrow(
-          () ->
-              JazzerRegressionRunner.main(
-                  new String[] {
-                    "--project-root", PROJECT_DIRECTORY.toString(), "--target", "cli-request"
-                  }));
-    }
+    AtomicInteger exitCode = new AtomicInteger(-1);
+
+    assertDoesNotThrow(
+        () ->
+            JazzerRegressionRunner.runMain(
+                new String[] {
+                  "--project-root", PROJECT_DIRECTORY.toString(), "--target", "cli-request"
+                },
+                output,
+                errors,
+                exitCode::set));
 
     assertTrue(output.toString(UTF_8).contains("phase=finish target=cli-request status=SUCCESS"));
     assertNoRegressionErrors(errors.toString(UTF_8));
+    assertEquals(-1, exitCode.get());
+  }
+
+  @Test
+  void main_replaysCommittedCliSeedsToCompletionInChildJvm() throws Exception {
+    ChildJvmSupport.ChildProcessResult result =
+        ChildJvmSupport.runMainClass(
+            JazzerRegressionRunner.class,
+            java.util.List.of(
+                "--project-root", PROJECT_DIRECTORY.toString(), "--target", "cli-request"));
+
+    assertEquals(0, result.exitCode());
+    assertTrue(result.output().contains("phase=finish target=cli-request status=SUCCESS"));
+    assertNoRegressionErrors(result.output());
   }
 
   private static void assertNoRegressionErrors(String errorText) {
@@ -367,30 +384,5 @@ class JazzerRegressionRunnerTest {
     assertFalse(errorText.contains("No regression metadata entries were found"));
     assertFalse(errorText.contains("Committed regression input does not exist"));
     assertFalse(errorText.contains("Regression metadata target mismatch"));
-  }
-
-  private static final class RedirectedSystemStreams implements AutoCloseable {
-    private final java.io.PrintStream previousOut;
-    private final java.io.PrintStream previousErr;
-    private final java.io.PrintStream redirectedOut;
-    private final java.io.PrintStream redirectedErr;
-
-    private RedirectedSystemStreams(
-        ByteArrayOutputStream redirectedOutput, ByteArrayOutputStream redirectedErrors) {
-      previousOut = System.out;
-      previousErr = System.err;
-      redirectedOut = new java.io.PrintStream(redirectedOutput, false, UTF_8);
-      redirectedErr = new java.io.PrintStream(redirectedErrors, false, UTF_8);
-      System.setOut(redirectedOut);
-      System.setErr(redirectedErr);
-    }
-
-    @Override
-    public void close() {
-      System.setOut(previousOut);
-      System.setErr(previousErr);
-      redirectedOut.close();
-      redirectedErr.close();
-    }
   }
 }

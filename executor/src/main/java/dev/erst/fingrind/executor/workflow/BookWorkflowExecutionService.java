@@ -99,7 +99,7 @@ public final class BookWorkflowExecutionService {
       return null;
     }
     try {
-      if (stepExecutor.inspectBook().allowsInitializedWorkflow()) {
+      if (stepExecutor.allowsInitializedWorkflow()) {
         return null;
       }
       return failedResultWithRollback(

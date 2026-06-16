@@ -4,7 +4,7 @@
   "coverageIntent": "exponent notation rejection on a typed cash-revenue request",
   "expectation": {
     "outcomeKind": "expected-invalid",
-    "message": "minorUnits must contain ASCII decimal digits only.",
+    "message": "minorUnits must contain ASCII decimal digits only after removing signs and separators.",
     "details": {
       "type": "POSTING_WORKFLOW_UNPARSED"
     }

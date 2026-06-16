@@ -69,6 +69,7 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
     fun verify() {
         val existingSourceRoots = sourceRoots.files.filter(File::isDirectory).sortedBy { it.path }
         val projectDirectory = File(projectDirectoryPath.get())
+        val projectRootDirectory = projectDirectory.toPath()
         val projectPath = moduleName.get()
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
         val report = reportFile.get().asFile
@@ -106,6 +107,7 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
                         .filter { sourceFile ->
                             val relativePath = projectDisplayPath(sourceFile, projectDirectory)
                             JavaSourceStructuralContracts.includeInDuplicationCheck(
+                                projectRootDirectory = projectRootDirectory,
                                 projectPath = projectPath,
                                 relativePath = relativePath,
                                 packageName = JavaSourceStructuralContracts.packageNameFor(sourceFile),

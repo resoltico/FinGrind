@@ -67,6 +67,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
     @TaskAction
     fun verify() {
         val projectDirectory = File(projectDirectoryPath.get())
+        val projectRootDirectory = projectDirectory.toPath()
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
         val projectPath = moduleName.get()
         val currentDate = LocalDate.now()
@@ -87,6 +88,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                 val packageName = JavaSourceStructuralContracts.packageNameFor(file)
                 val contract =
                     JavaSourceStructuralContracts.contractFor(
+                        projectRootDirectory = projectRootDirectory,
                         projectPath = projectPath,
                         relativePath = relativePath,
                         packageName = packageName,
@@ -144,6 +146,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
             }
         violations +=
             JavaSourceStructuralContracts.missingReviewedSurfaceViolations(
+                projectRootDirectory = projectRootDirectory,
                 projectPath = projectPath,
                 existingRelativePaths = existingRelativePaths,
             )

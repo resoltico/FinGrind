@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: USER_EXAMPLES
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -155,15 +155,15 @@ fingrind \
   rekey-book \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --replacement-book-key-file ./secrets/acme.rotated.book-key
+  --new-book-key-file ./secrets/acme.rotated.book-key
 ```
 
-`--replacement-book-key-file` must point to an existing generated or operator-supplied secret
-file. `rekey-book` also accepts `--replacement-book-passphrase-stdin` and
-`--replacement-book-passphrase-prompt` for the replacement secret. The interactive replacement
+`--new-book-key-file` must point to an existing generated or operator-supplied secret
+file. `rekey-book` also accepts `--new-book-passphrase-stdin` and
+`--new-book-passphrase-prompt` for the new secret. The interactive replacement
 prompt asks for the new passphrase twice and rejects mismatched entries. FinGrind creates one
 same-directory rollback copy before rotating the book and restores the pre-rekey file
-automatically if replacement-passphrase verification fails. If a crash or forced stop interrupts
+automatically if new-passphrase verification fails. If a crash or forced stop interrupts
 that cleanup, the rollback artifact remains in the book directory under the old ciphertext until
 you inspect or delete it; later opens warn when they detect that stale copy.
 
@@ -174,7 +174,7 @@ fingrind \
   rekey-book \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --replacement-book-passphrase-prompt
+  --new-book-passphrase-prompt
 ```
 
 One successful response:
@@ -192,7 +192,7 @@ fingrind \
   backup-book \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --backup-file-out ./backup/books/acme.sqlite \
+  --backup-book-file-out ./backup/books/acme.sqlite \
   --backup-book-key-file-out ./backup/secrets/acme.book-key
 ```
 
@@ -208,7 +208,7 @@ To restore, verify the backup pair and replace the live book path in one step:
 fingrind \
   restore-book \
   --book-file ./books/acme.sqlite \
-  --backup-file ./backup/books/acme.sqlite \
+  --backup-book-file ./backup/books/acme.sqlite \
   --backup-book-key-file ./backup/secrets/acme.book-key
 ```
 
@@ -234,7 +234,7 @@ If the inspection confirms the rollback artifact you want to restore, recover it
 fingrind \
   restore-rekey-rollback \
   --book-file ./books/acme.sqlite \
-  --rollback-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite \
+  --rollback-book-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite \
   --book-key-file ./secrets/acme.book-key
 ```
 
@@ -244,7 +244,7 @@ Delete one stale rollback artifact without changing the live book:
 fingrind \
   delete-rekey-rollback \
   --book-file ./books/acme.sqlite \
-  --rollback-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite \
+  --rollback-book-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite \
   --book-key-file ./secrets/acme.book-key
 ```
 
@@ -376,6 +376,7 @@ fingrind \
   execute-plan \
   --book-file ./books/acme-plan.sqlite \
   --book-key-file ./secrets/acme.book-key \
+  --output json \
   --result-detail full \
   --request-file ./ledger-plan-request.json
 ```
@@ -385,8 +386,9 @@ That plan:
 - posts one balanced entry
 - asserts the resulting cash balance
 
-`execute-plan` defaults to bounded summary output. The examples above pass `--result-detail full`
-because the checked-in response fixtures below include the full execution journal.
+`execute-plan` defaults to a bounded text summary. The examples above pass `--output json` and
+`--result-detail full` because the checked-in response fixtures below include the machine envelope
+and the full execution journal.
 
 Checked-in plan examples:
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
@@ -406,6 +408,7 @@ fingrind \
   execute-plan \
   --book-file ./books/acme-plan.sqlite \
   --book-key-file ./secrets/acme.book-key \
+  --output json \
   --result-detail full \
   --request-file ./ledger-plan-query-request.json
 ```
@@ -470,16 +473,16 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --account-code cash \
-  --effective-date-from 2026-04-07 \
-  --effective-date-to 2026-04-08 \
+  --period-start 2026-04-07 \
+  --period-end 2026-04-08 \
   --output csv
 
 fingrind \
   period-summary \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --effective-date-from 2026-04-07 \
-  --effective-date-to 2026-04-08 \
+  --period-start 2026-04-07 \
+  --period-end 2026-04-08 \
   --output text
 
 fingrind \

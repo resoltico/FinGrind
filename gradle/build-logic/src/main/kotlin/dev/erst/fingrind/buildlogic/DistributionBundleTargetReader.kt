@@ -14,7 +14,7 @@ object DistributionBundleTargetReader {
         projectRootDirectory: Path,
         osName: String = System.getProperty("os.name", ""),
         architecture: String = System.getProperty("os.arch", "unknown"),
-    ): DistributionContractReader.BundleTargetContract =
+    ): BundleTargetContract =
         bundleTarget(
             projectRootDirectory,
             operatingSystemId(osName) + "-" + architectureId(architecture),
@@ -29,7 +29,7 @@ object DistributionBundleTargetReader {
     fun dockerBundleTarget(
         projectRootDirectory: Path,
         architecture: String = System.getProperty("os.arch", "unknown"),
-    ): DistributionContractReader.BundleTargetContract =
+    ): BundleTargetContract =
         bundleTarget(
             projectRootDirectory,
             "linux-" + architectureId(architecture),
@@ -38,7 +38,7 @@ object DistributionBundleTargetReader {
     fun bundleTarget(
         projectRootDirectory: Path,
         classifier: String,
-    ): DistributionContractReader.BundleTargetContract {
+    ): BundleTargetContract {
         val normalizedClassifier = classifier.trim()
         if (normalizedClassifier.isEmpty()) {
             throw IllegalStateException("Bundle target classifier must not be blank.")

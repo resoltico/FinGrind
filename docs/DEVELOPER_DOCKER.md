@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -60,8 +60,8 @@ The container image itself also stays on the same managed-runtime policy as the 
   pipeline that owns bundle artifacts, together with its checksum, toolchain fingerprint, and
   build contract, so Docker does not carry a second native build pipeline
 - on Linux hosts that Docker-target artifact reuses the native host build directly; on non-Linux
-  hosts `:cli:stageDockerBuildContext` materializes the Linux target through a pinned Buildx
-  builder image before Docker image assembly
+  hosts `:cli:stageDockerBuildContext` materializes the Linux target through one pinned anonymous
+  compiler container before Docker image assembly
 - it assembles and ships a private `jlink` runtime instead of inheriting a full general-purpose
   JRE layer
 - it consumes one repository-built staged Docker context produced by
@@ -86,20 +86,21 @@ The container image itself also stays on the same managed-runtime policy as the 
 
 ## Why Anonymous Docker Config Matters
 
-FinGrind's Docker smoke and release verification pull only public images. Those operations should
-not depend on:
+FinGrind's Docker-target Linux artifact preparation plus Docker smoke and release verification pull
+only public images. Those operations should not depend on:
 - Docker Desktop credential-helper availability
 - a contributor's personal Docker Hub login state
 - Docker Desktop plugin and hook behavior in `~/.docker/config.json`
 
 On fresh macOS machines, Docker Desktop's credential helper can stall public metadata fetches even
-though the daemon itself is healthy. FinGrind's smoke script therefore uses a temporary empty
-`DOCKER_CONFIG`, derives the active engine endpoint from the current Docker context, and only if
-that empty config would hide Buildx, stages an already-installed host `docker-buildx` plugin into
-the anonymous config. On macOS that plugin often comes from Docker Desktop; on CI or other hosts it
-may come from a system CLI-plugin directory. That keeps the container-runtime target correct while
-making public pulls and runs independent from personal Docker auth state without falling back to
-Docker's deprecated legacy builder path.
+though the daemon itself is healthy. FinGrind therefore uses a temporary empty `DOCKER_CONFIG`
+for both the non-Linux managed-SQLite compiler container and the smoke script's public image build
+and run path. The smoke script additionally derives the active engine endpoint from the current
+Docker context and, only if that empty config would hide Buildx, stages an already-installed host
+`docker-buildx` plugin into the anonymous config. On macOS that plugin often comes from Docker
+Desktop; on CI or other hosts it may come from a system CLI-plugin directory. That keeps the
+container-runtime target correct while making public pulls and runs independent from personal
+Docker auth state without falling back to Docker's deprecated legacy builder path.
 
 ## Verification
 

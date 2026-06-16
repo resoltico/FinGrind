@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -21,7 +21,8 @@ and [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md).
 FinGrind's public CLI download is a self-contained per-platform archive, not a raw JAR.
 
 Each published archive contains:
-- the POSIX launcher script under `bin/fingrind`
+- the canonical target launcher declared by `bundle-layout-contract.json`:
+  `bin/fingrind` on Unix targets and `bin/fingrind.ps1` on `windows-x86_64`
 - a private Java 26 runtime image built with `jlink`
 - the FinGrind application JAR
 - the managed SQLite native library pinned by the canonical managed-SQLite contract for that target
@@ -70,26 +71,36 @@ self-contained runtime contract, not the primary public artifact.
 ## Public Target Matrix
 
 Current published public bundle targets:
-- `linux-x86_64`
-- `linux-aarch64`
-
-Declared but intentionally not-published public bundle targets:
 - `macos-aarch64`
 - `macos-x86_64`
+- `linux-x86_64`
+- `linux-aarch64`
 - `windows-x86_64`
+
+Declared but intentionally not-published public bundle targets:
 - `windows-aarch64`
 
 Linux bundle policy:
 - public Linux bundles are built on Ubuntu GitHub-hosted runners
-- they therefore target ordinary glibc Linux hosts
+- the public compatibility contract is not inferred from the builder image alone; it is declared
+  in `bundle-layout-contract.json`, emitted into `bundle-manifest.json`, and rendered into the
+  public install docs
+- the current published Linux targets require glibc `2.34` or newer
+- every published Linux bundle is re-smoked twice before release promotion: once on the native
+  GitHub-hosted runner and once inside the contract-declared Rocky Linux 9 compatibility-floor
+  container that represents the minimum supported glibc surface
 - they are not claimed to be one universal binary for every Linux libc variant
 
 macOS and Windows publication policy:
-- the bundle-layout contract keeps macOS and Windows target identities explicit
-- the public-distribution contract marks those identities as not published
-- the repository does not publish unsigned macOS bundles or PowerShell-first Windows bundles as
-  public release artifacts
-- operators on macOS or Windows are routed to the published container image or to a source checkout
+- the bundle-layout contract keeps macOS and Windows target identities explicit, while
+  `bundle-publication-contract.json` owns the per-target publication status plus the proving
+  runner metadata
+- macOS bundles are published for both Apple Silicon and Intel hosts
+- `windows-x86_64` is a published PowerShell-first bundle surface; there is no parallel `.cmd`
+  shim
+- `windows-aarch64` remains the single declared but intentionally not-published classifier
+- the repository publishes unsigned macOS and Windows bundles and relies on checksum plus GitHub
+  attestation for provenance rather than certificate trust
 
 ## Release Build Policy
 
@@ -100,7 +111,8 @@ Why that is acceptable:
   release workstation
 - Zulu 26 on GitHub-hosted runners provides the full JDK surface we actually need:
   `javac`, `jdeps`, and `jlink`
-- the published release matrix is covered by those runners today: Ubuntu x86_64 and Ubuntu arm64
+- the published release matrix is covered by those runners today: macOS arm64, macOS x86_64,
+  Ubuntu x86_64, Ubuntu arm64, and Windows x86_64
 
 When to revisit this choice:
 - if Zulu stops offering Java 26 for one of the supported public bundle builders
@@ -151,6 +163,7 @@ Bundle entrypoints:
 ```bash
 ./gradlew :cli:bundleCliArchive
 ./scripts/bundle-smoke.sh
+./scripts/bundle-smoke.sh --execution-surface compatibility-floor
 ```
 
 Local bundle restaging prunes older `fingrind-*` staging roots under the active CLI Gradle build
@@ -160,6 +173,10 @@ any legacy in-checkout `cli/build/distributions/` leftovers before emitting the 
 artifact set. The task now prints the exact archive path and checksum path that it produced under
 the active CLI Gradle build directory, so relocated build roots no longer require manual
 filesystem searching before the bundle can be inspected or handed to `./scripts/bundle-smoke.sh`.
+On Linux hosts with Docker available, `--execution-surface compatibility-floor` reruns the same
+office-worker acceptance workflow inside the contract-declared minimum-glibc container instead of
+the live shell, which is the same proof surface used by CI, the weekly freshness canary, and the
+tagged release workflow.
 
 On Windows PowerShell, use:
 

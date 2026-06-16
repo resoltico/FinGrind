@@ -30,6 +30,8 @@ grep -Fq 'repo-verification-lock-support.sh' "${repo_root}/check.sh" || die \
     "check.sh no longer sources the repo verification lock helper"
 grep -Fq 'repo-verification-lock-support.sh' "${repo_root}/scripts/run-quality-gates.sh" || die \
     "run-quality-gates.sh no longer sources the repo verification lock helper"
+grep -Fq 'repo-verification-lock-support.sh' "${repo_root}/scripts/check-release-surface-scripts.sh" || die \
+    "check-release-surface-scripts.sh no longer sources the repo verification lock helper"
 grep -Fq 'repo-verification-lock-support.sh' "${repo_root}/scripts/docker-smoke.sh" || die \
     "docker-smoke.sh no longer sources the repo verification lock helper"
 grep -Fq 'repo-verification-lock-support.sh' "${repo_root}/scripts/validate-devcontainer.sh" || die \
@@ -131,6 +133,44 @@ printf '%s' "${contender_output}" | grep -F "already running with PID ${owner_pi
     "concurrent contender did not report the active repo verification owner"
 printf '%s' "${contender_output}" | grep -F 'FinGrind verification command' >/dev/null || die \
     "concurrent contender did not report the repo verification lock scope"
+
+standalone_stage5_lock_dir="${tmp_dir}/stage5-lock"
+standalone_stage5_pid_file="${standalone_stage5_lock_dir}/pid"
+(
+    set -euo pipefail
+    lock_dir="${standalone_stage5_lock_dir}"
+    pid_file="${standalone_stage5_pid_file}"
+    # shellcheck source=/dev/null
+    source "${lock_support}"
+    acquire_lock
+    sleep 20
+) &
+standalone_stage5_owner_pid=$!
+
+for _ in $(seq 1 40); do
+    [[ -f "${standalone_stage5_pid_file}" ]] && break
+    sleep 0.05
+done
+[[ -f "${standalone_stage5_pid_file}" ]] || die "failed to publish the standalone Stage 5 lock fixture"
+[[ "$(tr -d '[:space:]' < "${standalone_stage5_pid_file}")" == "${standalone_stage5_owner_pid}" ]] || die \
+    "background helper lock owner pid did not match the standalone Stage 5 lock-holder process"
+
+set +e
+standalone_stage5_output="$(
+    lock_dir="${standalone_stage5_lock_dir}" \
+        pid_file="${standalone_stage5_pid_file}" \
+        "${repo_root}/scripts/check-release-surface-scripts.sh" 2>&1
+)"
+standalone_stage5_status=$?
+set -e
+
+kill "${standalone_stage5_owner_pid}" 2>/dev/null || true
+wait "${standalone_stage5_owner_pid}" 2>/dev/null || true
+
+[[ ${standalone_stage5_status} -ne 0 ]] || die \
+    "standalone Stage 5 release-surface script unexpectedly ignored the repo verification lock"
+printf '%s' "${standalone_stage5_output}" | grep -F 'another FinGrind verification command is already running' >/dev/null || die \
+    "standalone Stage 5 release-surface script did not report the repo verification lock conflict"
 
 jazzer_lock_dir="${tmp_dir}/jazzer-wrapper-lock"
 jazzer_pid_file="${jazzer_lock_dir}/pid"

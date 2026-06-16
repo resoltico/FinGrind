@@ -57,7 +57,7 @@ final class CliMaintenanceRejectionPayloadMapper {
               + artifactBusy.artifactRole().wireValue()
               + " artifact, wait for the active maintenance workflow to finish, then rerun the command.";
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
-          "Choose a new --backup-file-out path or remove the existing encrypted backup copy yourself before rerunning "
+          "Choose a new --backup-book-file-out path or remove the existing encrypted backup copy yourself before rerunning "
               + BACKUP_BOOK_OPERATION
               + ".";
       case BookMaintenanceRejection.BackupKeyFileAlreadyExists _ ->
@@ -77,7 +77,7 @@ final class CliMaintenanceRejectionPayloadMapper {
               + RESTORE_REKEY_ROLLBACK_OPERATION
               + " or "
               + DELETE_REKEY_ROLLBACK_OPERATION
-              + " with one explicit --rollback-file path from details.rollbackArtifacts.";
+              + " with one explicit --rollback-book-file path from details.rollbackArtifacts.";
       case BookMaintenanceRejection.RollbackArtifactNotFound _ ->
           "Choose an existing rollback artifact path returned by "
               + INSPECT_REKEY_ROLLBACK_OPERATION

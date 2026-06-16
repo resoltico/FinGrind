@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -36,8 +36,8 @@ Every request JSON document must fit within FinGrind's `1048576`-byte UTF-8 payl
 it comes from `--request-file <path>` or `--request-file -`.
 
 `rekey-book` reuses those current-book routes and additionally requires exactly one replacement
-passphrase source: `--replacement-book-key-file`, `--replacement-book-passphrase-stdin`, or
-`--replacement-book-passphrase-prompt`.
+passphrase source: `--new-book-key-file`, `--new-book-passphrase-stdin`, or
+`--new-book-passphrase-prompt`.
 
 ## Posting Request Shape
 
@@ -609,12 +609,15 @@ Shared report context payload:
 - `steps[]`, where each entry includes `stepId`, `kind`, `status`, `startedAt`, `finishedAt`,
   typed `data`, optional `detailKind`, and optional `failure`
 
-Commands that advertise `--output` default successful stdout to text on an interactive
-terminal and to JSON when stdout is redirected or captured. Discovery, administration, write, and
-read/report commands can also render operator-facing `--output text`, and the tabular
-read/report commands support `--output csv` for spreadsheet import. Invalid invocation failures
-default to text repair guidance unless callers select one recognized machine output mode
-explicitly, such as `--output json`.
+Commands that advertise `--output` default successful stdout to text unless the current session
+sets `FINGRIND_DEFAULT_OUTPUT=json`; `FINGRIND_DEFAULT_OUTPUT=text` restores the text default
+explicitly, and a per-command `--output ...` flag always wins. Discovery, administration, write,
+and read/report commands can also render operator-facing `--output text`, and the tabular
+read/report commands support `--output csv` for spreadsheet import. Successful primary results own
+stdout. Deterministic failures and rejections use the diagnostics stream instead: text mode emits
+repair or rejection text, and recognized machine modes such as `--output json` emit one parseable
+JSON diagnostics envelope on stderr. Invalid invocation failures default to text repair guidance
+unless callers select one recognized machine output mode explicitly, such as `--output json`.
 `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the

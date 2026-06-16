@@ -1,10 +1,10 @@
 package dev.erst.fingrind.buildlogic
 
 import org.gradle.api.Project
+import org.gradle.api.Task
 import org.gradle.api.file.Directory
 import org.gradle.api.file.RegularFile
 import org.gradle.api.provider.Provider
-import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.bundling.AbstractArchiveTask
 import org.gradle.api.tasks.bundling.Compression
@@ -20,10 +20,10 @@ internal data class CliBundleArchiveRegistration(
 
 internal fun Project.registerCliBundleArchiveTasks(
     bundleOperatingSystemId: String,
-    stageCliBundle: TaskProvider<Sync>,
+    bundleArchiveInputTask: TaskProvider<out Task>,
     distributionDirectory: Provider<Directory>,
     bundleArchiveFileName: Provider<String>,
-    bundleRootDirectory: Provider<Directory>,
+    bundleWorkspaceDirectory: Provider<Directory>,
     bundleName: Provider<String>,
     bundleSha256File: Provider<RegularFile>,
     bundleArchiveManifestFile: Provider<RegularFile>,
@@ -33,18 +33,20 @@ internal fun Project.registerCliBundleArchiveTasks(
             tasks.register<Zip>("bundleCliZip") {
                 group = "distribution"
                 description = "Builds the compressed self-contained FinGrind CLI bundle archive."
-                dependsOn(stageCliBundle)
+                dependsOn(bundleArchiveInputTask)
                 destinationDirectory.set(distributionDirectory)
                 archiveFileName.set(bundleArchiveFileName)
                 isReproducibleFileOrder = true
+                isPreserveFileTimestamps = true
                 dirPermissions {
                     unix(493)
                 }
                 filePermissions {
                     unix(420)
                 }
-                from(bundleRootDirectory) {
-                    into(bundleName)
+                from(bundleWorkspaceDirectory) {
+                    include(bundleName.get())
+                    include(bundleName.get() + "/**")
                     eachFile {
                         if (file.canExecute()) {
                             permissions {
@@ -58,19 +60,21 @@ internal fun Project.registerCliBundleArchiveTasks(
             tasks.register<Tar>("bundleCliTarGz") {
                 group = "distribution"
                 description = "Builds the compressed self-contained FinGrind CLI bundle archive."
-                dependsOn(stageCliBundle)
+                dependsOn(bundleArchiveInputTask)
                 destinationDirectory.set(distributionDirectory)
                 archiveFileName.set(bundleArchiveFileName)
                 compression = Compression.GZIP
                 isReproducibleFileOrder = true
+                isPreserveFileTimestamps = true
                 dirPermissions {
                     unix(493)
                 }
                 filePermissions {
                     unix(420)
                 }
-                from(bundleRootDirectory) {
-                    into(bundleName)
+                from(bundleWorkspaceDirectory) {
+                    include(bundleName.get())
+                    include(bundleName.get() + "/**")
                     eachFile {
                         if (file.canExecute()) {
                             permissions {

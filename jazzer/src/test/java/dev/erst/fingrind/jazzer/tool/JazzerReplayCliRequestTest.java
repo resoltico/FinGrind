@@ -41,7 +41,11 @@ class JazzerReplayCliRequestTest {
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
     assertEquals(ReplayOutcomeKind.EXPECTED_INVALID, invalid.kind());
-    assertEquals("Field is no longer accepted: recordedAt", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.cliRequest(), "invalid_forbidden_recorded_at.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -55,7 +59,11 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
-    assertEquals("Field is no longer accepted: sourceChannel", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.cliRequest(), "invalid_forbidden_source_channel.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -69,7 +77,11 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
-    assertEquals("Missing required field: provenance", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.cliRequest(), "invalid_missing_provenance.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -83,7 +95,11 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
-    assertEquals("minorUnits must contain ASCII decimal digits only.", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.cliRequest(), "invalid_amount_exponent.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -97,7 +113,11 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
-    assertEquals("Request JSON must not contain duplicate object keys.", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.cliRequest(), "invalid_duplicate_idempotency_key.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -111,6 +131,10 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedCliRequestReplayDetails(), invalid.details());
-    assertEquals("Unexpected field: unexpectedField", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.cliRequest(), "invalid_unexpected_top_level_field.json")
+            .message(),
+        invalid.message());
   }
 }

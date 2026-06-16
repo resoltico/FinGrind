@@ -32,22 +32,24 @@ final class CliMutationCommandExecutor {
   }
 
   int runExecutePlanCommand(
-      BookAccess bookAccess, Path requestFile, PlanResultDetail resultDetail) {
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode,
+      PlanResultDetail resultDetail) {
     Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(
-                OutputMode.JSON, bookAccess.passphraseSource())
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, OutputMode.JSON, failureWriter));
+                        failure, outputMode, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     LedgerPlan plan = requestReader.readLedgerPlan(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.executePlan(bookAccess, plan),
-        OutputMode.JSON,
-        result -> planResponseWriter.writeLedgerPlanResult(result, resultDetail),
+        outputMode,
+        result -> planResponseWriter.writeLedgerPlanResult(result, outputMode, resultDetail),
         CliPostingExitCodes::exitCodeFor,
         failureWriter);
   }

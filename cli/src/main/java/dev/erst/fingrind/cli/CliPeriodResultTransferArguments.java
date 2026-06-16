@@ -11,16 +11,10 @@ import org.jspecify.annotations.Nullable;
 /** Parses CLI arguments for `transfer-period-result`. */
 final class CliPeriodResultTransferArguments {
   private static final List<String> TRANSFER_PERIOD_RESULT_OPTIONS =
-      List.of(
-          ProtocolOptions.EFFECTIVE_DATE_FROM,
-          ProtocolOptions.EFFECTIVE_DATE_TO,
-          ProtocolOptions.OUTPUT);
+      List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END, ProtocolOptions.OUTPUT);
   private static final CliBookArgumentParser.CommandArgumentSpec TRANSFER_PERIOD_RESULT_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(
-              ProtocolOptions.EFFECTIVE_DATE_FROM,
-              ProtocolOptions.EFFECTIVE_DATE_TO,
-              ProtocolOptions.OUTPUT),
+          List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END, ProtocolOptions.OUTPUT),
           List.of());
 
   private CliPeriodResultTransferArguments() {}
@@ -45,16 +39,16 @@ final class CliPeriodResultTransferArguments {
     ListIterator<String> argumentIterator = commandArguments.listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
+      if (ProtocolOptions.PERIOD_START.equals(argument)) {
         effectiveDateFrom =
             CliReportArguments.requireDateOption(
-                effectiveDateFrom, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM);
+                effectiveDateFrom, argumentIterator, ProtocolOptions.PERIOD_START);
         continue;
       }
-      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+      if (ProtocolOptions.PERIOD_END.equals(argument)) {
         effectiveDateTo =
             CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+                effectiveDateTo, argumentIterator, ProtocolOptions.PERIOD_END);
         continue;
       }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
@@ -69,21 +63,20 @@ final class CliPeriodResultTransferArguments {
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.EFFECTIVE_DATE_FROM,
-          "A " + ProtocolOptions.EFFECTIVE_DATE_FROM + " argument is required.");
+          ProtocolOptions.PERIOD_START,
+          "A " + ProtocolOptions.PERIOD_START + " argument is required.");
     }
     if (effectiveDateTo == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.EFFECTIVE_DATE_TO,
-          "A " + ProtocolOptions.EFFECTIVE_DATE_TO + " argument is required.");
+          ProtocolOptions.PERIOD_END, "A " + ProtocolOptions.PERIOD_END + " argument is required.");
     }
     LocalDate resolvedEffectiveDateFrom = effectiveDateFrom;
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
     CliArgumentValueParser.requireOrderedDateRange(
         resolvedEffectiveDateFrom,
         resolvedEffectiveDateTo,
-        ProtocolOptions.EFFECTIVE_DATE_FROM,
-        ProtocolOptions.EFFECTIVE_DATE_TO);
+        ProtocolOptions.PERIOD_START,
+        ProtocolOptions.PERIOD_END);
     return new ParsedTransferPeriodResultArguments(
         new ReportingPeriod(resolvedEffectiveDateFrom, resolvedEffectiveDateTo), outputMode);
   }

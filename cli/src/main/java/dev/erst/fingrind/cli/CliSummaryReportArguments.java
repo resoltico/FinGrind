@@ -28,8 +28,8 @@ final class CliSummaryReportArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec PERIOD_SUMMARY_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.EFFECTIVE_DATE_FROM,
-              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.PERIOD_START,
+              ProtocolOptions.PERIOD_END,
               ProtocolOptions.POSTING_COVERAGE,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
@@ -44,16 +44,16 @@ final class CliSummaryReportArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec INCOME_STATEMENT_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.EFFECTIVE_DATE_FROM,
-              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.PERIOD_START,
+              ProtocolOptions.PERIOD_END,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec CHANGES_IN_EQUITY_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.EFFECTIVE_DATE_FROM,
-              ProtocolOptions.EFFECTIVE_DATE_TO,
+              ProtocolOptions.PERIOD_START,
+              ProtocolOptions.PERIOD_END,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
           List.of());
@@ -110,16 +110,16 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
+      if (ProtocolOptions.PERIOD_START.equals(argument)) {
         effectiveDateFrom =
             CliReportArguments.requireDateOption(
-                effectiveDateFrom, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM);
+                effectiveDateFrom, argumentIterator, ProtocolOptions.PERIOD_START);
         continue;
       }
-      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+      if (ProtocolOptions.PERIOD_END.equals(argument)) {
         effectiveDateTo =
             CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+                effectiveDateTo, argumentIterator, ProtocolOptions.PERIOD_END);
         continue;
       }
       if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
@@ -134,13 +134,12 @@ final class CliSummaryReportArguments {
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.EFFECTIVE_DATE_FROM,
-          "A " + ProtocolOptions.EFFECTIVE_DATE_FROM + " argument is required.");
+          ProtocolOptions.PERIOD_START,
+          "A " + ProtocolOptions.PERIOD_START + " argument is required.");
     }
     if (effectiveDateTo == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.EFFECTIVE_DATE_TO,
-          "A " + ProtocolOptions.EFFECTIVE_DATE_TO + " argument is required.");
+          ProtocolOptions.PERIOD_END, "A " + ProtocolOptions.PERIOD_END + " argument is required.");
     }
     LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
     LocalDate requiredEffectiveDateTo = effectiveDateTo;
@@ -149,8 +148,8 @@ final class CliSummaryReportArguments {
     CliArgumentValueParser.requireOrderedDateRange(
         requiredEffectiveDateFrom,
         requiredEffectiveDateTo,
-        ProtocolOptions.EFFECTIVE_DATE_FROM,
-        ProtocolOptions.EFFECTIVE_DATE_TO);
+        ProtocolOptions.PERIOD_START,
+        ProtocolOptions.PERIOD_END);
     return new PeriodSummary(
         parsedArguments.bookAccess(),
         new PeriodSummaryQuery(
@@ -216,16 +215,16 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
+      if (ProtocolOptions.PERIOD_START.equals(argument)) {
         effectiveDateFrom =
             CliReportArguments.requireDateOption(
-                effectiveDateFrom, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_FROM);
+                effectiveDateFrom, argumentIterator, ProtocolOptions.PERIOD_START);
         continue;
       }
-      if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+      if (ProtocolOptions.PERIOD_END.equals(argument)) {
         effectiveDateTo =
             CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_TO);
+                effectiveDateTo, argumentIterator, ProtocolOptions.PERIOD_END);
         continue;
       }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
@@ -236,21 +235,20 @@ final class CliSummaryReportArguments {
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.EFFECTIVE_DATE_FROM,
-          "A " + ProtocolOptions.EFFECTIVE_DATE_FROM + " argument is required.");
+          ProtocolOptions.PERIOD_START,
+          "A " + ProtocolOptions.PERIOD_START + " argument is required.");
     }
     if (effectiveDateTo == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.EFFECTIVE_DATE_TO,
-          "A " + ProtocolOptions.EFFECTIVE_DATE_TO + " argument is required.");
+          ProtocolOptions.PERIOD_END, "A " + ProtocolOptions.PERIOD_END + " argument is required.");
     }
     LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
     LocalDate requiredEffectiveDateTo = effectiveDateTo;
     CliArgumentValueParser.requireOrderedDateRange(
         requiredEffectiveDateFrom,
         requiredEffectiveDateTo,
-        ProtocolOptions.EFFECTIVE_DATE_FROM,
-        ProtocolOptions.EFFECTIVE_DATE_TO);
+        ProtocolOptions.PERIOD_START,
+        ProtocolOptions.PERIOD_END);
     CliCommand.ReportOutput resolvedOutput =
         CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath);
     return commandFactory.create(

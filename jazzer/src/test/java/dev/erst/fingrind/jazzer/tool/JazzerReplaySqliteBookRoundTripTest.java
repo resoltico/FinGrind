@@ -69,7 +69,11 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedSqliteBookRoundTripReplayDetails(), invalid.details());
-    assertEquals("Missing required field: reason", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.sqliteBookRoundTrip(), "invalid_missing_reversal_reason.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -83,7 +87,11 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedSqliteBookRoundTripReplayDetails(), invalid.details());
-    assertEquals("Field must be a string: effectiveDate", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.sqliteBookRoundTrip(), "invalid_wrong_type.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -97,6 +105,10 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedSqliteBookRoundTripReplayDetails(), invalid.details());
-    assertEquals("minorUnits must contain ASCII decimal digits only.", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.sqliteBookRoundTrip(), "invalid_amount_exponent.json")
+            .message(),
+        invalid.message());
   }
 }

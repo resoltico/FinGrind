@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: DEVELOPER
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -146,7 +146,8 @@ For the named bounded contexts and translation rules behind that module graph, u
 Repo-owned JSON contract snapshots back that typed public surface:
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/contract-schema-keys.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/operation-id-contract.json`
-- `contract/src/main/resources/dev/erst/fingrind/contract/protocol/public-distribution-contract.json`
+- `contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-layout-contract.json`
+- `contract/src/main/resources/dev/erst/fingrind/contract/protocol/release-publication-contract.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json`
 - `contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-module-discovery-contract.json`
 - `contract/build/generated-resources/protocol/dev/erst/fingrind/contract/protocol/runtime-environment-contract.json`
@@ -375,6 +376,10 @@ Public release verification now centers on the self-contained bundle archive, no
 macOS/Linux or `./scripts/bundle-smoke.ps1` on Windows proves that the extracted bundle runs
 without ambient Java or any retired SQLite runtime override variables. That smoke gate also
 verifies the top-level archive bootstrap files and the trimmed `jlink` runtime-image contract.
+For published Linux classifiers, the same Bash owner also supports
+`./scripts/bundle-smoke.sh --execution-surface compatibility-floor`, which reruns the office-worker
+acceptance path inside the contract-declared Rocky Linux 9 minimum-glibc container before release
+promotion.
 The bundle task prints the exact archive path and checksum path it produced under the active build
 directory so operators and agents can pick up the right artifact without guessing where Gradle
 placed it. Stage 1 structural governance now scans tracked Markdown and tracked JSON resources
@@ -468,12 +473,12 @@ root-script `subprojects {}` policy blocks.
 
 ## GitHub Workflows
 
-The repository ships four workflow files and six named CI jobs:
+The repository ships four workflow files and one release-blocking CI graph:
 
 - `CI` runs on pushes, pull requests to `main`, and manual `workflow_dispatch`, and publishes the
-  aggregate `Gate` required-status job plus the individual `Check`, `Published bundle smoke
-  (linux-x86_64)`, `Published bundle smoke (linux-aarch64)`, `Windows non-public bundle smoke`,
-  `Contributor devcontainer`, and `Detect devcontainer changes` jobs.
+  aggregate `Gate` required-status job plus `Check`, `Prepare published bundle smoke matrix`,
+  one `Published bundle smoke (<classifier>)` job for each published bundle target, and the
+  devcontainer pair.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
 - `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
 - `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
@@ -483,22 +488,25 @@ The repository ships four workflow files and six named CI jobs:
 1. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
    Runs on `ubuntu-24.04`.
-2. `windows-nonpublic-bundle-smoke` — runs the Windows-owned support lane on `windows-2022`
-   after `check` passes. It does not rerun the canonical root gate and it does not participate in
-   the release-blocking `Gate` contract because public self-contained bundle publication is
-   Linux-only. It proves the Windows-owned non-public surfaces only: included build-logic tests,
-   direct-Java and source-checkout SQLite runtime verifiers, the self-contained Windows bundle
-   build, and the PowerShell bundle smoke workflow. Uses the repo-owned
+2. `prepare-published-bundle-smoke-matrix` — renders the published bundle matrix from the same
+   canonical release-plan reader that tagged publication uses, so CI and release cannot drift on
+   target ownership.
+3. `published-bundle-smoke` — runs the release-owned publication-proof matrix after `check`
+   passes. The matrix expands to every classifier whose publication status is `published` in
+   `bundle-publication-contract.json`, currently `macos-aarch64`, `macos-x86_64`,
+   `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`. It verifies the native runner identity
+   by normalizing live host spellings back to the canonical bundle target ids, proves the managed
+   SQLite runtime surfaces, builds the exact published bundle classifier on each runner, reads the
+   emitted archive/checksum paths from the Gradle-owned bundle manifest, and delegates archive
+   acceptance to the canonical bundle-smoke owners. Linux targets rerun that acceptance flow on
+   the contract-declared Rocky Linux 9 compatibility floor. The Windows leg also keeps the
+   included build-logic tests plus the direct-Java and source-checkout runtime verifiers on
+   `windows-2022`. Uses the repo-owned
    [configure-windows-defender-build-exclusions.ps1](../scripts/configure-windows-defender-build-exclusions.ps1)
    owner for one best-effort Windows Defender exclusion attempt on the workspace and Gradle user
    home before Gradle work begins. The exclusion attempt is a performance optimization only: an
    unavailable Defender service must warn and continue instead of blocking the product-verification
    lane.
-3. `published-unix-bundle-smoke` — runs the release-owned Linux publication-proof matrix after
-   `check` passes. The matrix covers `linux-x86_64` on `ubuntu-24.04` and `linux-aarch64` on
-   `ubuntu-24.04-arm`, builds the exact published bundle classifier on each runner, reads the
-   emitted archive/checksum paths from the Gradle-owned bundle manifest, and delegates archive
-   acceptance to `./scripts/bundle-smoke.sh`.
 4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
    against the devcontainer trigger paths. Runs independently; no upstream dependency.
 5. `devcontainer` — validates the committed contributor devcontainer surface through
@@ -509,16 +517,15 @@ The repository ships four workflow files and six named CI jobs:
 6. `gate` — aggregate required-status job using `if: always()` with explicit
    `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate
    does not prevent `Gate` from being reported or block merge; only a failed or cancelled job
-   prevents success. It aggregates `check`, the published Linux bundle-smoke matrix, and the
-   devcontainer gate pair. Configure branch protection to require `Gate` as the single required
-   check.
+   prevents success. It aggregates `check`, `prepare-published-bundle-smoke-matrix`, the
+   published bundle-smoke matrix, and the devcontainer gate pair. Configure branch protection to
+   require `Gate` as the single required check.
 
 **Path-based devcontainer gate theory.** The devcontainer gate validates the contributor
-*environment*, not application code. Application code changes are already proven by `check`,
-the published Linux bundle-smoke matrix, plus one observational Windows support lane. Running the
-full Docker build-and-validate cycle on every PR regardless of what changed wastes 15-20 minutes
-per run. The gate therefore fires only when the environment itself changes — specifically when any
-of these paths are touched:
+*environment*, not application code. Application code changes are already proven by `check` and
+the published bundle-smoke matrix. Running the full Docker build-and-validate cycle on every PR
+regardless of what changed wastes 15-20 minutes per run. The gate therefore fires only when the
+environment itself changes — specifically when any of these paths are touched:
 
 - `.devcontainer/` — the Dockerfile and `devcontainer.json`
 - `scripts/validate-devcontainer.sh`

@@ -18,7 +18,7 @@ final class CliRekeyRollbackArguments {
           ProtocolOptions.BOOK_KEY_FILE,
           ProtocolOptions.BOOK_PASSPHRASE_STDIN,
           ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
-          ProtocolOptions.ROLLBACK_FILE,
+          ProtocolOptions.ROLLBACK_BOOK_FILE,
           ProtocolOptions.OUTPUT);
   private static final String DELETE_REKEY_ROLLBACK_COMMAND =
       ProtocolCatalog.operationName(OperationId.DELETE_REKEY_ROLLBACK);
@@ -132,12 +132,12 @@ final class CliRekeyRollbackArguments {
               CliBookPassphraseParser.requireSinglePassphraseSource(
                   argumentValues.passphraseSourceKind,
                   CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
-      case ProtocolOptions.ROLLBACK_FILE ->
+      case ProtocolOptions.ROLLBACK_BOOK_FILE ->
           argumentValues.rollbackArtifactPath =
               requireSingleRollbackPath(
                   argumentValues.rollbackArtifactPath,
                   argumentIterator,
-                  ProtocolOptions.ROLLBACK_FILE);
+                  ProtocolOptions.ROLLBACK_BOOK_FILE);
       case ProtocolOptions.OUTPUT ->
           argumentValues.outputMode =
               CliOptionModes.requireOutputMode(
@@ -168,8 +168,8 @@ final class CliRekeyRollbackArguments {
   private static void rejectUnexpectedRollbackPath(@Nullable Path rollbackArtifactPath) {
     if (rollbackArtifactPath != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.ROLLBACK_FILE,
-          ProtocolOptions.ROLLBACK_FILE
+          ProtocolOptions.ROLLBACK_BOOK_FILE,
+          ProtocolOptions.ROLLBACK_BOOK_FILE
               + " is accepted only when "
               + DELETE_REKEY_ROLLBACK_COMMAND
               + " or "

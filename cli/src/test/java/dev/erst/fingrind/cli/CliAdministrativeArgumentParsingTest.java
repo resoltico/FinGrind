@@ -86,7 +86,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--replacement-book-key-file",
+                  "--new-book-key-file",
                   "book-new.key",
                   "--output",
                   "text"
@@ -122,9 +122,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--output",
                   "text"
@@ -257,8 +257,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--request-file",
                       "plan.json",
-                      "--output",
-                      "text"
+                      "--extra"
                     }));
     CliArgumentsException declareAccountExtra =
         assertThrows(
@@ -278,8 +277,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
     assertEquals("--extra", openBookExtra.argument());
     assertEquals("Unsupported argument: --extra", openBookExtra.getMessage());
-    assertEquals("--output", executePlanExtra.argument());
-    assertEquals("Unsupported argument: --output", executePlanExtra.getMessage());
+    assertEquals("--extra", executePlanExtra.argument());
+    assertEquals("Unsupported argument: --extra", executePlanExtra.getMessage());
     assertEquals("--extra", declareAccountExtra.argument());
     assertEquals("Unsupported argument: --extra", declareAccountExtra.getMessage());
   }
@@ -425,9 +424,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30"
                 }));
 
@@ -450,7 +449,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30"
                 }));
     assertThrows(
@@ -463,7 +462,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01"
                 }));
     assertThrows(
@@ -478,9 +477,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--result-holding-account",
                   "3200",
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30"
                 }));
     assertThrows(
@@ -493,9 +492,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-30",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-01"
                 }));
     CliArgumentsException removedResultHoldingAccount =
@@ -511,9 +510,9 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--result-holding-account",
                       "3200",
-                      "--effective-date-from",
+                      "--period-start",
                       "2026-04-01",
-                      "--effective-date-to",
+                      "--period-end",
                       "2026-04-30"
                     }));
     assertEquals("--result-holding-account", removedResultHoldingAccount.argument());
@@ -556,16 +555,16 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--output",
                   "text"
                 }));
     CliPeriodResultTransferArguments.ParsedTransferPeriodResultArguments parsedArguments =
         CliPeriodResultTransferArguments.parseTransferPeriodResultArguments(
-            List.of("--effective-date-from", "2026-04-01", "--effective-date-to", "2026-04-30"));
+            List.of("--period-start", "2026-04-01", "--period-end", "2026-04-30"));
     CliArgumentsException unsupportedArgument =
         assertThrows(
             CliArgumentsException.class,
@@ -707,7 +706,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--backup-file-out",
+                  "--backup-book-file-out",
                   "backup/entity.sqlite",
                   "--backup-book-key-file-out",
                   "backup/entity.key",
@@ -722,7 +721,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "restore-book",
                   "--book-file",
                   "book.sqlite",
-                  "--backup-file",
+                  "--backup-book-file",
                   "backup/entity.sqlite",
                   "--backup-book-key-file",
                   "backup/entity.key"
@@ -737,7 +736,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--rollback-file",
+                  "--rollback-book-file",
                   "book.rekey-rollback.sqlite"
                 }));
     DeleteRekeyRollback deleteRekeyRollback =
@@ -750,7 +749,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--rollback-file",
+                  "--rollback-book-file",
                   "book.rekey-rollback.sqlite"
                 }));
 
@@ -892,7 +891,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--backup-file-out",
+                      "--backup-book-file-out",
                       "book.sqlite",
                       "--backup-book-key-file-out",
                       "backup.key"
@@ -906,19 +905,19 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "restore-book",
                       "--book-file",
                       "book.sqlite",
-                      "--backup-file",
+                      "--backup-book-file",
                       "backup.sqlite",
                       "--backup-book-key-file",
                       "backup.sqlite"
                     }));
 
-    assertEquals("--backup-file-out", backupCollision.argument());
+    assertEquals("--backup-book-file-out", backupCollision.argument());
     assertEquals(
-        "--book-file and --backup-file-out must not point to the same path.",
+        "--book-file and --backup-book-file-out must not point to the same path.",
         backupCollision.getMessage());
     assertEquals("--backup-book-key-file", restoreCollision.argument());
     assertEquals(
-        "--backup-file and --backup-book-key-file must not point to the same path.",
+        "--backup-book-file and --backup-book-key-file must not point to the same path.",
         restoreCollision.getMessage());
   }
 }

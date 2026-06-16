@@ -17,11 +17,16 @@ class ProtocolContractSchemaKeysTest {
         "directJavaRuntimeDistribution", current.runtimeSurface().directJavaRuntimeDistribution());
     assertEquals("cipher", current.protectedBookFormat().cipher());
     assertEquals(
-        "unsupportedPublicCliBundleTargets",
-        current.publicDistribution().unsupportedPublicCliBundleTargets());
-    assertEquals(
         "requiredMinimumSqliteVersion", current.managedSqlite().requiredMinimumSqliteVersion());
     assertEquals("bundleTargets", current.bundleLayout().bundleTargets());
+    assertEquals("compatibilityLabel", current.bundleLayout().compatibilityLabel());
+    assertEquals("minimumGlibcVersion", current.bundleLayout().minimumGlibcVersion());
+    assertEquals(
+        "compatibilitySmokeContainerImage",
+        current.bundleLayout().compatibilitySmokeContainerImage());
+    assertEquals("bundleTargets", current.bundlePublication().bundleTargets());
+    assertEquals("status", current.bundlePublication().status());
+    assertEquals("runnerLabel", current.bundlePublication().runnerLabel());
     assertEquals("VERSION", current.operationIds().version());
     assertEquals("PRINT_PLAN_TEMPLATE", current.operationIds().printPlanTemplate());
     assertEquals("GENERATE_BOOK_KEY_FILE", current.operationIds().generateBookKeyFile());
@@ -52,15 +57,14 @@ class ProtocolContractSchemaKeysTest {
                           "runtimeSurface": {},
                           "protectedBookFormat": {},
                           "managedSqlite": {},
-                          "bundleLayout": {},
                           "operationIdContract": {}
                         }
                         """
                             .getBytes(StandardCharsets.UTF_8)),
-                    "/missing-public-distribution.json"));
+                    "/missing-bundle-layout.json"));
 
     assertEquals(
-        "publicDistribution must be one JSON object of schema keys.", missingSection.getMessage());
+        "bundleLayout must be one JSON object of schema keys.", missingSection.getMessage());
 
     IllegalArgumentException wrongSectionType =
         assertThrows(
@@ -74,7 +78,6 @@ class ProtocolContractSchemaKeysTest {
                           "protectedBookFormat": {},
                           "managedSqlite": {},
                           "bundleLayout": {},
-                          "publicDistribution": {},
                           "operationIdContract": {}
                         }
                         """

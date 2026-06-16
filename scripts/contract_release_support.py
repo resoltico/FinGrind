@@ -2,20 +2,15 @@
 
 from __future__ import annotations
 
-from contract_value_support import required_object, required_string, required_value, string_array
+from contract_value_support import required_string, required_value, string_array
 
 
 def load_release_publication(
     document: dict[str, object],
     schema: dict[str, object],
     *,
-    supported_bundle_targets: list[str],
     bundle_layout_targets: dict[str, dict[str, str]],
 ) -> dict[str, object]:
-    build_targets_key = required_string(schema, "publicBundleBuildTargets")
-    runner_label_key = required_string(schema, "runnerLabel")
-    expected_runner_os_key = required_string(schema, "expectedRunnerOs")
-    expected_runner_arch_key = required_string(schema, "expectedRunnerArch")
     required_ci_workflow_name_key = required_string(schema, "requiredCiWorkflowName")
     required_ci_workflow_path_key = required_string(schema, "requiredCiWorkflowPath")
     required_ci_gate_job_name_key = required_string(schema, "requiredCiGateJobName")
@@ -27,25 +22,17 @@ def load_release_publication(
     container_platforms_key = required_string(schema, "containerPlatforms")
     latest_publication_policy_key = required_string(schema, "latestPublicationPolicy")
 
-    build_targets_object = required_object(document, build_targets_key)
     release_build_targets: dict[str, dict[str, str]] = {}
+    supported_bundle_targets = [
+        classifier
+        for classifier, target in bundle_layout_targets.items()
+        if target["publicationStatus"] == "published"
+    ]
     for classifier in supported_bundle_targets:
-        raw_build_target = build_targets_object.get(classifier)
-        if not isinstance(raw_build_target, dict):
-            raise ValueError(
-                f"release publication contract must declare build target metadata for {classifier}"
-            )
+        target = bundle_layout_targets[classifier]
         release_build_targets[classifier] = {
-            "runnerLabel": required_value(raw_build_target, runner_label_key),
-            "expectedRunnerOs": required_value(raw_build_target, expected_runner_os_key),
-            "expectedRunnerArch": required_value(raw_build_target, expected_runner_arch_key),
+            "runnerLabel": target["runnerLabel"],
         }
-    undeclared_targets = sorted(set(build_targets_object).difference(supported_bundle_targets))
-    if undeclared_targets:
-        raise ValueError(
-            "release publication contract declared unsupported build targets: "
-            + ", ".join(undeclared_targets)
-        )
 
     declared_container_platforms = string_array(document, container_platforms_key)
     expected_container_platforms = _expected_container_platforms(

@@ -7,19 +7,31 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 /** Mutation CLI commands that validate or commit request-backed changes. */
-record ExecutePlan(BookAccess bookAccess, Path requestFile, PlanResultDetail resultDetail)
-    implements CliCommand.JsonFailureCommand {
-  ExecutePlan {
-    Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(requestFile, "requestFile");
-    Objects.requireNonNull(resultDetail, "resultDetail");
+final class ExecutePlan extends CliBookRequestOutputModeCommand {
+  private final PlanResultDetail resultDetail;
+
+  ExecutePlan(
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode,
+      PlanResultDetail resultDetail) {
+    super(bookAccess, requestFile, outputMode);
+    this.resultDetail = Objects.requireNonNull(resultDetail, "resultDetail");
+  }
+
+  PlanResultDetail resultDetail() {
+    return resultDetail;
   }
 
   @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
         .mutation()
-        .runExecutePlanCommand(bookAccess, requestFile, resultDetail);
+        .runExecutePlanCommand(bookAccess, requestFile, outputMode, resultDetail);
   }
 }
 

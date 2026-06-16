@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
@@ -34,6 +35,42 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
       return SqliteBookLifecycleInspectionMapper.fromSnapshot(snapshot, activeDatabase);
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
+  @Override
+  public boolean allowsInitializedWorkflow() {
+    try {
+      SqliteBookStateSnapshot snapshot =
+          SqliteStoreOperations.retryTransientLockFailures(
+              () -> SqliteBookContract.BOOK_STATE_READER.snapshot(activeDatabase));
+      if (snapshot.state() == SqliteBookState.BLANK_SQLITE) {
+        return false;
+      }
+      snapshot
+          .state()
+          .requireInitialized(
+              snapshot.userVersion(),
+              SqliteBookContract.FORMAT_VERSION,
+              SqliteBookContract.NOT_INITIALIZED_BOOK_MESSAGE);
+      return true;
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure("Failed to access SQLite book.", exception);
+    }
+  }
+
+  @Override
+  public BookIdentity requireInitializedBookIdentity() {
+    try {
+      return SqliteStoreOperations.retryTransientLockFailures(
+          () ->
+              SqliteStatementQueries.loadBookIdentity(activeDatabase)
+                  .orElseThrow(
+                      () ->
+                          new IllegalStateException(
+                              "Initialized SQLite book is missing book identity.")));
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure("Failed to access SQLite book.", exception);
     }
   }
 

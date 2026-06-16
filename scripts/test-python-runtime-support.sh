@@ -34,15 +34,26 @@ trap 'rm -rf "${scenario_dir}"' EXIT
 run_with_stub_path() {
     local stub_path=$1
     local log_path=$2
-    STUB_PATH="${stub_path}" ORIGINAL_PATH="${PATH}" LOG_PATH="${log_path}" PYTHON_RUNTIME_SUPPORT="${python_runtime_support}" bash <<'EOF'
+    local inherited_shims_dir=${3:-}
+    STUB_PATH="${stub_path}" ORIGINAL_PATH="${PATH}" LOG_PATH="${log_path}" \
+        INHERITED_SHIMS_DIR="${inherited_shims_dir}" \
+        PYTHON_RUNTIME_SUPPORT="${python_runtime_support}" bash <<'EOF'
 set -euo pipefail
-export PATH="${STUB_PATH}:${ORIGINAL_PATH}"
+if [[ -n "${INHERITED_SHIMS_DIR:-}" ]]; then
+    export FINGRIND_PYTHON_SHIMS_DIR="${INHERITED_SHIMS_DIR}"
+    export PATH="${STUB_PATH}:${INHERITED_SHIMS_DIR}:${ORIGINAL_PATH}"
+else
+    export PATH="${STUB_PATH}:${ORIGINAL_PATH}"
+fi
 unset ORG_GRADLE_PROJECT_fingrindPythonExecutable
 unset ORG_GRADLE_PROJECT_fingrindUvExecutable
 unset FINGRIND_PYTHON_EXECUTABLE
 # shellcheck source=/dev/null
 source "${PYTHON_RUNTIME_SUPPORT}"
 prepare_python_runtime_env
+printf 'shim=%s\n' "${FINGRIND_PYTHON_SHIMS_DIR}" >> "${LOG_PATH}"
+printf 'python3-command=%s\n' "$(command -v python3)" >> "${LOG_PATH}"
+python3 >/dev/null
 printf 'python=%s\n' "${ORG_GRADLE_PROJECT_fingrindPythonExecutable}" >> "${LOG_PATH}"
 printf 'uv=%s\n' "${ORG_GRADLE_PROJECT_fingrindUvExecutable:-missing}" >> "${LOG_PATH}"
 EOF
@@ -64,6 +75,12 @@ fi
 printf 'Python 3.12 stub\n'
 EOF
 chmod +x "${preferred_stub_dir}/python3.12"
+cat > "${preferred_stub_dir}/python3" <<'EOF'
+#!/bin/bash
+printf 'unexpected ambient python3 stub\n' >&2
+exit 1
+EOF
+chmod +x "${preferred_stub_dir}/python3"
 cat > "${preferred_stub_dir}/uv" <<'EOF'
 #!/bin/bash
 printf 'uv invoked unexpectedly\n' >&2
@@ -72,6 +89,10 @@ EOF
 chmod +x "${preferred_stub_dir}/uv"
 preferred_log="${scenario_dir}/preferred.log"
 run_with_stub_path "${preferred_stub_dir}" "${preferred_log}"
+grep -Fx "shim=${scenario_dir}/preferred-shims" "${preferred_log}" >/dev/null && die \
+    "clean-shell preferred-path scenario must allocate its own shim directory"
+grep -F "python3-command=" "${preferred_log}" >/dev/null || die \
+    "prepare_python_runtime_env must publish the shell-visible python3 command"
 grep -Fx "python=${preferred_stub_dir}/python3.12" "${preferred_log}" >/dev/null || die \
     "prepare_python_runtime_env must prefer an on-path Python 3.12+ interpreter"
 grep -Fx "uv=${preferred_stub_dir}/uv" "${preferred_log}" >/dev/null || die \
@@ -89,6 +110,19 @@ source "${PYTHON_RUNTIME_SUPPORT}"
 prepare_python_runtime_env
 EOF
 
+preferred_inherited_shims_dir="${scenario_dir}/preferred-shims"
+mkdir -p "${preferred_inherited_shims_dir}"
+preferred_inherited_log="${scenario_dir}/preferred-inherited.log"
+run_with_stub_path "${preferred_stub_dir}" "${preferred_inherited_log}" "${preferred_inherited_shims_dir}"
+grep -Fx "shim=${preferred_inherited_shims_dir}" "${preferred_inherited_log}" >/dev/null || die \
+    "prepare_python_runtime_env must reuse an inherited repo shim directory when one is published"
+grep -Fx "python3-command=${preferred_inherited_shims_dir}/python3" "${preferred_inherited_log}" >/dev/null || die \
+    "prepare_python_runtime_env must restore repo shim precedence ahead of ambient PATH entries"
+grep -Fx "python=${preferred_stub_dir}/python3.12" "${preferred_inherited_log}" >/dev/null || die \
+    "prepare_python_runtime_env must keep preferring the qualifying on-path Python 3.12+ interpreter when reusing inherited shims"
+grep -Fx "uv=${preferred_stub_dir}/uv" "${preferred_inherited_log}" >/dev/null || die \
+    "prepare_python_runtime_env must preserve uv publication when inherited repo shims are present"
+
 uv_stub_dir="${scenario_dir}/uv-managed"
 mkdir -p "${uv_stub_dir}"
 cat > "${uv_stub_dir}/python3" <<'EOF'
@@ -102,7 +136,8 @@ if [[ "${1:-}" == "-" ]]; then
     fi
     exit 0
 fi
-printf 'Python 3.9 stub\n'
+printf 'unexpected ambient python3 stub\n' >&2
+exit 1
 EOF
 chmod +x "${uv_stub_dir}/python3"
 for interpreter_name in python3.13 python3.12 python; do
@@ -156,6 +191,8 @@ EOF
 chmod +x "${scenario_dir}/managed-python3.12"
 uv_log_output="${scenario_dir}/uv-managed.log"
 run_with_stub_path "${uv_stub_dir}" "${uv_log_output}"
+grep -F "python3-command=" "${uv_log_output}" >/dev/null || die \
+    "prepare_python_runtime_env must publish the shell-visible python3 command for uv-managed fallback"
 grep -Fx "python=${scenario_dir}/managed-python3.12" "${uv_log_output}" >/dev/null || die \
     "prepare_python_runtime_env must fall back to a uv-managed Python 3.12+ runtime"
 grep -Fx "uv=${uv_stub_dir}/uv" "${uv_log_output}" >/dev/null || die \

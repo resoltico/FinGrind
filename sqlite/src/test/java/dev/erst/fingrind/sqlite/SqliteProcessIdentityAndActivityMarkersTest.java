@@ -10,10 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.FileTime;
@@ -104,7 +102,8 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
               "\\books\\book.sqlite.fingrind-activity-"
                   + SqliteProcessIdentity.current().activityMarkerFileToken()
                   + ".marker");
-      markerPath.failNewByteChannelWith(new FileAlreadyExistsException(markerPath.toString()));
+      markerPath.exists = true;
+      markerPath.regularFile = false;
 
       assertDoesNotThrow(() -> SqliteBookActivityMarkers.createCurrentProcessMarker(bookPath));
 
@@ -114,7 +113,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
               "\\books\\broken.sqlite.fingrind-activity-"
                   + SqliteProcessIdentity.current().activityMarkerFileToken()
                   + ".marker");
-      failingMarkerPath.failNewByteChannelWith(new IOException("marker-boom"));
+      failingMarkerPath.failCreateDirectoryWith(new IOException("marker-boom"));
 
       IllegalStateException exception =
           assertThrows(
@@ -123,6 +122,39 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
       assertEquals(
           "Failed to publish one FinGrind SQLite book activity marker.", exception.getMessage());
       assertEquals("marker-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    }
+  }
+
+  @Test
+  void createCurrentProcessMarker_rejectsOneExistingNonDirectoryMarkerPath() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      AclFixturePath markerPath =
+          fileSystem.path(
+              "\\books\\book.sqlite.fingrind-activity-"
+                  + SqliteProcessIdentity.current().activityMarkerFileToken()
+                  + ".marker");
+      markerPath.exists = true;
+      markerPath.regularFile = true;
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookActivityMarkers.createCurrentProcessMarker(bookPath));
+      assertEquals(
+          "Failed to publish one FinGrind SQLite book activity marker.", exception.getMessage());
+      assertEquals(
+          "Activity marker path already exists as a non-directory entry.",
+          NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
     }
   }
 
@@ -136,7 +168,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
                   + SqliteProcessIdentity.current().activityMarkerFileToken()
                   + ".marker");
       markerPath.exists = true;
-      markerPath.regularFile = true;
+      markerPath.regularFile = false;
       markerPath.preserveExistingEntryOnDeleteIfExists();
       markerPath.overrideAclView = throwingAclView("marker-harden-boom");
 
@@ -161,7 +193,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
                   + SqliteProcessIdentity.current().activityMarkerFileToken()
                   + ".marker");
       markerPath.exists = true;
-      markerPath.regularFile = true;
+      markerPath.regularFile = false;
       markerPath.failDeleteIfExistsWith(new IOException("delete-boom"));
 
       assertDoesNotThrow(() -> SqliteBookActivityMarkers.deleteCurrentProcessMarker(bookPath));
@@ -233,7 +265,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
       AclFixturePath invalidMarkerPath =
           fileSystem.path("\\books\\book.sqlite.fingrind-activity-invalid-token.marker");
       invalidMarkerPath.exists = true;
-      invalidMarkerPath.regularFile = true;
+      invalidMarkerPath.regularFile = false;
       invalidMarkerPath.failDeleteIfExistsWith(new IOException("delete-boom"));
 
       IllegalStateException exception =
@@ -244,6 +276,62 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
           "Failed to inspect or clear one FinGrind SQLite book activity marker.",
           exception.getMessage());
       assertEquals("delete-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    }
+  }
+
+  @Test
+  void hasExternalLiveMarker_treatsUndeletableInvalidAndStaleMarkersAsLiveBlockers() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+
+      AclFixturePath invalidMarkerPath =
+          fileSystem.path("\\books\\book.sqlite.fingrind-activity-invalid-token.marker");
+      invalidMarkerPath.exists = true;
+      invalidMarkerPath.regularFile = false;
+      invalidMarkerPath.preserveExistingEntryOnDeleteIfExists();
+
+      assertTrue(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+
+      invalidMarkerPath.exists = false;
+      AclFixturePath staleMarkerPath =
+          fileSystem.path(
+              "\\books\\book.sqlite.fingrind-activity-"
+                  + SqliteProcessIdentity.activityMarkerFileToken(
+                      999_999_999L, SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS)
+                  + ".marker");
+      staleMarkerPath.exists = true;
+      staleMarkerPath.regularFile = false;
+      staleMarkerPath.preserveExistingEntryOnDeleteIfExists();
+
+      assertTrue(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+    }
+  }
+
+  @Test
+  void hasExternalLiveMarker_ignoresMatchingNonDirectoryEntries() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      AclFixturePath fileMarkerPath =
+          fileSystem.path(
+              "\\books\\book.sqlite.fingrind-activity-"
+                  + SqliteProcessIdentity.activityMarkerFileToken(
+                      999_999_999L, SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS)
+                  + ".marker");
+      fileMarkerPath.exists = true;
+      fileMarkerPath.regularFile = true;
+
+      assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+      assertTrue(fileMarkerPath.exists);
     }
   }
 
@@ -275,7 +363,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
             bookPath,
             SqliteProcessIdentity.activityMarkerFileToken(
                 999_999_999L, SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS));
-    Files.writeString(staleSibling, "stale");
+    Files.createDirectory(staleSibling);
 
     assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
     assertFalse(Files.exists(staleSibling));
@@ -291,10 +379,10 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     Path unrelatedSibling = parentPath.resolve("other.txt");
     Files.writeString(unrelatedSibling, "unrelated");
     Path invalidSibling = markerPath(bookPath, "invalid-token");
-    Files.writeString(invalidSibling, "invalid");
+    Files.createDirectory(invalidSibling);
     Path currentSibling =
         markerPath(bookPath, SqliteProcessIdentity.current().activityMarkerFileToken());
-    Files.writeString(currentSibling, "current");
+    Files.createDirectory(currentSibling);
     Path wrongSuffixSibling =
         parentPath.resolve(
             bookPath.getFileName()
@@ -307,10 +395,10 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
             bookPath,
             SqliteProcessIdentity.activityMarkerFileToken(
                 999_999_999L, SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS));
-    Files.writeString(staleSibling, "stale");
+    Files.createDirectory(staleSibling);
 
     assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
-    assertTrue(Files.isDirectory(nonRegularSibling));
+    assertFalse(Files.exists(nonRegularSibling));
     assertTrue(Files.exists(unrelatedSibling));
     assertFalse(Files.exists(invalidSibling));
     assertTrue(Files.exists(currentSibling));
@@ -328,11 +416,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
               SqliteProcessIdentity.activityMarkerFileToken(
                   helperProcess.pid(), SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS));
       try {
-        Files.writeString(
-            liveMarkerPath,
-            "pid=helper\nstartEpochMillis=-1\n",
-            StandardOpenOption.CREATE_NEW,
-            StandardOpenOption.WRITE);
+        Files.createDirectory(liveMarkerPath);
 
         assertTrue(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
       } finally {
@@ -354,11 +438,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
               SqliteProcessIdentity.activityMarkerFileToken(
                   helperProcess.pid(), SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS));
       try {
-        Files.writeString(
-            liveMarkerPath,
-            "pid=" + helperProcess.pid() + "\nstartEpochMillis=-1\n",
-            StandardOpenOption.CREATE_NEW,
-            StandardOpenOption.WRITE);
+        Files.createDirectory(liveMarkerPath);
         Files.setLastModifiedTime(
             liveMarkerPath, FileTime.from(Instant.now().minus(Duration.ofHours(13))));
 

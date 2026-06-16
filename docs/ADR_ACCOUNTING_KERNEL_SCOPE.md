@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: ADR_ACCOUNTING_KERNEL_SCOPE
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, bookkeeping kernel, country agnostic, functional currency, scope, internal management]
   questions: ["what bookkeeping kernel does fingrind publish today", "what does country agnostic mean in fingrind today", "what accounting scope is intentionally out of scope", "does fingrind publish a standards baseline"]

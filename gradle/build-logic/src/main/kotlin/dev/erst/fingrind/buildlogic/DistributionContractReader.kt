@@ -4,12 +4,18 @@ import java.nio.file.Path
 
 object DistributionContractReader {
     fun publicCliBundleTargets(projectRootDirectory: Path): List<String> =
-        DistributionContractModels.publicDistributionContract(projectRootDirectory)
-            .supportedPublicCliBundleTargets
+        DistributionContractModels.bundleLayoutContract(projectRootDirectory)
+            .bundleTargets
+            .values
+            .filter { it.publicBundlePublication.status == PUBLICATION_STATUS_PUBLISHED }
+            .map { it.classifier }
 
     fun unsupportedPublicCliBundleTargets(projectRootDirectory: Path): List<String> =
-        DistributionContractModels.publicDistributionContract(projectRootDirectory)
-            .unsupportedPublicCliBundleTargets
+        DistributionContractModels.bundleLayoutContract(projectRootDirectory)
+            .bundleTargets
+            .values
+            .filter { it.publicBundlePublication.status != PUBLICATION_STATUS_PUBLISHED }
+            .map { it.classifier }
 
     fun requiredMinimumSqliteVersion(projectRootDirectory: Path): String =
         managedSqliteProperty(projectRootDirectory) { it.requiredMinimumSqliteVersion }
@@ -199,9 +205,9 @@ object DistributionContractReader {
     internal data class ContractSchema(
         val runtimeSurface: RuntimeSurfaceSchema,
         val runtimeModuleDiscovery: RuntimeModuleDiscoverySchema,
-        val publicDistribution: PublicDistributionSchema,
         val managedSqlite: ManagedSqliteSchema,
         val bundleLayout: BundleLayoutSchema,
+        val bundlePublication: BundlePublicationSchema,
         val operationIds: OperationIdSchema,
     )
 
@@ -223,11 +229,6 @@ object DistributionContractReader {
         val allowedMissingDependencyPrefixes: String,
     )
 
-    internal data class PublicDistributionSchema(
-        val supportedPublicCliBundleTargets: String,
-        val unsupportedPublicCliBundleTargets: String,
-    )
-
     internal data class ManagedSqliteSchema(
         val requiredMinimumSqliteVersion: String,
         val requiredSqlite3mcVersion: String,
@@ -245,37 +246,10 @@ object DistributionContractReader {
         val requiresSecureMemorySupport: String,
     )
 
-    internal data class BundleLayoutSchema(
-        val bundleTargets: String,
-        val operatingSystemId: String,
-        val architectureId: String,
-        val archiveFormat: String,
-        val launcherPath: String,
-        val launcherCommand: String,
-        val sqliteLibraryFileName: String,
-    )
-
     internal data class OperationIdSchema(
         val help: String,
         val capabilities: String,
         val printRequestTemplate: String,
         val printPlanTemplate: String,
-    )
-
-    internal data class PublicDistributionContract(
-        val supportedPublicCliBundleTargets: List<String>,
-        val unsupportedPublicCliBundleTargets: List<String>,
-    )
-
-    internal data class BundleLayoutContract(val bundleTargets: Map<String, BundleTargetContract>)
-
-    data class BundleTargetContract(
-        val classifier: String,
-        val operatingSystemId: String,
-        val architectureId: String,
-        val archiveFormat: String,
-        val launcherPath: String,
-        val launcherCommand: String,
-        val sqliteLibraryFileName: String,
     )
 }

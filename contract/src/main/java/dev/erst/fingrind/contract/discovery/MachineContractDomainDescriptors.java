@@ -16,10 +16,39 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 /** Builds the non-request/non-response descriptor families in the machine contract. */
 final class MachineContractDomainDescriptors {
+  private static final Set<Integer> TEMPLATE_EXIT_CODES = Set.of(0, 1, 70);
+  private static final Set<Integer> DISCOVERY_EXIT_CODES = Set.of(0, 1, 2, 70);
+  private static final Set<Integer> KEY_GENERATION_EXIT_CODES = Set.of(0, 1, 2, 6, 7, 70);
+  private static final Set<Integer> MAINTENANCE_EXIT_CODES = Set.of(0, 1, 2, 4, 5, 6, 7, 70);
+  private static final Set<Integer> EXECUTE_PLAN_EXIT_CODES = Set.of(0, 1, 2, 3, 4, 5, 6, 70);
+  private static final Set<Integer> DEFAULT_MUTATION_EXIT_CODES = Set.of(0, 1, 2, 4, 5, 6, 70);
+  private static final Set<OperationId> TEMPLATE_ONLY_OPERATIONS =
+      EnumSet.of(OperationId.PRINT_REQUEST_TEMPLATE, OperationId.PRINT_PLAN_TEMPLATE);
+  private static final Set<OperationId> DISCOVERY_OPERATIONS =
+      EnumSet.of(
+          OperationId.HELP, OperationId.VERSION, OperationId.CAPABILITIES, OperationId.ENVIRONMENT);
+  private static final Set<OperationId> MAINTENANCE_OPERATIONS =
+      EnumSet.of(
+          OperationId.REKEY_BOOK,
+          OperationId.BACKUP_BOOK,
+          OperationId.RESTORE_BOOK,
+          OperationId.INSPECT_REKEY_ROLLBACK,
+          OperationId.DELETE_REKEY_ROLLBACK,
+          OperationId.RESTORE_REKEY_ROLLBACK,
+          OperationId.TRIAL_BALANCE,
+          OperationId.PERIOD_SUMMARY,
+          OperationId.FINANCIAL_POSITION,
+          OperationId.INCOME_STATEMENT,
+          OperationId.CHANGES_IN_EQUITY,
+          OperationId.ACCOUNT_BALANCE,
+          OperationId.ACCOUNT_LEDGER);
+
   private MachineContractDomainDescriptors() {}
 
   static ContractResponse.BookModelDescriptor bookModel() {
@@ -76,7 +105,34 @@ final class MachineContractDomainDescriptors {
         new ExitCodeDescriptor(
             6, "protected-book path, passphrase, key-file, or verification failure"),
         new ExitCodeDescriptor(
-            7, "protected-book maintenance precondition or destination-collision failure"));
+            7, "protected-book maintenance precondition or destination-collision failure"),
+        new ExitCodeDescriptor(70, "internal software defect"));
+  }
+
+  static List<ExitCodeDescriptor> exitCodes(OperationId operationId) {
+    Set<Integer> allowedExitCodes = allowedExitCodes(operationId);
+    return exitCodes().stream()
+        .filter(exitCode -> allowedExitCodes.contains(exitCode.code()))
+        .toList();
+  }
+
+  private static Set<Integer> allowedExitCodes(OperationId operationId) {
+    if (TEMPLATE_ONLY_OPERATIONS.contains(operationId)) {
+      return TEMPLATE_EXIT_CODES;
+    }
+    if (DISCOVERY_OPERATIONS.contains(operationId)) {
+      return DISCOVERY_EXIT_CODES;
+    }
+    if (operationId == OperationId.GENERATE_BOOK_KEY_FILE) {
+      return KEY_GENERATION_EXIT_CODES;
+    }
+    if (MAINTENANCE_OPERATIONS.contains(operationId)) {
+      return MAINTENANCE_EXIT_CODES;
+    }
+    if (operationId == OperationId.EXECUTE_PLAN) {
+      return EXECUTE_PLAN_EXIT_CODES;
+    }
+    return DEFAULT_MUTATION_EXIT_CODES;
   }
 
   static ContractResponse.AuditDescriptor audit() {

@@ -34,7 +34,10 @@ class ManagedSqliteDockerProvisioningTest {
                       "archiveFormat": "tar.gz",
                       "launcherPath": "bin/fingrind",
                       "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.so.0"
+                      "sqliteLibraryFileName": "libsqlite3.so.0",
+                      "compatibilityLabel": "glibc 2.34+ Linux x86_64",
+                      "minimumGlibcVersion": "2.34",
+                      "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof"
                     },
                     "linux-aarch64": {
                       "operatingSystemId": "linux",
@@ -42,7 +45,10 @@ class ManagedSqliteDockerProvisioningTest {
                       "archiveFormat": "tar.gz",
                       "launcherPath": "bin/fingrind",
                       "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.so.0"
+                      "sqliteLibraryFileName": "libsqlite3.so.0",
+                      "compatibilityLabel": "glibc 2.34+ Linux aarch64",
+                      "minimumGlibcVersion": "2.34",
+                      "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof"
                     }
                   }
                 }
@@ -85,7 +91,7 @@ class ManagedSqliteDockerProvisioningTest {
                     sqlite3mcVersionValue = "2.3.5",
                     sourcePackageId = "sqlite3mc-amalgamation-test",
                     dockerBundleTarget =
-                        DistributionContractReader.BundleTargetContract(
+                        BundleTargetContract(
                             classifier = "linux-x86_64",
                             operatingSystemId = "linux",
                             architectureId = "x86_64",
@@ -93,6 +99,14 @@ class ManagedSqliteDockerProvisioningTest {
                             launcherPath = "bin/fingrind",
                             launcherCommand = "./bin/fingrind",
                             sqliteLibraryFileName = "libsqlite3.so.0",
+                            compatibilityLabel = "glibc 2.34+ Linux x86_64",
+                            minimumGlibcVersion = "2.34",
+                            compatibilitySmokeContainerImage = "rockylinux:9@sha256:floor-proof",
+                            publicBundlePublication =
+                                PublicBundlePublicationContract(
+                                    status = "published",
+                                    runnerLabel = "ubuntu-24.04",
+                                ),
                         ),
                 )
 

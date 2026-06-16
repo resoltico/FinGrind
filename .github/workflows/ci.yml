@@ -72,12 +72,43 @@ jobs:
       - name: Run the canonical root verification gate
         run: ./check.sh --no-daemon --console=plain
 
-  windows-nonpublic-bundle-smoke:
-    name: Windows non-public bundle smoke
-    runs-on: windows-2022
+  prepare-published-bundle-smoke-matrix:
+    name: Prepare published bundle smoke matrix
+    runs-on: ubuntu-24.04
     needs: check
-    continue-on-error: true
-    timeout-minutes: 25
+    timeout-minutes: 10
+
+    outputs:
+      bundle-matrix-json: ${{ steps.release-plan.outputs.bundle-matrix-json }}
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Render canonical published bundle smoke matrix
+        id: release-plan
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(grep '^version=' gradle.properties | cut -d= -f2)"
+          [ -n "${version}" ]
+          plan_json="$(
+            python3 scripts/read-release-publication-plan.py \
+              --version "${version}"
+          )"
+          printf 'bundle-matrix-json=%s\n' "$(printf '%s' "${plan_json}" | jq -c '.bundleBuildMatrix')" >> "$GITHUB_OUTPUT"
+
+  published-bundle-smoke:
+    name: Published bundle smoke (${{ matrix.classifier }})
+    runs-on: ${{ matrix.runner }}
+    needs:
+      - check
+      - prepare-published-bundle-smoke-matrix
+    timeout-minutes: 35
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-published-bundle-smoke-matrix.outputs.bundle-matrix-json) }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -110,17 +141,20 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
       - name: Configure MSVC developer command environment
+        if: runner.os == 'Windows'
         shell: pwsh
         run: .\scripts\setup-msvc-dev-cmd.ps1 -Arch x64
 
       - name: Configure Windows Defender build exclusions
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           .\scripts\configure-windows-defender-build-exclusions.ps1 `
             -WorkspacePath "${{ github.workspace }}" `
             -GradleUserHome "$env:USERPROFILE\.gradle"
 
-      - name: Install repo-owned Python tools
+      - name: Install repo-owned Python tools on Windows
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $uvVersionLine = Select-String -Path gradle/fingrind-build.properties -Pattern '^fingrindUvVersion='
@@ -139,83 +173,56 @@ jobs:
           & $uvExecutable --version
           python -m pip install --user -r requirements-python-tools.txt
 
+      - name: Verify Unix runner identity matches bundle target
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./scripts/verify-runner-identity.py \
+            --expected-os-id '${{ matrix.operatingSystemId }}' \
+            --expected-arch-id '${{ matrix.architectureId }}' \
+            --actual-os-name "$(uname -s)" \
+            --actual-architecture "$(uname -m)"
+
+      - name: Verify Windows runner identity matches bundle target
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not $IsWindows) {
+            throw "Expected a Windows runner"
+          }
+          $actualArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+          python .\scripts\verify-runner-identity.py `
+            --expected-os-id '${{ matrix.operatingSystemId }}' `
+            --expected-arch-id '${{ matrix.architectureId }}' `
+            --actual-os-name Windows `
+            --actual-architecture $actualArch
+
       - name: Run included build-logic tests on Windows
+        if: runner.os == 'Windows'
         shell: pwsh
         run: .\gradlew.bat -p gradle\build-logic test --no-daemon --console=plain
 
+      - name: Verify managed SQLite CLI runtimes on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          ./scripts/verify-source-checkout-sqlite-runtime.sh
+          ./scripts/verify-direct-java-sqlite-runtime.sh
+
       - name: Verify direct-Java SQLite CLI runtime on Windows
+        if: runner.os == 'Windows'
         shell: pwsh
         run: .\scripts\verify-direct-java-sqlite-runtime.ps1
 
       - name: Verify source-checkout SQLite CLI runtime on Windows
+        if: runner.os == 'Windows'
         shell: pwsh
         run: .\scripts\verify-source-checkout-sqlite-runtime.ps1
 
-      - name: Build self-contained Windows CLI bundle
-        shell: pwsh
-        run: .\gradlew.bat :cli:bundleCliArchive -PfingrindBundleClassifier=windows-x86_64 --no-daemon --console=plain
-
-      - name: Smoke test the Windows CLI bundle
-        shell: pwsh
-        run: .\scripts\bundle-smoke.ps1
-
-  published-unix-bundle-smoke:
-    name: Published bundle smoke (${{ matrix.classifier }})
-    runs-on: ${{ matrix.runner }}
-    needs: check
-    timeout-minutes: 25
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-24.04
-            classifier: linux-x86_64
-            expected_os: Linux
-            expected_arch: x86_64
-          - runner: ubuntu-24.04-arm
-            classifier: linux-aarch64
-            expected_os: Linux
-            expected_arch: aarch64
-
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Resolve Java toolchain version
-        id: build-metadata
-        shell: bash
-        run: |
-          set -euo pipefail
-          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
-          [ -n "${java_version}" ]
-          echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
-        with:
-          java-version: ${{ steps.build-metadata.outputs.java-version }}
-          distribution: 'zulu'
-
-      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
-        with:
-          cache-read-only: ${{ github.event_name == 'pull_request' }}
-
-      - name: Verify Unix runner identity matches bundle target
-        shell: bash
-        run: |
-          set -euo pipefail
-          actual_os="$(uname -s)"
-          actual_arch="$(uname -m)"
-          [ "${actual_os}" = "${{ matrix.expected_os }}" ] || {
-            echo "Expected OS ${{ matrix.expected_os }} but runner reported ${actual_os}"
-            exit 1
-          }
-          [ "${actual_arch}" = "${{ matrix.expected_arch }}" ] || {
-            echo "Expected arch ${{ matrix.expected_arch }} but runner reported ${actual_arch}"
-            exit 1
-          }
-
       - name: Build published Unix CLI bundle
-        id: bundle-build
+        if: runner.os != 'Windows'
+        id: unix-bundle-build
         shell: bash
         run: |
           set -euo pipefail
@@ -240,9 +247,49 @@ jobs:
           printf 'archive-path=%s\n' "${archive_path}" >> "$GITHUB_OUTPUT"
           printf 'checksum-path=%s\n' "${checksum_path}" >> "$GITHUB_OUTPUT"
 
-      - name: Smoke test the published Unix CLI bundle
+      - name: Build self-contained Windows CLI bundle
+        if: runner.os == 'Windows'
+        id: windows-bundle-build
+        shell: pwsh
+        run: |
+          . .\scripts\gradle-wrapper-support.ps1
+          $manifestPath = Get-FinGrindBundleArchiveManifestPath `
+            -RepositoryRoot (Get-Location).Path `
+            -ProjectSegment 'cli'
+          & .\gradlew.bat :cli:bundleCliArchive `
+            -PfingrindBundleClassifier=${{ matrix.classifier }} `
+            --no-daemon `
+            --console=plain
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            throw "bundleCliArchive failed with exit code $exitCode"
+          }
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          $archivePath = [string]$manifest.archivePath
+          $checksumPath = [string]$manifest.checksumPath
+          if ([string]::IsNullOrWhiteSpace($archivePath) -or [string]::IsNullOrWhiteSpace($checksumPath)) {
+            throw "bundleCliArchive manifest did not declare archive and checksum paths"
+          }
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$archivePath"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "checksum-path=$checksumPath"
+
+      - name: Smoke test the published Unix CLI bundle on the host runner
+        if: runner.os != 'Windows'
         shell: bash
-        run: ./scripts/bundle-smoke.sh "${{ steps.bundle-build.outputs.archive-path }}"
+        run: ./scripts/bundle-smoke.sh "${{ steps.unix-bundle-build.outputs.archive-path }}"
+
+      - name: Smoke test the published Linux CLI bundle on the compatibility floor
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ./scripts/bundle-smoke.sh \
+            "${{ steps.unix-bundle-build.outputs.archive-path }}" \
+            --execution-surface compatibility-floor
+
+      - name: Smoke test the Windows CLI bundle
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\scripts\bundle-smoke.ps1 "${{ steps.windows-bundle-build.outputs.archive-path }}"
 
   devcontainer-changes:
     name: Detect devcontainer changes
@@ -319,7 +366,8 @@ jobs:
     if: always()
     needs:
       - check
-      - published-unix-bundle-smoke
+      - prepare-published-bundle-smoke-matrix
+      - published-bundle-smoke
       - devcontainer-changes
       - devcontainer
     runs-on: ubuntu-24.04

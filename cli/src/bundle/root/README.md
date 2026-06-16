@@ -13,6 +13,7 @@ Any inherited `FINGRIND_SQLITE_LIBRARY` override is ignored for this archive.
 
 Machine-readable bundle metadata:
 - `./bundle-manifest.json`
+- `bundle-manifest.json` also records the ZIP-portable normalized artifact timestamp applied to every bundled file for reproducible extraction semantics
 
 The archive target facts and managed-SQLite version pins come from the same protocol-owned
 contract resources that also drive `capabilities`, release verification, and source-checkout

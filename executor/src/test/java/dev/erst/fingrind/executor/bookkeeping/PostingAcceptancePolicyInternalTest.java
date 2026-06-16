@@ -42,9 +42,10 @@ class PostingAcceptancePolicyInternalTest {
             () -> PostingAcceptancePolicy.initializedBookIdentity(new ExistingInspectionBook()));
 
     assertEquals(
-        "Initialized posting validation requires one live book.", missingFailure.getMessage());
+        "Book identity is unavailable because the book is missing.", missingFailure.getMessage());
     assertEquals(
-        "Initialized posting validation requires one live book.", existingFailure.getMessage());
+        "Book identity is unavailable for non-initialized book status blank-sqlite.",
+        existingFailure.getMessage());
   }
 
   @Test

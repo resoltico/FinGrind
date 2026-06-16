@@ -5,7 +5,6 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
-import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -39,20 +38,17 @@ public final class PeriodResultTransferService {
   /** Transfers one contiguous reporting period into generated result-holding postings. */
   public PeriodResultTransferOutcome transferPeriodResult(ReportingPeriod reportingPeriod) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    BookLifecycleInspection inspection = lifecycleReader.inspectBook();
-    if (!inspection.allowsInitializedWorkflow()) {
+    if (!lifecycleReader.allowsInitializedWorkflow()) {
       return new PeriodResultTransferOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
     }
-    BookLifecycleInspection.Initialized initialized =
-        (BookLifecycleInspection.Initialized) inspection;
+    var bookIdentity = lifecycleReader.requireInitializedBookIdentity();
     PeriodResultTransferPlanner planner =
         new PeriodResultTransferPlanner(
-            KernelAccountingRulesResolver.forBookIdentity(initialized.bookIdentity())
-                .resultTransferPolicy());
+            KernelAccountingRulesResolver.forBookIdentity(bookIdentity).resultTransferPolicy());
     return periodResultTransferStore.transferPeriodResult(
         reportingPeriod,
-        initialized.bookIdentity(),
+        bookIdentity,
         planner,
         currentUtcDate(),
         clock.instant(),

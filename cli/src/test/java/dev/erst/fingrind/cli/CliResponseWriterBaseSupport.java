@@ -14,7 +14,14 @@ class CliResponseWriterBaseSupport {
   protected final CliPlanResponseWriter planWriter;
 
   CliResponseWriterBaseSupport(PrintStream outputStream) {
-    this.outputChannel = new CliOutputChannel(Objects.requireNonNull(outputStream, "outputStream"));
+    this(outputStream, outputStream);
+  }
+
+  CliResponseWriterBaseSupport(PrintStream outputStream, PrintStream diagnosticsStream) {
+    this.outputChannel =
+        new CliOutputChannel(
+            Objects.requireNonNull(outputStream, "outputStream"),
+            Objects.requireNonNull(diagnosticsStream, "diagnosticsStream"));
     this.failureWriter = new CliFailureResponseWriter(outputChannel);
     this.discoveryWriter = new CliDiscoveryResponseWriter(outputChannel);
     this.mutationWriter = new CliMutationResponseWriter(outputChannel);

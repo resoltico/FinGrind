@@ -18,6 +18,10 @@ class CliResponseWriterReportSupport extends CliResponseWriterBookReadSupport {
     super(outputStream);
   }
 
+  CliResponseWriterReportSupport(PrintStream outputStream, PrintStream diagnosticsStream) {
+    super(outputStream, diagnosticsStream);
+  }
+
   void writeAccountBalanceResult(AccountBalanceResult result) {
     writeAccountBalanceResult(result, OutputMode.JSON);
   }

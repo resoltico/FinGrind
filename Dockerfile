@@ -2,7 +2,7 @@ FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:d5514973a10f0dbdf3c1819946571317
 
 WORKDIR /build
 
-RUN apk add --no-cache binutils=2.45.1-r0 python3=3.12.13-r0
+RUN apk add --no-cache python3 binutils
 
 COPY source-root/ /build/source-root/
 COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar runtime-modules.txt /build/
@@ -70,7 +70,7 @@ FROM alpine:3.24@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb2
 
 WORKDIR /workdir
 
-RUN apk add --no-cache libstdc++=15.2.0-r5
+RUN apk add --no-cache libstdc++
 
 COPY --from=builder /opt/fingrind/runtime /opt/fingrind/runtime
 COPY --from=builder /build/libsqlite3.so.0 /opt/fingrind/lib/native/libsqlite3.so.0

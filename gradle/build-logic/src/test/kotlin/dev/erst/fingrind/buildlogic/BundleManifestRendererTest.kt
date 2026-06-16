@@ -38,10 +38,6 @@ class BundleManifestRendererTest {
                   "runtimeModuleDiscovery": {
                     "allowedMissingDependencyPrefixes": "allowedMissingDependencyPrefixes"
                   },
-                  "publicDistribution": {
-                    "supportedPublicCliBundleTargets": "supportedTargets",
-                    "unsupportedPublicCliBundleTargets": "unsupportedTargets"
-                  },
                   "managedSqlite": {
                     "requiredMinimumSqliteVersion": "minimumSqliteVersion",
                     "requiredSqlite3mcVersion": "sqlite3mcVersion",
@@ -65,7 +61,15 @@ class BundleManifestRendererTest {
                     "archiveFormat": "archiveFormat",
                     "launcherPath": "launcherPath",
                     "launcherCommand": "launcherCommand",
-                    "sqliteLibraryFileName": "sqliteLibraryFileName"
+                    "sqliteLibraryFileName": "sqliteLibraryFileName",
+                    "compatibilityLabel": "compatibilityLabel",
+                    "minimumGlibcVersion": "minimumGlibcVersion",
+                    "compatibilitySmokeContainerImage": "compatibilitySmokeContainerImage"
+                  },
+                  "bundlePublication": {
+                    "bundleTargets": "bundleTargets",
+                    "status": "status",
+                    "runnerLabel": "runnerLabel"
                   },
                   "operationIdContract": {
                     "help": "OP_HELP",
@@ -98,16 +102,6 @@ class BundleManifestRendererTest {
             )
             writeContractResource(
                 repositoryRoot,
-                "public-distribution-contract.json",
-                """
-                {
-                  "supportedTargets": ["linux-x86_64", "linux-aarch64"],
-                  "unsupportedTargets": ["macos-aarch64", "macos-x86_64", "windows-x86_64", "windows-aarch64"]
-                }
-                """.trimIndent(),
-            )
-            writeContractResource(
-                repositoryRoot,
                 "managed-sqlite-contract.json",
                 """
                 {
@@ -134,60 +128,12 @@ class BundleManifestRendererTest {
             writeContractResource(
                 repositoryRoot,
                 "bundle-layout-contract.json",
-                """
-                {
-                  "bundleTargets": {
-                    "macos-aarch64": {
-                      "operatingSystemId": "macos",
-                      "architectureId": "aarch64",
-                      "archiveFormat": "tar.gz",
-                      "launcherPath": "bin/fingrind",
-                      "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.dylib"
-                    },
-                    "linux-x86_64": {
-                      "operatingSystemId": "linux",
-                      "architectureId": "x86_64",
-                      "archiveFormat": "tar.gz",
-                      "launcherPath": "bin/fingrind",
-                      "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.so.0"
-                    },
-                    "linux-aarch64": {
-                      "operatingSystemId": "linux",
-                      "architectureId": "aarch64",
-                      "archiveFormat": "tar.gz",
-                      "launcherPath": "bin/fingrind",
-                      "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.so.0"
-                    },
-                    "macos-x86_64": {
-                      "operatingSystemId": "macos",
-                      "architectureId": "x86_64",
-                      "archiveFormat": "tar.gz",
-                      "launcherPath": "bin/fingrind",
-                      "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.dylib"
-                    },
-                    "windows-x86_64": {
-                      "operatingSystemId": "windows",
-                      "architectureId": "x86_64",
-                      "archiveFormat": "zip",
-                      "launcherPath": "bin/fingrind.ps1",
-                      "launcherCommand": ".\\bin\\fingrind.ps1",
-                      "sqliteLibraryFileName": "sqlite3.dll"
-                    },
-                    "windows-aarch64": {
-                      "operatingSystemId": "windows",
-                      "architectureId": "aarch64",
-                      "archiveFormat": "zip",
-                      "launcherPath": "bin/fingrind.ps1",
-                      "launcherCommand": ".\\bin\\fingrind.ps1",
-                      "sqliteLibraryFileName": "sqlite3.dll"
-                    }
-                  }
-                }
-                """.trimIndent(),
+                DistributionContractReaderTestSupport.sharedBundleLayoutContractJson(),
+            )
+            writeContractResource(
+                repositoryRoot,
+                "bundle-publication-contract.json",
+                DistributionContractReaderTestSupport.sharedBundlePublicationContractJson(),
             )
             writeContractResource(
                 repositoryRoot,
@@ -208,11 +154,16 @@ class BundleManifestRendererTest {
                     applicationName = "FinGrind",
                     version = "0.26.0",
                     bundleClassifier = "linux-x86_64",
-            )
+                    normalizedArtifactTimestampUtc = "2026-06-14T16:43:08Z",
+                )
 
             val manifest = objectMapper.readTree(rendered)
             assertEquals("FinGrind", manifest.path("application").requireText())
             assertEquals("0.26.0", manifest.path("version").requireText())
+            assertEquals(
+                "2026-06-14T16:43:08Z",
+                manifest.path("normalizedArtifactTimestampUtc").requireText(),
+            )
             assertEquals("self-contained-cli-bundle", manifest.path("artifactType").requireText())
             assertEquals("tar.gz", manifest.path("archiveFormat").requireText())
             assertEquals("self-contained-bundle", manifest.path("runtimeDistribution").requireText())
@@ -220,6 +171,14 @@ class BundleManifestRendererTest {
             assertEquals("linux-x86_64", manifest.path("bundleTarget").path("classifier").requireText())
             assertEquals("linux", manifest.path("bundleTarget").path("operatingSystem").requireText())
             assertEquals("x86_64", manifest.path("bundleTarget").path("architecture").requireText())
+            assertEquals(
+                "glibc 2.34+ Linux x86_64",
+                manifest.path("bundleTarget").path("compatibilityLabel").requireText(),
+            )
+            assertEquals(
+                "2.34",
+                manifest.path("bundleTarget").path("minimumGlibcVersion").requireText(),
+            )
             assertEquals("bin/fingrind", manifest.path("launcher").requireText())
             assertEquals(
                 "sqlite-ffm-sqlite3mc",
@@ -255,13 +214,19 @@ class BundleManifestRendererTest {
             val supportedTargets =
                 manifest.path("supportedPublicCliBundleTargets").toList().map { it.requireText() }
             assertEquals(
-                listOf("linux-x86_64", "linux-aarch64"),
+                listOf(
+                    "macos-aarch64",
+                    "linux-x86_64",
+                    "linux-aarch64",
+                    "macos-x86_64",
+                    "windows-x86_64",
+                ),
                 supportedTargets,
             )
             val unsupportedTargets =
                 manifest.path("unsupportedPublicCliBundleTargets").toList().map { it.requireText() }
             assertEquals(
-                listOf("macos-aarch64", "macos-x86_64", "windows-x86_64", "windows-aarch64"),
+                listOf("windows-aarch64"),
                 unsupportedTargets,
             )
             val documentationFiles =

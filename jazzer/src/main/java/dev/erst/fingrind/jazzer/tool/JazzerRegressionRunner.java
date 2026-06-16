@@ -32,9 +32,15 @@ public final class JazzerRegressionRunner {
 
   /** Replays the selected harness's committed seeds and exits non-zero on any mismatch. */
   public static void main(String[] args) throws IOException {
+    runMain(args, System.out, System.err, System::exit);
+  }
+
+  static void runMain(
+      String[] args, OutputStream outputStream, OutputStream errorStream, ExitHandler exitHandler)
+      throws IOException {
     MainArguments mainArguments = MainArguments.parse(args);
     new JazzerRegressionRunner(
-            mainArguments.projectDirectory(), System.out, System.err, System::exit)
+            mainArguments.projectDirectory(), outputStream, errorStream, exitHandler)
         .runHarness(parseHarness(mainArguments.commandArguments().toArray(String[]::new)));
   }
 

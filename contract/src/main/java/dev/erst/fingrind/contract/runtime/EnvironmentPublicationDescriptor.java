@@ -5,12 +5,14 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.PublicCliDistribution;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Descriptor for the public package surface that this runtime belongs to. */
 public record EnvironmentPublicationDescriptor(
     PublicCliDistribution publicCliDistribution,
     List<PublicCliBundleTarget> supportedPublicCliBundleTargets,
     List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets,
+    @Nullable PublicCliBundleTarget currentBundleTarget,
     String sourceCheckoutJava)
     implements ContractDiscoveryDescriptor {
   /** Validates one publication descriptor payload. */

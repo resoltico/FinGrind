@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import dev.erst.fingrind.core.BookIdentity;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -83,9 +84,54 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
     if (snapshot != null) {
       return snapshot;
     }
-    snapshot = context.bookStateReader().snapshot(activeDatabase);
+    snapshot =
+        context.accessMode().usesOperationalBookStateGate()
+            ? context.bookStateReader().operationalSnapshot(activeDatabase)
+            : context.bookStateReader().snapshot(activeDatabase);
     cacheState(snapshot);
     return snapshot;
+  }
+
+  boolean allowsInitializedWorkflow() {
+    threadOwner.requireOwnerThread();
+    ensureOpen();
+    if (Files.notExists(context.bookPath())) {
+      return false;
+    }
+    try {
+      return SqliteStoreOperations.retryTransientLockFailures(
+          () -> {
+            SqliteBookStateSnapshot snapshot = stateSnapshot(database());
+            if (snapshot.state() == SqliteBookState.BLANK_SQLITE) {
+              return false;
+            }
+            snapshot
+                .state()
+                .requireInitialized(
+                    snapshot.userVersion(),
+                    context.bookFormatVersion(),
+                    context.notInitializedBookMessage());
+            return true;
+          });
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure("Failed to access SQLite book.", exception);
+    }
+  }
+
+  BookIdentity requireInitializedBookIdentity() {
+    threadOwner.requireOwnerThread();
+    ensureOpen();
+    try {
+      return SqliteStoreOperations.retryTransientLockFailures(
+          () ->
+              SqliteStatementQueries.loadBookIdentity(initializedQueryDatabase())
+                  .orElseThrow(
+                      () ->
+                          new IllegalStateException(
+                              "Initialized SQLite book is missing book identity.")));
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure("Failed to access SQLite book.", exception);
+    }
   }
 
   SqliteNativeDatabase database() {
@@ -144,7 +190,8 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
         SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
       }
       SqliteNativeDatabase openedDatabase =
-          context.openConfiguredDatabase(workingPassphrase.nativePassphrase());
+          SqliteStoreOperations.retryTransientLockFailures(
+              () -> context.openConfiguredDatabase(workingPassphrase.nativePassphrase()));
       publishDatabase(openedDatabase);
       ledgerPlanTransactions.beginImmediateIfNeeded(openedDatabase);
       return ContractDecision.accepted(openedDatabase);

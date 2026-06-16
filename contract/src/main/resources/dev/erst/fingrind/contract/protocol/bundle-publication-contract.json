@@ -1,0 +1,27 @@
+{
+  "bundleTargets": {
+    "macos-aarch64": {
+      "status": "published",
+      "runnerLabel": "macos-15"
+    },
+    "macos-x86_64": {
+      "status": "published",
+      "runnerLabel": "macos-15-intel"
+    },
+    "linux-x86_64": {
+      "status": "published",
+      "runnerLabel": "ubuntu-24.04"
+    },
+    "linux-aarch64": {
+      "status": "published",
+      "runnerLabel": "ubuntu-24.04-arm"
+    },
+    "windows-x86_64": {
+      "status": "published",
+      "runnerLabel": "windows-2022"
+    },
+    "windows-aarch64": {
+      "status": "not-published"
+    }
+  }
+}

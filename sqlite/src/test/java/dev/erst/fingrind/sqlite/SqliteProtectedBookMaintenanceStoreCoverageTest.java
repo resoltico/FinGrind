@@ -236,9 +236,12 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(busyManagedParent);
     Path busyManagedLeasePath =
         busyManagedPath.resolveSibling(
-            busyManagedPath.getFileName().toString() + ".fingrind-maintenance.lock");
-    Files.writeString(busyManagedLeasePath, SqliteProcessIdentity.current().leaseMetadataText());
-    SqliteBookFileSecurity.hardenOwnerOnlyFile(busyManagedLeasePath);
+            busyManagedPath.getFileName().toString()
+                + ".fingrind-maintenance-"
+                + SqliteProcessIdentity.current().coordinationToken()
+                + ".lock");
+    Files.createDirectory(busyManagedLeasePath);
+    SqliteBookFileSecurity.hardenDirectory(busyManagedLeasePath);
     ProtectedBookMaintenanceStore.LeaseBusy managedBusy =
         assertInstanceOf(
             ProtectedBookMaintenanceStore.LeaseBusy.class,
@@ -428,7 +431,10 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
                 managedLease
                     .artifactPath()
                     .resolveSibling(
-                        managedLease.artifactPath().getFileName() + ".fingrind-maintenance.lock")));
+                        managedLease.artifactPath().getFileName().toString()
+                            + ".fingrind-maintenance-"
+                            + SqliteProcessIdentity.current().coordinationToken()
+                            + ".lock")));
         assertEquals(bookPath.toAbsolutePath().normalize(), existingLease.artifactPath());
       }
 

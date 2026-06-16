@@ -83,6 +83,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
+          FINGRIND_RELEASE_TAG_VERIFIER_MODE: ${{ github.event_name == 'workflow_dispatch' && 'rerun' || 'initial' }}
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-release-candidate-tag.sh"
 
       - name: Render canonical release-publication plan
@@ -125,7 +126,7 @@ jobs:
     name: Build bundle (${{ matrix.classifier }})
     needs: prepare-publication
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       FINGRIND_WORKFLOW_HELPER_ROOT: "${{ github.event_name == 'workflow_dispatch' && 'workflow-owner-surface' || '.' }}"
 
@@ -159,13 +160,22 @@ jobs:
         run: |
           set -euo pipefail
           java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           [ -n "${java_version}" ]
+          [ -n "${python_version}" ]
           printf 'java-version=%s\n' "${java_version}" >> "$GITHUB_OUTPUT"
+          printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ steps.build-metadata.outputs.python-version }}
+          cache: 'pip'
+          cache-dependency-path: requirements-python-tools.txt
 
       - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 
@@ -179,16 +189,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          actual_os="$(uname -s)"
-          actual_arch="$(uname -m)"
-          [ "${actual_os}" = "${{ matrix.expectedOs }}" ] || {
-            echo "Expected OS ${{ matrix.expectedOs }} but runner reported ${actual_os}"
-            exit 1
-          }
-          [ "${actual_arch}" = "${{ matrix.expectedArch }}" ] || {
-            echo "Expected arch ${{ matrix.expectedArch }} but runner reported ${actual_arch}"
-            exit 1
-          }
+          python3 "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-runner-identity.py" \
+            --expected-os-id '${{ matrix.operatingSystemId }}' \
+            --expected-arch-id '${{ matrix.architectureId }}' \
+            --actual-os-name "$(uname -s)" \
+            --actual-architecture "$(uname -m)"
 
       - name: Verify Windows runner identity matches bundle target
         if: runner.os == 'Windows'
@@ -198,9 +203,11 @@ jobs:
             throw "Expected a Windows runner"
           }
           $actualArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
-          if ($actualArch -ne '${{ matrix.expectedArch }}') {
-            throw "Expected arch ${{ matrix.expectedArch }} but runner reported $actualArch"
-          }
+          python "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/verify-runner-identity.py" `
+            --expected-os-id '${{ matrix.operatingSystemId }}' `
+            --expected-arch-id '${{ matrix.architectureId }}' `
+            --actual-os-name Windows `
+            --actual-architecture $actualArch
 
       - name: Build Unix self-contained CLI bundle
         if: runner.os != 'Windows'
@@ -255,12 +262,20 @@ jobs:
           Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$archivePath"
           Add-Content -Path $env:GITHUB_OUTPUT -Value "checksum-path=$checksumPath"
 
-      - name: Smoke test the Unix self-contained CLI bundle
+      - name: Smoke test the Unix self-contained CLI bundle on the host runner
         if: runner.os != 'Windows'
         shell: bash
         run: |
           "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/bundle-smoke.sh" \
             "${{ steps.unix-bundle-build.outputs.archive-path }}"
+
+      - name: Smoke test the Linux self-contained CLI bundle on the compatibility floor
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/bundle-smoke.sh" \
+            "${{ steps.unix-bundle-build.outputs.archive-path }}" \
+            --execution-surface compatibility-floor
 
       - name: Smoke test the Windows self-contained CLI bundle
         if: runner.os == 'Windows'
@@ -501,16 +516,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          actual_os="$(uname -s)"
-          actual_arch="$(uname -m)"
-          [ "${actual_os}" = "${{ matrix.expectedOs }}" ] || {
-            echo "Expected OS ${{ matrix.expectedOs }} but runner reported ${actual_os}"
-            exit 1
-          }
-          [ "${actual_arch}" = "${{ matrix.expectedArch }}" ] || {
-            echo "Expected arch ${{ matrix.expectedArch }} but runner reported ${actual_arch}"
-            exit 1
-          }
+          python3 "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-runner-identity.py" \
+            --expected-os-id '${{ matrix.operatingSystemId }}' \
+            --expected-arch-id '${{ matrix.architectureId }}' \
+            --actual-os-name "$(uname -s)" \
+            --actual-architecture "$(uname -m)"
 
       - name: Resolve staged Docker build-context path
         id: docker-context

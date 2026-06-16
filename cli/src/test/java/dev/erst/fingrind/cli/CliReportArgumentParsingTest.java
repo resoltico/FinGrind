@@ -108,9 +108,9 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--output",
                   "csv"
@@ -125,9 +125,9 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30"
                 }));
     FinancialPosition defaultFinancialPosition =
@@ -168,9 +168,9 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--output",
                   "csv",
@@ -187,9 +187,9 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--output",
                   "text",
@@ -418,11 +418,11 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-02",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30"
                 }));
     assertThrows(
@@ -435,11 +435,11 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-05-01"
                 }));
     assertThrows(
@@ -452,9 +452,9 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--output",
                   "text",
@@ -471,9 +471,9 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--limit",
                   "10"
@@ -488,7 +488,7 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01"
                 }));
     assertThrows(
@@ -501,7 +501,7 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30"
                 }));
     assertThrows(
@@ -527,7 +527,7 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01"
                 }));
     assertThrows(
@@ -540,9 +540,9 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-30",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-01"
                 }));
     assertThrows(
@@ -555,7 +555,7 @@ class CliReportArgumentParsingTest {
                   bookFile.toString(),
                   "--book-key-file",
                   keyFile.toString(),
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30"
                 }));
   }

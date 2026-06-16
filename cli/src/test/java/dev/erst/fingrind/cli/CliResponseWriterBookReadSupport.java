@@ -14,6 +14,10 @@ class CliResponseWriterBookReadSupport extends CliResponseWriterMutationSupport 
     super(outputStream);
   }
 
+  CliResponseWriterBookReadSupport(PrintStream outputStream, PrintStream diagnosticsStream) {
+    super(outputStream, diagnosticsStream);
+  }
+
   void writeBookInspection(Path bookFilePath, BookInspection inspection) {
     writeBookInspection(bookFilePath, inspection, OutputMode.JSON);
   }

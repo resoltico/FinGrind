@@ -33,6 +33,9 @@ abstract class WriteBundleManifestTask : DefaultTask() {
     @get:Input
     abstract val bundleClassifier: Property<String>
 
+    @get:Input
+    abstract val normalizedArtifactTimestampUtc: Property<String>
+
     @get:OutputFile
     abstract val outputFile: RegularFileProperty
 
@@ -44,6 +47,7 @@ abstract class WriteBundleManifestTask : DefaultTask() {
                 applicationName = applicationName.get(),
                 version = versionText.get(),
                 bundleClassifier = bundleClassifier.get(),
+                normalizedArtifactTimestampUtc = normalizedArtifactTimestampUtc.get(),
             )
         val destination = outputFile.get().asFile
         destination.parentFile.mkdirs()

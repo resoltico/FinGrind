@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
@@ -409,6 +410,23 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
                     }));
     assertEquals("--result-detail", invalidDetail.argument());
 
+    ExecutePlan jsonOutputCommand =
+        assertInstanceOf(
+            ExecutePlan.class,
+            CliArguments.parse(
+                new String[] {
+                  "execute-plan",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "plan.json",
+                  "--output",
+                  "json"
+                }));
+    assertEquals(OutputMode.JSON, jsonOutputCommand.outputMode());
+
     CliArgumentsException unsupportedArgument =
         assertThrows(
             CliArgumentsException.class,
@@ -422,11 +440,10 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
                       "book.key",
                       "--request-file",
                       "plan.json",
-                      "--output",
-                      "json"
+                      "--unexpected"
                     }));
-    assertEquals("--output", unsupportedArgument.argument());
-    assertEquals("Unsupported argument: --output", unsupportedArgument.getMessage());
+    assertEquals("--unexpected", unsupportedArgument.argument());
+    assertEquals("Unsupported argument: --unexpected", unsupportedArgument.getMessage());
 
     CliArgumentsException unknownArgument =
         assertThrows(

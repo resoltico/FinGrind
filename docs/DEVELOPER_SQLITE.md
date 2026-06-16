@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -214,9 +214,9 @@ The SQLite adapter is split into focused collaborators:
   and [`SqliteNativeRuntimePolicy`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeRuntimePolicy.java):
   split native-bridge owners for bootstrap, configured-library selection, version and
   compile-option enforcement, key/rekey application, key validation, statement execution, and
-  SQLite-native error decoding; writable native opens publish sibling activity markers, while
-  read-only opens retain in-process connection accounting without creating filesystem marker
-  artifacts
+  SQLite-native error decoding; writable native opens publish sibling directory-shaped activity
+  markers, while read-only opens retain in-process connection accounting without creating
+  filesystem marker artifacts
 - [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/secret/SqliteBookKeyFile.java):
   loads the file-backed passphrase route into the same normalized `SqliteBookPassphrase` model
 - [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java):
@@ -460,6 +460,11 @@ Native bridge notes:
   those settings instead of trusting host defaults
 - the rationale for `journal_mode=DELETE` is recorded in
   [ADR_SQLITE_JOURNAL_MODE.md](./ADR_SQLITE_JOURNAL_MODE.md)
+- writable session markers and destructive-maintenance leases now use directory-shaped
+  coordination artifacts rather than metadata files, which removes FinGrind-owned delete
+  tombstones on bind-mounted Docker volumes; any remaining hidden tombstones on those hosts come
+  from SQLite's own journal lifecycle or deliberate large-artifact replacement paths instead of
+  extra FinGrind marker or lease files
 - text parameters use SQLite's `SQLITE_TRANSIENT` contract so bound text does not rely on statement
   arena lifetime conventions
 - error messages and SQLite version strings read exact C-string lengths rather than a guessed fixed

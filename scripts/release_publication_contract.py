@@ -48,8 +48,8 @@ def load_release_publication_plan(
             "runner": release_target["runnerLabel"],
             "classifier": classifier,
             "archiveExtension": archive_extension,
-            "expectedOs": release_target["expectedRunnerOs"],
-            "expectedArch": release_target["expectedRunnerArch"],
+            "operatingSystemId": bundle_target["operatingSystemId"],
+            "architectureId": bundle_target["architectureId"],
         }
         bundle_matrix.append(matrix_entry)
         if bundle_target["operatingSystemId"] != "windows":
@@ -64,8 +64,8 @@ def load_release_publication_plan(
                     "runner": release_target["runnerLabel"],
                     "classifier": classifier,
                     "dockerPlatform": docker_platform,
-                    "expectedOs": release_target["expectedRunnerOs"],
-                    "expectedArch": release_target["expectedRunnerArch"],
+                    "operatingSystemId": bundle_target["operatingSystemId"],
+                    "architectureId": bundle_target["architectureId"],
                 }
             )
         archive_name = f"fingrind-{version}-{classifier}.{archive_extension}"

@@ -73,7 +73,7 @@ final class AclFixtureFileSystemProvider extends FileSystemProvider {
   }
 
   @Override
-  public void createDirectory(Path dir, FileAttribute<?>... attrs) {
+  public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
     AclFixtureMutationOperations.createDirectory(dir, attrs);
   }
 

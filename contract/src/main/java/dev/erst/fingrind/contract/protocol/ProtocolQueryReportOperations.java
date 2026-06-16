@@ -75,8 +75,8 @@ final class ProtocolQueryReportOperations {
             List.of(
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
-                ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>"));
+                ProtocolOptions.PERIOD_START + " <YYYY-MM-DD>",
+                ProtocolOptions.PERIOD_END + " <YYYY-MM-DD>"));
     if (includePostingCoverage) {
       invocationSyntax.add(ProtocolOptions.optionalPostingCoverageSyntax());
     }

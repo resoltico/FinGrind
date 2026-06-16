@@ -4,7 +4,7 @@ import subprocess
 from pathlib import Path
 
 from .models import ReviewedSurface
-from .reviewed_surfaces import REVIEWED_SURFACES
+from .registry import load_text_reviewed_surfaces
 
 MARKDOWN_EXCLUDED_PREFIXES = (
     ".git/",
@@ -79,8 +79,9 @@ def include_json_path(relative_path: Path) -> bool:
 
 
 def reviewed_surfaces_matching(predicate) -> dict[str, ReviewedSurface]:
+    reviewed_surfaces = load_text_reviewed_surfaces()
     return {
         relative_path: reviewed
-        for relative_path, reviewed in REVIEWED_SURFACES.items()
+        for relative_path, reviewed in reviewed_surfaces.items()
         if predicate(Path(relative_path))
     }

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.CodeSigner;
@@ -16,10 +17,10 @@ class CliInvocationTextTest {
   @Test
   void launcherCommandFor_returnsRuntimeAwareLauncherCommandsAcrossSurfaces() {
     assertEquals(
-        "fingrind",
+        "./bin/fingrind",
         CliInvocationText.launcherCommandFor(FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, "Mac OS X"));
     assertEquals(
-        "fingrind",
+        ".\\bin\\fingrind.ps1",
         CliInvocationText.launcherCommandFor(
             FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, "Windows 11"));
     assertEquals(
@@ -53,12 +54,13 @@ class CliInvocationTextTest {
         FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION);
     try {
       assertEquals("Usage", CliInvocationText.rewriteInvocationPrefix("Usage"));
-      assertEquals("fingrind help", CliInvocationText.rewriteInvocationPrefix("fingrind help"));
       assertEquals(
-          "fingrind help",
+          "./bin/fingrind help", CliInvocationText.rewriteInvocationPrefix("fingrind help"));
+      assertEquals(
+          "./bin/fingrind help",
           CliInvocationText.rewriteInvocationPrefix("./scripts/direct-java-cli.sh help"));
       assertEquals(
-          "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
+          "cat ./secrets/acme.book-key | ./bin/fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",
           CliInvocationText.rewriteInvocationPrefix(
               "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin"));
     } finally {
@@ -148,6 +150,30 @@ class CliInvocationTextTest {
         "fingrind",
         CliInvocationText.launcherCommandForCurrentRuntime(
             null, "Linux", Object.class.getModule(), "fingrind.jar"));
+  }
+
+  @Test
+  void runtimeBundleTarget_returnsNullForMissingOrBlankValuesAndParsesSupportedTargets() {
+    String originalBundleTarget =
+        System.getProperty(FinGrindCli.RUNTIME_BUNDLE_TARGET_PROPERTY, "__missing__");
+    try {
+      System.clearProperty(FinGrindCli.RUNTIME_BUNDLE_TARGET_PROPERTY);
+      assertNull(FinGrindCli.runtimeBundleTarget());
+
+      System.setProperty(FinGrindCli.RUNTIME_BUNDLE_TARGET_PROPERTY, "   ");
+      assertNull(FinGrindCli.runtimeBundleTarget());
+
+      System.setProperty(
+          FinGrindCli.RUNTIME_BUNDLE_TARGET_PROPERTY,
+          PublicCliBundleTarget.MACOS_AARCH64.wireValue());
+      assertEquals(PublicCliBundleTarget.MACOS_AARCH64, FinGrindCli.runtimeBundleTarget());
+    } finally {
+      if ("__missing__".equals(originalBundleTarget)) {
+        System.clearProperty(FinGrindCli.RUNTIME_BUNDLE_TARGET_PROPERTY);
+      } else {
+        System.setProperty(FinGrindCli.RUNTIME_BUNDLE_TARGET_PROPERTY, originalBundleTarget);
+      }
+    }
   }
 
   @Test

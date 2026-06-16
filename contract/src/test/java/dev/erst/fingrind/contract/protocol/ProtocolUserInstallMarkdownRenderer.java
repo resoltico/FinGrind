@@ -123,7 +123,7 @@ final class ProtocolUserInstallMarkdownRenderer {
     return String.join(
         "\n",
         "- image reference: `%s`".formatted(CONTAINER_IMAGE_REFERENCE),
-        "- published tags: one exact release tag such as `0.54.0` plus `latest`, where %s"
+        "- published tags: one exact release tag such as `0.55.0` plus `latest`, where %s"
             .formatted(latestPolicy),
         "- published platforms: `%s`".formatted(String.join("`, `", platforms)),
         "- mounted launcher prefix: `docker run --rm -i -v <host-workdir>:/workspace -w /workspace %s:<tag>`"
@@ -189,23 +189,15 @@ final class ProtocolUserInstallMarkdownRenderer {
           requiredText(node, "operatingSystemId", BUNDLE_LAYOUT_CONTRACT_PATH),
           requiredText(node, "architectureId", BUNDLE_LAYOUT_CONTRACT_PATH),
           requiredText(node, "archiveFormat", BUNDLE_LAYOUT_CONTRACT_PATH),
-          requiredText(node, "launcherPath", BUNDLE_LAYOUT_CONTRACT_PATH));
+          requiredText(node, "launcherPath", BUNDLE_LAYOUT_CONTRACT_PATH),
+          requiredText(node, "compatibilityLabel", BUNDLE_LAYOUT_CONTRACT_PATH));
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
   }
 
   private static String compatibilityLabel(BundleLayoutRow bundleLayout) {
-    return switch (bundleLayout.operatingSystemId()) {
-      case "linux" -> "glibc Linux " + bundleLayout.architectureId();
-      case "macos" -> "macOS " + bundleLayout.architectureId();
-      case "windows" -> "Windows " + bundleLayout.architectureId();
-      default ->
-          throw new IllegalStateException(
-              "Unsupported bundle-layout operatingSystemId "
-                  + bundleLayout.operatingSystemId()
-                  + ".");
-    };
+    return bundleLayout.compatibilityLabel();
   }
 
   private static String renderedLatestPublicationPolicy(String latestPolicy) throws IOException {
@@ -223,5 +215,9 @@ final class ProtocolUserInstallMarkdownRenderer {
   }
 
   private record BundleLayoutRow(
-      String operatingSystemId, String architectureId, String archiveFormat, String launcherPath) {}
+      String operatingSystemId,
+      String architectureId,
+      String archiveFormat,
+      String launcherPath,
+      String compatibilityLabel) {}
 }

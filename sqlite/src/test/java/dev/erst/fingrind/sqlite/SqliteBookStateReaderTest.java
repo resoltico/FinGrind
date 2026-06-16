@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Path;
@@ -20,6 +21,96 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
             assertEquals(
                 SqliteBookState.INITIALIZED_FINGRIND,
                 SqliteBookContract.BOOK_STATE_READER.bookState(database)));
+  }
+
+  @Test
+  void operationalSnapshot_acceptsHealthyInitializedBooksWithoutDeepAuditProbes() {
+    Path initializedBookPath = tempDirectory.resolve("book-state-operational.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+    withStandaloneDatabase(
+        bookAccess(initializedBookPath),
+        database -> {
+          SqliteNativeDatabase operationalDatabase =
+              InterceptingSqliteNativeDatabase.throwing(
+                  InterceptingSqliteNativeDatabase.throwing(
+                      database,
+                      SqlitePostingSql.PRAGMA_FOREIGN_KEY_CHECK,
+                      new SqliteNativeException(
+                          SqliteNativeResultCode.code("IOERR_LOCK"),
+                          "forced foreign-key-check lock failure")),
+                  SqlitePostingSql.PRAGMA_INTEGRITY_CHECK,
+                  new SqliteNativeException(
+                      SqliteNativeResultCode.code("IOERR_LOCK"),
+                      "forced integrity-check lock failure"));
+          assertEquals(
+              SqliteBookState.INITIALIZED_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER
+                  .operationalSnapshot(operationalDatabase)
+                  .state());
+        });
+  }
+
+  @Test
+  void operationalSnapshot_requiresCanonicalFingerprintInitializationMarkerAndBookIdentity() {
+    Path fingerprintPath = tempDirectory.resolve("book-state-operational-fingerprint.sqlite");
+    String mismatchedSchemaFingerprint = "0".repeat(64);
+    initializeBookOnDisk(fingerprintPath);
+    withStandaloneDatabase(
+        bookAccess(fingerprintPath),
+        database -> {
+          database.executeStatement(
+              """
+              update book_meta
+              set value = '%s'
+              where meta_key = 'schema_fingerprint_sha256'
+              """
+                  .formatted(mismatchedSchemaFingerprint));
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.operationalSnapshot(database).state());
+        });
+
+    Path inconsistentInitializedAtPath =
+        tempDirectory.resolve("book-state-operational-inconsistent-initialized-at.sqlite");
+    initializeBookOnDisk(inconsistentInitializedAtPath);
+    withStandaloneDatabase(
+        bookAccess(inconsistentInitializedAtPath),
+        database ->
+            assertEquals(
+                SqliteBookState.INCOMPLETE_FINGRIND,
+                SqliteBookContract.BOOK_STATE_READER
+                    .operationalSnapshot(
+                        InterceptingSqliteNativeDatabase.replacing(
+                            database,
+                            SqlitePostingSql.FIND_BOOK_INITIALIZED_AT,
+                            "select value from book_meta where meta_key = ? and 1 = 0"))
+                    .state()));
+
+    Path missingInitializedAtPath =
+        tempDirectory.resolve("book-state-operational-missing-initialized-at.sqlite");
+    createSchemaOnlyBook(missingInitializedAtPath);
+    withStandaloneDatabase(
+        bookAccess(missingInitializedAtPath),
+        database -> {
+          SqliteBookIntegrityVerifier.recordSchemaFingerprint(database);
+          SqliteMutationWriter.insertBookIdentity(database, bookIdentity());
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.operationalSnapshot(database).state());
+        });
+
+    Path missingBookIdentityPath =
+        tempDirectory.resolve("book-state-operational-missing-book-identity.sqlite");
+    createSchemaOnlyBook(missingBookIdentityPath);
+    withStandaloneDatabase(
+        bookAccess(missingBookIdentityPath),
+        database -> {
+          insertInitializedAtRow(database);
+          SqliteBookIntegrityVerifier.recordSchemaFingerprint(database);
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.operationalSnapshot(database).state());
+        });
   }
 
   @Test
@@ -210,6 +301,25 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
                         database,
                         SqlitePostingSql.PRAGMA_INTEGRITY_CHECK,
                         new IllegalStateException("forced integrity-check failure")))));
+
+    Path nativeFailurePath = tempDirectory.resolve("book-state-native-failure.sqlite");
+    initializeBookOnDisk(nativeFailurePath);
+    withStandaloneDatabase(
+        bookAccess(nativeFailurePath),
+        database -> {
+          SqliteNativeException failure =
+              assertThrows(
+                  SqliteNativeException.class,
+                  () ->
+                      SqliteBookContract.BOOK_STATE_READER.bookState(
+                          InterceptingSqliteNativeDatabase.throwing(
+                              database,
+                              SqlitePostingSql.PRAGMA_INTEGRITY_CHECK,
+                              new SqliteNativeException(
+                                  SqliteNativeResultCode.code("IOERR_LOCK"),
+                                  "forced transient lock failure"))));
+          assertEquals(SqliteNativeResultCode.code("IOERR_LOCK"), failure.resultCode());
+        });
 
     Path postingLifecycleProbePath =
         tempDirectory.resolve("book-state-posting-lifecycle-probe.sqlite");

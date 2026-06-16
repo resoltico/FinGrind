@@ -44,6 +44,10 @@ public final class ContractErrors {
         "book-key-file-already-exists",
         "Book key file generation refused because the selected destination already exists and FinGrind will not overwrite it.",
         7),
+    ARTIFACT_OUTPUT_ALREADY_EXISTS(
+        "artifact-output-already-exists",
+        "Artifact publication refused because the selected output destination already exists and FinGrind will not overwrite it.",
+        7),
     INVALID_BOOK_KEY_FILE(
         "invalid-book-key-file",
         "Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.",

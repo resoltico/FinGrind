@@ -185,9 +185,9 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             bookFile.toString(),
             "--book-key-file",
             bookKeyFile.toString(),
-            "--effective-date-from",
+            "--period-start",
             "2026-04-07",
-            "--effective-date-to",
+            "--period-end",
             "2026-04-08"));
     recordTextFixture(
         recordedFixtures,
@@ -198,9 +198,9 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             bookFile.toString(),
             "--book-key-file",
             bookKeyFile.toString(),
-            "--effective-date-from",
+            "--period-start",
             "2026-04-07",
-            "--effective-date-to",
+            "--period-end",
             "2026-04-08",
             "--output",
             "text"));

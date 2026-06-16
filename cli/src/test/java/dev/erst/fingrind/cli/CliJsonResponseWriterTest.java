@@ -115,6 +115,22 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
+  void writeFailure_routesMachineReadableEnvelopeToDiagnosticsStream() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter =
+        new CliResponseWriter(utf8PrintStream(outputStream), utf8PrintStream(diagnosticsStream));
+
+    responseWriter.writeFailure("invalid-request", "bad request");
+
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode json = readJson(diagnosticsStream);
+    assertEquals("error", json.path("status").stringValue());
+    assertEquals("invalid-request", json.path("code").stringValue());
+    assertEquals("bad request", json.path("message").stringValue());
+  }
+
+  @Test
   void writeRequestTemplate_writesCanonicalRawJsonTemplate() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping.read;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -28,7 +29,6 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 /** Local bookkeeping read/query service used before any public published-language projection. */
 public final class BookkeepingReadService {
@@ -46,34 +46,40 @@ public final class BookkeepingReadService {
     return bookStore.inspectBook();
   }
 
-  /** Exposes the underlying initialized-store seam to narrower read-policy helpers. */
-  public BookkeepingReadStore bookStore() {
-    return bookStore;
+  /** Returns whether initialized-book workflows may proceed for the selected store. */
+  public boolean allowsInitializedWorkflow() {
+    return bookStore.allowsInitializedWorkflow();
+  }
+
+  /** Returns the selected initialized book identity or throws when the book is not initialized. */
+  public BookIdentity requireInitializedBookIdentity() {
+    return bookStore.requireInitializedBookIdentity();
   }
 
   /** Looks up one declared account while preserving lifecycle rejection distinctly. */
   public BookkeepingLookupOutcome<RegisteredAccount> findAccount(AccountCode accountCode) {
     Objects.requireNonNull(accountCode, "accountCode");
-    return lookupOutcome(() -> bookStore.findAccount(accountCode));
+    return BookkeepingReadLifecycleGate.lookup(bookStore, () -> bookStore.findAccount(accountCode));
   }
 
   /** Looks up one committed posting while preserving lifecycle rejection distinctly. */
   public BookkeepingLookupOutcome<CommittedPosting> findPosting(PostingId postingId) {
     Objects.requireNonNull(postingId, "postingId");
-    return lookupOutcome(() -> bookStore.findPosting(postingId));
+    return BookkeepingReadLifecycleGate.lookup(bookStore, () -> bookStore.findPosting(postingId));
   }
 
   /** Lists one paginated slice of the current account registry for the selected book. */
   public BookkeepingReadOutcome<AccountRegistryPage> listAccounts(AccountRegistryQuery query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
-        () -> new BookkeepingReadOutcome.Reported<>(bookStore.listAccounts(query)));
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore, () -> new BookkeepingReadOutcome.Reported<>(bookStore.listAccounts(query)));
   }
 
   /** Returns one committed posting by durable posting identity. */
   public BookkeepingReadOutcome<CommittedPosting> getPosting(PostingId postingId) {
     Objects.requireNonNull(postingId, "postingId");
-    return ifInitializedOutcome(
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
         () ->
             bookStore
                 .findPosting(postingId)
@@ -87,7 +93,8 @@ public final class BookkeepingReadService {
   /** Returns one filtered page of committed postings. */
   public BookkeepingReadOutcome<PostingHistoryPage> listPostings(PostingHistoryQuery query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
         () -> {
           Optional<BookkeepingQueryRejection> accountRejection =
               BookkeepingReadQuerySupport.accountRejection(bookStore, query.accountCode());
@@ -102,7 +109,8 @@ public final class BookkeepingReadService {
   /** Computes one grouped per-currency balance snapshot for the selected declared account. */
   public BookkeepingReadOutcome<AccountBalanceView> accountBalance(AccountBalanceCriteria query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
         () ->
             bookStore
                 .accountBalance(query)
@@ -117,7 +125,8 @@ public final class BookkeepingReadService {
   /** Computes one book-wide trial balance. */
   public BookkeepingReadOutcome<TrialBalanceView> trialBalance(TrialBalanceCriteria query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
         () ->
             new BookkeepingReadOutcome.Reported<>(
                 BookkeepingReadQuerySupport.trialBalanceView(bookStore, query)));
@@ -126,7 +135,8 @@ public final class BookkeepingReadService {
   /** Computes one running ledger for the selected declared account. */
   public BookkeepingReadOutcome<AccountLedgerView> accountLedger(AccountLedgerCriteria query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
         () -> {
           Optional<RegisteredAccount> account = bookStore.findAccount(query.accountCode());
           if (account.isEmpty()) {
@@ -141,15 +151,16 @@ public final class BookkeepingReadService {
   /** Computes one bounded period summary for the selected book. */
   public BookkeepingReadOutcome<PeriodSummaryView> periodSummary(PeriodSummaryCriteria query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
-        () -> new BookkeepingReadOutcome.Reported<>(bookStore.periodSummary(query)));
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore, () -> new BookkeepingReadOutcome.Reported<>(bookStore.periodSummary(query)));
   }
 
   /** Computes one statement of financial position. */
   public BookkeepingReadOutcome<FinancialPositionView> financialPosition(
       FinancialPositionCriteria query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
         () -> new BookkeepingReadOutcome.Reported<>(reportingService.financialPosition(query)));
   }
 
@@ -157,7 +168,8 @@ public final class BookkeepingReadService {
   public BookkeepingReadOutcome<IncomeStatementView> incomeStatement(
       IncomeStatementCriteria query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
         () -> new BookkeepingReadOutcome.Reported<>(reportingService.incomeStatement(query)));
   }
 
@@ -165,27 +177,8 @@ public final class BookkeepingReadService {
   public BookkeepingReadOutcome<ChangesInEquityView> changesInEquity(
       ChangesInEquityCriteria query) {
     Objects.requireNonNull(query, "query");
-    return ifInitializedOutcome(
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
         () -> new BookkeepingReadOutcome.Reported<>(reportingService.changesInEquity(query)));
-  }
-
-  private <T> BookkeepingReadOutcome<T> ifInitializedOutcome(
-      Supplier<BookkeepingReadOutcome<T>> initializedAction) {
-    if (!inspectBook().allowsInitializedWorkflow()) {
-      return new BookkeepingReadOutcome.Rejected<>(
-          new BookkeepingQueryRejection.BookNotInitialized());
-    }
-    return initializedAction.get();
-  }
-
-  private <T> BookkeepingLookupOutcome<T> lookupOutcome(Supplier<Optional<T>> initializedAction) {
-    if (!inspectBook().allowsInitializedWorkflow()) {
-      return new BookkeepingLookupOutcome.Rejected<>(
-          new BookkeepingQueryRejection.BookNotInitialized());
-    }
-    return initializedAction
-        .get()
-        .<BookkeepingLookupOutcome<T>>map(BookkeepingLookupOutcome.Found::new)
-        .orElseGet(BookkeepingLookupOutcome.Missing::new);
   }
 }

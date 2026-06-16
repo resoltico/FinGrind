@@ -75,6 +75,13 @@ grep -Fq 'FINGRIND_RELEASE_MARK_LATEST' "${release_workflow}" || die \
     "release workflow no longer drives GitHub latest ownership from the canonical latest policy"
 grep -Fq 'FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST' "${release_workflow}" || die \
     "release workflow no longer keeps public-container latest verification aligned with the latest policy"
+grep -Fq 'verify-runner-identity.py' "${release_workflow}" || die \
+    "release workflow no longer delegates runner-identity normalization to the canonical verifier"
+grep -Fq -- '--execution-surface compatibility-floor' "${release_workflow}" || die \
+    "release workflow no longer re-proves Linux release bundles on the compatibility floor"
+if grep -Fq 'matrix.expectedOs' "${release_workflow}" || grep -Fq 'matrix.expectedArch' "${release_workflow}"; then
+    die "release workflow still depends on retired runner-spelling matrix fields"
+fi
 grep -Fq './scripts/verify-github-release.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the GitHub release verifier"
 grep -Fq './scripts/verify-public-container-surface.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \

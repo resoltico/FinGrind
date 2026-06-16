@@ -38,14 +38,24 @@ grep -Fq 'sysconfig.get_path' "${workflow_file}" || die \
     "CI workflow no longer resolves the uv launcher scripts path through Python sysconfig"
 grep -Fq 'Run included build-logic tests on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps Windows build-logic verification as a separate step"
+grep -Fq 'prepare-published-bundle-smoke-matrix:' "${workflow_file}" || die \
+    "CI workflow no longer prepares the published bundle smoke matrix from the canonical release plan"
+grep -Fq 'read-release-publication-plan.py' "${workflow_file}" || die \
+    "CI workflow no longer derives the published bundle smoke matrix from the canonical release-plan reader"
+grep -Fq 'bundle-matrix-json=%s\n' "${workflow_file}" || die \
+    "CI workflow no longer exports the published bundle smoke matrix through one explicit workflow output"
+grep -Fq 'include: ${{ fromJson(needs.prepare-published-bundle-smoke-matrix.outputs.bundle-matrix-json) }}' "${workflow_file}" || die \
+    "CI workflow no longer drives bundle-smoke runners from the prepared publication matrix"
 grep -Fq 'Published bundle smoke (${{ matrix.classifier }})' "${workflow_file}" || die \
-    "CI workflow no longer publishes pre-merge smoke coverage for every non-Windows bundle classifier"
-grep -Fq 'ubuntu-24.04-arm' "${workflow_file}" || die \
-    "CI workflow no longer covers the published Linux aarch64 classifier before release"
-grep -Fq 'Smoke test the published Unix CLI bundle' "${workflow_file}" || die \
+    "CI workflow no longer publishes pre-merge smoke coverage for every published bundle classifier"
+grep -Fq './scripts/verify-runner-identity.py' "${workflow_file}" || die \
+    "CI workflow no longer delegates runner-identity normalization to the canonical verifier"
+grep -Fq 'Smoke test the published Unix CLI bundle on the host runner' "${workflow_file}" || die \
     "CI workflow no longer smoke-tests the non-Windows published bundle classifiers before release"
-grep -Fq './scripts/bundle-smoke.sh "${{ steps.bundle-build.outputs.archive-path }}"' "${workflow_file}" || die \
+grep -Fq './scripts/bundle-smoke.sh "${{ steps.unix-bundle-build.outputs.archive-path }}"' "${workflow_file}" || die \
     "CI workflow no longer delegates non-Windows published bundle smoke to the canonical Bash owner"
+grep -Fq -- '--execution-surface compatibility-floor' "${workflow_file}" || die \
+    "CI workflow no longer re-proves the published Linux bundle on the compatibility floor"
 grep -Fq 'source ./scripts/gradle-wrapper-support.sh' "${workflow_file}" || die \
     "CI workflow no longer sources the canonical Gradle wrapper helper before reading the bundle manifest"
 grep -Fq "manifest_path=\"\$(fg_gradle_bundle_archive_manifest_path \"\$PWD\" 'cli' \"\${is_darwin}\")\"" "${workflow_file}" || die \
@@ -76,15 +86,24 @@ grep -Fq '.\scripts\verify-direct-java-sqlite-runtime.ps1' "${workflow_file}" ||
     "CI workflow no longer delegates Windows direct-Java runtime verification to the canonical PowerShell owner"
 grep -Fq '.\scripts\verify-source-checkout-sqlite-runtime.ps1' "${workflow_file}" || die \
     "CI workflow no longer delegates Windows source-checkout runtime verification to the canonical PowerShell owner"
-grep -A5 -F 'windows-nonpublic-bundle-smoke:' "${workflow_file}" | grep -Fq 'needs: check' || die \
-    "CI workflow no longer gates the non-public Windows smoke lane on the canonical Check job"
-grep -A5 -F 'windows-nonpublic-bundle-smoke:' "${workflow_file}" | grep -Fq 'continue-on-error: true' || die \
-    "CI workflow no longer marks the non-public Windows smoke lane as observational"
+grep -Fq 'Verify managed SQLite CLI runtimes on Unix' "${workflow_file}" || die \
+    "CI workflow no longer verifies the managed Unix runtime surfaces before bundle publication smoke"
+grep -Fq '.\scripts\bundle-smoke.ps1 "${{ steps.windows-bundle-build.outputs.archive-path }}"' "${workflow_file}" || die \
+    "CI workflow no longer smoke-tests the published Windows bundle through the canonical PowerShell owner"
+if grep -Fq 'continue-on-error: true' "${workflow_file}"; then
+    die "CI workflow still marks the published bundle smoke surface as observational"
+fi
+if grep -Fq 'matrix.expectedOs' "${workflow_file}" || grep -Fq 'matrix.expectedArch' "${workflow_file}"; then
+    die "CI workflow still depends on retired runner-spelling matrix fields"
+fi
 if grep -Fq 'windows-bundle-smoke:' "${workflow_file}"; then
     die "CI workflow carries the retired release-blocking Windows bundle-smoke job key"
 fi
-if grep -A10 -F 'gate:' "${workflow_file}" | grep -Fq 'windows-nonpublic-bundle-smoke'; then
-    die "CI workflow reattached the non-public Windows smoke lane to the aggregate Gate contract"
+if ! grep -A12 -F 'gate:' "${workflow_file}" | grep -Fq 'published-bundle-smoke'; then
+    die "CI workflow no longer requires the aggregate Gate job to wait for the canonical published bundle smoke matrix"
+fi
+if ! grep -A12 -F 'gate:' "${workflow_file}" | grep -Fq 'prepare-published-bundle-smoke-matrix'; then
+    die "CI workflow no longer requires the aggregate Gate job to wait for the matrix-preparation owner"
 fi
 if grep -Fq 'Run root quality gates and included build-logic tests on Windows' "${workflow_file}"; then
     die "CI workflow combines Windows root verification and build-logic verification in one non-fail-fast step"

@@ -45,9 +45,12 @@ final class SqliteStoreQueryOperations {
       return SqliteBookLifecycleInspectionMapper.fromMissingPath();
     }
     try {
-      SqliteNativeDatabase activeDatabase = lifecycle.database();
-      SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(activeDatabase);
-      return SqliteBookLifecycleInspectionMapper.fromSnapshot(snapshot, activeDatabase);
+      return SqliteStoreOperations.retryTransientLockFailures(
+          () -> {
+            SqliteNativeDatabase activeDatabase = lifecycle.database();
+            SqliteBookStateSnapshot snapshot = context.bookStateReader().snapshot(activeDatabase);
+            return SqliteBookLifecycleInspectionMapper.fromSnapshot(snapshot, activeDatabase);
+          });
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to inspect SQLite book.", exception);
     }
@@ -209,7 +212,8 @@ final class SqliteStoreQueryOperations {
 
   private <T> T queryInitialized(String failureMessage, NativeQuery<T> query) {
     try {
-      return query.run(lifecycle.initializedQueryDatabase());
+      return SqliteStoreOperations.retryTransientLockFailures(
+          () -> query.run(lifecycle.initializedQueryDatabase()));
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure(failureMessage, exception);
     }

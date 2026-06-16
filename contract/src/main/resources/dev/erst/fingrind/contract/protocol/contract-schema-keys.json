@@ -26,10 +26,6 @@
     "kdfIter": "kdfIter",
     "plaintextHeaderSize": "plaintextHeaderSize"
   },
-  "publicDistribution": {
-    "supportedPublicCliBundleTargets": "supportedPublicCliBundleTargets",
-    "unsupportedPublicCliBundleTargets": "unsupportedPublicCliBundleTargets"
-  },
   "managedSqlite": {
     "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
     "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
@@ -56,13 +52,17 @@
     "archiveFormat": "archiveFormat",
     "launcherPath": "launcherPath",
     "launcherCommand": "launcherCommand",
-    "sqliteLibraryFileName": "sqliteLibraryFileName"
+    "sqliteLibraryFileName": "sqliteLibraryFileName",
+    "compatibilityLabel": "compatibilityLabel",
+    "minimumGlibcVersion": "minimumGlibcVersion",
+    "compatibilitySmokeContainerImage": "compatibilitySmokeContainerImage"
+  },
+  "bundlePublication": {
+    "bundleTargets": "bundleTargets",
+    "status": "status",
+    "runnerLabel": "runnerLabel"
   },
   "releasePublication": {
-    "publicBundleBuildTargets": "publicBundleBuildTargets",
-    "runnerLabel": "runnerLabel",
-    "expectedRunnerOs": "expectedRunnerOs",
-    "expectedRunnerArch": "expectedRunnerArch",
     "requiredCiWorkflowName": "requiredCiWorkflowName",
     "requiredCiWorkflowPath": "requiredCiWorkflowPath",
     "requiredCiGateJobName": "requiredCiGateJobName",

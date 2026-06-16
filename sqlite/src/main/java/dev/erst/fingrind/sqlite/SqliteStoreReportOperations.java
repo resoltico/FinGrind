@@ -76,7 +76,8 @@ final class SqliteStoreReportOperations {
 
   private <T> T queryReport(String failureMessage, NativeReport<T> query) {
     try {
-      return query.run(initializedReportDatabase());
+      return SqliteStoreOperations.retryTransientLockFailures(
+          () -> query.run(initializedReportDatabase()));
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure(failureMessage, exception);
     }

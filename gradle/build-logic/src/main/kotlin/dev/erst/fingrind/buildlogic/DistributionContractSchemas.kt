@@ -27,12 +27,6 @@ internal object DistributionContractSchemas {
                 allowedMissingDependencyPrefixes =
                     schemaKey(document, "runtimeModuleDiscovery", "allowedMissingDependencyPrefixes"),
             ),
-            publicDistribution = DistributionContractReader.PublicDistributionSchema(
-                supportedPublicCliBundleTargets =
-                    schemaKey(document, "publicDistribution", "supportedPublicCliBundleTargets"),
-                unsupportedPublicCliBundleTargets =
-                    schemaKey(document, "publicDistribution", "unsupportedPublicCliBundleTargets"),
-            ),
             managedSqlite = DistributionContractReader.ManagedSqliteSchema(
                 requiredMinimumSqliteVersion =
                     schemaKey(document, "managedSqlite", "requiredMinimumSqliteVersion"),
@@ -62,15 +56,23 @@ internal object DistributionContractSchemas {
                 requiresSecureMemorySupport =
                     schemaKey(document, "managedSqlite", "requiresSecureMemorySupport"),
             ),
-            bundleLayout = DistributionContractReader.BundleLayoutSchema(
+            bundleLayout = BundleLayoutSchema(
                 bundleTargets = schemaKey(document, "bundleLayout", "bundleTargets"),
                 operatingSystemId = schemaKey(document, "bundleLayout", "operatingSystemId"),
                 architectureId = schemaKey(document, "bundleLayout", "architectureId"),
                 archiveFormat = schemaKey(document, "bundleLayout", "archiveFormat"),
                 launcherPath = schemaKey(document, "bundleLayout", "launcherPath"),
                 launcherCommand = schemaKey(document, "bundleLayout", "launcherCommand"),
-                sqliteLibraryFileName =
-                    schemaKey(document, "bundleLayout", "sqliteLibraryFileName"),
+                sqliteLibraryFileName = schemaKey(document, "bundleLayout", "sqliteLibraryFileName"),
+                compatibilityLabel = schemaKey(document, "bundleLayout", "compatibilityLabel"),
+                minimumGlibcVersion = schemaKey(document, "bundleLayout", "minimumGlibcVersion"),
+                compatibilitySmokeContainerImage =
+                    schemaKey(document, "bundleLayout", "compatibilitySmokeContainerImage"),
+            ),
+            bundlePublication = BundlePublicationSchema(
+                bundleTargets = schemaKey(document, "bundlePublication", "bundleTargets"),
+                publicationStatus = schemaKey(document, "bundlePublication", "status"),
+                runnerLabel = schemaKey(document, "bundlePublication", "runnerLabel"),
             ),
             operationIds = DistributionContractReader.OperationIdSchema(
                 help = schemaKey(document, "operationIdContract", "help"),

@@ -25,8 +25,9 @@ Invalid writes and invalid maintenance mutations are rejected before they change
 - Export any report as operator-readable text tables, JSON, CSV, or PDF
 
 **Project status: Alpha.** FinGrind is under active development and is not yet production-ready.
-Public self-contained downloads are published for Linux targets. On macOS or Windows, use the
-published container workflow or a source checkout.
+Public self-contained downloads are published for macOS (Apple Silicon and Intel), Linux
+(`x86_64` and `aarch64`, glibc `2.34+`), and Windows `x86_64`. `windows-aarch64` remains on the
+container or source-checkout path.
 
 ## Quick Start
 
@@ -39,7 +40,7 @@ exists, keep it owner-only before you ask FinGrind to write a key or book there.
 The example below is launcher-neutral and bundle-safe: it creates the request JSON locally from
 the live CLI instead of depending on repository fixtures. The seeded starter chart created by
 `open-book` already includes `cash` and `service-revenue`, so the first posting does not need
-supplemental chart setup. For the Linux bundle-first walkthrough and the exact public package
+supplemental chart setup. For the host-specific bundle walkthrough and the exact public package
 matrix, use
 [docs/USER_QUICK_START.md](docs/USER_QUICK_START.md) and [docs/USER_INSTALL.md](docs/USER_INSTALL.md).
 

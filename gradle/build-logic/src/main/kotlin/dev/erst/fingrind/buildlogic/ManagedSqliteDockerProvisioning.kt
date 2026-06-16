@@ -13,7 +13,7 @@ internal fun registerDockerManagedSqliteTarget(
     sqliteVersionValue: String,
     sqlite3mcVersionValue: String,
     sourcePackageId: String,
-    dockerBundleTarget: DistributionContractReader.BundleTargetContract =
+    dockerBundleTarget: BundleTargetContract =
         DistributionBundleTargetReader.dockerBundleTarget(repositoryRootDirectory),
 ): ManagedSqliteProvisioning {
 

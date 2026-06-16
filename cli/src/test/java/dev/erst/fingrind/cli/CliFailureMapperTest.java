@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
@@ -15,6 +16,21 @@ import org.junit.jupiter.api.Test;
 
 /** Verifies deterministic public failure classification for the published CLI contract. */
 class CliFailureMapperTest {
+  @Test
+  void runtimeFailure_mapsExistingArtifactDestinationsToDeterministicRefusal() {
+    CliFailure failure =
+        CliFailureMapper.runtimeFailure(
+            new CliArtifactOutputExistsException(Path.of("reports/out.pdf"), "--pdf-out"));
+
+    assertNotNull(failure);
+    assertEquals("artifact-output-already-exists", failure.code());
+    assertTrue(failure.message().contains("already exists"));
+    assertTrue(failure.message().contains("reports/out.pdf"));
+    assertEquals("--pdf-out", failure.argument());
+    assertNotNull(failure.hint());
+    assertTrue(failure.hint().contains("remove the existing artifact"));
+  }
+
   @Test
   void contractFailure_preservesWrappedContractFailures() {
     ContractFailureException exception =
@@ -71,7 +87,7 @@ class CliFailureMapperTest {
 
   @Test
   void internalError_mapsToOpaquePublishedFailure() {
-    CliFailure failure = CliFailureMapper.internalError("fg-internal-123");
+    CliFailure failure = CliFailureMapper.internalError("fg-internal-123", OutputMode.TEXT);
 
     assertEquals("internal-error", failure.code());
     assertTrue(failure.message().contains("fg-internal-123"));
@@ -82,8 +98,19 @@ class CliFailureMapperTest {
   @Test
   void internalError_rejectsBlankErrorIds() {
     IllegalArgumentException exception =
-        assertThrows(IllegalArgumentException.class, () -> CliFailureMapper.internalError("  "));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliFailureMapper.internalError("  ", OutputMode.JSON));
 
     assertEquals("errorId must not be blank.", exception.getMessage());
+  }
+
+  @Test
+  void internalError_machineModesPreserveParseableDiagnosticsStream() {
+    CliFailure failure = CliFailureMapper.internalError("fg-internal-123", OutputMode.JSON);
+
+    assertEquals("internal-error", failure.code());
+    assertNotNull(failure.hint());
+    assertTrue(failure.hint().contains("machine-readable error envelope on stderr"));
   }
 }

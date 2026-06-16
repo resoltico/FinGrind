@@ -30,6 +30,7 @@ readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly common_support_sh="${repo_root}/scripts/release-smoke-common.sh"
 readonly workflow_support_sh="${repo_root}/scripts/release-smoke-workflow-support.sh"
 readonly bundle_support_sh="${repo_root}/scripts/release-smoke-support.sh"
+readonly bundle_compatibility_floor_support_sh="${repo_root}/scripts/bundle-smoke-compatibility-floor-support.sh"
 readonly bundle_office_worker_ps1="${repo_root}/scripts/bundle-smoke-office-worker.ps1"
 readonly bundle_command_bridge_ps1="${repo_root}/scripts/bundle-smoke-command-bridge.ps1"
 readonly bundle_smoke_sh="${repo_root}/scripts/bundle-smoke.sh"
@@ -43,6 +44,8 @@ readonly docker_smoke_sh="${repo_root}/scripts/docker-smoke.sh"
 [[ -f "${common_support_sh}" ]] || die "missing Bash release smoke common helper at ${common_support_sh}"
 [[ -f "${workflow_support_sh}" ]] || die "missing Bash release smoke workflow support helper at ${workflow_support_sh}"
 [[ -f "${bundle_support_sh}" ]] || die "missing Bash release smoke support wrapper at ${bundle_support_sh}"
+[[ -f "${bundle_compatibility_floor_support_sh}" ]] || die \
+    "missing compatibility-floor support helper at ${bundle_compatibility_floor_support_sh}"
 [[ -f "${bundle_office_worker_ps1}" ]] || die "missing PowerShell office-worker wrapper at ${bundle_office_worker_ps1}"
 [[ -f "${bundle_command_bridge_ps1}" ]] || die "missing PowerShell command bridge at ${bundle_command_bridge_ps1}"
 [[ -f "${bundle_smoke_sh}" ]] || die "missing Bash bundle smoke entrypoint at ${bundle_smoke_sh}"
@@ -153,6 +156,13 @@ assert_source_only_guard \
 assert_source_only_guard \
     "${workflow_support_sh}" \
     "release-smoke-workflow-support.sh is a library and must be sourced by release-smoke-support.sh."
+assert_source_only_guard \
+    "${bundle_compatibility_floor_support_sh}" \
+    "bundle-smoke-compatibility-floor-support.sh is a library and must be sourced by bundle-smoke.sh."
+grep -Fq 'bundle-smoke-compatibility-floor-support.sh' "${bundle_smoke_sh}" || die \
+    "bundle-smoke.sh no longer delegates the compatibility-floor rerun to its dedicated helper"
+grep -Fq 'verify-bundle-archive-contract.py' "${bundle_smoke_sh}" || die \
+    "bundle-smoke.sh no longer verifies extracted host bundles through the canonical bundle-contract owner"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${bundle_smoke_sh}" || die \
     "bundle-smoke.sh no longer publishes the compact shared work-root contract"
 grep -Fq 'Bundle acceptance: using archive' "${bundle_smoke_sh}" || die \
@@ -161,6 +171,14 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${bundle_smoke_sh}" || die
     "bundle-smoke.sh no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${bundle_smoke_sh}" || die \
     "bundle-smoke.sh no longer publishes the shared scenario-id contract"
+grep -Fq 'compatibility-floor' "${bundle_smoke_sh}" || die \
+    "bundle-smoke.sh no longer exposes the compatibility-floor execution surface"
+grep -Fq 'compatibilitySmokeContainerImage' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer reads the contract-owned compatibility-floor image"
+grep -Fq 'verify-bundle-archive-contract.py' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer verifies extracted target bundles inside the compatibility container"
+grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_CWD=/work' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer binds relative-path CLI execution to the mounted work root"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the compact shared work-root contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_REPORTED_WORK_ROOT' "${docker_smoke_sh}" || die \

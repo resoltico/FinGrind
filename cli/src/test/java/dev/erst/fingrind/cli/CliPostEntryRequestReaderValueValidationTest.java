@@ -173,7 +173,9 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("minorUnits must contain ASCII decimal digits only.", exception.getMessage());
+    assertEquals(
+        "minorUnits must contain ASCII decimal digits only after removing signs and separators.",
+        exception.getMessage());
   }
 
   @Test
@@ -205,7 +207,9 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("minorUnits must contain ASCII decimal digits only.", exception.getMessage());
+    assertEquals(
+        "minorUnits must contain ASCII decimal digits only after removing signs and separators.",
+        exception.getMessage());
   }
 
   @Test
@@ -237,7 +241,9 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("minorUnits must contain ASCII decimal digits only.", exception.getMessage());
+    assertEquals(
+        "minorUnits must contain ASCII decimal digits only after removing signs and separators.",
+        exception.getMessage());
   }
 
   @Test

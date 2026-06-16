@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
-/** Stable current-process identity used for same-host coordination marker files. */
+/** Stable current-process identity used for same-host coordination artifacts. */
 final class SqliteProcessIdentity {
   static final long UNKNOWN_START_EPOCH_MILLIS = -1L;
   private static final SqliteProcessIdentity CURRENT = currentIdentity();
@@ -45,34 +45,46 @@ final class SqliteProcessIdentity {
   }
 
   static @Nullable SqliteProcessIdentity fromActivityMarkerFileName(String markerFileName) {
-    Objects.requireNonNull(markerFileName, "markerFileName");
-    if (!markerFileName.startsWith(ACTIVITY_MARKER_PID_PREFIX)) {
-      return null;
-    }
-    int separatorIndex = markerFileName.indexOf(ACTIVITY_MARKER_START_PREFIX);
-    if (separatorIndex < 0) {
-      return null;
-    }
-    Long parsedPid =
-        parseLong(markerFileName.substring(ACTIVITY_MARKER_PID_PREFIX.length(), separatorIndex));
-    Long parsedStartEpochMillis =
-        parseLong(markerFileName.substring(separatorIndex + ACTIVITY_MARKER_START_PREFIX.length()));
-    if (parsedPid == null || parsedStartEpochMillis == null) {
-      return null;
-    }
-    return new SqliteProcessIdentity(parsedPid, parsedStartEpochMillis);
+    return fromCoordinationToken(markerFileName);
   }
 
   String leaseMetadataText() {
     return "pid=" + pid + "\nstartEpochMillis=" + startEpochMillis + "\n";
   }
 
+  String coordinationToken() {
+    return coordinationToken(pid, startEpochMillis);
+  }
+
+  static String coordinationToken(long pid, long startEpochMillis) {
+    return ACTIVITY_MARKER_PID_PREFIX + pid + ACTIVITY_MARKER_START_PREFIX + startEpochMillis;
+  }
+
+  static @Nullable SqliteProcessIdentity fromCoordinationToken(String token) {
+    Objects.requireNonNull(token, "token");
+    if (!token.startsWith(ACTIVITY_MARKER_PID_PREFIX)) {
+      return null;
+    }
+    int separatorIndex = token.indexOf(ACTIVITY_MARKER_START_PREFIX);
+    if (separatorIndex < 0) {
+      return null;
+    }
+    Long parsedPid =
+        parseLong(token.substring(ACTIVITY_MARKER_PID_PREFIX.length(), separatorIndex));
+    Long parsedStartEpochMillis =
+        parseLong(token.substring(separatorIndex + ACTIVITY_MARKER_START_PREFIX.length()));
+    if (parsedPid == null || parsedStartEpochMillis == null) {
+      return null;
+    }
+    return new SqliteProcessIdentity(parsedPid, parsedStartEpochMillis);
+  }
+
   String activityMarkerFileToken() {
-    return activityMarkerFileToken(pid, startEpochMillis);
+    return coordinationToken();
   }
 
   static String activityMarkerFileToken(long pid, long startEpochMillis) {
-    return ACTIVITY_MARKER_PID_PREFIX + pid + ACTIVITY_MARKER_START_PREFIX + startEpochMillis;
+    return coordinationToken(pid, startEpochMillis);
   }
 
   boolean isCurrentProcess() {

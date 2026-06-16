@@ -79,6 +79,22 @@ public sealed interface BookLifecycleInspection
     return Objects.requireNonNull(inspection, "inspection").allowsInitializedWorkflow();
   }
 
+  /** Returns the initialized book identity or throws when the selected book is not initialized. */
+  static BookIdentity requireInitializedBookIdentity(BookLifecycleInspection inspection) {
+    Objects.requireNonNull(inspection, "inspection");
+    return switch (inspection) {
+      case Initialized initialized -> initialized.bookIdentity();
+      case Missing _ ->
+          throw new IllegalStateException(
+              "Book identity is unavailable because the book is missing.");
+      case Existing existing ->
+          throw new IllegalStateException(
+              "Book identity is unavailable for non-initialized book status "
+                  + existing.status().wireValue()
+                  + ".");
+    };
+  }
+
   /** Returns whether initialized-book workflows may proceed for this inspection snapshot. */
   default boolean allowsInitializedWorkflow() {
     return switch (this) {

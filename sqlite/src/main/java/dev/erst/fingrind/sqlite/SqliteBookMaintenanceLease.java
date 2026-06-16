@@ -4,30 +4,21 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Exclusive same-path maintenance lease used to coordinate destructive protected-book workflows.
  *
- * <p>The lease is owned by an atomically created sibling lock file plus process-liveness metadata.
- * That protocol works across filesystems that do not support advisory {@code FileLock}.
+ * <p>The lease is owned by an atomically created sibling lock directory whose name embeds one
+ * process-identity token. That protocol works across filesystems that do not support advisory
+ * {@code FileLock} and avoids delete-tombstone churn on bind-mounted Docker volumes.
  */
 final class SqliteBookMaintenanceLease {
-  private static final String LEASE_SUFFIX = ".fingrind-maintenance.lock";
-  private static final Duration INCOMPLETE_LEASE_GRACE_PERIOD = Duration.ofSeconds(5);
-  private static final Duration UNKNOWN_START_EXTERNAL_LEASE_GRACE_PERIOD = Duration.ofMinutes(15);
-  private static final int MAX_STALE_RECLAIM_ATTEMPTS = 8;
   private static final ThreadLocal<Set<Path>> OWNED_ARTIFACT_PATHS =
       ThreadLocal.withInitial(HashSet::new);
 
@@ -43,31 +34,27 @@ final class SqliteBookMaintenanceLease {
               + normalizedArtifactPath
               + ".");
     }
-    Path leasePath = leasePath(normalizedArtifactPath);
     try {
       if (leaseIntent == SqliteMaintenanceLeaseIntent.MANAGED_TARGET) {
         SqliteBookFileSecurity.ensureSecureParentDirectory(normalizedArtifactPath);
       } else {
         requireExistingArtifact(normalizedArtifactPath);
       }
-      SqliteLeaseFileHandle leaseFileHandle = acquireLeaseFile(leasePath);
-      if (leaseFileHandle == null) {
+      SqliteLeaseHandle leaseHandle =
+          SqliteMaintenanceLeaseArtifacts.acquire(normalizedArtifactPath);
+      if (leaseHandle == null) {
         return new SqliteLeaseBusy(normalizedArtifactPath);
       }
       if (SqliteNativeRuntimeActivity.activeConnectionCount(normalizedArtifactPath) > 0
           || SqliteNativeRuntimeActivity.hasExternalActiveConnections(normalizedArtifactPath)) {
-        leaseFileHandle.closeAndDelete();
+        leaseHandle.closeAndDelete();
         return new SqliteLeaseBusy(normalizedArtifactPath);
       }
       OWNED_ARTIFACT_PATHS.get().add(normalizedArtifactPath);
-      return new SqliteHeldLease(normalizedArtifactPath, leaseFileHandle, OWNED_ARTIFACT_PATHS);
+      return new SqliteHeldLease(normalizedArtifactPath, leaseHandle, OWNED_ARTIFACT_PATHS);
     } catch (IOException exception) {
-      releaseLeaseFileQuietly(leasePath);
       throw new IllegalStateException(
           "Failed to acquire one FinGrind maintenance lease.", exception);
-    } catch (RuntimeException | Error exception) {
-      releaseLeaseFileQuietly(leasePath);
-      throw exception;
     }
   }
 
@@ -93,15 +80,10 @@ final class SqliteBookMaintenanceLease {
     if (currentThreadOwns(normalizedArtifactPath)) {
       return;
     }
-    Path leasePath = leasePath(normalizedArtifactPath);
-    if (!Files.exists(leasePath, LinkOption.NOFOLLOW_LINKS)) {
-      return;
-    }
     try {
-      if (leaseLooksLive(leasePath)) {
+      if (SqliteMaintenanceLeaseArtifacts.hasLiveArtifact(normalizedArtifactPath)) {
         throw activeMaintenanceFailure(normalizedArtifactPath);
       }
-      releaseLeaseFile(leasePath);
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to inspect or clear one FinGrind maintenance lease artifact.", exception);
@@ -123,77 +105,11 @@ final class SqliteBookMaintenanceLease {
     return OWNED_ARTIFACT_PATHS.get().contains(normalizedArtifactPath);
   }
 
-  private static Path leasePath(Path normalizedArtifactPath) {
-    String fileName =
-        Objects.requireNonNull(
-                normalizedArtifactPath.getFileName(), "normalizedArtifactPath fileName")
-            .toString();
-    return normalizedArtifactPath.resolveSibling(fileName + LEASE_SUFFIX);
-  }
-
-  private static @Nullable SqliteLeaseFileHandle acquireLeaseFile(Path leasePath)
-      throws IOException {
-    for (int attempt = 0; attempt < MAX_STALE_RECLAIM_ATTEMPTS; attempt++) {
-      switch (tryCreateLeaseFile(leasePath)) {
-        case SqliteCreatedLease(SqliteLeaseFileHandle leaseFileHandle) -> {
-          return leaseFileHandle;
-        }
-        case SqliteExistingLease ignored -> {
-          if (leaseLooksLive(leasePath)) {
-            return null;
-          }
-          releaseLeaseFileQuietly(leasePath);
-        }
-      }
-    }
-    return null;
-  }
-
-  private static SqliteLeaseCreation tryCreateLeaseFile(Path leasePath) throws IOException {
-    try {
-      Files.writeString(
-          leasePath,
-          SqliteProcessIdentity.current().leaseMetadataText(),
-          StandardOpenOption.CREATE_NEW,
-          StandardOpenOption.WRITE);
-      try {
-        SqliteBookFileSecurity.hardenOwnerOnlyFile(leasePath);
-      } catch (IOException | RuntimeException | Error exception) {
-        releaseLeaseFileQuietly(leasePath);
-        throw exception;
-      }
-      return new SqliteCreatedLease(new SqliteLeaseFileHandle(leasePath));
-    } catch (FileAlreadyExistsException ignored) {
-      return new SqliteExistingLease(leasePath);
-    }
-  }
-
-  private static boolean leaseLooksLive(Path leasePath) throws IOException {
-    try {
-      String leaseContents = Files.readString(leasePath);
-      SqliteProcessIdentity leaseOwner = SqliteProcessIdentity.fromLeaseMetadata(leaseContents);
-      Instant lastModified =
-          Files.getLastModifiedTime(leasePath, LinkOption.NOFOLLOW_LINKS).toInstant();
-      if (leaseOwner != null) {
-        return leaseOwner.isLiveWhenUnlocked(
-            lastModified, UNKNOWN_START_EXTERNAL_LEASE_GRACE_PERIOD);
-      }
-      return lastModified.plus(INCOMPLETE_LEASE_GRACE_PERIOD).isAfter(Instant.now());
-    } catch (NoSuchFileException ignored) {
-      return false;
-    }
-  }
-
-  private static void releaseLeaseFile(Path leasePath) throws IOException {
-    Files.deleteIfExists(leasePath);
-  }
-
-  static void releaseLeaseFileQuietly(Path leasePath) {
-    try {
-      releaseLeaseFile(leasePath);
-    } catch (IOException exception) {
-      SqliteBestEffort.reportCleanupFailure(
-          "deleting one SQLite maintenance lease file", exception);
-    }
+  static void releaseLeaseArtifactQuietly(Path leasePath) {
+    SqliteFileCleanup.deleteQuietly(
+        leasePath,
+        (ignoredAction, exception) ->
+            SqliteBestEffort.reportCleanupFailure(
+                "deleting one SQLite maintenance lease artifact", exception));
   }
 }

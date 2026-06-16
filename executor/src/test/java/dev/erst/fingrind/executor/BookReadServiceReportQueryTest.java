@@ -187,7 +187,7 @@ class BookReadServiceReportQueryTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                BookReadService.requireInitializedBookIdentity(
+                BookLifecycleInspection.requireInitializedBookIdentity(
                     new BookLifecycleInspection.Missing(2)));
 
     assertEquals("Book identity is unavailable because the book is missing.", failure.getMessage());
@@ -235,7 +235,7 @@ class BookReadServiceReportQueryTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                BookReadService.requireInitializedBookIdentity(
+                BookLifecycleInspection.requireInitializedBookIdentity(
                     new BookLifecycleInspection.Existing(
                         BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 2)));
 

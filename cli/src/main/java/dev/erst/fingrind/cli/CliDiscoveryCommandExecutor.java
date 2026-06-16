@@ -109,7 +109,9 @@ final class CliDiscoveryCommandExecutor {
 
   private EnvironmentDescriptor environmentDescriptor() {
     return CliRuntimeContractDescriptors.environmentDescriptor(
-        SqliteRuntime.probe(), FinGrindCli.runtimeDistribution());
+        SqliteRuntime.probe(),
+        FinGrindCli.runtimeDistribution(),
+        FinGrindCli.runtimeBundleTarget());
   }
 
   static Object requestTemplateFor(@Nullable OperationId commandTopic) {

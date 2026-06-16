@@ -8,6 +8,7 @@ import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
@@ -18,6 +19,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -62,6 +64,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         new LedgerPlanResult.Succeeded(
             planId("plan-1"),
             new LedgerExecutionJournal(startedAt, finishedAt, List.of(balanceEntry))),
+        OutputMode.JSON,
         PlanResultDetail.FULL);
     JsonNode data =
         readJson(outputStream).path("payload").path("journal").path("steps").get(0).path("data");
@@ -94,6 +97,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         new LedgerPlanResult.Rejected(
             planId("plan-1"),
             new LedgerExecutionJournal(startedAt, finishedAt, List.of(rejectedEntry))),
+        OutputMode.JSON,
         PlanResultDetail.FULL);
     JsonNode json = readJson(outputStream);
     assertEquals("rejected", json.path("status").stringValue());
@@ -121,12 +125,77 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         new LedgerPlanResult.AssertionFailed(
             planId("plan-1"),
             new LedgerExecutionJournal(startedAt, finishedAt, List.of(assertionFailedEntry))),
+        OutputMode.JSON,
         PlanResultDetail.FULL);
     JsonNode json = readJson(outputStream);
     assertEquals("error", json.path("status").stringValue());
     assertEquals("assertion-failed", json.path("payload").path("status").stringValue());
     assertEquals(
         "assertion-failed", json.path("payload").path("summary").path("failureCode").stringValue());
+  }
+
+  @Test
+  void writeLedgerPlanResult_routesRejectedMachineEnvelopeToDiagnosticsStream() throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter =
+        new CliResponseWriter(utf8PrintStream(outputStream), utf8PrintStream(diagnosticsStream));
+    Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
+    Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
+    LedgerJournalEntry.Rejected rejectedEntry =
+        new LedgerJournalEntry.Rejected(
+            stepId("declare-cash"),
+            LedgerJournalStep.standard(LedgerStepKind.DECLARE_ACCOUNT),
+            startedAt,
+            finishedAt,
+            List.of(),
+            new LedgerStepFailure(
+                "administration-book-not-initialized", "Book is not initialized.", List.of()));
+
+    responseWriter.writeLedgerPlanResult(
+        new LedgerPlanResult.Rejected(
+            planId("plan-1"),
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(rejectedEntry))),
+        OutputMode.JSON,
+        PlanResultDetail.FULL);
+
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode json = readJson(diagnosticsStream);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals(
+        "administration-book-not-initialized",
+        json.path("payload").path("summary").path("failureCode").stringValue());
+  }
+
+  @Test
+  void writeLedgerPlanResult_routesRejectedTextToDiagnosticsStream() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    CliResponseWriter responseWriter =
+        new CliResponseWriter(utf8PrintStream(outputStream), utf8PrintStream(diagnosticsStream));
+    Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
+    Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
+    LedgerJournalEntry.Rejected rejectedEntry =
+        new LedgerJournalEntry.Rejected(
+            stepId("declare-cash"),
+            LedgerJournalStep.standard(LedgerStepKind.DECLARE_ACCOUNT),
+            startedAt,
+            finishedAt,
+            List.of(),
+            new LedgerStepFailure(
+                "administration-book-not-initialized", "Book is not initialized.", List.of()));
+
+    responseWriter.writeLedgerPlanResult(
+        new LedgerPlanResult.Rejected(
+            planId("plan-1"),
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(rejectedEntry))),
+        OutputMode.TEXT,
+        PlanResultDetail.FULL);
+
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    String diagnosticsText = diagnosticsStream.toString(StandardCharsets.UTF_8);
+    assertTrue(diagnosticsText.contains("rejected"));
+    assertTrue(diagnosticsText.contains("administration-book-not-initialized"));
   }
 
   @Test
@@ -147,6 +216,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         new LedgerPlanResult.Rejected(
             planId("plan-1"),
             new LedgerExecutionJournal(startedAt, finishedAt, List.of(boundaryEntry))),
+        OutputMode.JSON,
         PlanResultDetail.FULL);
     JsonNode step = readJson(outputStream).path("payload").path("journal").path("steps").get(0);
     assertEquals("plan-boundary", step.path("kind").stringValue());

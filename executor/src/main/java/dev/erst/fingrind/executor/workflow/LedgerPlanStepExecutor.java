@@ -55,6 +55,10 @@ final class LedgerPlanStepExecutor {
     return bookkeepingReadService.inspectBook();
   }
 
+  boolean allowsInitializedWorkflow() {
+    return bookkeepingReadService.allowsInitializedWorkflow();
+  }
+
   BookWorkflowJournalEntry execute(BookWorkflowStep step) {
     Instant startedAt = Instant.now(clock);
     LedgerPlanStepOutcome outcome =

@@ -78,7 +78,7 @@ final class ProtocolOperationDefinitions {
 
   private static String usageOption(String option) {
     return option.equals(ProtocolOptions.currentPassphraseSourceSyntax())
-            || option.equals(ProtocolOptions.replacementPassphraseSourceSyntax())
+            || option.equals(ProtocolOptions.newPassphraseSourceSyntax())
         ? "[" + option + "]"
         : option;
   }

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: USER_CLI
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -11,10 +11,10 @@ route:
 # CLI Guide
 
 **Purpose**: Run the packaged FinGrind CLI and understand its command, file, and exit behavior.
-**Prerequisites**: For public use, download one self-contained FinGrind Linux release bundle and
-unpack it on a glibc Linux host. No separate Java install is required for that path. On macOS or
-Windows, use the published container workflow in [USER_CONTAINER.md](./USER_CONTAINER.md) or a
-source checkout. For source-driven local runs,
+**Prerequisites**: For public use, download one self-contained FinGrind release bundle that
+matches your host and unpack it. The published Linux bundles require glibc `2.34` or newer; treat
+[USER_INSTALL.md](./USER_INSTALL.md) and the extracted `bundle-manifest.json` as the authoritative
+compatibility owners. No separate Java install is required for that path. For source-driven local runs,
 `./gradlew :cli:run` manages SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 automatically.
 For exact public package names, checksum commands, and the published container reference, start
 with [USER_INSTALL.md](./USER_INSTALL.md). The source-checkout wrapper
@@ -65,7 +65,7 @@ The easiest path is one missing private parent directory that FinGrind can creat
 existing parent directory that you have already tightened to owner-only permissions.
 `open-book` explicitly initializes one new protected book.
 `rekey-book` rotates the passphrase that protects one existing initialized book and restores the
-pre-rekey file automatically if replacement-passphrase verification fails.
+pre-rekey file automatically if new-passphrase verification fails.
 `backup-book` exports one verified encrypted backup pair for a closed book, `restore-book`
 verifies that pair before replacing the live book path and leaves the restored live book protected
 by that backup key file, `inspect-rekey-rollback` reports stale same-directory rollback artifacts,
@@ -88,8 +88,10 @@ migration policy for one selected book.
 `get-posting`, `list-postings`, and `account-balance` expose read/query access to committed history.
 `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, and
 `changes-in-equity` answer standard office-worker reporting questions in one command.
-`execute-plan` runs one ordered ledger plan atomically and returns one fixed JSON execution-journal
-envelope on stdout; it does not negotiate `--output`.
+`execute-plan` runs one ordered ledger plan atomically and returns either a human-readable text
+summary or one JSON execution-journal envelope on stdout. Built-in default output is text;
+`--output json` keeps the machine envelope, and `--result-detail full` includes the per-step
+journal in either surface.
 `preflight-entry` and `post-entry` both require an already initialized book and declared active
 accounts for every journal line they touch, and surface those failures as
 `account-state-violations` with structured `details.violations`.
@@ -125,6 +127,10 @@ artifact fails, FinGrind returns one deterministic `pdf-export-failure` instead 
 successful report result. Commands that do not advertise
 `--output` still publish one fixed stdout contract, either one raw JSON document or one fixed JSON
 envelope.
+Successful primary results always own stdout. Deterministic failures and rejections use the
+diagnostics stream instead: text mode emits operator-facing repair or rejection text, and
+recognized machine modes such as `--output json` emit one parseable JSON diagnostics envelope on
+stderr.
 
 ## Commands
 
@@ -144,14 +150,14 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
     <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
-    <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--replacement-book-key-file &lt;existing-path&gt; | --replacement-book-passphrase-stdin | --replacement-book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
-    <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-file-out &lt;path&gt;</code><br><code>--backup-book-key-file-out &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Export one closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
-    <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore one verified encrypted-book backup pair onto the selected live book path.</td></tr>
+    <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--new-book-key-file &lt;existing-path&gt; | --new-book-passphrase-stdin | --new-book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
+    <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-book-file-out &lt;path&gt;</code><br><code>--backup-book-key-file-out &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Export one closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
+    <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--backup-book-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore one verified encrypted-book backup pair onto the selected live book path.</td></tr>
     <tr><td><code>inspect-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Inspect stale sibling rekey rollback artifacts for the selected book path.</td></tr>
-    <tr><td><code>delete-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Delete one selected stale sibling rekey rollback artifact.</td></tr>
-    <tr><td><code>restore-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore one selected stale sibling rekey rollback artifact onto the live book path.</td></tr>
+    <tr><td><code>delete-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-book-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Delete one selected stale sibling rekey rollback artifact.</td></tr>
+    <tr><td><code>restore-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-book-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore one selected stale sibling rekey rollback artifact onto the live book path.</td></tr>
     <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Declare or reactivate one account in the selected book.</td></tr>
-    <tr><td><code>transfer-period-result</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Transfer one contiguous reporting period into one policy-selected result-holding account.</td></tr>
+    <tr><td><code>transfer-period-result</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Transfer one contiguous reporting period into one policy-selected result-holding account.</td></tr>
     <tr><td><code>inspect-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Inspect one selected book for lifecycle state, format version, and compatibility.</td></tr>
     <tr><td><code>list-accounts</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>List one stable page of declared accounts in the selected book using keyset pagination.</td></tr>
     <tr><td><code>get-posting</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--posting-id &lt;posting-id&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Return one committed posting by durable posting identifier.</td></tr>
@@ -159,11 +165,11 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>account-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute grouped per-currency balances for one declared account.</td></tr>
     <tr><td><code>trial-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one book-wide trial balance as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.</td></tr>
     <tr><td><code>account-ledger</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.</td></tr>
-    <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.</td></tr>
+    <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.</td></tr>
     <tr><td><code>financial-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.</td></tr>
-    <tr><td><code>income-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded income statement for the selected reporting period.</td></tr>
-    <tr><td><code>changes-in-equity</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--effective-date-from &lt;YYYY-MM-DD&gt;</code><br><code>--effective-date-to &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded statement of changes in equity for the selected reporting period.</td></tr>
-    <tr><td><code>execute-plan</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--result-detail &lt;summary|full&gt;]</code></td><td>Execute one ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.</td></tr>
+    <tr><td><code>income-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded income statement for the selected reporting period.</td></tr>
+    <tr><td><code>changes-in-equity</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded statement of changes in equity for the selected reporting period.</td></tr>
+    <tr><td><code>execute-plan</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code><br><code>[--result-detail &lt;summary|full&gt;]</code></td><td>Execute one ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.</td></tr>
     <tr><td><code>preflight-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Validate one posting request without committing it.</td></tr>
     <tr><td><code>post-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit one posting request into the selected SQLite book.</td></tr>
   </tbody>
@@ -174,20 +180,22 @@ The command table below is generated from the canonical protocol catalog and con
 
 Public FinGrind CLI downloads are self-contained bundle archives, not a standalone JAR.
 The current published public target set is:
+- `macos-aarch64`
+- `macos-x86_64`
 - `linux-x86_64`
 - `linux-aarch64`
+- `windows-x86_64`
 
 The protocol contract also declares these known-but-not-published public bundle targets so machine
 clients can distinguish "not published" from "unknown target":
-- `macos-aarch64`
-- `macos-x86_64`
-- `windows-x86_64`
 - `windows-aarch64`
 
-Linux bundles are built on Ubuntu GitHub-hosted runners and therefore target ordinary glibc Linux
-hosts. They are not presented as a universal Linux binary for every libc variant.
-FinGrind does not publish unsigned macOS bundles or PowerShell-first Windows bundles as public
-release artifacts. On macOS or Windows, use the published container image or a source checkout.
+Linux bundle compatibility is contract-owned by the compatibility labels in
+[USER_INSTALL.md](./USER_INSTALL.md) and by each extracted `bundle-manifest.json`. The current
+published Linux targets require glibc `2.34` or newer. They are not presented as universal Linux
+binaries for every libc variant.
+macOS and Windows bundles are published as unsigned release assets. Verify them through the
+published checksum and GitHub attestation before first run.
 
 Each extracted archive also contains:
 - a top-level `README.md` with the local quick start
@@ -298,8 +306,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | `4` | classified runtime/storage failure while executing an otherwise valid invocation | `error` with code `storage-runtime-failure` or `pdf-export-failure` |
 | `5` | interactive prompt or managed runtime environment precondition failure | `error` with code `interactive-prompt-unavailable`, `interactive-prompt-failed`, or `managed-runtime-failure` |
 | `6` | protected-book passphrase, key-file, or verification failure | `error` with code `protected-book-verification-failed`, `invalid-book-key-file`, or `invalid-book-passphrase-source` |
-| `7` | protected-book maintenance precondition or destination-collision failure | `rejected` with code `backup-destination-already-exists`, `backup-key-file-already-exists`, `book-has-blocking-artifacts`, `backup-source-has-blocking-artifacts`, or `artifact-busy`; also `error` with code `book-key-file-already-exists` or `book-maintenance-in-progress` |
-| `70` | internal software defect outside the published runtime families | `error` with code `internal-error` plus one opaque error id, with the stack trace on the diagnostics stream |
+| `7` | protected-book maintenance precondition or destination-collision failure | `rejected` with code `backup-destination-already-exists`, `backup-key-file-already-exists`, `book-has-blocking-artifacts`, `backup-source-has-blocking-artifacts`, or `artifact-busy`; also `error` with code `book-key-file-already-exists`, `artifact-output-already-exists`, or `book-maintenance-in-progress` |
+| `70` | internal software defect outside the published runtime families | `error` with code `internal-error` plus one opaque error id; text mode also prints the stack trace on the diagnostics stream, while machine modes keep one parseable diagnostics envelope only |
 
 ## Common Failures
 
@@ -309,10 +317,10 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | missing `--book-file` | `1` | `invalid-request` | `A --book-file argument is required.` |
 | key-file generation target already exists | `7` | `book-key-file-already-exists` | `The FinGrind book key file already exists and will not be overwritten.` |
 | missing book passphrase source | `1` | `invalid-request` | `Exactly one book passphrase source is required: ...` |
-| missing replacement passphrase source on `rekey-book` | `1` | `invalid-request` | `Exactly one replacement book passphrase source is required: ...` |
+| missing new passphrase source on `rekey-book` | `1` | `invalid-request` | `Exactly one new book passphrase source is required: ...` |
 | missing `--request-file` | `1` | `invalid-request` | `A --request-file argument is required.` |
 | multiple passphrase sources | `1` | `invalid-request` | `Exactly one book passphrase source is permitted per command.` |
-| multiple replacement passphrase sources on `rekey-book` | `1` | `invalid-request` | `Exactly one replacement book passphrase source is permitted per command.` |
+| multiple new passphrase sources on `rekey-book` | `1` | `invalid-request` | `Exactly one new book passphrase source is permitted per command.` |
 | same path used for both files | `1` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |
 | stdin requested for both passphrase and JSON | `1` | `invalid-request` | `Standard input cannot supply both the book passphrase and the request JSON.` |
 | oversized request JSON payload from file or standard input | `1` | `invalid-request` | `Request file exceeded the supported 1048576-byte UTF-8 limit: ...` or `Request JSON from standard input exceeded the supported 1048576-byte UTF-8 limit.` |
@@ -327,17 +335,21 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | invalid key-file contents, file permissions, parent-directory permissions, or unreadable key-file path | `6` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, parent directory, or contents do not satisfy the protected-book contract.` |
 | unreadable, oversized, malformed, empty, or control-character passphrase payload on stdin or another selected passphrase route | `6` | `invalid-book-passphrase-source` | `Failed to read the FinGrind book passphrase from standard input.`, `The FinGrind book passphrase source exceeded the 4096-byte UTF-8 limit: ...`, or UTF-8/single-line passphrase validation text |
 | unsupported prompt environment | `5` | `interactive-prompt-unavailable` | `FinGrind cannot prompt for a book passphrase because no interactive console is available.` |
+| requested PDF artifact path already exists | `7` | `artifact-output-already-exists` | `Artifact publication refused because the selected output destination already exists and FinGrind will not overwrite it.` |
 | requested PDF artifact written successfully after a successful report result | `0` | diagnostics info pdf-exported | primary report remains on stdout; JSON success envelopes also publish `artifacts[].format` plus one redacted public-path-hint `artifacts[].path`, and diagnostics report the same path hint for text/CSV flows |
 | requested PDF artifact cannot be written for one report command that requested `--pdf-out` | `4` | `pdf-export-failure` | the command fails atomically because the requested PDF artifact was not produced |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `5` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
-| other unexpected software defect outside the managed-runtime and storage families | `70` | `internal-error` | opaque public failure carrying one error id; the diagnostics stream prints the same id and full stack trace |
+| other unexpected software defect outside the managed-runtime and storage families | `70` | `internal-error` | opaque public failure carrying one error id; text mode prints the same id and full stack trace on the diagnostics stream, while machine modes keep one parseable diagnostics envelope without the raw trace |
 
 ## Notes
 
 - Error envelopes may include `hint` and `argument` fields to help an agent or operator repair the
   call without consulting docs, and text `Rejected` renders now surface the same repair hint plus
   any structured rejection details that the machine envelope carries.
+- When one recognized machine mode such as `--output json` is selected, rejected and error
+  responses are written to stderr so stdout remains reserved for successful primary results,
+  fixed-output scaffolds, and other success-only contracts.
 - If you want one machine envelope while probing malformed input, add `--output json` on
   commands that advertise it; otherwise invalid invocations default to text repair text.
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject
@@ -349,7 +361,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   owner-only protection; when the parent already exists, FinGrind requires it to remain
   owner-only. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
   Windows.
-- `backup-book` creates missing parent directories for nested `--backup-file-out` and
+- `backup-book` creates missing parent directories for nested `--backup-book-file-out` and
   `--backup-book-key-file-out` paths with owner-only protection. When either parent directory
   already exists, FinGrind requires it to remain owner-only before the backup pair is published.
 - `restore-book` creates missing parent directories for nested `--book-file` targets with
@@ -372,16 +384,16 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 - `--request-file <path>` reads one UTF-8 JSON object document capped at `1048576` bytes.
 - `--request-file -` reads one UTF-8 JSON object document from standard input under that same
   `1048576`-byte limit.
-- `rekey-book` requires one current passphrase source plus one replacement passphrase source.
-  The replacement options are `--replacement-book-key-file`, `--replacement-book-passphrase-stdin`, and
-  `--replacement-book-passphrase-prompt`.
-- `--replacement-book-key-file` must point to an existing generated or operator-supplied secret
+- `rekey-book` requires one current passphrase source plus one new passphrase source.
+  The new passphrase options are `--new-book-key-file`, `--new-book-passphrase-stdin`, and
+  `--new-book-passphrase-prompt`.
+- `--new-book-key-file` must point to an existing generated or operator-supplied secret
   file. Generate that file first with `generate-book-key-file` if you want FinGrind to create it
   for you.
-- `--replacement-book-passphrase-prompt` asks for the replacement secret twice and rejects mismatched
+- `--new-book-passphrase-prompt` asks for the new secret twice and rejects mismatched
   entries.
-- `rekey-book` rejects using the same key-file path for both current and replacement secrets, and
-  standard input cannot supply both current and replacement secrets in the same invocation.
+- `rekey-book` rejects using the same key-file path for both current and new secrets, and
+  standard input cannot supply both current and new secrets in the same invocation.
 - `rekey-book` uses one same-directory encrypted rollback copy while rotation is in progress. If a
   crash or forced stop interrupts cleanup, that stale `*.rekey-rollback-*.sqlite` file remains in
   the book directory until you inspect or delete it, and later opens warn when they detect it.
@@ -390,7 +402,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `.sqlite` file under the same protected filesystem stance as the live book while storing key
   material separately from the copied book tree.
 - `restore-book` reuses the supplied backup key file as the secret for the restored live book, so
-  reopen the restored `--book-file` path with that same key file after the replacement completes.
+  reopen the restored `--book-file` path with that same key file after the restore completes.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.2 /

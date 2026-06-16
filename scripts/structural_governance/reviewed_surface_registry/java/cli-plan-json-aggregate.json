@@ -1,0 +1,23 @@
+{
+  "projectPath": "cli",
+  "relativePath": "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
+  "owner": "cli-json-contract",
+  "reason": "Ledger-plan JSON remains one machine-contract family, but it is reviewed as a frozen large surface instead of inheriting a broad package waiver.",
+  "splitTrigger": "Split by execution envelope, fact, and rejection payload families before adding another plan JSON namespace.",
+  "reviewedRoleName": "cli-plan-json-aggregate",
+  "budgetVarianceReason": "The ledger-plan JSON aggregate exceeds the default CLI JSON budget until envelope, fact, and rejection payload families finish splitting.",
+  "duplicationExemptionReason": "The ledger-plan JSON aggregate intentionally repeats machine-contract record structure until payload families move into separate owners.",
+  "approval": {
+    "physicalLines": 313,
+    "logicalLines": 290,
+    "importLikeLines": 13,
+    "nestedTypes": 18,
+    "functions": 0,
+    "fieldsPerTopLevelType": 0,
+    "switchArmsPerMethod": 0,
+    "methodLineSpan": 36,
+    "methodParameters": 0,
+    "methodDecisionPoints": 8,
+    "expiresOn": "2026-08-05"
+  }
+}

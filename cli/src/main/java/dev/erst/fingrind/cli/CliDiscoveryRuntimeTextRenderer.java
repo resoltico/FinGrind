@@ -24,7 +24,8 @@ final class CliDiscoveryRuntimeTextRenderer {
                 List.of("Runtime status", displayRuntimeStatus(runtime.status().wireValue())),
                 List.of(
                     "Current launcher",
-                    displayRuntimeDistribution(environmentDescriptor.runtime())),
+                    displayRuntimeDistribution(
+                        environmentDescriptor.runtime(), environmentDescriptor.publication())),
                 List.of(
                     "Default output mode",
                     displayDefaultOutputMode(environmentDescriptor.runtime())),
@@ -99,9 +100,14 @@ final class CliDiscoveryRuntimeTextRenderer {
     return CliTextDisplay.wireLabel(wireValue);
   }
 
-  private static String displayRuntimeDistribution(EnvironmentRuntimeDescriptor runtimeDescriptor) {
+  private static String displayRuntimeDistribution(
+      EnvironmentRuntimeDescriptor runtimeDescriptor,
+      EnvironmentPublicationDescriptor publicationDescriptor) {
     return switch (runtimeDescriptor.runtimeDistribution()) {
-      case SELF_CONTAINED_BUNDLE -> "Self-contained public bundle";
+      case SELF_CONTAINED_BUNDLE ->
+          "Self-contained bundle"
+              + activeBundleTargetSuffix(publicationDescriptor)
+              + publicationStatusSuffix(publicationDescriptor);
       case SOURCE_CHECKOUT_GRADLE -> "Source checkout launcher";
       case DIRECT_JAVA_INVOCATION -> "Developer direct-Java launcher";
       case CONTAINER_IMAGE -> "Container image launcher";
@@ -117,6 +123,12 @@ final class CliDiscoveryRuntimeTextRenderer {
 
   private static String displayPublicationSurface(
       EnvironmentPublicationDescriptor publicationDescriptor) {
+    String activeBundleTarget =
+        publicationDescriptor.currentBundleTarget() == null
+            ? ""
+            : "; current bundle target: "
+                + displayBundleTarget(publicationDescriptor.currentBundleTarget())
+                + publicationStatusSuffix(publicationDescriptor);
     String targets =
         publicationDescriptor.supportedPublicCliBundleTargets().isEmpty()
             ? "(no public self-contained bundle targets)"
@@ -126,7 +138,27 @@ final class CliDiscoveryRuntimeTextRenderer {
     return "Public "
         + CliTextDisplay.wireLabel(publicationDescriptor.publicCliDistribution().wireValue())
         + "; supported bundle targets: "
-        + targets;
+        + targets
+        + activeBundleTarget;
+  }
+
+  private static String activeBundleTargetSuffix(
+      EnvironmentPublicationDescriptor publicationDescriptor) {
+    return publicationDescriptor.currentBundleTarget() == null
+        ? ""
+        : " for " + displayBundleTarget(publicationDescriptor.currentBundleTarget());
+  }
+
+  private static String publicationStatusSuffix(
+      EnvironmentPublicationDescriptor publicationDescriptor) {
+    if (publicationDescriptor.currentBundleTarget() == null) {
+      return "";
+    }
+    return publicationDescriptor
+            .supportedPublicCliBundleTargets()
+            .contains(publicationDescriptor.currentBundleTarget())
+        ? " (published target)"
+        : " (unsupported target)";
   }
 
   private static String displayBundleTarget(PublicCliBundleTarget bundleTarget) {

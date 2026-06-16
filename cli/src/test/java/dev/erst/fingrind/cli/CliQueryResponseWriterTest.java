@@ -95,6 +95,35 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
+  void queryRejectionWriter_routesMachineReadableRejectionsToDiagnosticsStream()
+      throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel = outputChannel(outputStream, diagnosticsStream);
+    CliEnvelopeJsonModels.RejectedEnvelope envelope =
+        new CliEnvelopeJsonModels.RejectedEnvelope(
+            ProtocolEnvelopeStatus.REJECTED,
+            "query-book-not-initialized",
+            "The book is not initialized.",
+            null,
+            null,
+            null);
+
+    outputChannel.writeQueryRejection(OutputMode.JSON, envelope);
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode json = readJson(diagnosticsStream);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("query-book-not-initialized", json.path("code").stringValue());
+
+    diagnosticsStream.reset();
+    outputChannel.writeQueryRejection(OutputMode.CSV, envelope);
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    json = readJson(diagnosticsStream);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("query-book-not-initialized", json.path("code").stringValue());
+  }
+
+  @Test
   void writeQueryResults_writeSuccessAndRejectionEnvelopes() {
     PostingFact postingFact = postingFact();
     AccountBalanceSnapshot balanceSnapshot =

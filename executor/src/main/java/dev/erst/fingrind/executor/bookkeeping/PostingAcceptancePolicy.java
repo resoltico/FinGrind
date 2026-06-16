@@ -29,7 +29,7 @@ public final class PostingAcceptancePolicy {
       PostingRequestModel postingRequest, PostingValidationStore book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
-    if (!book.inspectBook().allowsInitializedWorkflow()) {
+    if (!book.allowsInitializedWorkflow()) {
       return Optional.of(new BookkeepingPostingRejection.BookNotInitialized());
     }
     if (book.findExistingPosting(postingRequest.requestProvenance().idempotencyKey()).isPresent()) {
@@ -72,14 +72,7 @@ public final class PostingAcceptancePolicy {
   }
 
   static BookIdentity initializedBookIdentity(PostingValidationStore book) {
-    return switch (Objects.requireNonNull(book.inspectBook(), "inspectBook")) {
-      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized initialized ->
-          initialized.bookIdentity();
-      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Missing _ ->
-          throw new IllegalStateException("Initialized posting validation requires one live book.");
-      case dev.erst.fingrind.executor.spi.BookLifecycleInspection.Existing _ ->
-          throw new IllegalStateException("Initialized posting validation requires one live book.");
-    };
+    return Objects.requireNonNull(book, "book").requireInitializedBookIdentity();
   }
 
   static boolean isInternalSystemPosting(PostingRequestModel postingRequest) {

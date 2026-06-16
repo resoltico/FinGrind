@@ -97,7 +97,7 @@ final class ProtocolAdministrationOperations {
         List.of(
             ProtocolOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.replacementPassphraseSourceSyntax(),
+            ProtocolOptions.newPassphraseSourceSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
@@ -114,14 +114,14 @@ final class ProtocolAdministrationOperations {
                         OperationId.REKEY_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE)),
+                        ProtocolOptions.NEW_BOOK_KEY_FILE)),
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s"
                     .formatted(
                         OperationId.REKEY_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT))));
+                        ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT))));
   }
 
   private static ProtocolOperation backupBookOperation() {
@@ -133,7 +133,7 @@ final class ProtocolAdministrationOperations {
         List.of(
             ProtocolOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.BACKUP_FILE_OUT + " <path>",
+            ProtocolOptions.BACKUP_BOOK_FILE_OUT + " <path>",
             ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT + " <path>",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
@@ -148,7 +148,7 @@ final class ProtocolAdministrationOperations {
                         OperationId.BACKUP_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.BACKUP_FILE_OUT,
+                        ProtocolOptions.BACKUP_BOOK_FILE_OUT,
                         ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT))));
   }
 
@@ -160,7 +160,7 @@ final class ProtocolAdministrationOperations {
         List.of(),
         List.of(
             ProtocolOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.BACKUP_FILE + " <path>",
+            ProtocolOptions.BACKUP_BOOK_FILE + " <path>",
             ProtocolOptions.BACKUP_BOOK_KEY_FILE + " <path>",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
@@ -176,7 +176,7 @@ final class ProtocolAdministrationOperations {
                     .formatted(
                         OperationId.RESTORE_BOOK.wireName(),
                         ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BACKUP_FILE,
+                        ProtocolOptions.BACKUP_BOOK_FILE,
                         ProtocolOptions.BACKUP_BOOK_KEY_FILE))));
   }
 
@@ -208,7 +208,7 @@ final class ProtocolAdministrationOperations {
         List.of(),
         List.of(
             ProtocolOptions.BOOK_FILE + " <path>",
-            "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_FILE),
+            "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_BOOK_FILE),
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
@@ -220,7 +220,7 @@ final class ProtocolAdministrationOperations {
                     .formatted(
                         OperationId.DELETE_REKEY_ROLLBACK.wireName(),
                         ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.ROLLBACK_FILE,
+                        ProtocolOptions.ROLLBACK_BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE))));
   }
 
@@ -232,7 +232,7 @@ final class ProtocolAdministrationOperations {
         List.of(),
         List.of(
             ProtocolOptions.BOOK_FILE + " <path>",
-            "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_FILE),
+            "[%s <path>]".formatted(ProtocolOptions.ROLLBACK_BOOK_FILE),
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
@@ -244,7 +244,7 @@ final class ProtocolAdministrationOperations {
                     .formatted(
                         OperationId.RESTORE_REKEY_ROLLBACK.wireName(),
                         ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.ROLLBACK_FILE,
+                        ProtocolOptions.ROLLBACK_BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE))));
   }
 
@@ -288,8 +288,8 @@ final class ProtocolAdministrationOperations {
         List.of(
             ProtocolOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>",
-            ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>",
+            ProtocolOptions.PERIOD_START + " <YYYY-MM-DD>",
+            ProtocolOptions.PERIOD_END + " <YYYY-MM-DD>",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
@@ -302,6 +302,6 @@ final class ProtocolAdministrationOperations {
             ProtocolExampleStep.note(
                 "The first transfer may begin before the earliest posting date. After one transfer is recorded, later transfers must start on the day after the transferred-through horizon and remain inside one fiscal year."),
             ProtocolExampleStep.command(
-                "fingrind transfer-period-result --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --effective-date-from 2026-04-01 --effective-date-to 2026-04-30")));
+                "fingrind transfer-period-result --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --period-start 2026-04-01 --period-end 2026-04-30")));
   }
 }

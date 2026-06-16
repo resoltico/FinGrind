@@ -128,6 +128,27 @@ resolve_uv_managed_python_runtime() {
     return 1
 }
 
+ensure_repo_python_shims() {
+    local resolved_python=$1
+    local shims_dir="${FINGRIND_PYTHON_SHIMS_DIR:-${TMPDIR:-/tmp}/fingrind-python-shims.$$}"
+
+    mkdir -p "${shims_dir}"
+    ln -sfn "${resolved_python}" "${shims_dir}/python3"
+    ln -sfn "${resolved_python}" "${shims_dir}/python"
+
+    export FINGRIND_PYTHON_SHIMS_DIR="${shims_dir}"
+    local path_without_shims=":${PATH-}:"
+    path_without_shims="${path_without_shims//:${shims_dir}:/:}"
+    path_without_shims="${path_without_shims#:}"
+    path_without_shims="${path_without_shims%:}"
+    if [[ -n "${path_without_shims}" ]]; then
+        export PATH="${shims_dir}:${path_without_shims}"
+    else
+        export PATH="${shims_dir}"
+    fi
+    hash -r
+}
+
 resolve_repo_python_runtime() {
     local required_version=$1
 
@@ -171,12 +192,19 @@ prepare_python_runtime_env() {
     local required_python_version
     required_python_version="$(fingrind_required_python_version)"
 
-    if [[ -z "${ORG_GRADLE_PROJECT_fingrindPythonExecutable:-}" ]]; then
-        local resolved_python
+    local resolved_python="${FINGRIND_PYTHON_EXECUTABLE:-${ORG_GRADLE_PROJECT_fingrindPythonExecutable:-}}"
+    if [[ -z "${resolved_python}" ]]; then
         resolved_python="$(resolve_repo_python_runtime "${required_python_version}")" || return 1
-        export ORG_GRADLE_PROJECT_fingrindPythonExecutable="${resolved_python}"
-        export FINGRIND_PYTHON_EXECUTABLE="${resolved_python}"
     fi
+    if ! python_runtime_version_satisfies "${resolved_python}" "${required_python_version}"; then
+        printf 'error: resolved Python runtime %s does not satisfy Python %s+\n' \
+            "${resolved_python}" \
+            "${required_python_version}" >&2
+        return 1
+    fi
+    export ORG_GRADLE_PROJECT_fingrindPythonExecutable="${resolved_python}"
+    export FINGRIND_PYTHON_EXECUTABLE="${resolved_python}"
+    ensure_repo_python_shims "${resolved_python}"
 
     if [[ -z "${ORG_GRADLE_PROJECT_fingrindUvExecutable:-}" ]]; then
         local uv_executable

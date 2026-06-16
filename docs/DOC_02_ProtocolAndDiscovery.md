@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -233,23 +233,6 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 - Purpose: advertise supported artifact outputs without ad hoc CLI strings
 - Current scope: PDF export through `ProtocolArtifactOutput.pdf()`
 
-## `PublicDistributionContract`
-
-`PublicDistributionContract` is the protocol-owned bundle-target contract loaded from a resource.
-
-```java
-public record PublicDistributionContract(
-    List<PublicCliBundleTarget> supportedPublicCliBundleTargets,
-    List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets)
-```
-
-- Purpose: keep release-target metadata in one typed owner shared by capabilities, docs, and build
-  verification
-- Validation: requires both bundle-target lists to be present in the canonical JSON resource and
-  rejects unknown targets, duplicates, and overlap between the supported and unsupported lists
-- Resource authority: loaded from the protocol-owned JSON contract resource instead of ad hoc
-  build or shell literals
-
 ## `PublicCliBundleTarget`
 
 `PublicCliBundleTarget` is the canonical host-classifier vocabulary for public CLI bundles.
@@ -260,6 +243,20 @@ public enum PublicCliBundleTarget implements WireValue
 
 - Purpose: keep bundle-target publication tied to one typed classifier vocabulary instead of open
   strings that can drift away from the real release matrix
+
+## `PublicBundlePublicationStatus`
+
+`PublicBundlePublicationStatus` is the canonical publication-state vocabulary for public CLI bundle
+targets.
+
+```java
+public enum PublicBundlePublicationStatus
+```
+
+- Purpose: keep published versus not-published bundle status typed through the protocol surface
+  instead of copying string literals into docs, capabilities, build logic, and shell verifiers
+- Validation: `fromWireValue` rejects unsupported publication states before any bundle-target
+  registry is accepted
 
 ## `ManagedSqliteContract`
 
@@ -283,8 +280,11 @@ record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTarge
 ```
 
 - Purpose: keep archive format, launcher path, launcher command, and native library filename tied
-  to one typed target owner shared by build logic, bundle metadata, and operator verification
-- Validation: requires one layout entry for every `PublicCliBundleTarget`
+  to one typed target owner shared by build logic, bundle metadata, operator verification, and
+  public bundle publication
+- Validation: requires one layout entry for every `PublicCliBundleTarget`, and derives the
+  supported-versus-unsupported public bundle lists from the per-target publication facts instead of
+  a second sidecar resource
 
 ## `BundleLayoutContract.BundleTarget`
 
@@ -297,11 +297,28 @@ record BundleTarget(
     String archiveFormat,
     String launcherPath,
     String launcherCommand,
-    String sqliteLibraryFileName)
+    String sqliteLibraryFileName,
+    String compatibilityLabel)
 ```
 
 - Purpose: expose the per-target self-contained archive facts that the bundle manifest and
   acceptance scripts must report without reauthoring platform switch statements
+
+## `BundleLayoutContract.PublicBundlePublication`
+
+`BundleLayoutContract.PublicBundlePublication` is the nested publication descriptor carried by each
+bundle target.
+
+```java
+record PublicBundlePublication(
+    PublicBundlePublicationStatus status,
+    Optional<String> runnerLabel)
+```
+
+- Purpose: make public-bundle publication status and the proving runner metadata part of the same
+  canonical bundle-target fact instead of maintaining a parallel publication registry
+- Validation: published targets must declare the proving runner label; non-published targets must
+  omit it
 
 ## `PlanTransactionMode`, And `PlanFailurePolicy`
 
