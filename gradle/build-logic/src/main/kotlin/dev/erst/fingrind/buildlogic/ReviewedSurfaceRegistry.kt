@@ -13,8 +13,8 @@ internal data class JavaReviewedSurfaceKey(
 )
 
 internal object ReviewedSurfaceRegistry {
-    private const val REGISTRY_RELATIVE_PATH =
-        "scripts/structural_governance/reviewed_surface_registry.json"
+    private const val REGISTRY_DIRECTORY_RELATIVE_PATH =
+        "scripts/structural_governance/reviewed_surface_registry"
 
     private val objectMapper = JsonMapper.builder().build()
     private val javaSurfaceCache = ConcurrentHashMap<Path, List<ReviewedJavaSourceSurface>>()
@@ -22,15 +22,15 @@ internal object ReviewedSurfaceRegistry {
         ConcurrentHashMap<Path, Map<JavaReviewedSurfaceKey, ReviewedJavaSourceSurface>>()
 
     fun javaReviewedSurfaces(projectRootDirectory: Path): List<ReviewedJavaSourceSurface> {
-        val registryPath = registryPath(projectRootDirectory)
-        return javaSurfaceCache.computeIfAbsent(registryPath, ::loadJavaReviewedSurfaces)
+        val registryRoot = registryRoot(projectRootDirectory)
+        return javaSurfaceCache.computeIfAbsent(registryRoot, ::loadJavaReviewedSurfaces)
     }
 
     fun javaReviewedSurfaceMap(
         projectRootDirectory: Path,
     ): Map<JavaReviewedSurfaceKey, ReviewedJavaSourceSurface> {
-        val registryPath = registryPath(projectRootDirectory)
-        return javaSurfaceMapCache.computeIfAbsent(registryPath) {
+        val registryRoot = registryRoot(projectRootDirectory)
+        return javaSurfaceMapCache.computeIfAbsent(registryRoot) {
             javaReviewedSurfaces(projectRootDirectory).associateBy { reviewedSurface ->
                 JavaReviewedSurfaceKey(
                     projectPath = reviewedSurface.projectPath,
@@ -40,111 +40,137 @@ internal object ReviewedSurfaceRegistry {
         }
     }
 
-    private fun registryPath(projectRootDirectory: Path): Path =
-        DistributionContractPaths.contractPath(projectRootDirectory, REGISTRY_RELATIVE_PATH).normalize()
-
-    private fun loadJavaReviewedSurfaces(registryPath: Path): List<ReviewedJavaSourceSurface> {
-        val document = loadRegistryDocument(registryPath)
-        val surfaces =
-            requiredArray(document, "javaReviewedSurfaces", registryPath)
-                .mapIndexed { index, node -> javaReviewedSurface(node, registryPath, index) }
-        val duplicateKeys =
-            surfaces
-                .groupBy { reviewedSurface ->
-                    JavaReviewedSurfaceKey(
-                        projectPath = reviewedSurface.projectPath,
-                        relativePath = reviewedSurface.relativePath,
-                    )
-                }.filterValues { it.size > 1 }
-                .keys
-        if (duplicateKeys.isNotEmpty()) {
-            throw IllegalStateException(
-                "Duplicate Java reviewed-surface entries in ${pathText(registryPath)}: $duplicateKeys",
+    private fun registryRoot(projectRootDirectory: Path): Path =
+        sequenceOf(
+                projectRootDirectory.resolve(REGISTRY_DIRECTORY_RELATIVE_PATH),
+                projectRootDirectory.resolve("..").resolve(REGISTRY_DIRECTORY_RELATIVE_PATH),
             )
+            .map(Path::normalize)
+            .firstOrNull(Files::isDirectory)
+            ?: throw IllegalStateException(
+                "Missing reviewed-surface registry directory $REGISTRY_DIRECTORY_RELATIVE_PATH for $projectRootDirectory.",
+            )
+
+    private fun loadJavaReviewedSurfaces(registryRoot: Path): List<ReviewedJavaSourceSurface> {
+        val javaDocuments = loadRegistryDocuments(registryRoot.resolve("java"), "java")
+        loadRegistryDocuments(registryRoot.resolve("text"), "text")
+        val surfaces = mutableListOf<ReviewedJavaSourceSurface>()
+        val seen = mutableMapOf<JavaReviewedSurfaceKey, Path>()
+        for ((fragmentPath, node) in javaDocuments) {
+            val reviewedSurface = javaReviewedSurface(node, fragmentPath)
+            val key =
+                JavaReviewedSurfaceKey(
+                    projectPath = reviewedSurface.projectPath,
+                    relativePath = reviewedSurface.relativePath,
+                )
+            val duplicatePath =
+                seen.putIfAbsent(
+                    key,
+                    fragmentPath,
+                )
+            if (duplicatePath != null) {
+                throw IllegalStateException(
+                    "Duplicate Java reviewed-surface entries in ${pathText(duplicatePath)} and ${pathText(fragmentPath)} for ${key.projectPath}/${key.relativePath}.",
+                )
+            }
+            surfaces += reviewedSurface
         }
         return surfaces
     }
 
-    private fun loadRegistryDocument(registryPath: Path): JsonNode =
-        Files.newInputStream(registryPath).use { stream ->
+    private fun loadRegistryDocuments(
+        categoryDirectory: Path,
+        categoryName: String,
+    ): List<Pair<Path, JsonNode>> {
+        if (!Files.isDirectory(categoryDirectory)) {
+            throw IllegalStateException(
+                "Reviewed-surface $categoryName registry directory ${pathText(categoryDirectory)} is missing.",
+            )
+        }
+        val fragmentPaths =
+            Files.walk(categoryDirectory).use { stream ->
+                stream
+                    .filter { candidate ->
+                        Files.isRegularFile(candidate) &&
+                            candidate.fileName.toString().endsWith(".json")
+                    }.toList()
+                    .sortedBy(::pathText)
+            }
+        if (fragmentPaths.isEmpty()) {
+            throw IllegalStateException(
+                "Reviewed-surface $categoryName registry directory ${pathText(categoryDirectory)} must contain at least one JSON fragment.",
+            )
+        }
+        return fragmentPaths.map { fragmentPath ->
+            fragmentPath to loadRegistryDocument(fragmentPath)
+        }
+    }
+
+    private fun loadRegistryDocument(fragmentPath: Path): JsonNode =
+        Files.newInputStream(fragmentPath).use { stream ->
             val document = objectMapper.readTree(stream)
             if (document == null || !document.isObject) {
                 throw IllegalStateException(
-                    "Reviewed-surface registry ${pathText(registryPath)} must contain one top-level JSON object.",
+                    "Reviewed-surface registry fragment ${pathText(fragmentPath)} must contain one top-level JSON object.",
                 )
             }
-            requiredArray(document, "javaReviewedSurfaces", registryPath)
-            requiredArray(document, "textReviewedSurfaces", registryPath)
             document
         }
 
     private fun javaReviewedSurface(
         node: JsonNode,
-        registryPath: Path,
-        index: Int,
+        fragmentPath: Path,
     ): ReviewedJavaSourceSurface {
-        val approvalNode = requiredObject(node, "approval", registryPath, index)
+        val approvalNode = requiredObject(node, "approval", fragmentPath)
         return ReviewedJavaSourceSurface(
-            projectPath = requiredText(node, "projectPath", registryPath, index),
-            relativePath = requiredText(node, "relativePath", registryPath, index),
-            owner = requiredText(node, "owner", registryPath, index),
-            reason = requiredText(node, "reason", registryPath, index),
-            splitTrigger = requiredText(node, "splitTrigger", registryPath, index),
-            reviewedRoleName = requiredText(node, "reviewedRoleName", registryPath, index),
-            budgetVarianceReason = optionalText(node.path("budgetVarianceReason"), registryPath, index, "budgetVarianceReason"),
+            projectPath = requiredText(node, "projectPath", fragmentPath),
+            relativePath = requiredText(node, "relativePath", fragmentPath),
+            owner = requiredText(node, "owner", fragmentPath),
+            reason = requiredText(node, "reason", fragmentPath),
+            splitTrigger = requiredText(node, "splitTrigger", fragmentPath),
+            reviewedRoleName = requiredText(node, "reviewedRoleName", fragmentPath),
+            budgetVarianceReason = optionalText(node.path("budgetVarianceReason"), fragmentPath, "budgetVarianceReason"),
             duplicationExemptionReason =
                 optionalText(
                     node.path("duplicationExemptionReason"),
-                    registryPath,
-                    index,
+                    fragmentPath,
                     "duplicationExemptionReason",
                 ),
             approval =
                 reviewedApproval(
-                    physicalLines = requiredInt(approvalNode, "physicalLines", registryPath, index),
-                    logicalLines = requiredInt(approvalNode, "logicalLines", registryPath, index),
-                    imports = requiredInt(approvalNode, "importLikeLines", registryPath, index),
-                    nestedTypes = requiredInt(approvalNode, "nestedTypes", registryPath, index),
+                    physicalLines = requiredInt(approvalNode, "physicalLines", fragmentPath),
+                    logicalLines = requiredInt(approvalNode, "logicalLines", fragmentPath),
+                    imports = requiredInt(approvalNode, "importLikeLines", fragmentPath),
+                    nestedTypes = requiredInt(approvalNode, "nestedTypes", fragmentPath),
                     methodsPerTopLevelType =
-                        requiredInt(approvalNode, "functions", registryPath, index),
+                        requiredInt(approvalNode, "functions", fragmentPath),
                     fieldsPerTopLevelType =
-                        requiredInt(approvalNode, "fieldsPerTopLevelType", registryPath, index),
+                        requiredInt(approvalNode, "fieldsPerTopLevelType", fragmentPath),
                     switchArmsPerMethod =
-                        requiredInt(approvalNode, "switchArmsPerMethod", registryPath, index),
+                        requiredInt(approvalNode, "switchArmsPerMethod", fragmentPath),
                     methodLineSpan =
-                        requiredInt(approvalNode, "methodLineSpan", registryPath, index),
+                        requiredInt(approvalNode, "methodLineSpan", fragmentPath),
                     methodParameters =
-                        requiredInt(approvalNode, "methodParameters", registryPath, index),
+                        requiredInt(approvalNode, "methodParameters", fragmentPath),
                     methodDecisionPoints =
-                        requiredInt(approvalNode, "methodDecisionPoints", registryPath, index),
+                        requiredInt(approvalNode, "methodDecisionPoints", fragmentPath),
                     expiresOn =
                         LocalDate.parse(
-                            requiredText(approvalNode, "expiresOn", registryPath, index),
+                            requiredText(approvalNode, "expiresOn", fragmentPath),
                         ),
                 ),
         )
     }
 
-    private fun requiredArray(document: JsonNode, key: String, registryPath: Path): JsonNode {
-        val node = document.path(key)
-        if (!node.isArray) {
-            throw IllegalStateException(
-                "Reviewed-surface registry ${pathText(registryPath)} must declare $key as one JSON array.",
-            )
-        }
-        return node
-    }
-
     private fun requiredObject(
         document: JsonNode,
         key: String,
-        registryPath: Path,
-        index: Int,
+        fragmentPath: Path,
     ): JsonNode {
         val node = document.path(key)
         if (!node.isObject) {
             throw IllegalStateException(
-                "Reviewed-surface registry ${pathText(registryPath)} must declare javaReviewedSurfaces[$index].$key as one JSON object.",
+                "Reviewed-surface registry fragment ${pathText(fragmentPath)} must declare $key as one JSON object.",
             )
         }
         return node
@@ -153,13 +179,12 @@ internal object ReviewedSurfaceRegistry {
     private fun requiredText(
         document: JsonNode,
         key: String,
-        registryPath: Path,
-        index: Int,
+        fragmentPath: Path,
     ): String {
         val value = document.path(key).stringValue()?.trim().orEmpty()
         if (value.isEmpty()) {
             throw IllegalStateException(
-                "Reviewed-surface registry ${pathText(registryPath)} must declare javaReviewedSurfaces[$index].$key as one non-blank string.",
+                "Reviewed-surface registry fragment ${pathText(fragmentPath)} must declare $key as one non-blank string.",
             )
         }
         return value
@@ -167,8 +192,7 @@ internal object ReviewedSurfaceRegistry {
 
     private fun optionalText(
         node: JsonNode,
-        registryPath: Path,
-        index: Int,
+        fragmentPath: Path,
         key: String,
     ): String? {
         if (node.isMissingNode || node.isNull) {
@@ -177,7 +201,7 @@ internal object ReviewedSurfaceRegistry {
         val value = node.stringValue()?.trim().orEmpty()
         if (value.isEmpty()) {
             throw IllegalStateException(
-                "Reviewed-surface registry ${pathText(registryPath)} must declare javaReviewedSurfaces[$index].$key as one non-blank string when present.",
+                "Reviewed-surface registry fragment ${pathText(fragmentPath)} must declare $key as one non-blank string when present.",
             )
         }
         return value
@@ -186,13 +210,12 @@ internal object ReviewedSurfaceRegistry {
     private fun requiredInt(
         document: JsonNode,
         key: String,
-        registryPath: Path,
-        index: Int,
+        fragmentPath: Path,
     ): Int {
         val node = document.path(key)
         if (!node.isInt) {
             throw IllegalStateException(
-                "Reviewed-surface registry ${pathText(registryPath)} must declare javaReviewedSurfaces[$index].approval.$key as one integer.",
+                "Reviewed-surface registry fragment ${pathText(fragmentPath)} must declare approval.$key as one integer.",
             )
         }
         return node.intValue()
