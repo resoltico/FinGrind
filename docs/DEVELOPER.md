@@ -494,13 +494,14 @@ The repository ships four workflow files and one release-blocking CI graph:
 3. `published-bundle-smoke` — runs the release-owned publication-proof matrix after `check`
    passes. The matrix expands to every classifier whose publication status is `published` in
    `bundle-publication-contract.json`, currently `macos-aarch64`, `macos-x86_64`,
-   `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`. It verifies the native runner identity,
-   proves the managed SQLite runtime surfaces, builds the exact published bundle classifier on each
-   runner, reads the emitted archive/checksum paths from the Gradle-owned bundle manifest, and
-   delegates archive acceptance to the canonical bundle-smoke owners. Linux targets rerun that
-   acceptance flow on the contract-declared Rocky Linux 9 compatibility floor. The Windows leg also
-   keeps the included build-logic tests plus the direct-Java and source-checkout runtime verifiers
-   on `windows-2022`. Uses the repo-owned
+   `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`. It verifies the native runner identity
+   by normalizing live host spellings back to the canonical bundle target ids, proves the managed
+   SQLite runtime surfaces, builds the exact published bundle classifier on each runner, reads the
+   emitted archive/checksum paths from the Gradle-owned bundle manifest, and delegates archive
+   acceptance to the canonical bundle-smoke owners. Linux targets rerun that acceptance flow on
+   the contract-declared Rocky Linux 9 compatibility floor. The Windows leg also keeps the
+   included build-logic tests plus the direct-Java and source-checkout runtime verifiers on
+   `windows-2022`. Uses the repo-owned
    [configure-windows-defender-build-exclusions.ps1](../scripts/configure-windows-defender-build-exclusions.ps1)
    owner for one best-effort Windows Defender exclusion attempt on the workspace and Gradle user
    home before Gradle work begins. The exclusion attempt is a performance optimization only: an

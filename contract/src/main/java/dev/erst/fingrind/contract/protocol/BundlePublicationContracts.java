@@ -56,9 +56,7 @@ final class BundlePublicationContracts {
     return new BundleLayoutContract.PublicBundlePublication(
         PublicBundlePublicationStatus.fromWireValue(
             JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.status())),
-        optionalText(document, SCHEMA_KEYS.runnerLabel()),
-        optionalText(document, SCHEMA_KEYS.expectedRunnerOs()),
-        optionalText(document, SCHEMA_KEYS.expectedRunnerArch()));
+        optionalText(document, SCHEMA_KEYS.runnerLabel()));
   }
 
   private static BundlePublicationContract loadCurrent() {

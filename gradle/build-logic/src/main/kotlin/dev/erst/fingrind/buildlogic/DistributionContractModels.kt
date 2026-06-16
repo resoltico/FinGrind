@@ -207,23 +207,13 @@ internal object DistributionContractModels {
                 ?.stringValue()
                 ?.trim()
                 ?.takeIf(String::isNotBlank)
-        val expectedRunnerOs =
-            publicationNode.path(schema.expectedRunnerOs).takeIf { !it.isMissingNode && !it.isNull }
-                ?.stringValue()
-                ?.trim()
-                ?.takeIf(String::isNotBlank)
-        val expectedRunnerArch =
-            publicationNode.path(schema.expectedRunnerArch).takeIf { !it.isMissingNode && !it.isNull }
-                ?.stringValue()
-                ?.trim()
-                ?.takeIf(String::isNotBlank)
         if (status == PUBLICATION_STATUS_PUBLISHED) {
-            if (runnerLabel == null || expectedRunnerOs == null || expectedRunnerArch == null) {
+            if (runnerLabel == null) {
                 throw IllegalStateException(
-                    "Published bundle target $classifier must declare runnerLabel, expectedRunnerOs, and expectedRunnerArch in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
+                    "Published bundle target $classifier must declare runnerLabel in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
                 )
             }
-        } else if (runnerLabel != null || expectedRunnerOs != null || expectedRunnerArch != null) {
+        } else if (runnerLabel != null) {
             throw IllegalStateException(
                 "Non-published bundle target $classifier must omit runner metadata in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
             )
@@ -231,8 +221,6 @@ internal object DistributionContractModels {
         return PublicBundlePublicationContract(
             status = status,
             runnerLabel = runnerLabel,
-            expectedRunnerOs = expectedRunnerOs,
-            expectedRunnerArch = expectedRunnerArch,
         )
     }
 }

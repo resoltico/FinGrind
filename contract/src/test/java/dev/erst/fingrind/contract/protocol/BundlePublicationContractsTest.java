@@ -25,10 +25,7 @@ class BundlePublicationContractsTest {
             Map.of(
                 PublicCliBundleTarget.LINUX_X86_64,
                 new BundleLayoutContract.PublicBundlePublication(
-                    PublicBundlePublicationStatus.PUBLISHED,
-                    Optional.of("ubuntu-24.04"),
-                    Optional.of("Linux"),
-                    Optional.of("x86_64"))));
+                    PublicBundlePublicationStatus.PUBLISHED, Optional.of("ubuntu-24.04"))));
 
     IllegalArgumentException missingTargets =
         assertThrows(
@@ -50,9 +47,7 @@ class BundlePublicationContractsTest {
                   "bundleTargets": {
                     "windows-aarch64": {
                       "status": "not-published",
-                      "runnerLabel": null,
-                      "expectedRunnerOs": null,
-                      "expectedRunnerArch": null
+                      "runnerLabel": null
                     }
                   }
                 }
@@ -64,8 +59,6 @@ class BundlePublicationContractsTest {
         Objects.requireNonNull(contract.bundleTargets().get(PublicCliBundleTarget.WINDOWS_AARCH64));
     assertEquals(PublicBundlePublicationStatus.NOT_PUBLISHED, publication.status());
     assertEquals(Optional.empty(), publication.runnerLabel());
-    assertEquals(Optional.empty(), publication.expectedRunnerOs());
-    assertEquals(Optional.empty(), publication.expectedRunnerArch());
   }
 
   @Test
@@ -74,33 +67,11 @@ class BundlePublicationContractsTest {
         IllegalArgumentException.class,
         () ->
             new BundleLayoutContract.PublicBundlePublication(
-                PublicBundlePublicationStatus.PUBLISHED,
-                Optional.of("ubuntu-24.04"),
-                Optional.empty(),
-                Optional.of("x86_64")));
+                PublicBundlePublicationStatus.PUBLISHED, Optional.empty()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new BundleLayoutContract.PublicBundlePublication(
-                PublicBundlePublicationStatus.PUBLISHED,
-                Optional.of("ubuntu-24.04"),
-                Optional.of("Linux"),
-                Optional.empty()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BundleLayoutContract.PublicBundlePublication(
-                PublicBundlePublicationStatus.NOT_PUBLISHED,
-                Optional.empty(),
-                Optional.of("Linux"),
-                Optional.empty()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BundleLayoutContract.PublicBundlePublication(
-                PublicBundlePublicationStatus.NOT_PUBLISHED,
-                Optional.empty(),
-                Optional.empty(),
-                Optional.of("x86_64")));
+                PublicBundlePublicationStatus.NOT_PUBLISHED, Optional.of("ubuntu-24.04")));
   }
 }

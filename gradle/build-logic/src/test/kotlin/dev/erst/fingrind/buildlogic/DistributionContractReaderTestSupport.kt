@@ -89,9 +89,7 @@ internal object DistributionContractReaderTestSupport {
           "bundlePublication": {
             "bundleTargets": "bundleTargets",
             "status": "status",
-            "runnerLabel": "runnerLabel",
-            "expectedRunnerOs": "expectedRunnerOs",
-            "expectedRunnerArch": "expectedRunnerArch"
+            "runnerLabel": "runnerLabel"
           },
           "operationIdContract": {
             "help": "OP_HELP",
@@ -152,9 +150,7 @@ internal object DistributionContractReaderTestSupport {
           "bundlePublication": {
             "bundleTargets": "bundleTargets",
             "status": "status",
-            "runnerLabel": "runnerLabel",
-            "expectedRunnerOs": "expectedRunnerOs",
-            "expectedRunnerArch": "expectedRunnerArch"
+            "runnerLabel": "runnerLabel"
           },
           "operationIdContract": {
             "help": "HELP",
@@ -237,33 +233,23 @@ internal object DistributionContractReaderTestSupport {
           "bundleTargets": {
             "macos-aarch64": {
               "status": "published",
-              "runnerLabel": "macos-15",
-              "expectedRunnerOs": "macOS",
-              "expectedRunnerArch": "arm64"
+              "runnerLabel": "macos-15"
             },
             "linux-x86_64": {
               "status": "published",
-              "runnerLabel": "ubuntu-24.04",
-              "expectedRunnerOs": "Linux",
-              "expectedRunnerArch": "x86_64"
+              "runnerLabel": "ubuntu-24.04"
             },
             "linux-aarch64": {
               "status": "published",
-              "runnerLabel": "ubuntu-24.04-arm",
-              "expectedRunnerOs": "Linux",
-              "expectedRunnerArch": "aarch64"
+              "runnerLabel": "ubuntu-24.04-arm"
             },
             "macos-x86_64": {
               "status": "published",
-              "runnerLabel": "macos-15-intel",
-              "expectedRunnerOs": "macOS",
-              "expectedRunnerArch": "x86_64"
+              "runnerLabel": "macos-15-intel"
             },
             "windows-x86_64": {
               "status": "published",
-              "runnerLabel": "windows-2022",
-              "expectedRunnerOs": "Windows",
-              "expectedRunnerArch": "x86_64"
+              "runnerLabel": "windows-2022"
             },
             "windows-aarch64": {
               "status": "not-published"

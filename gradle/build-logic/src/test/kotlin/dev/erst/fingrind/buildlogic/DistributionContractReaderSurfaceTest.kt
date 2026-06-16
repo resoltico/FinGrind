@@ -195,8 +195,6 @@ class DistributionContractReaderSurfaceTest {
                         PublicBundlePublicationContract(
                             status = "not-published",
                             runnerLabel = null,
-                            expectedRunnerOs = null,
-                            expectedRunnerArch = null,
                         ),
                 ),
                 DistributionBundleTargetReader.hostBundleTarget(
@@ -271,9 +269,7 @@ class DistributionContractReaderSurfaceTest {
                 {
                   "bundleTargets": {
                     "linux-x86_64": {
-                      "status": "published",
-                      "runnerLabel": "ubuntu-24.04",
-                      "expectedRunnerOs": "Linux"
+                      "status": "published"
                     }
                   }
                 }
@@ -286,7 +282,7 @@ class DistributionContractReaderSurfaceTest {
                 }
 
             assertEquals(
-                "Published bundle target linux-x86_64 must declare runnerLabel, expectedRunnerOs, and expectedRunnerArch in contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-publication-contract.json.",
+                "Published bundle target linux-x86_64 must declare runnerLabel in contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-publication-contract.json.",
                 exception.message,
             )
         } finally {

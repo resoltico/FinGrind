@@ -60,9 +60,7 @@
   "bundlePublication": {
     "bundleTargets": "bundleTargets",
     "status": "status",
-    "runnerLabel": "runnerLabel",
-    "expectedRunnerOs": "expectedRunnerOs",
-    "expectedRunnerArch": "expectedRunnerArch"
+    "runnerLabel": "runnerLabel"
   },
   "releasePublication": {
     "requiredCiWorkflowName": "requiredCiWorkflowName",

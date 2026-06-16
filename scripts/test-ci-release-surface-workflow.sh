@@ -48,6 +48,8 @@ grep -Fq 'include: ${{ fromJson(needs.prepare-published-bundle-smoke-matrix.outp
     "CI workflow no longer drives bundle-smoke runners from the prepared publication matrix"
 grep -Fq 'Published bundle smoke (${{ matrix.classifier }})' "${workflow_file}" || die \
     "CI workflow no longer publishes pre-merge smoke coverage for every published bundle classifier"
+grep -Fq './scripts/verify-runner-identity.py' "${workflow_file}" || die \
+    "CI workflow no longer delegates runner-identity normalization to the canonical verifier"
 grep -Fq 'Smoke test the published Unix CLI bundle on the host runner' "${workflow_file}" || die \
     "CI workflow no longer smoke-tests the non-Windows published bundle classifiers before release"
 grep -Fq './scripts/bundle-smoke.sh "${{ steps.unix-bundle-build.outputs.archive-path }}"' "${workflow_file}" || die \
@@ -90,6 +92,9 @@ grep -Fq '.\scripts\bundle-smoke.ps1 "${{ steps.windows-bundle-build.outputs.arc
     "CI workflow no longer smoke-tests the published Windows bundle through the canonical PowerShell owner"
 if grep -Fq 'continue-on-error: true' "${workflow_file}"; then
     die "CI workflow still marks the published bundle smoke surface as observational"
+fi
+if grep -Fq 'matrix.expectedOs' "${workflow_file}" || grep -Fq 'matrix.expectedArch' "${workflow_file}"; then
+    die "CI workflow still depends on retired runner-spelling matrix fields"
 fi
 if grep -Fq 'windows-bundle-smoke:' "${workflow_file}"; then
     die "CI workflow carries the retired release-blocking Windows bundle-smoke job key"

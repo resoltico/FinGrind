@@ -51,8 +51,6 @@ def merge_bundle_publication_targets(
             normalized_classifier=_normalized_classifier(classifier),
             publication_status_key=required_string(publication_schema, "status"),
             runner_label_key=required_string(publication_schema, "runnerLabel"),
-            expected_runner_os_key=required_string(publication_schema, "expectedRunnerOs"),
-            expected_runner_arch_key=required_string(publication_schema, "expectedRunnerArch"),
         )
     missing_publication_targets = sorted(
         classifier
@@ -158,8 +156,6 @@ def _merge_bundle_publication_target(
     normalized_classifier: str,
     publication_status_key: str,
     runner_label_key: str,
-    expected_runner_os_key: str,
-    expected_runner_arch_key: str,
 ) -> None:
     if target is None:
         raise ValueError(
@@ -175,18 +171,14 @@ def _merge_bundle_publication_target(
     target["publicationStatus"] = publication_status
     if raw_publication.get(runner_label_key) is not None:
         target["runnerLabel"] = required_value(raw_publication, runner_label_key)
-    if raw_publication.get(expected_runner_os_key) is not None:
-        target["expectedRunnerOs"] = required_value(raw_publication, expected_runner_os_key)
-    if raw_publication.get(expected_runner_arch_key) is not None:
-        target["expectedRunnerArch"] = required_value(raw_publication, expected_runner_arch_key)
     if publication_status == "published":
-        for required_key in ("runnerLabel", "expectedRunnerOs", "expectedRunnerArch"):
+        for required_key in ("runnerLabel",):
             if required_key not in target:
                 raise ValueError(
                     f"published bundle target {normalized_classifier} must declare {required_key}"
                 )
         return
-    for forbidden_key in ("runnerLabel", "expectedRunnerOs", "expectedRunnerArch"):
+    for forbidden_key in ("runnerLabel",):
         if forbidden_key in target:
             raise ValueError(
                 f"non-published bundle target {normalized_classifier} must omit {forbidden_key}"

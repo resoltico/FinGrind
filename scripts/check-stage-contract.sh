@@ -28,6 +28,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-container-workflow-timeout.sh
     scripts/test-prepare-release-version.sh
     scripts/test-read-contract-values.sh
+    scripts/test-verify-runner-identity.sh
     scripts/test-bundle-smoke-powershell.sh
     scripts/test-bundle-archive-pruning.sh
     scripts/test-bundle-archive-reproducibility.sh

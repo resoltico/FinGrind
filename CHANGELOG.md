@@ -4,14 +4,11 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
-## [0.55.0] - 2026-06-16
-
 ### Changed
 
 - Bumped the repo-owned Python lint baseline to Ruff `0.15.17`.
-- Bumped the repo-owned formatting baseline to Spotless `8.7.0`.
-- Hard-broke reviewed-surface inventory ownership onto one shared registry catalog for the Java and Python structural-governance verifiers. Reviewed Java waivers and tracked text-resource waivers now resolve from one canonical fragment-owned JSON catalog instead of split language-local copies, so expiry, owner, and split-trigger changes travel through one reviewed-surface catalog without regrowing one umbrella file.
-- Hard-broke public bundle publication onto two explicit contracts: bundle layout now owns package contents plus compatibility labels, while bundle publication owns which declared targets are actually shipped. Published self-contained downloads now cover `macos-aarch64`, `macos-x86_64`, `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`; `windows-aarch64` remains declared but unpublished. Bundle archives now build with normalized timestamps, publish explicit archive/checksum/manifest paths at build time, record per-target compatibility labels plus Linux minimum glibc floors in the bundle manifest contract, and back those claims with reproducibility checks plus host-runner and compatibility-floor smoke lanes in CI, freshness canaries, and tagged release publication.
+- Hard-broke reviewed-surface inventory ownership onto one shared registry file for the Java and Python structural-governance verifiers. Reviewed Java waivers and tracked text-resource waivers now resolve from one canonical JSON registry instead of split language-local copies, so expiry, owner, and split-trigger changes travel through one reviewed-surface catalog.
+- Hard-broke public bundle publication onto two explicit contracts: bundle layout now owns package contents, compatibility labels, and canonical platform ids, while bundle publication owns which declared targets are actually shipped and which runner label proves them. Published self-contained downloads now cover `macos-aarch64`, `macos-x86_64`, `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`; `windows-aarch64` remains declared but unpublished. Bundle archives now build with normalized timestamps, publish explicit archive/checksum/manifest paths at build time, record per-target compatibility labels plus Linux minimum glibc floors in the bundle manifest contract, and back those claims with reproducibility checks plus host-runner and compatibility-floor smoke lanes in CI, freshness canaries, and tagged release publication.
 - Hard-broke the maintenance and reporting grammar onto explicit book and period nouns. Rekey, backup, restore, and rollback flows now use the `--new-book-key-file`, `--backup-book-file`, `--backup-book-file-out`, and `--rollback-book-file` naming family, while period-bounded reports and period-result transfer now use `--period-start` and `--period-end` instead of the broader effective-date wording.
 - Hard-broke runtime and machine-discovery feedback onto a more truthful operator and agent surface. Successful primary results own stdout, deterministic failures and rejections route to stderr in both text and machine modes, `execute-plan` can return bounded text or JSON instead of one fixed JSON-only contract, and discovery now reports the active bundle target, its publication status, and operation-specific exit-code families.
 - Hard-broke bookkeeping read and lifecycle ownership onto narrower initialized-book seams. Read-only workflows, posting validation, and SQLite capability sessions now reuse dedicated initialized-book and capability-view owners instead of repeating lifecycle inspection logic across command families.
@@ -20,10 +17,8 @@ Notable changes to this project are documented in this file. The format is based
 
 - Fixed read-only SQLite contention under real bundled concurrency. Read-only query and report workflows now classify initialized-book readiness from one lock-light structural contract instead of rerunning the full integrity audit on every command, while explicit inspection keeps the deeper audited path; concurrent bundled list and trial-balance bursts therefore stop surfacing spurious `storage-runtime-failure` responses from transient `SQLITE_IOERR_LOCK` failures.
 - Fixed contract-level amount validation drift so published money values now reject signed and decimal `minorUnits` deterministically at the boundary, and the checked-in Jazzer regression seeds follow that exact unsigned-integer doctrine.
-- Fixed non-Linux Docker release gating on Docker Desktop. The Docker-target managed SQLite build now compiles through one anonymous direct compiler container instead of wedging inside a nested Buildx metadata fetch before Stage 6 can reach the public image smoke.
 - Fixed Docker rebuild durability and rerun hygiene so the container builder now stages the toolchain pieces that `jlink --strip-debug` requires, Python helper-tool freshness is covered by dependency automation, wrapper validation obeys workflow concurrency rules, and release-tag verification distinguishes first publication from immutable-tag reruns.
 - Fixed release-version drift in the public-tag gate. Release-candidate verification now rejects any tag whose first parent already carried the same version, so the published tag must be the commit that introduces that release version onto the default-branch line rather than a later repair commit that merely inherited it.
-- Fixed release-control resilience under transient GitHub API failures. The PR, merge-handoff, and tag verifiers now retry empty or timed-out `gh api` reads, preserve the last network diagnostic when a wait really times out, and stop collapsing GitHub transport noise into Python JSON parser crashes during release promotion.
 - Fixed the CLI diagnostics-channel contract so machine-readable rejections and failures now publish on stderr instead of stdout, and machine-mode internal defects keep one parseable `internal-error` envelope without interleaved raw stack traces.
 - Fixed FinGrind-owned Docker bind-mount residue during writable and maintenance workflows. SQLite activity markers and maintenance leases now use directory-shaped coordination artifacts instead of file-shaped metadata entries, so mounted volumes no longer accumulate FinGrind-owned `.smbdelete*` marker or lease remnants.
 - Fixed public-doc and example drift so the storefront README, install and quick-start guides, CLI reference, request guide, and checked-in examples now agree on the published host matrix, stderr diagnostics contract, period naming, bundle verification steps, and the renamed maintenance options.
@@ -2785,9 +2780,8 @@ Notable changes to this project are documented in this file. The format is based
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.55.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.54.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
-[0.55.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.55.0
 [0.54.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.54.0
 [0.53.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.53.0
 [0.52.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.52.0

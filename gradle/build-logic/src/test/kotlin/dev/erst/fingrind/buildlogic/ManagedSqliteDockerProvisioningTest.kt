@@ -106,8 +106,6 @@ class ManagedSqliteDockerProvisioningTest {
                                 PublicBundlePublicationContract(
                                     status = "published",
                                     runnerLabel = "ubuntu-24.04",
-                                    expectedRunnerOs = "Linux",
-                                    expectedRunnerArch = "x86_64",
                                 ),
                         ),
                 )

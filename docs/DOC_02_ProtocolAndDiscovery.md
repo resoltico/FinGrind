@@ -312,15 +312,13 @@ bundle target.
 ```java
 record PublicBundlePublication(
     PublicBundlePublicationStatus status,
-    Optional<String> runnerLabel,
-    Optional<String> expectedRunnerOs,
-    Optional<String> expectedRunnerArch)
+    Optional<String> runnerLabel)
 ```
 
 - Purpose: make public-bundle publication status and the proving runner metadata part of the same
   canonical bundle-target fact instead of maintaining a parallel publication registry
-- Validation: published targets must declare runner label plus expected runner OS and architecture;
-  non-published targets must omit them
+- Validation: published targets must declare the proving runner label; non-published targets must
+  omit it
 
 ## `PlanTransactionMode`, And `PlanFailurePolicy`
 

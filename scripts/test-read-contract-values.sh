@@ -46,16 +46,10 @@ def publication_entry(
     status: str,
     *,
     runner_label=None,
-    expected_runner_os=None,
-    expected_runner_arch=None,
 ):
     payload = {"status": status}
     if runner_label is not None:
         payload["runnerLabel"] = runner_label
-    if expected_runner_os is not None:
-        payload["expectedRunnerOs"] = expected_runner_os
-    if expected_runner_arch is not None:
-        payload["expectedRunnerArch"] = expected_runner_arch
     return payload
 
 
@@ -121,8 +115,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "bundleTargets": "bundleTargets",
                 "status": "status",
                 "runnerLabel": "runnerLabel",
-                "expectedRunnerOs": "expectedRunnerOs",
-                "expectedRunnerArch": "expectedRunnerArch",
             },
             "releasePublication": {
                 "requiredCiWorkflowName": "requiredCiWorkflowName",
@@ -256,8 +248,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "linux-x86_64": publication_entry(
                 "published",
                 runner_label="ubuntu-24.04",
-                expected_runner_os="Linux",
-                expected_runner_arch="x86_64",
             ),
             "windows-aarch64": publication_entry("not-published"),
         },
@@ -349,8 +339,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     assert loaded["releasePublication"]["publicBundleBuildTargets"] == {
         "linux-x86_64": {
             "runnerLabel": "ubuntu-24.04",
-            "expectedRunnerOs": "Linux",
-            "expectedRunnerArch": "x86_64",
         }
     }
     assert loaded["releasePublication"]["requiredCiWorkflowName"] == "CI"
@@ -392,8 +380,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "linux-x86_64": publication_entry(
                 "published",
                 runner_label="ubuntu-24.04",
-                expected_runner_os="Linux",
-                expected_runner_arch="x86_64",
             ),
             "windows-aarch64": publication_entry("experimental"),
         },
@@ -451,14 +437,10 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "linux-x86_64": publication_entry(
                 "published",
                 runner_label="ubuntu-24.04",
-                expected_runner_os="Linux",
-                expected_runner_arch="x86_64",
             ),
             "linux-aarch64": publication_entry(
                 "published",
                 runner_label="ubuntu-24.04-arm",
-                expected_runner_os="Linux",
-                expected_runner_arch="aarch64",
             ),
             "windows-aarch64": publication_entry("not-published"),
         },

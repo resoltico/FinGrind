@@ -32,8 +32,6 @@ def load_release_publication(
         target = bundle_layout_targets[classifier]
         release_build_targets[classifier] = {
             "runnerLabel": target["runnerLabel"],
-            "expectedRunnerOs": target["expectedRunnerOs"],
-            "expectedRunnerArch": target["expectedRunnerArch"],
         }
 
     declared_container_platforms = string_array(document, container_platforms_key)

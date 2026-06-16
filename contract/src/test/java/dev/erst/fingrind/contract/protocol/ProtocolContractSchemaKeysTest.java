@@ -27,8 +27,6 @@ class ProtocolContractSchemaKeysTest {
     assertEquals("bundleTargets", current.bundlePublication().bundleTargets());
     assertEquals("status", current.bundlePublication().status());
     assertEquals("runnerLabel", current.bundlePublication().runnerLabel());
-    assertEquals("expectedRunnerOs", current.bundlePublication().expectedRunnerOs());
-    assertEquals("expectedRunnerArch", current.bundlePublication().expectedRunnerArch());
     assertEquals("VERSION", current.operationIds().version());
     assertEquals("PRINT_PLAN_TEMPLATE", current.operationIds().printPlanTemplate());
     assertEquals("GENERATE_BOOK_KEY_FILE", current.operationIds().generateBookKeyFile());

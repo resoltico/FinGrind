@@ -114,10 +114,7 @@ record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTarge
 
   /** Per-target public-publication facts rooted in the canonical bundle-target registry. */
   record PublicBundlePublication(
-      PublicBundlePublicationStatus status,
-      Optional<String> runnerLabel,
-      Optional<String> expectedRunnerOs,
-      Optional<String> expectedRunnerArch) {
+      PublicBundlePublicationStatus status, Optional<String> runnerLabel) {
     PublicBundlePublication {
       PublicBundlePublicationStatus normalizedStatus = Objects.requireNonNull(status, "status");
       status = normalizedStatus;
@@ -125,26 +122,12 @@ record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTarge
           Optional.ofNullable(
               ContractDescriptorValidation.requireOptionalText(
                   Objects.requireNonNull(runnerLabel, "runnerLabel").orElse(null), "runnerLabel"));
-      expectedRunnerOs =
-          Optional.ofNullable(
-              ContractDescriptorValidation.requireOptionalText(
-                  Objects.requireNonNull(expectedRunnerOs, "expectedRunnerOs").orElse(null),
-                  "expectedRunnerOs"));
-      expectedRunnerArch =
-          Optional.ofNullable(
-              ContractDescriptorValidation.requireOptionalText(
-                  Objects.requireNonNull(expectedRunnerArch, "expectedRunnerArch").orElse(null),
-                  "expectedRunnerArch"));
       if (status == PublicBundlePublicationStatus.PUBLISHED) {
-        if (runnerLabel.isEmpty() || expectedRunnerOs.isEmpty() || expectedRunnerArch.isEmpty()) {
-          throw new IllegalArgumentException(
-              "published bundle targets must declare runnerLabel, expectedRunnerOs, and expectedRunnerArch.");
+        if (runnerLabel.isEmpty()) {
+          throw new IllegalArgumentException("published bundle targets must declare runnerLabel.");
         }
-      } else if (runnerLabel.isPresent()
-          || expectedRunnerOs.isPresent()
-          || expectedRunnerArch.isPresent()) {
-        throw new IllegalArgumentException(
-            "non-published bundle targets must omit runnerLabel, expectedRunnerOs, and expectedRunnerArch.");
+      } else if (runnerLabel.isPresent()) {
+        throw new IllegalArgumentException("non-published bundle targets must omit runnerLabel.");
       }
     }
   }

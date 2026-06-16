@@ -73,8 +73,6 @@ internal object DistributionContractSchemas {
                 bundleTargets = schemaKey(document, "bundlePublication", "bundleTargets"),
                 publicationStatus = schemaKey(document, "bundlePublication", "status"),
                 runnerLabel = schemaKey(document, "bundlePublication", "runnerLabel"),
-                expectedRunnerOs = schemaKey(document, "bundlePublication", "expectedRunnerOs"),
-                expectedRunnerArch = schemaKey(document, "bundlePublication", "expectedRunnerArch"),
             ),
             operationIds = DistributionContractReader.OperationIdSchema(
                 help = schemaKey(document, "operationIdContract", "help"),

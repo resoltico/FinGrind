@@ -69,9 +69,7 @@ class BundleManifestRendererTest {
                   "bundlePublication": {
                     "bundleTargets": "bundleTargets",
                     "status": "status",
-                    "runnerLabel": "runnerLabel",
-                    "expectedRunnerOs": "expectedRunnerOs",
-                    "expectedRunnerArch": "expectedRunnerArch"
+                    "runnerLabel": "runnerLabel"
                   },
                   "operationIdContract": {
                     "help": "OP_HELP",
