@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
@@ -81,7 +82,12 @@ final class CliInvocationText {
       case SOURCE_CHECKOUT_GRADLE ->
           ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(windows);
       case CONTAINER_IMAGE -> ProtocolCatalog.distribution().containerMountedLauncherPrefix();
-      case SELF_CONTAINED_BUNDLE -> NEUTRAL_LAUNCHER_COMMAND;
+      case SELF_CONTAINED_BUNDLE ->
+          ProtocolCatalog.distribution()
+              .bundleLauncherCommand(
+                  windows
+                      ? PublicCliBundleTarget.WINDOWS_X86_64
+                      : PublicCliBundleTarget.LINUX_X86_64);
     };
   }
 

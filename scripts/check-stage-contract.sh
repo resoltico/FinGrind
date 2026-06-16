@@ -30,8 +30,11 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-read-contract-values.sh
     scripts/test-bundle-smoke-powershell.sh
     scripts/test-bundle-archive-pruning.sh
+    scripts/test-bundle-archive-reproducibility.sh
+    scripts/test-verify-bundle-archive-contract.sh
     scripts/test-release-smoke-workflow.sh
     scripts/test-release-check-contract.sh
+    scripts/test-distribution-freshness-workflow.sh
     scripts/test-verify-release-pr-gate.sh
     scripts/test-release-protocol-pr-diff-fallback.sh
     scripts/test-release-protocol-worktree-handoff.sh

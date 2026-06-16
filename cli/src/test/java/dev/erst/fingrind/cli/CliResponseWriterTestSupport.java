@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
@@ -152,6 +153,11 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
     return new CliOutputChannel(utf8PrintStream(outputStream));
   }
 
+  protected static CliOutputChannel outputChannel(
+      ByteArrayOutputStream outputStream, ByteArrayOutputStream diagnosticsStream) {
+    return new CliOutputChannel(utf8PrintStream(outputStream), utf8PrintStream(diagnosticsStream));
+  }
+
   protected static CliFailureResponseWriter failureWriter(ByteArrayOutputStream outputStream) {
     return new CliFailureResponseWriter(outputChannel(outputStream));
   }
@@ -205,6 +211,7 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
             ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
+            activeBundleTarget(RuntimeDistribution.fromWireValue(runtimeDistribution)),
             ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             ProtocolCatalog.runtime().storageDriver(),
@@ -231,6 +238,13 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
                 loadedSqliteSourceId,
                 diagnostics),
             null));
+  }
+
+  private static @Nullable PublicCliBundleTarget activeBundleTarget(
+      RuntimeDistribution runtimeDistribution) {
+    return runtimeDistribution == RuntimeDistribution.SELF_CONTAINED_BUNDLE
+        ? PublicCliBundleTarget.MACOS_AARCH64
+        : null;
   }
 
   static String rejectedJson(PostingRejection rejection) {

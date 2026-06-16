@@ -51,9 +51,7 @@ grep -Fq "required status checks are exactly \`${expected_check_name}\`" "${rele
     "release protocol no longer documents Gate as the sole required status check"
 grep -Fq './scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer requires the PR Gate verifier"
-grep -Fq 'The aggregate `Gate` check run appears only after `Check`, the published Linux bundle-smoke' "${release_protocol}" || die \
-    "release protocol no longer documents delayed aggregate Gate materialization"
-grep -Fq 'matrix, and the devcontainer gate pair have finished or been skipped in workflow `CI`.' "${release_protocol}" || die \
+grep -Fq 'The aggregate `Gate` check run appears only after `Check`, the published bundle-smoke matrix, and' "${release_protocol}" || die \
     "release protocol no longer documents delayed aggregate Gate materialization"
 grep -Fq 'therefore show `Check` green while `Gate` is absent. Treat a missing `Gate` as pending, not as' "${release_protocol}" || die \
     "release protocol no longer documents missing-Gate-as-pending semantics"
@@ -63,8 +61,8 @@ grep -Fq "Step 10 must close the superseded PR and delete its branch" "${release
     "release protocol no longer closes superseded release-starting PRs"
 grep -Fq "No superseded ordinary PR may remain open after release hygiene." "${release_protocol}" || die \
     "release protocol no longer forbids superseded ordinary PR leftovers"
-if printf '%s' "${required_ci_job_names_json}" | grep -Fq 'Windows'; then
-    die "release-publication contract reintroduced a Windows lane into the release-blocking CI owner set"
+if printf '%s' "${required_ci_job_names_json}" | grep -Fq 'Windows non-public bundle smoke'; then
+    die "release-publication contract still carries the retired observational Windows smoke lane"
 fi
 if grep -Fq 'Check`, `Windows bundle smoke`, and `Docker smoke`' "${bootstrap_protocol}"; then
     die "bootstrap protocol reintroduced the obsolete three-check branch-protection contract"

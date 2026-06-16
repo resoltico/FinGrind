@@ -370,9 +370,9 @@ class ProtocolCatalogTest {
     assertEquals("pdf", trialBalance.artifactOutputs().getFirst().format());
     assertEquals("--pdf-out <path>", trialBalance.artifactOutputs().getFirst().option());
     assertEquals(List.of(), printRequestTemplate.outputModes());
-    assertEquals(List.of(), executePlan.outputModes());
+    assertEquals(List.of(OutputMode.JSON, OutputMode.TEXT), executePlan.outputModes());
     assertFalse(printRequestTemplate.options().contains("[--output <json>]"));
-    assertFalse(executePlan.options().contains("[--output <json>]"));
+    assertTrue(executePlan.options().contains("[--output <json|text>]"));
   }
 
   @Test
@@ -475,10 +475,10 @@ class ProtocolCatalogTest {
         ProtocolCatalog.domain().planExecution().hardLimitations().stream()
             .anyMatch(limitation -> limitation.contains("100 steps")));
     assertEquals(
-        PublicDistributionContracts.current().supportedPublicCliBundleTargets(),
+        BundleLayoutContracts.current().supportedPublicCliBundleTargets(),
         ProtocolCatalog.distribution().supportedPublicCliBundleTargets());
     assertEquals(
-        PublicDistributionContracts.current().unsupportedPublicCliBundleTargets(),
+        BundleLayoutContracts.current().unsupportedPublicCliBundleTargets(),
         ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets());
     assertEquals(
         BundleLayoutContracts.current().bundleTargets().keySet(),
@@ -781,89 +781,5 @@ class ProtocolCatalogTest {
             ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE),
         ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields(
             LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS));
-  }
-
-  @Test
-  void publicDistributionContractLoaderValidatesResourceAndNormalizationEdges() {
-    PublicDistributionContract loaded =
-        PublicDistributionContracts.loadFromResource(
-            new ByteArrayInputStream(
-                """
-                {
-                  "supportedPublicCliBundleTargets": [
-                    "linux-x86_64"
-                  ],
-                  "unsupportedPublicCliBundleTargets": [
-                    "macos-aarch64",
-                    "windows-aarch64"
-                  ]
-                }
-                """
-                    .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-            "test-resource");
-    assertEquals(
-        List.of(PublicCliBundleTarget.LINUX_X86_64), loaded.supportedPublicCliBundleTargets());
-    assertEquals(
-        List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.WINDOWS_AARCH64),
-        loaded.unsupportedPublicCliBundleTargets());
-    assertEquals(
-        "supportedPublicCliBundleTargets must be a JSON array of strings.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                    PublicDistributionContracts.loadFromResource(
-                        new ByteArrayInputStream(
-                            "{}".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                        "blank-resource"))
-            .getMessage());
-    assertThrows(
-        IllegalStateException.class,
-        () -> PublicDistributionContracts.loadFromResource(nullOf(), "missing-resource"));
-    assertThrows(
-        UncheckedIOException.class,
-        () -> PublicDistributionContracts.loadFromResource(failingInputStream(), "bad-resource"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            PublicDistributionContracts.loadFromResource(
-                new ByteArrayInputStream(
-                    """
-                    {"supportedPublicCliBundleTargets":[1]}
-                    """
-                        .getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-                "invalid-resource"));
-    assertEquals(
-        "supportedPublicCliBundleTargets must not be null.",
-        assertThrows(
-                NullPointerException.class,
-                () -> PublicDistributionContract.fromWireValues(nullOf(), List.of()))
-            .getMessage());
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> PublicDistributionContract.fromWireValues(List.of("macos-aarch64", " "), List.of()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            PublicDistributionContract.fromWireValues(
-                List.of("linux-x86_64", "linux-x86_64"), List.of()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            PublicDistributionContract.fromWireValues(
-                List.of("linux-x86_64"), List.of("linux-x86_64", "windows-aarch64")));
-  }
-
-  private static InputStream failingInputStream() {
-    return new InputStream() {
-      @Override
-      public int read() throws IOException {
-        throw new IOException("boom");
-      }
-
-      @Override
-      public int read(byte[] buffer, int offset, int length) throws IOException {
-        throw new IOException("boom");
-      }
-    };
   }
 }

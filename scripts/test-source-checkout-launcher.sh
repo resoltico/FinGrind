@@ -384,10 +384,13 @@ set -e
 
 [[ "${raw_jar_open_exit}" -eq "${expected_managed_runtime_failure_exit}" ]] || die \
     "raw java -jar open-book returned ${raw_jar_open_exit}; expected published managed-runtime-failure exit ${expected_managed_runtime_failure_exit}"
-[[ ! -s "${raw_jar_open_stderr}" ]] || die "raw java -jar open-book wrote diagnostics"
+[[ ! -s "${raw_jar_open_stdout}" ]] || die "raw java -jar open-book wrote primary output on runtime failure"
 [[ ! -f "${tmp_dir}/raw-jar-direct.sqlite" ]] || die \
     "raw java -jar open-book created a book despite missing native access"
 python3 "${launcher_contract_test_support}" \
-    assert-runtime-failure-envelope "${raw_jar_open_stdout}"
+    assert-runtime-failure-envelope \
+    --document "${raw_jar_open_stderr}" \
+    --label 'raw java -jar open-book' \
+    --stream diagnostics
 
 printf 'source-checkout launcher regression: success\n'

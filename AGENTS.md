@@ -19,7 +19,7 @@ Read this file completely, then load top-to-bottom by trigger:
 | File exists | `.codex/AGENTS_EXTRA.md` (project-specific instructions) | — |
 | Java 26+ surface touched | `.codex/AGENTS_JAVA.md` | 2.2.0 |
 | Kotlin 2.4+ surface touched | `.codex/AGENTS_KOTLIN.md` | 2.1.0 |
-| Python 3.13+ surface touched | `.codex/AGENTS_PYTHON.md` | 2.1.0 |
+| Python helper-tooling surface touched at the repository baseline | `.codex/AGENTS_PYTHON.md` | 2.1.0 |
 | Rust 1.96+ / Cargo surface touched | `.codex/AGENTS_RUST_CARGO.md` | 2.2.0 |
 | Tauri 2.11.x surface touched: apps, plugins, configuration, capabilities, permissions, bundling, updater/signing, mobile targets, frontend/Rust IPC | `.codex/AGENTS_TAURI.md` | 2.1.0 |
 | SQLite surface touched: build, link, SQL, migrations, WAL, durability, bindings (baseline 3.53.2) | `.codex/AGENTS_SQLITE.md` | 1.0.0 |

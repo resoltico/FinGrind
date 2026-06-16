@@ -45,16 +45,14 @@ grep -Fq './scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die 
     "release protocol no longer requires the PR Gate verifier"
 grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer documents the PR Gate verifier timeout override"
-grep -Fq 'The aggregate `Gate` check run appears only after `Check`, the published Linux bundle-smoke' "${release_protocol}" || die \
-    "release protocol no longer documents the delayed Gate materialization contract"
-grep -Fq 'matrix, and the devcontainer gate pair have finished or been skipped in workflow `CI`.' "${release_protocol}" || die \
+grep -Fq 'The aggregate `Gate` check run appears only after `Check`, the published bundle-smoke matrix, and' "${release_protocol}" || die \
     "release protocol no longer documents the delayed Gate materialization contract"
 grep -Fq 'therefore show `Check` green while `Gate` is absent. Treat a missing `Gate` as pending, not as' "${release_protocol}" || die \
     "release protocol no longer documents missing-Gate-as-pending semantics"
 grep -Fq 'success. The verifier is the canonical owner of that waiting logic.' "${release_protocol}" || die \
     "release protocol no longer documents missing-Gate-as-pending semantics"
-grep -Fq 'Do not wait for the observational Windows lane once `Gate` is green on the release PR head commit.' "${release_protocol}" || die \
-    "release protocol no longer documents Gate-first PR completion semantics"
+grep -Fq 'The published bundle-smoke' "${release_protocol}" || die \
+    "release protocol no longer documents the cross-platform publication proof that feeds Gate"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "PR Gate verifier no longer sources the canonical release-check owner"
 grep -Fq 'release-check-verification-support.sh' "${verifier}" || die \
@@ -194,10 +192,10 @@ elif mode == "gate-failure":
         if job["name"] == "Gate":
             job["conclusion"] = "failure"
             break
-elif mode == "gate-success-observational-pending":
+elif mode == "gate-success-extra-foreign-job":
     jobs.append(
         {
-            "name": "Windows non-public bundle smoke",
+            "name": "Unrelated non-required job",
             "status": "in_progress",
             "conclusion": None,
         }
@@ -210,7 +208,7 @@ elif mode == "check-failure-before-matrix":
             job["conclusion"] = "failure"
         elif name == "Gate":
             job["conclusion"] = "failure"
-        elif name.startswith("Published bundle smoke (linux-"):
+        elif name.startswith("Published bundle smoke ("):
             continue
         filtered_jobs.append(job)
     filtered_jobs.append(
@@ -248,7 +246,7 @@ rm -f "${fixture_root}/state/check-runs-count"
 
 PATH="${fixture_root}/bin:${PATH}" \
     FAKE_GH_STATE_DIR="${fixture_root}/state" \
-    FAKE_GH_CHECK_MODE='gate-success-observational-pending' \
+    FAKE_GH_CHECK_MODE='gate-success-extra-foreign-job' \
     FAKE_GH_WORKFLOW_STATUS='in_progress' \
     FAKE_GH_WORKFLOW_CONCLUSION='null' \
     FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \

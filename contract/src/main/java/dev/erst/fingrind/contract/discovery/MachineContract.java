@@ -51,7 +51,9 @@ public final class MachineContract {
             ? MachineContractQuickStarts.canonicalQuickStart(
                 environment.runtime().runtimeDistribution())
             : List.of(),
-        MachineContractDomainDescriptors.exitCodes(),
+        selectedOperation == null
+            ? MachineContractDomainDescriptors.exitCodes()
+            : MachineContractDomainDescriptors.exitCodes(selectedOperation.id()),
         MachineContractDomainDescriptors.preflight(),
         MachineContractDomainDescriptors.currencyModel());
   }

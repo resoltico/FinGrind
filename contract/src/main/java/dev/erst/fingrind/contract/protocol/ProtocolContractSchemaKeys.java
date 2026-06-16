@@ -13,23 +13,23 @@ final class ProtocolContractSchemaKeys {
 
   private final RuntimeSurface runtimeSurface;
   private final ProtectedBookFormat protectedBookFormat;
-  private final PublicDistribution publicDistribution;
   private final ManagedSqlite managedSqlite;
   private final BundleLayout bundleLayout;
+  private final BundlePublication bundlePublication;
   private final OperationIds operationIds;
 
   private ProtocolContractSchemaKeys(
       RuntimeSurface runtimeSurface,
       ProtectedBookFormat protectedBookFormat,
-      PublicDistribution publicDistribution,
       ManagedSqlite managedSqlite,
       BundleLayout bundleLayout,
+      BundlePublication bundlePublication,
       OperationIds operationIds) {
     this.runtimeSurface = Objects.requireNonNull(runtimeSurface, "runtimeSurface");
     this.protectedBookFormat = Objects.requireNonNull(protectedBookFormat, "protectedBookFormat");
-    this.publicDistribution = Objects.requireNonNull(publicDistribution, "publicDistribution");
     this.managedSqlite = Objects.requireNonNull(managedSqlite, "managedSqlite");
     this.bundleLayout = Objects.requireNonNull(bundleLayout, "bundleLayout");
+    this.bundlePublication = Objects.requireNonNull(bundlePublication, "bundlePublication");
     this.operationIds = Objects.requireNonNull(operationIds, "operationIds");
   }
 
@@ -45,16 +45,16 @@ final class ProtocolContractSchemaKeys {
     return protectedBookFormat;
   }
 
-  PublicDistribution publicDistribution() {
-    return publicDistribution;
-  }
-
   ManagedSqlite managedSqlite() {
     return managedSqlite;
   }
 
   BundleLayout bundleLayout() {
     return bundleLayout;
+  }
+
+  BundlePublication bundlePublication() {
+    return bundlePublication;
   }
 
   OperationIds operationIds() {
@@ -69,9 +69,9 @@ final class ProtocolContractSchemaKeys {
             resourceStream, resourcePath, "protocol contract schema keys");
     JsonNode runtimeSurfaceNode = requiredObject(document, "runtimeSurface");
     JsonNode protectedBookFormatNode = requiredObject(document, "protectedBookFormat");
-    JsonNode publicDistributionNode = requiredObject(document, "publicDistribution");
     JsonNode managedSqliteNode = requiredObject(document, "managedSqlite");
     JsonNode bundleLayoutNode = requiredObject(document, "bundleLayout");
+    JsonNode bundlePublicationNode = requiredObject(document, "bundlePublication");
     JsonNode operationIdsNode = requiredObject(document, "operationIdContract");
     return new ProtocolContractSchemaKeys(
         new RuntimeSurface(
@@ -96,9 +96,6 @@ final class ProtocolContractSchemaKeys {
             requireText(protectedBookFormatNode, "legacyPageSize"),
             requireText(protectedBookFormatNode, "kdfIter"),
             requireText(protectedBookFormatNode, "plaintextHeaderSize")),
-        new PublicDistribution(
-            requireText(publicDistributionNode, "supportedPublicCliBundleTargets"),
-            requireText(publicDistributionNode, "unsupportedPublicCliBundleTargets")),
         new ManagedSqlite(
             requireText(managedSqliteNode, "requiredMinimumSqliteVersion"),
             requireText(managedSqliteNode, "requiredSqlite3mcVersion"),
@@ -121,7 +118,16 @@ final class ProtocolContractSchemaKeys {
             requireText(bundleLayoutNode, "archiveFormat"),
             requireText(bundleLayoutNode, "launcherPath"),
             requireText(bundleLayoutNode, "launcherCommand"),
-            requireText(bundleLayoutNode, "sqliteLibraryFileName")),
+            requireText(bundleLayoutNode, "sqliteLibraryFileName"),
+            requireText(bundleLayoutNode, "compatibilityLabel"),
+            requireText(bundleLayoutNode, "minimumGlibcVersion"),
+            requireText(bundleLayoutNode, "compatibilitySmokeContainerImage")),
+        new BundlePublication(
+            requireText(bundlePublicationNode, "bundleTargets"),
+            requireText(bundlePublicationNode, "status"),
+            requireText(bundlePublicationNode, "runnerLabel"),
+            requireText(bundlePublicationNode, "expectedRunnerOs"),
+            requireText(bundlePublicationNode, "expectedRunnerArch")),
         new OperationIds(
             requireText(operationIdsNode, "help"),
             requireText(operationIdsNode, "version"),
@@ -194,10 +200,6 @@ final class ProtocolContractSchemaKeys {
       String kdfIter,
       String plaintextHeaderSize) {}
 
-  /** Canonical external field names for the public-distribution contract resource. */
-  record PublicDistribution(
-      String supportedPublicCliBundleTargets, String unsupportedPublicCliBundleTargets) {}
-
   /** Canonical external field names for the managed-SQLite contract resource. */
   record ManagedSqlite(
       String requiredMinimumSqliteVersion,
@@ -223,7 +225,18 @@ final class ProtocolContractSchemaKeys {
       String archiveFormat,
       String launcherPath,
       String launcherCommand,
-      String sqliteLibraryFileName) {}
+      String sqliteLibraryFileName,
+      String compatibilityLabel,
+      String minimumGlibcVersion,
+      String compatibilitySmokeContainerImage) {}
+
+  /** Canonical external field names for the per-target bundle-publication contract resource. */
+  record BundlePublication(
+      String bundleTargets,
+      String status,
+      String runnerLabel,
+      String expectedRunnerOs,
+      String expectedRunnerArch) {}
 
   /** Canonical external property names for the operation-id contract resource. */
   record OperationIds(

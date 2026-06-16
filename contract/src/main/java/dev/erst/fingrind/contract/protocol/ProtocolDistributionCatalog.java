@@ -45,12 +45,12 @@ public final class ProtocolDistributionCatalog {
 
   /** Returns supported self-contained public CLI bundle targets. */
   public List<PublicCliBundleTarget> supportedPublicCliBundleTargets() {
-    return ProtocolCatalogFacts.publicDistributionContract().supportedPublicCliBundleTargets();
+    return ProtocolCatalogFacts.bundleLayoutContract().supportedPublicCliBundleTargets();
   }
 
   /** Returns bundle targets outside the current self-contained public CLI contract. */
   public List<PublicCliBundleTarget> unsupportedPublicCliBundleTargets() {
-    return ProtocolCatalogFacts.publicDistributionContract().unsupportedPublicCliBundleTargets();
+    return ProtocolCatalogFacts.bundleLayoutContract().unsupportedPublicCliBundleTargets();
   }
 
   /** Returns the canonical launcher command for one public bundle target. */

@@ -23,12 +23,18 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   @Test
   void run_rejectsMissingBookFile() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
+            fixedClock());
     int exitCode = cli.run(jsonArguments("open-book"));
     assertEquals(1, exitCode);
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
     JsonNode failurePayload =
-        assertDoesNotThrow(() -> new ObjectMapper().readTree(outputStream.toByteArray()));
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(diagnosticsStream.toByteArray()));
     assertEquals("error", failurePayload.path("status").stringValue());
     assertEquals("--book-file", failurePayload.path("argument").stringValue());
     assertEquals(
@@ -40,8 +46,13 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("invalid-cursor.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
-        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
+            fixedClock());
     int exitCode =
         cli.run(
             new String[] {
@@ -56,7 +67,8 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
               "json"
             });
     assertEquals(1, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsStream.toByteArray());
     assertEquals(
         ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
         failureEnvelope.path("code").stringValue());
@@ -110,10 +122,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
             fixedClock(),
             new ExplodingWorkflow(
                 new SqliteStorageFailureException("Failed to open SQLite book connection.")));
@@ -128,8 +142,9 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                 "--request-file",
                 requestFile.toString()));
     assertEquals(4, exitCode);
-    assertJsonContains(outputStream, "\"code\":\"storage-runtime-failure\"");
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("initialization state"));
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    assertJsonContains(diagnosticsStream, "\"code\":\"storage-runtime-failure\"");
+    assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("initialization state"));
   }
 
   @Test
@@ -137,10 +152,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
             fixedClock(),
             new ExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
@@ -153,10 +170,11 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                 bookFilePath.toString(),
                 "--book-key-file",
                 bookKeyFilePath.toString(),
-                "--replacement-book-key-file",
+                "--new-book-key-file",
                 tempDirectory.resolve("replacement.key").toString()));
     assertEquals(5, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
@@ -171,10 +189,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
             fixedClock(),
             new ExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
@@ -188,7 +208,8 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                 "--book-key-file",
                 bookKeyFilePath.toString()));
     assertEquals(5, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
@@ -204,10 +225,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
             fixedClock(),
             new ExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
@@ -221,7 +244,8 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                 "--book-key-file",
                 bookKeyFilePath.toString()));
     assertEquals(5, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
@@ -237,10 +261,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
             fixedClock(),
             new ExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
@@ -254,7 +280,8 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                 "--book-key-file",
                 bookKeyFilePath.toString()));
     assertEquals(5, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsStream.toByteArray());
     assertEquals("managed-runtime-failure", failureEnvelope.path("code").stringValue());
     assertTrue(
         failureEnvelope
@@ -290,17 +317,17 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                 "--request-file",
                 requestFile.toString()));
     assertEquals(70, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsOutput.toByteArray());
     assertEquals("internal-error", failureEnvelope.path("code").stringValue());
     assertTrue(failureEnvelope.path("message").stringValue().contains("fg-internal-"));
     assertTrue(
         failureEnvelope
             .path("hint")
             .stringValue()
-            .contains("diagnostic stream for the same error id and stack trace"));
-    String diagnosticsText = diagnosticsOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(diagnosticsText.contains("[internal-error] fg-internal-"));
-    assertTrue(diagnosticsText.contains("IllegalStateException: boom"));
+            .contains("preserved one machine-readable error envelope on stderr"));
+    assertFalse(
+        diagnosticsOutput.toString(StandardCharsets.UTF_8).contains("IllegalStateException"));
   }
 
   @Test
@@ -328,10 +355,45 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
                 "--request-file",
                 requestFile.toString()));
     assertEquals(70, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsOutput.toByteArray());
     assertEquals("internal-error", failureEnvelope.path("code").stringValue());
     assertTrue(failureEnvelope.path("message").stringValue().contains("fg-internal-"));
-    assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains("workflow boom"));
-    assertTrue(diagnosticsOutput.toString(StandardCharsets.UTF_8).contains("workflow boom"));
+    assertFalse(diagnosticsOutput.toString(StandardCharsets.UTF_8).contains("workflow boom"));
+  }
+
+  @Test
+  void run_mapsGenericRuntimeFailureToTextFailureAndDiagnosticsInTextMode() {
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsOutput = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsOutput),
+            fixedClock(),
+            new ExplodingWorkflow(new IllegalStateException("boom")));
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--output",
+              "text"
+            });
+
+    assertEquals(70, exitCode);
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    String diagnosticsText = diagnosticsOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(diagnosticsText.contains("Error"));
+    assertTrue(diagnosticsText.contains("internal-error"));
+    assertTrue(diagnosticsText.contains("[internal-error] fg-internal-"));
+    assertTrue(diagnosticsText.contains("IllegalStateException: boom"));
   }
 }

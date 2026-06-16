@@ -1,0 +1,200 @@
+{
+  "javaReviewedSurfaces": [
+    {
+      "projectPath": "cli",
+      "relativePath": "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
+      "owner": "cli-json-contract",
+      "reason": "Ledger-plan JSON remains one machine-contract family, but it is reviewed as a frozen large surface instead of inheriting a broad package waiver.",
+      "splitTrigger": "Split by execution envelope, fact, and rejection payload families before adding another plan JSON namespace.",
+      "reviewedRoleName": "cli-plan-json-aggregate",
+      "budgetVarianceReason": "The ledger-plan JSON aggregate exceeds the default CLI JSON budget until envelope, fact, and rejection payload families finish splitting.",
+      "duplicationExemptionReason": "The ledger-plan JSON aggregate intentionally repeats machine-contract record structure until payload families move into separate owners.",
+      "approval": {
+        "physicalLines": 313,
+        "logicalLines": 290,
+        "importLikeLines": 13,
+        "nestedTypes": 18,
+        "functions": 0,
+        "fieldsPerTopLevelType": 0,
+        "switchArmsPerMethod": 0,
+        "methodLineSpan": 36,
+        "methodParameters": 0,
+        "methodDecisionPoints": 8,
+        "expiresOn": "2026-08-05"
+      }
+    },
+    {
+      "projectPath": "cli",
+      "relativePath": "src/main/java/dev/erst/fingrind/cli/json/CliRejectionJsonModels.java",
+      "owner": "cli-json-contract",
+      "reason": "The rejection JSON aggregate remains one explicit machine-contract namespace, with the public rejection envelope vocabulary grouped in one place.",
+      "splitTrigger": "Split by rejection family before adding another unrelated rejection namespace or serializer concern.",
+      "reviewedRoleName": "cli-rejection-json-aggregate",
+      "budgetVarianceReason": "The rejection JSON aggregate exceeds the default CLI JSON budget until rejection families move into separate owners.",
+      "duplicationExemptionReason": "The rejection JSON aggregate intentionally repeats machine-contract record structure until rejection payload families move into separate owners.",
+      "approval": {
+        "physicalLines": 412,
+        "logicalLines": 359,
+        "importLikeLines": 6,
+        "nestedTypes": 43,
+        "functions": 0,
+        "fieldsPerTopLevelType": 0,
+        "switchArmsPerMethod": 0,
+        "methodLineSpan": 9,
+        "methodParameters": 0,
+        "methodDecisionPoints": 1,
+        "expiresOn": "2026-08-12"
+      }
+    },
+    {
+      "projectPath": "cli",
+      "relativePath": "src/test/java/dev/erst/fingrind/cli/CliMaintenanceCoverageTest.java",
+      "owner": "cli-maintenance-tests",
+      "reason": "The CLI maintenance coverage suite intentionally spans the maintenance command matrix in one reviewed executable contract.",
+      "splitTrigger": "Split by maintenance command family before adding another broad matrix branch.",
+      "reviewedRoleName": "cli-maintenance-coverage-test",
+      "budgetVarianceReason": "The maintenance coverage matrix exceeds the default test-suite budget until maintenance command families are split further.",
+      "approval": {
+        "physicalLines": 1001,
+        "logicalLines": 923,
+        "importLikeLines": 23,
+        "nestedTypes": 0,
+        "functions": 12,
+        "fieldsPerTopLevelType": 0,
+        "switchArmsPerMethod": 0,
+        "methodLineSpan": 341,
+        "methodParameters": 3,
+        "methodDecisionPoints": 1,
+        "expiresOn": "2026-07-21"
+      }
+    },
+    {
+      "projectPath": "cli",
+      "relativePath": "src/test/java/dev/erst/fingrind/cli/CliRecordingWorkflow.java",
+      "owner": "cli-test-support",
+      "reason": "The recording workflow test double remains one reviewed executable support surface for broad CLI interaction capture.",
+      "splitTrigger": "Split by bookkeeping, maintenance, and reporting capture families before adding another support concern.",
+      "reviewedRoleName": "cli-recording-workflow-test-support",
+      "budgetVarianceReason": "The recording workflow support owner exceeds the default test-suite budget until bookkeeping, maintenance, and reporting capture families are split further.",
+      "approval": {
+        "physicalLines": 302,
+        "logicalLines": 259,
+        "importLikeLines": 22,
+        "nestedTypes": 0,
+        "functions": 40,
+        "fieldsPerTopLevelType": 32,
+        "switchArmsPerMethod": 0,
+        "methodLineSpan": 14,
+        "methodParameters": 6,
+        "methodDecisionPoints": 1,
+        "expiresOn": "2026-08-11"
+      }
+    },
+    {
+      "projectPath": "cli",
+      "relativePath": "src/test/java/dev/erst/fingrind/cli/CliReportArgumentParsingTest.java",
+      "owner": "cli-report-tests",
+      "reason": "The report argument parsing matrix intentionally covers one wide public CLI surface in one reviewed test suite.",
+      "splitTrigger": "Split by report family before adding another major argument matrix branch.",
+      "reviewedRoleName": "cli-report-argument-test",
+      "budgetVarianceReason": "The report argument matrix exceeds the default test-suite budget until report families are split further.",
+      "approval": {
+        "physicalLines": 562,
+        "logicalLines": 526,
+        "importLikeLines": 8,
+        "nestedTypes": 0,
+        "functions": 2,
+        "fieldsPerTopLevelType": 0,
+        "switchArmsPerMethod": 0,
+        "methodLineSpan": 344,
+        "methodParameters": 0,
+        "methodDecisionPoints": 0,
+        "expiresOn": "2026-08-18"
+      }
+    },
+    {
+      "projectPath": "contract",
+      "relativePath": "src/main/java/dev/erst/fingrind/contract/bookkeeping/RejectionNarrative.java",
+      "owner": "contract-bookkeeping",
+      "reason": "The published bookkeeping rejection narrative remains one explicit language catalog for stable public refusal text.",
+      "splitTrigger": "Split by rejection family before adding another unrelated narrative vocabulary branch.",
+      "reviewedRoleName": "bookkeeping-rejection-narrative",
+      "budgetVarianceReason": "The published rejection-language catalog exceeds the default exported seam budget until the named rejection families are split.",
+      "approval": {
+        "physicalLines": 230,
+        "logicalLines": 178,
+        "importLikeLines": 4,
+        "nestedTypes": 0,
+        "functions": 5,
+        "fieldsPerTopLevelType": 0,
+        "switchArmsPerMethod": 18,
+        "methodLineSpan": 97,
+        "methodParameters": 1,
+        "methodDecisionPoints": 2,
+        "expiresOn": "2026-07-15"
+      }
+    },
+    {
+      "projectPath": "sqlite",
+      "relativePath": "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeCalls.java",
+      "owner": "sqlite-native-bridge",
+      "reason": "The typed SQLite native-call interface table remains one explicit reviewed bridge catalog while lifecycle and error behavior live elsewhere.",
+      "splitTrigger": "Split the native-call vocabulary by lifecycle, statement, and metadata call families before adding another interface cluster.",
+      "reviewedRoleName": "sqlite-native-call-table",
+      "budgetVarianceReason": "The typed native-call table exceeds the default production budget until lifecycle, statement, and metadata call families are split further.",
+      "approval": {
+        "physicalLines": 157,
+        "logicalLines": 98,
+        "importLikeLines": 1,
+        "nestedTypes": 19,
+        "functions": 0,
+        "fieldsPerTopLevelType": 0,
+        "switchArmsPerMethod": 0,
+        "methodLineSpan": 6,
+        "methodParameters": 5,
+        "methodDecisionPoints": 0,
+        "expiresOn": "2026-08-07"
+      }
+    },
+    {
+      "projectPath": "sqlite",
+      "relativePath": "src/test/java/dev/erst/fingrind/sqlite/SqliteRuntimeProbeStatusTest.java",
+      "owner": "sqlite-runtime-tests",
+      "reason": "The runtime probe status suite intentionally covers the public runtime-status lattice in one reviewed matrix.",
+      "splitTrigger": "Split by runtime state family before adding another probe-status branch.",
+      "reviewedRoleName": "sqlite-runtime-probe-test",
+      "budgetVarianceReason": "The runtime probe matrix exceeds the default test-suite budget until runtime-state families are split further.",
+      "approval": {
+        "physicalLines": 962,
+        "logicalLines": 925,
+        "importLikeLines": 23,
+        "nestedTypes": 0,
+        "functions": 26,
+        "fieldsPerTopLevelType": 0,
+        "switchArmsPerMethod": 0,
+        "methodLineSpan": 357,
+        "methodParameters": 9,
+        "methodDecisionPoints": 3,
+        "expiresOn": "2026-07-30"
+      }
+    }
+  ],
+  "textReviewedSurfaces": [
+    {
+      "relativePath": "sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql",
+      "owner": "sqlite-schema",
+      "reason": "The canonical SQLite schema is one intentionally reviewed data catalog owned by the storage adapter.",
+      "splitTrigger": "Break out reusable generated fragments before adding another independent schema family.",
+      "reviewedRoleName": "sqlite-schema-catalog",
+      "budgetVarianceReason": "The canonical schema catalog exceeds the default SQLite SQL budget until schema families are generated or split into narrower fragments.",
+      "approval": {
+        "physicalLines": 1145,
+        "logicalLines": 1099,
+        "importLikeLines": 45,
+        "functions": 0,
+        "nestedTypes": 0,
+        "expiresOn": "2026-08-01"
+      }
+    }
+  ]
+}

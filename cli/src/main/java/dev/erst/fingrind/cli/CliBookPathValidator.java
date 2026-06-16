@@ -68,10 +68,10 @@ final class CliBookPathValidator {
             .toAbsolutePath()
             .equals(replacementKeyFilePath.orElseThrow().toAbsolutePath())) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE,
+          ProtocolOptions.NEW_BOOK_KEY_FILE,
           ProtocolOptions.BOOK_KEY_FILE
               + " and "
-              + ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE
+              + ProtocolOptions.NEW_BOOK_KEY_FILE
               + " must not point to the same path.");
     }
   }
@@ -81,8 +81,8 @@ final class CliBookPathValidator {
       BookAccess.PassphraseSource replacementPassphraseSource) {
     if (isStandardInput(currentPassphraseSource) && isStandardInput(replacementPassphraseSource)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_STDIN,
-          "Standard input cannot supply both the current and replacement book passphrases.");
+          ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN,
+          "Standard input cannot supply both the current and new book passphrases.");
     }
   }
 
@@ -97,16 +97,16 @@ final class CliBookPathValidator {
     Path normalizedBackupBookKeyFilePath = backupBookKeyFilePath.toAbsolutePath();
     if (normalizedBookFilePath.equals(normalizedBackupFilePath)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_FILE_OUT,
+          ProtocolOptions.BACKUP_BOOK_FILE_OUT,
           ProtocolOptions.BOOK_FILE
               + " and "
-              + ProtocolOptions.BACKUP_FILE_OUT
+              + ProtocolOptions.BACKUP_BOOK_FILE_OUT
               + " must not point to the same path.");
     }
     if (normalizedBackupFilePath.equals(normalizedBackupBookKeyFilePath)) {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
-          ProtocolOptions.BACKUP_FILE_OUT
+          ProtocolOptions.BACKUP_BOOK_FILE_OUT
               + " and "
               + ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT
               + " must not point to the same path.");
@@ -115,10 +115,10 @@ final class CliBookPathValidator {
     if (keyFilePath.isPresent()
         && keyFilePath.orElseThrow().toAbsolutePath().equals(normalizedBackupFilePath)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_FILE_OUT,
+          ProtocolOptions.BACKUP_BOOK_FILE_OUT,
           ProtocolOptions.BOOK_KEY_FILE
               + " and "
-              + ProtocolOptions.BACKUP_FILE_OUT
+              + ProtocolOptions.BACKUP_BOOK_FILE_OUT
               + " must not point to the same path.");
     }
     if (keyFilePath.isPresent()
@@ -139,10 +139,10 @@ final class CliBookPathValidator {
     Path normalizedBackupBookKeyFilePath = backupBookKeyFilePath.toAbsolutePath();
     if (normalizedBookFilePath.equals(normalizedBackupFilePath)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_FILE,
+          ProtocolOptions.BACKUP_BOOK_FILE,
           ProtocolOptions.BOOK_FILE
               + " and "
-              + ProtocolOptions.BACKUP_FILE
+              + ProtocolOptions.BACKUP_BOOK_FILE
               + " must not point to the same path.");
     }
     if (normalizedBookFilePath.equals(normalizedBackupBookKeyFilePath)) {
@@ -156,7 +156,7 @@ final class CliBookPathValidator {
     if (normalizedBackupFilePath.equals(normalizedBackupBookKeyFilePath)) {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.BACKUP_BOOK_KEY_FILE,
-          ProtocolOptions.BACKUP_FILE
+          ProtocolOptions.BACKUP_BOOK_FILE
               + " and "
               + ProtocolOptions.BACKUP_BOOK_KEY_FILE
               + " must not point to the same path.");

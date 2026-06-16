@@ -94,6 +94,15 @@ def main() -> int:
             f"Docker build-context manifest listed missing file {(context_dir / normalized)}",
         )
 
+    docker_entrypoint = context_dir / "docker-entrypoint.sh"
+    require(docker_entrypoint.is_file(), f"missing Docker entrypoint at {docker_entrypoint}")
+    docker_entrypoint_text = docker_entrypoint.read_text(encoding="utf-8")
+    require(
+        "{{" not in docker_entrypoint_text and "}}" not in docker_entrypoint_text,
+        "staged Docker entrypoint contained unresolved template placeholders; rerun "
+        "./gradlew :cli:stageDockerBuildContext before docker build",
+    )
+
     source_fingerprint = manifest.get("sourceFingerprintSha3")
     source_files = manifest.get("sourceFiles")
     require(

@@ -40,9 +40,9 @@ class CliReadCommonArgumentValidationTest extends CliArgumentParsingTestSupport 
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--effective-date-from",
+                      "--period-start",
                       "2026-04-30",
-                      "--effective-date-to",
+                      "--period-end",
                       "2026-04-01"
                     }));
 
@@ -52,10 +52,9 @@ class CliReadCommonArgumentValidationTest extends CliArgumentParsingTestSupport 
         "--effective-date-from must be on or before --effective-date-to.",
         accountLedgerException.getMessage());
     assertEquals("invalid-request", periodSummaryException.code());
-    assertEquals("--effective-date-from", periodSummaryException.argument());
+    assertEquals("--period-start", periodSummaryException.argument());
     assertEquals(
-        "--effective-date-from must be on or before --effective-date-to.",
-        periodSummaryException.getMessage());
+        "--period-start must be on or before --period-end.", periodSummaryException.getMessage());
   }
 
   @Test

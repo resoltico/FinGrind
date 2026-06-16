@@ -54,6 +54,3 @@ internal fun reviewedJavaSourceSurface(
     duplicationExemptionReason = duplicationExemptionReason,
     approval = approval,
 )
-
-internal val reviewedSurfaceEntries =
-    reviewedProductionSourceSurfaces + reviewedTestSourceSurfaces

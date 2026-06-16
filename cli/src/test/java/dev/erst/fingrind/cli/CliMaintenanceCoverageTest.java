@@ -47,7 +47,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--backup-file-out",
+                  "--backup-book-file-out",
                   "backup/entity.sqlite",
                   "--backup-book-key-file-out",
                   "backup/entity.key"
@@ -64,7 +64,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--backup-file-out",
+                  "--backup-book-file-out",
                   "backup/entity.sqlite",
                   "--backup-book-key-file-out",
                   "backup/entity.key",
@@ -81,7 +81,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                   "restore-book",
                   "--book-file",
                   "book.sqlite",
-                  "--backup-file",
+                  "--backup-book-file",
                   "backup/entity.sqlite",
                   "--backup-book-key-file",
                   "backup/entity.key",
@@ -104,8 +104,8 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "--backup-book-key-file-out",
                       "backup/entity.key"
                     }));
-    assertEquals("--backup-file-out", missingBackupFile.argument());
-    assertEquals("A --backup-file-out argument is required.", missingBackupFile.getMessage());
+    assertEquals("--backup-book-file-out", missingBackupFile.argument());
+    assertEquals("A --backup-book-file-out argument is required.", missingBackupFile.getMessage());
 
     CliArgumentsException missingBackupKeyFile =
         assertThrows(
@@ -118,7 +118,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--backup-file-out",
+                      "--backup-book-file-out",
                       "backup/entity.sqlite"
                     }));
     assertEquals("--backup-book-key-file-out", missingBackupKeyFile.argument());
@@ -134,14 +134,14 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--backup-file-out",
+                      "--backup-book-file-out",
                       "backup/entity.sqlite",
-                      "--backup-file-out",
+                      "--backup-book-file-out",
                       "backup/entity-2.sqlite",
                       "--backup-book-key-file-out",
                       "backup/entity.key"
                     }));
-    assertEquals("--backup-file-out", duplicateBackupFile.argument());
+    assertEquals("--backup-book-file-out", duplicateBackupFile.argument());
 
     CliArgumentsException duplicateBackupKeyFile =
         assertThrows(
@@ -154,7 +154,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--backup-file-out",
+                      "--backup-book-file-out",
                       "backup/entity.sqlite",
                       "--backup-book-key-file-out",
                       "backup/entity.key",
@@ -174,7 +174,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
-                      "--backup-file-out",
+                      "--backup-book-file-out",
                       "backup/entity.sqlite",
                       "--backup-book-key-file-out",
                       "backup/entity.key",
@@ -189,7 +189,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                 CliArguments.parse(
                     new String[] {
                       "restore-book",
-                      "--backup-file",
+                      "--backup-book-file",
                       "backup/entity.sqlite",
                       "--backup-book-key-file",
                       "backup/entity.key"
@@ -209,7 +209,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "--backup-book-key-file",
                       "backup/entity.key"
                     }));
-    assertEquals("--backup-file", restoreMissingBackupFile.argument());
+    assertEquals("--backup-book-file", restoreMissingBackupFile.argument());
 
     CliArgumentsException restoreMissingBackupKeyFile =
         assertThrows(
@@ -220,7 +220,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "restore-book",
                       "--book-file",
                       "book.sqlite",
-                      "--backup-file",
+                      "--backup-book-file",
                       "backup/entity.sqlite"
                     }));
     assertEquals("--backup-book-key-file", restoreMissingBackupKeyFile.argument());
@@ -236,7 +236,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "book.sqlite",
                       "--book-file",
                       "book-2.sqlite",
-                      "--backup-file",
+                      "--backup-book-file",
                       "backup/entity.sqlite",
                       "--backup-book-key-file",
                       "backup/entity.key"
@@ -252,14 +252,14 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "restore-book",
                       "--book-file",
                       "book.sqlite",
-                      "--backup-file",
+                      "--backup-book-file",
                       "backup/entity.sqlite",
-                      "--backup-file",
+                      "--backup-book-file",
                       "backup/entity-2.sqlite",
                       "--backup-book-key-file",
                       "backup/entity.key"
                     }));
-    assertEquals("--backup-file", duplicateRestoreBackupFile.argument());
+    assertEquals("--backup-book-file", duplicateRestoreBackupFile.argument());
 
     CliArgumentsException duplicateRestoreBackupKeyFile =
         assertThrows(
@@ -270,7 +270,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "restore-book",
                       "--book-file",
                       "book.sqlite",
-                      "--backup-file",
+                      "--backup-book-file",
                       "backup/entity.sqlite",
                       "--backup-book-key-file",
                       "backup/entity.key",
@@ -288,7 +288,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "restore-book",
                       "--book-file",
                       "book.sqlite",
-                      "--backup-file",
+                      "--backup-book-file",
                       "backup/entity.sqlite",
                       "--backup-book-key-file",
                       "backup/entity.key",
@@ -305,12 +305,12 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "delete-rekey-rollback",
                       "--book-file",
                       "book.sqlite",
-                      "--rollback-file",
+                      "--rollback-book-file",
                       "rollback-a.sqlite",
-                      "--rollback-file",
+                      "--rollback-book-file",
                       "rollback-b.sqlite"
                     }));
-    assertEquals("--rollback-file", duplicateRollbackFile.argument());
+    assertEquals("--rollback-book-file", duplicateRollbackFile.argument());
 
     CliArgumentsException inspectRollbackPathRejected =
         assertThrows(
@@ -321,12 +321,12 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                       "inspect-rekey-rollback",
                       "--book-file",
                       "book.sqlite",
-                      "--rollback-file",
+                      "--rollback-book-file",
                       "rollback.sqlite"
                     }));
-    assertEquals("--rollback-file", inspectRollbackPathRejected.argument());
+    assertEquals("--rollback-book-file", inspectRollbackPathRejected.argument());
     assertEquals(
-        "--rollback-file is accepted only when delete-rekey-rollback or restore-rekey-rollback is selected.",
+        "--rollback-book-file is accepted only when delete-rekey-rollback or restore-rekey-rollback is selected.",
         inspectRollbackPathRejected.getMessage());
 
     InspectRekeyRollback inspectWithTextOutput =
@@ -408,7 +408,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
     assertEquals("--book-passphrase-stdin", requestStdinCollision.argument());
 
     assertEquals(
-        "--backup-file-out",
+        "--backup-book-file-out",
         assertThrows(
                 CliArgumentsException.class,
                 () ->
@@ -435,7 +435,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                         Path.of("backup/entity.sqlite")))
             .argument());
     assertEquals(
-        "--backup-file",
+        "--backup-book-file",
         assertThrows(
                 CliArgumentsException.class,
                 () ->
@@ -464,8 +464,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                 CliBookPathValidator.validateRekeyStandardInputUsage(
                     BookAccess.PassphraseSource.StandardInput.INSTANCE,
                     BookAccess.PassphraseSource.StandardInput.INSTANCE));
-    assertEquals(
-        "--replacement-book-passphrase-stdin", replacementStandardInputCollision.argument());
+    assertEquals("--new-book-passphrase-stdin", replacementStandardInputCollision.argument());
   }
 
   @Test
@@ -571,7 +570,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
     assertMaintenanceEnvelope(
         new BookMaintenanceRejection.BackupDestinationAlreadyExists(
             hint(Path.of("backup/entity.sqlite"))),
-        "Choose a new --backup-file-out path",
+        "Choose a new --backup-book-file-out path",
         CliRejectionJsonModels.BackupFileDetails.class);
     assertMaintenanceEnvelope(
         new BookMaintenanceRejection.BackupKeyFileAlreadyExists(hint(Path.of("backup/entity.key"))),
@@ -587,7 +586,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             List.of(
                 hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
                 hint(Path.of("books/entity.rekey-rollback-b.sqlite")))),
-        "with one explicit --rollback-file path",
+        "with one explicit --rollback-book-file path",
         CliRejectionJsonModels.RollbackArtifactSelectionDetails.class);
     assertMaintenanceEnvelope(
         new BookMaintenanceRejection.RollbackArtifactNotFound(

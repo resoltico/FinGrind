@@ -75,6 +75,8 @@ grep -Fq 'FINGRIND_RELEASE_MARK_LATEST' "${release_workflow}" || die \
     "release workflow no longer drives GitHub latest ownership from the canonical latest policy"
 grep -Fq 'FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST' "${release_workflow}" || die \
     "release workflow no longer keeps public-container latest verification aligned with the latest policy"
+grep -Fq -- '--execution-surface compatibility-floor' "${release_workflow}" || die \
+    "release workflow no longer re-proves Linux release bundles on the compatibility floor"
 grep -Fq './scripts/verify-github-release.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
     "release protocol no longer requires the GitHub release verifier"
 grep -Fq './scripts/verify-public-container-surface.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \

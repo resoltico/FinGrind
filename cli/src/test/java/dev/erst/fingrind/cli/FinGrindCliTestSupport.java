@@ -2,9 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.Arrays;
 
@@ -31,7 +29,15 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
   }
 
   protected static FinGrindCli cli(InputStream inputStream, PrintStream outputStream, Clock clock) {
-    return FinGrindCli.standard(inputStream, outputStream, diagnosticsStream(), clock);
+    return FinGrindCli.standard(inputStream, outputStream, outputStream, clock);
+  }
+
+  protected static FinGrindCli cli(
+      InputStream inputStream,
+      PrintStream outputStream,
+      PrintStream diagnosticsStream,
+      Clock clock) {
+    return FinGrindCli.standard(inputStream, outputStream, diagnosticsStream, clock);
   }
 
   protected static FinGrindCli cli(
@@ -40,13 +46,7 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
       Clock clock,
       CliBookWorkflow bookWorkflow) {
     return new FinGrindCli(
-        inputStream,
-        outputStream,
-        diagnosticsStream(),
-        clock,
-        bookWorkflow,
-        bookWorkflow,
-        bookWorkflow);
+        inputStream, outputStream, outputStream, clock, bookWorkflow, bookWorkflow, bookWorkflow);
   }
 
   protected static FinGrindCli cli(
@@ -54,8 +54,7 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
       PrintStream outputStream,
       Clock clock,
       CliBookPassphraseResolver.Terminal terminal) {
-    return FinGrindCli.withTerminal(
-        inputStream, outputStream, diagnosticsStream(), clock, terminal);
+    return FinGrindCli.withTerminal(inputStream, outputStream, outputStream, clock, terminal);
   }
 
   protected static FinGrindCli cli(
@@ -72,9 +71,5 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
         bookWorkflow,
         bookWorkflow,
         bookWorkflow);
-  }
-
-  private static PrintStream diagnosticsStream() {
-    return new PrintStream(OutputStream.nullOutputStream(), true, StandardCharsets.UTF_8);
   }
 }

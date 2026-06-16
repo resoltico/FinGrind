@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -12,11 +13,23 @@ import java.util.Set;
 
 /** Account-catalog read surface over one SQLite posting-fact store. */
 interface SqlitePostingFactStoreAccountCatalogView
-    extends SqlitePostingFactStoreReadOperationsView {
+    extends SqlitePostingFactStoreReadOperationsView, SqlitePostingFactStoreLifecycleView {
   /** Returns lifecycle inspection facts for the protected book. */
   default BookLifecycleInspection inspectBook() {
     storeThreadOwner().requireOwnerThread();
     return storeReadOperations().inspectBook();
+  }
+
+  /** Returns whether initialized-book workflows may proceed for this protected book. */
+  default boolean allowsInitializedWorkflow() {
+    storeThreadOwner().requireOwnerThread();
+    return storeLifecycle().allowsInitializedWorkflow();
+  }
+
+  /** Returns the initialized book identity or throws when the book is not initialized. */
+  default BookIdentity requireInitializedBookIdentity() {
+    storeThreadOwner().requireOwnerThread();
+    return storeLifecycle().requireInitializedBookIdentity();
   }
 
   /** Finds one registered account by account code. */

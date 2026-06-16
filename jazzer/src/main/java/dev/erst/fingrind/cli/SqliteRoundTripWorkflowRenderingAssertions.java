@@ -119,7 +119,7 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
     CliFailure failure =
         runtimeFailure != null
             ? runtimeFailure
-            : CliFailureMapper.internalError("fg-jazzer-rendering-internal");
+            : CliFailureMapper.internalError("fg-jazzer-rendering-internal", outputMode);
     writers.failure().writeFailure(failure, outputMode);
     assertRenderedDocument(
         outputStream.toString(StandardCharsets.UTF_8), outputMode, requiredFragment);

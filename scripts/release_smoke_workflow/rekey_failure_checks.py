@@ -33,7 +33,7 @@ def verify_rekey_and_wrong_key_semantics(
         config.book.argument,
         "--book-key-file",
         config.book_key.argument,
-        "--replacement-book-key-file",
+        "--new-book-key-file",
         config.replacement_book_key.argument,
         "--output",
         "json",

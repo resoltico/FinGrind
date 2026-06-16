@@ -108,7 +108,7 @@ assert_wrapper_help 'Usage: ./scripts/run-quality-gates.sh [supported Gradle opt
     "${repo_root}/scripts/run-quality-gates.sh" --help
 assert_wrapper_help 'Usage: ./scripts/check-release-surface-scripts.sh' \
     "${repo_root}/scripts/check-release-surface-scripts.sh" --help
-assert_wrapper_help_without_python3 'Usage: ./scripts/bundle-smoke.sh [bundle-archive-path]' \
+assert_wrapper_help_without_python3 'Usage: ./scripts/bundle-smoke.sh [bundle-archive-path] [--execution-surface host|compatibility-floor]' \
     "${poisoned_python3_dir}" \
     "${repo_root}/scripts/bundle-smoke.sh" --help
 assert_wrapper_help 'Usage: ./scripts/docker-smoke.sh' \

@@ -23,7 +23,7 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "book.sqlite",
                   "--book-key-file",
                   "current.key",
-                  "--replacement-book-key-file",
+                  "--new-book-key-file",
                   "replacement.key"
                 }));
 
@@ -48,7 +48,7 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--book-file",
                   "book.sqlite",
                   "--book-passphrase-stdin",
-                  "--replacement-book-passphrase-prompt"
+                  "--new-book-passphrase-prompt"
                 }));
     assertEquals(
         BookAccess.PassphraseSource.StandardInput.INSTANCE,
@@ -66,7 +66,7 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--book-file",
                   "book.sqlite",
                   "--book-passphrase-prompt",
-                  "--replacement-book-passphrase-stdin"
+                  "--new-book-passphrase-stdin"
                 }));
     assertEquals(
         BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
@@ -88,7 +88,7 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "book.sqlite",
                   "--book-key-file",
                   "current.key",
-                  "--replacement-book-passphrase-prompt"
+                  "--new-book-passphrase-prompt"
                 }));
 
     assertEquals(
@@ -111,7 +111,7 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "book-a.sqlite",
                       "--book-key-file",
                       "current.key",
-                      "--replacement-book-key-file",
+                      "--new-book-key-file",
                       "replacement.key",
                       "--book-file",
                       "book-b.sqlite"
@@ -133,7 +133,7 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "rekey-book",
                       "--book-file",
                       "book.sqlite",
-                      "--replacement-book-key-file",
+                      "--new-book-key-file",
                       "replacement.key"
                     }));
 
@@ -156,7 +156,7 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "rekey-book",
                       "--book-key-file",
                       "current.key",
-                      "--replacement-book-key-file",
+                      "--new-book-key-file",
                       "next.key"
                     }));
 
@@ -177,10 +177,10 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                     }));
 
     assertEquals("invalid-request", exception.code());
-    assertEquals("--replacement-book-key-file", exception.argument());
+    assertEquals("--new-book-key-file", exception.argument());
     assertEquals(
-        "Exactly one replacement book passphrase source is required: --replacement-book-key-file <existing-path>,"
-            + " --replacement-book-passphrase-stdin, or --replacement-book-passphrase-prompt.",
+        "Exactly one new book passphrase source is required: --new-book-key-file <existing-path>,"
+            + " --new-book-passphrase-stdin, or --new-book-passphrase-prompt.",
         exception.getMessage());
   }
 
@@ -197,14 +197,14 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "current.key",
-                      "--replacement-book-key-file",
+                      "--new-book-key-file",
                       "replacement-a.key",
-                      "--replacement-book-key-file",
+                      "--new-book-key-file",
                       "replacement-b.key"
                     }));
-    assertEquals("--replacement-book-key-file", duplicateKeyFile.argument());
+    assertEquals("--new-book-key-file", duplicateKeyFile.argument());
     assertEquals(
-        "Exactly one replacement book passphrase source is permitted per command.",
+        "Exactly one new book passphrase source is permitted per command.",
         duplicateKeyFile.getMessage());
 
     CliArgumentsException duplicateStandardInput =
@@ -218,10 +218,10 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "current.key",
-                      "--replacement-book-passphrase-stdin",
-                      "--replacement-book-passphrase-stdin"
+                      "--new-book-passphrase-stdin",
+                      "--new-book-passphrase-stdin"
                     }));
-    assertEquals("--replacement-book-passphrase-stdin", duplicateStandardInput.argument());
+    assertEquals("--new-book-passphrase-stdin", duplicateStandardInput.argument());
 
     CliArgumentsException duplicatePrompt =
         assertThrows(
@@ -234,10 +234,10 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "current.key",
-                      "--replacement-book-passphrase-prompt",
-                      "--replacement-book-passphrase-prompt"
+                      "--new-book-passphrase-prompt",
+                      "--new-book-passphrase-prompt"
                     }));
-    assertEquals("--replacement-book-passphrase-prompt", duplicatePrompt.argument());
+    assertEquals("--new-book-passphrase-prompt", duplicatePrompt.argument());
   }
 
   @Test
@@ -253,14 +253,14 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "shared.key",
-                      "--replacement-book-key-file",
+                      "--new-book-key-file",
                       "shared.key"
                     }));
 
     assertEquals("invalid-request", exception.code());
-    assertEquals("--replacement-book-key-file", exception.argument());
+    assertEquals("--new-book-key-file", exception.argument());
     assertEquals(
-        "--book-key-file and --replacement-book-key-file must not point to the same path.",
+        "--book-key-file and --new-book-key-file must not point to the same path.",
         exception.getMessage());
   }
 
@@ -277,7 +277,7 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "current.key",
-                      "--replacement-book-key-file",
+                      "--new-book-key-file",
                       "next.key",
                       "--wat"
                     }));
@@ -299,13 +299,13 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "--book-file",
                       "book.sqlite",
                       "--book-passphrase-stdin",
-                      "--replacement-book-passphrase-stdin"
+                      "--new-book-passphrase-stdin"
                     }));
 
     assertEquals("invalid-request", exception.code());
-    assertEquals("--replacement-book-passphrase-stdin", exception.argument());
+    assertEquals("--new-book-passphrase-stdin", exception.argument());
     assertEquals(
-        "Standard input cannot supply both the current and replacement book passphrases.",
+        "Standard input cannot supply both the current and new book passphrases.",
         exception.getMessage());
   }
 }

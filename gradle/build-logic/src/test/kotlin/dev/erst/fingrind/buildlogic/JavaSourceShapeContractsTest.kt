@@ -15,6 +15,7 @@ class JavaSourceShapeContractsTest {
     fun exportedMainFiles_useExportedBudgetWhenNoReviewedContractExists() {
         val contract =
             JavaSourceStructuralContracts.contractFor(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CONTRACT,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/contract/protocol/OperationCategory.java",
@@ -31,6 +32,7 @@ class JavaSourceShapeContractsTest {
     fun reviewedPaths_publishReviewedRolesInsteadOfSmugglingReviewedBudgets() {
         val contract =
             JavaSourceStructuralContracts.contractFor(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CONTRACT,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/contract/bookkeeping/RejectionNarrative.java",
@@ -51,6 +53,7 @@ class JavaSourceShapeContractsTest {
     fun reviewedPaths_resolveAcrossAllOwnedProjects() {
         val executorContract =
             JavaSourceStructuralContracts.contractFor(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.EXECUTOR,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/executor/bookkeeping/PeriodResultTransferPlanner.java",
@@ -59,6 +62,7 @@ class JavaSourceShapeContractsTest {
             )
         val sqliteContract =
             JavaSourceStructuralContracts.contractFor(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.SQLITE,
                 relativePath = "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeCalls.java",
                 packageName = "dev.erst.fingrind.sqlite.internal",
@@ -66,6 +70,7 @@ class JavaSourceShapeContractsTest {
             )
         val cliContract =
             JavaSourceStructuralContracts.contractFor(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CLI,
                 relativePath = "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
                 packageName = "dev.erst.fingrind.cli.json",
@@ -84,6 +89,7 @@ class JavaSourceShapeContractsTest {
     fun mainFilesUseTheProductionBudgetWithoutNameBasedPrivilege() {
         val contract =
             JavaSourceStructuralContracts.contractFor(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.EXECUTOR,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/executor/maintenance/SomeWorkflow.java",
@@ -98,7 +104,7 @@ class JavaSourceShapeContractsTest {
 
     @Test
     fun reviewedSurfaces_expireSoonAndFreezeApprovedShape() {
-        JavaSourceStructuralContracts.reviewedSurfaces().forEach { reviewedSurface ->
+        JavaSourceStructuralContracts.reviewedSurfaces(repositoryRoot).forEach { reviewedSurface ->
             assertTrue(
                 reviewedSurface.approval.expiresOn.isAfter(LocalDate.now()),
                 "reviewed surface waivers must expire in the future: ${reviewedSurface.relativePath}",
@@ -125,6 +131,7 @@ class JavaSourceShapeContractsTest {
     fun duplicationChecks_followReviewedSurfaceMetadataInsteadOfRoleNameLiterals() {
         assertTrue(
             !JavaSourceStructuralContracts.includeInDuplicationCheck(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CLI,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
@@ -134,6 +141,7 @@ class JavaSourceShapeContractsTest {
         )
         assertTrue(
             JavaSourceStructuralContracts.includeInDuplicationCheck(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CONTRACT,
                 relativePath =
                     "src/main/java/dev/erst/fingrind/contract/protocol/ProtocolAdministrationOperations.java",
@@ -147,6 +155,7 @@ class JavaSourceShapeContractsTest {
     fun missingReviewedSurfaceViolations_reportOrphanedPathsPerProject() {
         val violations =
             JavaSourceStructuralContracts.missingReviewedSurfaceViolations(
+                projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CLI,
                 existingRelativePaths = emptySet(),
             )

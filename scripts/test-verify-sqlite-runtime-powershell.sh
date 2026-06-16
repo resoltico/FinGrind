@@ -26,11 +26,14 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly direct_java_verifier_ps1="${repo_root}/scripts/verify-direct-java-sqlite-runtime.ps1"
 readonly source_checkout_verifier_ps1="${repo_root}/scripts/verify-source-checkout-sqlite-runtime.ps1"
+readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 
 [[ -f "${direct_java_verifier_ps1}" ]] || die \
     "missing PowerShell direct-Java runtime verifier at ${direct_java_verifier_ps1}"
 [[ -f "${source_checkout_verifier_ps1}" ]] || die \
     "missing PowerShell source-checkout runtime verifier at ${source_checkout_verifier_ps1}"
+[[ -f "${python_runtime_support}" ]] || die \
+    "missing Python runtime support helper at ${python_runtime_support}"
 grep -Fq 'direct-java-cli.ps1' "${direct_java_verifier_ps1}" || die \
     "PowerShell direct-Java runtime verifier no longer delegates to the direct-Java wrapper owner"
 grep -Fq 'source-checkout-cli.ps1' "${source_checkout_verifier_ps1}" || die \
@@ -52,6 +55,13 @@ if ! command -v pwsh >/dev/null 2>&1; then
     exit 0
 fi
 
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "${direct_java_verifier_ps1}"
+pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "${source_checkout_verifier_ps1}"
+
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
+prepare_python_runtime_env
+rm -rf "${FINGRIND_PYTHON_SHIMS_DIR}"
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "${direct_java_verifier_ps1}"
 pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "${source_checkout_verifier_ps1}"
 

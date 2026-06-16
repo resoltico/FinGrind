@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows publication lane, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did the windows publication lane expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -47,6 +47,8 @@ asset name.
 
 These publication invariants are release-critical:
 - tag identity is immutable; fix workflow defects on `main` and rerun against the existing tag
+- the tagged release commit must introduce the target version on the default-branch line; a later
+  repair commit may not inherit an already-bumped version and reuse it for publication
 - publication convergence is by asset name plus digest, not by asset name alone
 - the tag-driven bundle publisher must consume the archive and checksum paths reported by
   `:cli:bundleCliArchive`; it must not guess checkout-local `cli/build/distributions/...` paths
@@ -82,13 +84,13 @@ repository workflow identity.
 ## Cross-Platform Notes
 
 The trust model is identical across every release-control surface:
-- published bundle assets are the Linux `.tar.gz` archives declared by the public-distribution
-  contract
-- the Windows publication lane remains one quality canary over launcher semantics, Unicode
-  forwarding, and bundle/runtime behavior even though Windows bundles are not published as release
-  assets
-
-Windows is not a separate provenance class. It is a canary surface.
+- published bundle assets are every classifier whose publication status is `published` in
+  `bundle-publication-contract.json`
+- the current published asset set is `macos-aarch64`, `macos-x86_64`, `linux-x86_64`,
+  `linux-aarch64`, and `windows-x86_64`
+- `windows-aarch64` remains declared but not published, so it must not appear as a release asset
+- unsigned macOS and Windows bundles use the same checksum-plus-attestation trust model as Linux;
+  there is no platform-specific provenance exception
 
 In the `0.32.0` release repair, the Windows publication lane exposed the publication drift first
 because the published asset digest diverged from the runner-local subject that had been attested.
@@ -123,6 +125,12 @@ safe repair path is:
 
 Do not move the release tag. Do not create a replacement tag for the same version. Repair the
 publication machinery and replay it against the immutable released commit.
+
+The rerun path uses a different release-candidate verification mode from the initial publication
+path. Initial publication requires the tagged commit to equal the current default-branch head.
+Workflow-dispatch reruns keep the tagged checkout on the immutable release commit and verify that
+commit through the historical-tag rule instead: the tag must remain reachable from `origin/main`,
+and the original release-blocking CI set on that tagged commit must already be green.
 
 The rerun workflow now reads the canonical bundle-archive manifest instead of scraping Gradle
 console output, so post-tag publication repairs do not need compatibility shims for historical

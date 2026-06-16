@@ -31,6 +31,8 @@ tasks.named<ShadowJar>("shadowJar") {
     archiveBaseName = "fingrind"
     archiveVersion = ""
     archiveClassifier = ""
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
     inputs.property("shadowJarImplementationTitle", "FinGrind")
     inputs.property("shadowJarImplementationVersion", project.version.toString())
     inputs.property("shadowJarImplementationVendor", buildMetadata.implementationVendor)

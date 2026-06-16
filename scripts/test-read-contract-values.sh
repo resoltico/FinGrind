@@ -42,6 +42,29 @@ def read_json(path: pathlib.Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def publication_entry(
+    status: str,
+    *,
+    runner_label=None,
+    expected_runner_os=None,
+    expected_runner_arch=None,
+):
+    payload = {"status": status}
+    if runner_label is not None:
+        payload["runnerLabel"] = runner_label
+    if expected_runner_os is not None:
+        payload["expectedRunnerOs"] = expected_runner_os
+    if expected_runner_arch is not None:
+        payload["expectedRunnerArch"] = expected_runner_arch
+    return payload
+
+
+def write_bundle_publication_contract(
+    protocol_root: pathlib.Path, bundle_targets
+):
+    write_json(protocol_root / "bundle-publication-contract.json", {"bundleTargets": bundle_targets})
+
+
 with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_root_raw:
     fixture_root = pathlib.Path(fixture_root_raw)
     protocol_root = fixture_root / "contract/src/main/resources/dev/erst/fingrind/contract/protocol"
@@ -71,10 +94,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "kdfIter": "kdfIter",
                 "plaintextHeaderSize": "plaintextHeaderSize",
             },
-            "publicDistribution": {
-                "supportedPublicCliBundleTargets": "supportedPublicCliBundleTargets",
-                "unsupportedPublicCliBundleTargets": "unsupportedPublicCliBundleTargets",
-            },
             "managedSqlite": {
                 "requiredMinimumSqliteVersion": "requiredMinimumSqliteVersion",
                 "requiredSqlite3mcVersion": "requiredSqlite3mcVersion",
@@ -94,12 +113,18 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "launcherPath": "launcherPath",
                 "launcherCommand": "launcherCommand",
                 "sqliteLibraryFileName": "sqliteLibraryFileName",
+                "compatibilityLabel": "compatibilityLabel",
+                "minimumGlibcVersion": "minimumGlibcVersion",
+                "compatibilitySmokeContainerImage": "compatibilitySmokeContainerImage",
             },
-            "releasePublication": {
-                "publicBundleBuildTargets": "publicBundleBuildTargets",
+            "bundlePublication": {
+                "bundleTargets": "bundleTargets",
+                "status": "status",
                 "runnerLabel": "runnerLabel",
                 "expectedRunnerOs": "expectedRunnerOs",
                 "expectedRunnerArch": "expectedRunnerArch",
+            },
+            "releasePublication": {
                 "requiredCiWorkflowName": "requiredCiWorkflowName",
                 "requiredCiWorkflowPath": "requiredCiWorkflowPath",
                 "requiredCiGateJobName": "requiredCiGateJobName",
@@ -209,6 +234,9 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                     "launcherPath": "bin/fingrind",
                     "launcherCommand": "./bin/fingrind",
                     "sqliteLibraryFileName": "libsqlite3.so.0",
+                    "compatibilityLabel": "glibc 2.34+ Linux x86_64",
+                    "minimumGlibcVersion": "2.34",
+                    "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof",
                 },
                 "windows-aarch64": {
                     "operatingSystemId": "windows",
@@ -217,27 +245,26 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                     "launcherPath": "bin/fingrind.ps1",
                     "launcherCommand": ".\\bin\\fingrind.ps1",
                     "sqliteLibraryFileName": "sqlite3.dll",
+                    "compatibilityLabel": "Windows aarch64",
                 },
             }
         },
     )
-    write_json(
-        protocol_root / "public-distribution-contract.json",
+    write_bundle_publication_contract(
+        protocol_root,
         {
-            "supportedPublicCliBundleTargets": ["linux-x86_64"],
-            "unsupportedPublicCliBundleTargets": ["windows-aarch64"],
+            "linux-x86_64": publication_entry(
+                "published",
+                runner_label="ubuntu-24.04",
+                expected_runner_os="Linux",
+                expected_runner_arch="x86_64",
+            ),
+            "windows-aarch64": publication_entry("not-published"),
         },
     )
     write_json(
         protocol_root / "release-publication-contract.json",
         {
-            "publicBundleBuildTargets": {
-                "linux-x86_64": {
-                    "runnerLabel": "ubuntu-24.04",
-                    "expectedRunnerOs": "Linux",
-                    "expectedRunnerArch": "x86_64",
-                }
-            },
             "requiredCiWorkflowName": "CI",
             "requiredCiWorkflowPath": ".github/workflows/ci.yml",
             "requiredCiGateJobName": "Gate",
@@ -310,6 +337,12 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     assert loaded["bundleLayout"]["hostBundleTarget"]["classifier"] == "windows-aarch64"
     assert loaded["bundleLayout"]["hostBundleTarget"]["archiveFormat"] == "zip"
     assert loaded["bundleLayout"]["hostBundleTarget"]["launcherPath"] == "bin/fingrind.ps1"
+    assert loaded["bundleLayout"]["targets"]["linux-x86_64"]["compatibilityLabel"] == "glibc 2.34+ Linux x86_64"
+    assert loaded["bundleLayout"]["targets"]["linux-x86_64"]["minimumGlibcVersion"] == "2.34"
+    assert (
+        loaded["bundleLayout"]["targets"]["linux-x86_64"]["compatibilitySmokeContainerImage"]
+        == "rockylinux:9@sha256:floor-proof"
+    )
     assert loaded["publicDistribution"]["unsupportedPublicCliBundleTargets"] == [
         "windows-aarch64"
     ]
@@ -327,10 +360,42 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     assert loaded["operationIds"]["generateBookKeyFile"] == "generate-book-key-file"
 
     write_json(
-        protocol_root / "public-distribution-contract.json",
+        protocol_root / "bundle-layout-contract.json",
         {
-            "supportedPublicCliBundleTargets": ["linux-x86_64", "plan9-x86"],
-            "unsupportedPublicCliBundleTargets": [],
+            "bundleTargets": {
+                "linux-x86_64": {
+                    "operatingSystemId": "linux",
+                    "architectureId": "x86_64",
+                    "archiveFormat": "tar.gz",
+                    "launcherPath": "bin/fingrind",
+                    "launcherCommand": "./bin/fingrind",
+                    "sqliteLibraryFileName": "libsqlite3.so.0",
+                    "compatibilityLabel": "glibc 2.34+ Linux x86_64",
+                    "minimumGlibcVersion": "2.34",
+                    "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof",
+                },
+                "windows-aarch64": {
+                    "operatingSystemId": "windows",
+                    "architectureId": "aarch64",
+                    "archiveFormat": "zip",
+                    "launcherPath": "bin/fingrind.ps1",
+                    "launcherCommand": ".\\bin\\fingrind.ps1",
+                    "sqliteLibraryFileName": "sqlite3.dll",
+                    "compatibilityLabel": "Windows aarch64",
+                },
+            }
+        },
+    )
+    write_bundle_publication_contract(
+        protocol_root,
+        {
+            "linux-x86_64": publication_entry(
+                "published",
+                runner_label="ubuntu-24.04",
+                expected_runner_os="Linux",
+                expected_runner_arch="x86_64",
+            ),
+            "windows-aarch64": publication_entry("experimental"),
         },
     )
     try:
@@ -338,33 +403,71 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             fixture_root, os_name="Linux", architecture="x86_64"
         )
     except ValueError as exc:
-        assert "undeclared bundle target" in str(exc)
+        assert "unsupported publication status" in str(exc)
     else:
-        raise AssertionError("expected undeclared bundle target validation failure")
+        raise AssertionError("expected unsupported publication status validation failure")
 
     write_json(
-        protocol_root / "public-distribution-contract.json",
+        protocol_root / "bundle-layout-contract.json",
         {
-            "supportedPublicCliBundleTargets": ["linux-x86_64"],
-            "unsupportedPublicCliBundleTargets": ["windows-aarch64"],
+            "bundleTargets": {
+                "linux-x86_64": {
+                    "operatingSystemId": "linux",
+                    "architectureId": "x86_64",
+                    "archiveFormat": "tar.gz",
+                    "launcherPath": "bin/fingrind",
+                    "launcherCommand": "./bin/fingrind",
+                    "sqliteLibraryFileName": "libsqlite3.so.0",
+                    "compatibilityLabel": "glibc 2.34+ Linux x86_64",
+                    "minimumGlibcVersion": "2.34",
+                    "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof",
+                },
+                "linux-aarch64": {
+                    "operatingSystemId": "linux",
+                    "architectureId": "aarch64",
+                    "archiveFormat": "tar.gz",
+                    "launcherPath": "bin/fingrind",
+                    "launcherCommand": "./bin/fingrind",
+                    "sqliteLibraryFileName": "libsqlite3.so.0",
+                    "compatibilityLabel": "glibc 2.34+ Linux aarch64",
+                    "minimumGlibcVersion": "2.34",
+                    "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof",
+                },
+                "windows-aarch64": {
+                    "operatingSystemId": "windows",
+                    "architectureId": "aarch64",
+                    "archiveFormat": "zip",
+                    "launcherPath": "bin/fingrind.ps1",
+                    "launcherCommand": ".\\bin\\fingrind.ps1",
+                    "sqliteLibraryFileName": "sqlite3.dll",
+                    "compatibilityLabel": "Windows aarch64",
+                },
+            }
+        },
+    )
+    write_bundle_publication_contract(
+        protocol_root,
+        {
+            "linux-x86_64": publication_entry(
+                "published",
+                runner_label="ubuntu-24.04",
+                expected_runner_os="Linux",
+                expected_runner_arch="x86_64",
+            ),
+            "linux-aarch64": publication_entry(
+                "published",
+                runner_label="ubuntu-24.04-arm",
+                expected_runner_os="Linux",
+                expected_runner_arch="aarch64",
+            ),
+            "windows-aarch64": publication_entry("not-published"),
         },
     )
     write_json(
         protocol_root / "release-publication-contract.json",
         {
             **read_json(protocol_root / "release-publication-contract.json"),
-            "publicBundleBuildTargets": {
-                "linux-x86_64": {
-                    "runnerLabel": "ubuntu-24.04",
-                    "expectedRunnerOs": "Linux",
-                    "expectedRunnerArch": "x86_64",
-                },
-                "windows-aarch64": {
-                    "runnerLabel": "windows-2022",
-                    "expectedRunnerOs": "Windows",
-                    "expectedRunnerArch": "ARM64",
-                },
-            },
+            "containerPlatforms": ["linux/amd64"],
         },
     )
     try:
@@ -372,20 +475,13 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             fixture_root, os_name="Linux", architecture="x86_64"
         )
     except ValueError as exc:
-        assert "unsupported build targets" in str(exc)
+        assert "containerPlatforms must match the supported Linux public bundle targets" in str(exc)
     else:
-        raise AssertionError("expected unsupported release build-target validation failure")
+        raise AssertionError("expected release container-platform validation failure")
 
     write_json(
         protocol_root / "release-publication-contract.json",
         {
-            "publicBundleBuildTargets": {
-                "linux-x86_64": {
-                    "runnerLabel": "ubuntu-24.04",
-                    "expectedRunnerOs": "Linux",
-                    "expectedRunnerArch": "x86_64",
-                }
-            },
             "requiredCiWorkflowName": "CI",
             "requiredCiWorkflowPath": ".github/workflows/ci.yml",
             "requiredCiGateJobName": "Gate",
@@ -394,7 +490,7 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "containerImageName": "fingrind",
             "containerStagingImageName": "fingrind-publication-staging",
             "containerRunnerLabel": "ubuntu-24.04",
-            "containerPlatforms": ["linux/amd64"],
+            "containerPlatforms": ["linux/amd64", "linux/arm64"],
             "latestPublicationPolicy": "newest-stable-release-only",
         },
     )

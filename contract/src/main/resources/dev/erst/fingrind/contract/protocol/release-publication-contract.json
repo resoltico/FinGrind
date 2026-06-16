@@ -1,23 +1,14 @@
 {
-  "publicBundleBuildTargets": {
-    "linux-x86_64": {
-      "runnerLabel": "ubuntu-24.04",
-      "expectedRunnerOs": "Linux",
-      "expectedRunnerArch": "x86_64"
-    },
-    "linux-aarch64": {
-      "runnerLabel": "ubuntu-24.04-arm",
-      "expectedRunnerOs": "Linux",
-      "expectedRunnerArch": "aarch64"
-    }
-  },
   "requiredCiWorkflowName": "CI",
   "requiredCiWorkflowPath": ".github/workflows/ci.yml",
   "requiredCiGateJobName": "Gate",
   "requiredCiJobNames": [
     "Check",
+    "Published bundle smoke (macos-aarch64)",
+    "Published bundle smoke (macos-x86_64)",
     "Published bundle smoke (linux-x86_64)",
     "Published bundle smoke (linux-aarch64)",
+    "Published bundle smoke (windows-x86_64)",
     "Detect devcontainer changes",
     "Contributor devcontainer"
   ],

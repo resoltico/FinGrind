@@ -1,9 +1,12 @@
 package dev.erst.fingrind.jazzer.tool;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import dev.erst.fingrind.jazzer.support.JazzerTestProjectRoot;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,5 +51,36 @@ class CommittedRegressionSeedInputsTest {
     assertTrue(
         invalidInputs.isEmpty(),
         () -> "Malformed committed JSON seed inputs:\n" + String.join("\n", invalidInputs));
+  }
+
+  @Test
+  void committedRegressionMetadata_matches_currentReplayExpectations() throws Exception {
+    List<String> mismatches = new ArrayList<>();
+
+    for (JazzerHarness harness : JazzerHarness.values()) {
+      for (Path metadataPath : RegressionSeedPaths.metadataPaths(PROJECT_DIRECTORY, harness)) {
+        RegressionSeedMetadata metadata =
+            JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
+        ReplayExpectation actualExpectation =
+            JazzerReplayRunner.expectationFor(
+                JazzerReplayRunner.replay(
+                    harness, Files.readAllBytes(metadata.inputPath(PROJECT_DIRECTORY))));
+        if (!metadata.expectation().equals(actualExpectation)) {
+          mismatches.add(
+              metadataPath.getFileName()
+                  + " for "
+                  + harness.key()
+                  + " expected "
+                  + JazzerJson.toJson(metadata.expectation())
+                  + " but got "
+                  + JazzerJson.toJson(actualExpectation));
+        }
+      }
+    }
+
+    assertEquals(
+        List.of(),
+        mismatches,
+        () -> "Committed regression metadata drift:\n" + String.join("\n", mismatches));
   }
 }

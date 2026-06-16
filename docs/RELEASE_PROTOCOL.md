@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -296,22 +296,19 @@ Do not proceed until `./scripts/verify-release-pr-gate.sh <N>` succeeds for the 
 is the single authoritative required check for release promotion, and the verifier checks the PR
 head commit directly instead of inferring readiness from `statusCheckRollup`.
 
-The aggregate `Gate` check run appears only after `Check`, the published Linux bundle-smoke
-matrix, and the devcontainer gate pair have finished or been skipped in workflow `CI`. A PR can
+The aggregate `Gate` check run appears only after `Check`, the published bundle-smoke matrix, and
+the devcontainer gate pair have finished or been skipped in workflow `CI`. A PR can
 therefore show `Check` green while `Gate` is absent. Treat a missing `Gate` as pending, not as
-success. The verifier is the canonical owner of that waiting logic.
+success. The verifier is the canonical owner of that waiting logic. The published bundle-smoke
+matrix now includes macOS, Linux, and Windows publication proofs, and the Linux rows each add the
+minimum-glibc compatibility-floor rerun, so `Gate` naturally arrives after `Check`.
 
 If `./scripts/verify-release-pr-gate.sh <N>` reports a failing `Gate`, fix the failure, push to the
 release branch, and run the verifier again — do not merge a red PR.
 
 The verifier's default wait is sized for the normal PR-side CI fan-out where the aggregate `Gate`
-arrives after the slower sibling jobs finish, especially the published Linux bundle-smoke matrix.
+arrives after the slower sibling jobs finish, especially the published bundle-smoke matrix.
 If GitHub Actions queueing is unusually slow, extend the wait explicitly instead of guessing:
-
-The separate Windows non-public bundle smoke job remains an observational lane only. It does not
-participate in the release-blocking `Gate` contract because public self-contained bundle
-publication is Linux-only.
-Do not wait for the observational Windows lane once `Gate` is green on the release PR head commit.
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
@@ -348,13 +345,8 @@ Requirements before continuing:
   the canonical `Gate` check is green on the exact commit that will be tagged.
 
 The verifier's default wait is intentionally long enough to cover the normal post-merge CI
-fan-out where the published Linux bundle-smoke matrix follows `Check`. If GitHub Actions queueing
-is unusually slow, extend the wait explicitly instead of guessing:
-
-The separate Windows non-public bundle smoke lane remains observational. The canonical release
-gate remains single-owned by `Check` plus the Linux publication-proof matrix.
-Do not wait for the observational Windows lane once `Gate` is green on the merged `origin/main`
-commit.
+fan-out where the published bundle-smoke matrix follows `Check`. If GitHub Actions queueing is
+unusually slow, extend the wait explicitly instead of guessing:
 
 ```bash
 FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-merge-handoff.sh
@@ -414,10 +406,11 @@ gh api "repos/$REPO/git/ref/tags/vX.Y.Z"
 Do not proceed until the remote tag ref exists. Never infer a successful tag push from the
 absence of a local git error alone — verify the remote ref through GitHub.
 
-`./scripts/verify-release-candidate-tag.sh vX.Y.Z` is mandatory here. It proves the checked-out
-commit matches the remote tag, the tag version matches `gradle.properties`, the tag commit is
-still reachable from `origin/main`, and the release-blocking CI set is still green on that exact
-commit before any publication workflow is trusted.
+`./scripts/verify-release-candidate-tag.sh vX.Y.Z` is mandatory here. In its default initial
+publication mode it proves the checked-out commit matches the remote tag, the tag version matches
+`gradle.properties`, the tag commit equals the current `origin/main` head, the tag commit is the
+commit that introduces the release version on that default-branch line, and the release-blocking
+CI set is green on that exact commit before any publication workflow is trusted.
 
 The tag push is what triggers the `Release` workflow. The PR merge alone does not. The same
 workflow now owns bundle publication, GitHub Release verification, container publication, and
@@ -435,6 +428,11 @@ do **not** move the tag and do **not** cut a second release tag. Fix the workflo
 merge that fix, and then use the `workflow_dispatch` rerun command above against the existing
 `vX.Y.Z` tag so the rebuilt assets and container are produced from the same verified release
 commit.
+
+That workflow-dispatch rerun automatically switches the verifier into rerun mode. Rerun mode keeps
+the tagged checkout pinned to the immutable release commit, but it relaxes the head-equality rule
+to an ancestry rule: the tag commit must remain reachable from `origin/main`, and the original
+release-blocking CI set on that tagged commit must already be green.
 
 The rerun workflow now reads the canonical bundle-archive manifest instead of scraping
 `:cli:bundleCliArchive` console output, so post-tag publication repairs do not need compatibility
@@ -571,14 +569,20 @@ Requirements:
 - `isDraft` is `false`.
 - `isPrerelease` is `false` unless the target release is intentionally a prerelease.
 - The complete bundle asset set is present:
+  - `fingrind-X.Y.Z-macos-aarch64.tar.gz`
+  - `fingrind-X.Y.Z-macos-aarch64.tar.gz.sha256`
+  - `fingrind-X.Y.Z-macos-x86_64.tar.gz`
+  - `fingrind-X.Y.Z-macos-x86_64.tar.gz.sha256`
   - `fingrind-X.Y.Z-linux-x86_64.tar.gz`
   - `fingrind-X.Y.Z-linux-x86_64.tar.gz.sha256`
   - `fingrind-X.Y.Z-linux-aarch64.tar.gz`
   - `fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256`
+  - `fingrind-X.Y.Z-windows-x86_64.zip`
+  - `fingrind-X.Y.Z-windows-x86_64.zip.sha256`
 - Targets disclosed through
-  `environment.publication.unsupportedPublicCliBundleTargets` such as the current `macos-*` and
-  `windows-*` entries must not appear as release assets unless the public-distribution contract
-  changes first.
+  `environment.publication.unsupportedPublicCliBundleTargets` such as the current
+  `windows-aarch64` entry must not appear as release assets unless the bundle-layout publication
+  status changes first.
 - Every published archive and published checksum file verifies through `gh attestation verify`
   against the repository's `.github/workflows/release.yml` signer workflow. The helper script
   downloads the draft-or-published assets through the repo-owned draft-aware downloader and

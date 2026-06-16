@@ -212,9 +212,9 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           bookFilePath.toString(),
           "--book-key-file",
           bookKeyFilePath.toString(),
-          "--effective-date-from",
+          "--period-start",
           "2026-04-01",
-          "--effective-date-to",
+          "--period-end",
           "2026-04-30",
           "--output",
           "csv"
@@ -301,9 +301,9 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-07",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-07",
                   "--output",
                   "text"
@@ -330,9 +330,9 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           bookFilePath.toString(),
           "--book-key-file",
           bookKeyFilePath.toString(),
-          "--effective-date-from",
+          "--period-start",
           "2026-04-07",
-          "--effective-date-to",
+          "--period-end",
           "2026-04-07",
           "--output",
           "csv"
@@ -345,9 +345,9 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           bookFilePath.toString(),
           "--book-key-file",
           bookKeyFilePath.toString(),
-          "--effective-date-from",
+          "--period-start",
           "2026-04-07",
-          "--effective-date-to",
+          "--period-end",
           "2026-04-07",
           "--output",
           "json"
@@ -400,9 +400,9 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30"
                 }));
   }

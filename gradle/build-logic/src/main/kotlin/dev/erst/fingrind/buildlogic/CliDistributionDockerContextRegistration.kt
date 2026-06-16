@@ -75,7 +75,7 @@ internal fun Project.registerCliDockerBuildContextTasks(
                     mapOf(
                         "tokens" to
                             mapOf(
-                                "bundleHomeSystemProperty" to sqliteBundleHomeSystemProperty,
+                                "sqliteBundleHomeSystemProperty" to sqliteBundleHomeSystemProperty,
                                 "containerRuntimeDistribution" to containerRuntimeDistribution,
                             ),
                         "beginToken" to "{{",

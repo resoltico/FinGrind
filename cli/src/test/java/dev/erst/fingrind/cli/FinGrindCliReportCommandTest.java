@@ -208,9 +208,9 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
-              "--effective-date-from",
+              "--period-start",
               "2026-04-01",
-              "--effective-date-to",
+              "--period-end",
               "2026-04-30",
               "--pdf-out",
               summaryPdf.toString()
@@ -298,9 +298,9 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
-              "--effective-date-from",
+              "--period-start",
               "2026-04-01",
-              "--effective-date-to",
+              "--period-end",
               "2026-04-30",
               "--pdf-out",
               summaryPdf.toString()
@@ -362,9 +362,9 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--pdf-out",
                   incomePdf.toString()
@@ -382,9 +382,9 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--pdf-out",
                   equityPdf.toString()
@@ -444,9 +444,9 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--pdf-out",
                   incomePdf.toString()
@@ -464,9 +464,9 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--effective-date-from",
+                  "--period-start",
                   "2026-04-01",
-                  "--effective-date-to",
+                  "--period-end",
                   "2026-04-30",
                   "--pdf-out",
                   equityPdf.toString()
@@ -509,9 +509,9 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                 pdfOutputPath.toString()));
 
     assertEquals(4, exitCode);
-    assertJsonContains(outputStream, "\"code\":\"pdf-export-failure\"");
-    assertJsonContains(outputStream, "\"status\":\"error\"");
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("--pdf-out"));
-    assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    assertJsonContains(diagnosticsStream, "\"code\":\"pdf-export-failure\"");
+    assertJsonContains(diagnosticsStream, "\"status\":\"error\"");
+    assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("--pdf-out"));
   }
 }

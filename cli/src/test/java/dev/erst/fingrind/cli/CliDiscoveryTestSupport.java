@@ -95,7 +95,7 @@ final class CliDiscoveryTestSupport {
   static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.54.0",
+        "0.55.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
@@ -122,6 +122,7 @@ final class CliDiscoveryTestSupport {
             ProtocolCatalog.distribution().publicCliDistribution(),
             List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.WINDOWS_X86_64),
             List.of(),
+            PublicCliBundleTarget.MACOS_AARCH64,
             ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             ProtocolCatalog.runtime().storageDriver(),

@@ -28,7 +28,17 @@ final class CliArguments {
     }
     ProtocolOperation operation =
         ProtocolCatalog.findByToken(arguments.getFirst())
-            .orElseThrow(() -> CliArgumentValueParser.unknownCommand(arguments.getFirst()));
+            .orElseThrow(
+                () ->
+                    CliArgumentValueParser.unknownCommand(
+                        arguments.getFirst(),
+                        ProtocolCatalog.operations().stream()
+                            .flatMap(
+                                candidate ->
+                                    java.util.stream.Stream.concat(
+                                        java.util.stream.Stream.of(candidate.id().wireName()),
+                                        candidate.aliases().stream()))
+                            .toList()));
     try {
       return CliCommandParsingRegistry.parse(operation.id(), arguments);
     } catch (CliArgumentsException exception) {

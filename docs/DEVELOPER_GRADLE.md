@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -244,7 +244,10 @@ That contract now has a few explicit rules:
 - `prepareDockerManagedSqlite` is the Docker-target companion step that appears only when the
   current workstation cannot natively produce the Linux container artifact; local Docker acceptance
   and Docker-context staging call it through `:cli:stageDockerBuildContext` rather than asking
-  contributors to invoke it directly
+  contributors to invoke it directly. That task now compiles inside one repo-owned anonymous
+  `docker run --platform …` builder container instead of nesting a second Buildx image assembly,
+  so public Linux artifact preparation is observable and does not inherit personal Docker Desktop
+  credential-helper state
 - local developer direct-Java verification uses `./scripts/direct-java-cli.sh` or
   `.\scripts\direct-java-cli.ps1` and therefore runs `:cli:writeSourceCheckoutRuntimeManifest`
   plus `prepareManagedSqlite` before launching the cached raw JAR

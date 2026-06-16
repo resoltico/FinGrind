@@ -16,6 +16,10 @@ class CliResponseWriterDiscoverySupport extends CliResponseWriterBaseSupport {
     super(outputStream);
   }
 
+  CliResponseWriterDiscoverySupport(PrintStream outputStream, PrintStream diagnosticsStream) {
+    super(outputStream, diagnosticsStream);
+  }
+
   void writeHelp(HelpDescriptor helpDescriptor) {
     writeHelp(helpDescriptor, OutputMode.JSON, DiscoveryDetail.MINIMAL);
   }

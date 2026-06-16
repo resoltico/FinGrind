@@ -4,8 +4,11 @@ import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import java.nio.file.Path
 
 class ReviewedJavaSourceSurfaceContractsTest {
+    private val repositoryRoot = Path.of("").toAbsolutePath().normalize().parent.parent
+
     @Test
     fun reviewedSurfaceDefinitionViolations_requireExplicitVarianceReasonWhenApprovalSnapshotWidensDefaultBudget() {
         val reviewedSurface =
@@ -97,7 +100,7 @@ class ReviewedJavaSourceSurfaceContractsTest {
     @Test
     fun reviewedSurfaceViolations_failWhenFrozenShapeDriftsInEitherDirection() {
         val reviewedSurface =
-            JavaSourceStructuralContracts.reviewedSurfaces()
+            JavaSourceStructuralContracts.reviewedSurfaces(repositoryRoot)
                 .first { it.relativePath.endsWith("CliRejectionJsonModels.java") }
         val approvedShape = reviewedSurface.approval.approvedShape
 

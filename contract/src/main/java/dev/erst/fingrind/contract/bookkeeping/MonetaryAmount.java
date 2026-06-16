@@ -13,8 +13,19 @@ public record MonetaryAmount(String currencyCode, String minorUnits) {
     if (minorUnits.isBlank()) {
       throw new IllegalArgumentException("minorUnits must not be blank.");
     }
+    if (minorUnits.startsWith("-")) {
+      throw new IllegalArgumentException("minorUnits must not be negative.");
+    }
+    if (minorUnits.startsWith("+")) {
+      throw new IllegalArgumentException("minorUnits must not include a plus sign.");
+    }
+    if (minorUnits.indexOf('.') >= 0) {
+      throw new IllegalArgumentException(
+          "minorUnits must be one exact minor-unit integer and must not include a decimal point.");
+    }
     if (!minorUnits.chars().allMatch(character -> character >= '0' && character <= '9')) {
-      throw new IllegalArgumentException("minorUnits must contain ASCII decimal digits only.");
+      throw new IllegalArgumentException(
+          "minorUnits must contain ASCII decimal digits only after removing signs and separators.");
     }
     if (minorUnits.length() > 1 && minorUnits.startsWith("0")) {
       throw new IllegalArgumentException("minorUnits must not contain redundant leading zeroes.");

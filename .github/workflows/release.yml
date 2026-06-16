@@ -83,6 +83,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
+          FINGRIND_RELEASE_TAG_VERIFIER_MODE: ${{ github.event_name == 'workflow_dispatch' && 'rerun' || 'initial' }}
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-release-candidate-tag.sh"
 
       - name: Render canonical release-publication plan
@@ -125,7 +126,7 @@ jobs:
     name: Build bundle (${{ matrix.classifier }})
     needs: prepare-publication
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       FINGRIND_WORKFLOW_HELPER_ROOT: "${{ github.event_name == 'workflow_dispatch' && 'workflow-owner-surface' || '.' }}"
 
@@ -255,12 +256,20 @@ jobs:
           Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$archivePath"
           Add-Content -Path $env:GITHUB_OUTPUT -Value "checksum-path=$checksumPath"
 
-      - name: Smoke test the Unix self-contained CLI bundle
+      - name: Smoke test the Unix self-contained CLI bundle on the host runner
         if: runner.os != 'Windows'
         shell: bash
         run: |
           "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/bundle-smoke.sh" \
             "${{ steps.unix-bundle-build.outputs.archive-path }}"
+
+      - name: Smoke test the Linux self-contained CLI bundle on the compatibility floor
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/bundle-smoke.sh" \
+            "${{ steps.unix-bundle-build.outputs.archive-path }}" \
+            --execution-surface compatibility-floor
 
       - name: Smoke test the Windows self-contained CLI bundle
         if: runner.os == 'Windows'

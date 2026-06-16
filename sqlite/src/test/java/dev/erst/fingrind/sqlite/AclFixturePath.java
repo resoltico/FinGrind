@@ -19,6 +19,7 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   private @Nullable IOException deleteIfExistsFailure;
   private boolean preserveExistingEntryOnDeleteIfExists;
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
+  private final Deque<IOException> createDirectoryFailures = new ArrayDeque<>();
   private final Deque<PlannedIOException> writeFailures = new ArrayDeque<>();
   private @Nullable IOException newDirectoryStreamFailure;
   private @Nullable IOException directoryStreamCloseFailure;
@@ -61,6 +62,15 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
 
   AclFixturePath failNewByteChannelWith(IOException exception) {
     return failNewByteChannelAfter(0, exception);
+  }
+
+  AclFixturePath failCreateDirectoryWith(IOException exception) {
+    createDirectoryFailures.addLast(Objects.requireNonNull(exception, "exception"));
+    return this;
+  }
+
+  @Nullable IOException createDirectoryFailure() {
+    return createDirectoryFailures.pollFirst();
   }
 
   AclFixturePath failNewByteChannelAfter(int successfulCalls, IOException exception) {

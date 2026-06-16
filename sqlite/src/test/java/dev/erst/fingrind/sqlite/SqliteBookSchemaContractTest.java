@@ -497,6 +497,20 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     assertFalse(noMetaProbe.hasCanonicalTables());
     assertFalse(noMetaProbe.hasInitializedMarker());
     assertEquals("INCOMPLETE_FINGRIND", noMetaProbe.bookState());
+    Path missingInitializedMarkerPath =
+        tempDirectory.resolve("fgrd-missing-initialized-marker.sqlite");
+    createSchemaOnlyBook(missingInitializedMarkerPath);
+    BookStateProbe missingInitializedMarkerProbe =
+        withStandaloneDatabaseResult(
+            bookAccess(missingInitializedMarkerPath),
+            database ->
+                new BookStateProbe(
+                    bookStateReader.hasCanonicalTables(database),
+                    bookStateReader.hasInitializedMarker(database),
+                    bookStateReader.bookState(database).toString()));
+    assertTrue(missingInitializedMarkerProbe.hasCanonicalTables());
+    assertFalse(missingInitializedMarkerProbe.hasInitializedMarker());
+    assertEquals("INCOMPLETE_FINGRIND", missingInitializedMarkerProbe.bookState());
     Path noAccountPath = tempDirectory.resolve("fgrd-no-account.sqlite");
     createPartialFinGrindBook(noAccountPath, true, SqliteBookContract.ACCOUNT_TABLE);
     assertFalse(

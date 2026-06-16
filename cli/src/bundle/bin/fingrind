@@ -39,8 +39,9 @@ unset FINGRIND_BUNDLE_RETURN_EXIT_CODE
 
 exec "${runtime_java}" \
     --enable-native-access=dev.erst.fingrind.cli \
-    -D{{bundleHomeSystemProperty}}="${app_home}" \
+    -D{{sqliteBundleHomeSystemProperty}}="${app_home}" \
     -Dfingrind.runtime.distribution={{bundleRuntimeDistribution}} \
+    -Dfingrind.runtime.bundle-target={{bundleClassifier}} \
     --module-path "${application_jar}" \
     --module "${application_module}" \
     "$@"

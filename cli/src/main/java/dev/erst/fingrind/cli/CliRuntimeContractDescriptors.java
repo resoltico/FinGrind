@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Builds runtime contract descriptors that describe the active CLI distribution and SQLite probe.
@@ -22,7 +24,9 @@ final class CliRuntimeContractDescriptors {
   }
 
   static EnvironmentDescriptor environmentDescriptor(
-      SqliteRuntime.Probe runtimeProbe, String runtimeDistribution) {
+      SqliteRuntime.Probe runtimeProbe,
+      String runtimeDistribution,
+      @Nullable PublicCliBundleTarget bundleTarget) {
     CliOutputModeDefaults.OutputDefault outputDefault =
         CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE);
     return new EnvironmentDescriptor(
@@ -34,6 +38,7 @@ final class CliRuntimeContractDescriptors {
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
             ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
+            bundleTarget,
             ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             ProtocolCatalog.runtime().storageDriver(),

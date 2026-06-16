@@ -20,6 +20,10 @@ class CliArgumentValueParserTest {
         CliArgumentValueParser.unsupportedArgument("--output-extra", List.of("--output"))
             .getMessage());
     assertEquals(
+        "Unsupported argument: --foooutputbar. Did you mean --output?",
+        CliArgumentValueParser.unsupportedArgument("--foooutputbar", List.of("--output"))
+            .getMessage());
+    assertEquals(
         "Unsupported argument: positional-token",
         CliArgumentValueParser.unsupportedArgument("positional-token", List.of("--output"))
             .getMessage());
@@ -35,6 +39,13 @@ class CliArgumentValueParserTest {
     assertEquals(
         "Unsupported argument: --o. Did you mean --output?",
         CliArgumentValueParser.unsupportedArgument("--o", List.of("--outline", "--output"))
+            .getMessage());
+    assertEquals(
+        "Unsupported argument: --put. Did you mean --output?",
+        CliArgumentValueParser.unsupportedArgument("--put", List.of("--output")).getMessage());
+    assertEquals(
+        "Unsupported argument: --rt. Did you mean --cat?",
+        CliArgumentValueParser.unsupportedArgument("--rt", List.of("--rate", "--cat"))
             .getMessage());
   }
 

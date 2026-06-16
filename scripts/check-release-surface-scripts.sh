@@ -28,6 +28,7 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
+readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
 readonly structural_governance_verifier="${repo_root}/scripts/verify-structural-governance.sh"
 
 for argument in "$@"; do
@@ -49,13 +50,21 @@ done
     printf 'error: missing check stage contract helper at %s\n' "${stage_contract_script}" >&2
     exit 1
 }
+[[ -f "${repo_lock_support}" ]] || {
+    printf 'error: missing repo verification lock helper at %s\n' "${repo_lock_support}" >&2
+    exit 1
+}
 [[ -x "${structural_governance_verifier}" ]] || {
     printf 'error: missing executable structural governance verifier at %s\n' "${structural_governance_verifier}" >&2
     exit 1
 }
 
 # shellcheck source=/dev/null
+source "${repo_lock_support}"
+# shellcheck source=/dev/null
 source "${stage_contract_script}"
+trap cleanup_lock EXIT
+acquire_lock
 
 release_surface_script_targets=("${repo_root}/check.sh")
 if [[ -d "${repo_root}/scripts" ]]; then

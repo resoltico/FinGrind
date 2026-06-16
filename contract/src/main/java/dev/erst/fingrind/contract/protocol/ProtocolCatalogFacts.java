@@ -77,10 +77,10 @@ final class ProtocolCatalogFacts {
       RuntimeEnvironmentContract.current();
   private static final ProtectedBookFormatContract PROTECTED_BOOK_FORMAT_CONTRACT =
       ProtectedBookFormatContracts.current();
-  private static final PublicDistributionContract PUBLIC_DISTRIBUTION_CONTRACT =
-      PublicDistributionContracts.current();
   private static final ManagedSqliteContract MANAGED_SQLITE_CONTRACT =
       ManagedSqliteContracts.current();
+  private static final BundlePublicationContract BUNDLE_PUBLICATION_CONTRACT =
+      BundlePublicationContracts.current();
   private static final BundleLayoutContract BUNDLE_LAYOUT_CONTRACT =
       BundleLayoutContracts.current();
 
@@ -138,12 +138,12 @@ final class ProtocolCatalogFacts {
     return PROTECTED_BOOK_FORMAT_CONTRACT;
   }
 
-  static PublicDistributionContract publicDistributionContract() {
-    return PUBLIC_DISTRIBUTION_CONTRACT;
-  }
-
   static ManagedSqliteContract managedSqliteContract() {
     return MANAGED_SQLITE_CONTRACT;
+  }
+
+  static BundlePublicationContract bundlePublicationContract() {
+    return BUNDLE_PUBLICATION_CONTRACT;
   }
 
   static BundleLayoutContract bundleLayoutContract() {

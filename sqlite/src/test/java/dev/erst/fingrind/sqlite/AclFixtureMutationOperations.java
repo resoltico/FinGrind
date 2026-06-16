@@ -46,8 +46,12 @@ final class AclFixtureMutationOperations {
     };
   }
 
-  static void createDirectory(Path dir, FileAttribute<?>... attrs) {
+  static void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
     AclFixturePath testPath = AclFixtureChannelOperations.fixturePath(dir);
+    IOException createFailure = testPath.createDirectoryFailure();
+    if (createFailure != null) {
+      throw createFailure;
+    }
     testPath.exists = true;
     testPath.regularFile = false;
     testPath.posixPermissions = AclFixtureChannelOperations.posixPermissions(attrs);

@@ -47,7 +47,7 @@ class SqliteNativeConnectionActivityRegistryTest {
               "\\books\\book.sqlite.fingrind-activity-"
                   + SqliteProcessIdentity.current().activityMarkerFileToken()
                   + ".marker");
-      markerPath.failNewByteChannelWith(new IOException("marker-boom"));
+      markerPath.failCreateDirectoryWith(new IOException("marker-boom"));
 
       IllegalStateException exception =
           assertThrows(

@@ -30,6 +30,25 @@ final class CommittedRegressionSeedFixtures {
     return readHarnessInput(JazzerHarness.sqliteBookRoundTrip(), fileName);
   }
 
+  static ReplayExpectation expectation(JazzerHarness harness, String fileName) {
+    return metadata(harness, fileName).expectation();
+  }
+
+  static RegressionSeedMetadata metadata(JazzerHarness harness, String fileName) {
+    Objects.requireNonNull(harness, "harness must not be null");
+    Objects.requireNonNull(fileName, "fileName must not be null");
+    Path metadataPath =
+        RegressionSeedPaths.metadataDirectory(PROJECT_DIRECTORY, harness)
+            .resolve(fileName)
+            .normalize();
+    try {
+      return JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
+    } catch (IOException | RuntimeException exception) {
+      throw new IllegalStateException(
+          "Unable to read committed Jazzer seed metadata: " + metadataPath, exception);
+    }
+  }
+
   private static String readHarnessInput(JazzerHarness harness, String fileName) {
     Objects.requireNonNull(harness, "harness must not be null");
     Objects.requireNonNull(fileName, "fileName must not be null");

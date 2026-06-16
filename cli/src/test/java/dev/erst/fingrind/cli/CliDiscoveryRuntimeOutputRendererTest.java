@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
@@ -328,7 +329,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
                 new EnvironmentSqliteDescriptor.UnavailableRuntime("no SQLite runtime available")));
 
     assertTrue(readyRendered.contains("Runtime status"));
-    assertTrue(readyRendered.contains("Self-contained public bundle"));
+    assertTrue(readyRendered.contains("Self-contained bundle"));
+    assertTrue(readyRendered.contains("published target"));
     assertTrue(readyRendered.contains("Full machine inventory"));
     assertTrue(readyRendered.contains("Issue"));
     assertTrue(readyRendered.contains("(none)"));
@@ -354,6 +356,62 @@ class CliDiscoveryRuntimeOutputRendererTest {
   }
 
   @Test
+  void renderEnvironmentText_omitsBundleTargetSuffixWhenNoBundleTargetIsActive() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderEnvironmentText(
+            environmentForDistribution(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE));
+
+    assertTrue(rendered.contains("Source checkout launcher"));
+    assertFalse(rendered.contains("current bundle target"));
+    assertFalse(rendered.contains("published target"));
+    assertFalse(rendered.contains("unsupported target"));
+  }
+
+  @Test
+  void renderEnvironmentText_marksUnsupportedActiveBundleTargetsExplicitly() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderEnvironmentText(
+            new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
+                new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(
+                    RuntimeDistribution.SELF_CONTAINED_BUNDLE, OutputMode.TEXT, null),
+                new dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor(
+                    ProtocolCatalog.distribution().publicCliDistribution(),
+                    List.of(PublicCliBundleTarget.LINUX_X86_64),
+                    List.of(PublicCliBundleTarget.MACOS_AARCH64),
+                    PublicCliBundleTarget.MACOS_AARCH64,
+                    ProtocolCatalog.distribution().sourceCheckoutJava()),
+                CliDiscoveryTestSupport.environment().storage(),
+                CliDiscoveryTestSupport.environment().sqlite()));
+
+    assertTrue(rendered.contains("Self-contained bundle for macos aarch64 (unsupported target)"));
+    assertTrue(rendered.contains("supported bundle targets: linux x86_64"));
+    assertTrue(rendered.contains("current bundle target: macos aarch64 (unsupported target)"));
+  }
+
+  @Test
+  void renderEnvironmentText_handlesBundleSurfacesWithoutAnActiveBundleTarget() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderEnvironmentText(
+            new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
+                new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(
+                    RuntimeDistribution.SELF_CONTAINED_BUNDLE, OutputMode.TEXT, null),
+                new dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor(
+                    ProtocolCatalog.distribution().publicCliDistribution(),
+                    List.of(PublicCliBundleTarget.LINUX_X86_64),
+                    List.of(PublicCliBundleTarget.MACOS_AARCH64),
+                    null,
+                    ProtocolCatalog.distribution().sourceCheckoutJava()),
+                CliDiscoveryTestSupport.environment().storage(),
+                CliDiscoveryTestSupport.environment().sqlite()));
+
+    assertTrue(rendered.contains("Self-contained bundle"));
+    assertFalse(rendered.contains("Self-contained bundle for "));
+    assertFalse(rendered.contains("current bundle target"));
+    assertFalse(rendered.contains("published target"));
+    assertFalse(rendered.contains("unsupported target"));
+  }
+
+  @Test
   void renderVersionText_rendersTitleAndKeyValues() {
     String rendered =
         CliDiscoveryOutputRenderer.renderVersionText(
@@ -361,7 +419,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.54.0"));
+    assertTrue(rendered.contains("0.55.0"));
   }
 
   private static dev.erst.fingrind.contract.runtime.EnvironmentDescriptor
@@ -373,6 +431,9 @@ class CliDiscoveryRuntimeOutputRendererTest {
             ProtocolCatalog.distribution().publicCliDistribution(),
             List.of(),
             List.of(),
+            distribution == RuntimeDistribution.SELF_CONTAINED_BUNDLE
+                ? PublicCliBundleTarget.MACOS_AARCH64
+                : null,
             ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             StorageDriver.SQLITE_FFM_SQLITE3MC,

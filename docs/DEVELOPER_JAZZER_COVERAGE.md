@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.54.0"
+version: "0.55.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-06-14"
+updated: "2026-06-16"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what remains uncovered by the jazzer suite"]

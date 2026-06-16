@@ -20,12 +20,13 @@ import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and contract tests for the published machine-discovery surfaces. */
 class MachineContractDiscoverySurfaceTest {
   private static final ApplicationIdentity IDENTITY =
-      new ApplicationIdentity("FinGrind", "0.54.0", "Protected bookkeeping kernel");
+      new ApplicationIdentity("FinGrind", "0.55.0", "Protected bookkeeping kernel");
 
   @Test
   void helpWithoutTopicPublishesCanonicalQuickStartForEveryRuntimeDistribution() {
@@ -98,7 +99,7 @@ class MachineContractDiscoverySurfaceTest {
     assertEquals(6, MachineContractDomainDescriptors.commandCatalog().discovery().size());
     assertEquals(6, MachineContractDomainDescriptors.audit().requestProvenanceFields().size());
     assertEquals(2, MachineContractDomainDescriptors.audit().committedFields().size());
-    assertEquals(8, MachineContractDomainDescriptors.exitCodes().size());
+    assertEquals(9, MachineContractDomainDescriptors.exitCodes().size());
     assertEquals("reversal-only", MachineContractDomainDescriptors.reversals().model());
     assertEquals(
         ProtocolCatalog.domain().currency().scope(),
@@ -144,6 +145,16 @@ class MachineContractDiscoverySurfaceTest {
             ProtocolCatalog.operation(OperationId.EXECUTE_PLAN)));
   }
 
+  @Test
+  void commandTopicsPublishTheExpectedExitCodeFamilies() {
+    assertExitCodes(OperationId.PRINT_REQUEST_TEMPLATE, List.of(0, 1, 70));
+    assertExitCodes(OperationId.HELP, List.of(0, 1, 2, 70));
+    assertExitCodes(OperationId.GENERATE_BOOK_KEY_FILE, List.of(0, 1, 2, 6, 7, 70));
+    assertExitCodes(OperationId.BACKUP_BOOK, List.of(0, 1, 2, 4, 5, 6, 7, 70));
+    assertExitCodes(OperationId.EXECUTE_PLAN, List.of(0, 1, 2, 3, 4, 5, 6, 70));
+    assertExitCodes(OperationId.OPEN_BOOK, List.of(0, 1, 2, 4, 5, 6, 70));
+  }
+
   private static void assertPostingTopic(OperationId operationId) {
     HelpDescriptor help =
         MachineContract.help(
@@ -158,6 +169,15 @@ class MachineContractDiscoverySurfaceTest {
     assertEquals(
         List.of(ProtocolCatalog.operation(operationId).id()),
         help.commands().stream().map(CommandDescriptor::name).toList());
+  }
+
+  private static void assertExitCodes(OperationId operationId, List<Integer> expectedExitCodes) {
+    HelpDescriptor help =
+        MachineContract.help(
+            IDENTITY, environment(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE), operationId);
+
+    assertEquals(
+        expectedExitCodes, help.exitCodes().stream().map(exitCode -> exitCode.code()).toList());
   }
 
   private static void assertQuickStartSurface(
@@ -307,6 +327,7 @@ class MachineContractDiscoverySurfaceTest {
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
             ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
+            activeBundleTarget(runtimeDistribution),
             ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             ProtocolCatalog.runtime().storageDriver(),
@@ -346,4 +367,11 @@ class MachineContractDiscoverySurfaceTest {
       WorkflowStepDescriptor.Command preflight,
       WorkflowStepDescriptor.Command postEntry,
       WorkflowStepDescriptor.Command trialBalance) {}
+
+  private static @Nullable PublicCliBundleTarget activeBundleTarget(
+      RuntimeDistribution runtimeDistribution) {
+    return runtimeDistribution == RuntimeDistribution.SELF_CONTAINED_BUNDLE
+        ? PublicCliBundleTarget.LINUX_X86_64
+        : null;
+  }
 }

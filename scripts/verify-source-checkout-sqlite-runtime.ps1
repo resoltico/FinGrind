@@ -1,29 +1,13 @@
-$ErrorActionPreference = "Stop"
-Set-StrictMode -Version Latest
-
-function Fail {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Message
-    )
-
-    throw $Message
-}
-
-function Get-PythonCommand {
-    foreach ($candidate in @("python3", "python")) {
-        if ($null -ne (Get-Command $candidate -ErrorAction SilentlyContinue)) {
-            return $candidate
-        }
-    }
-
-    Fail "missing Python interpreter; expected python3 or python on PATH"
-}
-
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $verifier = Join-Path $PSScriptRoot "verify-sqlite-runtime-contract.py"
 $launcherWrapper = Join-Path $PSScriptRoot "source-checkout-cli.ps1"
-$pythonCommand = Get-PythonCommand
+$commonSupport = Join-Path $PSScriptRoot "sqlite-runtime-verifier-common.ps1"
+
+if (-not (Test-Path -LiteralPath $commonSupport -PathType Leaf)) {
+    throw "missing SQLite runtime PowerShell verifier support at $commonSupport"
+}
+. $commonSupport
+$pythonCommand = Get-PythonCommandPath
 
 if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) {
     Fail "missing SQLite runtime verifier at $verifier"
@@ -42,16 +26,17 @@ try {
     Pop-Location
 }
 
-$verifierOutput = ($environmentOutput |
-        & $pythonCommand $verifier `
-            --expected-runtime-distribution-key sourceCheckoutRuntimeDistribution `
-            --expected-runtime-provenance source-checkout-managed `
-            --label source-checkout-managed-runtime 2>&1 |
-        Out-String)
-if ($LASTEXITCODE -ne 0) {
+$verifierResult = Invoke-PythonVerifier `
+    -PythonCommand $pythonCommand `
+    -Verifier $verifier `
+    -EnvironmentOutput $environmentOutput `
+    -ExpectedRuntimeDistributionKey sourceCheckoutRuntimeDistribution `
+    -ExpectedRuntimeProvenance source-checkout-managed `
+    -Label source-checkout-managed-runtime
+if ($verifierResult.ExitCode -ne 0) {
     Write-Host $environmentOutput
-    [Console]::Error.WriteLine($verifierOutput.TrimEnd())
+    [Console]::Error.WriteLine($verifierResult.Output.TrimEnd())
     exit 1
 }
 
-Write-Host ($verifierOutput.TrimEnd())
+Write-Host ($verifierResult.Output.TrimEnd())

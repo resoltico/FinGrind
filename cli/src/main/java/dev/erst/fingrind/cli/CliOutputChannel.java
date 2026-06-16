@@ -7,28 +7,44 @@ import java.io.PrintStream;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Low-level JSON and text output channel for deterministic CLI response rendering. */
+/** Low-level stdout/stderr channel pair for deterministic CLI response rendering. */
 final class CliOutputChannel {
   private final PrintStream outputStream;
+  private final PrintStream diagnosticsStream;
 
   CliOutputChannel(PrintStream outputStream) {
+    this(outputStream, outputStream);
+  }
+
+  CliOutputChannel(PrintStream outputStream, PrintStream diagnosticsStream) {
     this.outputStream = Objects.requireNonNull(outputStream, "outputStream");
+    this.diagnosticsStream = Objects.requireNonNull(diagnosticsStream, "diagnosticsStream");
   }
 
   void writeJson(Object value) {
-    writeDocument(CliWireJson.writeJsonBytes(value));
+    writeDocument(outputStream, CliWireJson.writeJsonBytes(value));
   }
 
-  private void writeDocument(byte[] document) {
-    outputStream.write(document, 0, document.length);
-    outputStream.println();
-    outputStream.flush();
+  void writeDiagnosticEnvelope(Record envelope) {
+    writeDocument(diagnosticsStream, CliWireJson.writeJsonBytes(envelope));
+  }
+
+  private static void writeDocument(PrintStream stream, byte[] document) {
+    stream.write(document, 0, document.length);
+    stream.println();
+    stream.flush();
   }
 
   void writeText(String value) {
     outputStream.print(value);
     outputStream.println();
     outputStream.flush();
+  }
+
+  void writeFailureText(String value) {
+    diagnosticsStream.print(value);
+    diagnosticsStream.println();
+    diagnosticsStream.flush();
   }
 
   void writeEnvelope(Record envelope) {
@@ -44,7 +60,7 @@ final class CliOutputChannel {
       CliEnvelopeJsonModels.RejectedEnvelope envelope,
       @Nullable String idempotencyKey) {
     if (outputMode == OutputMode.TEXT) {
-      writeText(
+      writeFailureText(
           CliFailureOutputRenderer.renderRejectedText(
               envelope.code(),
               envelope.message(),
@@ -53,20 +69,20 @@ final class CliOutputChannel {
               envelope.details()));
       return;
     }
-    writeEnvelope(envelope);
+    writeDiagnosticEnvelope(envelope);
   }
 
   void writeQueryRejection(OutputMode outputMode, CliEnvelopeJsonModels.RejectedEnvelope envelope) {
     outputMode.run(
-        () -> writeEnvelope(envelope),
+        () -> writeDiagnosticEnvelope(envelope),
         () ->
-            writeText(
+            writeFailureText(
                 CliFailureOutputRenderer.renderRejectedText(
                     envelope.code(),
                     envelope.message(),
                     envelope.hint(),
                     envelope.idempotencyKey(),
                     envelope.details())),
-        () -> writeEnvelope(envelope));
+        () -> writeDiagnosticEnvelope(envelope));
   }
 }

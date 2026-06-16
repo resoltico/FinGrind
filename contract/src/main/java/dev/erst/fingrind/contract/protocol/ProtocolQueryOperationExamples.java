@@ -15,12 +15,11 @@ final class ProtocolQueryOperationExamples {
   }
 
   static String trialBalanceExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s text"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s text"
         .formatted(
             OperationId.TRIAL_BALANCE.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
-            ProtocolOptions.EFFECTIVE_DATE_AS_OF,
             ProtocolOptions.OUTPUT);
   }
 
@@ -42,8 +41,8 @@ final class ProtocolQueryOperationExamples {
             OperationId.PERIOD_SUMMARY.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
-            ProtocolOptions.EFFECTIVE_DATE_FROM,
-            ProtocolOptions.EFFECTIVE_DATE_TO,
+            ProtocolOptions.PERIOD_START,
+            ProtocolOptions.PERIOD_END,
             ProtocolOptions.OUTPUT);
   }
 
@@ -63,8 +62,8 @@ final class ProtocolQueryOperationExamples {
             OperationId.INCOME_STATEMENT.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
-            ProtocolOptions.EFFECTIVE_DATE_FROM,
-            ProtocolOptions.EFFECTIVE_DATE_TO,
+            ProtocolOptions.PERIOD_START,
+            ProtocolOptions.PERIOD_END,
             ProtocolOptions.OUTPUT);
   }
 
@@ -74,8 +73,8 @@ final class ProtocolQueryOperationExamples {
             OperationId.CHANGES_IN_EQUITY.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
-            ProtocolOptions.EFFECTIVE_DATE_FROM,
-            ProtocolOptions.EFFECTIVE_DATE_TO,
+            ProtocolOptions.PERIOD_START,
+            ProtocolOptions.PERIOD_END,
             ProtocolOptions.OUTPUT);
   }
 }

@@ -29,7 +29,6 @@ readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly user_home_repair_script="${repo_root}/scripts/devcontainer-prepare-user-home.sh"
 
 command -v docker >/dev/null 2>&1 || die "docker is required to validate the contributor devcontainer"
-command -v python3 >/dev/null 2>&1 || die "python3 is required to validate devcontainer.json"
 [[ -f "${dockerfile_path}" ]] || die "missing ${dockerfile_path}"
 [[ -f "${config_path}" ]] || die "missing ${config_path}"
 [[ -f "${repo_lock_support}" ]] || die "missing repo verification lock helper at ${repo_lock_support}"

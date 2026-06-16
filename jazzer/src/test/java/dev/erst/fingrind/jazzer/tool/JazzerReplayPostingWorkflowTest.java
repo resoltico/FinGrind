@@ -77,7 +77,11 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedPostingWorkflowReplayDetails(), invalid.details());
-    assertEquals("Missing required field: reason", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.postingWorkflow(), "invalid_missing_reversal_reason.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -91,7 +95,11 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedPostingWorkflowReplayDetails(), invalid.details());
-    assertEquals("Actor id must not be blank.", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.postingWorkflow(), "invalid_blank_actor.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -105,6 +113,10 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedPostingWorkflowReplayDetails(), invalid.details());
-    assertEquals("minorUnits must contain ASCII decimal digits only.", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.postingWorkflow(), "invalid_amount_exponent.json")
+            .message(),
+        invalid.message());
   }
 }

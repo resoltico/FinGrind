@@ -31,11 +31,16 @@ class CliDistributionBuildContractTest {
     String dockerfile = Files.readString(repositoryRoot().resolve("Dockerfile"));
     String builderImage = kotlinStringConstant(dockerEnvironment, "builderImage");
     String runtimeImage = kotlinStringConstant(dockerEnvironment, "runtimeImage");
+    String builderBinutilsPackage =
+        kotlinStringConstant(dockerEnvironment, "builderBinutilsPackage");
+    String builderPythonPackage = kotlinStringConstant(dockerEnvironment, "pythonPackage");
     String runtimeLibStdCppPackage =
         kotlinStringConstant(dockerEnvironment, "runtimeLibStdCppPackage");
 
     assertTrue(dockerfile.contains("FROM " + builderImage + " AS builder"));
-    assertTrue(dockerfile.contains("RUN apk add --no-cache binutils=2.45.1-r0 python3=3.12.13-r0"));
+    assertTrue(
+        dockerfile.contains(
+            "RUN apk add --no-cache " + builderPythonPackage + " " + builderBinutilsPackage));
     assertTrue(dockerfile.contains("COPY source-root/ /build/source-root/"));
     assertTrue(
         dockerfile.contains(
@@ -189,7 +194,8 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("bundleArchiveTasks.manifestTask"));
     assertTrue(
         distributionPlugin.contains(
-            "\"bundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
+            "\"sqliteBundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
+    assertTrue(distributionPlugin.contains("\"tokens\" to bundleTemplateProperties"));
     assertTrue(distributionPlugin.contains("dependsOn(shadowJarTask)"));
     assertTrue(distributionPlugin.contains("finalizedBy(writeSourceCheckoutRuntimeManifest)"));
     assertTrue(distributionPlugin.contains("javaExecutable.set(sourceCheckoutJavaLauncher.map"));
@@ -395,17 +401,25 @@ class CliDistributionBuildContractTest {
         posixBundleLauncher.contains(
             "application_module='dev.erst.fingrind.cli/dev.erst.fingrind.cli.App'"));
     assertTrue(posixBundleLauncher.contains("--enable-native-access=dev.erst.fingrind.cli"));
+    assertTrue(
+        posixBundleLauncher.contains("-D{{sqliteBundleHomeSystemProperty}}=\"${app_home}\""));
+    assertTrue(
+        posixBundleLauncher.contains("-Dfingrind.runtime.bundle-target={{bundleClassifier}}"));
     assertTrue(posixBundleLauncher.contains("--module \"${application_module}\""));
     assertTrue(
         powerShellBundleLauncher.contains(
             "$applicationModule = \"dev.erst.fingrind.cli/dev.erst.fingrind.cli.App\""));
     assertTrue(powerShellBundleLauncher.contains("--enable-native-access=dev.erst.fingrind.cli"));
+    assertTrue(powerShellBundleLauncher.contains("-D{{sqliteBundleHomeSystemProperty}}=$appHome"));
+    assertTrue(
+        powerShellBundleLauncher.contains("-Dfingrind.runtime.bundle-target={{bundleClassifier}}"));
     assertTrue(powerShellBundleLauncher.contains("\"--module\","));
     assertTrue(powerShellBundleLauncher.contains("$applicationModule"));
     assertTrue(
         dockerEntrypoint.contains(
             "application_module=\"dev.erst.fingrind.cli/dev.erst.fingrind.cli.App\""));
     assertTrue(dockerEntrypoint.contains("--enable-native-access=dev.erst.fingrind.cli"));
+    assertTrue(dockerEntrypoint.contains("-D{{sqliteBundleHomeSystemProperty}}=\"${app_home}\""));
     assertTrue(dockerEntrypoint.contains("--module \"${application_module}\""));
   }
 

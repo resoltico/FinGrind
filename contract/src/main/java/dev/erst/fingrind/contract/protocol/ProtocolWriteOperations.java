@@ -17,8 +17,10 @@ final class ProtocolWriteOperations {
                 ProtocolOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.REQUEST_FILE + " <path|->",
+                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT)),
                 ProtocolOptions.optionalResultDetailSyntax()),
             ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.TEXT),
             "Execute one ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.",
             List.of(
                 ProtocolExampleStep.command(

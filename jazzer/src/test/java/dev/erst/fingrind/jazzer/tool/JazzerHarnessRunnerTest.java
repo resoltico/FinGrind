@@ -9,9 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -346,7 +344,7 @@ class JazzerHarnessRunnerTest {
 
   @Test
   void main_runsSupportedHarnessToCompletionInChildJvm() throws Exception {
-    ChildProcessResult result =
+    ChildJvmSupport.ChildProcessResult result =
         runHarnessRunnerMainInChildJvm(
             SingleExecutionFuzzHarnessFixture.class.getName(),
             childEnvironment -> childEnvironment.remove("GITHUB_ACTIONS"));
@@ -355,7 +353,7 @@ class JazzerHarnessRunnerTest {
 
   @Test
   void main_refusesToRunHarnessOnGitHubActionsInChildJvm() throws Exception {
-    ChildProcessResult result =
+    ChildJvmSupport.ChildProcessResult result =
         runHarnessRunnerMainInChildJvm(
             SingleExecutionFuzzHarnessFixture.class.getName(),
             childEnvironment -> childEnvironment.put("GITHUB_ACTIONS", "true"));
@@ -402,59 +400,12 @@ class JazzerHarnessRunnerTest {
     return JazzerHarnessRunner.run(className, outputWriter, errorWriter, executor, () -> false);
   }
 
-  private static ChildProcessResult runHarnessRunnerMainInChildJvm(
+  private static ChildJvmSupport.ChildProcessResult runHarnessRunnerMainInChildJvm(
       String harnessClassName, Consumer<Map<String, String>> environmentCustomizer)
       throws IOException {
-    List<String> command = new ArrayList<>();
-    command.add(javaCommand());
-    command.addAll(jacocoAgentArguments());
-    command.add("-cp");
-    command.add(System.getProperty("java.class.path"));
-    command.add(JazzerHarnessRunner.class.getName());
-    command.add("--class");
-    command.add(harnessClassName);
-    ProcessBuilder processBuilder = new ProcessBuilder(command).redirectErrorStream(true);
-    environmentCustomizer.accept(processBuilder.environment());
-    Process process = processBuilder.start();
-    try (process;
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        var processOutput = process.getInputStream()) {
-      processOutput.transferTo(output);
-      int exitCode = waitFor(process, command);
-      return new ChildProcessResult(exitCode, output.toString(StandardCharsets.UTF_8));
-    }
+    return ChildJvmSupport.runMainClass(
+        JazzerHarnessRunner.class, List.of("--class", harnessClassName), environmentCustomizer);
   }
-
-  private static List<String> jacocoAgentArguments() {
-    List<String> agentArguments = new ArrayList<>();
-    for (String argument : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
-      if (!argument.startsWith("-javaagent:")) {
-        continue;
-      }
-      if (argument.contains("jacoco")) {
-        agentArguments.add(argument.contains("append=") ? argument : argument + ",append=true");
-      }
-    }
-    return List.copyOf(agentArguments);
-  }
-
-  private static String javaCommand() {
-    String javaHome = System.getProperty("java.home");
-    return javaHome + "/bin/java";
-  }
-
-  private static int waitFor(Process process, List<String> command) throws IOException {
-    try {
-      return process.waitFor();
-    } catch (InterruptedException interruptedException) {
-      Thread.currentThread().interrupt();
-      throw new IOException(
-          "Interrupted while running JazzerHarnessRunner child JVM: " + String.join(" ", command),
-          interruptedException);
-    }
-  }
-
-  private record ChildProcessResult(int exitCode, String output) {}
 
   private static final class NoOpHarnessExecutor implements JazzerHarnessRunner.HarnessExecutor {
     @Override

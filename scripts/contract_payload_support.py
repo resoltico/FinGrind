@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import contract_platform
 import contract_release_support
+from contract_bundle_support import (
+    load_bundle_layout_targets,
+    load_public_distribution,
+    merge_bundle_publication_targets,
+)
 from contract_document_support import ContractDocuments, ContractSchemaSections
 from contract_value_support import (
-    load_bundle_layout_targets,
     load_operation_ids,
-    load_public_distribution,
     required_bool,
     required_int,
     required_string,
@@ -24,19 +27,18 @@ def load_contract_values_payload(
     os_name: str,
     architecture: str,
 ) -> dict[str, object]:
-    bundle_layout_targets = load_bundle_layout_targets(
-        contract_documents.bundle_layout,
-        schema_sections.bundle_layout,
+    bundle_layout_targets = merge_bundle_publication_targets(
+        load_bundle_layout_targets(
+            contract_documents.bundle_layout,
+            schema_sections.bundle_layout,
+        ),
+        contract_documents.bundle_publication,
+        schema_sections.bundle_publication,
     )
-    public_distribution = load_public_distribution(
-        contract_documents.public_distribution,
-        schema_sections.public_distribution,
-        declared_bundle_targets=set(bundle_layout_targets),
-    )
+    public_distribution = load_public_distribution(bundle_layout_targets)
     release_publication = contract_release_support.load_release_publication(
         contract_documents.release_publication,
         schema_sections.release_publication,
-        supported_bundle_targets=public_distribution["supportedPublicCliBundleTargets"],
         bundle_layout_targets=bundle_layout_targets,
     )
     host_bundle_target = contract_platform.load_host_bundle_target(

@@ -11,4 +11,8 @@ final class CliResponseWriter extends CliResponseWriterPlanSupport {
   CliResponseWriter(PrintStream outputStream) {
     super(outputStream);
   }
+
+  CliResponseWriter(PrintStream outputStream, PrintStream diagnosticsStream) {
+    super(outputStream, diagnosticsStream);
+  }
 }

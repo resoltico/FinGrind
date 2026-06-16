@@ -21,8 +21,9 @@ function Invoke-FinGrindBundleLauncher {
 
     $javaArguments = @(
         "--enable-native-access=dev.erst.fingrind.cli",
-        "-D{{bundleHomeSystemProperty}}=$appHome",
+        "-D{{sqliteBundleHomeSystemProperty}}=$appHome",
         "-Dfingrind.runtime.distribution={{bundleRuntimeDistribution}}",
+        "-Dfingrind.runtime.bundle-target={{bundleClassifier}}",
         "--module-path",
         $applicationJar,
         "--module",

@@ -16,9 +16,9 @@ final class CliRekeyBookArguments {
           ProtocolOptions.BOOK_KEY_FILE,
           ProtocolOptions.BOOK_PASSPHRASE_STDIN,
           ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
-          ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE,
-          ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_STDIN,
-          ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT,
+          ProtocolOptions.NEW_BOOK_KEY_FILE,
+          ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN,
+          ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT,
           ProtocolOptions.OUTPUT);
 
   private CliRekeyBookArguments() {}
@@ -46,13 +46,13 @@ final class CliRekeyBookArguments {
     }
     if (argumentValues.replacementPassphraseSourceKind == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE,
-          "Exactly one replacement book passphrase source is required: "
-              + ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE
+          ProtocolOptions.NEW_BOOK_KEY_FILE,
+          "Exactly one new book passphrase source is required: "
+              + ProtocolOptions.NEW_BOOK_KEY_FILE
               + " <existing-path>, "
-              + ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_STDIN
+              + ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN
               + ", or "
-              + ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT
+              + ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT
               + ".");
     }
     BookAccess.PassphraseSource currentPassphraseSource =
@@ -99,23 +99,23 @@ final class CliRekeyBookArguments {
               CliBookPassphraseParser.requireSinglePassphraseSource(
                   argumentValues.currentPassphraseSourceKind,
                   CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
-      case ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE -> {
+      case ProtocolOptions.NEW_BOOK_KEY_FILE -> {
         argumentValues.replacementPassphraseSourceKind =
-            CliBookPassphraseParser.requireSingleReplacementPassphraseSource(
+            CliBookPassphraseParser.requireSingleNewPassphraseSource(
                 argumentValues.replacementPassphraseSourceKind,
                 CliBookPassphraseParser.PassphraseSourceKind.KEY_FILE);
         argumentValues.replacementBookKeyFilePath =
             CliOptionValues.requirePathOptionValue(
-                argumentIterator, ProtocolOptions.REPLACEMENT_BOOK_KEY_FILE);
+                argumentIterator, ProtocolOptions.NEW_BOOK_KEY_FILE);
       }
-      case ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_STDIN ->
+      case ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN ->
           argumentValues.replacementPassphraseSourceKind =
-              CliBookPassphraseParser.requireSingleReplacementPassphraseSource(
+              CliBookPassphraseParser.requireSingleNewPassphraseSource(
                   argumentValues.replacementPassphraseSourceKind,
                   CliBookPassphraseParser.PassphraseSourceKind.STANDARD_INPUT);
-      case ProtocolOptions.REPLACEMENT_BOOK_PASSPHRASE_PROMPT ->
+      case ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT ->
           argumentValues.replacementPassphraseSourceKind =
-              CliBookPassphraseParser.requireSingleReplacementPassphraseSource(
+              CliBookPassphraseParser.requireSingleNewPassphraseSource(
                   argumentValues.replacementPassphraseSourceKind,
                   CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
       case ProtocolOptions.OUTPUT ->

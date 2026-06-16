@@ -100,39 +100,55 @@ final class CliArgumentValueParser {
     return invalid(argument, unsupportedArgumentMessage(argument, supportedOptions));
   }
 
-  static CliArgumentsException unknownCommand(String commandName) {
+  static CliArgumentsException unknownCommand(String commandName, List<String> supportedCommands) {
     return new CliArgumentsException(
         ContractErrors.Descriptor.UNKNOWN_COMMAND.code(),
         commandName,
-        "Unsupported command: " + commandName,
+        unsupportedCommandMessage(commandName, supportedCommands),
         CliInvocationText.helpExamplesHint());
   }
 
   private static String unsupportedArgumentMessage(String argument, List<String> supportedOptions) {
-    String message = "Unsupported argument: " + argument;
-    @Nullable String nearestSupportedOption = nearestSupportedOption(argument, supportedOptions);
-    return nearestSupportedOption == null
-        ? message
-        : message + ". Did you mean " + nearestSupportedOption + "?";
+    return unsupportedTokenMessage("Unsupported argument: ", argument, supportedOptions);
   }
 
-  private static @Nullable String nearestSupportedOption(
-      String argument, List<String> supportedOptions) {
-    if (!argument.startsWith("-")) {
+  private static String unsupportedCommandMessage(
+      String commandName, List<String> supportedCommands) {
+    return unsupportedTokenMessage("Unsupported command: ", commandName, supportedCommands);
+  }
+
+  private static String unsupportedTokenMessage(
+      String prefix, String token, List<String> supportedTokens) {
+    String message = prefix + token;
+    @Nullable String nearestSupportedToken = nearestSupportedToken(token, supportedTokens);
+    return nearestSupportedToken == null
+        ? message
+        : message + ". Did you mean " + nearestSupportedToken + "?";
+  }
+
+  private static @Nullable String nearestSupportedToken(
+      String token, List<String> supportedTokens) {
+    String normalizedToken = normalizedToken(token);
+    if (normalizedToken.isEmpty()) {
       return null;
     }
-    return supportedOptions.stream()
-        .filter(option -> option.startsWith("-"))
-        .map(option -> new OptionDistance(option, optionDistance(argument, option)))
+    return supportedTokens.stream()
+        .map(
+            candidate ->
+                new TokenDistance(
+                    candidate, normalizedToken, tokenDistance(normalizedToken, candidate)))
         .filter(
             candidate ->
-                candidate.distance() <= 3
-                    || candidate.option().startsWith(argument)
-                    || argument.startsWith(candidate.option()))
+                candidate.distance() <= candidate.maximumSuggestedDistance()
+                    || candidate.prefixMatch()
+                    || candidate.containsMatch())
         .min(
-            Comparator.comparingInt(OptionDistance::distance)
-                .thenComparingInt(candidate -> candidate.option().length()))
-        .map(OptionDistance::option)
+            Comparator.comparing(TokenDistance::prefixMatch)
+                .reversed()
+                .thenComparing(TokenDistance::containsMatch, Comparator.reverseOrder())
+                .thenComparingInt(TokenDistance::distance)
+                .thenComparingInt(candidate -> candidate.candidate().length()))
+        .map(TokenDistance::candidate)
         .orElse(null);
   }
 
@@ -158,5 +174,33 @@ final class CliArgumentValueParser {
     return distances[left.length()][right.length()];
   }
 
-  private record OptionDistance(String option, int distance) {}
+  private static String normalizedToken(String token) {
+    String stripped = token.strip().toLowerCase(java.util.Locale.ROOT);
+    int index = 0;
+    while (index < stripped.length() && stripped.charAt(index) == '-') {
+      index++;
+    }
+    return stripped.substring(index);
+  }
+
+  private static int tokenDistance(String normalizedToken, String candidate) {
+    return optionDistance(normalizedToken, normalizedToken(candidate));
+  }
+
+  private record TokenDistance(String candidate, String input, int distance) {
+    private int maximumSuggestedDistance() {
+      return Math.max(
+          2, Math.min(6, Math.max(input.length(), normalizedToken(candidate).length()) / 3));
+    }
+
+    private boolean prefixMatch() {
+      String normalizedCandidate = normalizedToken(candidate);
+      return normalizedCandidate.startsWith(input) || input.startsWith(normalizedCandidate);
+    }
+
+    private boolean containsMatch() {
+      String normalizedCandidate = normalizedToken(candidate);
+      return normalizedCandidate.contains(input) || input.contains(normalizedCandidate);
+    }
+  }
 }

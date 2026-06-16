@@ -4,6 +4,16 @@ import java.util.List;
 
 /** Reads lifecycle and compatibility state from one selected SQLite database handle. */
 final class SqliteBookStateReader {
+  /**
+   * Chooses whether one state snapshot proves only operational readiness or full semantic health.
+   */
+  private enum VerificationMode {
+    /** Verifies the structural markers required for ordinary read-only command execution. */
+    OPERATIONAL,
+    /** Verifies the full semantic audit required for explicit book inspection and write paths. */
+    AUDITED
+  }
+
   private final int bookApplicationId;
   private final int bookFormatVersion;
   private final List<String> canonicalTables;
@@ -20,6 +30,15 @@ final class SqliteBookStateReader {
   }
 
   SqliteBookStateSnapshot snapshot(SqliteNativeDatabase activeDatabase) {
+    return snapshot(activeDatabase, VerificationMode.AUDITED);
+  }
+
+  SqliteBookStateSnapshot operationalSnapshot(SqliteNativeDatabase activeDatabase) {
+    return snapshot(activeDatabase, VerificationMode.OPERATIONAL);
+  }
+
+  private SqliteBookStateSnapshot snapshot(
+      SqliteNativeDatabase activeDatabase, VerificationMode verificationMode) {
     int applicationId =
         SqliteStatementQueries.querySingleInt(activeDatabase, "pragma application_id");
     int userVersion = SqliteStatementQueries.querySingleInt(activeDatabase, "pragma user_version");
@@ -32,8 +51,9 @@ final class SqliteBookStateReader {
             applicationId, userVersion, SqliteBookState.UNSUPPORTED_FINGRIND_VERSION);
       }
       if (hasCanonicalTables(activeDatabase)
-          && hasInitializedMarker(activeDatabase)
-          && hasCanonicalInitializedBookSemantics(activeDatabase)) {
+          && hasCanonicalInitializedBookStructure(activeDatabase)
+          && (verificationMode == VerificationMode.OPERATIONAL
+              || hasAuditedInitializedBookSemantics(activeDatabase))) {
         return new SqliteBookStateSnapshot(
             applicationId, userVersion, SqliteBookState.INITIALIZED_FINGRIND);
       }
@@ -60,18 +80,40 @@ final class SqliteBookStateReader {
             statement -> statement.bindText(1, SqlitePostingSql.INITIALIZED_AT_META_KEY));
   }
 
-  private boolean hasCanonicalInitializedBookSemantics(SqliteNativeDatabase activeDatabase) {
+  private boolean hasCanonicalInitializedBookStructure(SqliteNativeDatabase activeDatabase) {
     try {
-      return SqliteBookIntegrityVerifier.hasNoUnexpectedSchemaObjects(activeDatabase)
-          && SqliteBookIntegrityVerifier.passesIntegrityCheck(activeDatabase)
-          && SqliteBookIntegrityVerifier.passesForeignKeyCheck(activeDatabase)
-          && SqliteBookIntegrityVerifier.hasMatchingRecordedSchemaFingerprint(activeDatabase)
-          && SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(activeDatabase)
-          && SqliteStatementQueries.loadBookIdentity(activeDatabase).isPresent()
-          && SqliteBookIntegrityVerifier.hasValidPersistedMoney(activeDatabase)
-          && SqliteBookIntegrityVerifier.hasFunctionalCurrencyAlignedJournal(activeDatabase)
+      if (!SqliteBookIntegrityVerifier.hasNoUnexpectedSchemaObjects(activeDatabase)) {
+        return false;
+      }
+      if (!SqliteBookIntegrityVerifier.hasMatchingRecordedSchemaFingerprint(activeDatabase)) {
+        return false;
+      }
+      boolean initializedAtPresent =
+          SqliteStatementQueries.loadInitializedAt(activeDatabase).isPresent();
+      return initializedAtPresent
+          && SqliteStatementQueries.loadBookIdentity(activeDatabase).isPresent();
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+      return false;
+    }
+  }
+
+  private boolean hasAuditedInitializedBookSemantics(SqliteNativeDatabase activeDatabase) {
+    try {
+      if (!SqliteBookIntegrityVerifier.passesIntegrityCheck(activeDatabase)) {
+        return false;
+      }
+      if (!SqliteBookIntegrityVerifier.passesForeignKeyCheck(activeDatabase)) {
+        return false;
+      }
+      if (!SqliteBookIntegrityVerifier.hasBalancedPersistedJournal(activeDatabase)) {
+        return false;
+      }
+      if (!SqliteBookIntegrityVerifier.hasValidPersistedMoney(activeDatabase)) {
+        return false;
+      }
+      return SqliteBookIntegrityVerifier.hasFunctionalCurrencyAlignedJournal(activeDatabase)
           && SqliteBookIntegrityVerifier.hasValidPersistedPostingLifecycle(activeDatabase);
-    } catch (RuntimeException exception) {
+    } catch (IllegalArgumentException | IllegalStateException exception) {
       return false;
     }
   }

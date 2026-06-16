@@ -1,5 +1,6 @@
 package dev.erst.fingrind.buildlogic
 
+import java.time.Instant
 import org.apache.tools.ant.filters.ReplaceTokens
 import org.gradle.api.GradleException
 import org.gradle.api.Plugin
@@ -135,6 +136,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 )
             val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
             val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
+            val bundleWorkspaceDirectory = layout.buildDirectory.dir("bundle")
             val bundleRootDirectory =
                 bundleName.flatMap { name -> layout.buildDirectory.dir("bundle/$name") }
             val bundleManifestOutputFile =
@@ -167,6 +169,10 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
             val hostBundleClassifier = hostBundleTarget.classifier
             val bundleLauncherPath = providers.provider { bundleTarget.launcherPath }
             val bundleLauncherCommand = providers.provider { bundleTarget.launcherCommand }
+            val normalizedArtifactTimestamp =
+                providers.provider {
+                    NormalizedArtifactTimestampResolver.resolve(repositoryRootDirectory)
+                }
             val bundleTemplateProperties =
                 mapOf(
                     "version" to project.version.toString(),
@@ -281,6 +287,9 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 tasks.register<CreateRuntimeImageTask>("createRuntimeImage") {
                     group = "distribution"
                     description = "Builds the private Java runtime image for the FinGrind CLI bundle."
+                    outputs.doNotCacheIf("jlink output trees carry host-private filesystem metadata.") {
+                        true
+                    }
                     dependsOn(writeRuntimeModuleList)
                     javaExecutable.set(sourceCheckoutJavaLauncher.map { it.executablePath })
                     javaInstallationDirectory.set(
@@ -299,6 +308,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     applicationName.set(rootProject.name)
                     versionText.set(project.version.toString())
                     this.bundleClassifier.set(bundleClassifierValue)
+                    normalizedArtifactTimestampUtc.set(normalizedArtifactTimestamp.map(Instant::toString))
                     outputFile.set(bundleManifestOutputFile)
                 }
 
@@ -308,7 +318,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     description =
                         "Deletes staged self-contained FinGrind CLI bundle directories plus prior bundle archives and checksum files."
                     artifactPrefix.set("fingrind-")
-                    bundleWorkspaceDirectory.set(layout.buildDirectory.dir("bundle"))
+                    this.bundleWorkspaceDirectory.set(bundleWorkspaceDirectory)
                     this.bundleRootDirectory.set(
                         layout.buildDirectory.dir(bundleName.map { name -> "bundle/$name" }),
                     )
@@ -333,11 +343,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                         into("bin")
                         filter(
                             mapOf(
-                                "tokens" to
-                                    mapOf(
-                                        "bundleRuntimeDistribution" to bundleRuntimeDistribution,
-                                        "bundleHomeSystemProperty" to sqliteBundleHomeSystemProperty,
-                                    ),
+                                "tokens" to bundleTemplateProperties,
                                 "beginToken" to "{{",
                                 "endToken" to "}}",
                             ),
@@ -352,7 +358,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                         into("lib/app")
                         rename { "fingrind.jar" }
                     }
-                    from(createRuntimeImage) {
+                    from(runtimeImageDirectory) {
                         into("runtime")
                     }
                     from(hostManagedSqlite.libraryPath) {
@@ -374,14 +380,25 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     from(rootProject.file("NOTICE"))
                     from(rootProject.file("PATENTS.md"))
                 }
+            val normalizeBundleFileTimestamps =
+                tasks.register<NormalizeBundleFileTimestampsTask>("normalizeBundleFileTimestamps") {
+                    group = "distribution"
+                    description =
+                        "Applies the normalized public bundle timestamp to every staged bundle path before archiving."
+                    dependsOn(stageCliBundle)
+                    this.bundleRootDirectory.set(bundleRootDirectory)
+                    this.normalizedArtifactEpochSeconds.set(
+                        normalizedArtifactTimestamp.map(Instant::getEpochSecond),
+                    )
+                }
 
             val bundleArchiveTasks =
                 registerCliBundleArchiveTasks(
                     bundleOperatingSystemId = bundleOperatingSystemId,
-                    stageCliBundle = stageCliBundle,
+                    bundleArchiveInputTask = normalizeBundleFileTimestamps,
                     distributionDirectory = distributionDirectory,
                     bundleArchiveFileName = bundleArchiveFileName,
-                    bundleRootDirectory = bundleRootDirectory,
+                    bundleWorkspaceDirectory = bundleWorkspaceDirectory,
                     bundleName = bundleName,
                     bundleSha256File = bundleSha256File,
                     bundleArchiveManifestFile = bundleArchiveManifestOutputFile,

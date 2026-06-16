@@ -3,6 +3,30 @@
 Notable changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.55.0] - 2026-06-16
+
+### Changed
+
+- Bumped the repo-owned Python lint baseline to Ruff `0.15.17`.
+- Bumped the repo-owned formatting baseline to Spotless `8.7.0`.
+- Hard-broke reviewed-surface inventory ownership onto one shared registry file for the Java and Python structural-governance verifiers. Reviewed Java waivers and tracked text-resource waivers now resolve from one canonical JSON registry instead of split language-local copies, so expiry, owner, and split-trigger changes travel through one reviewed-surface catalog.
+- Hard-broke public bundle publication onto two explicit contracts: bundle layout now owns package contents plus compatibility labels, while bundle publication owns which declared targets are actually shipped. Published self-contained downloads now cover `macos-aarch64`, `macos-x86_64`, `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`; `windows-aarch64` remains declared but unpublished. Bundle archives now build with normalized timestamps, publish explicit archive/checksum/manifest paths at build time, record per-target compatibility labels plus Linux minimum glibc floors in the bundle manifest contract, and back those claims with reproducibility checks plus host-runner and compatibility-floor smoke lanes in CI, freshness canaries, and tagged release publication.
+- Hard-broke the maintenance and reporting grammar onto explicit book and period nouns. Rekey, backup, restore, and rollback flows now use the `--new-book-key-file`, `--backup-book-file`, `--backup-book-file-out`, and `--rollback-book-file` naming family, while period-bounded reports and period-result transfer now use `--period-start` and `--period-end` instead of the broader effective-date wording.
+- Hard-broke runtime and machine-discovery feedback onto a more truthful operator and agent surface. Successful primary results own stdout, deterministic failures and rejections route to stderr in both text and machine modes, `execute-plan` can return bounded text or JSON instead of one fixed JSON-only contract, and discovery now reports the active bundle target, its publication status, and operation-specific exit-code families.
+- Hard-broke bookkeeping read and lifecycle ownership onto narrower initialized-book seams. Read-only workflows, posting validation, and SQLite capability sessions now reuse dedicated initialized-book and capability-view owners instead of repeating lifecycle inspection logic across command families.
+
+### Fixed
+
+- Fixed read-only SQLite contention under real bundled concurrency. Read-only query and report workflows now classify initialized-book readiness from one lock-light structural contract instead of rerunning the full integrity audit on every command, while explicit inspection keeps the deeper audited path; concurrent bundled list and trial-balance bursts therefore stop surfacing spurious `storage-runtime-failure` responses from transient `SQLITE_IOERR_LOCK` failures.
+- Fixed contract-level amount validation drift so published money values now reject signed and decimal `minorUnits` deterministically at the boundary, and the checked-in Jazzer regression seeds follow that exact unsigned-integer doctrine.
+- Fixed non-Linux Docker release gating on Docker Desktop. The Docker-target managed SQLite build now compiles through one anonymous direct compiler container instead of wedging inside a nested Buildx metadata fetch before Stage 6 can reach the public image smoke.
+- Fixed Docker rebuild durability and rerun hygiene so the container builder now stages the toolchain pieces that `jlink --strip-debug` requires, Python helper-tool freshness is covered by dependency automation, wrapper validation obeys workflow concurrency rules, and release-tag verification distinguishes first publication from immutable-tag reruns.
+- Fixed release-version drift in the public-tag gate. Release-candidate verification now rejects any tag whose first parent already carried the same version, so the published tag must be the commit that introduces that release version onto the default-branch line rather than a later repair commit that merely inherited it.
+- Fixed the CLI diagnostics-channel contract so machine-readable rejections and failures now publish on stderr instead of stdout, and machine-mode internal defects keep one parseable `internal-error` envelope without interleaved raw stack traces.
+- Fixed FinGrind-owned Docker bind-mount residue during writable and maintenance workflows. SQLite activity markers and maintenance leases now use directory-shaped coordination artifacts instead of file-shaped metadata entries, so mounted volumes no longer accumulate FinGrind-owned `.smbdelete*` marker or lease remnants.
+- Fixed public-doc and example drift so the storefront README, install and quick-start guides, CLI reference, request guide, and checked-in examples now agree on the published host matrix, stderr diagnostics contract, period naming, bundle verification steps, and the renamed maintenance options.
+
 ## [0.54.0] - 2026-06-14
 
 ### Changed
@@ -34,10 +58,7 @@ Notable changes to this project are documented in this file. The format is based
 ### Fixed
 
 - Fixed Java source-shape evidence so newline-terminated files no longer overcount physical lines, duplication-exempt reviewed waivers no longer bypass stale-waiver removal, and reviewed-surface reports publish the approved full snapshot beside the live measurement.
-- Fixed Kotlin and PMD structural-governance drift so receiver functions, `fun interface` owners,
-  and nested-type counts use a token-aware collector, Jazzer production inherits the main production
-  policy, Jazzer test re-adds `GodClass` deliberately, and `NcssCount` remains excluded because file
-  and method size ownership lives in structural governance.
+- Fixed Kotlin and PMD structural-governance drift so receiver functions, `fun interface` owners, and nested-type counts use a token-aware collector, Jazzer production inherits the main production policy, Jazzer test re-adds `GodClass` deliberately, and `NcssCount` remains excluded because file and method size ownership lives in structural governance.
 - Fixed maintenance verification, public-doc drift, and release-promotion wait churn so staged backup, restore, and rollback recovery reject invalid artifacts deterministically; the storefront README, install and quick-start guides, release protocol, launchers, and managed-SQLite contract docs agree on discovery defaults, template vocabulary, launcher grammar, runtime provenance, and release-prep generated-block sync; and the PR and merge-handoff verifiers now return as soon as the canonical `Gate` passes on the target commit, even when the observational Windows non-public bundle smoke lane is still running.
 
 ## [0.52.0] - 2026-06-05
@@ -45,33 +66,11 @@ Notable changes to this project are documented in this file. The format is based
 ### Changed
 
 - Bumped the repository-owned static-analysis baseline to NullAway `0.13.5` and Ruff `0.15.16`.
-- Hard-broke the live bookkeeping theory onto one explicit doctrine owner. `BookIdentity` now carries
-  one composed `BookDoctrine` made from the accounting-kernel profile, accounting basis, framework
-  position, entity form, and starter-chart template, and the built-in owner-managed-service cash
-  doctrine now drives discovery, examples, and operator-facing labels from one source.
-- Hard-broke the public bookkeeping operation surface onto one narrower cash-bookkeeping kernel. Typed
-  cash revenue, cash expense, equity contribution, and equity withdrawal remain the primary operating
-  entries; opening balances now enter through the structured `OPEN_ACCOUNTING_POSITION` flow; direct
-  administrative entries are reversal-only; and public request and workflow surfaces reject retired
-  mixed-branch and legacy adjustment fields instead of tolerating them.
-- Hard-broke the operator and runtime surface onto deterministic contracts. `help`, `version`, and
-  `environment` now default predictably instead of switching by stdout interactivity; runtime facts
-  and publication facts are split in the environment descriptor; prompt-plus-machine-output
-  combinations now refuse deterministically; protected-book filesystem violations publish the
-  stable `invalid-book-file-path` contract; and report/query text, CSV, and PDF surfaces now use
-  one human display grammar with lighter doctrine wording and explicit financial-position equation
-  verdicts.
-- Hard-broke onboarding and package guidance onto one canonical first-run story. The storefront
-  README, bundle README, quick-start guide, request templates, and checked-in examples now share the
-  seeded owner-managed service starter chart and one concrete first-post request; public self-contained
-  bundles are Linux-only; macOS and Windows are routed to the published container or source-checkout
-  paths; and source-checkout plus direct-Java launchers now use one Gradle-owned Java 26 toolchain
-  manifest instead of shell-local Java discovery.
-- Hard-broke structural-governance and release-control ownership farther across the repository.
-  Reviewed waivers are now self-removing and time-aware, repo-local audit mirrors publish
-  structural evidence from the checkout, tighter PMD and source-shape budgets force earlier file
-  splits, managed SQLite packaging and container assembly share one Gradle-owned provenance
-  pipeline, and draft-first immutable release publication remains the only supported release path.
+- Hard-broke the live bookkeeping theory onto one explicit doctrine owner. `BookIdentity` now carries one composed `BookDoctrine` made from the accounting-kernel profile, accounting basis, framework position, entity form, and starter-chart template, and the built-in owner-managed-service cash doctrine now drives discovery, examples, and operator-facing labels from one source.
+- Hard-broke the public bookkeeping operation surface onto one narrower cash-bookkeeping kernel. Typed cash revenue, cash expense, equity contribution, and equity withdrawal remain the primary operating entries; opening balances now enter through the structured `OPEN_ACCOUNTING_POSITION` flow; direct administrative entries are reversal-only; and public request and workflow surfaces reject retired mixed-branch and legacy adjustment fields instead of tolerating them.
+- Hard-broke the operator and runtime surface onto deterministic contracts. `help`, `version`, and `environment` now default predictably instead of switching by stdout interactivity; runtime facts and publication facts are split in the environment descriptor; prompt-plus-machine-output combinations now refuse deterministically; protected-book filesystem violations publish the stable `invalid-book-file-path` contract; and report/query text, CSV, and PDF surfaces now use one human display grammar with lighter doctrine wording and explicit financial-position equation verdicts.
+- Hard-broke onboarding and package guidance onto one canonical first-run story. The storefront README, bundle README, quick-start guide, request templates, and checked-in examples now share the seeded owner-managed service starter chart and one concrete first-post request; public self-contained bundles are Linux-only; macOS and Windows are routed to the published container or source-checkout paths; and source-checkout plus direct-Java launchers now use one Gradle-owned Java 26 toolchain manifest instead of shell-local Java discovery.
+- Hard-broke structural-governance and release-control ownership farther across the repository. Reviewed waivers are now self-removing and time-aware, repo-local audit mirrors publish structural evidence from the checkout, tighter PMD and source-shape budgets force earlier file splits, managed SQLite packaging and container assembly share one Gradle-owned provenance pipeline, and draft-first immutable release publication remains the only supported release path.
 
 ### Fixed
 
@@ -2785,8 +2784,9 @@ Notable changes to this project are documented in this file. The format is based
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.54.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.55.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
+[0.55.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.55.0
 [0.54.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.54.0
 [0.53.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.53.0
 [0.52.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.52.0

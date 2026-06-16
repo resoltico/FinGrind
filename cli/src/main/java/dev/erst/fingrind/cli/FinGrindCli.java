@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.report.pdf.PdfReportService;
@@ -15,6 +16,7 @@ import java.util.UUID;
 /** Command dispatcher for the FinGrind agent-first CLI surface. */
 final class FinGrindCli {
   static final String RUNTIME_DISTRIBUTION_PROPERTY = "fingrind.runtime.distribution";
+  static final String RUNTIME_BUNDLE_TARGET_PROPERTY = "fingrind.runtime.bundle-target";
   static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION =
       ProtocolCatalog.distribution().directJavaRuntimeDistribution().wireValue();
   static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION =
@@ -92,7 +94,7 @@ final class FinGrindCli {
       CliBookMutationWorkflow mutationWorkflow,
       CliBookReadWorkflow readWorkflow) {
     CliRequestReader requestReader = new CliRequestReader(inputStream);
-    CliOutputChannel outputChannel = new CliOutputChannel(outputStream);
+    CliOutputChannel outputChannel = new CliOutputChannel(outputStream, diagnosticsStream);
     this.failureWriter = new CliFailureResponseWriter(outputChannel);
     this.diagnosticsWriter = new CliDiagnosticsWriter(diagnosticsStream);
     CliMetadata metadata = new CliMetadata();
@@ -167,8 +169,10 @@ final class FinGrindCli {
         return CliExecutionPolicy.failureExitCode(failure);
       }
       String errorId = nextInternalErrorId();
-      diagnosticsWriter.writeInternalError(errorId, exception);
-      CliFailure internalFailure = CliFailureMapper.internalError(errorId);
+      if (failureOutputMode == OutputMode.TEXT) {
+        diagnosticsWriter.writeInternalError(errorId, exception);
+      }
+      CliFailure internalFailure = CliFailureMapper.internalError(errorId, failureOutputMode);
       failureWriter.writeFailure(internalFailure, failureOutputMode);
       return CliExecutionPolicy.failureExitCode(internalFailure);
     }
@@ -176,11 +180,20 @@ final class FinGrindCli {
 
   static EnvironmentDescriptor environmentDescriptor(
       SqliteRuntime.Probe runtimeProbe, String runtimeDistribution) {
-    return CliRuntimeContractDescriptors.environmentDescriptor(runtimeProbe, runtimeDistribution);
+    return CliRuntimeContractDescriptors.environmentDescriptor(
+        runtimeProbe, runtimeDistribution, runtimeBundleTarget());
   }
 
   static String runtimeDistribution() {
     return System.getProperty(RUNTIME_DISTRIBUTION_PROPERTY, DIRECT_JAVA_RUNTIME_DISTRIBUTION);
+  }
+
+  static @org.jspecify.annotations.Nullable PublicCliBundleTarget runtimeBundleTarget() {
+    String rawBundleTarget = System.getProperty(RUNTIME_BUNDLE_TARGET_PROPERTY);
+    if (rawBundleTarget == null || rawBundleTarget.isBlank()) {
+      return null;
+    }
+    return PublicCliBundleTarget.fromWireValue(rawBundleTarget);
   }
 
   private static String nextInternalErrorId() {

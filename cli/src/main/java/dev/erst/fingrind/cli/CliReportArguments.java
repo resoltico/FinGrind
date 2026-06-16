@@ -50,9 +50,21 @@ final class CliReportArguments {
 
   static @Nullable OutputMode requireReportOutputMode(
       @Nullable OutputMode currentOutputMode, ListIterator<String> argumentIterator) {
+    String rawOutputMode = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT);
+    if ("pdf".equals(rawOutputMode)) {
+      throw CliArgumentValueParser.unsupportedOutputSelection(
+          ProtocolOptions.OUTPUT,
+          "Unsupported output mode for "
+              + ProtocolOptions.OUTPUT
+              + ": "
+              + rawOutputMode
+              + ". PDF export is file-only; use "
+              + ProtocolOptions.PDF_OUT
+              + " <path> together with one stdout mode from json, text, csv.");
+    }
     return CliOptionModes.requireOutputMode(
         currentOutputMode,
-        CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+        rawOutputMode,
         CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
   }
 }

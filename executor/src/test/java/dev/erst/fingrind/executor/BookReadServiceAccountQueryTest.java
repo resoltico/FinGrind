@@ -150,7 +150,7 @@ class BookReadServiceAccountQueryTest {
         assertThrows(
                 IllegalStateException.class,
                 () ->
-                    BookReadService.requireInitializedBookIdentity(
+                    BookLifecycleInspection.requireInitializedBookIdentity(
                         new BookLifecycleInspection.Missing(12)))
             .getMessage());
     assertEquals(
@@ -158,7 +158,7 @@ class BookReadServiceAccountQueryTest {
         assertThrows(
                 IllegalStateException.class,
                 () ->
-                    BookReadService.requireInitializedBookIdentity(
+                    BookLifecycleInspection.requireInitializedBookIdentity(
                         new BookLifecycleInspection.Existing(
                             BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 12)))
             .getMessage());
@@ -263,6 +263,7 @@ class BookReadServiceAccountQueryTest {
     var postingFact = postingFact("posting-1", "idem-1");
     bookSession.commit(postingFact);
     bookSession.resetFindAccountCalls();
+    bookSession.resetLifecycleCounts();
     BookReadService service = readService(bookSession);
     assertEquals(
         foundPosting(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
@@ -278,6 +279,9 @@ class BookReadServiceAccountQueryTest {
                 List.of(EUR_DEBIT_BALANCE))),
         service.accountBalance(AccountBalanceQuery.unbounded(CASH_ACCOUNT.accountCode())));
     assertEquals(0, bookSession.findAccountCalls());
+    assertEquals(0, bookSession.inspectBookCalls());
+    assertEquals(2, bookSession.allowsInitializedWorkflowCalls());
+    assertEquals(2, bookSession.requireInitializedBookIdentityCalls());
   }
 
   @Test

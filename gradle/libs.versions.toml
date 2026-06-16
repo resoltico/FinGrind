@@ -12,8 +12,7 @@ google-java-format = "1.35.0"
 pmd = "7.25.0"
 archunit = "1.4.2"
 shadow = "9.4.2"
-spotless = "8.6.0"
-foojay-resolver-convention = "1.0.0"
+spotless = "8.7.0"
 
 [libraries]
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
@@ -33,6 +32,5 @@ pmd-java = { module = "net.sourceforge.pmd:pmd-java", version.ref = "pmd" }
 
 [plugins]
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone-plugin" }
-foojayResolverConvention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay-resolver-convention" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }

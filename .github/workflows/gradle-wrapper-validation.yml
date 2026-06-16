@@ -20,6 +20,10 @@ on:
       - scripts/gradle-wrapper-support.sh
       - .github/workflows/gradle-wrapper-validation.yml
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Validate wrapper

@@ -216,7 +216,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.54.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.55.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
@@ -227,6 +227,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
             ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
+            PublicCliBundleTarget.MACOS_AARCH64,
             ProtocolCatalog.distribution().sourceCheckoutJava()),
         new EnvironmentStorageDescriptor(
             ProtocolCatalog.runtime().storageDriver(),

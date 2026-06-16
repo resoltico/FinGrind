@@ -1,16 +1,9 @@
 package dev.erst.fingrind.buildlogic
 
 import java.io.File
+import java.nio.file.Path
 
 internal object JavaSourceStructuralContracts {
-    private val reviewedSurfaceByKey =
-        reviewedSurfaceEntries.associateBy { reviewedSurface ->
-            ReviewedSurfaceKey(
-                projectPath = reviewedSurface.projectPath,
-                relativePath = reviewedSurface.relativePath,
-            )
-        }
-
     fun baselineBudgetFor(
         relativePath: String,
         packageName: String?,
@@ -26,13 +19,16 @@ internal object JavaSourceStructuralContracts {
     }
 
     fun contractFor(
+        projectRootDirectory: Path,
         projectPath: String,
         relativePath: String,
         packageName: String?,
         exportedPackages: Set<String>,
     ): JavaSourceStructuralContract {
         val defaultBudget = baselineBudgetFor(relativePath, packageName, exportedPackages)
-        reviewedSurfaceByKey[ReviewedSurfaceKey(projectPath, relativePath)]?.let { reviewedSurface ->
+        ReviewedSurfaceRegistry.javaReviewedSurfaceMap(projectRootDirectory)[
+            JavaReviewedSurfaceKey(projectPath, relativePath)
+        ]?.let { reviewedSurface ->
             return JavaSourceStructuralContract(
                 defaultBudget = defaultBudget,
                 reviewedSurface = reviewedSurface,
@@ -61,34 +57,37 @@ internal object JavaSourceStructuralContracts {
             ?.groupValues
             ?.get(1)
 
-    fun reviewedSurfaces(): List<ReviewedJavaSourceSurface> = reviewedSurfaceEntries
+    fun reviewedSurfaces(projectRootDirectory: Path): List<ReviewedJavaSourceSurface> =
+        ReviewedSurfaceRegistry.javaReviewedSurfaces(projectRootDirectory)
 
-    fun reviewedSurfaces(projectPath: String): List<ReviewedJavaSourceSurface> =
-        reviewedSurfaceEntries.filter { it.projectPath == projectPath }
+    fun reviewedSurfaces(
+        projectRootDirectory: Path,
+        projectPath: String,
+    ): List<ReviewedJavaSourceSurface> =
+        reviewedSurfaces(projectRootDirectory).filter { it.projectPath == projectPath }
 
     fun includeInDuplicationCheck(
+        projectRootDirectory: Path,
         projectPath: String,
         relativePath: String,
         packageName: String?,
         exportedPackages: Set<String>,
     ): Boolean =
-        reviewedSurfaceByKey[ReviewedSurfaceKey(projectPath, relativePath)]?.duplicationExemptionReason == null
+        ReviewedSurfaceRegistry.javaReviewedSurfaceMap(projectRootDirectory)[
+            JavaReviewedSurfaceKey(projectPath, relativePath)
+        ]?.duplicationExemptionReason == null
 
     fun missingReviewedSurfaceViolations(
+        projectRootDirectory: Path,
         projectPath: String,
         existingRelativePaths: Set<String>,
     ): List<String> =
         missingReviewedSurfaceViolations(
-            reviewedSurfaces = reviewedSurfaces(projectPath),
+            reviewedSurfaces = reviewedSurfaces(projectRootDirectory, projectPath),
             projectScope = projectPath,
             existingRelativePaths = existingRelativePaths,
         )
 }
-
-private data class ReviewedSurfaceKey(
-    val projectPath: String,
-    val relativePath: String,
-)
 
 internal fun javaShapeViolations(
     relativePath: String,

@@ -174,24 +174,18 @@ def assert_open_book(args: argparse.Namespace) -> int:
 def assert_runtime_failure_envelope(args: argparse.Namespace) -> int:
     document = json.loads(pathlib.Path(args.document).read_text(encoding="utf-8"))
     if document["status"] != "error":
-        raise SystemExit("raw java -jar open-book did not fail with an error envelope")
+        raise SystemExit(f"{args.label} did not emit an error envelope on the {args.stream} stream")
     if document["code"] != "managed-runtime-failure":
-        raise SystemExit(
-            "raw java -jar open-book did not classify the failure as managed-runtime-failure"
-        )
+        raise SystemExit(f"{args.label} did not classify the failure as managed-runtime-failure")
     message = document["message"]
     hint = document.get("hint", "")
     if (
         ":cli:prepareSourceCheckoutCliRuntime" not in message
         and ":cli:prepareSourceCheckoutCliRuntime" not in hint
     ):
-        raise SystemExit(
-            "raw java -jar open-book did not report the source-checkout runtime recovery path"
-        )
+        raise SystemExit(f"{args.label} did not report the source-checkout runtime recovery path")
     if "supported launchers" not in message and "supported launchers" not in hint:
-        raise SystemExit(
-            "raw java -jar open-book did not direct the operator toward supported launchers"
-        )
+        raise SystemExit(f"{args.label} did not direct the operator toward supported launchers")
     return 0
 
 
@@ -260,7 +254,9 @@ def build_parser() -> argparse.ArgumentParser:
     open_book.set_defaults(handler=assert_open_book)
 
     failure = subparsers.add_parser("assert-runtime-failure-envelope")
-    failure.add_argument("document")
+    failure.add_argument("--document", required=True)
+    failure.add_argument("--label", required=True)
+    failure.add_argument("--stream", required=True)
     failure.set_defaults(handler=assert_runtime_failure_envelope)
 
     return parser

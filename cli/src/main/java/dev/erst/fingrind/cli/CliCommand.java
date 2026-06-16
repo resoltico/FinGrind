@@ -44,7 +44,7 @@ sealed interface CliCommand
 
   /** Command family whose deterministic failures are always JSON machine envelopes. */
   sealed interface JsonFailureCommand extends CliCommand
-      permits PrintRequestTemplate, PrintPlanTemplate, ExecutePlan {
+      permits PrintRequestTemplate, PrintPlanTemplate {
     @Override
     default OutputMode failureOutputMode() {
       return OutputMode.JSON;

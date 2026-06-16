@@ -74,7 +74,11 @@ class JazzerReplayLedgerPlanTest {
     ReplayOutcome.ExpectedInvalid invalid =
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedLedgerPlanReplayDetails(), invalid.details());
-    assertEquals("Unexpected field: executionPolicy", invalid.message());
+    assertEquals(
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.ledgerPlanRequest(), "invalid_execution_policy.json")
+            .message(),
+        invalid.message());
   }
 
   @Test
@@ -90,9 +94,9 @@ class JazzerReplayLedgerPlanTest {
         assertInstanceOf(ReplayOutcome.ExpectedInvalid.class, outcome);
     assertEquals(new UnparsedLedgerPlanReplayDetails(), invalid.details());
     assertEquals(
-        "Unsupported value for kind: post_entry. Accepted values: "
-            + String.join(", ", LedgerStepKind.wireValues())
-            + ".",
+        CommittedRegressionSeedFixtures.expectation(
+                JazzerHarness.ledgerPlanRequest(), "invalid_unknown_kind_without_assertion.json")
+            .message(),
         invalid.message());
   }
 }

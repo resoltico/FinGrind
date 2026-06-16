@@ -7,7 +7,7 @@ import kotlin.test.assertEquals
 
 class DistributionContractReaderSurfaceTest {
     @Test
-    fun sharedSchemaKeys_drivePublicDistributionRuntimeSurfaceAndOperationLookups() {
+    fun sharedSchemaKeys_driveBundlePublicationRuntimeSurfaceAndOperationLookups() {
         val repositoryRoot = Files.createTempDirectory("distribution-contract-reader")
         try {
             DistributionContractReaderTestSupport.writeContractResource(
@@ -48,16 +48,6 @@ class DistributionContractReaderSurfaceTest {
             )
             DistributionContractReaderTestSupport.writeContractResource(
                 repositoryRoot,
-                "public-distribution-contract.json",
-                """
-                {
-                  "supportedTargets": ["linux-x86_64", "linux-aarch64"],
-                  "unsupportedTargets": ["macos-aarch64", "macos-x86_64", "windows-x86_64", "windows-aarch64"]
-                }
-                """.trimIndent(),
-            )
-            DistributionContractReaderTestSupport.writeContractResource(
-                repositoryRoot,
                 "managed-sqlite-contract.json",
                 """
                 {
@@ -84,60 +74,12 @@ class DistributionContractReaderSurfaceTest {
             DistributionContractReaderTestSupport.writeContractResource(
                 repositoryRoot,
                 "bundle-layout-contract.json",
-                """
-                {
-                  "bundleTargets": {
-                    "macos-aarch64": {
-                      "operatingSystemId": "macos",
-                      "architectureId": "aarch64",
-                      "archiveFormat": "tar.gz",
-                      "launcherPath": "bin/fingrind",
-                      "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.dylib"
-                    },
-                    "linux-x86_64": {
-                      "operatingSystemId": "linux",
-                      "architectureId": "x86_64",
-                      "archiveFormat": "tar.gz",
-                      "launcherPath": "bin/fingrind",
-                      "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.so.0"
-                    },
-                    "linux-aarch64": {
-                      "operatingSystemId": "linux",
-                      "architectureId": "aarch64",
-                      "archiveFormat": "tar.gz",
-                      "launcherPath": "bin/fingrind",
-                      "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.so.0"
-                    },
-                    "macos-x86_64": {
-                      "operatingSystemId": "macos",
-                      "architectureId": "x86_64",
-                      "archiveFormat": "tar.gz",
-                      "launcherPath": "bin/fingrind",
-                      "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.dylib"
-                    },
-                    "windows-x86_64": {
-                      "operatingSystemId": "windows",
-                      "architectureId": "x86_64",
-                      "archiveFormat": "zip",
-                      "launcherPath": "bin/fingrind.ps1",
-                      "launcherCommand": ".\\bin\\fingrind.ps1",
-                      "sqliteLibraryFileName": "sqlite3.dll"
-                    },
-                    "windows-aarch64": {
-                      "operatingSystemId": "windows",
-                      "architectureId": "aarch64",
-                      "archiveFormat": "zip",
-                      "launcherPath": "bin/fingrind.ps1",
-                      "launcherCommand": ".\\bin\\fingrind.ps1",
-                      "sqliteLibraryFileName": "sqlite3.dll"
-                    }
-                  }
-                }
-                """.trimIndent(),
+                DistributionContractReaderTestSupport.sharedBundleLayoutContractJson(),
+            )
+            DistributionContractReaderTestSupport.writeContractResource(
+                repositoryRoot,
+                "bundle-publication-contract.json",
+                DistributionContractReaderTestSupport.sharedBundlePublicationContractJson(),
             )
             DistributionContractReaderTestSupport.writeContractResource(
                 repositoryRoot,
@@ -155,11 +97,17 @@ class DistributionContractReaderSurfaceTest {
             nestedBuildRoot.createDirectories()
 
             assertEquals(
-                listOf("linux-x86_64", "linux-aarch64"),
+                listOf(
+                    "macos-aarch64",
+                    "linux-x86_64",
+                    "linux-aarch64",
+                    "macos-x86_64",
+                    "windows-x86_64",
+                ),
                 DistributionContractReader.publicCliBundleTargets(repositoryRoot),
             )
             assertEquals(
-                listOf("macos-aarch64", "macos-x86_64", "windows-x86_64", "windows-aarch64"),
+                listOf("windows-aarch64"),
                 DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRoot),
             )
             assertEquals(
@@ -232,7 +180,7 @@ class DistributionContractReaderSurfaceTest {
                 DistributionContractReader.windowsLinkerHardeningFlags(repositoryRoot),
             )
             assertEquals(
-                DistributionContractReader.BundleTargetContract(
+                BundleTargetContract(
                     classifier = "windows-aarch64",
                     operatingSystemId = "windows",
                     architectureId = "aarch64",
@@ -240,6 +188,16 @@ class DistributionContractReaderSurfaceTest {
                     launcherPath = "bin/fingrind.ps1",
                     launcherCommand = ".\\bin\\fingrind.ps1",
                     sqliteLibraryFileName = "sqlite3.dll",
+                    compatibilityLabel = "Windows aarch64",
+                    minimumGlibcVersion = null,
+                    compatibilitySmokeContainerImage = null,
+                    publicBundlePublication =
+                        PublicBundlePublicationContract(
+                            status = "not-published",
+                            runnerLabel = null,
+                            expectedRunnerOs = null,
+                            expectedRunnerArch = null,
+                        ),
                 ),
                 DistributionBundleTargetReader.hostBundleTarget(
                     repositoryRoot,
@@ -277,23 +235,13 @@ class DistributionContractReaderSurfaceTest {
     }
 
     @Test
-    fun publicDistributionContract_mustClassifyEveryDeclaredBundleTarget() {
-        val repositoryRoot = Files.createTempDirectory("distribution-contract-reader-missing-target")
+    fun bundleLayoutContract_requiresRunnerMetadataForPublishedTargets() {
+        val repositoryRoot = Files.createTempDirectory("distribution-contract-reader-publication")
         try {
             DistributionContractReaderTestSupport.writeContractResource(
                 repositoryRoot,
                 "contract-schema-keys.json",
                 DistributionContractReaderTestSupport.contractSchemaKeysJson(),
-            )
-            DistributionContractReaderTestSupport.writeContractResource(
-                repositoryRoot,
-                "public-distribution-contract.json",
-                """
-                {
-                  "supportedTargets": ["linux-x86_64"],
-                  "unsupportedTargets": []
-                }
-                """.trimIndent(),
             )
             DistributionContractReaderTestSupport.writeContractResource(
                 repositoryRoot,
@@ -307,15 +255,25 @@ class DistributionContractReaderSurfaceTest {
                       "archiveFormat": "tar.gz",
                       "launcherPath": "bin/fingrind",
                       "launcherCommand": "./bin/fingrind",
-                      "sqliteLibraryFileName": "libsqlite3.so.0"
-                    },
-                    "windows-aarch64": {
-                      "operatingSystemId": "windows",
-                      "architectureId": "aarch64",
-                      "archiveFormat": "zip",
-                      "launcherPath": "bin/fingrind.ps1",
-                      "launcherCommand": ".\\bin\\fingrind.ps1",
-                      "sqliteLibraryFileName": "sqlite3.dll"
+                      "sqliteLibraryFileName": "libsqlite3.so.0",
+                      "compatibilityLabel": "glibc 2.34+ Linux x86_64",
+                      "minimumGlibcVersion": "2.34",
+                      "compatibilitySmokeContainerImage": "rockylinux:9@sha256:floor-proof"
+                    }
+                  }
+                }
+                """.trimIndent(),
+            )
+            DistributionContractReaderTestSupport.writeContractResource(
+                repositoryRoot,
+                "bundle-publication-contract.json",
+                """
+                {
+                  "bundleTargets": {
+                    "linux-x86_64": {
+                      "status": "published",
+                      "runnerLabel": "ubuntu-24.04",
+                      "expectedRunnerOs": "Linux"
                     }
                   }
                 }
@@ -328,7 +286,7 @@ class DistributionContractReaderSurfaceTest {
                 }
 
             assertEquals(
-                "Public distribution contract must classify every declared bundle target. Missing: windows-aarch64",
+                "Published bundle target linux-x86_64 must declare runnerLabel, expectedRunnerOs, and expectedRunnerArch in contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-publication-contract.json.",
                 exception.message,
             )
         } finally {

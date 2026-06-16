@@ -4,60 +4,29 @@ import java.nio.file.Path
 import tools.jackson.databind.JsonNode
 
 internal object DistributionContractModels {
-    fun publicDistributionContract(projectRootDirectory: Path): DistributionContractReader.PublicDistributionContract {
-        val schema = DistributionContractReader.loadContractSchema(projectRootDirectory).publicDistribution
-        val declaredBundleTargets = bundleLayoutContract(projectRootDirectory).bundleTargets.keys
-        val supportedPublicCliBundleTargets =
-            validatedBundleTargetList(
-                DistributionContractJson.listProperty(
-                    projectRootDirectory,
-                    DistributionContractPaths.PUBLIC_DISTRIBUTION_CONTRACT_PATH,
-                    schema.supportedPublicCliBundleTargets,
-                ),
-                declaredBundleTargets,
-                schema.supportedPublicCliBundleTargets,
-            )
-        val unsupportedPublicCliBundleTargets =
-            validatedBundleTargetList(
-                DistributionContractJson.listProperty(
-                    projectRootDirectory,
-                    DistributionContractPaths.PUBLIC_DISTRIBUTION_CONTRACT_PATH,
-                    schema.unsupportedPublicCliBundleTargets,
-                ),
-                declaredBundleTargets,
-                schema.unsupportedPublicCliBundleTargets,
-            )
-        val overlap =
-            supportedPublicCliBundleTargets.toSet().intersect(unsupportedPublicCliBundleTargets.toSet())
-        if (overlap.isNotEmpty()) {
-            throw IllegalStateException(
-                "${schema.supportedPublicCliBundleTargets} and ${schema.unsupportedPublicCliBundleTargets} must be disjoint: ${overlap.joinToString()}",
-            )
-        }
-        val declaredTargets =
-            (supportedPublicCliBundleTargets + unsupportedPublicCliBundleTargets).toSet()
-        if (declaredTargets != declaredBundleTargets) {
-            val missingTargets = declaredBundleTargets - declaredTargets
-            throw IllegalStateException(
-                "Public distribution contract must classify every declared bundle target. Missing: ${missingTargets.joinToString()}",
-            )
-        }
-        return DistributionContractReader.PublicDistributionContract(
-            supportedPublicCliBundleTargets,
-            unsupportedPublicCliBundleTargets,
-        )
-    }
-
-    fun bundleLayoutContract(projectRootDirectory: Path): DistributionContractReader.BundleLayoutContract {
+    fun bundleLayoutContract(projectRootDirectory: Path): BundleLayoutContract {
         val schema = DistributionContractReader.loadContractSchema(projectRootDirectory).bundleLayout
+        val publicationSchema =
+            DistributionContractReader.loadContractSchema(projectRootDirectory).bundlePublication
         val document = DistributionContractJson.loadJson(projectRootDirectory, DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH)
+        val publicationDocument =
+            DistributionContractJson.loadJson(
+                projectRootDirectory,
+                DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH,
+            )
         val bundleTargetsNode =
             DistributionContractJson.objectProperty(
                 document,
                 schema.bundleTargets,
                 DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH,
             )
-        val bundleTargets = linkedMapOf<String, DistributionContractReader.BundleTargetContract>()
+        val publicationTargetsNode =
+            DistributionContractJson.objectProperty(
+                publicationDocument,
+                publicationSchema.bundleTargets,
+                DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH,
+            )
+        val bundleTargets = linkedMapOf<String, BundleTargetContract>()
         bundleTargetsNode.properties().forEach { entry ->
             val classifier = entry.key.trim()
             if (classifier.isEmpty()) {
@@ -68,21 +37,43 @@ internal object DistributionContractModels {
             if (bundleTargets.containsKey(classifier)) {
                 throw IllegalStateException("Duplicate bundle layout target: $classifier")
             }
-            bundleTargets[classifier] = bundleTargetContract(classifier, entry.value, schema)
+            val publicationNode = publicationTargetsNode.path(classifier)
+            if (!publicationNode.isObject) {
+                throw IllegalStateException(
+                    "Bundle publication contract must declare one publication object for $classifier in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
+                )
+            }
+            bundleTargets[classifier] =
+                bundleTargetContract(
+                    classifier = classifier,
+                    node = entry.value,
+                    publicationNode = publicationNode,
+                    schema = schema,
+                    publicationSchema = publicationSchema,
+                )
+        }
+        publicationTargetsNode.properties().forEach { entry ->
+            if (!bundleTargets.containsKey(entry.key.trim())) {
+                throw IllegalStateException(
+                    "Bundle publication contract declared unknown target ${entry.key} in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
+                )
+            }
         }
         if (bundleTargets.isEmpty()) {
             throw IllegalStateException(
                 "Bundle layout contract must declare at least one bundle target in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
             )
         }
-        return DistributionContractReader.BundleLayoutContract(bundleTargets.toMap())
+        return BundleLayoutContract(bundleTargets.toMap())
     }
 
     private fun bundleTargetContract(
         classifier: String,
         node: JsonNode,
-        schema: DistributionContractReader.BundleLayoutSchema,
-    ): DistributionContractReader.BundleTargetContract {
+        publicationNode: JsonNode,
+        schema: BundleLayoutSchema,
+        publicationSchema: BundlePublicationSchema,
+    ): BundleTargetContract {
         val document =
             DistributionContractJson.requireObjectNode(
                 node,
@@ -107,7 +98,7 @@ internal object DistributionContractModels {
                 "Bundle layout target $classifier must agree with $recomposedClassifier in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
             )
         }
-        return DistributionContractReader.BundleTargetContract(
+        return BundleTargetContract(
             classifier = classifier,
             operatingSystemId = operatingSystemId,
             architectureId = architectureId,
@@ -135,21 +126,113 @@ internal object DistributionContractModels {
                     schema.sqliteLibraryFileName,
                     DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH,
                 ),
+            compatibilityLabel =
+                DistributionContractJson.requiredText(
+                    document,
+                    schema.compatibilityLabel,
+                    DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH,
+                ),
+            publicBundlePublication =
+                publicBundlePublicationContract(
+                    classifier = classifier,
+                    node = publicationNode,
+                    schema = publicationSchema,
+                ),
+            minimumGlibcVersion =
+                document.path(schema.minimumGlibcVersion).takeIf { !it.isMissingNode && !it.isNull }
+                    ?.stringValue()
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+                    .also { value ->
+                        if (operatingSystemId == "linux" && value == null) {
+                            throw IllegalStateException(
+                                "Bundle layout target $classifier must declare ${schema.minimumGlibcVersion} in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
+                            )
+                        }
+                        if (operatingSystemId != "linux" && value != null) {
+                            throw IllegalStateException(
+                                "Bundle layout target $classifier must omit ${schema.minimumGlibcVersion} outside Linux in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
+                            )
+                        }
+                    },
+            compatibilitySmokeContainerImage =
+                document
+                    .path(schema.compatibilitySmokeContainerImage)
+                    .takeIf { !it.isMissingNode && !it.isNull }
+                    ?.stringValue()
+                    ?.trim()
+                    ?.takeIf(String::isNotBlank)
+                    .also { value ->
+                        if (operatingSystemId == "linux" && value == null) {
+                            throw IllegalStateException(
+                                "Bundle layout target $classifier must declare ${schema.compatibilitySmokeContainerImage} in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
+                            )
+                        }
+                        if (operatingSystemId != "linux" && value != null) {
+                            throw IllegalStateException(
+                                "Bundle layout target $classifier must omit ${schema.compatibilitySmokeContainerImage} outside Linux in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
+                            )
+                        }
+                    },
         )
     }
 
-    private fun validatedBundleTargetList(
-        values: List<String>,
-        declaredBundleTargets: Set<String>,
-        key: String,
-    ): List<String> {
-        values.forEach { value ->
-            if (value !in declaredBundleTargets) {
+    private fun publicBundlePublicationContract(
+        classifier: String,
+        node: JsonNode,
+        schema: BundlePublicationSchema,
+    ): PublicBundlePublicationContract {
+        val publicationNode =
+            DistributionContractJson.requireObjectNode(
+                node,
+                "bundle publication target $classifier",
+                DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH,
+            )
+        val status =
+            DistributionContractJson.requiredText(
+                publicationNode,
+                schema.publicationStatus,
+                DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH,
+            )
+        if (
+            status != PUBLICATION_STATUS_PUBLISHED &&
+                status != PUBLICATION_STATUS_NOT_PUBLISHED
+        ) {
+            throw IllegalStateException(
+                "Bundle publication target $classifier declared unsupported publication status $status in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
+            )
+        }
+        val runnerLabel =
+            publicationNode.path(schema.runnerLabel).takeIf { !it.isMissingNode && !it.isNull }
+                ?.stringValue()
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+        val expectedRunnerOs =
+            publicationNode.path(schema.expectedRunnerOs).takeIf { !it.isMissingNode && !it.isNull }
+                ?.stringValue()
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+        val expectedRunnerArch =
+            publicationNode.path(schema.expectedRunnerArch).takeIf { !it.isMissingNode && !it.isNull }
+                ?.stringValue()
+                ?.trim()
+                ?.takeIf(String::isNotBlank)
+        if (status == PUBLICATION_STATUS_PUBLISHED) {
+            if (runnerLabel == null || expectedRunnerOs == null || expectedRunnerArch == null) {
                 throw IllegalStateException(
-                    "Contract property $key references undeclared bundle target $value.",
+                    "Published bundle target $classifier must declare runnerLabel, expectedRunnerOs, and expectedRunnerArch in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
                 )
             }
+        } else if (runnerLabel != null || expectedRunnerOs != null || expectedRunnerArch != null) {
+            throw IllegalStateException(
+                "Non-published bundle target $classifier must omit runner metadata in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
+            )
         }
-        return values
+        return PublicBundlePublicationContract(
+            status = status,
+            runnerLabel = runnerLabel,
+            expectedRunnerOs = expectedRunnerOs,
+            expectedRunnerArch = expectedRunnerArch,
+        )
     }
 }

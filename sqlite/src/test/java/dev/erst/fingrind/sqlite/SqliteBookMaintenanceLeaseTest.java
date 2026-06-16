@@ -136,16 +136,8 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
                 + SqliteProcessIdentity.activityMarkerFileToken(
                     ProcessHandle.current().pid(), SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS)
                 + ".marker");
-    Files.writeString(
-        markerPath,
-        "pid="
-            + ProcessHandle.current().pid()
-            + "\nstartEpochMillis="
-            + SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS
-            + "\n",
-        StandardOpenOption.CREATE_NEW,
-        StandardOpenOption.WRITE);
-    SqliteBookFileSecurity.hardenOwnerOnlyFile(markerPath);
+    Files.createDirectory(markerPath);
+    SqliteBookFileSecurity.hardenDirectory(markerPath);
 
     SqliteLeaseBusy leaseBusy =
         assertInstanceOf(
@@ -158,18 +150,18 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   @Test
   void requireNoActiveLease_clearsOneStaleLeaseFile() throws Exception {
     Path artifactPath = writeArtifact("stale.sqlite", "content");
-    Path leasePath = leasePath(artifactPath);
-    writeLeaseMetadata(leasePath, "pid=99999999\nstartEpochMillis=-1\n");
+    Path legacyLeasePath = legacyLeasePath(artifactPath);
+    writeLegacyLeaseMetadata(legacyLeasePath, "pid=99999999\nstartEpochMillis=-1\n");
 
     assertDoesNotThrow(() -> SqliteBookMaintenanceLease.requireNoActiveLease(artifactPath));
-    assertFalse(Files.exists(leasePath));
+    assertFalse(Files.exists(legacyLeasePath));
   }
 
   @Test
   void requireNoActiveLease_rejectsOneLiveLeaseFile() throws Exception {
     Path artifactPath = writeArtifact("live.sqlite", "content");
-    Path leasePath = leasePath(artifactPath);
-    writeLeaseMetadata(leasePath, SqliteProcessIdentity.current().leaseMetadataText());
+    Path legacyLeasePath = legacyLeasePath(artifactPath);
+    writeLegacyLeaseMetadata(legacyLeasePath, SqliteProcessIdentity.current().leaseMetadataText());
 
     ContractFailureException failure =
         assertThrows(
@@ -178,7 +170,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     assertTrue(
         NullTestSupport.messageOf(failure).contains("active FinGrind maintenance workflow"),
         () -> NullTestSupport.messageOf(failure));
-    assertTrue(Files.exists(leasePath));
+    assertTrue(Files.exists(legacyLeasePath));
   }
 
   @Test
@@ -205,7 +197,8 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
       throws Exception {
     Path liveArtifactPath = writeArtifact("unlocked-live.sqlite", "content");
     Path liveLeasePath = leasePath(liveArtifactPath);
-    writeLeaseMetadata(liveLeasePath, SqliteProcessIdentity.current().leaseMetadataText());
+    Files.createDirectory(liveLeasePath);
+    SqliteBookFileSecurity.hardenDirectory(liveLeasePath);
 
     SqliteLeaseBusy liveBusy =
         assertInstanceOf(
@@ -216,8 +209,8 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     assertTrue(Files.exists(liveLeasePath));
 
     Path malformedArtifactPath = writeArtifact("malformed.sqlite", "content");
-    Path malformedLeasePath = leasePath(malformedArtifactPath);
-    writeLeaseMetadata(malformedLeasePath, "not-one-fingrind-lease-file\n");
+    Path malformedLeasePath = legacyLeasePath(malformedArtifactPath);
+    writeLegacyLeaseMetadata(malformedLeasePath, "not-one-fingrind-lease-file\n");
     Files.setLastModifiedTime(
         malformedLeasePath, FileTime.from(Instant.now().minus(Duration.ofMinutes(10))));
 
@@ -236,9 +229,9 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   void requireNoActiveLease_rejectsOneFreshMalformedLeaseFileUntilItsGraceWindowExpires()
       throws Exception {
     Path artifactPath = writeArtifact("fresh-malformed.sqlite", "content");
-    Path leasePath = leasePath(artifactPath);
-    writeLeaseMetadata(leasePath, "garbage\n");
-    Files.setLastModifiedTime(leasePath, FileTime.from(Instant.now()));
+    Path legacyLeasePath = legacyLeasePath(artifactPath);
+    writeLegacyLeaseMetadata(legacyLeasePath, "garbage\n");
+    Files.setLastModifiedTime(legacyLeasePath, FileTime.from(Instant.now()));
 
     ContractFailureException failure =
         assertThrows(
@@ -247,7 +240,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     assertTrue(
         NullTestSupport.messageOf(failure).contains("active FinGrind maintenance workflow"),
         () -> NullTestSupport.messageOf(failure));
-    assertTrue(Files.exists(leasePath));
+    assertTrue(Files.exists(legacyLeasePath));
   }
 
   @Test
@@ -259,9 +252,14 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
       AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
       artifactPath.exists = true;
       artifactPath.regularFile = true;
-      AclFixturePath leasePath = fileSystem.path("\\books\\book.sqlite.fingrind-maintenance.lock");
+      AclFixturePath leasePath =
+          fileSystem.path(
+              "\\books\\book.sqlite.fingrind-maintenance-"
+                  + SqliteProcessIdentity.coordinationToken(
+                      999_999_999L, SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS)
+                  + ".lock");
       leasePath.exists = true;
-      leasePath.regularFile = true;
+      leasePath.regularFile = false;
       leasePath.failDeleteIfExistsWith(new IOException("delete-boom"));
 
       IllegalStateException exception =
@@ -277,7 +275,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void acquire_wrapsLeaseFileOpenAndWriteFailures() {
+  void acquire_wrapsLeaseCreationAndHardeningFailures() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
       AclFixturePath parentPath = fileSystem.path("\\books");
       parentPath.exists = true;
@@ -285,8 +283,12 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
       AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
       artifactPath.exists = true;
       artifactPath.regularFile = true;
-      AclFixturePath leasePath = fileSystem.path("\\books\\book.sqlite.fingrind-maintenance.lock");
-      leasePath.failNewByteChannelWith(new IOException("lease-open-boom"));
+      AclFixturePath leasePath =
+          fileSystem.path(
+              "\\books\\book.sqlite.fingrind-maintenance-"
+                  + SqliteProcessIdentity.current().coordinationToken()
+                  + ".lock");
+      leasePath.failCreateDirectoryWith(new IOException("lease-create-boom"));
 
       IllegalStateException openFailure =
           assertThrows(
@@ -297,15 +299,20 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
       assertTrue(NullTestSupport.messageOf(openFailure).contains("Failed to acquire"));
     }
 
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath parentPath = fileSystem.path("\\books");
       parentPath.exists = true;
       parentPath.regularFile = false;
+      parentPath.aclView = secureDirectoryAcl(fileSystem.owner);
       AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
       artifactPath.exists = true;
       artifactPath.regularFile = true;
-      AclFixturePath leasePath = fileSystem.path("\\books\\book.sqlite.fingrind-maintenance.lock");
-      leasePath.failWriteWith(new IOException("lease-write-boom"));
+      AclFixturePath leasePath =
+          fileSystem.path(
+              "\\books\\book.sqlite.fingrind-maintenance-"
+                  + SqliteProcessIdentity.current().coordinationToken()
+                  + ".lock");
+      leasePath.overrideAclView = throwingAclView("lease-harden-boom");
 
       IllegalStateException writeFailure =
           assertThrows(
@@ -314,14 +321,16 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
                   SqliteBookMaintenanceLease.acquire(
                       artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
       assertTrue(NullTestSupport.messageOf(writeFailure).contains("Failed to acquire"));
+      assertEquals(
+          "lease-harden-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(writeFailure)));
     }
   }
 
   @Test
   void acquire_reclaimsOneStaleLeaseFileWithoutAdvisoryFileLocks() throws Exception {
     Path artifactPath = writeArtifact("reclaimable.sqlite", "content");
-    Path leasePath = leasePath(artifactPath);
-    writeLeaseMetadata(leasePath, "pid=99999999\nstartEpochMillis=-1\n");
+    Path legacyLeasePath = legacyLeasePath(artifactPath);
+    writeLegacyLeaseMetadata(legacyLeasePath, "pid=99999999\nstartEpochMillis=-1\n");
 
     try (SqliteHeldLease heldLease =
         assertInstanceOf(
@@ -329,10 +338,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
             SqliteBookMaintenanceLease.acquire(
                 artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
       assertEquals(artifactPath, heldLease.artifactPath());
-      assertTrue(Files.exists(leasePath));
+      assertTrue(Files.exists(leasePath(artifactPath)));
     }
 
-    assertFalse(Files.exists(leasePath));
+    assertFalse(Files.exists(leasePath(artifactPath)));
+    assertFalse(Files.exists(legacyLeasePath));
   }
 
   @Test
@@ -360,7 +370,12 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
               SqliteBookMaintenanceLease.acquire(
                   artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
         assertEquals(artifactPath, heldLease.artifactPath());
-        assertTrue(leasePath.exists);
+        assertTrue(
+            fileSystem.path(
+                    "\\books\\book.sqlite.fingrind-maintenance-"
+                        + SqliteProcessIdentity.current().coordinationToken()
+                        + ".lock")
+                .exists);
       }
 
       assertFalse(leasePath.exists);
@@ -402,7 +417,11 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
       AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
       artifactPath.exists = true;
       artifactPath.regularFile = true;
-      AclFixturePath leasePath = fileSystem.path("\\books\\book.sqlite.fingrind-maintenance.lock");
+      AclFixturePath leasePath =
+          fileSystem.path(
+              "\\books\\book.sqlite.fingrind-maintenance-"
+                  + SqliteProcessIdentity.current().coordinationToken()
+                  + ".lock");
       leasePath.overrideAclView = throwingAclView("lease-harden-boom");
       leasePath.failDeleteIfExistsWith(new IOException("lease-cleanup-boom"));
 
@@ -431,12 +450,21 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     return artifactPath.toAbsolutePath().normalize();
   }
 
-  private static void writeLeaseMetadata(Path leasePath, String metadata) throws IOException {
+  private static void writeLegacyLeaseMetadata(Path leasePath, String metadata) throws IOException {
     Files.writeString(leasePath, metadata, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
     SqliteBookFileSecurity.hardenOwnerOnlyFile(leasePath);
   }
 
   private static Path leasePath(Path artifactPath) {
+    Path normalized = artifactPath.toAbsolutePath().normalize();
+    return normalized.resolveSibling(
+        normalized.getFileName().toString()
+            + ".fingrind-maintenance-"
+            + SqliteProcessIdentity.current().coordinationToken()
+            + ".lock");
+  }
+
+  private static Path legacyLeasePath(Path artifactPath) {
     Path normalized = artifactPath.toAbsolutePath().normalize();
     return normalized.resolveSibling(
         normalized.getFileName().toString() + ".fingrind-maintenance.lock");

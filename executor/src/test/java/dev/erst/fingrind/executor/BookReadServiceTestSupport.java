@@ -196,6 +196,9 @@ final class BookReadServiceTestSupport {
   static final class CountingFindAccountBookSession implements BookkeepingReadStore {
     private final InMemoryBookSession delegate = new InMemoryBookSession();
     private int findAccountCalls;
+    private int inspectBookCalls;
+    private int allowsInitializedWorkflowCalls;
+    private int requireInitializedBookIdentityCalls;
 
     BookOpeningOutcome openBook(
         Instant initializedAt,
@@ -229,7 +232,24 @@ final class BookReadServiceTestSupport {
 
     @Override
     public BookLifecycleInspection inspectBook() {
+      inspectBookCalls++;
       return delegate.inspectBook();
+    }
+
+    @Override
+    public boolean allowsInitializedWorkflow() {
+      allowsInitializedWorkflowCalls++;
+      return delegate.initialized;
+    }
+
+    @Override
+    public dev.erst.fingrind.core.BookIdentity requireInitializedBookIdentity() {
+      requireInitializedBookIdentityCalls++;
+      if (!delegate.initialized) {
+        throw new IllegalStateException(
+            "Book identity is unavailable because the book is missing.");
+      }
+      return delegate.bookIdentity;
     }
 
     @Override
@@ -313,8 +333,26 @@ final class BookReadServiceTestSupport {
       return findAccountCalls;
     }
 
+    int inspectBookCalls() {
+      return inspectBookCalls;
+    }
+
+    int allowsInitializedWorkflowCalls() {
+      return allowsInitializedWorkflowCalls;
+    }
+
+    int requireInitializedBookIdentityCalls() {
+      return requireInitializedBookIdentityCalls;
+    }
+
     void resetFindAccountCalls() {
       findAccountCalls = 0;
+    }
+
+    void resetLifecycleCounts() {
+      inspectBookCalls = 0;
+      allowsInitializedWorkflowCalls = 0;
+      requireInitializedBookIdentityCalls = 0;
     }
   }
 }
