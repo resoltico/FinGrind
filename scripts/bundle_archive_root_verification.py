@@ -44,7 +44,11 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
     for required_file in required_files:
         require(required_file.is_file(), f"missing bundle file at {required_file}")
 
+    # Cross-platform extractors do not consistently preserve directory mtimes, so the public
+    # reproducibility contract is defined on extracted files only.
     for bundled_path in [bundle_root, *bundle_root.rglob("*")]:
+        if bundled_path.is_dir():
+            continue
         require(
             int(bundled_path.stat().st_mtime) == normalized_artifact_epoch_seconds,
             "bundle path did not preserve the manifest-declared normalized artifact timestamp: "

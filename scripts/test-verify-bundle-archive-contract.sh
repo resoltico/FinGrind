@@ -109,4 +109,33 @@ contract = load_contract_values(repo_root)
 verify_bundle_root_files(bundle_root, contract)
 PY
 
+python3 - <<'PY' "${fixture_root}"
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import sys
+
+fixture_root = Path(sys.argv[1])
+shifted_epoch_seconds = 1781456399
+for directory_path in [fixture_root, *fixture_root.rglob("*")]:
+    if directory_path.is_dir():
+        os.utime(directory_path, (shifted_epoch_seconds, shifted_epoch_seconds))
+PY
+
+PYTHONPATH="${repo_root}/scripts${PYTHONPATH:+:${PYTHONPATH}}" python3 - <<'PY' \
+    "${repo_root}" \
+    "${fixture_root}"
+from pathlib import Path
+import sys
+
+from bundle_archive_root_verification import verify_bundle_root_files
+from contract_values import load_contract_values
+
+repo_root = Path(sys.argv[1])
+bundle_root = Path(sys.argv[2])
+contract = load_contract_values(repo_root)
+verify_bundle_root_files(bundle_root, contract)
+PY
+
 printf 'bundle archive verifier regression: success\n'
