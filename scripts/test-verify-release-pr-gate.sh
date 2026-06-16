@@ -103,6 +103,8 @@ required_ci_workflow_path="${FAKE_GH_REQUIRED_CI_WORKFLOW_PATH:-.github/workflow
 workflow_run_id="${FAKE_GH_WORKFLOW_RUN_ID:-7001}"
 workflow_status="${FAKE_GH_WORKFLOW_STATUS:-completed}"
 workflow_conclusion="${FAKE_GH_WORKFLOW_CONCLUSION:-success}"
+api_runs_failures_before_success="${FAKE_GH_API_RUNS_FAILURES_BEFORE_SUCCESS:-0}"
+api_jobs_failures_before_success="${FAKE_GH_API_JOBS_FAILURES_BEFORE_SUCCESS:-0}"
 
 if [[ "${1:-}" == "repo" && "${2:-}" == "view" ]]; then
     [[ "${3:-}" == "--json" && "${4:-}" == "nameWithOwner" && "${5:-}" == "--jq" && "${6:-}" == ".nameWithOwner" ]] || exit 1
@@ -123,6 +125,19 @@ if [[ "${1:-}" == "pr" && "${2:-}" == "view" ]]; then
 fi
 
 if [[ "${1:-}" == "api" && "${2:-}" == "/repos/${repo}/actions/runs?head_sha=${pr_head_ref_oid}&per_page=100" ]]; then
+    runs_counter_file="${state_dir}/api-runs-count"
+    runs_count=0
+    if [[ -f "${runs_counter_file}" ]]; then
+        runs_count="$(cat "${runs_counter_file}")"
+    fi
+    runs_count="$((runs_count + 1))"
+    printf '%s' "${runs_count}" > "${runs_counter_file}"
+    if (( runs_count <= api_runs_failures_before_success )); then
+        printf 'Get "https://api.github.com/repos/%s/actions/runs?head_sha=%s&per_page=100": dial tcp 140.82.121.5:443: connect: operation timed out\n' \
+            "${repo}" \
+            "${pr_head_ref_oid}" >&2
+        exit 1
+    fi
     python3 - <<'PY'
 from __future__ import annotations
 
@@ -157,6 +172,19 @@ fi
 
 if [[ "${1:-}" == "api" && "${2:-}" == "/repos/${repo}/actions/runs/${workflow_run_id}/jobs?per_page=100" ]]; then
     [[ "${3:-}" == "--paginate" ]] || exit 1
+    jobs_api_counter_file="${state_dir}/api-jobs-count"
+    jobs_api_count=0
+    if [[ -f "${jobs_api_counter_file}" ]]; then
+        jobs_api_count="$(cat "${jobs_api_counter_file}")"
+    fi
+    jobs_api_count="$((jobs_api_count + 1))"
+    printf '%s' "${jobs_api_count}" > "${jobs_api_counter_file}"
+    if (( jobs_api_count <= api_jobs_failures_before_success )); then
+        printf 'Get "https://api.github.com/repos/%s/actions/runs/%s/jobs?per_page=100": dial tcp 140.82.121.5:443: connect: operation timed out\n' \
+            "${repo}" \
+            "${workflow_run_id}" >&2
+        exit 1
+    fi
     counter_file="${state_dir}/check-runs-count"
     count=0
     if [[ -f "${counter_file}" ]]; then
@@ -245,6 +273,29 @@ check_runs_count="$(cat "${fixture_root}/state/check-runs-count")"
 rm -f "${fixture_root}/state/check-runs-count"
 
 PATH="${fixture_root}/bin:${PATH}" \
+    FINGRIND_RELEASE_GH_API_RETRY_ATTEMPTS=2 \
+    FINGRIND_RELEASE_GH_API_RETRY_DELAY_SECONDS=0 \
+    FAKE_GH_STATE_DIR="${fixture_root}/state" \
+    FAKE_GH_API_RUNS_FAILURES_BEFORE_SUCCESS=1 \
+    FAKE_GH_API_JOBS_FAILURES_BEFORE_SUCCESS=1 \
+    FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \
+    FAKE_GH_REQUIRED_CI_WORKFLOW_NAME="${required_ci_workflow_name}" \
+    FAKE_GH_REQUIRED_CI_WORKFLOW_PATH="${required_ci_workflow_path}" \
+    bash "${verifier}" 52 >/dev/null
+
+api_runs_count="$(cat "${fixture_root}/state/api-runs-count")"
+(( api_runs_count >= 2 )) || die \
+    "PR Gate verifier did not retry transient workflow-list GitHub API failures"
+api_jobs_count="$(cat "${fixture_root}/state/api-jobs-count")"
+(( api_jobs_count >= 2 )) || die \
+    "PR Gate verifier did not retry transient workflow-job GitHub API failures"
+
+rm -f \
+    "${fixture_root}/state/api-runs-count" \
+    "${fixture_root}/state/api-jobs-count" \
+    "${fixture_root}/state/check-runs-count"
+
+PATH="${fixture_root}/bin:${PATH}" \
     FAKE_GH_STATE_DIR="${fixture_root}/state" \
     FAKE_GH_CHECK_MODE='gate-success-extra-foreign-job' \
     FAKE_GH_WORKFLOW_STATUS='in_progress' \
@@ -301,5 +352,32 @@ printf '%s\n' "${failure_before_matrix_output}" | grep -Fq 'Check=failure' || di
     "PR Gate verifier hid the failed Check owner behind the skipped matrix shell"
 printf '%s\n' "${failure_before_matrix_output}" | grep -Fq 'Gate=failure' || die \
     "PR Gate verifier hid the failed Gate owner behind the skipped matrix shell"
+
+set +e
+api_timeout_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=0 \
+        FINGRIND_RELEASE_GH_API_RETRY_ATTEMPTS=1 \
+        FINGRIND_RELEASE_GH_API_RETRY_DELAY_SECONDS=0 \
+        FAKE_GH_STATE_DIR="${fixture_root}/state" \
+        FAKE_GH_API_RUNS_FAILURES_BEFORE_SUCCESS=99 \
+        FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \
+        FAKE_GH_REQUIRED_CI_WORKFLOW_NAME="${required_ci_workflow_name}" \
+        FAKE_GH_REQUIRED_CI_WORKFLOW_PATH="${required_ci_workflow_path}" \
+        bash "${verifier}" 52 2>&1
+)"
+api_timeout_exit=$?
+set -e
+
+if [[ ${api_timeout_exit} -eq 0 ]]; then
+    die "PR Gate verifier accepted a persistent GitHub API failure"
+fi
+printf '%s\n' "${api_timeout_output}" | grep -Fq 'last GitHub API error:' || die \
+    "PR Gate verifier did not surface the last GitHub API error after timing out"
+printf '%s\n' "${api_timeout_output}" | grep -Fq 'operation timed out' || die \
+    "PR Gate verifier did not preserve the transient GitHub API timeout diagnostic"
+if printf '%s\n' "${api_timeout_output}" | grep -Fq 'JSONDecodeError'; then
+    die "PR Gate verifier regressed into a JSON parser crash after a GitHub API failure"
+fi
 
 printf 'verify-release-pr-gate regression: success\n'
