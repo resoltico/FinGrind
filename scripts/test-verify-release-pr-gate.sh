@@ -96,6 +96,7 @@ pr_head_ref_name="${FAKE_GH_HEAD_REF_NAME:-release/0.32.0}"
 pr_head_ref_oid="${FAKE_GH_HEAD_REF_OID:-99e1257ea944d7b7c10acb3b14cbede94cc93c11}"
 pr_url="${FAKE_GH_PR_URL:-https://github.com/resoltico/FinGrind/pull/52}"
 check_mode="${FAKE_GH_CHECK_MODE:-pending-then-success}"
+runs_mode="${FAKE_GH_RUNS_MODE:-workflow-present}"
 state_dir="${FAKE_GH_STATE_DIR:?}"
 required_ci_jobs_json="${FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON:-[]}"
 required_ci_workflow_name="${FAKE_GH_REQUIRED_CI_WORKFLOW_NAME:-CI}"
@@ -137,6 +138,10 @@ if [[ "${1:-}" == "api" && "${2:-}" == "/repos/${repo}/actions/runs?head_sha=${p
             "${repo}" \
             "${pr_head_ref_oid}" >&2
         exit 1
+    fi
+    if [[ "${runs_mode}" == 'missing-then-present' && "${runs_count}" == '1' ]]; then
+        printf '{"workflow_runs":[]}\n'
+        exit 0
     fi
     python3 - <<'PY'
 from __future__ import annotations
@@ -271,6 +276,20 @@ check_runs_count="$(cat "${fixture_root}/state/check-runs-count")"
     "PR Gate verifier accepted a missing Gate instead of waiting for the aggregate check run"
 
 rm -f "${fixture_root}/state/check-runs-count"
+
+PATH="${fixture_root}/bin:${PATH}" \
+    FAKE_GH_STATE_DIR="${fixture_root}/state" \
+    FAKE_GH_RUNS_MODE='missing-then-present' \
+    FAKE_GH_REQUIRED_CI_JOB_NAMES_JSON="${required_ci_jobs_json}" \
+    FAKE_GH_REQUIRED_CI_WORKFLOW_NAME="${required_ci_workflow_name}" \
+    FAKE_GH_REQUIRED_CI_WORKFLOW_PATH="${required_ci_workflow_path}" \
+    bash "${verifier}" 52 >/dev/null
+
+api_runs_count="$(cat "${fixture_root}/state/api-runs-count")"
+(( api_runs_count >= 2 )) || die \
+    "PR Gate verifier accepted a missing workflow run instead of waiting for the release-blocking workflow"
+
+rm -f "${fixture_root}/state/api-runs-count" "${fixture_root}/state/check-runs-count"
 
 PATH="${fixture_root}/bin:${PATH}" \
     FINGRIND_RELEASE_GH_API_RETRY_ATTEMPTS=2 \

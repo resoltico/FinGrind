@@ -57,7 +57,7 @@ import json
 import os
 
 payload = json.loads(os.environ["FINGRIND_RELEASE_PAYLOAD_JSON"])
-error = payload.get("_fingrindGhApiError")
+error = payload.get("_fingrindGhApiError") if isinstance(payload, dict) else None
 if isinstance(error, dict) and isinstance(error.get("message"), str):
     description = error.get("description")
     if isinstance(description, str) and description:
