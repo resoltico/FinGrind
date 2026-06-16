@@ -20,6 +20,7 @@ $arguments = @()
 foreach ($argument in @($request.arguments)) {
     $arguments += [string] $argument
 }
+$internalCliArgumentsFileEnv = "FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"
 $pwshExecutable = (Get-Command pwsh -CommandType Application | Select-Object -ExpandProperty Source -First 1)
 if ([string]::IsNullOrWhiteSpace($pwshExecutable)) {
     throw "missing pwsh executable for bundle bridge"
@@ -29,6 +30,8 @@ function Invoke-LauncherBridgeProcess {
     param(
         [Parameter(Mandatory = $true)]
         [string[]] $InvocationArguments,
+        [Parameter(Mandatory = $true)]
+        [string] $ArgumentsFile,
         [Parameter()]
         [AllowNull()]
         [string] $StdinText
@@ -41,6 +44,7 @@ function Invoke-LauncherBridgeProcess {
     $startInfo.RedirectStandardInput = $null -ne $StdinText
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
+    $startInfo.Environment[$internalCliArgumentsFileEnv] = $ArgumentsFile
     foreach ($invocationArgument in $InvocationArguments) {
         [void] $startInfo.ArgumentList.Add([string] $invocationArgument)
     }
@@ -67,5 +71,22 @@ function Invoke-LauncherBridgeProcess {
     }
 }
 
-$bridgeArguments = @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $LauncherPath) + $arguments
-exit (Invoke-LauncherBridgeProcess -InvocationArguments $bridgeArguments -StdinText $request.stdinText)
+$argumentsFile = Join-Path ([System.IO.Path]::GetTempPath()) (
+    "fingrind-cli-arguments-" + [System.Guid]::NewGuid().ToString("N") + ".json"
+)
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[System.IO.File]::WriteAllText(
+    $argumentsFile,
+    (ConvertTo-Json -Compress $arguments),
+    $utf8NoBom
+)
+
+try {
+    $bridgeArguments = @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $LauncherPath)
+    exit (Invoke-LauncherBridgeProcess -InvocationArguments $bridgeArguments -ArgumentsFile $argumentsFile -StdinText $request.stdinText)
+}
+finally {
+    if (Test-Path -LiteralPath $argumentsFile -PathType Leaf) {
+        Remove-Item -LiteralPath $argumentsFile -Force -ErrorAction SilentlyContinue
+    }
+}

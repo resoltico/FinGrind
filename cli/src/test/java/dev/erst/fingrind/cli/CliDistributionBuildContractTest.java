@@ -681,6 +681,8 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleCommandBridge.contains("Get-Command pwsh"));
     assertTrue(bundleCommandBridge.contains("ProcessStartInfo"));
     assertTrue(bundleCommandBridge.contains("RedirectStandardInput"));
+    assertTrue(bundleCommandBridge.contains("FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"));
+    assertTrue(bundleCommandBridge.contains("ConvertTo-Json -Compress $arguments"));
     assertTrue(bundleCommandBridge.contains("\"-ExecutionPolicy\""));
     assertTrue(bundleCommandBridge.contains("\"-File\", $LauncherPath"));
     assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
@@ -702,16 +704,14 @@ class CliDistributionBuildContractTest {
     assertTrue(powerShellLauncher.contains("[Console]::IsInputRedirected"));
     assertTrue(powerShellLauncher.contains("OpenStandardInput().CopyTo"));
     assertTrue(powerShellLauncher.contains("Remove(\"FINGRIND_SQLITE_LIBRARY\")"));
-    assertTrue(powerShellLauncher.contains("Remove(\"FINGRIND_LAUNCHER_ARGUMENTS_FILE\")"));
+    assertTrue(powerShellLauncher.contains("FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"));
+    assertTrue(powerShellLauncher.contains("New-StagedCliArgumentsFile"));
     assertTrue(powerShellLauncher.contains("$PSScriptRoot"));
     assertTrue(powerShellLauncher.contains("$scriptInvocationArguments = @($args)"));
     assertFalse(powerShellLauncher.contains("$MyInvocation.MyCommand.Path"));
     assertFalse(powerShellLauncher.contains("& $runtimeJava @javaArguments"));
     assertFalse(powerShellLauncher.contains("ConvertFrom-Json"));
-    assertFalse(powerShellLauncher.contains("$env:FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
-    assertFalse(powerShellLauncher.contains("$env:FINGRIND_BUNDLE_ARGUMENTS_FILE"));
-    assertFalse(powerShellLauncher.contains("$env:FINGRIND_BUNDLE_STDIN_FILE"));
-    assertFalse(powerShellLauncher.contains("Environment[\"FINGRIND_LAUNCHER_ARGUMENTS_FILE\"]"));
+    assertFalse(powerShellLauncher.contains("FINGRIND_LAUNCHER_ARGUMENTS_FILE"));
   }
 
   private static Path repositoryRoot() {

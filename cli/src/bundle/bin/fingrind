@@ -32,10 +32,7 @@ if [[ ! -f "${application_jar}" ]]; then
 fi
 
 unset FINGRIND_SQLITE_LIBRARY
-unset FINGRIND_LAUNCHER_ARGUMENTS_FILE
-unset FINGRIND_BUNDLE_ARGUMENTS_FILE
-unset FINGRIND_BUNDLE_STDIN_FILE
-unset FINGRIND_BUNDLE_RETURN_EXIT_CODE
+unset FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE
 
 exec "${runtime_java}" \
     --enable-native-access=dev.erst.fingrind.cli \

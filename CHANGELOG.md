@@ -4,8 +4,11 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [0.55.0] - 2026-06-16
+
 ### Changed
 
+- Bumped the Gradle formatting baseline to Spotless `8.7.0`.
 - Bumped the repo-owned Python lint baseline to Ruff `0.15.17`.
 - Hard-broke reviewed-surface inventory ownership onto one shared registry file for the Java and Python structural-governance verifiers. Reviewed Java waivers and tracked text-resource waivers now resolve from one canonical JSON registry instead of split language-local copies, so expiry, owner, and split-trigger changes travel through one reviewed-surface catalog.
 - Hard-broke public bundle publication onto two explicit contracts: bundle layout now owns package contents, compatibility labels, and canonical platform ids, while bundle publication owns which declared targets are actually shipped and which runner label proves them. Published self-contained downloads now cover `macos-aarch64`, `macos-x86_64`, `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`; `windows-aarch64` remains declared but unpublished. Bundle archives now build with normalized timestamps, publish explicit archive/checksum/manifest paths at build time, record per-target compatibility labels plus Linux minimum glibc floors in the bundle manifest contract, and back those claims with reproducibility checks plus host-runner and compatibility-floor smoke lanes in CI, freshness canaries, and tagged release publication.
@@ -15,6 +18,10 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Fixed
 
+- Fixed published Windows bundle argument transport so the PowerShell bundle bridge, public
+  Windows launcher, and JVM boundary now share one staged UTF-8 argument-vector contract instead
+  of passing stress-path arguments natively. Unicode book and key paths therefore survive direct
+  Windows bundle use and the published Windows bundle smoke lane without character corruption.
 - Fixed read-only SQLite contention under real bundled concurrency. Read-only query and report workflows now classify initialized-book readiness from one lock-light structural contract instead of rerunning the full integrity audit on every command, while explicit inspection keeps the deeper audited path; concurrent bundled list and trial-balance bursts therefore stop surfacing spurious `storage-runtime-failure` responses from transient `SQLITE_IOERR_LOCK` failures.
 - Fixed contract-level amount validation drift so published money values now reject signed and decimal `minorUnits` deterministically at the boundary, and the checked-in Jazzer regression seeds follow that exact unsigned-integer doctrine.
 - Fixed Docker rebuild durability and rerun hygiene so the container builder now stages the toolchain pieces that `jlink --strip-debug` requires, Python helper-tool freshness is covered by dependency automation, wrapper validation obeys workflow concurrency rules, and release-tag verification distinguishes first publication from immutable-tag reruns.
@@ -2781,7 +2788,7 @@ Notable changes to this project are documented in this file. The format is based
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.54.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.55.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
 [0.54.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.54.0
 [0.53.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.53.0
@@ -2837,3 +2844,4 @@ Notable changes to this project are documented in this file. The format is based
 [0.3.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.0
 [0.2.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.2.0
 [0.1.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.1.0
+[0.55.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.55.0

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -13,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -50,7 +52,8 @@ class AppTest {
   @Test
   void runCallsExitHandlerForNonZeroExitCodes() {
     AtomicInteger observedExitCode = new AtomicInteger(-1);
-    App app = new App(runtimeEnvironment -> args -> 3, observedExitCode::set);
+    App app =
+        new App(runtimeEnvironment -> args -> 3, observedExitCode::set, System.err, args -> args);
 
     app.run(new String[] {"post-entry"}, RUNTIME_ENVIRONMENT);
 
@@ -60,6 +63,34 @@ class AppTest {
   @Test
   void defaultConstructorInitializesWithProductionDefaults() {
     assertNotNull(new App());
+  }
+
+  @Test
+  void runReportsLauncherArgumentResolutionFailuresAndSkipsCliInvocation() {
+    ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
+    AtomicBoolean cliInvoked = new AtomicBoolean(false);
+    AtomicInteger observedExitCode = new AtomicInteger(-1);
+    try (PrintStream redirectedError =
+        new PrintStream(errorStream, false, StandardCharsets.UTF_8)) {
+      App app =
+          new App(
+              runtimeEnvironment ->
+                  args -> {
+                    cliInvoked.set(true);
+                    return 0;
+                  },
+              observedExitCode::set,
+              redirectedError,
+              args -> {
+                throw new LauncherInvocationArgumentsException("staged launcher arguments failed");
+              });
+
+      app.run(new String[] {"help"}, RUNTIME_ENVIRONMENT);
+    }
+
+    assertEquals(1, observedExitCode.get());
+    assertTrue(errorStream.toString(StandardCharsets.UTF_8).contains("staged launcher arguments"));
+    assertFalse(cliInvoked.get());
   }
 
   @Test
@@ -81,7 +112,9 @@ class AppTest {
                   return 0;
                 };
               },
-              exitCode -> {});
+              exitCode -> {},
+              System.err,
+              args -> args);
       System.setIn(redirectedInput);
       System.setOut(redirectedOut);
       System.setErr(redirectedError);

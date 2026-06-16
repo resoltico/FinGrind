@@ -97,6 +97,10 @@ grep -Fq 'ProcessStartInfo' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer uses one dedicated subprocess owner"
 grep -Fq 'RedirectStandardInput' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer replays bridged stdin through the subprocess boundary"
+grep -Fq 'FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer stages the CLI argument vector through the internal UTF-8 file contract"
+grep -Fq 'ConvertTo-Json -Compress $arguments' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer serializes staged CLI arguments as UTF-8 JSON"
 grep -Fq '"-ExecutionPolicy", "Bypass"' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer invokes the launcher through the isolated PowerShell file path"
 if grep -Fq 'FINGRIND_BUNDLE_RETURN_EXIT_CODE' "${bundle_smoke_command_bridge_ps1}"; then
@@ -134,14 +138,16 @@ grep -Fq 'OpenStandardInput().CopyTo' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer copies ordinary pipeline stdin through to the bundled Java process"
 grep -Fq 'Remove("FINGRIND_SQLITE_LIBRARY")' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer scrubs the retired SQLite override before launching Java"
-grep -Fq 'Remove("FINGRIND_LAUNCHER_ARGUMENTS_FILE")' "${bundle_launcher_ps1}" || die \
-    "fingrind.ps1 no longer scrubs the retired staged-arguments env seam before launching Java"
+grep -Fq 'FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer stages direct CLI arguments through the internal UTF-8 file contract"
+grep -Fq 'New-StagedCliArgumentsFile' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer owns the staged CLI argument-file creation path"
 grep -Fq '$PSScriptRoot' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer anchors bundle paths to the script root outside helper-function invocation scope"
 grep -Fq '$scriptInvocationArguments = @($args)' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer preserves the public script-level CLI argument vector"
 if grep -Fq '$MyInvocation.MyCommand.Path' "${bundle_launcher_ps1}"; then
-    die "fingrind.ps1 still derives bundle paths from function-scoped MyInvocation metadata"
+    die "fingrind.ps1 continues to derive bundle paths from function-scoped MyInvocation metadata"
 fi
 if grep -Fq '& $runtimeJava @javaArguments' "${bundle_launcher_ps1}"; then
     die "fingrind.ps1 regressed to direct native invocation that can corrupt Unicode arguments"
@@ -149,20 +155,11 @@ fi
 if grep -Fq 'ConvertFrom-Json' "${bundle_launcher_ps1}"; then
     die "fingrind.ps1 should no longer rehydrate staged bridge arguments inside PowerShell"
 fi
-if grep -Fq '$env:FINGRIND_BUNDLE_RETURN_EXIT_CODE' "${bundle_launcher_ps1}"; then
-    die "fingrind.ps1 must not depend on the retired in-process bridge return-code contract"
-fi
-if grep -Fq '$env:FINGRIND_BUNDLE_ARGUMENTS_FILE' "${bundle_launcher_ps1}"; then
-    die "fingrind.ps1 must not depend on the retired staged arguments-file contract"
-fi
-if grep -Fq '$env:FINGRIND_BUNDLE_STDIN_FILE' "${bundle_launcher_ps1}"; then
-    die "fingrind.ps1 must not depend on the retired staged stdin-file contract"
-fi
-if grep -Fq 'Environment["FINGRIND_LAUNCHER_ARGUMENTS_FILE"]' "${bundle_launcher_ps1}"; then
-    die "fingrind.ps1 must not pass hidden launcher arguments into the JVM environment"
+if grep -Fq 'FINGRIND_LAUNCHER_ARGUMENTS_FILE' "${bundle_launcher_ps1}"; then
+    die "fingrind.ps1 must not resurrect the retired launcher-arguments env seam"
 fi
 if grep -Fq 'FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG' "${bundle_smoke_office_worker_ps1}"; then
-    die "bundle-smoke-office-worker.ps1 still exports legacy per-path release-smoke arguments"
+    die "bundle-smoke-office-worker.ps1 continues to export legacy per-path release-smoke arguments"
 fi
 
 if ! command -v pwsh >/dev/null 2>&1; then
@@ -205,9 +202,17 @@ PWSH
 pwsh -NoLogo -NoProfile -File "${pwsh_script}"
 
 cat >"${bridge_launcher_ps1}" <<'PWSH'
+$argumentsFile = $env:FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE
 $payload = [ordered]@{
     invocationArguments = @($args)
     stdinText = [Console]::In.ReadToEnd()
+    stagedArgumentsFile = $argumentsFile
+    stagedArguments =
+        if ([string]::IsNullOrWhiteSpace($argumentsFile)) {
+            $null
+        } else {
+            Get-Content -LiteralPath $argumentsFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        }
 }
 [Console]::Out.WriteLine(($payload | ConvertTo-Json -Compress))
 exit 0
@@ -228,8 +233,12 @@ import json
 import sys
 
 payload = json.loads(sys.argv[1])
-if payload["invocationArguments"][2] != "/tmp/workspace odd/Rīga büro/bridge key.key":
-    raise SystemExit("bundle-smoke-command-bridge.ps1 corrupted the Unicode CLI argument")
+if payload["invocationArguments"]:
+    raise SystemExit("bundle-smoke-command-bridge.ps1 leaked staged CLI arguments onto the launcher argv boundary")
+if payload["stagedArgumentsFile"] is None:
+    raise SystemExit("bundle-smoke-command-bridge.ps1 failed to publish the internal staged-arguments file contract")
+if payload["stagedArguments"][2] != "/tmp/workspace odd/Rīga büro/bridge key.key":
+    raise SystemExit("bundle-smoke-command-bridge.ps1 corrupted the staged Unicode CLI argument")
 if payload["stdinText"] != "stdin through bridge\n":
     raise SystemExit("bundle-smoke-command-bridge.ps1 failed to replay stdin text")
 PY
@@ -248,16 +257,20 @@ cat >"${launcher_bundle_root}/runtime/bin/java.exe" <<'PY'
 #!/usr/bin/env python3
 import json
 import os
+import pathlib
 import sys
 
+arguments_file = os.environ.get("FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE")
 payload = {
     "argv": sys.argv[1:],
     "stdinText": sys.stdin.read(),
     "sqliteLibraryEnv": os.environ.get("FINGRIND_SQLITE_LIBRARY"),
-    "launcherArgumentsFileEnv": os.environ.get("FINGRIND_LAUNCHER_ARGUMENTS_FILE"),
-    "bundleArgumentsFileEnv": os.environ.get("FINGRIND_BUNDLE_ARGUMENTS_FILE"),
-    "bundleStdinFileEnv": os.environ.get("FINGRIND_BUNDLE_STDIN_FILE"),
-    "bundleReturnExitCodeEnv": os.environ.get("FINGRIND_BUNDLE_RETURN_EXIT_CODE"),
+    "internalCliArgumentsFileEnv": arguments_file,
+    "stagedArguments": (
+        json.loads(pathlib.Path(arguments_file).read_text(encoding="utf-8"))
+        if arguments_file
+        else None
+    ),
 }
 print(json.dumps(payload, ensure_ascii=False))
 PY
@@ -277,20 +290,16 @@ import json
 import sys
 
 payload = json.loads(sys.argv[1])
-if payload["argv"][-3:] != ["generate-book-key-file", "--book-key-file", "/tmp/workspace odd/Rīga büro/bridge key.key"]:
-    raise SystemExit("fingrind.ps1 lost the direct Unicode CLI arguments before the JVM boundary")
+if payload["internalCliArgumentsFileEnv"] is None:
+    raise SystemExit("fingrind.ps1 failed to hand staged CLI arguments to the JVM boundary")
+if payload["stagedArguments"][-3:] != ["generate-book-key-file", "--book-key-file", "/tmp/workspace odd/Rīga büro/bridge key.key"]:
+    raise SystemExit("fingrind.ps1 lost the staged Unicode CLI arguments before the JVM boundary")
+if any(argument == "generate-book-key-file" for argument in payload["argv"]):
+    raise SystemExit("fingrind.ps1 leaked staged CLI arguments back onto the native Java argv boundary")
 if payload["stdinText"] != "stdin through public launcher\n":
     raise SystemExit("fingrind.ps1 failed to forward ordinary pipeline stdin to the JVM boundary")
 if payload["sqliteLibraryEnv"] is not None:
     raise SystemExit("fingrind.ps1 leaked the retired SQLite override into the JVM boundary")
-if payload["launcherArgumentsFileEnv"] is not None:
-    raise SystemExit("fingrind.ps1 leaked the retired staged launcher arguments env seam into the JVM boundary")
-if payload["bundleArgumentsFileEnv"] is not None:
-    raise SystemExit("fingrind.ps1 leaked the retired bundle arguments-file env seam into the JVM boundary")
-if payload["bundleStdinFileEnv"] is not None:
-    raise SystemExit("fingrind.ps1 leaked the retired bundle stdin-file env seam into the JVM boundary")
-if payload["bundleReturnExitCodeEnv"] is not None:
-    raise SystemExit("fingrind.ps1 leaked the retired bundle return-code env seam into the JVM boundary")
 PY
 
 printf 'bundle smoke PowerShell regression: success\n'
