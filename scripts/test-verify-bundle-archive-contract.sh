@@ -78,8 +78,20 @@ touch "${fixture_root}/bin/fingrind"
 touch "${fixture_root}/runtime/bin/java"
 chmod +x "${fixture_root}/bin/fingrind" "${fixture_root}/runtime/bin/java"
 cat > "${fixture_root}/bundle-manifest.json" <<'EOF'
-{"normalizedArtifactTimestampUtc":"2026-06-14T16:43:09Z","bundleTarget":{"classifier":"linux-aarch64"}}
+{"normalizedArtifactTimestampUtc":"2026-06-14T16:43:08Z","bundleTarget":{"classifier":"linux-aarch64"}}
 EOF
+
+python3 - <<'PY' "${fixture_root}/bundle-manifest.json"
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import sys
+
+manifest_path = Path(sys.argv[1])
+normalized_epoch_seconds = 1781455388
+os.utime(manifest_path, (normalized_epoch_seconds, normalized_epoch_seconds))
+PY
 
 python3 - <<'PY' "${fixture_root}"
 from __future__ import annotations
@@ -89,7 +101,7 @@ from pathlib import Path
 import sys
 
 fixture_root = Path(sys.argv[1])
-normalized_epoch_seconds = 1781455389
+normalized_epoch_seconds = 1781455388
 for path in [fixture_root, *fixture_root.rglob("*")]:
     os.utime(path, (normalized_epoch_seconds, normalized_epoch_seconds))
 PY
@@ -107,6 +119,44 @@ repo_root = Path(sys.argv[1])
 bundle_root = Path(sys.argv[2])
 contract = load_contract_values(repo_root)
 verify_bundle_root_files(bundle_root, contract)
+PY
+
+cat > "${fixture_root}/bundle-manifest.json" <<'EOF'
+{"normalizedArtifactTimestampUtc":"2026-06-14T16:43:09Z","bundleTarget":{"classifier":"linux-aarch64"}}
+EOF
+
+if PYTHONPATH="${repo_root}/scripts${PYTHONPATH:+:${PYTHONPATH}}" python3 - <<'PY' \
+    "${repo_root}" \
+    "${fixture_root}"
+from pathlib import Path
+import sys
+
+from bundle_archive_root_verification import verify_bundle_root_files
+from contract_values import load_contract_values
+
+repo_root = Path(sys.argv[1])
+bundle_root = Path(sys.argv[2])
+contract = load_contract_values(repo_root)
+verify_bundle_root_files(bundle_root, contract)
+PY
+then
+    die "bundle archive verifier accepted one timestamp that ZIP extraction cannot preserve"
+fi
+
+cat > "${fixture_root}/bundle-manifest.json" <<'EOF'
+{"normalizedArtifactTimestampUtc":"2026-06-14T16:43:08Z","bundleTarget":{"classifier":"linux-aarch64"}}
+EOF
+
+python3 - <<'PY' "${fixture_root}/bundle-manifest.json"
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import sys
+
+manifest_path = Path(sys.argv[1])
+normalized_epoch_seconds = 1781455388
+os.utime(manifest_path, (normalized_epoch_seconds, normalized_epoch_seconds))
 PY
 
 python3 - <<'PY' "${fixture_root}"

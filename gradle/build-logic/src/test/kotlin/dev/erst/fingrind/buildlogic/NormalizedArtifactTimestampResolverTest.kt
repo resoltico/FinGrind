@@ -30,7 +30,7 @@ class NormalizedArtifactTimestampResolverTest {
     fun fallbackMetadata_isUsedWhenEnvironmentIsUnset() {
         val repositoryRoot = Files.createTempDirectory("normalized-artifact-metadata-fallback")
         try {
-            writeBuildMetadata(repositoryRoot, normalizedArtifactEpochSeconds = 1781455389L)
+            writeBuildMetadata(repositoryRoot, normalizedArtifactEpochSeconds = 1781455388L)
 
             val epochSeconds =
                 NormalizedArtifactTimestampResolver.resolveEpochSeconds(
@@ -38,7 +38,7 @@ class NormalizedArtifactTimestampResolverTest {
                     environment = emptyMap(),
                 )
 
-            assertEquals(1781455389L, epochSeconds)
+            assertEquals(1781455388L, epochSeconds)
         } finally {
             DistributionContractReaderTestSupport.deleteTree(repositoryRoot)
         }
@@ -48,12 +48,46 @@ class NormalizedArtifactTimestampResolverTest {
     fun invalidSourceDateEpoch_isRejected() {
         val repositoryRoot = Files.createTempDirectory("normalized-artifact-invalid-source-date")
         try {
-            writeBuildMetadata(repositoryRoot, normalizedArtifactEpochSeconds = 1781455389L)
+            writeBuildMetadata(repositoryRoot, normalizedArtifactEpochSeconds = 1781455388L)
 
             assertFailsWith<IllegalArgumentException> {
                 NormalizedArtifactTimestampResolver.resolveEpochSeconds(
                     repositoryRoot,
                     environment = mapOf("SOURCE_DATE_EPOCH" to "not-an-integer"),
+                )
+            }
+        } finally {
+            DistributionContractReaderTestSupport.deleteTree(repositoryRoot)
+        }
+    }
+
+    @Test
+    fun oddSourceDateEpoch_isRejected() {
+        val repositoryRoot = Files.createTempDirectory("normalized-artifact-odd-source-date")
+        try {
+            writeBuildMetadata(repositoryRoot, normalizedArtifactEpochSeconds = 1781455388L)
+
+            assertFailsWith<IllegalArgumentException> {
+                NormalizedArtifactTimestampResolver.resolveEpochSeconds(
+                    repositoryRoot,
+                    environment = mapOf("SOURCE_DATE_EPOCH" to "1781455389"),
+                )
+            }
+        } finally {
+            DistributionContractReaderTestSupport.deleteTree(repositoryRoot)
+        }
+    }
+
+    @Test
+    fun oddFallbackMetadata_isRejected() {
+        val repositoryRoot = Files.createTempDirectory("normalized-artifact-odd-metadata")
+        try {
+            writeBuildMetadata(repositoryRoot, normalizedArtifactEpochSeconds = 1781455389L)
+
+            assertFailsWith<IllegalArgumentException> {
+                NormalizedArtifactTimestampResolver.resolveEpochSeconds(
+                    repositoryRoot,
+                    environment = emptyMap(),
                 )
             }
         } finally {

@@ -59,7 +59,12 @@ def manifest_normalized_artifact_epoch_seconds(manifest: dict[str, object]) -> i
         parsed.tzinfo is not None,
         "bundle manifest normalizedArtifactTimestampUtc must carry one timezone offset",
     )
-    return int(parsed.astimezone(timezone.utc).timestamp())
+    normalized_epoch_seconds = int(parsed.astimezone(timezone.utc).timestamp())
+    require(
+        normalized_epoch_seconds % 2 == 0,
+        "bundle manifest normalizedArtifactTimestampUtc must use ZIP-portable even-second granularity",
+    )
+    return normalized_epoch_seconds
 
 
 def resolve_bundle_target(

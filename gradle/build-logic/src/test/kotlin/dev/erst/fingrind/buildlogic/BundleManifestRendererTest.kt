@@ -154,14 +154,14 @@ class BundleManifestRendererTest {
                     applicationName = "FinGrind",
                     version = "0.26.0",
                     bundleClassifier = "linux-x86_64",
-                    normalizedArtifactTimestampUtc = "2026-06-14T16:43:09Z",
+                    normalizedArtifactTimestampUtc = "2026-06-14T16:43:08Z",
                 )
 
             val manifest = objectMapper.readTree(rendered)
             assertEquals("FinGrind", manifest.path("application").requireText())
             assertEquals("0.26.0", manifest.path("version").requireText())
             assertEquals(
-                "2026-06-14T16:43:09Z",
+                "2026-06-14T16:43:08Z",
                 manifest.path("normalizedArtifactTimestampUtc").requireText(),
             )
             assertEquals("self-contained-cli-bundle", manifest.path("artifactType").requireText())
