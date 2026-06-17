@@ -9,6 +9,7 @@ import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
@@ -129,7 +130,9 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
 
   private static ProtectedBookMaintenanceStore.VerifiedBook verifiedBook(
       SqliteProtectedBookMaintenanceStore store, BookAccess bookAccess) {
-    return switch (acceptedValue(store.verifyInitializedBook(localAccess(bookAccess)))) {
+    return switch (acceptedValue(
+        store.verifyInitializedBook(
+            localAccess(bookAccess), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))) {
       case ProtectedBookMaintenanceStore.VerifiedBook verifiedBook -> verifiedBook;
       case ProtectedBookMaintenanceStore.VerificationFailure verificationFailure ->
           throw new AssertionError(

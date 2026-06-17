@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.AccountCode;
@@ -35,6 +36,7 @@ public interface ContractTemplates {
   /** Canonical request-template document for print-request-template. */
   public record PostingRequestTemplateDescriptor(
       BookkeepingEntryKind entryKind,
+      @Nullable JournalRecipeKind recipeKind,
       String effectiveDate,
       @Nullable String cashAccountCode,
       @Nullable String revenueAccountCode,
@@ -47,9 +49,37 @@ public interface ContractTemplates {
       ProvenanceTemplateDescriptor provenance,
       @Nullable ReversalTemplateDescriptor reversal)
       implements TemplateDescriptorType {
+    /** Builds one recipe-backed journal posting template. */
+    public PostingRequestTemplateDescriptor(
+        JournalRecipeKind recipeKind,
+        String effectiveDate,
+        @Nullable String cashAccountCode,
+        @Nullable String revenueAccountCode,
+        @Nullable String expenseAccountCode,
+        @Nullable String equityAccountCode,
+        @Nullable MonetaryAmount amount,
+        AccountingEvidenceTemplateDescriptor evidence,
+        ProvenanceTemplateDescriptor provenance) {
+      this(
+          BookkeepingEntryKind.JOURNAL,
+          recipeKind,
+          effectiveDate,
+          cashAccountCode,
+          revenueAccountCode,
+          expenseAccountCode,
+          equityAccountCode,
+          amount,
+          null,
+          null,
+          evidence,
+          provenance,
+          null);
+    }
+
     /** Validates one posting-request template descriptor payload. */
     public PostingRequestTemplateDescriptor {
       entryKind = ContractDescriptorValidation.requireValue(entryKind, "entryKind");
+      recipeKind = recipeKind == null ? null : recipeKind;
       effectiveDate = ContractDescriptorValidation.requireText(effectiveDate, "effectiveDate");
       cashAccountCode =
           ContractDescriptorValidation.requireOptionalText(cashAccountCode, "cashAccountCode");
@@ -70,6 +100,7 @@ public interface ContractTemplates {
       provenance = ContractDescriptorValidation.requireValue(provenance, "provenance");
       ContractPostingRequestTemplateValidators.validate(
           entryKind,
+          recipeKind,
           new ContractPostingRequestTemplateValidators.PostingTemplateFields(
               cashAccountCode,
               revenueAccountCode,

@@ -89,7 +89,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.55.0",
+                "0.56.0",
                 "Discovery overview",
                 DiscoveryDetail.FULL,
                 null,
@@ -103,7 +103,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.55.0",
+                "0.56.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 null,
@@ -117,7 +117,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.55.0",
+                "0.56.0",
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
@@ -130,7 +130,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.55.0",
+                "0.56.0",
                 DiscoveryDetail.COMPACT,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
@@ -143,7 +143,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload(
                 "FinGrind",
-                "0.55.0",
+                "0.56.0",
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 null,
@@ -155,7 +155,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
-                "0.55.0",
+                "0.56.0",
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.bookkeepingKernel().scope(),
@@ -180,7 +180,7 @@ class CliJsonModelValidationTest {
                 ProtocolEnvelopeStatus.OK,
                 new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                     "FinGrind",
-                    "0.55.0",
+                    "0.56.0",
                     DiscoveryDetail.FULL,
                     DiscoveryFocus.OVERVIEW,
                     capabilitiesDescriptor.storage(),
@@ -271,13 +271,13 @@ class CliJsonModelValidationTest {
             List.of(
                 new CliPlanJsonModels.LedgerJournalEntryPayload(
                     "step-1",
-                    LedgerJournalKind.OPEN_BOOK,
+                    LedgerJournalKind.ENSURE_BOOK,
                     null,
                     null,
                     LedgerStepStatus.SUCCEEDED,
                     "2026-05-14T10:00:00Z",
                     "2026-05-14T10:00:01Z",
-                    new CliPlanJsonModels.OpenBookStepDataPayload(
+                    new CliPlanJsonModels.EnsureBookStepDataPayload(
                         "2026-05-14T10:00:00Z", "Acme Studio", "EUR", "01-01"),
                     null)));
 
@@ -400,7 +400,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.OPEN_BOOK,
+                LedgerJournalKind.ENSURE_BOOK,
                 null,
                 null,
                 LedgerStepStatus.SUCCEEDED,
@@ -413,7 +413,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.OPEN_BOOK,
+                LedgerJournalKind.ENSURE_BOOK,
                 null,
                 null,
                 LedgerStepStatus.REJECTED,
@@ -480,7 +480,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.OPEN_BOOK,
+                LedgerJournalKind.ENSURE_BOOK,
                 LedgerAssertionKind.ACCOUNT_DECLARED,
                 null,
                 LedgerStepStatus.SUCCEEDED,
@@ -506,7 +506,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.OPEN_BOOK,
+                LedgerJournalKind.ENSURE_BOOK,
                 null,
                 LedgerBoundaryPhase.BEGIN,
                 LedgerStepStatus.SUCCEEDED,
@@ -519,7 +519,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.OPEN_BOOK,
+                LedgerJournalKind.ENSURE_BOOK,
                 null,
                 null,
                 LedgerStepStatus.ASSERTION_FAILED,
@@ -640,7 +640,7 @@ class CliJsonModelValidationTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.55.0",
+        "0.56.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

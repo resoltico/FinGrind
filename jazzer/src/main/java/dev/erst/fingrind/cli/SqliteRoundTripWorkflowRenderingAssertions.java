@@ -104,7 +104,7 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliCoverageResponseWriters writers =
         coverageResponseWriters(new PrintStream(outputStream, false, StandardCharsets.UTF_8));
-    writers.failure().writeFailure(CliFailureMapper.contractFailure(failure), outputMode);
+    writers.failure().writeFailure(CliFailureMapper.contractFailure(failure));
     assertRenderedDocument(
         outputStream.toString(StandardCharsets.UTF_8), outputMode, requiredFragment);
   }
@@ -119,8 +119,8 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
     CliFailure failure =
         runtimeFailure != null
             ? runtimeFailure
-            : CliFailureMapper.internalError("fg-jazzer-rendering-internal", outputMode);
-    writers.failure().writeFailure(failure, outputMode);
+            : CliFailureMapper.internalError("fg-jazzer-rendering-internal");
+    writers.failure().writeFailure(failure);
     assertRenderedDocument(
         outputStream.toString(StandardCharsets.UTF_8), outputMode, requiredFragment);
   }

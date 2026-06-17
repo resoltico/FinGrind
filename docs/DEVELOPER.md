@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: DEVELOPER
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]

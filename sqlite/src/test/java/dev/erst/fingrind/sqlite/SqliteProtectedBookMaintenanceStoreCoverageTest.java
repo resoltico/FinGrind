@@ -14,8 +14,12 @@ import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEventKind;
 import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
@@ -41,14 +45,20 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
 
     Path missingBookPath = tempDirectory.resolve("missing.sqlite");
     assertVerificationFailure(
-        acceptedValue(store.verifyInitializedBook(localAccess(bookAccess(missingBookPath)))),
+        acceptedValue(
+            store.verifyInitializedBook(
+                localAccess(bookAccess(missingBookPath)),
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
         missingBookPath,
         ProtectedBookVerificationFailure.MISSING);
 
     Path blankBookPath = tempDirectory.resolve("blank.sqlite");
     SqliteStoreFixtureSupport.createEmptySqliteFile(blankBookPath);
     assertVerificationFailure(
-        acceptedValue(store.verifyInitializedBook(localAccess(bookAccess(blankBookPath)))),
+        acceptedValue(
+            store.verifyInitializedBook(
+                localAccess(bookAccess(blankBookPath)),
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
         blankBookPath,
         ProtectedBookVerificationFailure.BLANK_SQLITE);
 
@@ -57,7 +67,9 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
     initializeBook(initializedBookAccess);
     BookAccess wrongKeyAccess = bookAccess(initializedBookPath, "wrong-secret");
     assertVerificationFailure(
-        acceptedValue(store.verifyInitializedBook(localAccess(wrongKeyAccess))),
+        acceptedValue(
+            store.verifyInitializedBook(
+                localAccess(wrongKeyAccess), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
         initializedBookPath,
         ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED);
   }
@@ -71,7 +83,8 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
     assertVerificationFailure(
         acceptedValue(
             store.verifyInitializedBook(
-                localAccess(bookAccess(foreignBookPath, SqliteStoreFixtureSupport.TEST_BOOK_KEY)))),
+                localAccess(bookAccess(foreignBookPath, SqliteStoreFixtureSupport.TEST_BOOK_KEY)),
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
         foreignBookPath,
         ProtectedBookVerificationFailure.FOREIGN_SQLITE);
 
@@ -85,7 +98,9 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
             database.executeStatement(
                 "pragma user_version = " + (SqliteBookContract.FORMAT_VERSION + 1)));
     assertVerificationFailure(
-        acceptedValue(store.verifyInitializedBook(localAccess(unsupportedAccess))),
+        acceptedValue(
+            store.verifyInitializedBook(
+                localAccess(unsupportedAccess), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
         unsupportedBookPath,
         ProtectedBookVerificationFailure.UNSUPPORTED_FORMAT_VERSION);
 
@@ -95,7 +110,8 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
         acceptedValue(
             store.verifyInitializedBook(
                 localAccess(
-                    bookAccess(incompleteBookPath, SqliteStoreFixtureSupport.TEST_BOOK_KEY)))),
+                    bookAccess(incompleteBookPath, SqliteStoreFixtureSupport.TEST_BOOK_KEY)),
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
         incompleteBookPath,
         ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND);
   }
@@ -209,7 +225,8 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
                 ContractDecision.rejected(resolverFailure));
 
     assertFailedDescriptor(
-        failingStore.verifyInitializedBook(localAccess(access)),
+        failingStore.verifyInitializedBook(
+            localAccess(access), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK),
         ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE);
 
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
@@ -220,7 +237,7 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
       ProtectedBookMaintenanceStore.LeaseBusy existingBusy =
           assertInstanceOf(
               ProtectedBookMaintenanceStore.LeaseBusy.class,
-              store.acquireExistingArtifactLease(busyExistingBookPath));
+              acquireLiveArtifactLease(store, busyExistingBookPath));
       assertEquals(busyExistingBookPath, existingBusy.artifactPath());
     } finally {
       SqliteNativeRuntimeActivity.recordConnectionClosed(busyExistingBookPath);
@@ -245,7 +262,7 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
     ProtectedBookMaintenanceStore.LeaseBusy managedBusy =
         assertInstanceOf(
             ProtectedBookMaintenanceStore.LeaseBusy.class,
-            store.acquireManagedArtifactLease(busyManagedPath));
+            acquireRestoredTargetLease(store, busyManagedPath));
     assertEquals(busyManagedPath, managedBusy.artifactPath());
 
     try (AclFixtureFileSystem fileSystem =
@@ -265,6 +282,83 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
           NullTestSupport.messageOf(rollbackScanFailure)
               .contains("Failed to inspect FinGrind SQLite rollback artifacts"));
     }
+  }
+
+  @Test
+  void leaseVerificationAndReplacement_translateCallerPathContractRejections() throws Exception {
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    Path existingDirectory = tempDirectory.resolve("lease-directory");
+    Files.createDirectories(existingDirectory);
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid existingLeaseRejection =
+        assertArtifactPathInvalid(
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.acquireExistingArtifactLease(
+                            existingDirectory.toAbsolutePath().normalize(),
+                            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))
+                .rejection());
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, existingLeaseRejection.artifactRole());
+    assertEquals(
+        ProtectedBookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        existingLeaseRejection.pathFailure());
+
+    Path managedParentBlocker = tempDirectory.resolve("managed-parent-blocker");
+    Files.writeString(managedParentBlocker, "not-a-directory");
+    Path invalidManagedTarget = managedParentBlocker.resolve("book.sqlite");
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid managedLeaseRejection =
+        assertArtifactPathInvalid(
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.acquireManagedArtifactLease(
+                            invalidManagedTarget,
+                            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET))
+                .rejection());
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, managedLeaseRejection.artifactRole());
+    assertEquals(
+        ProtectedBookMaintenancePathFailure.PARENT_PATH_COLLISION,
+        managedLeaseRejection.pathFailure());
+
+    Path sourceBookPath = writeArtifact("replacement-source-valid.sqlite", "replacement");
+    Path replacementParentBlocker = tempDirectory.resolve("replacement-parent-blocker");
+    Files.writeString(replacementParentBlocker, "not-a-directory");
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid replacementRejection =
+        assertArtifactPathInvalid(
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.stageReplacement(
+                            sourceBookPath, replacementParentBlocker.resolve("target.sqlite")))
+                .rejection());
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, replacementRejection.artifactRole());
+    assertEquals(
+        ProtectedBookMaintenancePathFailure.PARENT_PATH_COLLISION,
+        replacementRejection.pathFailure());
+
+    Path directoryBookPath = tempDirectory.resolve("book-directory");
+    Files.createDirectories(directoryBookPath);
+    Path directoryBookKeyPath =
+        tempDirectory.resolve("book-keys").resolve(directoryBookPath.getFileName() + ".key");
+    writeSecureKeyFile(directoryBookKeyPath, TEST_BOOK_KEY);
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid verificationRejection =
+        assertArtifactPathInvalid(
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.verifyInitializedBook(
+                            localAccess(bookAccess(directoryBookPath)),
+                            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))
+                .rejection());
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, verificationRejection.artifactRole());
+    assertEquals(
+        ProtectedBookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        verificationRejection.pathFailure());
   }
 
   @Test
@@ -378,12 +472,21 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
     }
     assertFalse(Files.exists(rollbackArtifactPath));
 
-    IllegalStateException invalidRollbackArtifact =
+    ProtectedBookMaintenanceRejectionException invalidRollbackArtifact =
         assertThrows(
-            IllegalStateException.class,
+            ProtectedBookMaintenanceRejectionException.class,
             () -> store.stageRollbackArtifactDeletion(tempDirectory.toAbsolutePath().normalize()));
-    assertTrue(
-        NullTestSupport.messageOf(invalidRollbackArtifact).contains("regular non-symlink file"));
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            invalidRollbackArtifact.rejection());
+    assertEquals(ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, rejection.artifactRole());
+    assertEquals(
+        tempDirectory.toAbsolutePath().normalize(),
+        rejection.artifactPath().toAbsolutePath().normalize());
+    assertEquals(
+        ProtectedBookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        rejection.pathFailure());
   }
 
   @Test
@@ -421,11 +524,11 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
 
       try (ProtectedBookMaintenanceStore.HeldLease managedLease =
               acceptedLease(
-                  store.acquireManagedArtifactLease(
-                      tempDirectory.resolve("managed").resolve("book.sqlite")));
+                  acquireRestoredTargetLease(
+                      store, tempDirectory.resolve("managed").resolve("book.sqlite")));
           ProtectedBookMaintenanceStore.HeldLease existingLease =
               acceptedLease(
-                  store.acquireExistingArtifactLease(bookPath.toAbsolutePath().normalize()))) {
+                  acquireLiveArtifactLease(store, bookPath.toAbsolutePath().normalize()))) {
         assertTrue(
             Files.exists(
                 managedLease
@@ -834,5 +937,10 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
       assertFalse(sourcePath.exists);
       assertTrue(targetPath.exists);
     }
+  }
+
+  private static ProtectedBookMaintenanceRejection.ArtifactPathInvalid assertArtifactPathInvalid(
+      ProtectedBookMaintenanceRejection rejection) {
+    return assertInstanceOf(ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class, rejection);
   }
 }

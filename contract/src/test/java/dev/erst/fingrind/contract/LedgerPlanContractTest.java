@@ -42,10 +42,10 @@ import org.junit.jupiter.api.Test;
 class LedgerPlanContractTest {
   @Test
   void ledgerPlan_validatesMandatoryShape() {
-    LedgerStep step = new LedgerStep.OpenBook(stepId("open"), ContractFixtures.openBookCommand());
+    LedgerStep step = new LedgerStep.EnsureBook(stepId("open"), ContractFixtures.openBookCommand());
     LedgerPlan plan = new LedgerPlan(planId("plan-1"), List.of(step));
     assertEquals(planId("plan-1"), plan.planId());
-    assertTrue(plan.beginsWithOpenBook());
+    assertTrue(plan.beginsWithEnsureBook());
     assertThrows(IllegalArgumentException.class, () -> new LedgerPlan(planId(""), List.of(step)));
     assertThrows(IllegalArgumentException.class, () -> new LedgerPlan(planId("plan-1"), List.of()));
     assertThrows(
@@ -64,14 +64,15 @@ class LedgerPlanContractTest {
                 planId("plan-1"),
                 List.of(
                     new LedgerStep.InspectBook(stepId("inspect")),
-                    new LedgerStep.OpenBook(stepId("open"), ContractFixtures.openBookCommand()))));
+                    new LedgerStep.EnsureBook(
+                        stepId("open"), ContractFixtures.openBookCommand()))));
   }
 
   @Test
   void stepRecords_publishCanonicalKindsAndRejectInvalidShape() {
     assertEquals(
-        LedgerStepKind.OPEN_BOOK,
-        new LedgerStep.OpenBook(stepId("open"), ContractFixtures.openBookCommand()).kind());
+        LedgerStepKind.ENSURE_BOOK,
+        new LedgerStep.EnsureBook(stepId("open"), ContractFixtures.openBookCommand()).kind());
     assertEquals(
         LedgerStepKind.DECLARE_ACCOUNT,
         new LedgerStep.DeclareAccount(
@@ -112,7 +113,7 @@ class LedgerPlanContractTest {
             .detailKind());
     assertThrows(
         IllegalArgumentException.class,
-        () -> new LedgerStep.OpenBook(stepId(" "), ContractFixtures.openBookCommand()));
+        () -> new LedgerStep.EnsureBook(stepId(" "), ContractFixtures.openBookCommand()));
     assertThrows(
         NullPointerException.class, () -> new LedgerStep.Assert(stepId("assert"), nullOf()));
   }
@@ -235,7 +236,7 @@ class LedgerPlanContractTest {
   void ledgerPlanKinds_areCanonical() {
     assertEquals(
         List.of(
-            LedgerStepKind.OPEN_BOOK.wireValue(),
+            LedgerStepKind.ENSURE_BOOK.wireValue(),
             LedgerStepKind.DECLARE_ACCOUNT.wireValue(),
             LedgerStepKind.PREFLIGHT_ENTRY.wireValue(),
             LedgerStepKind.POST_ENTRY.wireValue(),

@@ -286,8 +286,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "steps": [
                 {
                   "stepId": "open",
-                  "kind": "open-book",
-                  "openBook": {
+                  "kind": "ensure-book",
+                  "ensureBook": {
                     "entityName": "Acme Studio",
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01"

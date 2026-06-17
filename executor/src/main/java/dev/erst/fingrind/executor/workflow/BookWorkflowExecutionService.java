@@ -95,7 +95,7 @@ public final class BookWorkflowExecutionService {
       Instant startedAt,
       BookWorkflowStep firstStep,
       List<BookWorkflowJournalEntry> entries) {
-    if (plan.beginsWithOpenBook()) {
+    if (plan.beginsWithEnsureBook()) {
       return null;
     }
     try {
@@ -171,7 +171,7 @@ public final class BookWorkflowExecutionService {
       Instant stepStartedAt,
       RuntimeException exception) {
     BookWorkflowJournalEntry.Failed unexpectedFailure =
-        LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
             step, stepStartedAt, Instant.now(clock), exception);
     RuntimeException rollbackFailure = rollbackFailure();
     if (rollbackFailure != null) {
@@ -262,7 +262,7 @@ public final class BookWorkflowExecutionService {
     context
         .entries()
         .add(
-            LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+            LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
                 context.phase(),
                 context.phaseStartedAt(),
                 Instant.now(clock),

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
@@ -184,8 +186,15 @@ class RejectionNarrativeTest {
             .contains("will not restore a book from itself"));
     assertTrue(
         RejectionNarrative.message(
+                new BookMaintenanceRejection.ArtifactPathInvalid(
+                    BookMaintenanceArtifactRole.BACKUP_TARGET,
+                    hint(java.nio.file.Path.of("backup/acme.sqlite")),
+                    BookMaintenancePathFailure.PARENT_PATH_COLLISION))
+            .contains("violates the filesystem contract"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactBusy(
-                    dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.LIVE_BOOK,
+                    BookMaintenanceArtifactRole.LIVE_BOOK,
                     hint(java.nio.file.Path.of("books/acme.sqlite"))))
             .contains("actively in use"));
     assertTrue(
@@ -248,7 +257,7 @@ class RejectionNarrativeTest {
         new PostingRejection.EntrySemanticsViolations(
             List.of(
                 PostingRejection.sourceDocumentTypeNotAccepted(
-                    dev.erst.fingrind.core.BookkeepingEntryKind.CASH_REVENUE,
+                    "CASH_REVENUE",
                     new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                     List.of("cash-receipt", "bank-deposit"))));
 
@@ -274,12 +283,12 @@ class RejectionNarrativeTest {
             .contains("transferred-through horizon"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.OpeningBalanceWindowClosed(
+                new PostingRejection.OpenAccountingPositionWindowClosed(
                     dev.erst.fingrind.core.PostingKind.STANDARD, LocalDate.parse("2026-05-02")))
             .contains("first blocking posting"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.OpeningBalanceTouchesNominalAccount(
+                new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE))
             .contains("4000"));
     assertTrue(

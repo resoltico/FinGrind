@@ -38,7 +38,7 @@ final class MachineContractLedgerPlanRoles {
 
   private static StepRole stepRole(LedgerStepKind kind) {
     return switch (kind) {
-      case OPEN_BOOK, DECLARE_ACCOUNT -> StepRole.ADMINISTRATION;
+      case ENSURE_BOOK, DECLARE_ACCOUNT -> StepRole.ADMINISTRATION;
       case INSPECT_BOOK, LIST_ACCOUNTS, GET_POSTING, LIST_POSTINGS, ACCOUNT_BALANCE ->
           StepRole.QUERY;
       case PREFLIGHT_ENTRY, POST_ENTRY -> StepRole.WRITE;

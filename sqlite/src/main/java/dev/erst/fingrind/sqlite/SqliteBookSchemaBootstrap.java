@@ -42,6 +42,9 @@ final class SqliteBookSchemaBootstrap {
     }
     try {
       secureParentDirectoryEnsurer.ensure(normalizedBookPath);
+    } catch (SqliteCallerPathContractException exception) {
+      throw new ContractFailureException(
+          SqliteCallerPathFailureMapper.invalidBookFilePath(exception));
     } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
       throw invalidBookFilePath(normalizedBookPath, exception);
     }

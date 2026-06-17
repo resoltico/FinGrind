@@ -90,7 +90,7 @@ final class PostingApplicationServiceTestSupport {
 
   static PostEntryCommand command(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.CashRevenue(
+        BookkeepingEntry.cashRevenue(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("2000"),

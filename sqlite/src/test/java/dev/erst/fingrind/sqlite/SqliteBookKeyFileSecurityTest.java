@@ -358,13 +358,11 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-      IllegalArgumentException exception =
-          assertThrows(
-              IllegalArgumentException.class,
-              () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-      assertTrue(
-          NullTestSupport.messageOf(exception)
-              .contains("resolve beneath an existing parent directory"));
+      assertPathFailure(
+          keyPath,
+          SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
+          "resolve beneath a parent directory",
+          () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
     }
   }
 
@@ -379,13 +377,11 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-      IllegalArgumentException exception =
-          assertThrows(
-              IllegalArgumentException.class,
-              () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-      assertTrue(
-          NullTestSupport.messageOf(exception)
-              .contains("resolve beneath an existing parent directory"));
+      assertPathFailure(
+          keyPath,
+          SqliteCallerPathFailure.PARENT_PATH_COLLISION,
+          "resolve beneath one real parent directory",
+          () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
     }
   }
 
@@ -447,5 +443,17 @@ class SqliteBookKeyFileSecurityTest {
       assertTrue(
           NullTestSupport.messageOf(exception).contains("supports POSIX owner-only permissions"));
     }
+  }
+
+  private static void assertPathFailure(
+      AclFixturePath expectedPath,
+      SqliteCallerPathFailure expectedFailure,
+      String expectedMessageFragment,
+      org.junit.jupiter.api.function.Executable executable) {
+    SqliteCallerPathContractException exception =
+        assertThrows(SqliteCallerPathContractException.class, executable);
+    assertEquals(expectedPath, exception.requestedPath());
+    assertEquals(expectedFailure, exception.pathFailure());
+    assertTrue(NullTestSupport.messageOf(exception).contains(expectedMessageFragment));
   }
 }

@@ -107,7 +107,8 @@ def cash_revenue_request(
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "CASH_REVENUE",
+        "entryKind": "JOURNAL",
+        "recipeKind": "CASH_REVENUE",
         "effectiveDate": effective_date,
         "cashAccountCode": cash_account_code,
         "revenueAccountCode": revenue_account_code,
@@ -135,7 +136,8 @@ def cash_expense_request(
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "CASH_EXPENSE",
+        "entryKind": "JOURNAL",
+        "recipeKind": "CASH_EXPENSE",
         "effectiveDate": effective_date,
         "expenseAccountCode": expense_account_code,
         "cashAccountCode": cash_account_code,

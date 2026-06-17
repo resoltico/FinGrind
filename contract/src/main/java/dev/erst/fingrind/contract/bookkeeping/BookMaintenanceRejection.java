@@ -10,6 +10,7 @@ public sealed interface BookMaintenanceRejection
     permits BookMaintenanceRejection.BookHasBlockingArtifacts,
         BookMaintenanceRejection.BackupSourceHasBlockingArtifacts,
         BookMaintenanceRejection.BackupSourceMatchesLiveBook,
+        BookMaintenanceRejection.ArtifactPathInvalid,
         BookMaintenanceRejection.ArtifactBusy,
         BookMaintenanceRejection.BackupDestinationAlreadyExists,
         BookMaintenanceRejection.BackupKeyFileAlreadyExists,
@@ -63,6 +64,19 @@ public sealed interface BookMaintenanceRejection
     public BackupSourceMatchesLiveBook {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
       Objects.requireNonNull(backupFilePath, "backupFilePath");
+    }
+  }
+
+  /** Rejection for maintenance commands whose selected artifact is actively in use. */
+  record ArtifactPathInvalid(
+      BookMaintenanceArtifactRole artifactRole,
+      PublicPathHint artifactPath,
+      BookMaintenancePathFailure pathFailure)
+      implements BookMaintenanceRejection {
+    public ArtifactPathInvalid {
+      Objects.requireNonNull(artifactRole, "artifactRole");
+      Objects.requireNonNull(artifactPath, "artifactPath");
+      Objects.requireNonNull(pathFailure, "pathFailure");
     }
   }
 

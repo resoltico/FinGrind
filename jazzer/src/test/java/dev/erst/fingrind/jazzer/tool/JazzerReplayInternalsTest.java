@@ -253,14 +253,14 @@ class JazzerReplayInternalsTest {
             new PostingRejection.TransferredPeriodResultViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
-        PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
+        PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.OpeningBalanceWindowClosed(
+            new PostingRejection.OpenAccountingPositionWindowClosed(
                 PostingKind.STANDARD, java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
-        PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
+        PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.OpeningBalanceTouchesNominalAccount(
+            new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
                 accountCode, dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
         PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
@@ -511,7 +511,8 @@ class JazzerReplayInternalsTest {
     assertTrue(PostingLifecycleStatus.wireValues().contains("duplicate-idempotency-key"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("entry-semantics-violations"));
-    assertTrue(PostingLifecycleStatus.wireValues().contains("opening-balance-window-closed"));
+    assertTrue(
+        PostingLifecycleStatus.wireValues().contains("open-accounting-position-window-closed"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("result-holding-account-reserved"));
     assertEquals(
         PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
@@ -523,8 +524,8 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
         PostingLifecycleStatus.fromWireValue("entry-semantics-violations"));
     assertEquals(
-        PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
-        PostingLifecycleStatus.fromWireValue("opening-balance-window-closed"));
+        PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
+        PostingLifecycleStatus.fromWireValue("open-accounting-position-window-closed"));
     assertEquals(
         PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
         PostingLifecycleStatus.fromWireValue("result-holding-account-reserved"));

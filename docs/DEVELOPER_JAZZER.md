@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -151,7 +151,7 @@ filesystem leaves one corpus root temporarily undeletable.
 | Harness | Focus | Current Assertions |
 |:--------|:------|:-------------------|
 | `cli-request` | raw JSON request decoding | valid requests parse, source channel is stamped `CLI`, forbidden committed-audit fields are rejected |
-| `ledger-plan-request` | ledger-plan JSON request decoding | valid plans parse, `open-book` remains first when present, assertion steps keep their canonical kind, removed `executionPolicy` is rejected, oversize plans are rejected at 100 steps, and unknown kind typos do not fall through into assertion-shape errors |
+| `ledger-plan-request` | ledger-plan JSON request decoding | valid plans parse, `ensure-book` remains first when present, assertion steps keep their canonical kind, removed `executionPolicy` is rejected, oversize plans are rejected at 100 steps, and unknown kind typos do not fall through into assertion-shape errors |
 | `posting-workflow` | application preflight and commit behavior | unopened books reject first, undeclared accounts reject next, inactive accounts reject after deactivation, accepted requests commit once after explicit setup, deterministic rejections repeat consistently, duplicates reject deterministically |
 | `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected protected book using deterministic UTF-8 passphrase material, committed books and executed read/report commands render through the real CLI response writers, corrupt or directory-backed pre-schema paths map into owned runtime failures, concurrent contenders leave one durable winner plus one deterministic non-winning outcome, derived reversal near misses and duplicate reversals stay deterministic, the canonical Phase 2 schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
 
@@ -180,7 +180,7 @@ production modules and any Jazzer-only relaxations remain explicit.
 | Harness | Count | Coverage Shape |
 |:--------|:------|:---------------|
 | `cli-request` | `10` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, duplicate key rejection, missing provenance, unexpected field, forbidden recorded-at, forbidden source-channel, unbalanced entry |
-| `ledger-plan-request` | `7` | valid plan execution, structured list-query journal facts, rejected missing-book list-query plans without fake row facts, removed execution-policy rejection, open-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
+| `ledger-plan-request` | `7` | valid plan execution, structured list-query journal facts, rejected missing-book list-query plans without fake row facts, removed execution-policy rejection, ensure-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
 | `posting-workflow` | `5` | explicit lifecycle setup plus four-line success with optional correlation id, invalid actor, exponent rejection with reversal payload present, invalid missing reversal reason, missing reversal target |
 | `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success with distinct system provenance, nested path, invalid Unicode account-code rejection, exponent rejection with optional provenance correlation, invalid type, invalid missing reversal reason, missing reversal target; valid parsed seeds also drive executed read/report rendering, corrupt pre-schema path failures, concurrent contenders, and derived reversal near-miss coverage |
 

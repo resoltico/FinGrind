@@ -298,11 +298,11 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(financialPositionText.contains("Section totals"));
     assertTrue(financialPositionText.contains("Empty sections"));
     assertTrue(financialPositionText.contains("Liabilities"));
-    assertFalse(financialPositionText.contains("Comparative Financial Position"));
+    assertTrue(financialPositionText.contains("Comparative Financial Position"));
     assertTrue(incomeStatementText.contains("Revenue without Totals"));
     assertTrue(incomeStatementText.contains("Expenses"));
     assertTrue(incomeStatementText.contains("Section totals"));
     assertTrue(incomeStatementText.contains("Empty sections"));
-    assertFalse(incomeStatementText.contains("Comparative Income Statement"));
+    assertTrue(incomeStatementText.contains("Comparative Income Statement"));
   }
 }

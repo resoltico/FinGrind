@@ -60,8 +60,8 @@ class LedgerPlanFuzzAssertionsTest {
               "steps": [
                 {
                   "stepId": "open",
-                  "kind": "open-book",
-                  "openBook": %s
+                  "kind": "ensure-book",
+                  "ensureBook": %s
                 },
                 %s,
                 %s,
@@ -200,7 +200,7 @@ class LedgerPlanFuzzAssertionsTest {
     LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8));
     LedgerJournalEntry.Succeeded openBookStep =
         succeededEntry(
-            "open", LedgerStepKind.OPEN_BOOK, List.of(LedgerFact.text("status", "opened")));
+            "open", LedgerStepKind.ENSURE_BOOK, List.of(LedgerFact.text("status", "opened")));
     LedgerPlanResult.Succeeded truncatedSuccess =
         new LedgerPlanResult.Succeeded(
             new LedgerPlanId(plan.planId().value()),
@@ -231,7 +231,7 @@ class LedgerPlanFuzzAssertionsTest {
     LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8));
     LedgerJournalEntry.Succeeded openBookStep =
         succeededEntry(
-            "open", LedgerStepKind.OPEN_BOOK, List.of(LedgerFact.text("status", "opened")));
+            "open", LedgerStepKind.ENSURE_BOOK, List.of(LedgerFact.text("status", "opened")));
 
     LedgerPlanResult.Succeeded journalOverflow =
         new LedgerPlanResult.Succeeded(
@@ -278,7 +278,7 @@ class LedgerPlanFuzzAssertionsTest {
                     openBookStep,
                     succeededEntry(
                         plan.steps().get(1).stepId().value(),
-                        LedgerStepKind.OPEN_BOOK,
+                        LedgerStepKind.ENSURE_BOOK,
                         List.of()))));
     IllegalStateException stepKindDrift =
         assertThrows(
@@ -323,7 +323,7 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
                     boundarySucceededEntry("@plan-boundary:begin", LedgerBoundaryPhase.BEGIN),
-                    rejectedEntry("open", LedgerStepKind.OPEN_BOOK, List.of()))));
+                    rejectedEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()))));
     IllegalStateException nonterminalBoundary =
         assertThrows(
             IllegalStateException.class,
@@ -341,7 +341,7 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
-                    succeededEntry("open", LedgerStepKind.OPEN_BOOK, List.of()),
+                    succeededEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()),
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("post-sale", LedgerStepKind.POST_ENTRY, List.of()),
@@ -383,7 +383,7 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
-                    succeededEntry("open", LedgerStepKind.OPEN_BOOK, List.of()),
+                    succeededEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()),
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("preflight-sale", LedgerStepKind.PREFLIGHT_ENTRY, List.of()),
@@ -534,7 +534,7 @@ class LedgerPlanFuzzAssertionsTest {
             IllegalArgumentException.class,
             () ->
                 LedgerPlanListQueryAssertions.expectedListQueryGroupName(
-                    LedgerJournalKind.OPEN_BOOK));
+                    LedgerJournalKind.ENSURE_BOOK));
     assertTrue(String.valueOf(wrongListQueryKind.getMessage()).contains("list-query journal kind"));
   }
 
@@ -597,8 +597,8 @@ class LedgerPlanFuzzAssertionsTest {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book",
-              "openBook": %s
+              "kind": "ensure-book",
+              "ensureBook": %s
             },
             %s
           ]
@@ -618,8 +618,8 @@ class LedgerPlanFuzzAssertionsTest {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book",
-              "openBook": %s
+              "kind": "ensure-book",
+              "ensureBook": %s
             },
             %s,
             %s,
@@ -682,8 +682,8 @@ class LedgerPlanFuzzAssertionsTest {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book",
-              "openBook": %s
+              "kind": "ensure-book",
+              "ensureBook": %s
             },
             %s,
             %s,

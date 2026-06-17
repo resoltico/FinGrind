@@ -7,7 +7,7 @@ import java.util.Objects;
 
 /** Stable journal-visible kinds emitted by ledger-plan execution. */
 public enum LedgerJournalKind implements WireValue {
-  OPEN_BOOK(OperationId.OPEN_BOOK),
+  ENSURE_BOOK("ensure-book"),
   DECLARE_ACCOUNT(OperationId.DECLARE_ACCOUNT),
   PREFLIGHT_ENTRY(OperationId.PREFLIGHT_ENTRY),
   POST_ENTRY(OperationId.POST_ENTRY),

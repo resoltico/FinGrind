@@ -24,6 +24,7 @@ final class BookMaintenanceRejectionDescriptors {
           Descriptor.BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS;
       case BookMaintenanceRejection.BackupSourceMatchesLiveBook _ ->
           Descriptor.BACKUP_SOURCE_MATCHES_LIVE_BOOK;
+      case BookMaintenanceRejection.ArtifactPathInvalid _ -> Descriptor.ARTIFACT_PATH_INVALID;
       case BookMaintenanceRejection.ArtifactBusy _ -> Descriptor.ARTIFACT_BUSY;
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
           Descriptor.BACKUP_DESTINATION_ALREADY_EXISTS;
@@ -47,6 +48,7 @@ final class BookMaintenanceRejectionDescriptors {
     BOOK_HAS_BLOCKING_ARTIFACTS,
     BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS,
     BACKUP_SOURCE_MATCHES_LIVE_BOOK,
+    ARTIFACT_PATH_INVALID,
     ARTIFACT_BUSY,
     BACKUP_DESTINATION_ALREADY_EXISTS,
     BACKUP_KEY_FILE_ALREADY_EXISTS,
@@ -61,6 +63,7 @@ final class BookMaintenanceRejectionDescriptors {
         case BOOK_HAS_BLOCKING_ARTIFACTS -> "book-has-blocking-artifacts";
         case BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS -> "backup-source-has-blocking-artifacts";
         case BACKUP_SOURCE_MATCHES_LIVE_BOOK -> "backup-source-matches-live-book";
+        case ARTIFACT_PATH_INVALID -> "artifact-path-invalid";
         case ARTIFACT_BUSY -> "artifact-busy";
         case BACKUP_DESTINATION_ALREADY_EXISTS -> "backup-destination-already-exists";
         case BACKUP_KEY_FILE_ALREADY_EXISTS -> "backup-key-file-already-exists";
@@ -80,6 +83,8 @@ final class BookMaintenanceRejectionDescriptors {
             "Restore command refused because the selected encrypted backup file has SQLite sidecars or rollback artifacts and is not one clean closed-copy source.";
         case BACKUP_SOURCE_MATCHES_LIVE_BOOK ->
             "Restore command refused because the selected backup source path equals the live book path and FinGrind will not replace a book from itself.";
+        case ARTIFACT_PATH_INVALID ->
+            "Maintenance command refused because one selected artifact path or its parent-directory permissions do not satisfy the protected-book filesystem contract.";
         case ARTIFACT_BUSY ->
             "Maintenance command refused because the selected protected-book artifact is actively in use by another workflow or process and cannot be proven quiescent.";
         case BACKUP_DESTINATION_ALREADY_EXISTS ->
@@ -135,6 +140,21 @@ final class BookMaintenanceRejectionDescriptors {
                     new ContractResponse.FieldDescriptor(
                         "artifactPath",
                         "Redacted public hint for the busy protected-book artifact.")),
+                List.of());
+        case ARTIFACT_PATH_INVALID ->
+            new ContractResponse.RejectionDescriptor(
+                code(),
+                description(),
+                List.of(
+                    new ContractResponse.FieldDescriptor(
+                        "artifactRole",
+                        "Canonical maintenance artifact role whose selected path was invalid."),
+                    new ContractResponse.FieldDescriptor(
+                        "artifactPath",
+                        "Redacted public hint for the invalid protected-book artifact path."),
+                    new ContractResponse.FieldDescriptor(
+                        "pathFailure",
+                        "Stable protected-book path-failure code naming the specific filesystem-contract violation.")),
                 List.of());
         case BACKUP_DESTINATION_ALREADY_EXISTS ->
             new ContractResponse.RejectionDescriptor(

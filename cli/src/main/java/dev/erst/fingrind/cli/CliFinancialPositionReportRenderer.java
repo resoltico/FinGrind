@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,10 +61,12 @@ final class CliFinancialPositionReportRenderer {
             "netAmount",
             "balanceSide",
             "message"),
-        java.util.stream.Stream.concat(
-                CliFinancialPositionCsvRows.rows(report, "current", report.sections()),
-                CliFinancialPositionCsvRows.rows(
-                    report, "comparative", report.comparativeSections()))
+        (CliReportSurfacePolicy.hasComparative(report)
+                ? java.util.stream.Stream.concat(
+                    CliFinancialPositionCsvRows.rows(report, "current", report.sections()),
+                    CliFinancialPositionCsvRows.rows(
+                        report, "comparative", report.comparativeSections()))
+                : CliFinancialPositionCsvRows.rows(report, "current", report.sections()))
             .toList());
   }
 
@@ -74,7 +77,7 @@ final class CliFinancialPositionReportRenderer {
     List<List<String>> rows = new ArrayList<>();
     rows.add(
         List.of(
-            "As of",
+            CliTemporalScopeText.summaryLabel(OperationId.FINANCIAL_POSITION),
             CliQueryScopeText.upperDateBoundaryLabel(
                 report.effectiveDateAsOf().orElse(null),
                 report.resolvedEffectiveDateAsOf().orElse(null))));
@@ -112,7 +115,7 @@ final class CliFinancialPositionReportRenderer {
     List<List<String>> rows = new ArrayList<>();
     rows.add(
         List.of(
-            "As of",
+            CliTemporalScopeText.summaryLabel(OperationId.FINANCIAL_POSITION),
             CliQueryScopeText.upperDateBoundaryLabel(
                 report.comparativeEffectiveDateRange().effectiveDateTo().orElse(null))));
     rows.add(
@@ -120,13 +123,17 @@ final class CliFinancialPositionReportRenderer {
             "Comparative reference",
             CliReportRenderSupport.comparativeReferenceLine(
                 report.comparativeEffectiveDateRange())));
-    rows.add(
-        List.of(
-            "Sections with data",
-            String.join(
-                ", ",
-                CliReportRenderSupport.accountTypeSectionLabels(
-                    comparativeSections, FinancialPositionSection::accountType))));
+    if (CliReportSurfacePolicy.hasComparativeData(report)) {
+      rows.add(
+          List.of(
+              "Sections with data",
+              String.join(
+                  ", ",
+                  CliReportRenderSupport.accountTypeSectionLabels(
+                      comparativeSections, FinancialPositionSection::accountType))));
+    } else {
+      rows.add(List.of("Outcome", CliQueryScopeText.noMatchesLabel("financial position lines")));
+    }
     if (!emptySections.isEmpty()) {
       rows.add(List.of("Empty sections", String.join(", ", emptySections)));
     }

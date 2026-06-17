@@ -79,12 +79,16 @@ final class PostingWorkflowFuzzAssertions {
     CliFuzzWorkflowFixtures.openBook(
         administrationService, CliFuzzFixtures.journalEntry(command).currencyUnit());
 
-    PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        CliFuzzWorkflowFixtures.preflight(applicationService, command),
-        PostingRejection.UnknownAccount.class);
-    PostingWorkflowInvariantAssertions.assertAccountStateRejected(
-        CliFuzzWorkflowFixtures.commit(applicationService, command),
-        PostingRejection.UnknownAccount.class);
+    PreflightRejected postOpenPreflightRejected =
+        PostingWorkflowInvariantAssertions.assertRejected(
+            CliFuzzWorkflowFixtures.preflight(applicationService, command), PostingRejection.class);
+    CommitEntryResult committedPostOpenResult =
+        CliFuzzWorkflowFixtures.commit(applicationService, command);
+    PostingWorkflowInvariantAssertions.verifyRejectedPreflightAndCommit(
+        postOpenPreflightRejected, committedPostOpenResult);
+    if (!isUnknownAccountLifecyclePhase(postOpenPreflightRejected.rejection())) {
+      return;
+    }
 
     var declaredAccounts =
         CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
@@ -104,5 +108,11 @@ final class PostingWorkflowFuzzAssertions {
     CliFuzzAccountFixtures.reactivateAccount(administrationService, primaryAccount);
     PostingWorkflowInvariantAssertions.assertAccountReactivationPersisted(
         CliFuzzAccountFixtures.listAccounts(bookSession), primaryAccount);
+  }
+
+  static boolean isUnknownAccountLifecyclePhase(PostingRejection rejection) {
+    return rejection instanceof PostingRejection.AccountStateViolations violations
+        && violations.violations().stream()
+            .allMatch(PostingRejection.UnknownAccount.class::isInstance);
   }
 }

@@ -10,7 +10,7 @@
       "plan": {
         "planId": "plan-query-1",
         "stepCount": 6,
-        "firstStepKind": "open-book",
+        "firstStepKind": "ensure-book",
         "lastStepKind": "list-postings",
         "assertionStepCount": 0,
         "beginsWithOpenBook": true

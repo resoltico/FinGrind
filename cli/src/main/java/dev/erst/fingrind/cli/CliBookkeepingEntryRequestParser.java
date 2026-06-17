@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.optionalText;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
 import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectForbiddenField;
@@ -9,6 +10,8 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredArray;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredObject;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipe;
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
@@ -40,56 +43,83 @@ final class CliBookkeepingEntryRequestParser {
             BookkeepingEntryKind.wireValues(),
             BookkeepingEntryKind::fromWireValue);
     return switch (entryKind) {
-      case CASH_REVENUE -> readCashRevenueEntry(rootNode);
-      case CASH_EXPENSE -> readCashExpenseEntry(rootNode);
-      case EQUITY_CONTRIBUTION -> readEquityContributionEntry(rootNode);
-      case EQUITY_WITHDRAWAL -> readEquityWithdrawalEntry(rootNode);
+      case JOURNAL -> readJournalEntry(rootNode);
       case OPEN_ACCOUNTING_POSITION -> readOpenAccountingPositionEntry(rootNode);
       case REVERSAL_ADJUSTMENT -> readReversalAdjustmentEntry(rootNode);
     };
   }
 
-  private static BookkeepingEntry.CashRevenue readCashRevenueEntry(ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, ProtocolPostingRequestFieldSets.cashRevenueFields());
-    return new BookkeepingEntry.CashRevenue(
-        requiredEffectiveDate(rootNode),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
-        new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE)),
-        requiredPositiveAmount(rootNode));
+  private static BookkeepingEntry.Journal readJournalEntry(ObjectNode rootNode) {
+    return optionalText(rootNode, ProtocolPostEntryFields.TopLevel.RECIPE_KIND)
+        .map(
+            recipeKindText ->
+                readRecipeBackedJournalEntry(
+                    rootNode,
+                    parseWireValue(
+                        recipeKindText,
+                        ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
+                        JournalRecipeKind.wireValues(),
+                        JournalRecipeKind::fromWireValue)))
+        .orElseGet(
+            () -> {
+              rejectUnexpectedFields(
+                  rootNode, null, ProtocolPostingRequestFieldSets.journalDirectFields());
+              return new BookkeepingEntry.Journal(readAdministrativeJournalEntry(rootNode), null);
+            });
   }
 
-  private static BookkeepingEntry.CashExpense readCashExpenseEntry(ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, ProtocolPostingRequestFieldSets.cashExpenseFields());
-    return new BookkeepingEntry.CashExpense(
-        requiredEffectiveDate(rootNode),
-        new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE)),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
-        requiredPositiveAmount(rootNode));
-  }
-
-  private static BookkeepingEntry.EquityContribution readEquityContributionEntry(
-      ObjectNode rootNode) {
-    rejectUnexpectedFields(
-        rootNode, null, ProtocolPostingRequestFieldSets.equityContributionFields());
-    return new BookkeepingEntry.EquityContribution(
-        requiredEffectiveDate(rootNode),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
-        new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),
-        requiredPositiveAmount(rootNode));
-  }
-
-  private static BookkeepingEntry.EquityWithdrawal readEquityWithdrawalEntry(ObjectNode rootNode) {
-    rejectUnexpectedFields(
-        rootNode, null, ProtocolPostingRequestFieldSets.equityWithdrawalFields());
-    return new BookkeepingEntry.EquityWithdrawal(
-        requiredEffectiveDate(rootNode),
-        new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
-        requiredPositiveAmount(rootNode));
+  private static BookkeepingEntry.Journal readRecipeBackedJournalEntry(
+      ObjectNode rootNode, JournalRecipeKind recipeKind) {
+    return switch (recipeKind) {
+      case CASH_REVENUE -> {
+        rejectUnexpectedFields(
+            rootNode, null, ProtocolPostingRequestFieldSets.cashRevenueRecipeFields());
+        yield new BookkeepingEntry.Journal(
+            requiredEffectiveDate(rootNode),
+            new JournalRecipe.CashRevenue(
+                new AccountCode(
+                    requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+                new AccountCode(
+                    requiredText(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE)),
+                requiredPositiveAmount(rootNode)));
+      }
+      case CASH_EXPENSE -> {
+        rejectUnexpectedFields(
+            rootNode, null, ProtocolPostingRequestFieldSets.cashExpenseRecipeFields());
+        yield new BookkeepingEntry.Journal(
+            requiredEffectiveDate(rootNode),
+            new JournalRecipe.CashExpense(
+                new AccountCode(
+                    requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE)),
+                new AccountCode(
+                    requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+                requiredPositiveAmount(rootNode)));
+      }
+      case EQUITY_CONTRIBUTION -> {
+        rejectUnexpectedFields(
+            rootNode, null, ProtocolPostingRequestFieldSets.equityContributionRecipeFields());
+        yield new BookkeepingEntry.Journal(
+            requiredEffectiveDate(rootNode),
+            new JournalRecipe.EquityContribution(
+                new AccountCode(
+                    requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+                new AccountCode(
+                    requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),
+                requiredPositiveAmount(rootNode)));
+      }
+      case EQUITY_WITHDRAWAL -> {
+        rejectUnexpectedFields(
+            rootNode, null, ProtocolPostingRequestFieldSets.equityWithdrawalRecipeFields());
+        yield new BookkeepingEntry.Journal(
+            requiredEffectiveDate(rootNode),
+            new JournalRecipe.EquityWithdrawal(
+                new AccountCode(
+                    requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),
+                new AccountCode(
+                    requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+                requiredPositiveAmount(rootNode)));
+      }
+    };
   }
 
   private static BookkeepingEntry.OpenAccountingPosition readOpenAccountingPositionEntry(

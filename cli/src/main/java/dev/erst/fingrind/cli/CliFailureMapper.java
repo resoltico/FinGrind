@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
@@ -57,22 +56,19 @@ final class CliFailureMapper {
     };
   }
 
-  static CliFailure internalError(String errorId, OutputMode outputMode) {
+  static CliFailure internalError(String errorId) {
     String normalizedErrorId = requireErrorId(errorId);
     return new CliFailure(
         ContractErrors.Descriptor.INTERNAL_ERROR.code(),
         "FinGrind encountered an internal error. Quote error id "
             + normalizedErrorId
             + " when reporting this defect.",
-        internalErrorHint(Objects.requireNonNull(outputMode, "outputMode")),
+        internalErrorHint(),
         null);
   }
 
-  private static String internalErrorHint(OutputMode outputMode) {
-    if (outputMode == OutputMode.TEXT) {
-      return "Inspect the diagnostic stream for the same error id and stack trace, then report the defect instead of retrying unchanged input.";
-    }
-    return "FinGrind preserved one machine-readable error envelope on stderr and omitted the raw stack trace for this invocation. Quote the error id when reporting the defect; if you need local crash details, reproduce the failure against a disposable copy with --output text.";
+  private static String internalErrorHint() {
+    return "FinGrind preserved one machine-readable error envelope on stderr and omitted raw stack traces for this invocation. Quote the error id when reporting the defect; if you need crash details locally, reproduce the failure against a disposable copy under a debugger or test harness.";
   }
 
   private static String message(Exception exception) {

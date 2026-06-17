@@ -22,12 +22,13 @@ final class CliPostingLabels {
     return switch (postingKind) {
       case STANDARD -> "Standard";
       case PERIOD_RESULT_TRANSFER -> "Period result transfer";
-      case OPENING_BALANCE -> "Opening balance";
+      case OPENING_BALANCE -> "Opening accounting position";
     };
   }
 
   static String displayPostingOriginKind(PostingOriginKind postingOriginKind) {
     return switch (postingOriginKind) {
+      case JOURNAL -> "Journal";
       case CASH_REVENUE -> "Cash revenue";
       case CASH_EXPENSE -> "Cash expense";
       case EQUITY_CONTRIBUTION -> "Equity contribution";

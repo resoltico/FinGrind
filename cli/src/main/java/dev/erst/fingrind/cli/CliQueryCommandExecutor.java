@@ -28,14 +28,12 @@ final class CliQueryCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         readWorkflow.inspectBook(bookAccess),
-        outputMode,
         inspection ->
             responseWriter.writeBookInspection(bookAccess.bookFilePath(), inspection, outputMode),
         ignored -> 0,
@@ -48,14 +46,12 @@ final class CliQueryCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         readWorkflow.listAccounts(bookAccess, query),
-        outputMode,
         result -> responseWriter.writeListAccountsResult(result, outputMode),
         CliBookQueryExitCodes::exitCodeFor,
         failureWriter);
@@ -66,14 +62,12 @@ final class CliQueryCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         readWorkflow.getPosting(bookAccess, postingId),
-        outputMode,
         result -> responseWriter.writeGetPostingResult(result, outputMode),
         CliBookQueryExitCodes::exitCodeFor,
         failureWriter);
@@ -85,14 +79,12 @@ final class CliQueryCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         readWorkflow.listPostings(bookAccess, query),
-        outputMode,
         result -> responseWriter.writeListPostingsResult(result, outputMode),
         CliBookQueryExitCodes::exitCodeFor,
         failureWriter);

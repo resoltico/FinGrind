@@ -220,7 +220,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
                       bookIdentity(),
                       dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
                           bookIdentity().bookDoctrine().bookTemplateId())));
-      assertInvalidBookFilePathFailure(exception, "must resolve beneath an existing directory");
+      assertInvalidBookFilePathFailure(exception, "non-directory entry or symlink");
     }
   }
 
@@ -246,9 +246,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findExistingPosting(new IdempotencyKey("missing-idem")));
-      assertTrue(
-          NullTestSupport.messageOf(exception)
-              .contains("must resolve to one regular non-symlink file"));
+      assertInvalidBookFilePathFailure(exception, "must resolve to one regular non-symlink file");
     }
   }
 

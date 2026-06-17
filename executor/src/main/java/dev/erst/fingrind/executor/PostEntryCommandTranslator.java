@@ -1,15 +1,14 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipe;
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.core.JournalEntry;
-import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
-import java.time.LocalDate;
-import java.util.List;
 import java.util.Objects;
 
 /** Application-boundary translator from published entry commands into internal posting commands. */
@@ -23,63 +22,21 @@ public final class PostEntryCommandTranslator {
   }
 
   private static PostingCommand toInternalManagementSingleEntity(PostEntryCommand command) {
+    PostingOriginKind postingOriginKind = postingOriginKind(command.entry());
     return switch (command.entry()) {
-      case BookkeepingEntry.CashRevenue event ->
-          standardPosting(
-              event.effectiveDate(),
-              List.of(
-                  new JournalLine(
-                      event.cashAccountCode(),
-                      JournalLine.EntrySide.DEBIT,
-                      event.amount().toMoney()),
-                  new JournalLine(
-                      event.revenueAccountCode(),
-                      JournalLine.EntrySide.CREDIT,
-                      event.amount().toMoney())),
-              command);
-      case BookkeepingEntry.CashExpense event ->
-          standardPosting(
-              event.effectiveDate(),
-              List.of(
-                  new JournalLine(
-                      event.expenseAccountCode(),
-                      JournalLine.EntrySide.DEBIT,
-                      event.amount().toMoney()),
-                  new JournalLine(
-                      event.cashAccountCode(),
-                      JournalLine.EntrySide.CREDIT,
-                      event.amount().toMoney())),
-              command);
-      case BookkeepingEntry.EquityContribution event ->
-          standardPosting(
-              event.effectiveDate(),
-              List.of(
-                  new JournalLine(
-                      event.cashAccountCode(),
-                      JournalLine.EntrySide.DEBIT,
-                      event.amount().toMoney()),
-                  new JournalLine(
-                      event.equityAccountCode(),
-                      JournalLine.EntrySide.CREDIT,
-                      event.amount().toMoney())),
-              command);
-      case BookkeepingEntry.EquityWithdrawal event ->
-          standardPosting(
-              event.effectiveDate(),
-              List.of(
-                  new JournalLine(
-                      event.equityAccountCode(),
-                      JournalLine.EntrySide.DEBIT,
-                      event.amount().toMoney()),
-                  new JournalLine(
-                      event.cashAccountCode(),
-                      JournalLine.EntrySide.CREDIT,
-                      event.amount().toMoney())),
-              command);
+      case BookkeepingEntry.Journal journal ->
+          new PostingCommand(
+              PostingKind.STANDARD,
+              postingOriginKind,
+              journal.journalEntry(),
+              PostingLineageModel.direct(),
+              command.evidence(),
+              command.requestProvenance(),
+              command.sourceChannel());
       case BookkeepingEntry.OpenAccountingPosition openingPosition ->
           new PostingCommand(
               PostingKind.OPENING_BALANCE,
-              postingOriginKind(openingPosition),
+              postingOriginKind,
               new JournalEntry(openingPosition.effectiveDate(), openingPosition.lines()),
               PostingLineageModel.direct(),
               command.evidence(),
@@ -88,7 +45,7 @@ public final class PostEntryCommandTranslator {
       case BookkeepingEntry.ReversalAdjustment reversalAdjustment ->
           new PostingCommand(
               PostingKind.STANDARD,
-              postingOriginKind(reversalAdjustment),
+              postingOriginKind,
               reversalAdjustment.journalEntry(),
               toReversalPostingLineageModel(reversalAdjustment.reversal()),
               command.evidence(),
@@ -97,26 +54,22 @@ public final class PostEntryCommandTranslator {
     };
   }
 
-  private static PostingCommand standardPosting(
-      LocalDate effectiveDate, List<JournalLine> lines, PostEntryCommand command) {
-    return new PostingCommand(
-        PostingKind.STANDARD,
-        postingOriginKind(command.entry()),
-        new JournalEntry(effectiveDate, lines),
-        PostingLineageModel.direct(),
-        command.evidence(),
-        command.requestProvenance(),
-        command.sourceChannel());
-  }
-
   private static PostingOriginKind postingOriginKind(BookkeepingEntry entry) {
     return switch (Objects.requireNonNull(entry, "entry")) {
-      case BookkeepingEntry.CashRevenue _ -> PostingOriginKind.CASH_REVENUE;
-      case BookkeepingEntry.CashExpense _ -> PostingOriginKind.CASH_EXPENSE;
-      case BookkeepingEntry.EquityContribution _ -> PostingOriginKind.EQUITY_CONTRIBUTION;
-      case BookkeepingEntry.EquityWithdrawal _ -> PostingOriginKind.EQUITY_WITHDRAWAL;
+      case BookkeepingEntry.Journal journal -> postingOriginKind(journal);
       case BookkeepingEntry.OpenAccountingPosition _ -> PostingOriginKind.OPEN_ACCOUNTING_POSITION;
       case BookkeepingEntry.ReversalAdjustment _ -> PostingOriginKind.REVERSAL_ADJUSTMENT;
+    };
+  }
+
+  private static PostingOriginKind postingOriginKind(BookkeepingEntry.Journal journal) {
+    JournalRecipe recipe = journal.recipe();
+    return switch (recipe == null ? null : recipe.recipeKind()) {
+      case null -> PostingOriginKind.JOURNAL;
+      case JournalRecipeKind.CASH_REVENUE -> PostingOriginKind.CASH_REVENUE;
+      case JournalRecipeKind.CASH_EXPENSE -> PostingOriginKind.CASH_EXPENSE;
+      case JournalRecipeKind.EQUITY_CONTRIBUTION -> PostingOriginKind.EQUITY_CONTRIBUTION;
+      case JournalRecipeKind.EQUITY_WITHDRAWAL -> PostingOriginKind.EQUITY_WITHDRAWAL;
     };
   }
 

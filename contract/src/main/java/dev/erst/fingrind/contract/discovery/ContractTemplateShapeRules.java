@@ -11,7 +11,7 @@ final class ContractTemplateShapeRules {
   static Map<LedgerStepKind, ContractTemplateStepShapeRequirements> stepShapeRequirements() {
     return Map.ofEntries(
         Map.entry(
-            LedgerStepKind.OPEN_BOOK,
+            LedgerStepKind.ENSURE_BOOK,
             new ContractTemplateStepShapeRequirements(
                 ContractTemplateFieldPresence.REQUIRED,
                 ContractTemplateFieldPresence.FORBIDDEN,

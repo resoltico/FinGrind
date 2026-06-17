@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
@@ -149,31 +148,26 @@ final class FinGrindCli {
 
   /** Runs one CLI command and writes a deterministic JSON envelope. */
   int run(String[] args) {
-    OutputMode failureOutputMode = CliExecutionPolicy.inferredFailureOutputMode(args);
     try {
       CliCommand command = CliArguments.parse(args);
-      failureOutputMode = command.failureOutputMode();
       return command.execute(executionContext);
     } catch (CliArgumentsException | CliRequestException exception) {
       CliFailure failure = CliFailureMapper.cliFailure(exception);
-      failureWriter.writeFailure(failure, failureOutputMode);
+      failureWriter.writeFailure(failure);
       return CliExecutionPolicy.failureExitCode(failure);
     } catch (ContractFailureException exception) {
       CliFailure failure = CliFailureMapper.contractFailure(exception.failure());
-      failureWriter.writeDeterministicFailure(failure, failureOutputMode);
+      failureWriter.writeDeterministicFailure(failure);
       return CliExecutionPolicy.failureExitCode(failure);
     } catch (RuntimeException exception) {
       CliFailure failure = CliFailureMapper.runtimeFailure(exception);
       if (failure != null) {
-        failureWriter.writeFailure(failure, failureOutputMode);
+        failureWriter.writeFailure(failure);
         return CliExecutionPolicy.failureExitCode(failure);
       }
       String errorId = nextInternalErrorId();
-      if (failureOutputMode == OutputMode.TEXT) {
-        diagnosticsWriter.writeInternalError(errorId, exception);
-      }
-      CliFailure internalFailure = CliFailureMapper.internalError(errorId, failureOutputMode);
-      failureWriter.writeFailure(internalFailure, failureOutputMode);
+      CliFailure internalFailure = CliFailureMapper.internalError(errorId);
+      failureWriter.writeFailure(internalFailure);
       return CliExecutionPolicy.failureExitCode(internalFailure);
     }
   }

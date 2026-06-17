@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: CORE
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
   questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
@@ -408,6 +408,45 @@ public enum ProfitAndLossLineClassification implements WireValue
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
+## `AccountClassificationReachability`
+
+`AccountClassificationReachability` is the current-kernel doctrine owner for which declared-account
+classification cells are opening-reachable, operational-journal-reachable, and reversal-reachable.
+
+```java
+public final class AccountClassificationReachability
+```
+
+- Purpose: keep per-classification write-route truth out of discovery prose, CLI help fragments,
+  and validator-local literals
+- Surface: `currentKernel()` publishes the full classification matrix, while `reachabilityFor(...)`,
+  `openingReachable(...)`, `operationalJournalReachable(...)`, and `reversalReachable(...)` project
+  the same doctrine onto one validated `AccountTaxonomy`
+- Doctrine: `RESULT_HOLDING` remains declarable and opening-reachable but is not
+  caller-operationally writable or reversal-reachable because period-result transfer reserves that
+  classification for generated close postings
+
+## `AccountClassificationReachability.ReachabilityCell`
+
+`AccountClassificationReachability.ReachabilityCell` is one published classification row inside the
+current-kernel reachability matrix.
+
+```java
+public record ReachabilityCell(
+    String classificationFamily,
+    AccountType accountType,
+    String classification,
+    boolean declarable,
+    boolean openingReachable,
+    boolean operationalJournalReachable,
+    boolean reversalReachable)
+```
+
+- Purpose: keep the declarable-versus-reachable truth for one classification cell typed and
+  executable instead of scattering that matrix across request validation, discovery, and prose
+- Validation: rejects blank family or classification labels, rejects `null` account types, and
+  rejects non-declarable cells that claim any reachable write path
+
 ## `StatementLineKind`
 
 `StatementLineKind` records whether one public statement row came from a declared account or from a
@@ -481,6 +520,8 @@ public enum BalanceSide implements WireValue {
 
 - Purpose: represent computed balance polarity for grouped balances and running ledgers
 - Wire contract: `wireValue()` and `fromWireValue(...)` own the stable public vocabulary
+- Distinction: `BalanceSide` is derived outcome state for grouped balances, while
+  `JournalLine.EntrySide` is caller-authored polarity for one posted line
 
 ## `BalanceMath`
 
@@ -744,6 +785,44 @@ public enum NormalBalance implements WireValue {
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
+## `JournalRecipeKind`
+
+`JournalRecipeKind` is the stable convenience-layer vocabulary for recipe-backed journal requests on
+the public write surface.
+
+```java
+public enum JournalRecipeKind implements WireValue {
+  CASH_REVENUE,
+  CASH_EXPENSE,
+  EQUITY_CONTRIBUTION,
+  EQUITY_WITHDRAWAL
+}
+```
+
+- Purpose: keep the supported recipe helpers explicit while making the balanced journal the
+  canonical write boundary
+- Surface: `recipeKind` appears only on `JOURNAL` requests that ask FinGrind to derive journal
+  lines from one higher-level helper
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `JournalRecipe`
+
+`JournalRecipe` is the optional metadata carried by one recipe-backed `JOURNAL` request before
+FinGrind materializes the canonical balanced journal entry.
+
+```java
+public sealed interface JournalRecipe
+```
+
+- Purpose: expose higher-level operator helpers without creating a second write kernel beside the
+  balanced journal
+- Current variants: `CashRevenue`, `CashExpense`, `EquityContribution`, and `EquityWithdrawal`
+- Surface: `recipeKind()` preserves the public helper identity and `journalEntry(LocalDate)`
+  derives the exact `JournalEntry` that the write kernel validates and commits
+- Boundary: callers may omit recipes entirely and submit journal lines directly; recipes are
+  convenience projections, not separate durable posting families
+
 ## `PostingKind`
 
 `PostingKind` is the durable posting-family discriminator for one committed posting.
@@ -758,8 +837,9 @@ public enum PostingKind implements WireValue {
 
 - Purpose: distinguish ordinary business postings, opening adoption balances, and generated
   period-result-transfer postings without leaking implementation-specific marker strings
-- Opening-balance boundary: `OPENING_BALANCE` is a one-time adoption-state posting family that is
-  admitted only before the first committed posting enters the book
+- Adoption boundary: caller-authored `OPEN_ACCOUNTING_POSITION` requests project into durable
+  `OPENING_BALANCE` postings, and that durable posting family is admitted only before the first
+  committed posting enters the book
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 - Surface: committed postings publish one durable `PostingKind`, while caller-authored
@@ -773,19 +853,19 @@ FinGrind has projected a published bookkeeping entry into canonical journal line
 
 ```java
 public enum PostingOriginKind implements WireValue {
+  JOURNAL,
   CASH_REVENUE,
   CASH_EXPENSE,
   EQUITY_CONTRIBUTION,
   EQUITY_WITHDRAWAL,
   OPEN_ACCOUNTING_POSITION,
   REVERSAL_ADJUSTMENT,
-  REVERSAL_ADJUSTMENT,
   PERIOD_RESULT_TRANSFER
 }
 ```
 
-- Purpose: preserve the originating published entry family after all ordinary typed entries have
-  converged into `PostingKind.STANDARD`
+- Purpose: preserve the originating published entry family after direct journals and recipe-backed
+  helpers have converged into `PostingKind.STANDARD`
 - Surface: committed postings and adapter projections expose `postingOriginKind` as a durable fact
   for auditing, analytics, and future adjacent-context integration
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public

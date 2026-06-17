@@ -11,8 +11,10 @@ final class CliJsonRequestHints {
     return "Use '"
         + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
         + "' for a starter request file, then replace its placeholder evidence and provenance values before real-world use. For accepted entry fields, run '"
-        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-        + " --output json --focus request-input'.";
+        + CliInvocationText.commandExample(OperationId.HELP)
+        + " "
+        + OperationId.POST_ENTRY.wireName()
+        + " --output json --detail full'.";
   }
 
   static String declareAccountRequestHint() {
@@ -23,13 +25,19 @@ final class CliJsonRequestHints {
         + "' for a starter "
         + ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT)
         + " request file, then replace its sample account values before real-world use. For accepted declaration fields, run '"
-        + CliInvocationText.commandExample(OperationId.CAPABILITIES)
-        + " --output json --focus request-input'.";
+        + CliInvocationText.commandExample(OperationId.HELP)
+        + " "
+        + OperationId.DECLARE_ACCOUNT.wireName()
+        + " --output json --detail full'.";
   }
 
   static String ledgerPlanRequestHint() {
     return "Use '"
         + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)
-        + "' for a starter ledger plan, then replace its placeholder evidence and provenance values before real-world use.";
+        + "' for a starter ledger plan, then replace its placeholder evidence and provenance values before real-world use. For accepted step fields and assertion shapes, run '"
+        + CliInvocationText.commandExample(OperationId.HELP)
+        + " "
+        + OperationId.EXECUTE_PLAN.wireName()
+        + " --output json --detail full'.";
   }
 }

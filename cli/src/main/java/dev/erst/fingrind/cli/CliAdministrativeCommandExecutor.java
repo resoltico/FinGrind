@@ -42,9 +42,7 @@ final class CliAdministrativeCommandExecutor {
               responseWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
               return 0;
             },
-            failure ->
-                CliCommandOutcomeWriter.writeDeterministicFailure(
-                    failure, outputMode, failureWriter));
+            failure -> CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
   }
 
   int runOpenBookCommand(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode) {
@@ -52,14 +50,12 @@ final class CliAdministrativeCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.openBook(bookAccess, command),
-        outputMode,
         result -> responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);
@@ -72,14 +68,12 @@ final class CliAdministrativeCommandExecutor {
                 outputMode, bookAccess.passphraseSource(), replacementPassphraseSource)
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.rekeyBook(bookAccess, replacementPassphraseSource),
-        outputMode,
         result ->
             responseWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
@@ -95,14 +89,12 @@ final class CliAdministrativeCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath),
-        outputMode,
         result -> responseWriter.writeBackupBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);
@@ -112,7 +104,6 @@ final class CliAdministrativeCommandExecutor {
       Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.restoreBook(bookFilePath, backupFilePath, backupBookKeyFilePath),
-        outputMode,
         result -> responseWriter.writeRestoreBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);
@@ -121,7 +112,6 @@ final class CliAdministrativeCommandExecutor {
   int runInspectRekeyRollbackCommand(Path bookFilePath, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.inspectRekeyRollback(bookFilePath),
-        outputMode,
         result -> responseWriter.writeInspectRekeyRollbackResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);
@@ -136,15 +126,13 @@ final class CliAdministrativeCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, expectedPassphraseSource)
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.restoreRekeyRollback(
             bookFilePath, rollbackArtifactPath, expectedPassphraseSource),
-        outputMode,
         result -> responseWriter.writeRestoreRekeyRollbackResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);
@@ -156,14 +144,12 @@ final class CliAdministrativeCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.deleteRekeyRollback(bookAccess, rollbackArtifactPath),
-        outputMode,
         result -> responseWriter.writeDeleteRekeyRollbackResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);
@@ -174,15 +160,13 @@ final class CliAdministrativeCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.declareAccount(bookAccess, command),
-        outputMode,
         result -> responseWriter.writeDeclareAccountResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);
@@ -194,15 +178,13 @@ final class CliAdministrativeCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.transferPeriodResult(
             bookAccess, new PeriodResultTransferCommand(reportingPeriod)),
-        outputMode,
         result -> responseWriter.writePeriodResultTransferResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);

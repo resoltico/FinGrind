@@ -25,8 +25,8 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           EntrySemanticsViolationsDetails,
           PriorPostingDetails,
           FunctionalCurrencyMismatchDetails,
-          OpeningBalanceWindowClosedDetails,
-          OpeningBalanceNominalAccountDetails,
+          OpenAccountingPositionWindowClosedDetails,
+          OpenAccountingPositionNominalAccountDetails,
           TransferredPeriodResultViolationDetails {}
 
   /** Sealed category for account-registry rejection payloads. */
@@ -58,6 +58,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
       permits BookFileDetails,
           BookAndBackupFileDetails,
           BlockingArtifactsDetails,
+          CliArtifactPathFailureDetails,
           ArtifactBusyDetails,
           ArtifactVerificationFailureDetails,
           BackupFileDetails,
@@ -225,18 +226,18 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record OpeningBalanceNominalAccountDetails(String accountCode, String accountType)
+  record OpenAccountingPositionNominalAccountDetails(String accountCode, String accountType)
       implements PostingRejectionDetails {
-    public OpeningBalanceNominalAccountDetails {
+    public OpenAccountingPositionNominalAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
       accountType = requireText(accountType, "accountType");
     }
   }
 
-  record OpeningBalanceWindowClosedDetails(
+  record OpenAccountingPositionWindowClosedDetails(
       String firstBlockingPostingKind, String firstBlockingEffectiveDate)
       implements PostingRejectionDetails {
-    public OpeningBalanceWindowClosedDetails {
+    public OpenAccountingPositionWindowClosedDetails {
       firstBlockingPostingKind = requireText(firstBlockingPostingKind, "firstBlockingPostingKind");
       firstBlockingEffectiveDate =
           requireText(firstBlockingEffectiveDate, "firstBlockingEffectiveDate");

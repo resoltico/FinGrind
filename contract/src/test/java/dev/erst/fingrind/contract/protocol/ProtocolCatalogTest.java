@@ -508,7 +508,7 @@ class ProtocolCatalogTest {
         List.of(
             "stepId",
             "kind",
-            "openBook",
+            "ensureBook",
             "posting",
             "declareAccount",
             "query",
@@ -538,7 +538,7 @@ class ProtocolCatalogTest {
     assertEquals("steps", ProtocolLedgerPlanFields.Plan.STEPS);
     assertEquals("stepId", ProtocolLedgerPlanFields.Step.STEP_ID);
     assertEquals("kind", ProtocolLedgerPlanFields.Step.KIND);
-    assertEquals("openBook", ProtocolLedgerPlanFields.Step.OPEN_BOOK);
+    assertEquals("ensureBook", ProtocolLedgerPlanFields.Step.ENSURE_BOOK);
     assertEquals("posting", ProtocolLedgerPlanFields.Step.POSTING);
     assertEquals("declareAccount", ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT);
     assertEquals("query", ProtocolLedgerPlanFields.Step.QUERY);
@@ -560,6 +560,7 @@ class ProtocolCatalogTest {
         List.of(
             "entryKind",
             "effectiveDate",
+            "recipeKind",
             "cashAccountCode",
             "revenueAccountCode",
             "expenseAccountCode",
@@ -659,45 +660,52 @@ class ProtocolCatalogTest {
         Set.copyOf(ProtocolPostEntryFields.topLevelFields()),
         ProtocolPostingRequestFieldSets.postEntryTopLevelFields());
     assertEquals(
+        Set.of("entryKind", "effectiveDate", "lines", "evidence", "provenance"),
+        ProtocolPostingRequestFieldSets.journalDirectFields());
+    assertEquals(
         Set.of(
             "entryKind",
             "effectiveDate",
+            "recipeKind",
             "cashAccountCode",
             "revenueAccountCode",
             "amount",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.cashRevenueFields());
+        ProtocolPostingRequestFieldSets.cashRevenueRecipeFields());
     assertEquals(
         Set.of(
             "entryKind",
             "effectiveDate",
+            "recipeKind",
             "expenseAccountCode",
             "cashAccountCode",
             "amount",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.cashExpenseFields());
+        ProtocolPostingRequestFieldSets.cashExpenseRecipeFields());
     assertEquals(
         Set.of(
             "entryKind",
             "effectiveDate",
+            "recipeKind",
             "cashAccountCode",
             "equityAccountCode",
             "amount",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.equityContributionFields());
+        ProtocolPostingRequestFieldSets.equityContributionRecipeFields());
     assertEquals(
         Set.of(
             "entryKind",
             "effectiveDate",
+            "recipeKind",
             "equityAccountCode",
             "cashAccountCode",
             "amount",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.equityWithdrawalFields());
+        ProtocolPostingRequestFieldSets.equityWithdrawalRecipeFields());
     assertEquals(
         Set.of("entryKind", "effectiveDate", "openingBalances", "evidence", "provenance"),
         ProtocolPostingRequestFieldSets.openAccountingPositionFields());

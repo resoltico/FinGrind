@@ -24,7 +24,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -55,7 +56,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -87,7 +89,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": 20260407,
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -119,7 +122,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-02-30",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -152,7 +156,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -186,7 +191,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -220,7 +226,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -321,7 +328,8 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",

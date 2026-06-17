@@ -213,7 +213,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_rendersCliRequestExceptionInTextMode() throws IOException {
+  void run_emitsJsonCliRequestFailureWhenTextModeIsSelected() throws IOException {
     Path requestFile = writeNamedRequest("broken-declare-account-text.json", "{");
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
@@ -258,15 +258,21 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "text"
             });
     assertEquals(1, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Error"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("invalid-request"));
+    JsonNode failureEnvelope =
+        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
+    assertEquals(
+        "Failed to read request JSON at line 1, column 2.",
+        failureEnvelope.path("message").stringValue());
     assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("Failed to read request JSON at line 1, column 2."));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Parse message"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Parse location"));
-    assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\""));
+        failureEnvelope
+            .path("details")
+            .path("parseMessage")
+            .stringValue()
+            .startsWith("Unexpected end-of-input: expected close marker for Object"));
+    assertEquals(1, failureEnvelope.path("details").path("line").intValue());
+    assertEquals(2, failureEnvelope.path("details").path("column").intValue());
     assertFalse(workflow.workflowInvoked());
   }
 
@@ -488,7 +494,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_rendersCliArgumentsExceptionInTextMode() throws IOException {
+  void run_emitsJsonCliArgumentsFailureWhenTextModeIsSelected() throws IOException {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     RecordingWorkflow workflow =
@@ -537,10 +543,11 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--bogus"
             });
     assertEquals(1, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Error"));
-    assertTrue(
-        outputStream.toString(StandardCharsets.UTF_8).contains("Unsupported argument: --bogus"));
-    assertFalse(outputStream.toString(StandardCharsets.UTF_8).contains("\"status\""));
+    JsonNode failureEnvelope =
+        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
+    assertEquals("Unsupported argument: --bogus", failureEnvelope.path("message").stringValue());
     assertFalse(workflow.workflowInvoked());
   }
 

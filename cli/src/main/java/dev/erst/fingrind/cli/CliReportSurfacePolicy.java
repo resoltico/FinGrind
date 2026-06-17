@@ -6,12 +6,18 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.core.EffectiveDateRange;
 
 /** Shared report-surface policy that keeps text and machine renderers aligned. */
 final class CliReportSurfacePolicy {
   private CliReportSurfacePolicy() {}
 
   static boolean hasComparative(TrialBalanceReport report) {
+    return hasComparativeReference(report.comparativeEffectiveDateRange())
+        || hasComparativeData(report);
+  }
+
+  static boolean hasComparativeData(TrialBalanceReport report) {
     return !report.comparativeRows().isEmpty() || !report.comparativeTotals().isEmpty();
   }
 
@@ -20,17 +26,35 @@ final class CliReportSurfacePolicy {
   }
 
   static boolean hasComparative(FinancialPositionReport report) {
+    return hasComparativeReference(report.comparativeEffectiveDateRange())
+        || hasComparativeData(report);
+  }
+
+  static boolean hasComparativeData(FinancialPositionReport report) {
     return report.comparativeSections().stream()
         .anyMatch(CliReportSurfacePolicy::hasRenderableFinancialPositionSection);
   }
 
   static boolean hasComparative(IncomeStatementReport report) {
-    return report.comparativeSections().stream()
-            .anyMatch(CliReportSurfacePolicy::hasRenderableIncomeStatementSection)
-        || !report.comparativeNetIncomeTotals().isEmpty();
+    return hasComparativeReference(report.comparativeEffectiveDateRange())
+        || hasComparativeData(report);
+  }
+
+  static boolean hasComparativeData(IncomeStatementReport report) {
+    for (IncomeStatementSection section : report.comparativeSections()) {
+      if (hasRenderableIncomeStatementSection(section)) {
+        return true;
+      }
+    }
+    return !report.comparativeNetIncomeTotals().isEmpty();
   }
 
   static boolean hasComparative(ChangesInEquityReport report) {
+    return hasComparativeReference(report.comparativeEffectiveDateRange())
+        || hasComparativeData(report);
+  }
+
+  static boolean hasComparativeData(ChangesInEquityReport report) {
     return !report.comparativeRows().isEmpty()
         || !report.comparativeOpeningTotals().isEmpty()
         || !report.comparativeMovementTotals().isEmpty()
@@ -50,5 +74,10 @@ final class CliReportSurfacePolicy {
 
   static boolean hasRenderableIncomeStatementSection(IncomeStatementSection section) {
     return !section.rows().isEmpty() || !section.totals().isEmpty();
+  }
+
+  static boolean hasComparativeReference(EffectiveDateRange comparativeEffectiveDateRange) {
+    return comparativeEffectiveDateRange.effectiveDateFrom().isPresent()
+        || comparativeEffectiveDateRange.effectiveDateTo().isPresent();
   }
 }

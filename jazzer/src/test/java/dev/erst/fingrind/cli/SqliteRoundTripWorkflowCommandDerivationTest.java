@@ -174,7 +174,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
     PostEntryCommand cashExpenseCommand =
         withEntry(
             baseCommand,
-            new BookkeepingEntry.CashExpense(
+            BookkeepingEntry.cashExpense(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("6100"),
                 new AccountCode("1000"),
@@ -188,7 +188,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
     PostEntryCommand equityContributionCommand =
         withEntry(
             baseCommand,
-            new BookkeepingEntry.EquityContribution(
+            BookkeepingEntry.equityContribution(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("1000"),
                 new AccountCode("3000"),
@@ -202,7 +202,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
     PostEntryCommand equityWithdrawalCommand =
         withEntry(
             baseCommand,
-            new BookkeepingEntry.EquityWithdrawal(
+            BookkeepingEntry.equityWithdrawal(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("3000"),
                 new AccountCode("1000"),

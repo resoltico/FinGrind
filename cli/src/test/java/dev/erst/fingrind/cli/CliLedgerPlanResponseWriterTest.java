@@ -231,7 +231,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     LedgerJournalEntry.Succeeded standardEntry =
         new LedgerJournalEntry.Succeeded(
             stepId("open"),
-            LedgerJournalStep.standard(LedgerStepKind.OPEN_BOOK),
+            LedgerJournalStep.standard(LedgerStepKind.ENSURE_BOOK),
             startedAt,
             finishedAt,
             List.of());
@@ -261,7 +261,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     CliPlanJsonModels.LedgerExecutionJournalPayload rejectedJournal =
         Objects.requireNonNull(rejectedPayload.journal(), "journal");
     List<CliPlanJsonModels.LedgerJournalEntryPayload> steps = rejectedJournal.steps();
-    assertEquals("open-book", steps.get(0).kind().wireValue());
+    assertEquals("ensure-book", steps.get(0).kind().wireValue());
     assertNull(steps.get(0).detailKind());
     assertNull(steps.get(0).boundaryPhase());
     assertEquals("plan-boundary", steps.get(1).kind().wireValue());

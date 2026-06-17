@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -31,7 +31,7 @@ Then choose one of the user, developer, or reference tracks below.
 The checked-in `examples/*` files below are source-checkout fixtures for review and copying.
 Public release bundles do not include the repository's `docs/examples/` tree.
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
-- [examples/request-template.json](./examples/request-template.json): exact `print-request-template` scaffold capture
+- [examples/request-template.json](./examples/request-template.json): checked-in source-copy companion for the `print-request-template` posting scaffold
 - [examples/declare-account-supplemental-cash-reserve.json](./examples/declare-account-supplemental-cash-reserve.json): supplemental account-declaration request for an additional cash reserve account on top of the seeded starter chart
 - [examples/declare-account-supplemental-misc-revenue.json](./examples/declare-account-supplemental-misc-revenue.json): supplemental account-declaration request for an additional miscellaneous revenue account on top of the seeded starter chart
 - [examples/unknown-account-request.json](./examples/unknown-account-request.json): posting request that deterministically rejects for an undeclared account
@@ -53,8 +53,8 @@ Report PDF artifacts are intentionally not checked in under `docs/examples`; the
 workflows verify `--pdf-out` directly against real CLI, bundle, and container surfaces.
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
-- [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt): deterministic non-interactive prompt failure example
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): exact `print-plan-template` scaffold capture
+- [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` ledger-plan scaffold
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): runnable `execute-plan` request that pages accounts and postings inside the plan journal
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with `resultDetail: "full"` and a per-step journal

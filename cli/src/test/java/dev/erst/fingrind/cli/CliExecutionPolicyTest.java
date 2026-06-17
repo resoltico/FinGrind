@@ -13,26 +13,6 @@ import org.junit.jupiter.api.Test;
 /** Focused unit coverage for CLI output-mode and exit-code policy decisions. */
 class CliExecutionPolicyTest {
   @Test
-  void inferredFailureOutputMode_honorsFixedJsonCommandsAndRecognizedOverrides() {
-    assertEquals(OutputMode.TEXT, CliExecutionPolicy.inferredFailureOutputMode(new String[0]));
-    assertEquals(
-        OutputMode.JSON,
-        CliExecutionPolicy.inferredFailureOutputMode(new String[] {"print-request-template"}));
-    assertEquals(
-        OutputMode.JSON,
-        CliExecutionPolicy.inferredFailureOutputMode(
-            new String[] {"post-entry", "--output", "json"}));
-    assertEquals(
-        OutputMode.JSON,
-        CliExecutionPolicy.inferredFailureOutputMode(
-            new String[] {"post-entry", "--output", "csv"}));
-    assertEquals(
-        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE).mode(),
-        CliExecutionPolicy.inferredFailureOutputMode(
-            new String[] {"post-entry", "--output", "bogus"}));
-  }
-
-  @Test
   void interactivePromptOutputFailure_onlyRejectsMachineOutputsWithPromptSources() {
     assertEquals(
         Optional.empty(),

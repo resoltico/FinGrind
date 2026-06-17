@@ -24,9 +24,7 @@ class CliDiscoveryCommandExecutorTest {
 
     assertEquals(0, exitCode);
     assertEquals(
-        new String(
-            CliWireJson.writeJsonBytes(CliDiscoveryCommandExecutor.requestTemplateFor(null)),
-            StandardCharsets.UTF_8),
+        CliWireJson.prettyJsonText(CliDiscoveryCommandExecutor.requestTemplateFor(null)),
         outputStream.toString(StandardCharsets.UTF_8).trim());
   }
 
@@ -70,7 +68,7 @@ class CliDiscoveryCommandExecutorTest {
         new ByteArrayInputStream(
             """
             name=FinGrind
-            version=0.55.0
+            version=0.56.0
             description=Command-line double-entry bookkeeping
             """
                 .getBytes(StandardCharsets.UTF_8)));

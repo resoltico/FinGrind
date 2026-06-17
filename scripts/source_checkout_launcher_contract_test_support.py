@@ -80,8 +80,14 @@ def managed_runtime_failure_exit(args: argparse.Namespace) -> int:
 
 def assert_request_template(args: argparse.Namespace) -> int:
     document = json.loads(pathlib.Path(args.document).read_text(encoding="utf-8"))
-    if document["entryKind"] != "CASH_REVENUE":
-        raise SystemExit(f"{args.label} request template did not expose CASH_REVENUE")
+    if document["entryKind"] != "JOURNAL":
+        raise SystemExit(
+            f"{args.label} request template did not expose the canonical journal entry kind"
+        )
+    if document.get("recipeKind") != "CASH_REVENUE":
+        raise SystemExit(
+            f"{args.label} request template did not expose the canonical cash-revenue recipe"
+        )
     if "postingKind" in document:
         raise SystemExit(f"{args.label} request template leaked retired postingKind")
     if args.forbid_lines and "lines" in document:
@@ -98,18 +104,24 @@ def assert_request_template(args: argparse.Namespace) -> int:
 
 def assert_plan_template(args: argparse.Namespace) -> int:
     document = json.loads(pathlib.Path(args.document).read_text(encoding="utf-8"))
-    open_book = document["steps"][0]["openBook"]
-    if "businessActivityTags" in open_book:
+    ensure_book = document["steps"][0]["ensureBook"]
+    if "businessActivityTags" in ensure_book:
         raise SystemExit(
             "source-checkout launcher plan template leaked retired business activity tags"
         )
-    if "accountingBasis" in open_book:
+    if "accountingBasis" in ensure_book:
         raise SystemExit(
             "source-checkout launcher plan template leaked doctrine-owned identity fields into open-book input"
         )
     post_entry = document["steps"][1]["posting"]
-    if post_entry["entryKind"] != "CASH_REVENUE":
-        raise SystemExit("source-checkout launcher plan template did not expose typed post-entry")
+    if post_entry["entryKind"] != "JOURNAL":
+        raise SystemExit(
+            "source-checkout launcher plan template did not expose the canonical journal entry kind"
+        )
+    if post_entry.get("recipeKind") != "CASH_REVENUE":
+        raise SystemExit(
+            "source-checkout launcher plan template did not expose the canonical cash-revenue recipe"
+        )
     if "postingKind" in post_entry:
         raise SystemExit("source-checkout launcher plan template leaked retired postingKind")
     assertion = document["steps"][2]["assertion"]

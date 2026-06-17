@@ -33,17 +33,17 @@ class JavaSourceShapeContractsTest {
         val contract =
             JavaSourceStructuralContracts.contractFor(
                 projectRootDirectory = repositoryRoot,
-                projectPath = FinGrindProjectPaths.CONTRACT,
+                projectPath = FinGrindProjectPaths.SQLITE,
                 relativePath =
-                    "src/main/java/dev/erst/fingrind/contract/bookkeeping/RejectionNarrative.java",
-                packageName = "dev.erst.fingrind.contract.bookkeeping",
-                exportedPackages = setOf("dev.erst.fingrind.contract.bookkeeping"),
+                    "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeCalls.java",
+                packageName = "dev.erst.fingrind.sqlite.internal",
+                exportedPackages = emptySet(),
             )
 
         val reviewedSurface = assertNotNull(contract.reviewedSurface)
-        assertEquals("contract-bookkeeping", reviewedSurface.owner)
-        assertEquals("exported-public-seam", contract.defaultBudget.roleName)
-        assertEquals("bookkeeping-rejection-narrative", contract.activeRoleName)
+        assertEquals("sqlite-native-bridge", reviewedSurface.owner)
+        assertEquals("production-main", contract.defaultBudget.roleName)
+        assertEquals("sqlite-native-call-table", contract.activeRoleName)
         assertNotNull(reviewedSurface.budgetVarianceReason)
         assertNull(reviewedSurface.duplicationExemptionReason)
         assertTrue(reviewedSurface.approval.expiresOn.isAfter(LocalDate.now()))

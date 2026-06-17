@@ -171,13 +171,14 @@ class CliFailureOutputRendererTest {
         "Attempted currency",
         "USD");
     assertRenderedRejection(
-        new CliRejectionJsonModels.OpeningBalanceWindowClosedDetails("STANDARD", "2026-04-07"),
+        new CliRejectionJsonModels.OpenAccountingPositionWindowClosedDetails(
+            "STANDARD", "2026-04-07"),
         "First blocking posting kind",
         "STANDARD",
         "First blocking effective date",
         "2026-04-07");
     assertRenderedRejection(
-        new CliRejectionJsonModels.OpeningBalanceNominalAccountDetails("4000", "REVENUE"),
+        new CliRejectionJsonModels.OpenAccountingPositionNominalAccountDetails("4000", "REVENUE"),
         "Account code",
         "4000",
         "Account type",

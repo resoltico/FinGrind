@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: ADR_ACCOUNTING_KERNEL_SCOPE
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, bookkeeping kernel, country agnostic, functional currency, scope, internal management]
   questions: ["what bookkeeping kernel does fingrind publish today", "what does country agnostic mean in fingrind today", "what accounting scope is intentionally out of scope", "does fingrind publish a standards baseline"]
@@ -29,7 +29,7 @@ The machine contract, CLI help, examples, and docs must describe only this live 
 - one protected single-entity book
 - one functional currency per book
 - one built-in bookkeeping kernel
-- one cash-oriented internal-management write surface
+- one journal-first internal-management write surface with recipe-backed cash and equity helpers
 - three built-in internal-management statements:
   - financial position
   - income statement
@@ -47,10 +47,14 @@ The current hard-break line is:
 - every caller-authored posting line and every persisted journal line must use the selected book
   functional currency
 - mixed-currency entries are rejected
-- built-in typed entry support is limited to cash revenue, cash expense, equity contribution, and
-  equity withdrawal
-- one explicit administrative journal-adjustment path remains available for openings and
-  corrections that the current typed cash-entry family does not own
+- caller-authored operational posting crosses one balanced-journal boundary, with optional
+  recipe-backed helpers for cash revenue, cash expense, equity contribution, and equity
+  withdrawal
+- `OPEN_ACCOUNTING_POSITION` remains the one opening-only adoption path before the first committed
+  posting exists
+- `RESULT_HOLDING` remains declarable and opening-reachable but is reserved from caller-authored
+  standard journals and reversals because generated period-result transfer owns its ongoing
+  movement
 - generated period-result-transfer postings remain separate from caller-authored postings
 - comparative windows derive from the declared fiscal-year anchor
 - built-in reporting stops at financial position, income statement, and changes in equity

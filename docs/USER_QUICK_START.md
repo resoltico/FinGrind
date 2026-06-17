@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: USER_QUICK_START
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, quick start, first run, open book, starter chart, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -138,7 +138,8 @@ accounts:
 
 ```json
 {
-  "entryKind": "CASH_REVENUE",
+  "entryKind": "JOURNAL",
+  "recipeKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-08",
   "cashAccountCode": "cash",
   "revenueAccountCode": "service-revenue",

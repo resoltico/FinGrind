@@ -45,7 +45,7 @@ final class CliBookReadResponseWriter {
               () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderCsv(listed.page())));
       case ListAccountsResult.Rejected rejected ->
           outputChannel.writeQueryRejection(
-              outputMode, CliRejectionPayloadMapper.queryRejectedEnvelope(rejected.rejection()));
+              CliRejectionPayloadMapper.queryRejectedEnvelope(rejected.rejection()));
     }
   }
 
@@ -68,7 +68,7 @@ final class CliBookReadResponseWriter {
               });
       case GetPostingResult.Rejected rejected ->
           outputChannel.writeQueryRejection(
-              outputMode, CliRejectionPayloadMapper.queryRejectedEnvelope(rejected.rejection()));
+              CliRejectionPayloadMapper.queryRejectedEnvelope(rejected.rejection()));
     }
   }
 
@@ -88,7 +88,7 @@ final class CliBookReadResponseWriter {
                       CliPostingOutputRenderer.renderPostingRegisterCsv(listed.page())));
       case ListPostingsResult.Rejected rejected ->
           outputChannel.writeQueryRejection(
-              outputMode, CliRejectionPayloadMapper.queryRejectedEnvelope(rejected.rejection()));
+              CliRejectionPayloadMapper.queryRejectedEnvelope(rejected.rejection()));
     }
   }
 }

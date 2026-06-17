@@ -156,6 +156,95 @@ class PostEntrySemanticsPolicyTest {
             .isEmpty());
   }
 
+  @Test
+  void rejectionFor_acceptsCallerAuthoredSourceDocumentTypesForPatternOnlyEntries() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble emptyBook = new PostingValidationStoreDouble(Map.of());
+
+    assertTrue(
+        policy
+            .rejectionFor(
+                new PostEntryCommand(
+                    new BookkeepingEntry.OpenAccountingPosition(
+                        LocalDate.parse("2026-04-07"),
+                        List.of(
+                            new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                                new AccountCode("1000"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                                MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                            new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                                new AccountCode("2000"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                                MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                    generatedEvidence("open-pattern", "field-note"),
+                    requestProvenance("open-pattern"),
+                    SourceChannel.CLI),
+                emptyBook)
+            .isEmpty());
+    assertTrue(
+        policy
+            .rejectionFor(
+                new PostEntryCommand(
+                    new BookkeepingEntry.ReversalAdjustment(
+                        PostingApplicationServiceTestSupport.reversalJournalEntry(),
+                        new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                            PostingApplicationServiceTestSupport.reversalReference("posting-1")
+                                .orElseThrow(),
+                            new dev.erst.fingrind.core.ReversalReason("full reversal"))),
+                    generatedEvidence("reversal-pattern", "operator-annotation"),
+                    requestProvenance("reversal-pattern"),
+                    SourceChannel.CLI),
+                emptyBook)
+            .isEmpty());
+  }
+
+  @Test
+  void rejectionFor_rejectsTypedEntriesThatReuseOneAccountAcrossBothBusinessRoles() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble emptyBook = new PostingValidationStoreDouble(Map.of());
+
+    assertSingleViolation(
+        policy.rejectionFor(duplicateCashRevenue("duplicate-cash-revenue"), emptyBook),
+        "distinct-role-accounts-required");
+    assertSingleViolation(
+        policy.rejectionFor(duplicateCashExpense("duplicate-cash-expense"), emptyBook),
+        "distinct-role-accounts-required");
+    assertSingleViolation(
+        policy.rejectionFor(
+            duplicateEquityContribution("duplicate-equity-contribution"), emptyBook),
+        "distinct-role-accounts-required");
+    assertSingleViolation(
+        policy.rejectionFor(duplicateEquityWithdrawal("duplicate-equity-withdrawal"), emptyBook),
+        "distinct-role-accounts-required");
+  }
+
+  @Test
+  void rejectionFor_acceptsDirectJournalsWithCallerAuthoredEvidenceTypes() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble emptyBook = new PostingValidationStoreDouble(Map.of());
+
+    PostEntryCommand command =
+        new PostEntryCommand(
+            new BookkeepingEntry.Journal(
+                new dev.erst.fingrind.core.JournalEntry(
+                    LocalDate.parse("2026-04-07"),
+                    List.of(
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            Money.parse("EUR", "10.00")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("2100"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            Money.parse("EUR", "10.00")))),
+                null),
+            generatedEvidence("direct-journal", "operator-note"),
+            requestProvenance("direct-journal"),
+            SourceChannel.CLI);
+
+    assertTrue(policy.rejectionFor(command, emptyBook).isEmpty());
+  }
+
   private static void assertViolationCodes(
       Optional<BookkeepingPostingRejection> rejection, String... expectedCodes) {
     BookkeepingPostingRejection.EntrySemanticsViolations violations =
@@ -167,9 +256,18 @@ class PostEntrySemanticsPolicyTest {
     }
   }
 
+  private static void assertSingleViolation(
+      Optional<BookkeepingPostingRejection> rejection, String expectedCode) {
+    BookkeepingPostingRejection.EntrySemanticsViolations violations =
+        assertInstanceOf(
+            BookkeepingPostingRejection.EntrySemanticsViolations.class, rejection.orElseThrow());
+    assertEquals(1, violations.violations().size());
+    assertEquals(expectedCode, violations.violations().getFirst().code());
+  }
+
   private static PostEntryCommand cashRevenue(String token, String sourceDocumentType) {
     return new PostEntryCommand(
-        new BookkeepingEntry.CashRevenue(
+        BookkeepingEntry.cashRevenue(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("2000"),
@@ -181,7 +279,7 @@ class PostEntrySemanticsPolicyTest {
 
   private static PostEntryCommand cashExpense(String token, String sourceDocumentType) {
     return new PostEntryCommand(
-        new BookkeepingEntry.CashExpense(
+        BookkeepingEntry.cashExpense(
             LocalDate.parse("2026-04-07"),
             new AccountCode("3000"),
             new AccountCode("1000"),
@@ -193,7 +291,7 @@ class PostEntrySemanticsPolicyTest {
 
   private static PostEntryCommand equityContribution(String token, String sourceDocumentType) {
     return new PostEntryCommand(
-        new BookkeepingEntry.EquityContribution(
+        BookkeepingEntry.equityContribution(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("3200"),
@@ -205,12 +303,60 @@ class PostEntrySemanticsPolicyTest {
 
   private static PostEntryCommand equityWithdrawal(String token, String sourceDocumentType) {
     return new PostEntryCommand(
-        new BookkeepingEntry.EquityWithdrawal(
+        BookkeepingEntry.equityWithdrawal(
             LocalDate.parse("2026-04-07"),
             new AccountCode("3210"),
             new AccountCode("1000"),
             MonetaryAmount.of(Money.parse("EUR", "10.00"))),
         generatedEvidence(token, sourceDocumentType),
+        requestProvenance(token),
+        SourceChannel.CLI);
+  }
+
+  private static PostEntryCommand duplicateCashRevenue(String token) {
+    return new PostEntryCommand(
+        BookkeepingEntry.cashRevenue(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("9999"),
+            new AccountCode("9999"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+        generatedEvidence(token, "cash-receipt"),
+        requestProvenance(token),
+        SourceChannel.CLI);
+  }
+
+  private static PostEntryCommand duplicateCashExpense(String token) {
+    return new PostEntryCommand(
+        BookkeepingEntry.cashExpense(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("9999"),
+            new AccountCode("9999"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+        generatedEvidence(token, "expense-receipt"),
+        requestProvenance(token),
+        SourceChannel.CLI);
+  }
+
+  private static PostEntryCommand duplicateEquityContribution(String token) {
+    return new PostEntryCommand(
+        BookkeepingEntry.equityContribution(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("9999"),
+            new AccountCode("9999"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+        generatedEvidence(token, "equity-contribution"),
+        requestProvenance(token),
+        SourceChannel.CLI);
+  }
+
+  private static PostEntryCommand duplicateEquityWithdrawal(String token) {
+    return new PostEntryCommand(
+        BookkeepingEntry.equityWithdrawal(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("9999"),
+            new AccountCode("9999"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+        generatedEvidence(token, "equity-withdrawal"),
         requestProvenance(token),
         SourceChannel.CLI);
   }

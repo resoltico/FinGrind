@@ -156,12 +156,13 @@ public final class BookkeepingPublishedLanguageTranslator {
           new PostingRejection.TransferredPeriodResultViolation(
               rejectionTransferredPeriodResult.transferredThroughEffectiveDate(),
               rejectionTransferredPeriodResult.attemptedEffectiveDate());
-      case BookkeepingPostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
-          new PostingRejection.OpeningBalanceWindowClosed(
+      case BookkeepingPostingRejection.OpenAccountingPositionWindowClosed rejectionWindowClosed ->
+          new PostingRejection.OpenAccountingPositionWindowClosed(
               rejectionWindowClosed.firstBlockingPostingKind(),
               rejectionWindowClosed.firstBlockingEffectiveDate());
-      case BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount rejectionNominal ->
-          new PostingRejection.OpeningBalanceTouchesNominalAccount(
+      case BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount
+              rejectionNominal ->
+          new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
               rejectionNominal.accountCode(), rejectionNominal.accountType());
       case BookkeepingPostingRejection.ResultHoldingAccountReserved rejectionReserved ->
           new PostingRejection.ResultHoldingAccountReserved(rejectionReserved.accountCode());

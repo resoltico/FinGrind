@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
@@ -87,6 +89,11 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               publicHints(blockingArtifacts.blockingArtifactPaths()));
       case ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
           backupSourceMatchesLiveBook(sourceMatchesLiveBook);
+      case ProtectedBookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
+          new BookMaintenanceRejection.ArtifactPathInvalid(
+              toPublished(invalidArtifactPath.artifactRole()),
+              publicHint(invalidArtifactPath.artifactPath()),
+              toPublishedPathFailure(invalidArtifactPath.pathFailure()));
       case ProtectedBookMaintenanceRejection.ArtifactBusy artifactBusy ->
           new BookMaintenanceRejection.ArtifactBusy(
               toPublished(artifactBusy.artifactRole()), publicHint(artifactBusy.artifactPath()));
@@ -149,8 +156,25 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     return switch (artifactRole) {
       case LIVE_BOOK -> BookMaintenanceArtifactRole.LIVE_BOOK;
       case BACKUP_SOURCE -> BookMaintenanceArtifactRole.BACKUP_SOURCE;
+      case BACKUP_TARGET -> BookMaintenanceArtifactRole.BACKUP_TARGET;
+      case BACKUP_KEY_TARGET -> BookMaintenanceArtifactRole.BACKUP_KEY_TARGET;
       case ROLLBACK_ARTIFACT -> BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT;
       case RESTORED_TARGET -> BookMaintenanceArtifactRole.RESTORED_TARGET;
+    };
+  }
+
+  private static BookMaintenancePathFailure toPublishedPathFailure(
+      ProtectedBookMaintenancePathFailure pathFailure) {
+    Objects.requireNonNull(pathFailure, "pathFailure");
+    return switch (pathFailure) {
+      case MISSING_PARENT_DIRECTORY -> BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY;
+      case PARENT_PATH_COLLISION -> BookMaintenancePathFailure.PARENT_PATH_COLLISION;
+      case PARENT_OWNER_ACCESS_REQUIRED -> BookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED;
+      case PARENT_OWNER_ONLY_REQUIRED -> BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED;
+      case TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE ->
+          BookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE;
+      case UNSUPPORTED_SECURE_FILESYSTEM ->
+          BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM;
     };
   }
 

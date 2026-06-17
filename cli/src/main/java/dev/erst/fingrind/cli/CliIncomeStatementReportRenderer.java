@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -69,14 +70,17 @@ final class CliIncomeStatementReportRenderer {
             "netAmount",
             "balanceSide",
             "message"),
-        java.util.stream.Stream.concat(
-                CliIncomeStatementCsvRows.rows(
-                    report, "current", report.sections(), report.netIncomeTotals()),
-                CliIncomeStatementCsvRows.rows(
-                    report,
-                    "comparative",
-                    report.comparativeSections(),
-                    report.comparativeNetIncomeTotals()))
+        (CliReportSurfacePolicy.hasComparative(report)
+                ? java.util.stream.Stream.concat(
+                    CliIncomeStatementCsvRows.rows(
+                        report, "current", report.sections(), report.netIncomeTotals()),
+                    CliIncomeStatementCsvRows.rows(
+                        report,
+                        "comparative",
+                        report.comparativeSections(),
+                        report.comparativeNetIncomeTotals()))
+                : CliIncomeStatementCsvRows.rows(
+                    report, "current", report.sections(), report.netIncomeTotals()))
             .toList());
   }
 
@@ -88,8 +92,14 @@ final class CliIncomeStatementReportRenderer {
       List<CurrencyBalance> netIncomeTotals,
       String netIncomeLabel) {
     List<List<String>> rows = new ArrayList<>();
-    rows.add(List.of("Effective date from", effectiveDateFrom.toString()));
-    rows.add(List.of("Effective date to", effectiveDateTo.toString()));
+    rows.add(
+        List.of(
+            CliTemporalScopeText.lowerLabel(OperationId.INCOME_STATEMENT),
+            effectiveDateFrom.toString()));
+    rows.add(
+        List.of(
+            CliTemporalScopeText.upperLabel(OperationId.INCOME_STATEMENT),
+            effectiveDateTo.toString()));
     if (renderableSections.isEmpty() && netIncomeTotals.isEmpty()) {
       rows.add(List.of("Outcome", CliQueryScopeText.noMatchesLabel("income statement lines")));
     } else {

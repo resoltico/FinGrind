@@ -48,7 +48,9 @@ final class SqliteProtectedBookStagingSupport {
 
   static void requireRegularNonSymlinkFile(Path normalizedPath) {
     if (!Files.isRegularFile(normalizedPath, LinkOption.NOFOLLOW_LINKS)) {
-      throw new IllegalStateException(
+      throw new SqliteCallerPathContractException(
+          normalizedPath,
+          SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
           "The FinGrind protected book path must resolve to one regular non-symlink file: "
               + PublicPathHint.fromPath(normalizedPath).value());
     }

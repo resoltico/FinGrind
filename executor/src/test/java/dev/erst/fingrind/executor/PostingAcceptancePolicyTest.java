@@ -297,7 +297,7 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+            new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
                 new AccountCode("4000"), AccountType.REVENUE)),
         rejection);
   }
@@ -339,7 +339,7 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+            new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
                 new AccountCode("5000"), AccountType.EXPENSE)),
         rejection);
   }
@@ -432,7 +432,7 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.OpeningBalanceWindowClosed(
+            new BookkeepingPostingRejection.OpenAccountingPositionWindowClosed(
                 PostingKind.OPENING_BALANCE, LocalDate.parse("2026-04-07"))),
         rejection);
   }

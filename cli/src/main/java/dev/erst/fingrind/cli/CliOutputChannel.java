@@ -1,11 +1,9 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.io.PrintStream;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Low-level stdout/stderr channel pair for deterministic CLI response rendering. */
 final class CliOutputChannel {
@@ -23,6 +21,10 @@ final class CliOutputChannel {
 
   void writeJson(Object value) {
     writeDocument(outputStream, CliWireJson.writeJsonBytes(value));
+  }
+
+  void writePrettyJson(Object value) {
+    writeText(CliWireJson.prettyJsonText(value));
   }
 
   void writeDiagnosticEnvelope(Record envelope) {
@@ -55,34 +57,11 @@ final class CliOutputChannel {
     writeEnvelope(CliEnvelopeMapper.successEnvelope(payload));
   }
 
-  void writeMutationRejection(
-      OutputMode outputMode,
-      CliEnvelopeJsonModels.RejectedEnvelope envelope,
-      @Nullable String idempotencyKey) {
-    if (outputMode == OutputMode.TEXT) {
-      writeFailureText(
-          CliFailureOutputRenderer.renderRejectedText(
-              envelope.code(),
-              envelope.message(),
-              envelope.hint(),
-              idempotencyKey,
-              envelope.details()));
-      return;
-    }
+  void writeMutationRejection(CliEnvelopeJsonModels.RejectedEnvelope envelope) {
     writeDiagnosticEnvelope(envelope);
   }
 
-  void writeQueryRejection(OutputMode outputMode, CliEnvelopeJsonModels.RejectedEnvelope envelope) {
-    outputMode.run(
-        () -> writeDiagnosticEnvelope(envelope),
-        () ->
-            writeFailureText(
-                CliFailureOutputRenderer.renderRejectedText(
-                    envelope.code(),
-                    envelope.message(),
-                    envelope.hint(),
-                    envelope.idempotencyKey(),
-                    envelope.details())),
-        () -> writeDiagnosticEnvelope(envelope));
+  void writeQueryRejection(CliEnvelopeJsonModels.RejectedEnvelope envelope) {
+    writeDiagnosticEnvelope(envelope);
   }
 }

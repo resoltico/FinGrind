@@ -32,7 +32,7 @@ public interface ContractPlanTemplates {
   public record LedgerPlanStepTemplateDescriptor(
       String stepId,
       LedgerStepKind kind,
-      ContractPlanTemplates.@Nullable OpenBookTemplateDescriptor openBook,
+      ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
       ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
       ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
       ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
@@ -43,7 +43,7 @@ public interface ContractPlanTemplates {
     public LedgerPlanStepTemplateDescriptor(
         String stepId,
         LedgerStepKind kind,
-        ContractPlanTemplates.@Nullable OpenBookTemplateDescriptor openBook,
+        ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
         ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
         ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
         ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
@@ -51,7 +51,7 @@ public interface ContractPlanTemplates {
         @Nullable String postingId) {
       this.stepId = ContractDescriptorValidation.requireText(stepId, "stepId");
       this.kind = ContractDescriptorValidation.requireValue(kind, "kind");
-      this.openBook = ContractDescriptorValidation.requireOptionalValue(openBook, "openBook");
+      this.ensureBook = ContractDescriptorValidation.requireOptionalValue(ensureBook, "ensureBook");
       this.posting = ContractDescriptorValidation.requireOptionalValue(posting, "posting");
       this.declareAccount =
           ContractDescriptorValidation.requireOptionalValue(declareAccount, "declareAccount");
@@ -60,7 +60,7 @@ public interface ContractPlanTemplates {
       this.postingId = ContractDescriptorValidation.requireOptionalText(postingId, "postingId");
       ContractTemplateShapeValidator.validateStepShape(
           this.kind,
-          this.openBook,
+          this.ensureBook,
           this.posting,
           this.declareAccount,
           this.query,
@@ -69,12 +69,12 @@ public interface ContractPlanTemplates {
     }
   }
 
-  /** Canonical open-book template nested inside a ledger plan. */
-  public record OpenBookTemplateDescriptor(
+  /** Canonical ensure-book template nested inside a ledger plan. */
+  public record EnsureBookTemplateDescriptor(
       String entityName, String functionalCurrency, String fiscalYearStart)
       implements TemplateDescriptorType {
-    /** Validates one open-book template descriptor payload. */
-    public OpenBookTemplateDescriptor {
+    /** Validates one ensure-book template descriptor payload. */
+    public EnsureBookTemplateDescriptor {
       entityName = ContractDescriptorValidation.requireText(entityName, "entityName");
       new BookEntityName(entityName);
       functionalCurrency =

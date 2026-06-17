@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: USER_CLI
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -55,8 +55,8 @@ enum vocabulary so an operator or agent can form a valid payload from the CLI al
 or piped into another process. With no topic it emits the canonical posting scaffold; with
 `declare-account` it emits the canonical account-declaration scaffold; `post-entry` and
 `preflight-entry` are accepted posting-scaffold topics.
-`print-plan-template` returns one raw JSON ledger-plan scaffold that already includes `open-book`,
-account declarations, one posting step, and one balance assertion.
+`print-plan-template` returns one raw JSON ledger-plan scaffold that already includes
+`ensure-book`, one posting step, and one balance assertion.
 Both scaffold commands emit placeholder-first sample documents. Replace every scaffold evidence and
 provenance token before real-world use. Idempotency keys are single-use per book once one posting
 commits successfully.
@@ -114,9 +114,7 @@ text default explicitly, and per-command `--output ...` always wins over the ses
 Discovery, administration, write, and query/report commands can render operator-facing
 `--output text`, and the tabular read/report commands also accept `--output csv`. Structured JSON
 stdout uses one compact canonical layout across discovery, query, administration, and write
-surfaces, including raw request or plan template emission where applicable. Invalid invocation
-failures default to text repair guidance unless one recognized machine output mode is selected
-explicitly, such as `--output json`. The report commands
+surfaces, including raw request or plan template emission where applicable. The report commands
 `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. Successful exports keep the main stdout result unchanged and publish one PDF
@@ -128,9 +126,12 @@ successful report result. Commands that do not advertise
 `--output` still publish one fixed stdout contract, either one raw JSON document or one fixed JSON
 envelope.
 Successful primary results always own stdout. Deterministic failures and rejections use the
-diagnostics stream instead: text mode emits operator-facing repair or rejection text, and
-recognized machine modes such as `--output json` emit one parseable JSON diagnostics envelope on
-stderr.
+diagnostics stream instead: every non-plan deterministic failure or single-command business
+rejection is emitted as one canonical JSON diagnostics envelope on stderr, regardless of the
+selected success output mode. `--output text` and `--output csv` affect successful stdout only.
+When stdout and stderr are merged by the caller, the same JSON diagnostics document remains the
+only failure payload. `execute-plan` remains a primary-result surface: rejected or
+assertion-failed plan journals are returned on stdout inside the plan envelope.
 
 ## Commands
 
@@ -300,14 +301,14 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | Exit Code | Meaning | Typical Output |
 |:----------|:--------|:---------------|
 | `0` | successful command | `ok`, including request templates, query/report payloads, preflight payloads, committed posting payloads, and succeeded plan payloads |
-| `1` | invalid invocation or malformed request | text repair text by default, or `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar when a recognized machine output mode is selected explicitly |
-| `2` | deterministic refusal after the command was understood | text `Rejected`, `error`, `rejected`, or `ok` with `payload.status: "rejected"` for `execute-plan` |
+| `1` | invalid invocation or malformed request | `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar |
+| `2` | deterministic refusal after the command was understood | `rejected` for single-command business refusals, or `ok` with `payload.status: "rejected"` for `execute-plan` |
 | `3` | valid `execute-plan` request whose assertion step failed | `ok` with `payload.status: "assertion-failed"` |
 | `4` | classified runtime/storage failure while executing an otherwise valid invocation | `error` with code `storage-runtime-failure` or `pdf-export-failure` |
 | `5` | interactive prompt or managed runtime environment precondition failure | `error` with code `interactive-prompt-unavailable`, `interactive-prompt-failed`, or `managed-runtime-failure` |
 | `6` | protected-book passphrase, key-file, or verification failure | `error` with code `protected-book-verification-failed`, `invalid-book-key-file`, or `invalid-book-passphrase-source` |
 | `7` | protected-book maintenance precondition or destination-collision failure | `rejected` with code `backup-destination-already-exists`, `backup-key-file-already-exists`, `book-has-blocking-artifacts`, `backup-source-has-blocking-artifacts`, or `artifact-busy`; also `error` with code `book-key-file-already-exists`, `artifact-output-already-exists`, or `book-maintenance-in-progress` |
-| `70` | internal software defect outside the published runtime families | `error` with code `internal-error` plus one opaque error id; text mode also prints the stack trace on the diagnostics stream, while machine modes keep one parseable diagnostics envelope only |
+| `70` | internal software defect outside the published runtime families | `error` with code `internal-error` plus one opaque error id and one parseable diagnostics envelope |
 
 ## Common Failures
 
@@ -340,18 +341,17 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | requested PDF artifact cannot be written for one report command that requested `--pdf-out` | `4` | `pdf-export-failure` | the command fails atomically because the requested PDF artifact was not produced |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `5` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
-| other unexpected software defect outside the managed-runtime and storage families | `70` | `internal-error` | opaque public failure carrying one error id; text mode prints the same id and full stack trace on the diagnostics stream, while machine modes keep one parseable diagnostics envelope without the raw trace |
+| other unexpected software defect outside the managed-runtime and storage families | `70` | `internal-error` | opaque public failure carrying one error id in one JSON diagnostics envelope without a raw stack trace |
 
 ## Notes
 
 - Error envelopes may include `hint` and `argument` fields to help an agent or operator repair the
-  call without consulting docs, and text `Rejected` renders now surface the same repair hint plus
-  any structured rejection details that the machine envelope carries.
-- When one recognized machine mode such as `--output json` is selected, rejected and error
-  responses are written to stderr so stdout remains reserved for successful primary results,
-  fixed-output scaffolds, and other success-only contracts.
-- If you want one machine envelope while probing malformed input, add `--output json` on
-  commands that advertise it; otherwise invalid invocations default to text repair text.
+  call without consulting docs.
+- Rejected and error responses for non-plan commands are written to stderr so stdout remains
+  reserved for successful primary results, fixed-output scaffolds, and other success-only
+  contracts.
+- Malformed-input probing no longer needs `--output json`: invalid invocations use the same JSON
+  diagnostics envelope even when the selected success mode is text.
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject
   extra arguments.
 - `open-book` creates missing parent directories for nested `--book-file` paths with owner-only
@@ -503,7 +503,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 - `print-request-template` and `print-plan-template` intentionally emit placeholder-first sample
   documents whose evidence and provenance values must be replaced before real-world use.
 - `print-plan-template` is the fastest machine bootstrap for a new book because it already includes
-  `open-book` and a matching assertion step.
+  `ensure-book` and a matching assertion step.
 - `--book-passphrase-prompt` is accepted only with `--output text`; selecting `json` or `csv`
   with that prompt route is rejected deterministically as `invalid-request` with a repair hint
   that points back to `--output text`, `--book-key-file`, or `--book-passphrase-stdin`.

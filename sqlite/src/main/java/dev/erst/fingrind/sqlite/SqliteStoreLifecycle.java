@@ -195,6 +195,11 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
       publishDatabase(openedDatabase);
       ledgerPlanTransactions.beginImmediateIfNeeded(openedDatabase);
       return ContractDecision.accepted(openedDatabase);
+    } catch (SqliteCallerPathContractException exception) {
+      ContractFailure callerPathFailure =
+          SqliteCallerPathFailureMapper.invalidBookFilePath(exception);
+      rememberTerminalFailure(new ContractFailureException(callerPathFailure));
+      return ContractDecision.rejected(callerPathFailure);
     } catch (SqliteNativeException exception) {
       Optional<ContractFailure> authenticationFailure =
           SqliteStoreOperations.protectedBookVerificationFailure(exception);

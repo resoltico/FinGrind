@@ -35,7 +35,8 @@ final class SqliteBookArtifactSecurity {
     Path parentDirectory =
         SqliteBookFilesystemSupport.requireBookParentDirectory(normalizedBookPath);
     if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
-      SqliteBookDirectorySecurity.requireSecureExistingDirectory(parentDirectory);
+      SqliteBookDirectorySecurity.requireSecureExistingDirectory(
+          normalizedBookPath, parentDirectory);
     }
     requireRegularNonSymlinkFileIfExists(normalizedBookPath);
     hardenExistingFile(normalizedBookPath);
@@ -51,7 +52,7 @@ final class SqliteBookArtifactSecurity {
     SqliteBookFilesystemSupport.requireSupportedSecureFilesystem(normalizedPath);
     Path parentDirectory = SqliteBookFilesystemSupport.requireBookParentDirectory(normalizedPath);
     if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
-      SqliteBookDirectorySecurity.requireSecureExistingDirectory(parentDirectory);
+      SqliteBookDirectorySecurity.requireSecureExistingDirectory(normalizedPath, parentDirectory);
     }
     requireRegularNonSymlinkFileIfExists(normalizedPath);
     hardenExistingFile(normalizedPath);
@@ -63,7 +64,9 @@ final class SqliteBookArtifactSecurity {
       return;
     }
     if (!Files.isRegularFile(normalizedBookPath, LinkOption.NOFOLLOW_LINKS)) {
-      throw new IllegalStateException(
+      throw new SqliteCallerPathContractException(
+          normalizedBookPath,
+          SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
           "The FinGrind SQLite book path must resolve to one regular non-symlink file: "
               + SqliteBookFilesystemSupport.redactedPath(normalizedBookPath));
     }

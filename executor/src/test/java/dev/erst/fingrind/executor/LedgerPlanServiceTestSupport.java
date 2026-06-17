@@ -137,8 +137,8 @@ final class LedgerPlanServiceTestSupport {
     return new LedgerStepId(value);
   }
 
-  static LedgerStep.OpenBook openBookStep(String value) {
-    return new LedgerStep.OpenBook(stepId(value), openBookCommand());
+  static LedgerStep.EnsureBook openBookStep(String value) {
+    return new LedgerStep.EnsureBook(stepId(value), openBookCommand());
   }
 
   static boolean textFact(LedgerFact fact, String name, String value) {
@@ -206,7 +206,7 @@ final class LedgerPlanServiceTestSupport {
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.CashRevenue(
+        BookkeepingEntry.cashRevenue(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("2000"),

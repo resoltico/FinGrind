@@ -1,6 +1,8 @@
 package dev.erst.fingrind.contract;
 
+import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,7 +11,6 @@ import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
@@ -31,8 +32,8 @@ class PostingRejectionTest {
             "duplicate-idempotency-key",
             "book-functional-currency-mismatch",
             "closed-period-violation",
-            "opening-balance-window-closed",
-            "opening-balance-touches-nominal-account",
+            "open-accounting-position-window-closed",
+            "open-accounting-position-touches-nominal-account",
             "result-holding-account-reserved",
             "reversal-target-not-found",
             "reversal-already-exists",
@@ -43,7 +44,7 @@ class PostingRejectionTest {
                 new PostingRejection.EntrySemanticsViolations(
                     List.of(
                         PostingRejection.accountTypeMismatch(
-                            dev.erst.fingrind.core.BookkeepingEntryKind.CASH_REVENUE,
+                            "CASH_REVENUE",
                             "cashAccountCode",
                             new AccountCode("1000"),
                             AccountType.ASSET,
@@ -60,10 +61,10 @@ class PostingRejectionTest {
                     java.time.LocalDate.parse("2026-04-30"),
                     java.time.LocalDate.parse("2026-05-01"))),
             PostingRejection.wireCode(
-                new PostingRejection.OpeningBalanceWindowClosed(
+                new PostingRejection.OpenAccountingPositionWindowClosed(
                     PostingKind.STANDARD, java.time.LocalDate.parse("2026-05-02"))),
             PostingRejection.wireCode(
-                new PostingRejection.OpeningBalanceTouchesNominalAccount(
+                new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE)),
             PostingRejection.wireCode(
                 new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3000"))),
@@ -98,8 +99,8 @@ class PostingRejectionTest {
             "duplicate-idempotency-key",
             "book-functional-currency-mismatch",
             "closed-period-violation",
-            "opening-balance-window-closed",
-            "opening-balance-touches-nominal-account",
+            "open-accounting-position-window-closed",
+            "open-accounting-position-touches-nominal-account",
             "result-holding-account-reserved",
             "reversal-target-not-found",
             "reversal-already-exists",
@@ -120,7 +121,7 @@ class PostingRejectionTest {
   void rejectionFactories_exposeStableEntrySemanticsDetails() {
     PostingRejection.EntrySemanticsViolation accountTypeViolation =
         PostingRejection.accountTypeMismatch(
-            BookkeepingEntryKind.CASH_REVENUE,
+            "CASH_REVENUE",
             "cashAccountCode",
             new AccountCode("1000"),
             AccountType.ASSET,
@@ -130,7 +131,7 @@ class PostingRejectionTest {
 
     PostingRejection.EntrySemanticsViolation classificationViolation =
         PostingRejection.financialPositionClassificationMismatch(
-            BookkeepingEntryKind.EQUITY_CONTRIBUTION,
+            "EQUITY_CONTRIBUTION",
             "equityAccountCode",
             new AccountCode("3000"),
             FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
@@ -141,7 +142,7 @@ class PostingRejectionTest {
 
     PostingRejection.EntrySemanticsViolation classifiedMismatch =
         PostingRejection.financialPositionClassificationMismatch(
-            BookkeepingEntryKind.EQUITY_WITHDRAWAL,
+            "EQUITY_WITHDRAWAL",
             "equityAccountCode",
             new AccountCode("3100"),
             FinancialPositionLineClassification.EQUITY_WITHDRAWAL,
@@ -150,12 +151,33 @@ class PostingRejectionTest {
 
     PostingRejection.EntrySemanticsViolation evidenceViolation =
         PostingRejection.sourceDocumentTypeNotAccepted(
-            BookkeepingEntryKind.CASH_EXPENSE,
+            "CASH_EXPENSE",
             new SourceDocumentType("invoice"),
             List.of("expense-receipt", "cash-disbursement"));
     assertEquals("source-document-type-not-accepted", evidenceViolation.code());
     assertEquals("evidence.sourceDocuments[].sourceDocumentType", evidenceViolation.field());
     assertTrue(evidenceViolation.message().contains("expense-receipt, cash-disbursement"));
+
+    PostingRejection.EntrySemanticsViolation distinctRoleAccountsViolation =
+        PostingRejection.distinctRoleAccountsRequired(
+            "CASH_REVENUE", "cashAccountCode", "revenueAccountCode", new AccountCode("1000"));
+    assertEquals("distinct-role-accounts-required", distinctRoleAccountsViolation.code());
+    assertEquals(null, distinctRoleAccountsViolation.field());
+    assertTrue(distinctRoleAccountsViolation.message().contains("cashAccountCode"));
+    assertTrue(distinctRoleAccountsViolation.message().contains("revenueAccountCode"));
+    assertTrue(distinctRoleAccountsViolation.message().contains("1000"));
+
+    assertIterableEquals(
+        List.of(new AccountCode("1000"), new AccountCode("2000")),
+        List.copyOf(
+            PostingRejection.referencedAccountSet(
+                new AccountCode("1000"), new AccountCode("1000"), new AccountCode("2000"))));
+    assertThrows(
+        NullPointerException.class,
+        () -> PostingRejection.referencedAccountSet(new AccountCode("1000"), nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> PostingRejection.referencedAccountSet(NullTestSupport.<AccountCode[]>nullOf()));
   }
 
   @Test

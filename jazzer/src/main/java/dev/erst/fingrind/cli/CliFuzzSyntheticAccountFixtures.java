@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipe;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -23,59 +24,14 @@ public final class CliFuzzSyntheticAccountFixtures {
   public static List<DeclareAccountCommand> declarePostingAccountCommands(
       PostEntryCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    return switch (command.entry()) {
-      case BookkeepingEntry.CashRevenue event ->
-          List.of(
-              syntheticDeclareAccountCommand(
-                  event.cashAccountCode(),
-                  AccountType.ASSET,
-                  AccountRole.ORDINARY,
-                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)),
-              syntheticDeclareAccountCommand(
-                  event.revenueAccountCode(),
-                  AccountType.REVENUE,
-                  AccountRole.ORDINARY,
-                  syntheticAccountTaxonomy(ProfitAndLossLineClassification.OPERATING_REVENUE)));
-      case BookkeepingEntry.CashExpense event ->
-          List.of(
-              syntheticDeclareAccountCommand(
-                  event.expenseAccountCode(),
-                  AccountType.EXPENSE,
-                  AccountRole.ORDINARY,
-                  syntheticAccountTaxonomy(ProfitAndLossLineClassification.OPERATING_EXPENSE)),
-              syntheticDeclareAccountCommand(
-                  event.cashAccountCode(),
-                  AccountType.ASSET,
-                  AccountRole.ORDINARY,
-                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)));
-      case BookkeepingEntry.EquityContribution event ->
-          List.of(
-              syntheticDeclareAccountCommand(
-                  event.cashAccountCode(),
-                  AccountType.ASSET,
-                  AccountRole.ORDINARY,
-                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)),
-              syntheticDeclareAccountCommand(
-                  event.equityAccountCode(),
-                  AccountType.EQUITY,
-                  AccountRole.ORDINARY,
-                  syntheticAccountTaxonomy(
-                      FinancialPositionLineClassification.EQUITY_CONTRIBUTION)));
-      case BookkeepingEntry.EquityWithdrawal event ->
-          List.of(
-              syntheticDeclareAccountCommand(
-                  event.equityAccountCode(),
-                  AccountType.EQUITY,
-                  AccountRole.ORDINARY,
-                  syntheticAccountTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
-              syntheticDeclareAccountCommand(
-                  event.cashAccountCode(),
-                  AccountType.ASSET,
-                  AccountRole.ORDINARY,
-                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)));
-      case BookkeepingEntry.OpenAccountingPosition _ -> openingPositionAccountDeclarations(command);
-      case BookkeepingEntry.ReversalAdjustment _ -> distinctJournalLineAccountDeclarations(command);
-    };
+    return distinctAccountDeclarations(
+        switch (command.entry()) {
+          case BookkeepingEntry.Journal journal -> journalAccountDeclarations(journal);
+          case BookkeepingEntry.OpenAccountingPosition openingPosition ->
+              openingPositionAccountDeclarations(openingPosition);
+          case BookkeepingEntry.ReversalAdjustment reversalAdjustment ->
+              distinctJournalLineAccountDeclarations(reversalAdjustment.lines());
+        });
   }
 
   /** Returns the first journal-line account code for lifecycle assertions. */
@@ -84,9 +40,68 @@ public final class CliFuzzSyntheticAccountFixtures {
     return CliFuzzFixtures.journalEntry(command).lines().getFirst().accountCode();
   }
 
+  private static List<DeclareAccountCommand> journalAccountDeclarations(
+      BookkeepingEntry.Journal journal) {
+    JournalRecipe recipe = journal.recipe();
+    if (recipe == null) {
+      return distinctJournalLineAccountDeclarations(journal.lines());
+    }
+    return switch (recipe) {
+      case JournalRecipe.CashRevenue cashRevenue ->
+          List.of(
+              syntheticDeclareAccountCommand(
+                  cashRevenue.cashAccountCode(),
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)),
+              syntheticDeclareAccountCommand(
+                  cashRevenue.revenueAccountCode(),
+                  AccountType.REVENUE,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(ProfitAndLossLineClassification.OPERATING_REVENUE)));
+      case JournalRecipe.CashExpense cashExpense ->
+          List.of(
+              syntheticDeclareAccountCommand(
+                  cashExpense.expenseAccountCode(),
+                  AccountType.EXPENSE,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(ProfitAndLossLineClassification.OPERATING_EXPENSE)),
+              syntheticDeclareAccountCommand(
+                  cashExpense.cashAccountCode(),
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)));
+      case JournalRecipe.EquityContribution equityContribution ->
+          List.of(
+              syntheticDeclareAccountCommand(
+                  equityContribution.cashAccountCode(),
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)),
+              syntheticDeclareAccountCommand(
+                  equityContribution.equityAccountCode(),
+                  AccountType.EQUITY,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(
+                      FinancialPositionLineClassification.EQUITY_CONTRIBUTION)));
+      case JournalRecipe.EquityWithdrawal equityWithdrawal ->
+          List.of(
+              syntheticDeclareAccountCommand(
+                  equityWithdrawal.equityAccountCode(),
+                  AccountType.EQUITY,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
+              syntheticDeclareAccountCommand(
+                  equityWithdrawal.cashAccountCode(),
+                  AccountType.ASSET,
+                  AccountRole.ORDINARY,
+                  syntheticAccountTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET)));
+    };
+  }
+
   private static List<DeclareAccountCommand> distinctJournalLineAccountDeclarations(
-      PostEntryCommand command) {
-    return CliFuzzFixtures.journalEntry(command).lines().stream()
+      List<dev.erst.fingrind.core.JournalLine> journalLines) {
+    return journalLines.stream()
         .map(line -> line.accountCode())
         .distinct()
         .map(CliFuzzSyntheticAccountFixtures::syntheticDeclareAccountCommand)
@@ -94,8 +109,8 @@ public final class CliFuzzSyntheticAccountFixtures {
   }
 
   private static List<DeclareAccountCommand> openingPositionAccountDeclarations(
-      PostEntryCommand command) {
-    return CliFuzzFixtures.journalEntry(command).lines().stream()
+      BookkeepingEntry.OpenAccountingPosition openingPosition) {
+    return openingPosition.lines().stream()
         .collect(
             java.util.stream.Collectors.toMap(
                 line -> line.accountCode(),
@@ -122,6 +137,19 @@ public final class CliFuzzSyntheticAccountFixtures {
 
   private static AccountName syntheticAccountName(AccountCode accountCode) {
     return new AccountName("Synthetic " + accountCode.value());
+  }
+
+  private static List<DeclareAccountCommand> distinctAccountDeclarations(
+      List<DeclareAccountCommand> declarations) {
+    return List.copyOf(
+        declarations.stream()
+            .collect(
+                java.util.stream.Collectors.toMap(
+                    declaration -> Objects.requireNonNull(declaration, "declaration").accountCode(),
+                    declaration -> declaration,
+                    (first, ignored) -> first,
+                    java.util.LinkedHashMap::new))
+            .values());
   }
 
   private static DeclareAccountCommand syntheticDeclareAccountCommand(AccountCode accountCode) {

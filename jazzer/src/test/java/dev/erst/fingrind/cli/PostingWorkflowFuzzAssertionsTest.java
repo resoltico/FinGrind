@@ -2,7 +2,12 @@ package dev.erst.fingrind.cli;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.core.AccountCode;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Covers deterministic posting-workflow fuzz entry behavior. */
@@ -44,6 +49,39 @@ class PostingWorkflowFuzzAssertionsTest {
         () ->
             PostingWorkflowFuzzAssertions.exercisePostingWorkflow(
                 CliFuzzRequestSeedSupport.missingReversalReasonRequestBytes()));
+  }
+
+  @Test
+  void helper_accepts_deterministically_rejected_sameAccount_requests() {
+    assertDoesNotThrow(
+        () ->
+            PostingWorkflowFuzzAssertions.exercisePostingWorkflow(
+                CliFuzzRequestSeedSupport.sameAccountCashRevenueRequestBytes()));
+  }
+
+  @Test
+  void unknownAccountLifecyclePhaseClassifier_acceptsOnlyPureUnknownAccountViolations() {
+    PostingRejection.AccountStateViolations unknownOnlyViolation =
+        new PostingRejection.AccountStateViolations(
+            List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))));
+    PostingRejection.AccountStateViolations mixedAccountStateViolation =
+        new PostingRejection.AccountStateViolations(
+            List.of(
+                new PostingRejection.UnknownAccount(new AccountCode("1000")),
+                new PostingRejection.InactiveAccount(new AccountCode("2000"))));
+    PostingRejection.EntrySemanticsViolations entrySemanticsViolation =
+        new PostingRejection.EntrySemanticsViolations(
+            List.of(
+                new PostingRejection.EntrySemanticsViolation(
+                    "distinct-role-accounts-required",
+                    "cashAccountCode",
+                    "role accounts must differ")));
+
+    assertTrue(PostingWorkflowFuzzAssertions.isUnknownAccountLifecyclePhase(unknownOnlyViolation));
+    assertFalse(
+        PostingWorkflowFuzzAssertions.isUnknownAccountLifecyclePhase(mixedAccountStateViolation));
+    assertFalse(
+        PostingWorkflowFuzzAssertions.isUnknownAccountLifecyclePhase(entrySemanticsViolation));
   }
 
   @Test

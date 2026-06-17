@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -492,6 +492,23 @@ public final class ProtocolManagedSqliteCatalog
   SQLite facts owned by explicit catalog roots instead of one swollen registry type
 - Scope: `ProtocolCatalog` composes these catalogs into the public discovery surface without
   collapsing their ownership boundaries
+- `ProtocolDomainCatalog` now publishes `RequestSurfaceFacts` as the canonical owner for per-entry
+  posting request semantics, evidence-profile doctrine, account-classification reachability facts,
+  and the temporal-scope lexicon reused by discovery, validation, help, and repair hints
+- `RequestSurfaceFacts` groups `PostEntryKindFacts`, `JournalRecipeFacts`,
+  `EvidenceProfileFacts`, `ReachabilityCellFacts`, `EvidenceRequirementFacts`,
+  `TemporalScopeFacts`, and `CommandTemporalScopeFacts` so one edit can update request-shape
+  discovery and runtime validation together
+- `SourceDocumentTypePolicyMode` distinguishes entry kinds that publish one closed
+  `sourceDocumentType` enum from entry kinds that leave that token caller-authored under the shared
+  token grammar
+- `ReachabilityCellFacts` expose declarable, opening, operational-journal, and reversal
+  reachability per declared-account classification cell, and those facts derive from the live
+  current-kernel account-classification reachability owner instead of one hand-maintained discovery
+  copy
+- `TemporalScopeArchetype` keeps ranged-filter, bounded-period, and as-of-date semantics explicit so
+  option names, labels, and empty-state wording derive from one owned vocabulary instead of
+  parallel literals
 - Boundary: each catalog owns one coherent slice of public protocol metadata and leaves field-level
   structure to the narrower protocol field owners above
 
@@ -519,8 +536,8 @@ public final class MachineContract
 - Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic placeholder-first
   sample documents, while the CLI raw-template commands now route both help snippets and
   `print-request-template` / `print-plan-template` through the same canonical serializer so
-  checked-in template fixtures remain byte-identical to live command output without drifting away
-  from the placeholder scaffold contract
+  machine fixtures remain byte-identical to live command output and the checked-in public examples
+  stay semantically aligned without drifting away from the placeholder scaffold contract
 
 ## `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
 
@@ -584,14 +601,19 @@ public final class ContractTemplates
 - `CommandDescriptor` keeps command identity, execution mode, output modes, and artifact outputs
   typed through `OperationId`, `ExecutionMode`, `OutputMode`, and `ArtifactOutputDescriptor`
   instead of flattening those closed vocabularies into strings
-- `ContractRequestShapes`: request-input plumbing plus posting, account-declaration, and ledger-plan
+- `ContractRequestShapes`: transport request-input descriptors plus posting, account-declaration, and ledger-plan
   request-shape descriptors
 - `ContractRequestShapes.RequestShapeDescriptorType` is the sealed nested owner that keeps the
   published request-shape inventory exhaustive
 - `ContractRequestShapes.RequestInputDescriptor`, `.RequestShapesDescriptor`,
   `.PostEntryRequestShapeDescriptor`, `.DeclareAccountRequestShapeDescriptor`,
-  `.LedgerPlanRequestShapeDescriptor`, `.RequestFieldDescriptor`, and
+  `.LedgerPlanRequestShapeDescriptor`, `.RequestFieldDescriptor`,
+  `.EntryKindSemanticsDescriptor`, `.EvidenceRequirementDescriptor`, and
   `.EnumVocabularyDescriptor` are the nested typed request-shape descriptors
+- `ContractRequestShapes.EntryKindSemanticsDescriptor` publishes one entry kind's required and
+  forbidden top-level fields plus the canonical `sourceDocumentType` policy for that entry kind
+- `ContractRequestShapes.EvidenceRequirementDescriptor` publishes the non-negotiable source-document
+  minimum and field inventory for every posting request
 - `RequestFieldPresence` is the stable request-field presence vocabulary shared by request-shape
   descriptors and executable schema authorship, with `required`, `conditional`, `optional`, and
   `forbidden` wire values
@@ -607,7 +629,7 @@ public final class ContractTemplates
 - `ContractTemplates`: canonical request template descriptors
 - `ContractPlanTemplates`: canonical ledger-plan template descriptors
 - `TemplateDescriptorType` is the sealed owner for the published template-descriptor inventory
-- `ContractPlanTemplates.OpenBookTemplateDescriptor`, `.LedgerPlanTemplateDescriptor`,
+- `ContractPlanTemplates.EnsureBookTemplateDescriptor`, `.LedgerPlanTemplateDescriptor`,
   `.LedgerPlanStepTemplateDescriptor`, `.LedgerPlanQueryTemplateDescriptor`, and
   `.LedgerAssertionTemplateDescriptor` are the nested typed ledger-plan template descriptors
 - `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,

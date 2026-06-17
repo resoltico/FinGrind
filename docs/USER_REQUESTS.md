@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -47,7 +47,8 @@ Inspect the canonical posting-request scaffold:
 fingrind print-request-template
 ```
 
-Or, in a source checkout, inspect the checked-in exact scaffold:
+Or, in a source checkout, inspect the checked-in companion example that carries the same scaffold
+content:
 
 ```bash
 cat docs/examples/request-template.json
@@ -66,50 +67,42 @@ the raw scaffold bytes directly, `print-request-template` now accepts the reques
 
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
-- `entryKind` is required and selects the posting recipe
+- `entryKind` is required and selects the top-level write path
 - `amount` and `lines[].amount` both use one exact money object with `currencyCode` and `minorUnits`
-- every money-object `currencyCode` must be one canonical three-letter uppercase ISO 4217 code
-  supported by FinGrind's pinned currency registry
-- every money-object `minorUnits` must contain ASCII digits only, must not contain redundant leading
-  zeroes, must not exceed 19 digits, and must fit inside FinGrind's exact supported minor-unit
-  range
+- every money-object `currencyCode` must be one canonical three-letter uppercase ISO 4217 code supported by FinGrind's pinned currency registry
+- every money-object `minorUnits` must contain ASCII digits only, must not contain redundant leading zeroes, must not exceed 19 digits, and must fit inside FinGrind's exact supported minor-unit range
 - every money object must decode to one strictly positive posted amount
 - `effectiveDate`, `evidence`, and `provenance` are required for every entry kind
-- `CASH_REVENUE` requires `cashAccountCode`, `revenueAccountCode`, and `amount`
-- `CASH_EXPENSE` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
-- `EQUITY_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
-- `EQUITY_WITHDRAWAL` requires `equityAccountCode`, `cashAccountCode`, and `amount`
+- `JOURNAL` accepts either direct balanced `lines` or one recipe-backed helper selected through `recipeKind`
+- `recipeKind` may appear only when `entryKind` is `JOURNAL`
+- `recipeKind: CASH_REVENUE` requires `cashAccountCode`, `revenueAccountCode`, and `amount`
+- `recipeKind: CASH_EXPENSE` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
+- `recipeKind: EQUITY_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
+- `recipeKind: EQUITY_WITHDRAWAL` requires `equityAccountCode`, `cashAccountCode`, and `amount`
 - `OPEN_ACCOUNTING_POSITION` requires `openingBalances`
-- `REVERSAL_ADJUSTMENT` requires `lines`
 - `REVERSAL_ADJUSTMENT` requires `lines` plus `reversal`
-- every administrative adjustment entry must contain at least two journal lines
+- every direct `JOURNAL` or `REVERSAL_ADJUSTMENT` entry must contain at least two journal lines
 - `evidence.sourceDocuments` must contain at least one source-document object
-- every `evidence.sourceDocuments[]` entry requires `sourceDocumentId`, `sourceDocumentType`,
-  `documentDate`, `capturedAt`, `storageLocator`, and `contentSha256`
+- every `evidence.sourceDocuments[]` entry requires `sourceDocumentId`, `sourceDocumentType`, `documentDate`, `capturedAt`, `storageLocator`, and `contentSha256`
+- accepted `sourceDocumentType` values come from the `evidenceProfileId` selected by `requestShapes.postEntry.entryKindSemantics[]` or `journalRecipeSemantics[]`, then resolved through `requestShapes.postEntry.evidenceProfiles[]`; some profiles publish one closed enum list, while others stay caller-authored tokens constrained only by the published token grammar
 - `evidence.approvals` is required as an array and may be empty
-- every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverId`,
-  `approverType`, `decision`, and `approvedAt`
-- `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII
-  letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
-- every administrative adjustment entry must contain at least one `DEBIT` line and at least one
-  `CREDIT` line
-- every line inside one administrative adjustment entry must share the same
-  `lines[].amount.currencyCode`
+- every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverId`, `approverType`, `decision`, and `approvedAt`
+- `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
+- every direct `JOURNAL` or `REVERSAL_ADJUSTMENT` entry must contain at least one `DEBIT` line and at least one `CREDIT` line
+- every line inside one direct `JOURNAL` or `REVERSAL_ADJUSTMENT` entry must share the same `lines[].amount.currencyCode`
 - every posted money amount must use the selected book's functional currency
-- `reversal` is required only for `REVERSAL_ADJUSTMENT` and must be absent for every other
-  `entryKind`
+- `reversal` is required only for `REVERSAL_ADJUSTMENT` and must be absent for every other `entryKind`
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
-- `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only
-  ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 128 characters
+- `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 128 characters
 - optional provenance field is `correlationId`
 - `reversal.priorPostingId` and `reversal.reason` are both required when `reversal` is present
 - `provenance.recordedAt` and `provenance.sourceChannel` are not accepted
 - optional fields may be omitted; `null` is accepted for `reversal` and `correlationId`
 - `reversal.priorPostingId` must already exist in the selected book
 - a reversal requires one exact line-by-line negation of the target posting and only one reversal is allowed per target
-- `OPENING_BALANCE` postings may touch only `ASSET`, `LIABILITY`, or `EQUITY` accounts
-- `OPENING_BALANCE` postings are accepted only before the first committed posting exists in the
-  selected book, so all opening balances must be seeded as one opening-statement phase
+- `OPEN_ACCOUNTING_POSITION` may touch only `ASSET`, `LIABILITY`, or `EQUITY` accounts
+- `OPEN_ACCOUNTING_POSITION` is accepted only before the first committed posting exists in the selected book, so all adoption balances must be seeded as one opening-statement phase
+- `requestShapes.postEntry.reachabilityMatrix[]` is the canonical per-classification truth for which declared-account cells are opening-reachable, operational-journal-reachable, or reversal-reachable; the built-in `RESULT_HOLDING` classification remains opening-reachable but is reserved from caller-authored standard journals and reversals
 - legacy `correction` and `reversal.kind` fields are rejected
 - unknown fields are rejected at every object level
 - duplicate JSON object keys are rejected
@@ -172,9 +165,9 @@ Current ledger-plan rules:
 - top-level fields are `planId` and `steps`
 - `planId` must be a non-blank string
 - `steps` must contain at least one object and every `stepId` must be unique
-- `open-book` is allowed only as the first step when a plan initializes a book
+- `ensure-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
-- `open-book` uses nested `openBook`, which requires `entityName`, `functionalCurrency`, and
+- `ensure-book` uses nested `ensureBook`, which requires `entityName`, `functionalCurrency`, and
   `fiscalYearStart`; the runtime persists the built-in doctrine facts and echoes them back in
   response payloads
 - `declare-account` uses nested `declareAccount`
@@ -213,10 +206,13 @@ Current ledger-plan rules:
   `postingOriginKind`, `reversalState`, optional `reversalTarget`, `effectiveDate`, `recordedAt`,
   `debitTotal`, `creditTotal`, `accountCodes[]`, `sourceDocumentIds[]`, and `approvalIds[]`
 
-Text rejections and JSON rejection envelopes now stay aligned. Both surfaces carry the same
-top-level `message`, optional `hint`, and any typed rejection details that identify the failing
-posting id, result-holding classification mismatch, account-state violation set, or related
-deterministic repair data.
+For every non-plan single-command invocation, deterministic business rejections and deterministic
+failures now use one JSON diagnostics envelope on stderr regardless of `--output`. Successful
+stdout may be text, JSON, or CSV where advertised, but failing single-command invocations keep the
+same parseable diagnostics shape with the same top-level `message`, optional `hint`, and any typed
+detail payload that identifies the failing posting id, result-holding classification mismatch,
+account-state violation set, or related deterministic repair data. `execute-plan` is the
+exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result envelopes on stdout.
 
 ## Accepted Values
 
@@ -229,6 +225,8 @@ deterministic repair data.
 | `accountNodeKind` | `POSTABLE`, `HEADER` |
 | `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RESERVE`, `OTHER_EQUITY` |
 | `profitAndLossLineClassification` | `OPERATING_REVENUE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `FINANCE_EXPENSE`, `OTHER_EXPENSE` |
+
+`lines[].side` is input polarity for one journal line. Response-side `balanceSide` is a derived net orientation for grouped balances, running balances, and report totals; it is not a second writable posting-line field.
 
 ## CLI Output Shapes
 
@@ -246,10 +244,10 @@ deterministic repair data.
 
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
-- `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are exact
-  captures of `print-request-template` and `print-plan-template`; both intentionally publish
-  placeholder-first sample documents whose evidence and provenance values should be replaced before
-  real-world use
+- `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
+  checked-in source-copy companions for `print-request-template` and `print-plan-template`; both
+  intentionally publish placeholder-first sample documents whose evidence and provenance values
+  should be replaced before real-world use
 - `generate-book-key-file.payload.bookKeyFile` is a redacted public path hint for the created key
   file
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
@@ -270,8 +268,8 @@ Dynamic fields:
 - `payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
   FinGrind execution clock when `--result-detail full` is selected
 - plan-journal steps carry typed `data` records rather than generic fact arrays
-- successful `open-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`, and
-  `fiscalYearStart`; the persisted initialized-book identity also carries
+- successful `ensure-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`,
+  and `fiscalYearStart`; the persisted initialized-book identity also carries
   `accountingKernelProfile`, `accountingBasis`, `accountingFrameworkPosition`, `entityForm`, and
   `bookTemplateId`
 - successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
@@ -311,22 +309,18 @@ Discovery output also has two intentionally different JSON scopes:
 
 ## Capabilities Discovery Shape
 
-`capabilities` is the canonical machine contract and exposes typed descriptors instead of raw
-string lists for the drift-prone parts of the surface. Operation ids, display labels, aliases,
-output modes, summaries, command groups, shared query limits, hard book-model facts, preflight
-facts, and currency facts are sourced from the contract protocol catalog before this response is
-rendered:
+`capabilities` is the canonical machine contract and exposes typed descriptors instead of raw string lists for the drift-prone parts of the surface. Operation ids, display labels, aliases, output modes, summaries, command groups, shared query limits, hard book-model facts, preflight facts, and currency facts are sourced from the contract protocol catalog before this response is rendered:
 
-- `requestShapes.postEntry.topLevelFields`, `lineFields`, `provenanceFields`, and `reversalFields`
-  are arrays of `{ "name", "presence", "description" }`
-- `presence` is a live enum-backed machine value and is currently one of `required`,
-  `conditional`, `optional`, or `forbidden`
-- `requestShapes.schemaDialect` is the JSON Schema dialect URI used by the embedded executable
-  schemas
-- `requestShapes.postEntry.schema`, `declareAccount.schema`, and `ledgerPlan.schema` are
-  executable JSON Schema objects sourced from the live contract, not hand-maintained prose
-- `requestShapes.*.enumVocabularies` are arrays of `{ "name", "values" }` sourced from the live
-  enum constants
+- `requestShapes.postEntry.topLevelFields`, `lineFields`, `provenanceFields`, and `reversalFields` are arrays of `{ "name", "presence", "description" }`
+- `requestShapes.postEntry.entryKindSemantics` is an array of `{ "entryKind", "requiredTopLevelFields", "forbiddenTopLevelFields", "evidenceProfileId", "semantics" }` sourced from the live request-surface owner
+- `requestShapes.postEntry.journalRecipeSemantics` is an array of `{ "recipeKind", "requiredTopLevelFields", "forbiddenTopLevelFields", "evidenceProfileId", "semantics" }` sourced from the same owner
+- `requestShapes.postEntry.evidenceProfiles` is an array of `{ "profileId", "sourceDocumentTypeMode", "acceptedSourceDocumentTypes", "sourceDocumentTypeSemantics", "semantics" }` keyed by the `evidenceProfileId` published on entry kinds and journal recipes
+- `requestShapes.postEntry.reachabilityMatrix` is an array of `{ "classificationFamily", "accountType", "classification", "declarable", "openingReachable", "operationalJournalReachable", "reversalReachable" }` generated from the live account-classification reachability doctrine
+- `requestShapes.postEntry.evidenceRequirement` is one machine object with `description`, `minimumSourceDocuments`, and `requiredSourceDocumentFields`
+- `presence` is a live enum-backed machine value and is currently one of `required`, `conditional`, `optional`, or `forbidden`
+- `requestShapes.schemaDialect` is the JSON Schema dialect URI used by the embedded executable schemas
+- `requestShapes.postEntry.schema`, `declareAccount.schema`, and `ledgerPlan.schema` are executable JSON Schema objects sourced from the live contract, not hand-maintained prose
+- `requestShapes.*.enumVocabularies` are arrays of `{ "name", "values" }` sourced from the live enum constants
 - `responseModel.rejections` is an array of deterministic business rejections rendered from the
   administration, query, and posting rejection families
 - `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
@@ -391,7 +385,8 @@ Shared posting payload:
 - optional `correlationId`
 - `sourceChannel`
 - `evidence.sourceDocuments[]`, where each entry carries `sourceDocumentId`, `sourceDocumentType`,
-  `documentDate`, `capturedAt`, `storageLocator`, and `contentSha256`
+  `documentDate`, `capturedAt`, `storageLocator`, and `contentSha256`; every posting retains at
+  least one such source-document entry
 - `evidence.approvals[]`, where each entry carries `approvalId`, `approvalType`, `approverId`,
   `approverType`, `decision`, and `approvedAt`
 - optional `reversal.priorPostingId` and `reversal.reason`
@@ -614,10 +609,9 @@ sets `FINGRIND_DEFAULT_OUTPUT=json`; `FINGRIND_DEFAULT_OUTPUT=text` restores the
 explicitly, and a per-command `--output ...` flag always wins. Discovery, administration, write,
 and read/report commands can also render operator-facing `--output text`, and the tabular
 read/report commands support `--output csv` for spreadsheet import. Successful primary results own
-stdout. Deterministic failures and rejections use the diagnostics stream instead: text mode emits
-repair or rejection text, and recognized machine modes such as `--output json` emit one parseable
-JSON diagnostics envelope on stderr. Invalid invocation failures default to text repair guidance
-unless callers select one recognized machine output mode explicitly, such as `--output json`.
+stdout. Every non-plan deterministic failure or single-command business rejection uses one
+canonical JSON diagnostics envelope on stderr instead, regardless of the selected success output
+mode. Invalid invocation failures use that same diagnostics shape.
 `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
 `income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the
@@ -626,10 +620,9 @@ JSON report payload itself, but successful JSON success envelopes now also publi
 and CSV exports also emit a diagnostics info message with the same redacted artifact path hint. If
 the requested PDF artifact cannot be written, the command returns one deterministic
 `pdf-export-failure` error instead of a successful report payload.
-Deterministic failures for commands that accept `--output text` are rendered in the same
-operator-facing format instead of falling back to JSON envelopes. Deterministic non-business contract
-failures render with the `Rejected` heading in text mode so operator refusals do not masquerade
-as generic runtime crashes.
+Deterministic failures and single-command business rejections for commands that accept
+`--output text` keep the same JSON diagnostics envelope rather than switching to a separate text
+failure grammar.
 
 Statement-report context also includes one comparative reference window derived from the selected
 book's fiscal-year anchor. Trial balance now carries `comparativeRows[]`; financial position now
@@ -678,8 +671,8 @@ Checked-in template and ledger-plan examples:
 | `account-state-violations` | `preflight-entry` or `post-entry` found one or more undeclared or inactive accounts | `violations[]`, where each item includes `code` and `accountCode` |
 | `inactive-account` | one item inside `account-state-violations.violations[]` named an inactive account | `accountCode` |
 | `duplicate-idempotency-key` | the selected book already contains the same `idempotencyKey` | none |
-| `opening-balance-window-closed` | `OPENING_BALANCE` was submitted after the book already contains its first committed posting | `firstBlockingPostingKind`, `firstBlockingEffectiveDate` |
-| `opening-balance-touches-nominal-account` | `OPENING_BALANCE` touched a revenue or expense account | `accountCode`, `accountType` |
+| `open-accounting-position-window-closed` | `OPEN_ACCOUNTING_POSITION` was submitted after the book already contains its first committed posting | `firstBlockingPostingKind`, `firstBlockingEffectiveDate` |
+| `open-accounting-position-touches-nominal-account` | `OPEN_ACCOUNTING_POSITION` touched a revenue or expense account | `accountCode`, `accountType` |
 | `reversal-target-not-found` | `reversal.priorPostingId` does not exist in the selected book | `priorPostingId` |
 | `reversal-already-exists` | the target posting already has a full reversal | `priorPostingId` |
 | `reversal-does-not-negate-target` | a reversal request does not negate the target posting exactly | `priorPostingId` |
@@ -701,7 +694,7 @@ callers can repair the whole request before retrying without scraping prose.
 Deterministic CLI-side `status: "error"` examples are also checked in:
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json)
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json)
-- [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt)
+- [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json)
 
-When you want those malformed-input or deterministic-error examples as JSON from the live CLI,
-request them explicitly with `--output json` on commands that support output negotiation.
+When you want those malformed-input or deterministic-error examples from the live CLI, rerun the
+same command: the diagnostics envelope is JSON even when the selected success mode is text.

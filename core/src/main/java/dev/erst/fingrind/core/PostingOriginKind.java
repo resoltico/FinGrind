@@ -4,6 +4,7 @@ import java.util.List;
 
 /** Canonical durable origin kinds preserved for committed postings in one protected book. */
 public enum PostingOriginKind implements WireValue {
+  JOURNAL,
   CASH_REVENUE,
   CASH_EXPENSE,
   EQUITY_CONTRIBUTION,
@@ -15,6 +16,7 @@ public enum PostingOriginKind implements WireValue {
   @Override
   public String wireValue() {
     return switch (this) {
+      case JOURNAL -> "JOURNAL";
       case CASH_REVENUE -> "CASH_REVENUE";
       case CASH_EXPENSE -> "CASH_EXPENSE";
       case EQUITY_CONTRIBUTION -> "EQUITY_CONTRIBUTION";

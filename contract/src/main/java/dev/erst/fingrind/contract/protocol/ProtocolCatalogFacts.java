@@ -5,9 +5,8 @@ import java.util.List;
 
 /** Shared immutable facts published through the public protocol catalog. */
 final class ProtocolCatalogFacts {
-  private static final RuntimeSurfaceContract RUNTIME_SURFACE_CONTRACT =
-      RuntimeSurfaceContracts.current();
-  private static final BookModelFacts BOOK_MODEL =
+  static final RuntimeSurfaceContract RUNTIME_SURFACE_CONTRACT = RuntimeSurfaceContracts.current();
+  static final BookModelFacts BOOK_MODEL =
       new BookModelFacts(
           "one SQLite file equals one book",
           "one book belongs to one accounting entity",
@@ -21,12 +20,12 @@ final class ProtocolCatalogFacts {
           "books must be opened explicitly before any posting or account declaration",
           "every posting line must reference a declared active account",
           "single-functional-currency-per-book");
-  private static final CurrencyFacts CURRENCY =
+  static final CurrencyFacts CURRENCY =
       new CurrencyFacts(
           BOOK_MODEL.currencyScope(),
           "not-supported",
           "Every posting request and every persisted journal line must match the selected book functional currency. Mixed-currency entries are rejected and no foreign-currency translation model exists yet.");
-  private static final BookkeepingKernelFacts BOOKKEEPING_KERNEL =
+  static final BookkeepingKernelFacts BOOKKEEPING_KERNEL =
       new BookkeepingKernelFacts(
           AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL.value(),
           List.of(
@@ -47,12 +46,12 @@ final class ProtocolCatalogFacts {
                   true,
                   "Built into the current kernel as one internal management statement.")),
           "Current built-in cash-oriented bookkeeping kernel facts for one single-entity, single-functional-currency internal-management book with three built-in statements.");
-  private static final PreflightFacts PREFLIGHT =
+  static final PreflightFacts PREFLIGHT =
       new PreflightFacts(
           "advisory",
           false,
           "Preflight validates the current request against the current book state, but it is not a commit guarantee because durable commit-time checks still run inside the write transaction.");
-  private static final PlanExecutionFacts PLAN_EXECUTION =
+  static final PlanExecutionFacts PLAN_EXECUTION =
       new PlanExecutionFacts(
           PlanTransactionMode.ATOMIC,
           PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
@@ -66,87 +65,22 @@ final class ProtocolCatalogFacts {
                   + " steps, which bounds the emitted execution journal",
               "a rejected or assertion-failed step rolls back the entire plan transaction",
               "preflight steps are validation-only steps and do not commit postings"));
-  private static final List<StorageEngine> STORAGE_ENGINES =
+  static final RequestSurfaceFacts REQUEST_SURFACE = RequestSurfaceContracts.current();
+  static final List<StorageEngine> STORAGE_ENGINES =
       List.of(RUNTIME_SURFACE_CONTRACT.storageEngine());
-  private static final List<ProtocolEnvelopeStatus> ENVELOPE_STATUSES =
+  static final List<ProtocolEnvelopeStatus> ENVELOPE_STATUSES =
       List.of(ProtocolEnvelopeStatus.values());
-  private static final ProtocolEnvelopeStatus SUCCESS_STATUS = ProtocolEnvelopeStatus.OK;
-  private static final ProtocolEnvelopeStatus REJECTION_STATUS = ProtocolEnvelopeStatus.REJECTED;
-  private static final ProtocolEnvelopeStatus ERROR_STATUS = ProtocolEnvelopeStatus.ERROR;
-  private static final RuntimeEnvironmentContract RUNTIME_ENVIRONMENT_CONTRACT =
+  static final ProtocolEnvelopeStatus SUCCESS_STATUS = ProtocolEnvelopeStatus.OK;
+  static final ProtocolEnvelopeStatus REJECTION_STATUS = ProtocolEnvelopeStatus.REJECTED;
+  static final ProtocolEnvelopeStatus ERROR_STATUS = ProtocolEnvelopeStatus.ERROR;
+  static final RuntimeEnvironmentContract RUNTIME_ENVIRONMENT_CONTRACT =
       RuntimeEnvironmentContract.current();
-  private static final ProtectedBookFormatContract PROTECTED_BOOK_FORMAT_CONTRACT =
+  static final ProtectedBookFormatContract PROTECTED_BOOK_FORMAT_CONTRACT =
       ProtectedBookFormatContracts.current();
-  private static final ManagedSqliteContract MANAGED_SQLITE_CONTRACT =
-      ManagedSqliteContracts.current();
-  private static final BundlePublicationContract BUNDLE_PUBLICATION_CONTRACT =
+  static final ManagedSqliteContract MANAGED_SQLITE_CONTRACT = ManagedSqliteContracts.current();
+  static final BundlePublicationContract BUNDLE_PUBLICATION_CONTRACT =
       BundlePublicationContracts.current();
-  private static final BundleLayoutContract BUNDLE_LAYOUT_CONTRACT =
-      BundleLayoutContracts.current();
+  static final BundleLayoutContract BUNDLE_LAYOUT_CONTRACT = BundleLayoutContracts.current();
 
   private ProtocolCatalogFacts() {}
-
-  static BookModelFacts bookModel() {
-    return BOOK_MODEL;
-  }
-
-  static CurrencyFacts currency() {
-    return CURRENCY;
-  }
-
-  static BookkeepingKernelFacts bookkeepingKernel() {
-    return BOOKKEEPING_KERNEL;
-  }
-
-  static PreflightFacts preflight() {
-    return PREFLIGHT;
-  }
-
-  static PlanExecutionFacts planExecution() {
-    return PLAN_EXECUTION;
-  }
-
-  static List<StorageEngine> storageEngines() {
-    return STORAGE_ENGINES;
-  }
-
-  static List<ProtocolEnvelopeStatus> envelopeStatuses() {
-    return ENVELOPE_STATUSES;
-  }
-
-  static ProtocolEnvelopeStatus successStatus() {
-    return SUCCESS_STATUS;
-  }
-
-  static ProtocolEnvelopeStatus rejectionStatus() {
-    return REJECTION_STATUS;
-  }
-
-  static ProtocolEnvelopeStatus errorStatus() {
-    return ERROR_STATUS;
-  }
-
-  static RuntimeEnvironmentContract runtimeEnvironmentContract() {
-    return RUNTIME_ENVIRONMENT_CONTRACT;
-  }
-
-  static RuntimeSurfaceContract runtimeSurfaceContract() {
-    return RUNTIME_SURFACE_CONTRACT;
-  }
-
-  static ProtectedBookFormatContract protectedBookFormatContract() {
-    return PROTECTED_BOOK_FORMAT_CONTRACT;
-  }
-
-  static ManagedSqliteContract managedSqliteContract() {
-    return MANAGED_SQLITE_CONTRACT;
-  }
-
-  static BundlePublicationContract bundlePublicationContract() {
-    return BUNDLE_PUBLICATION_CONTRACT;
-  }
-
-  static BundleLayoutContract bundleLayoutContract() {
-    return BUNDLE_LAYOUT_CONTRACT;
-  }
 }

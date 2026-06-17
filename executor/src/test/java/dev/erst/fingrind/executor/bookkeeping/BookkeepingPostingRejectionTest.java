@@ -1,10 +1,12 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -19,19 +21,19 @@ import org.junit.jupiter.api.Test;
 /** Constructor guards for local bookkeeping posting rejections. */
 class BookkeepingPostingRejectionTest {
   @Test
-  void openingBalanceWindowClosed_requiresBothBlockingFacts() throws Exception {
+  void openAccountingPositionWindowClosed_requiresBothBlockingFacts() throws Exception {
     InvocationTargetException nullPostingKind =
         assertThrows(
             InvocationTargetException.class,
             () ->
-                BookkeepingPostingRejection.OpeningBalanceWindowClosed.class
+                BookkeepingPostingRejection.OpenAccountingPositionWindowClosed.class
                     .getDeclaredConstructor(PostingKind.class, LocalDate.class)
                     .newInstance(null, LocalDate.parse("2026-04-07")));
     InvocationTargetException nullEffectiveDate =
         assertThrows(
             InvocationTargetException.class,
             () ->
-                BookkeepingPostingRejection.OpeningBalanceWindowClosed.class
+                BookkeepingPostingRejection.OpenAccountingPositionWindowClosed.class
                     .getDeclaredConstructor(PostingKind.class, LocalDate.class)
                     .newInstance(PostingKind.STANDARD, null));
 
@@ -95,21 +97,21 @@ class BookkeepingPostingRejectionTest {
   void entrySemanticsFactoriesProduceCanonicalViolationPayloads() {
     BookkeepingPostingRejection.EntrySemanticsViolation accountTypeMismatch =
         BookkeepingPostingRejection.accountTypeMismatch(
-            BookkeepingEntryKind.CASH_REVENUE,
+            JournalRecipeKind.CASH_REVENUE.wireValue(),
             "cashAccountCode",
             new AccountCode("2000"),
             AccountType.ASSET,
             AccountType.REVENUE);
     BookkeepingPostingRejection.EntrySemanticsViolation classificationMismatch =
         BookkeepingPostingRejection.financialPositionClassificationMismatch(
-            BookkeepingEntryKind.EQUITY_WITHDRAWAL,
+            JournalRecipeKind.EQUITY_WITHDRAWAL.wireValue(),
             "equityAccountCode",
             new AccountCode("3200"),
             FinancialPositionLineClassification.EQUITY_WITHDRAWAL,
             null);
     BookkeepingPostingRejection.EntrySemanticsViolation sourceDocumentTypeNotAccepted =
         BookkeepingPostingRejection.sourceDocumentTypeNotAccepted(
-            BookkeepingEntryKind.CASH_EXPENSE,
+            JournalRecipeKind.CASH_EXPENSE.wireValue(),
             new SourceDocumentType("invoice"),
             List.of("expense-receipt", "cash-disbursement"));
 
@@ -131,5 +133,60 @@ class BookkeepingPostingRejectionTest {
         sourceDocumentTypeNotAccepted.message());
     assertNull(
         new BookkeepingPostingRejection.EntrySemanticsViolation("code", null, "message").field());
+  }
+
+  @Test
+  void entrySemanticsFactoriesSupportCanonicalEntryKindsAndReferencedAccountSets() {
+    BookkeepingPostingRejection.EntrySemanticsViolation accountTypeMismatch =
+        BookkeepingPostingRejection.accountTypeMismatch(
+            BookkeepingEntryKind.JOURNAL,
+            "cashAccountCode",
+            new AccountCode("2000"),
+            AccountType.ASSET,
+            AccountType.REVENUE);
+    BookkeepingPostingRejection.EntrySemanticsViolation classificationMismatch =
+        BookkeepingPostingRejection.financialPositionClassificationMismatch(
+            BookkeepingEntryKind.JOURNAL,
+            "equityAccountCode",
+            new AccountCode("3200"),
+            FinancialPositionLineClassification.EQUITY_WITHDRAWAL,
+            FinancialPositionLineClassification.OTHER_EQUITY);
+    BookkeepingPostingRejection.EntrySemanticsViolation sourceDocumentTypeNotAccepted =
+        BookkeepingPostingRejection.sourceDocumentTypeNotAccepted(
+            BookkeepingEntryKind.JOURNAL,
+            new SourceDocumentType("invoice"),
+            List.of("cash-receipt", "bank-deposit"));
+    BookkeepingPostingRejection.EntrySemanticsViolation distinctRoleAccountsRequired =
+        BookkeepingPostingRejection.distinctRoleAccountsRequired(
+            BookkeepingEntryKind.JOURNAL,
+            "cashAccountCode",
+            "revenueAccountCode",
+            new AccountCode("1000"));
+
+    assertEquals(
+        "Entry kind 'JOURNAL' requires cashAccountCode '2000' to be account type 'ASSET', but the declared account type is 'REVENUE'.",
+        accountTypeMismatch.message());
+    assertEquals(
+        "Entry kind 'JOURNAL' requires equityAccountCode '3200' to use financialPositionLineClassification 'EQUITY_WITHDRAWAL', but the declared account uses 'OTHER_EQUITY'.",
+        classificationMismatch.message());
+    assertEquals(
+        "Entry kind 'JOURNAL' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit.",
+        sourceDocumentTypeNotAccepted.message());
+    assertEquals(
+        "Entry kind 'JOURNAL' requires cashAccountCode and revenueAccountCode to reference distinct accounts, but both point to '1000'.",
+        distinctRoleAccountsRequired.message());
+    assertEquals(
+        List.of(new AccountCode("1000"), new AccountCode("2000")),
+        List.copyOf(
+            BookkeepingPostingRejection.referencedAccountSet(
+                new AccountCode("1000"), new AccountCode("2000"), new AccountCode("1000"))));
+
+    NullPointerException nullAccountCode =
+        assertThrows(
+            NullPointerException.class,
+            () ->
+                BookkeepingPostingRejection.referencedAccountSet(
+                    new AccountCode("1000"), nullOf(), new AccountCode("2000")));
+    assertEquals("accountCode", nullAccountCode.getMessage());
   }
 }

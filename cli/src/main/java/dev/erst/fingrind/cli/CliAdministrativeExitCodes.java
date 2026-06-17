@@ -68,6 +68,7 @@ final class CliAdministrativeExitCodes {
     return switch (rejection) {
       case BookMaintenanceRejection.BookHasBlockingArtifacts _ -> 7;
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts _ -> 7;
+      case BookMaintenanceRejection.ArtifactPathInvalid _ -> 6;
       case BookMaintenanceRejection.ArtifactBusy _ -> 7;
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ -> 7;
       case BookMaintenanceRejection.BackupKeyFileAlreadyExists _ -> 7;

@@ -12,6 +12,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.Objects;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for platform-specific encrypted-book file security branches. */
@@ -61,13 +62,11 @@ class SqliteBookFileSecurityTest {
               PosixFilePermission.OWNER_EXECUTE,
               PosixFilePermission.GROUP_READ,
               PosixFilePermission.GROUP_EXECUTE);
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains("must already use owner-only permissions"));
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
+          "must already use owner-only permissions",
+          () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
     }
   }
 
@@ -79,23 +78,19 @@ class SqliteBookFileSecurityTest {
       parentPath.exists = true;
       parentPath.regularFile = false;
       parentPath.posixPermissions = Set.of(PosixFilePermission.OWNER_READ);
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains("owner-writable and owner-searchable"));
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
+          "owner-writable and owner-searchable",
+          () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
 
       parentPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-      IllegalStateException missingExecuteException =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
-      assertTrue(
-          Objects.requireNonNull(missingExecuteException.getMessage())
-              .contains("owner-writable and owner-searchable"));
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
+          "owner-writable and owner-searchable",
+          () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
     }
   }
 
@@ -122,13 +117,11 @@ class SqliteBookFileSecurityTest {
                       .setPrincipal(fileSystem.group)
                       .setPermissions(AclEntryPermission.LIST_DIRECTORY)
                       .build()));
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains("must grant book-directory access only to the directory owner"));
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
+          "must grant book-directory access only to the directory owner",
+          () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
     }
   }
 
@@ -147,13 +140,11 @@ class SqliteBookFileSecurityTest {
                       .setPrincipal(fileSystem.owner)
                       .setPermissions(AclEntryPermission.LIST_DIRECTORY)
                       .build()));
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains("must grant the directory owner traversal and write access"));
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
+          "must grant the directory owner traversal and write access",
+          () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
     }
   }
 
@@ -221,34 +212,29 @@ class SqliteBookFileSecurityTest {
                           AclEntryPermission.ADD_FILE,
                           AclEntryPermission.EXECUTE)
                       .build()));
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
-      assertTrue(
-          Objects.requireNonNull(exception.getMessage())
-              .contains("must grant the directory owner traversal and write access"));
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
+          "must grant the directory owner traversal and write access",
+          () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
     }
   }
 
   @Test
   void unsupportedFilesystemBranchesRejectEncryptedBookStorage() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
       AclFixturePath bookPath = fileSystem.path("\\books\\unsupported.sqlite");
-      IllegalStateException ensureException =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
-      assertTrue(
-          Objects.requireNonNull(ensureException.getMessage())
-              .contains("supports POSIX owner-only permissions"));
-      IllegalStateException hardenException =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookFileSecurity.hardenBookArtifacts(bookPath));
-      assertTrue(
-          Objects.requireNonNull(hardenException.getMessage())
-              .contains("supports POSIX owner-only permissions"));
+      assertPathFailure(
+          parentPath,
+          SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+          "supports POSIX owner-only permissions",
+          () -> SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath));
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+          "supports POSIX owner-only permissions",
+          () -> SqliteBookFileSecurity.hardenBookArtifacts(bookPath));
     }
   }
 
@@ -274,12 +260,11 @@ class SqliteBookFileSecurityTest {
     Path parentFile = tempDirectory.resolve("parent-file");
     Files.writeString(parentFile, "not-a-directory");
     Path nestedBookPath = parentFile.resolve("book.sqlite");
-    IllegalArgumentException parentFileException =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> SqliteBookFileSecurity.hardenBookArtifacts(nestedBookPath));
-    assertTrue(
-        Objects.requireNonNull(parentFileException.getMessage()).contains("existing directory"));
+    assertPathFailure(
+        nestedBookPath,
+        SqliteCallerPathFailure.PARENT_PATH_COLLISION,
+        "requires one real parent directory",
+        () -> SqliteBookFileSecurity.hardenBookArtifacts(nestedBookPath));
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath bookPath = fileSystem.path("\\books\\acme.sqlite");
       bookPath.exists = true;
@@ -309,5 +294,17 @@ class SqliteBookFileSecurityTest {
   void hardenOwnerOnlyFile_ignoresMissingParentDirectories() {
     Path bookPath = tempDirectory.resolve("missing-parent-only-file").resolve("book.sqlite");
     assertDoesNotThrow(() -> SqliteBookFileSecurity.hardenOwnerOnlyFile(bookPath));
+  }
+
+  private static void assertPathFailure(
+      Path expectedPath,
+      SqliteCallerPathFailure expectedFailure,
+      String expectedMessageFragment,
+      Executable executable) {
+    SqliteCallerPathContractException exception =
+        assertThrows(SqliteCallerPathContractException.class, executable);
+    assertEquals(expectedPath, exception.requestedPath());
+    assertEquals(expectedFailure, exception.pathFailure());
+    assertTrue(NullTestSupport.messageOf(exception).contains(expectedMessageFragment));
   }
 }

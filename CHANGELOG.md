@@ -4,6 +4,22 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [0.56.0] - 2026-06-17
+
+### Changed
+
+- Bumped the repository-owned NullAway baseline to `0.13.7`.
+- Hard-broke the public bookkeeping write model onto one journal-first contract. `JOURNAL` is now the canonical caller-authored entry kind, direct balanced journals and recipe-backed cash and equity helpers both materialize through one `BookkeepingEntry.Journal` owner, `OPEN_ACCOUNTING_POSITION` remains the opening-only adoption path, and `REVERSAL_ADJUSTMENT` remains the contingent exact-negation cleanup path.
+- Hard-broke accounting reachability theory onto one executable doctrine owner. Discovery, request help, and bundled templates now publish the live per-classification matrix for declarable, opening-reachable, operational-journal-reachable, and reversal-reachable account cells, including the reserved `RESULT_HOLDING` treatment, instead of hand-maintained capability claims.
+- Hard-broke the remaining posting-request surface onto one canonical metadata owner. Entry-kind semantics, recipe semantics, accepted `sourceDocumentType` vocabularies, mandatory evidence facts, temporal-scope archetypes, and unsupported-field hints now derive from one request-surface contract, and caller-facing docs, errors, and discovery use the public `entryKind` vocabulary instead of leaking persisted posting internals.
+- Hard-broke ledger-plan setup onto one replay-safe bootstrap primitive. `execute-plan` now uses `ensure-book` instead of the older plan-local `open-book` step, reruns against a matching initialized book collapse to a no-op, and initialized-book identity conflicts fail through one deterministic typed plan-journal contract.
+- Refined the authored scaffolds and operator surfaces. `print-request-template` and `print-plan-template` now pretty-print by default, full text `execute-plan` results render typed outcome and failure sections instead of raw fact blobs, and comparative report publication now follows one explicit no-data policy across text, JSON, and CSV.
+
+### Fixed
+
+- Fixed contract drift across examples and verification tooling so the bundled quick-start sample, checked-in source-copy examples, Jazzer replay seeds, and release-smoke workflow fixtures all prove the live journal-first request grammar and `ensure-book` plan grammar instead of retired typed-entry or `open-book` plan shapes.
+- Fixed public documentation drift so the storefront README and user guides now distinguish the concrete bundled quick-start request from the placeholder-first scaffolds and describe the live journal-first bookkeeping surface, evidence-profile doctrine, and reachability facts coherently.
+
 ## [0.55.0] - 2026-06-16
 
 ### Changed
@@ -18,10 +34,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Fixed
 
-- Fixed published Windows bundle argument transport so the PowerShell bundle bridge, public
-  Windows launcher, and JVM boundary now share one staged UTF-8 argument-vector contract instead
-  of passing stress-path arguments natively. Unicode book and key paths therefore survive direct
-  Windows bundle use and the published Windows bundle smoke lane without character corruption.
+- Fixed published Windows bundle argument transport so the PowerShell bundle bridge, public Windows launcher, and JVM boundary now share one staged UTF-8 argument-vector contract instead of passing stress-path arguments natively. Unicode book and key paths therefore survive direct Windows bundle use and the published Windows bundle smoke lane without character corruption.
 - Fixed read-only SQLite contention under real bundled concurrency. Read-only query and report workflows now classify initialized-book readiness from one lock-light structural contract instead of rerunning the full integrity audit on every command, while explicit inspection keeps the deeper audited path; concurrent bundled list and trial-balance bursts therefore stop surfacing spurious `storage-runtime-failure` responses from transient `SQLITE_IOERR_LOCK` failures.
 - Fixed contract-level amount validation drift so published money values now reject signed and decimal `minorUnits` deterministically at the boundary, and the checked-in Jazzer regression seeds follow that exact unsigned-integer doctrine.
 - Fixed Docker rebuild durability and rerun hygiene so the container builder now stages the toolchain pieces that `jlink --strip-debug` requires, Python helper-tool freshness is covered by dependency automation, wrapper validation obeys workflow concurrency rules, and release-tag verification distinguishes first publication from immutable-tag reruns.
@@ -78,34 +91,11 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Fixed
 
-- Fixed same-target Linux Docker publication so the Docker build context now stages its own
-  Alpine-linked managed SQLite library instead of reusing the host-managed build, and normal
-  SQLite verification no longer rewrites the committed protected-book compatibility fixtures
-  during every gate run. The long-running Jazzer pruning regressions now emit progress under
-  slower CI runners instead of tripping the release-surface stall watchdog.
-- Fixed operator guidance drift so text help, machine help, discovery ladders, bundle quick-start
-  content, Docker/source-checkout hints, and example documents all describe the same live command
-  surface instead of overlapping older flows.
-- Fixed public distribution proof so bundle verification, module-identity checks, Linux container
-  publication, checksum and attestation guidance, and launcher/runtime contract tests all prove
-  the same packaged surface instead of parallel partial stories.
-- Fixed SQLite runtime and lifecycle failure paths so managed-runtime inspection, failed-open
-  native cleanup, protected-book security preconditions, passphrase-source reading, and
-  source-checkout runtime verification now share deterministic contract-owned failure shapes.
-- Fixed draft-first release replay, staged-asset attestation, helper-root handoff, pinned JaCoCo
-  snapshot verification, Windows publication-lane ownership, and long-running Jazzer release-gate
-  keepalive behavior so post-tag repairs no longer rediscover the `0.51.0` release-control
-  defects one at a time. The aggregate release `Gate` contract now blocks only on the Linux-owned
-  public publication proof surfaces; the Windows non-public bundle smoke lane remains visible as
-  observational coverage without owning release promotion. Jazzer replay and finding-list wrappers
-  now pin repo-verification lock ownership to the wrapper process, so fast-fail and JSON tool
-  paths do not strand stale lock owners during release-surface verification, and the replay-wrapper
-  regression now verifies that wrapper probes return the repo lock to its inherited baseline state
-  when the full repository gate owns the parent verification lock. Jazzer white-box patch staging
-  now depends explicitly on the `executor` and `sqlite` fixture archive producers before those
-  archives are expanded, which closes the hosted release-gate race on cold caches. Release-surface
-  shell verifiers also no longer assume Bash 4-only `mapfile`, which keeps the protocol runnable on the
-  repository's macOS Bash baseline.
+- Fixed same-target Linux Docker publication so the Docker build context now stages its own Alpine-linked managed SQLite library instead of reusing the host-managed build, and normal SQLite verification no longer rewrites the committed protected-book compatibility fixtures during every gate run. The long-running Jazzer pruning regressions now emit progress under slower CI runners instead of tripping the release-surface stall watchdog.
+- Fixed operator guidance drift so text help, machine help, discovery ladders, bundle quick-start content, Docker/source-checkout hints, and example documents all describe the same live command surface instead of overlapping older flows.
+- Fixed public distribution proof so bundle verification, module-identity checks, Linux container publication, checksum and attestation guidance, and launcher/runtime contract tests all prove the same packaged surface instead of parallel partial stories.
+- Fixed SQLite runtime and lifecycle failure paths so managed-runtime inspection, failed-open native cleanup, protected-book security preconditions, passphrase-source reading, and source-checkout runtime verification now share deterministic contract-owned failure shapes.
+- Fixed draft-first release replay, staged-asset attestation, helper-root handoff, pinned JaCoCo snapshot verification, Windows publication-lane ownership, and long-running Jazzer release-gate keepalive behavior so post-tag repairs no longer rediscover the `0.51.0` release-control defects one at a time. The aggregate release `Gate` contract now blocks only on the Linux-owned public publication proof surfaces; the Windows non-public bundle smoke lane remains visible as observational coverage without owning release promotion. Jazzer replay and finding-list wrappers now pin repo-verification lock ownership to the wrapper process, so fast-fail and JSON tool paths do not strand stale lock owners during release-surface verification, and the replay-wrapper regression now verifies that wrapper probes return the repo lock to its inherited baseline state when the full repository gate owns the parent verification lock. Jazzer white-box patch staging now depends explicitly on the `executor` and `sqlite` fixture archive producers before those archives are expanded, which closes the hosted release-gate race on cold caches. Release-surface shell verifiers also no longer assume Bash 4-only `mapfile`, which keeps the protocol runnable on the repository's macOS Bash baseline.
 
 ## [0.51.0] - 2026-06-03
 
@@ -2788,7 +2778,7 @@ Notable changes to this project are documented in this file. The format is based
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.55.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.56.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
 [0.54.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.54.0
 [0.53.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.53.0
@@ -2844,4 +2834,5 @@ Notable changes to this project are documented in this file. The format is based
 [0.3.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.0
 [0.2.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.2.0
 [0.1.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.1.0
+[0.56.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.56.0
 [0.55.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.55.0

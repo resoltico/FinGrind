@@ -15,7 +15,7 @@ class CliCommandFamiliesTest {
       new BookAccess(Path.of("book.db"), BookAccess.PassphraseSource.StandardInput.INSTANCE);
 
   @Test
-  void commandFamilies_preserveTypedStateAndFailureOutputContracts() {
+  void commandFamilies_preserveTypedStateAcrossSharedCommandShapes() {
     Path requestFile = Path.of("request.json");
     OutputMode outputMode = OutputMode.CSV;
     CliCommand.ReportOutput reportOutput =
@@ -69,21 +69,17 @@ class CliCommandFamiliesTest {
     assertSame(BOOK_ACCESS, requestCommand.bookAccess());
     assertSame(requestFile, requestCommand.requestFile());
     assertSame(outputMode, requestCommand.outputMode());
-    assertSame(outputMode, requestCommand.failureOutputMode());
 
     assertSame(BOOK_ACCESS, queryCommand.bookAccess());
     assertEquals("query", queryCommand.query());
     assertSame(outputMode, queryCommand.outputMode());
-    assertSame(outputMode, queryCommand.failureOutputMode());
 
     assertSame(BOOK_ACCESS, reportCommand.bookAccess());
     assertEquals("report-query", reportCommand.query());
     assertSame(reportOutput, reportCommand.output());
-    assertSame(reportOutput.outputMode(), reportCommand.failureOutputMode());
 
     assertSame(BOOK_ACCESS, nullablePathCommand.bookAccess());
     assertEquals(Path.of("rollback.zip"), nullablePathCommand.rollbackArtifactPath());
     assertSame(outputMode, nullablePathCommand.outputMode());
-    assertSame(outputMode, nullablePathCommand.failureOutputMode());
   }
 }

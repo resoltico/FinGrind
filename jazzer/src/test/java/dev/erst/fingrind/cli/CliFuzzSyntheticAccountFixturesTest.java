@@ -41,7 +41,7 @@ class CliFuzzSyntheticAccountFixturesTest {
     PostEntryCommand cashExpenseCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             cashRevenueCommand,
-            new BookkeepingEntry.CashExpense(
+            BookkeepingEntry.cashExpense(
                 LocalDate.parse("2026-04-09"),
                 new AccountCode("6100"),
                 new AccountCode("1100"),
@@ -49,7 +49,7 @@ class CliFuzzSyntheticAccountFixturesTest {
     PostEntryCommand equityContributionCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             cashRevenueCommand,
-            new BookkeepingEntry.EquityContribution(
+            BookkeepingEntry.equityContribution(
                 LocalDate.parse("2026-04-10"),
                 new AccountCode("1100"),
                 new AccountCode("3100"),
@@ -57,7 +57,7 @@ class CliFuzzSyntheticAccountFixturesTest {
     PostEntryCommand equityWithdrawalCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             cashRevenueCommand,
-            new BookkeepingEntry.EquityWithdrawal(
+            BookkeepingEntry.equityWithdrawal(
                 LocalDate.parse("2026-04-11"),
                 new AccountCode("3100"),
                 new AccountCode("1100"),
@@ -123,6 +123,24 @@ class CliFuzzSyntheticAccountFixturesTest {
                 CliFuzzSyntheticAccountFixtureSupport.financialPositionTaxonomy(
                     FinancialPositionLineClassification.CURRENT_ASSET))),
         CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(equityWithdrawalCommand));
+  }
+
+  @Test
+  void typed_entry_account_declarations_collapse_sameAccount_role_collisions() {
+    PostEntryCommand sameAccountCashRevenueCommand =
+        CliFuzzFixtures.readPostEntryCommand(
+            CliFuzzRequestSeedSupport.sameAccountCashRevenueRequestBytes());
+
+    assertEquals(
+        List.of(
+            CliFuzzSyntheticAccountFixtureSupport.declaredAccountCommand(
+                "1000",
+                AccountType.ASSET,
+                AccountRole.ORDINARY,
+                CliFuzzSyntheticAccountFixtureSupport.financialPositionTaxonomy(
+                    FinancialPositionLineClassification.CURRENT_ASSET))),
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(
+            sameAccountCashRevenueCommand));
   }
 
   @Test
@@ -221,6 +239,47 @@ class CliFuzzSyntheticAccountFixturesTest {
         List.of("1000", "2000"),
         CliFuzzSyntheticAccountFixtureSupport.accountCodes(
             CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(reversalCommand)));
+  }
+
+  @Test
+  void direct_journal_account_declarations_follow_synthetic_line_semantics() {
+    PostEntryCommand templateCommand =
+        CliFuzzFixtures.readPostEntryCommand(
+            CliFuzzFixtureCommandSupport.basicValidRequest().getBytes(UTF_8));
+    String hashedFallbackCode =
+        CliFuzzSyntheticAccountFixtureSupport.hashedFallbackCodeForBucket(1);
+    PostEntryCommand directJournalCommand =
+        CliFuzzFixtureCommandSupport.withEntry(
+            templateCommand,
+            new BookkeepingEntry.Journal(
+                new dev.erst.fingrind.core.JournalEntry(
+                    LocalDate.parse("2026-04-14"),
+                    List.of(
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            dev.erst.fingrind.core.Money.parse("EUR", "10.00")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode(hashedFallbackCode),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            dev.erst.fingrind.core.Money.parse("EUR", "10.00")))),
+                null));
+
+    Map<String, AccountType> directJournalAccountTypes =
+        CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(directJournalCommand).stream()
+            .collect(
+                java.util.stream.Collectors.toMap(
+                    declareAccountCommand -> declareAccountCommand.accountCode().value(),
+                    DeclareAccountCommand::accountType));
+
+    assertEquals(
+        List.of("1000", hashedFallbackCode),
+        CliFuzzSyntheticAccountFixtureSupport.accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(directJournalCommand)));
+    assertEquals(AccountType.ASSET, directJournalAccountTypes.get("1000"));
+    assertEquals(
+        CliFuzzSyntheticAccountFixtureSupport.expectedSyntheticAccountType(hashedFallbackCode),
+        directJournalAccountTypes.get(hashedFallbackCode));
   }
 
   @Test

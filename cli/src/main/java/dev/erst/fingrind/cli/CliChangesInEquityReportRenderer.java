@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,8 +45,14 @@ final class CliChangesInEquityReportRenderer {
 
   private static List<List<String>> summaryRows(ChangesInEquityReport report, boolean hasCurrent) {
     List<List<String>> rows = new ArrayList<>();
-    rows.add(List.of("Effective date from", report.effectiveDateFrom().toString()));
-    rows.add(List.of("Effective date to", report.effectiveDateTo().toString()));
+    rows.add(
+        List.of(
+            CliTemporalScopeText.lowerLabel(OperationId.CHANGES_IN_EQUITY),
+            report.effectiveDateFrom().toString()));
+    rows.add(
+        List.of(
+            CliTemporalScopeText.upperLabel(OperationId.CHANGES_IN_EQUITY),
+            report.effectiveDateTo().toString()));
     if (!report.openingTotals().isEmpty()) {
       rows.add(
           List.of(
@@ -98,7 +105,7 @@ final class CliChangesInEquityReportRenderer {
                 report.comparativeEffectiveDateRange())));
     rows.add(
         List.of(
-            "Effective date from",
+            CliTemporalScopeText.lowerLabel(OperationId.CHANGES_IN_EQUITY),
             report
                 .comparativeEffectiveDateRange()
                 .effectiveDateFrom()
@@ -106,7 +113,7 @@ final class CliChangesInEquityReportRenderer {
                 .orElse(report.effectiveDateFrom().toString())));
     rows.add(
         List.of(
-            "Effective date to",
+            CliTemporalScopeText.upperLabel(OperationId.CHANGES_IN_EQUITY),
             report
                 .comparativeEffectiveDateRange()
                 .effectiveDateTo()
@@ -129,6 +136,9 @@ final class CliChangesInEquityReportRenderer {
           List.of(
               "Comparative closing totals",
               CliReportRenderSupport.joinedBalancesText(report.comparativeClosingTotals())));
+    }
+    if (!CliReportSurfacePolicy.hasComparativeData(report)) {
+      rows.add(List.of("Outcome", CliQueryScopeText.noMatchesLabel("equity lines")));
     }
     return List.copyOf(rows);
   }

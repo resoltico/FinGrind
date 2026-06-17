@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
@@ -87,27 +86,25 @@ class CliFailureMapperTest {
 
   @Test
   void internalError_mapsToOpaquePublishedFailure() {
-    CliFailure failure = CliFailureMapper.internalError("fg-internal-123", OutputMode.TEXT);
+    CliFailure failure = CliFailureMapper.internalError("fg-internal-123");
 
     assertEquals("internal-error", failure.code());
     assertTrue(failure.message().contains("fg-internal-123"));
     assertNotNull(failure.hint());
-    assertTrue(failure.hint().contains("diagnostic stream"));
+    assertTrue(failure.hint().contains("omitted raw stack traces"));
   }
 
   @Test
   void internalError_rejectsBlankErrorIds() {
     IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> CliFailureMapper.internalError("  ", OutputMode.JSON));
+        assertThrows(IllegalArgumentException.class, () -> CliFailureMapper.internalError("  "));
 
     assertEquals("errorId must not be blank.", exception.getMessage());
   }
 
   @Test
   void internalError_machineModesPreserveParseableDiagnosticsStream() {
-    CliFailure failure = CliFailureMapper.internalError("fg-internal-123", OutputMode.JSON);
+    CliFailure failure = CliFailureMapper.internalError("fg-internal-123");
 
     assertEquals("internal-error", failure.code());
     assertNotNull(failure.hint());

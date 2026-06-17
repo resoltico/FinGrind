@@ -42,16 +42,16 @@ class BookWorkflowPlanTest {
   }
 
   @Test
-  void bookWorkflowPlan_reportsWhetherTheFirstStepOpensTheBook() {
+  void bookWorkflowPlan_reportsWhetherTheFirstStepEnsuresTheBook() {
     BookWorkflowPlan openBookPlan =
         new BookWorkflowPlan(
             planId("plan-1"),
-            List.of(new BookWorkflowStep.OpenBook(stepId("open"), bookIdentity())));
+            List.of(new BookWorkflowStep.EnsureBook(stepId("open"), bookIdentity())));
     BookWorkflowPlan inspectionPlan =
         new BookWorkflowPlan(
             planId("plan-2"), List.of(new BookWorkflowStep.InspectBook(stepId("inspect"))));
-    assertTrue(openBookPlan.beginsWithOpenBook());
-    assertFalse(inspectionPlan.beginsWithOpenBook());
+    assertTrue(openBookPlan.beginsWithEnsureBook());
+    assertFalse(inspectionPlan.beginsWithEnsureBook());
   }
 
   @Test

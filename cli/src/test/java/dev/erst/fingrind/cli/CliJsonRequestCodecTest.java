@@ -238,11 +238,23 @@ class CliJsonRequestCodecTest {
           CliJsonRequestHints.postEntryRequestHint()
               .contains(bundleLauncher + " print-request-template"));
       assertTrue(
+          CliJsonRequestHints.postEntryRequestHint()
+              .contains(bundleLauncher + " help post-entry --output json --detail full"));
+      assertFalse(CliJsonRequestHints.postEntryRequestHint().contains("request-input"));
+      assertTrue(
           CliJsonRequestHints.ledgerPlanRequestHint()
               .contains(bundleLauncher + " print-plan-template"));
       assertTrue(
+          CliJsonRequestHints.ledgerPlanRequestHint()
+              .contains(bundleLauncher + " help execute-plan --output json --detail full"));
+      assertFalse(CliJsonRequestHints.ledgerPlanRequestHint().contains("request-input"));
+      assertTrue(
           CliJsonRequestHints.declareAccountRequestHint()
-              .contains(bundleLauncher + " capabilities"));
+              .contains(bundleLauncher + " print-request-template declare-account"));
+      assertTrue(
+          CliJsonRequestHints.declareAccountRequestHint()
+              .contains(bundleLauncher + " help declare-account --output json --detail full"));
+      assertFalse(CliJsonRequestHints.declareAccountRequestHint().contains("request-input"));
     } finally {
       if ("__missing__".equals(priorDistribution)) {
         System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);

@@ -336,10 +336,10 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new BookkeepingPostingRejection.TransferredPeriodResultViolation(
                 LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"))));
     assertEquals(
-        new PostingRejection.OpeningBalanceWindowClosed(
+        new PostingRejection.OpenAccountingPositionWindowClosed(
             dev.erst.fingrind.core.PostingKind.STANDARD, LocalDate.parse("2026-04-07")),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingPostingRejection.OpeningBalanceWindowClosed(
+            new BookkeepingPostingRejection.OpenAccountingPositionWindowClosed(
                 dev.erst.fingrind.core.PostingKind.STANDARD, LocalDate.parse("2026-04-07"))));
     assertEquals(
         new PostingRejection.BookFunctionalCurrencyMismatch(
@@ -350,10 +350,10 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 dev.erst.fingrind.core.CurrencyUnit.of("USD"),
                 dev.erst.fingrind.core.CurrencyUnit.of("EUR"))));
     assertEquals(
-        new PostingRejection.OpeningBalanceTouchesNominalAccount(
+        new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
             new AccountCode("4000"), AccountType.REVENUE),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+            new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
                 new AccountCode("4000"), AccountType.REVENUE)));
     assertEquals(
         new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3200")),

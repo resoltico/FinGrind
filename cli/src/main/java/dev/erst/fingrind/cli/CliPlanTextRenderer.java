@@ -1,11 +1,12 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
-import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +28,7 @@ final class CliPlanTextRenderer {
     summaryRows.add(List.of("Finished at", CliTextDisplay.instant(journal.finishedAt())));
     summaryRows.add(List.of("Step count", Integer.toString(journal.steps().size())));
     summaryRows.add(List.of("Terminal step", displayStepKind(journal.terminalStep())));
-    if (journal.status() != dev.erst.fingrind.contract.workflow.LedgerPlanStatus.SUCCEEDED) {
+    if (journal.status() != LedgerPlanStatus.SUCCEEDED) {
       LedgerJournalEntry.Failed failedStep = journal.requiredFailedStep();
       LedgerStepFailure failure = failedStep.requiredFailure();
       summaryRows.add(List.of("Failed step id", failedStep.stepId().value()));
@@ -66,54 +67,43 @@ final class CliPlanTextRenderer {
     detailRows.add(List.of("Step id", step.stepId().value()));
     detailRows.add(List.of("Started at", CliTextDisplay.instant(step.startedAt())));
     detailRows.add(List.of("Finished at", CliTextDisplay.instant(step.finishedAt())));
-    if (!step.facts().isEmpty()) {
-      detailRows.add(List.of("Facts", renderFacts(step.facts())));
+    CliPlanJsonModels.LedgerStepDataPayload dataPayload =
+        CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(step);
+    if (dataPayload != null) {
+      detailRows.add(List.of("Outcome shape", dataPayload.getClass().getSimpleName()));
+    }
+    List<String> sections = new ArrayList<>();
+    sections.add(CliTextFormat.renderKeyValueBlock(detailRows));
+    if (dataPayload != null) {
+      sections.add(
+          CliReportRenderSupport.section(
+              "Outcome", CliPlanDetailTextRenderer.renderStepData(dataPayload)));
     }
     step.optionalFailure()
         .ifPresent(
-            failure -> {
-              detailRows.add(List.of("Failure code", failure.code()));
-              detailRows.add(List.of("Failure message", failure.message()));
-              if (!failure.facts().isEmpty()) {
-                detailRows.add(List.of("Failure facts", renderFacts(failure.facts())));
-              }
-            });
-    return CliTextFormat.renderSummaryBlock(heading, CliTextFormat.renderKeyValueBlock(detailRows));
+            failure ->
+                sections.add(
+                    CliReportRenderSupport.section(
+                        "Failure", CliPlanDetailTextRenderer.renderFailure(failure))));
+    return CliTextFormat.renderSummaryBlock(
+        heading, CliReportRenderSupport.joinSections(sections.toArray(String[]::new)));
   }
 
   private static String displayStepKind(LedgerJournalEntry step) {
     String base =
         step.kind() == dev.erst.fingrind.contract.workflow.LedgerJournalKind.PLAN_BOUNDARY
             ? "Plan Boundary"
-            : CliTextDisplay.wireLabel(step.kind().wireValue());
+            : CliPlanDetailTextRenderer.displayLabel(step.kind().wireValue());
     if (step.detailKind() != null) {
-      return base + " (" + CliTextDisplay.wireLabel(step.detailKind().wireValue()) + ")";
+      return base
+          + " ("
+          + CliPlanDetailTextRenderer.displayLabel(step.detailKind().wireValue())
+          + ")";
     }
     LedgerBoundaryPhase boundaryPhase = step.boundaryPhase();
     if (boundaryPhase != null) {
-      return base + " (" + CliTextDisplay.wireLabel(boundaryPhase.wireValue()) + ")";
+      return base + " (" + CliPlanDetailTextRenderer.displayLabel(boundaryPhase.wireValue()) + ")";
     }
     return base;
-  }
-
-  private static String renderFacts(List<LedgerFact> facts) {
-    return facts.stream()
-        .map(CliPlanTextRenderer::renderFact)
-        .collect(java.util.stream.Collectors.joining(", "));
-  }
-
-  private static String renderFact(LedgerFact fact) {
-    return switch (Objects.requireNonNull(fact, "fact")) {
-      case LedgerFact.Text text -> text.name() + "=" + text.value();
-      case LedgerFact.Flag flag -> flag.name() + "=" + flag.value();
-      case LedgerFact.Count count -> count.name() + "=" + count.value();
-      case LedgerFact.Money money ->
-          money.name()
-              + "="
-              + money.value().canonicalDecimal()
-              + " "
-              + money.value().currencyCode();
-      case LedgerFact.Group group -> group.name() + "={" + renderFacts(group.facts()) + "}";
-    };
   }
 }

@@ -98,27 +98,32 @@ final class ProtectedBookMaintenanceWorkflowSupport {
       ProtectedBookAccess bookAccess,
       ProtectedBookMaintenanceArtifactRole artifactRole,
       Function<ProtectedBookMaintenanceStore.VerifiedBook, MaintenanceDecision<T>> verifiedAction,
-      Function<ProtectedBookMaintenanceRejection.ArtifactVerificationFailed, T> rejectedOutcome) {
+      Function<ProtectedBookMaintenanceRejection, T> rejectedOutcome) {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(artifactRole, "artifactRole");
     Objects.requireNonNull(verifiedAction, "verifiedAction");
     Objects.requireNonNull(rejectedOutcome, "rejectedOutcome");
-    return store
-        .verifyInitializedBook(bookAccess)
-        .fold(
-            verification -> {
-              if (verification
-                  instanceof
-                  ProtectedBookMaintenanceStore.VerificationFailure verificationFailure) {
-                return MaintenanceDecision.accepted(
-                    rejectedOutcome.apply(verificationFailed(artifactRole, verificationFailure)));
-              }
-              try (ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
-                  (ProtectedBookMaintenanceStore.VerifiedBook) verification) {
-                return verifiedAction.apply(verifiedBook);
-              }
-            },
-            MaintenanceDecision::failed);
+    try {
+      return store
+          .verifyInitializedBook(bookAccess, artifactRole)
+          .fold(
+              verification -> {
+                if (verification
+                    instanceof
+                    ProtectedBookMaintenanceStore.VerificationFailure verificationFailure) {
+                  return MaintenanceDecision.accepted(
+                      rejectedOutcome.apply(verificationFailed(artifactRole, verificationFailure)));
+                }
+                try (ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
+                    (ProtectedBookMaintenanceStore.VerifiedBook) verification) {
+                  return verifiedAction.apply(verifiedBook);
+                }
+              },
+              MaintenanceDecision::failed);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          rejectedOutcome.apply(pathInvalid(exception.rejection())));
+    }
   }
 
   <T> MaintenanceDecision<T> restoreVerifiedSourceArtifact(
@@ -134,55 +139,60 @@ final class ProtectedBookMaintenanceWorkflowSupport {
     Objects.requireNonNull(auditKind, "auditKind");
     Objects.requireNonNull(rejectedOutcome, "rejectedOutcome");
     Objects.requireNonNull(restoredOutcome, "restoredOutcome");
-    ProtectedBookMaintenanceStore.LeaseAcquisition liveBookLeaseAcquisition =
-        store.acquireManagedArtifactLease(normalizedBookPath);
-    if (liveBookLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
-      return MaintenanceDecision.accepted(
-          rejectedOutcome.apply(
-              busyArtifact(
-                  ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, leaseBusy.artifactPath())));
-    }
-    ProtectedBookMaintenanceStore.LeaseAcquisition sourceLeaseAcquisition =
-        store.acquireExistingArtifactLease(verifiedSourceBook.artifactPath());
-    if (sourceLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
-      try (ProtectedBookMaintenanceStore.HeldLease ignored =
-          (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition) {
+    try {
+      ProtectedBookMaintenanceStore.LeaseAcquisition liveBookLeaseAcquisition =
+          store.acquireManagedArtifactLease(
+              normalizedBookPath, ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
+      if (liveBookLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
         return MaintenanceDecision.accepted(
-            rejectedOutcome.apply(busyArtifact(sourceArtifactRole, leaseBusy.artifactPath())));
+            rejectedOutcome.apply(
+                busyArtifact(
+                    ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, leaseBusy.artifactPath())));
       }
-    }
-    try (ProtectedBookMaintenanceStore.HeldLease ignoredLiveBook =
-            (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition;
-        ProtectedBookMaintenanceStore.HeldLease ignoredSourceArtifact =
-            (ProtectedBookMaintenanceStore.HeldLease) sourceLeaseAcquisition;
-        StagedBookReplacement stagedReplacement =
-            store.stageReplacement(verifiedSourceBook.artifactPath(), normalizedBookPath)) {
-      return store
-          .verifyInitializedReplica(stagedReplacement.stagedBookPath(), verifiedSourceBook)
-          .fold(
-              verification -> {
-                if (verification
-                    instanceof
-                    ProtectedBookMaintenanceStore.VerificationFailure verificationFailure) {
-                  return MaintenanceDecision.accepted(
-                      rejectedOutcome.apply(
-                          verificationFailed(
-                              ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
-                              verificationFailure)));
-                }
-                try (ProtectedBookMaintenanceStore.VerifiedBook verifiedStagedBook =
-                    (ProtectedBookMaintenanceStore.VerifiedBook) verification) {
-                  return store
-                      .appendMaintenanceAudit(verifiedStagedBook, recordedAt(), auditKind)
-                      .fold(
-                          ignoredAudit -> {
-                            stagedReplacement.commit();
-                            return MaintenanceDecision.accepted(restoredOutcome.get());
-                          },
-                          MaintenanceDecision::failed);
-                }
-              },
-              MaintenanceDecision::failed);
+      ProtectedBookMaintenanceStore.LeaseAcquisition sourceLeaseAcquisition =
+          store.acquireExistingArtifactLease(verifiedSourceBook.artifactPath(), sourceArtifactRole);
+      if (sourceLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
+        try (ProtectedBookMaintenanceStore.HeldLease ignored =
+            (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition) {
+          return MaintenanceDecision.accepted(
+              rejectedOutcome.apply(busyArtifact(sourceArtifactRole, leaseBusy.artifactPath())));
+        }
+      }
+      try (ProtectedBookMaintenanceStore.HeldLease ignoredLiveBook =
+              (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition;
+          ProtectedBookMaintenanceStore.HeldLease ignoredSourceArtifact =
+              (ProtectedBookMaintenanceStore.HeldLease) sourceLeaseAcquisition;
+          StagedBookReplacement stagedReplacement =
+              store.stageReplacement(verifiedSourceBook.artifactPath(), normalizedBookPath)) {
+        return store
+            .verifyInitializedReplica(stagedReplacement.stagedBookPath(), verifiedSourceBook)
+            .fold(
+                verification -> {
+                  if (verification
+                      instanceof
+                      ProtectedBookMaintenanceStore.VerificationFailure verificationFailure) {
+                    return MaintenanceDecision.accepted(
+                        rejectedOutcome.apply(
+                            verificationFailed(
+                                ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+                                verificationFailure)));
+                  }
+                  try (ProtectedBookMaintenanceStore.VerifiedBook verifiedStagedBook =
+                      (ProtectedBookMaintenanceStore.VerifiedBook) verification) {
+                    return store
+                        .appendMaintenanceAudit(verifiedStagedBook, recordedAt(), auditKind)
+                        .fold(
+                            ignoredAudit -> {
+                              stagedReplacement.commit();
+                              return MaintenanceDecision.accepted(restoredOutcome.get());
+                            },
+                            MaintenanceDecision::failed);
+                  }
+                },
+                MaintenanceDecision::failed);
+      }
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(rejectedOutcome.apply(exception.rejection()));
     }
   }
 
@@ -214,5 +224,14 @@ final class ProtectedBookMaintenanceWorkflowSupport {
     ProtectedBookMaintenanceRejection rejection() {
       return rejection;
     }
+  }
+
+  private static ProtectedBookMaintenanceRejection.ArtifactPathInvalid pathInvalid(
+      ProtectedBookMaintenanceRejection rejection) {
+    if (rejection instanceof ProtectedBookMaintenanceRejection.ArtifactPathInvalid pathInvalid) {
+      return pathInvalid;
+    }
+    throw new IllegalArgumentException(
+        "Expected one maintenance artifact-path rejection, but received: " + rejection);
   }
 }

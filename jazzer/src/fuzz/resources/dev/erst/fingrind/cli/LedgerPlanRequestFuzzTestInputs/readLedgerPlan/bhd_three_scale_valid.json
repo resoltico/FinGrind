@@ -3,8 +3,8 @@
   "steps": [
     {
       "stepId": "open-bhd",
-      "kind": "open-book",
-      "openBook": {
+      "kind": "ensure-book",
+      "ensureBook": {
         "entityName": "Plan Seed BHD",
         "functionalCurrency": "BHD",
         "fiscalYearStart": "01-01"
@@ -40,7 +40,8 @@
       "stepId": "post-bhd",
       "kind": "post-entry",
       "posting": {
-        "entryKind": "CASH_REVENUE",
+        "entryKind": "JOURNAL",
+        "recipeKind": "CASH_REVENUE",
         "effectiveDate": "2026-06-17",
         "cashAccountCode": "7120",
         "revenueAccountCode": "8120",

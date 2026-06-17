@@ -19,8 +19,9 @@ public enum PostingLifecycleStatus implements WireValue {
   DUPLICATE_IDEMPOTENCY_KEY("duplicate-idempotency-key"),
   BOOK_FUNCTIONAL_CURRENCY_MISMATCH("book-functional-currency-mismatch"),
   CLOSED_PERIOD_VIOLATION("closed-period-violation"),
-  OPENING_BALANCE_WINDOW_CLOSED("opening-balance-window-closed"),
-  OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT("opening-balance-touches-nominal-account"),
+  OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED("open-accounting-position-window-closed"),
+  OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT(
+      "open-accounting-position-touches-nominal-account"),
   RESULT_HOLDING_ACCOUNT_RESERVED("result-holding-account-reserved"),
   REVERSAL_TARGET_NOT_FOUND("reversal-target-not-found"),
   REVERSAL_ALREADY_EXISTS("reversal-already-exists"),

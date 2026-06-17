@@ -24,8 +24,8 @@ class BundleLayoutContractsTest {
     assertEquals(EnumSet.allOf(PublicCliBundleTarget.class), current.bundleTargets().keySet());
     assertEquals(
         EnumSet.allOf(PublicCliBundleTarget.class),
-        ProtocolCatalogFacts.bundlePublicationContract().bundleTargets().keySet());
-    assertEquals(current, ProtocolCatalogFacts.bundleLayoutContract());
+        ProtocolCatalogFacts.BUNDLE_PUBLICATION_CONTRACT.bundleTargets().keySet());
+    assertEquals(current, ProtocolCatalogFacts.BUNDLE_LAYOUT_CONTRACT);
     assertEquals(
         "zip", current.bundleTarget(PublicCliBundleTarget.WINDOWS_AARCH64).archiveFormat());
     assertEquals(

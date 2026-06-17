@@ -14,7 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 /** One executable step inside an AI-agent-authored ledger plan. */
 public sealed interface LedgerStep
-    permits LedgerStep.OpenBook,
+    permits LedgerStep.EnsureBook,
         LedgerStep.DeclareAccount,
         LedgerStep.PreflightEntry,
         LedgerStep.PostEntry,
@@ -48,17 +48,17 @@ public sealed interface LedgerStep
     Objects.requireNonNull(stepId, "stepId");
   }
 
-  /** Initializes the selected book inside the plan transaction. */
-  record OpenBook(LedgerStepId stepId, OpenBookCommand command) implements LedgerStep {
+  /** Ensures the selected book is initialized inside the plan transaction. */
+  record EnsureBook(LedgerStepId stepId, OpenBookCommand command) implements LedgerStep {
     /** Validates the step. */
-    public OpenBook {
+    public EnsureBook {
       requireStepId(stepId);
       Objects.requireNonNull(command, "command");
     }
 
     @Override
     public LedgerStepKind kind() {
-      return LedgerStepKind.OPEN_BOOK;
+      return LedgerStepKind.ENSURE_BOOK;
     }
   }
 

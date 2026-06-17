@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
@@ -159,6 +160,55 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
             BookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
     assertEquals(BookMaintenanceArtifactRole.LIVE_BOOK, failure.artifactRole());
     assertEquals(BookMaintenanceVerificationFailure.MISSING, failure.verificationFailure());
+  }
+
+  @Test
+  void backupBook_rejectsOneBackupTargetWhoseParentPathCollidesWithExistingFile() throws Exception {
+    Path bookPath = tempDirectory.resolve("books").resolve("path-collision.sqlite");
+    BookAccess liveBookAccess = bookAccess(bookPath);
+    initializeBook(liveBookAccess);
+    Path blockingParent = tempDirectory.resolve("backup-blocker");
+    Files.writeString(blockingParent, "not-a-directory", StandardCharsets.UTF_8);
+    Path backupFilePath = blockingParent.resolve("entity.sqlite");
+    Path backupBookKeyFilePath = tempDirectory.resolve("backup").resolve("entity.key");
+
+    BackupBookResult.Rejected rejected =
+        assertInstanceOf(
+            BackupBookResult.Rejected.class,
+            maintenanceService()
+                .backupBook(liveBookAccess, backupFilePath, backupBookKeyFilePath)
+                .requireAccepted());
+
+    BookMaintenanceRejection.ArtifactPathInvalid failure =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactPathInvalid.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.BACKUP_TARGET, failure.artifactRole());
+    assertEquals(hint(backupFilePath), failure.artifactPath());
+    assertEquals(BookMaintenancePathFailure.PARENT_PATH_COLLISION, failure.pathFailure());
+  }
+
+  @Test
+  void backupBook_rejectsOneBackupKeyTargetWhoseParentPathCollidesWithExistingFile()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("books").resolve("key-target-collision.sqlite");
+    BookAccess liveBookAccess = bookAccess(bookPath);
+    initializeBook(liveBookAccess);
+    Path backupFilePath = tempDirectory.resolve("backup").resolve("entity.sqlite");
+    Path blockingParent = tempDirectory.resolve("backup-key-blocker");
+    Files.writeString(blockingParent, "not-a-directory", StandardCharsets.UTF_8);
+    Path backupBookKeyFilePath = blockingParent.resolve("entity.key");
+
+    BackupBookResult.Rejected rejected =
+        assertInstanceOf(
+            BackupBookResult.Rejected.class,
+            maintenanceService()
+                .backupBook(liveBookAccess, backupFilePath, backupBookKeyFilePath)
+                .requireAccepted());
+
+    BookMaintenanceRejection.ArtifactPathInvalid failure =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactPathInvalid.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.BACKUP_KEY_TARGET, failure.artifactRole());
+    assertEquals(hint(backupBookKeyFilePath), failure.artifactPath());
+    assertEquals(BookMaintenancePathFailure.PARENT_PATH_COLLISION, failure.pathFailure());
   }
 
   @Test

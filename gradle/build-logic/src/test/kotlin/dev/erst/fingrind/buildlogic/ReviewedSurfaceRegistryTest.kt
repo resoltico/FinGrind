@@ -178,6 +178,103 @@ class ReviewedSurfaceRegistryTest {
         )
     }
 
+    @Test
+    fun javaSnapshot_reloadsUpdatedRegistryFragmentsWithinTheSameProcess() {
+        val repositoryRoot = Files.createTempDirectory("reviewed-surface-registry-reload")
+        val javaFragmentPath =
+            writeJavaFragment(
+                repositoryRoot = repositoryRoot,
+                fileName = "java/example.json",
+                body =
+                    """
+                    {
+                      "projectPath": "cli",
+                      "relativePath": "src/main/java/dev/erst/fingrind/cli/json/Example.java",
+                      "owner": "example-owner",
+                      "reason": "Example reason.",
+                      "splitTrigger": "Split the example owner.",
+                      "reviewedRoleName": "first-reviewed-surface",
+                      "budgetVarianceReason": "Example variance.",
+                      "approval": {
+                        "physicalLines": 10,
+                        "logicalLines": 9,
+                        "importLikeLines": 1,
+                        "nestedTypes": 1,
+                        "functions": 2,
+                        "fieldsPerTopLevelType": 1,
+                        "switchArmsPerMethod": 0,
+                        "methodLineSpan": 6,
+                        "methodParameters": 2,
+                        "methodDecisionPoints": 1,
+                        "expiresOn": "2026-08-16"
+                      }
+                    }
+                    """.trimIndent(),
+            )
+        writeJavaFragment(
+            repositoryRoot = repositoryRoot,
+            fileName = "text/example.json",
+            body =
+                """
+                {
+                  "relativePath": "sqlite/src/main/resources/dev/erst/fingrind/sqlite/example.sql",
+                  "owner": "sqlite-example",
+                  "reason": "Example text reason.",
+                  "splitTrigger": "Split the example text owner.",
+                  "reviewedRoleName": "sqlite-example-surface",
+                  "budgetVarianceReason": "Example text variance.",
+                  "approval": {
+                    "physicalLines": 20,
+                    "logicalLines": 19,
+                    "importLikeLines": 1,
+                    "functions": 0,
+                    "nestedTypes": 0,
+                    "expiresOn": "2026-08-16"
+                  }
+                }
+                """.trimIndent(),
+        )
+
+        val firstSnapshot = ReviewedSurfaceRegistry.javaSnapshot(repositoryRoot)
+
+        Files.writeString(
+            javaFragmentPath,
+            """
+            {
+              "projectPath": "cli",
+              "relativePath": "src/main/java/dev/erst/fingrind/cli/json/Example.java",
+              "owner": "replacement-owner",
+              "reason": "Example reason.",
+              "splitTrigger": "Split the example owner.",
+              "reviewedRoleName": "replacement-reviewed-surface",
+              "budgetVarianceReason": "Updated variance.",
+              "approval": {
+                "physicalLines": 12,
+                "logicalLines": 11,
+                "importLikeLines": 1,
+                "nestedTypes": 1,
+                "functions": 3,
+                "fieldsPerTopLevelType": 1,
+                "switchArmsPerMethod": 0,
+                "methodLineSpan": 7,
+                "methodParameters": 2,
+                "methodDecisionPoints": 1,
+                "expiresOn": "2026-08-16"
+              }
+            }
+            """.trimIndent() + "\n",
+        )
+
+        val secondSnapshot = ReviewedSurfaceRegistry.javaSnapshot(repositoryRoot)
+
+        assertEquals("example-owner", firstSnapshot.surfaces.single().owner)
+        assertEquals("replacement-owner", secondSnapshot.surfaces.single().owner)
+        assertEquals(10, firstSnapshot.surfaces.single().approval.approvedShape.physicalLineCount)
+        assertEquals(12, secondSnapshot.surfaces.single().approval.approvedShape.physicalLineCount)
+        assertEquals(1, firstSnapshot.surfaceMap.size)
+        assertEquals(1, secondSnapshot.surfaceMap.size)
+    }
+
     private fun writeJavaFragment(
         repositoryRoot: Path,
         fileName: String,

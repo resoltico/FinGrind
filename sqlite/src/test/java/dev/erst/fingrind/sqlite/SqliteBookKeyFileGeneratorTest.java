@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
@@ -102,14 +104,36 @@ class SqliteBookKeyFileGeneratorTest {
     Path blockingParent = tempDirectory.resolve("blocking-parent");
     Files.writeString(blockingParent, "not-a-directory", StandardCharsets.UTF_8);
     Path nestedKeyFile = blockingParent.resolve("entity.book-key");
-    IllegalArgumentException exception =
+    ContractFailureException exception =
         assertThrows(
-            IllegalArgumentException.class,
+            ContractFailureException.class,
             () -> SqliteBookKeyFileGenerator.generate(nestedKeyFile, deterministicRandom()));
-    assertTrue(
-        NullTestSupport.messageOf(exception)
-            .contains("must resolve beneath an existing directory"));
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
+    assertTrue(exception.failure().message().contains("non-directory entry or symlink"));
     assertFalse(Files.exists(nestedKeyFile));
+  }
+
+  @Test
+  void generateDecision_rejectsUnsupportedSecureFilesystemsAsInvalidBookKeyFiles()
+      throws Exception {
+    Path zipArchive = tempDirectory.resolve("zipfs-generate-book-key.zip");
+    try (FileSystem zipFileSystem =
+        FileSystems.newFileSystem(
+            URI.create("jar:" + zipArchive.toUri()), Map.of("create", "true"))) {
+      Path unsupportedPath = zipFileSystem.getPath("/keys/acme.book-key");
+
+      ContractFailureException exception =
+          assertThrows(
+              ContractFailureException.class,
+              () ->
+                  SqliteBookKeyFileGenerator.generateDecision(
+                          unsupportedPath, deterministicRandom())
+                      .requireAccepted());
+
+      assertEquals(
+          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
+      assertTrue(exception.failure().message().contains("supports POSIX owner-only permissions"));
+    }
   }
 
   @Test
@@ -131,6 +155,38 @@ class SqliteBookKeyFileGeneratorTest {
     assertEquals(
         "simulated materialization failure",
         NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
+  void generateDecision_cleansUpCreatedKeyFileWhenPathContractRejectionEmergesAfterCreation()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("post-create-path-rejection.book-key");
+
+    ContractFailureException exception =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteBookKeyFileGenerator.generateDecision(
+                        keyFile,
+                        deterministicRandom(),
+                        (normalizedPath, encodedPassphrase) -> {
+                          throw new SqliteCallerPathContractException(
+                              normalizedPath,
+                              SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
+                              "owner-only required");
+                        },
+                        normalizedPath ->
+                            SqliteBookKeyFileGenerator.ensureParentDirectory(normalizedPath),
+                        normalizedPath -> {
+                          Files.createFile(normalizedPath);
+                          return dev.erst.fingrind.contract.runtime.ContractDecision.accepted(
+                              normalizedPath);
+                        })
+                    .requireAccepted());
+
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
+    assertTrue(exception.failure().message().contains("requires one owner-only parent directory"));
     assertFalse(Files.exists(keyFile));
   }
 
@@ -166,17 +222,29 @@ class SqliteBookKeyFileGeneratorTest {
         () ->
             SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
                 tempDirectory.resolve("ok.book-key")));
-    assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.ensureParentDirectory(Path.of("/")));
+    SqliteCallerPathContractException missingParentDirectoryException =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () -> SqliteBookKeyFileGenerator.ensureParentDirectory(Path.of("/")));
+    assertEquals(
+        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
+        missingParentDirectoryException.pathFailure());
+    assertTrue(
+        NullTestSupport.messageOf(missingParentDirectoryException)
+            .contains("must resolve beneath a parent directory"));
     Path zipArchive = tempDirectory.resolve("zipfs-book-key.zip");
     try (FileSystem zipFileSystem =
         FileSystems.newFileSystem(
             URI.create("jar:" + zipArchive.toUri()), Map.of("create", "true"))) {
-      IllegalArgumentException nonSecureFilesystemException =
+      SqliteCallerPathContractException nonSecureFilesystemException =
           assertThrows(
-              IllegalArgumentException.class,
+              SqliteCallerPathContractException.class,
               () ->
                   SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
                       zipFileSystem.getPath("/keys/acme.book-key")));
+      assertEquals(
+          SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+          nonSecureFilesystemException.pathFailure());
       assertTrue(
           NullTestSupport.messageOf(nonSecureFilesystemException)
               .contains("supports POSIX owner-only permissions or Windows owner-only ACLs"));

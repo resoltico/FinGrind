@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: INDEX
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService"]
@@ -71,6 +71,8 @@ route:
 | `AccountNodeKind` | `DOC_01_Core.md` | `AccountNodeKind` |
 | `AccountRole` | `DOC_01_Core.md` | `AccountRole` |
 | `AccountSemantics` | `DOC_01_Core.md` | `AccountSemantics` |
+| `AccountClassificationReachability` | `DOC_01_Core.md` | `AccountClassificationReachability` |
+| `AccountClassificationReachability.ReachabilityCell` | `DOC_01_Core.md` | `AccountClassificationReachability.ReachabilityCell` |
 | `AccountTaxonomy` | `DOC_01_Core.md` | `AccountTaxonomy` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
 | `AccountingBasis` | `DOC_01_Core.md` | `AccountingBasis` |
@@ -110,6 +112,8 @@ route:
 | `JournalEntryValidationException` | `DOC_01_Core.md` | `JournalEntryValidationException` |
 | `JournalLine` | `DOC_01_Core.md` | `JournalLine` |
 | `JournalLine.EntrySide` | `DOC_01_Core.md` | `JournalLine.EntrySide` |
+| `JournalRecipe` | `DOC_01_Core.md` | `JournalRecipe` |
+| `JournalRecipeKind` | `DOC_01_Core.md` | `JournalRecipeKind` |
 | `Money` | `DOC_01_Core.md` | `Money` |
 | `NormalBalance` | `DOC_01_Core.md` | `NormalBalance` |
 | `PositiveMoney` | `DOC_01_Core.md` | `PositiveMoney` |
@@ -126,6 +130,7 @@ route:
 | `SourceDocumentId` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentId` |
 | `SourceDocumentReference` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentReference` |
 | `SourceDocumentType` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentType` |
+| `SourceDocumentTypePolicyMode` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `StatementLineKind` | `DOC_01_Core.md` | `StatementLineKind` |
 | `StorageLocator` | `DOC_01_Core_EvidenceAndWire.md` | `StorageLocator` |
 | `WireValue` | `DOC_01_Core_EvidenceAndWire.md` | `WireValue` |
@@ -156,9 +161,14 @@ route:
 | `DiscoveryFocus` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryFocus` |
 | `ContractRequestShapes` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.DeclareAccountRequestShapeDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractRequestShapes.EntryKindSemanticsDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractRequestShapes.EvidenceProfileDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractRequestShapes.EvidenceRequirementDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.EnumVocabularyDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractRequestShapes.JournalRecipeSemanticsDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.LedgerPlanRequestShapeDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.PostEntryRequestShapeDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractRequestShapes.ReachabilityCellDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.RequestFieldDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.RequestInputDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.RequestShapeDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -189,13 +199,14 @@ route:
 | `ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractPlanTemplates.LedgerPlanStepTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractPlanTemplates.LedgerPlanTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractPlanTemplates.OpenBookTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractPlanTemplates.EnsureBookTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.OpeningBalanceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.PostingRequestTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ProvenanceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ReversalTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.SourceDocumentTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `TemplateDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `TemporalScopeArchetype` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `DescriptorNamespaceSupport` | `DOC_02_ProtocolAndDiscovery.md` | `DescriptorNamespaceSupport` |
 | `DiscoveryDetail` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryDetail` |
@@ -266,6 +277,15 @@ route:
 | `PublicBundlePublicationStatus` | `DOC_02_ProtocolAndDiscovery.md` | `PublicBundlePublicationStatus` |
 | `ReportCapabilityFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `RequestFieldPresence` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `RequestSurfaceFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `RequestSurfaceFacts.CommandTemporalScopeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `RequestSurfaceFacts.EvidenceProfileFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `RequestSurfaceFacts.EvidenceRequirementFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `RequestSurfaceFacts.JournalRecipeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `RequestSurfaceFacts.PostEntryKindFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `RequestSurfaceFacts.ReachabilityCellFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `RequestSurfaceFacts.SourceDocumentTypeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `RequestSurfaceFacts.TemporalScopeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `RuntimeDistribution` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `ScaffoldPlaceholders` | `DOC_02_ProtocolAndDiscovery.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
 | `SelectableOutputDefaultsDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -298,9 +318,10 @@ route:
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |
 | `BookInspection` | `DOC_02_AdministrationAndReports.md` | `BookInspection` |
 | `BookTemplateAccounts` | `DOC_02_AdministrationAndReports.md` | `BookTemplateAccounts` |
-| `BookMaintenanceArtifactRole` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
-| `BookMaintenanceRejection` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
-| `BookMaintenanceVerificationFailure` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
+| `BookMaintenanceArtifactRole` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
+| `BookMaintenancePathFailure` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
+| `BookMaintenanceRejection` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
+| `BookMaintenanceVerificationFailure` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
 | `BookMigrationPolicy` | `DOC_02_AdministrationAndReports.md` | `BookMigrationPolicy` |
 | `BookMigrationPolicyMode` | `DOC_02_AdministrationAndReports.md` | `BookMigrationPolicy` |
 | `BookQueryRejection` | `DOC_02_AdministrationAndReports.md` | `BookQueryRejection` |
@@ -361,7 +382,7 @@ route:
 | `PeriodSummaryResult` | `DOC_02_AdministrationAndReports.md` | `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult` |
 | `PostingPage` | `DOC_02_AdministrationAndReports.md` | `PostingPage` |
 | `PostingPageCursor` | `DOC_02_AdministrationAndReports.md` | `PostingPageCursor` |
-| `PublicPathHint` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
+| `PublicPathHint` | `DOC_02_AdministrationAndReports.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint` |
 | `RejectionNarrative` | `DOC_02_AdministrationAndReports.md` | `RejectionNarrative` |
 | `RekeyBookResult` | `DOC_02_AdministrationAndReports.md` | `RekeyBookResult` |
 | `RekeyRollbackResult` | `DOC_02_AdministrationAndReports.md` | `RekeyRollbackResult` |
@@ -459,14 +480,16 @@ route:
 | `PostingValidationStore` | `DOC_03_BookSessionsAndAdapters.md` | `PostingValidationStore` |
 | `ProtectedBookAccess` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookAccess` |
 | `ProtectedBookBackupOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome` |
-| `ProtectedBookMaintenanceArtifactRole` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceWorkflow` |
+| `ProtectedBookMaintenanceArtifactRole` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow` |
+| `ProtectedBookMaintenancePathFailure` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow` |
 | `ProtectedBookMaintenanceAuditCompensationKind` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceAuditCompensationKind` |
 | `ProtectedBookMaintenanceAuditKind` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceAuditKind` |
 | `ProtectedBookMaintenancePublishedLanguageTranslator` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookVerificationFailure` |
-| `ProtectedBookMaintenanceRejection` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceWorkflow` |
+| `ProtectedBookMaintenanceRejection` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow` |
+| `ProtectedBookMaintenanceRejectionException` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow` |
 | `ProtectedBookMaintenanceService` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
 | `ProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
-| `ProtectedBookMaintenanceWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceWorkflow` |
+| `ProtectedBookMaintenanceWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow` |
 | `ProtectedBookPassphraseSource` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookAccess` And `ProtectedBookPassphraseSource` |
 | `ProtectedBookRecoveryOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome` |
 | `ProtectedBookRestoreOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome` |

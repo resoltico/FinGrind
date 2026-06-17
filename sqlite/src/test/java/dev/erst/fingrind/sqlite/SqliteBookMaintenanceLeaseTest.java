@@ -53,35 +53,26 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   @Test
   void acquireExistingArtifact_requiresOneExistingParentDirectory() {
     Path artifactPath = tempDirectory.resolve("missing-parent").resolve("book.sqlite");
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteBookMaintenanceLease.acquire(
-                    artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-
-    assertTrue(
-        NullTestSupport.messageOf(exception)
-            .contains("requires one existing artifact parent directory"),
-        () -> NullTestSupport.messageOf(exception));
+    assertPathFailure(
+        artifactPath,
+        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
+        "requires one existing artifact parent directory",
+        () ->
+            SqliteBookMaintenanceLease.acquire(
+                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
   }
 
   @Test
   void acquireExistingArtifact_requiresOneExistingRegularArtifactFile() throws Exception {
     Path artifactPath = tempDirectory.resolve("existing-parent").resolve("book.sqlite");
     Files.createDirectories(artifactPath.getParent());
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteBookMaintenanceLease.acquire(
-                    artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-
-    assertTrue(
-        NullTestSupport.messageOf(exception).contains("existing regular artifact file"),
-        () -> NullTestSupport.messageOf(exception));
+    assertPathFailure(
+        artifactPath,
+        SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        "existing regular artifact file",
+        () ->
+            SqliteBookMaintenanceLease.acquire(
+                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
   }
 
   @Test
@@ -513,5 +504,19 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
                         AclEntryPermission.EXECUTE))
                 .build()));
     return view;
+  }
+
+  private static void assertPathFailure(
+      Path expectedPath,
+      SqliteCallerPathFailure expectedFailure,
+      String expectedMessageFragment,
+      org.junit.jupiter.api.function.Executable executable) {
+    SqliteCallerPathContractException exception =
+        assertThrows(SqliteCallerPathContractException.class, executable);
+    assertEquals(expectedPath, exception.requestedPath());
+    assertEquals(expectedFailure, exception.pathFailure());
+    assertTrue(
+        NullTestSupport.messageOf(exception).contains(expectedMessageFragment),
+        () -> NullTestSupport.messageOf(exception));
   }
 }

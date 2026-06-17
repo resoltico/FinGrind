@@ -48,14 +48,14 @@ final class CliPostingRejectionPayloadMapper {
           "Use the selected book's functional currency for every journal line in this request, or open a separate book for another currency.";
       case PostingRejection.TransferredPeriodResultViolation _ ->
           "Use an effective date after the transferred-through horizon, or close the next contiguous reporting period before posting into later dates.";
-      case PostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
-          "Opening balances are only accepted before the first committed posting in the book. The window closed with "
+      case PostingRejection.OpenAccountingPositionWindowClosed rejectionWindowClosed ->
+          "OPEN_ACCOUNTING_POSITION is only accepted before the first committed posting in the book. The window closed with "
               + rejectionWindowClosed.firstBlockingPostingKind().wireValue()
               + " on "
               + rejectionWindowClosed.firstBlockingEffectiveDate()
               + "; create a new book if the opening statement was not seeded completely.";
-      case PostingRejection.OpeningBalanceTouchesNominalAccount _ ->
-          "Opening-balance postings may seed only asset, liability, or equity accounts. Move revenue and expense setup into real operating-period postings instead.";
+      case PostingRejection.OpenAccountingPositionTouchesNominalAccount _ ->
+          "OPEN_ACCOUNTING_POSITION may seed only asset, liability, or equity accounts. Move revenue and expense setup into real operating-period postings instead.";
       case PostingRejection.ResultHoldingAccountReserved _ ->
           "Post directly to ordinary accounts only; let "
               + TRANSFER_PERIOD_RESULT_OPERATION
@@ -96,14 +96,15 @@ final class CliPostingRejectionPayloadMapper {
           new CliRejectionJsonModels.TransferredPeriodResultViolationDetails(
               violation.transferredThroughEffectiveDate().toString(),
               violation.attemptedEffectiveDate().toString());
-      case PostingRejection.OpeningBalanceWindowClosed rejectionWindowClosed ->
-          new CliRejectionJsonModels.OpeningBalanceWindowClosedDetails(
+      case PostingRejection.OpenAccountingPositionWindowClosed rejectionWindowClosed ->
+          new CliRejectionJsonModels.OpenAccountingPositionWindowClosedDetails(
               rejectionWindowClosed.firstBlockingPostingKind().wireValue(),
               rejectionWindowClosed.firstBlockingEffectiveDate().toString());
-      case PostingRejection.OpeningBalanceTouchesNominalAccount rejectionOpeningBalance ->
-          new CliRejectionJsonModels.OpeningBalanceNominalAccountDetails(
-              rejectionOpeningBalance.accountCode().value(),
-              rejectionOpeningBalance.accountType().wireValue());
+      case PostingRejection.OpenAccountingPositionTouchesNominalAccount
+              rejectionOpenAccountingPosition ->
+          new CliRejectionJsonModels.OpenAccountingPositionNominalAccountDetails(
+              rejectionOpenAccountingPosition.accountCode().value(),
+              rejectionOpenAccountingPosition.accountType().wireValue());
       case PostingRejection.ResultHoldingAccountReserved rejectionReserved ->
           new CliRejectionJsonModels.ResultHoldingAccountDetails(
               rejectionReserved.accountCode().value());

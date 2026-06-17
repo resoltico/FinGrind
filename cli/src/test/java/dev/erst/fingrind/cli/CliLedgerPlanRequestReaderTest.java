@@ -28,7 +28,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
 
     assertEquals("plan-1", plan.planId().value());
     assertEquals(13, plan.steps().size());
-    assertEquals(LedgerStep.OpenBook.class, plan.steps().get(0).getClass());
+    assertEquals(LedgerStep.EnsureBook.class, plan.steps().get(0).getClass());
     assertEquals(LedgerStep.DeclareAccount.class, plan.steps().get(1).getClass());
     assertEquals(LedgerStep.PreflightEntry.class, plan.steps().get(2).getClass());
     assertEquals(LedgerStep.PostEntry.class, plan.steps().get(3).getClass());
@@ -299,7 +299,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                   "steps": [
                     {
                       "stepId": "step-1",
-                      "kind": "open-book",
+                      "kind": "ensure-book",
                       "accountCode": "1000"
                     }
                   ]
@@ -441,7 +441,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         new CliRequestReader(
             new ByteArrayInputStream(
                 validLedgerPlanJson()
-                    .replace("\"kind\": \"open-book\"", "\"kind\": \"unsupported-step\"")
+                    .replace("\"kind\": \"ensure-book\"", "\"kind\": \"unsupported-step\"")
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -549,8 +549,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                   "steps": [
                     {
                       "stepId": "open",
-                      "kind": "open-book",
-                      "openBook": {
+                      "kind": "ensure-book",
+                      "ensureBook": {
                         "entityName": "Acme Studio",
                         "businessActivityTags": ["translation-services"],
                         "functionalCurrency": "EUR",
@@ -570,8 +570,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                   "steps": [
                     {
                       "stepId": "open",
-                      "kind": "open-book",
-                      "openBook": {
+                      "kind": "ensure-book",
+                      "ensureBook": {
                         "entityName": "Acme Studio",
                         "businessActivityTags": null,
                         "functionalCurrency": "EUR",
@@ -591,9 +591,9 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> explicitNullReader.readLedgerPlan(Path.of("-")));
 
     assertEquals(
-        "Unexpected field: openBook.businessActivityTags", arrayFieldException.getMessage());
+        "Unexpected field: ensureBook.businessActivityTags", arrayFieldException.getMessage());
     assertEquals(
-        "Unexpected field: openBook.businessActivityTags", explicitNullException.getMessage());
+        "Unexpected field: ensureBook.businessActivityTags", explicitNullException.getMessage());
   }
 
   @Test
@@ -607,8 +607,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                   "steps": [
                     {
                       "stepId": "open",
-                      "kind": "open-book",
-                      "openBook": {
+                      "kind": "ensure-book",
+                      "ensureBook": {
                         "entityName": "Acme Studio",
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01"
@@ -633,8 +633,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                   "steps": [
                     {
                       "stepId": "open",
-                      "kind": "open-book",
-                      "openBook": {
+                      "kind": "ensure-book",
+                      "ensureBook": {
                         "entityName": "Acme Studio",
                         "taxProfile": {
                           "registrations": []
@@ -651,7 +651,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals("Unexpected field: openBook.taxProfile", exception.getMessage());
+    assertEquals("Unexpected field: ensureBook.taxProfile", exception.getMessage());
   }
 
   @Test

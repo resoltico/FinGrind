@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.core.AccountTaxonomy;
+import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 
 /** Maps administrative bookkeeping rejections into CLI rejected envelopes. */
@@ -134,14 +135,25 @@ final class CliAdministrationRejectionPayloadMapper {
     if (rejection instanceof BookAdministrationRejection.PeriodResultTransferMustStartAt) {
       return "Rerun "
           + TRANSFER_PERIOD_RESULT_OPERATION
-          + " with the required --effective-date-from value and the next contiguous unclosed end date.";
+          + " with the required "
+          + CliTemporalScopeText.firstOption(OperationId.TRANSFER_PERIOD_RESULT)
+          + " value and the next contiguous unclosed "
+          + CliTemporalScopeText.upperLabel(OperationId.TRANSFER_PERIOD_RESULT)
+              .toLowerCase(Locale.ROOT)
+          + ".";
     }
     if (rejection instanceof BookAdministrationRejection.PeriodResultTransferFutureDate) {
-      return "Choose an --effective-date-to on or before the current UTC date, then rerun "
+      return "Choose a "
+          + CliTemporalScopeText.secondOption(OperationId.TRANSFER_PERIOD_RESULT)
+          + " on or before the current UTC date, then rerun "
           + TRANSFER_PERIOD_RESULT_OPERATION
           + ".";
     }
-    return "Choose --effective-date-from and --effective-date-to that remain inside one fiscal year for this book, then rerun "
+    return "Choose "
+        + CliTemporalScopeText.firstOption(OperationId.TRANSFER_PERIOD_RESULT)
+        + " and "
+        + CliTemporalScopeText.secondOption(OperationId.TRANSFER_PERIOD_RESULT)
+        + " values that remain inside one fiscal year for this book, then rerun "
         + TRANSFER_PERIOD_RESULT_OPERATION
         + ".";
   }

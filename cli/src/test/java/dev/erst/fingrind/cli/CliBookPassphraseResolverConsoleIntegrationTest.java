@@ -6,9 +6,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -45,35 +43,7 @@ class CliBookPassphraseResolverConsoleIntegrationTest {
   }
 
   private static List<String> childJavaCommand() {
-    List<String> command = new ArrayList<>();
-    command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
-    command.add(jacocoAppendAgentArgument());
-    command.add("-cp");
-    command.add(System.getProperty("java.class.path"));
-    command.add(CliBookPassphraseResolverConsoleProbe.class.getName());
-    return command;
-  }
-
-  private static String jacocoAppendAgentArgument() {
-    String agentArgument =
-        ManagementFactory.getRuntimeMXBean().getInputArguments().stream()
-            .filter(argument -> argument.startsWith("-javaagent:") && argument.contains("jacoco"))
-            .findFirst()
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "The CLI test JVM did not expose the JaCoCo javaagent argument."));
-    int optionsSeparator = agentArgument.indexOf('=');
-    if (optionsSeparator < 0) {
-      return agentArgument + "=append=true";
-    }
-    String agentPrefix = agentArgument.substring(0, optionsSeparator + 1);
-    String agentOptions = agentArgument.substring(optionsSeparator + 1);
-    String appendNormalizedOptions =
-        agentOptions.contains("append=")
-            ? agentOptions.replaceFirst("append=(true|false)", "append=true")
-            : agentOptions + ",append=true";
-    return agentPrefix + appendNormalizedOptions;
+    return CliChildJvmSupport.childJavaCommand(CliBookPassphraseResolverConsoleProbe.class);
   }
 
   private static boolean commandAvailable(String command) {

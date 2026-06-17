@@ -120,7 +120,8 @@ final class CliPostingOutputRenderer {
                         "Account filter",
                         page.accountCodeFilter().map(AccountCode::value).orElse("(all accounts)")),
                     List.of(
-                        "Effective date range",
+                        CliTemporalScopeText.summaryLabel(
+                            dev.erst.fingrind.contract.protocol.OperationId.LIST_POSTINGS),
                         CliQueryScopeText.dateRange(
                             page.effectiveDateRange().effectiveDateFrom().orElse(null),
                             page.effectiveDateRange().effectiveDateTo().orElse(null))))));

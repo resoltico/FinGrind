@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
@@ -20,6 +21,7 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -130,7 +132,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     assertTrue(text.contains("Comparative Trial Balance"));
     assertTrue(csv.contains("current,report-empty,2026-04-30"));
     assertTrue(csv.contains("comparative,total,2025-04-30,true"));
-    assertTrue(csv.contains("comparative,report-empty,2025-04-30"));
+    assertFalse(csv.contains("comparative,report-empty,2025-04-30"));
   }
 
   @Test
@@ -164,6 +166,39 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     assertTrue(text.contains("Current totals"));
     assertTrue(text.contains("Comparative Trial Balance"));
     assertTrue(countOccurrences(text, "No balances matched the selected scope.") >= 2);
+  }
+
+  @Test
+  void renderTrialBalanceText_rendersComparativeAccountsWhenComparativeRowsExist() {
+    TrialBalanceRow row =
+        new TrialBalanceRow(
+            declaredAccount(
+                "1000",
+                "Cash",
+                AccountType.ASSET,
+                NormalBalance.DEBIT,
+                true,
+                Instant.parse("2026-04-07T12:00:00Z")),
+            CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")));
+    TrialBalanceReport report =
+        new TrialBalanceReport(
+            bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            allPostingKinds(),
+            List.of(row),
+            List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))),
+            true,
+            List.of(row),
+            List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))),
+            true);
+
+    String text = CliTrialBalanceReportRenderer.renderText(report);
+
+    assertTrue(text.contains("Comparative Trial Balance"));
+    assertTrue(text.contains("Cash"));
+    assertFalse(text.contains("No account balances matched the selected scope."));
   }
 
   @Test
@@ -275,6 +310,39 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
   }
 
   @Test
+  void renderFinancialPositionCsv_omitsComparativeRowsWhenNoReferenceOrComparativeDataExist() {
+    CurrencyBalance assetBalance =
+        CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"));
+    FinancialPositionReport report =
+        new FinancialPositionReport(
+            bookIdentity(),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            EffectiveDateRange.unbounded(),
+            allPostingKinds(),
+            true,
+            List.of(
+                new FinancialPositionSection(
+                    AccountType.ASSET,
+                    List.of(
+                        new FinancialPositionRow(
+                            "1000",
+                            "Cash",
+                            AccountType.ASSET,
+                            Optional.of(AccountRole.ORDINARY),
+                            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            assetBalance)),
+                    List.of(assetBalance))),
+            List.of());
+
+    String csv = CliFinancialPositionReportRenderer.renderCsv(report);
+
+    assertTrue(csv.contains("current"));
+    assertFalse(csv.contains("comparative"));
+  }
+
+  @Test
   void renderIncomeStatementCsv_emitsGlobalEmptyRowsWhenSectionsAndTotalsAreAbsent() {
     IncomeStatementReport report =
         new IncomeStatementReport(
@@ -296,6 +364,42 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     assertTrue(
         csv.contains(
             "comparative,report-empty,2025-04-01,2025-04-30,,,,,,,,EUR,,,,,No income statement lines matched the selected scope."));
+  }
+
+  @Test
+  void renderIncomeStatementTextAndCsv_omitComparativeSectionsWhenNoReferenceOrDataExist() {
+    IncomeStatementSection expenseSection =
+        new IncomeStatementSection(
+            AccountType.EXPENSE,
+            List.of(
+                new dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow(
+                    "5100",
+                    "Software",
+                    AccountType.EXPENSE,
+                    Optional.of(AccountRole.ORDINARY),
+                    ProfitAndLossLineClassification.OPERATING_EXPENSE,
+                    StatementLineKind.DECLARED_ACCOUNT,
+                    CurrencyBalance.ofTotals(money("EUR", "12.00"), money("EUR", "0.00")))),
+            List.of(CurrencyBalance.ofTotals(money("EUR", "12.00"), money("EUR", "0.00"))));
+    IncomeStatementReport report =
+        new IncomeStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(expenseSection),
+            List.of(CurrencyBalance.ofTotals(money("EUR", "12.00"), money("EUR", "0.00"))),
+            List.of(),
+            List.of());
+
+    String text = CliIncomeStatementReportRenderer.renderText(report);
+    String csv = CliIncomeStatementReportRenderer.renderCsv(report);
+
+    assertFalse(CliReportSurfacePolicy.hasComparative(report));
+    assertFalse(text.contains("Comparative Income Statement"));
+    assertTrue(csv.contains("current"));
+    assertFalse(csv.contains("comparative"));
   }
 
   @Test

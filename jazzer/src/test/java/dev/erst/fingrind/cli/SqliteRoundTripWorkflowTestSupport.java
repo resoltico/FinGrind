@@ -211,33 +211,13 @@ final class SqliteRoundTripWorkflowTestSupport {
   }
 
   private static PostingKind postingKind(PostEntryCommand command) {
-    return switch (Objects.requireNonNull(command, "command").entry()) {
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.OpenAccountingPosition _ ->
-          PostingKind.OPENING_BALANCE;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.CashRevenue _,
-          dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.CashExpense _,
-          dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.EquityContribution _,
-          dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.EquityWithdrawal _,
-          dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.ReversalAdjustment _ ->
-          PostingKind.STANDARD;
-    };
+    return CliFuzzFixtures.bookkeepingCommand(Objects.requireNonNull(command, "command"))
+        .postingKind();
   }
 
   private static PostingOriginKind postingOriginKind(PostEntryCommand command) {
-    return switch (Objects.requireNonNull(command, "command").entry()) {
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.CashRevenue _ ->
-          PostingOriginKind.CASH_REVENUE;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.CashExpense _ ->
-          PostingOriginKind.CASH_EXPENSE;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.EquityContribution _ ->
-          PostingOriginKind.EQUITY_CONTRIBUTION;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.EquityWithdrawal _ ->
-          PostingOriginKind.EQUITY_WITHDRAWAL;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.OpenAccountingPosition _ ->
-          PostingOriginKind.OPEN_ACCOUNTING_POSITION;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.ReversalAdjustment _ ->
-          PostingOriginKind.REVERSAL_ADJUSTMENT;
-    };
+    return CliFuzzFixtures.bookkeepingCommand(Objects.requireNonNull(command, "command"))
+        .postingOriginKind();
   }
 
   static final class StubSqliteReadSession implements SqliteReadSession {

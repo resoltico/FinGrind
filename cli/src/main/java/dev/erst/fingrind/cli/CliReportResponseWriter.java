@@ -117,7 +117,7 @@ final class CliReportResponseWriter {
       Function<REPORTED, String> textRenderer,
       Function<REPORTED, String> csvRenderer) {
     if (reported == null) {
-      writeRejectedResult(outputMode, Objects.requireNonNull(rejection, "rejection"));
+      writeRejectedResult(Objects.requireNonNull(rejection, "rejection"));
       return;
     }
     writeReportedResult(
@@ -142,8 +142,7 @@ final class CliReportResponseWriter {
         () -> outputChannel.writeText(csvSupplier.get()));
   }
 
-  private void writeRejectedResult(OutputMode outputMode, BookQueryRejection rejection) {
-    outputChannel.writeQueryRejection(
-        outputMode, CliRejectionPayloadMapper.queryRejectedEnvelope(rejection));
+  private void writeRejectedResult(BookQueryRejection rejection) {
+    outputChannel.writeQueryRejection(CliRejectionPayloadMapper.queryRejectedEnvelope(rejection));
   }
 }

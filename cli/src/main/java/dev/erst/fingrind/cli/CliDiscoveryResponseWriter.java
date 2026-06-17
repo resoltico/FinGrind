@@ -83,6 +83,6 @@ final class CliDiscoveryResponseWriter {
   }
 
   void writeRawTemplate(Object template) {
-    outputChannel.writeJson(template);
+    outputChannel.writePrettyJson(template);
   }
 }

@@ -36,7 +36,8 @@ final class CliAccountLedgerReportRenderer {
                         report.account().accountCode().value(),
                         report.account().accountName().value())),
                 List.of(
-                    "Range",
+                    CliTemporalScopeText.summaryLabel(
+                        dev.erst.fingrind.contract.protocol.OperationId.ACCOUNT_LEDGER),
                     CliQueryScopeText.dateRange(
                         report.effectiveDateRange().effectiveDateFrom().orElse(null),
                         report.effectiveDateRange().effectiveDateTo().orElse(null))),

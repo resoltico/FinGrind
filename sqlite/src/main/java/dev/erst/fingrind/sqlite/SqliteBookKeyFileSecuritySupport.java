@@ -32,7 +32,10 @@ final class SqliteBookKeyFileSecuritySupport {
 
   static void requireSupportedSecureFilesystem(Path normalizedPath) {
     if (!supportsPosix(normalizedPath) && !supportsAcl(normalizedPath)) {
-      throw new IllegalArgumentException(unsupportedSecureFilesystemMessage(normalizedPath));
+      throw new SqliteCallerPathContractException(
+          normalizedPath,
+          SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+          unsupportedSecureFilesystemMessage(normalizedPath));
     }
   }
 
@@ -77,9 +80,18 @@ final class SqliteBookKeyFileSecuritySupport {
 
   static Path requireKeyFileParentDirectory(Path bookKeyFilePath) {
     Path parentDirectory = bookKeyFilePath.getParent();
-    if (parentDirectory == null || !Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
-      throw new IllegalArgumentException(
-          "The FinGrind book key file must resolve beneath an existing parent directory: "
+    if (parentDirectory == null) {
+      throw new SqliteCallerPathContractException(
+          bookKeyFilePath,
+          SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
+          "The FinGrind book key file must resolve beneath a parent directory: "
+              + redactedPath(bookKeyFilePath));
+    }
+    if (!Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
+      throw new SqliteCallerPathContractException(
+          bookKeyFilePath,
+          SqliteCallerPathFailure.PARENT_PATH_COLLISION,
+          "The FinGrind book key file must resolve beneath one real parent directory: "
               + redactedPath(bookKeyFilePath));
     }
     return parentDirectory;

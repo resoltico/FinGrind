@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: ADAPTERS
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -290,21 +290,31 @@ public sealed interface ProtectedBookRecoveryOutcome
 - Boundary: each local outcome carries local `Path` values and local maintenance rejections rather
   than public redacted path hints
 
-## `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceWorkflow`
+## `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow`
 
 These local maintenance types own protected-book maintenance semantics, deterministic refusals, and
 artifact-role vocabulary behind the public maintenance adapter.
 
 ```java
 public enum ProtectedBookMaintenanceArtifactRole
+public enum ProtectedBookMaintenancePathFailure
 public sealed interface ProtectedBookMaintenanceRejection
+public final class ProtectedBookMaintenanceRejectionException
 public final class ProtectedBookMaintenanceWorkflow
 ```
 
 - `ProtectedBookMaintenanceArtifactRole`: local role vocabulary for live-book, backup-source,
-  rollback-artifact, and restored-target verification and busy-lease outcomes
+  rollback-artifact, restored-target, backup-target, and backup-key-target verification and
+  busy-lease outcomes
+- `ProtectedBookMaintenancePathFailure`: local caller-controlled artifact-path failure vocabulary:
+  parent-missing, parent-not-directory, target-directory, target-exists, parent-not-writable, and
+  target-not-readable
 - `ProtectedBookMaintenanceRejection`: local deterministic refusal family for blocking artifacts,
-  same-path restore, busy artifacts, verification failures, and rollback-artifact selection
+  same-path restore, busy artifacts, caller-controlled artifact-path failures, verification
+  failures, and rollback-artifact selection
+- `ProtectedBookMaintenanceRejectionException`: local short-circuit carrier that preserves one
+  typed maintenance rejection across workflow orchestration without collapsing it into generic
+  runtime failure handling
 - `ProtectedBookMaintenanceWorkflow`: local owner for lease ordering, source verification,
   side-effect-free rollback inspection, staged backup publication, staged restore, rollback
   restore, rollback deletion, and audit retraction when an external commit fails after audit

@@ -92,7 +92,7 @@ class LedgerJournalModelTest extends ContractTestSupport {
     assertEquals(LedgerJournalKind.PLAN_BOUNDARY, boundaryFailed.kind());
     assertEquals(LedgerBoundaryPhase.COMMIT, boundaryFailed.boundaryPhase());
     assertNull(boundaryFailed.detailKind());
-    assertNull(new LedgerStep.OpenBook(stepId("open"), openBookCommand()).detailKind());
+    assertNull(new LedgerStep.EnsureBook(stepId("open"), openBookCommand()).detailKind());
     assertEquals(Optional.of(failure), detailed.optionalFailure());
     assertEquals(Optional.empty(), nullableOptionals.optionalFailure());
     assertEquals(Optional.of(failure), assertionFailed.optionalFailure());
@@ -132,7 +132,7 @@ class LedgerJournalModelTest extends ContractTestSupport {
   void journalKindsAndBoundaryPhasesPublishStableWireValues() {
     assertEquals(
         List.of(
-            "open-book",
+            "ensure-book",
             "declare-account",
             "preflight-entry",
             "post-entry",
