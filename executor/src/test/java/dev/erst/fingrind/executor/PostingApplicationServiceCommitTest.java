@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -111,7 +112,7 @@ class PostingApplicationServiceCommitTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryCommand command =
           new PostEntryCommand(
-              new BookkeepingEntry.CashRevenue(
+              BookkeepingEntry.cashRevenue(
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("2000"),
                   new AccountCode("1000"),
@@ -128,19 +129,19 @@ class PostingApplicationServiceCommitTest {
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
                       PostingRejection.accountTypeMismatch(
-                          command.entry().entryKind(),
+                          JournalRecipeKind.CASH_REVENUE.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           AccountType.ASSET,
                           AccountType.REVENUE),
                       PostingRejection.accountTypeMismatch(
-                          command.entry().entryKind(),
+                          JournalRecipeKind.CASH_REVENUE.wireValue(),
                           "revenueAccountCode",
                           new AccountCode("1000"),
                           AccountType.REVENUE,
                           AccountType.ASSET),
                       PostingRejection.sourceDocumentTypeNotAccepted(
-                          command.entry().entryKind(),
+                          JournalRecipeKind.CASH_REVENUE.wireValue(),
                           new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                           List.of("cash-receipt", "bank-deposit", "card-settlement"))))),
           result);

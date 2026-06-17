@@ -1,14 +1,14 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.core.AccountClassificationReachability;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountType;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-/** Validates opening-balance-specific posting invariants. */
-final class OpeningBalanceAcceptancePolicy {
+/** Validates OPEN_ACCOUNTING_POSITION admission rules after entry translation. */
+final class OpenAccountingPositionAcceptancePolicy {
   Optional<BookkeepingPostingRejection> windowRejection(
       PostingRequestModel postingRequest, PostingValidationStore book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
@@ -19,7 +19,7 @@ final class OpeningBalanceAcceptancePolicy {
     return book.firstCommittedPosting()
         .map(
             firstBlockingPosting ->
-                new BookkeepingPostingRejection.OpeningBalanceWindowClosed(
+                new BookkeepingPostingRejection.OpenAccountingPositionWindowClosed(
                     firstBlockingPosting.postingKind(),
                     firstBlockingPosting.journalEntry().effectiveDate()));
   }
@@ -37,8 +37,7 @@ final class OpeningBalanceAcceptancePolicy {
     for (AccountCode accountCode : requestedAccounts) {
       RegisteredAccount account =
           Objects.requireNonNull(declaredAccounts.get(accountCode), "account");
-      if (account.accountType() == AccountType.REVENUE
-          || account.accountType() == AccountType.EXPENSE) {
+      if (!AccountClassificationReachability.openingReachable(account.accountTaxonomy())) {
         nominalAccount = account;
         break;
       }
@@ -47,7 +46,7 @@ final class OpeningBalanceAcceptancePolicy {
       return Optional.empty();
     }
     return Optional.of(
-        new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+        new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
             nominalAccount.accountCode(), nominalAccount.accountType()));
   }
 }

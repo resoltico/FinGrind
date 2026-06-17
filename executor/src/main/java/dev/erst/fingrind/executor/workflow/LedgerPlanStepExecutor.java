@@ -63,7 +63,8 @@ final class LedgerPlanStepExecutor {
     Instant startedAt = Instant.now(clock);
     LedgerPlanStepOutcome outcome =
         switch (step) {
-          case BookWorkflowStep.OpenBook openBook -> openBookOutcome(openBook.bookIdentity());
+          case BookWorkflowStep.EnsureBook ensureBook ->
+              ensureBookOutcome(ensureBook.bookIdentity());
           case BookWorkflowStep.DeclareAccount declareAccount ->
               declareAccountOutcome(declareAccount.command());
           case BookWorkflowStep.PreflightEntry preflightEntry -> preflightOutcome(preflightEntry);
@@ -112,64 +113,94 @@ final class LedgerPlanStepExecutor {
         Instant.now(clock),
         List.of(),
         new BookWorkflowFailure(
-            LedgerPlanOutcomeMapper.missingBookCode(step),
-            "The selected book is not initialized and the plan does not begin with an open book step.",
+            LedgerPlanStepOutcomes.missingBookCode(step),
+            "The selected book is not initialized and the plan does not begin with an ensure-book step.",
             List.of()));
   }
 
-  private LedgerPlanStepOutcome openBookOutcome(dev.erst.fingrind.core.BookIdentity bookIdentity) {
+  private LedgerPlanStepOutcome ensureBookOutcome(
+      dev.erst.fingrind.core.BookIdentity bookIdentity) {
+    BookLifecycleInspection inspection = inspectBook();
+    if (inspection instanceof BookLifecycleInspection.Initialized initialized) {
+      return initialized.bookIdentity().equals(bookIdentity)
+          ? ensureBookSucceeded(initialized.initializedAt().toString(), initialized.bookIdentity())
+          : LedgerPlanStepOutcomes.ensureBookIdentityConflict(
+              initialized.bookIdentity(), bookIdentity);
+    }
     return switch (bookAdministrationService.openBook(bookIdentity)) {
       case BookOpeningOutcome.Opened opened ->
-          LedgerPlanOutcomeMapper.stepSucceeded(
-              BookWorkflowFact.text("initializedAt", opened.initializedAt().toString()),
-              BookWorkflowFact.text("entityName", opened.bookIdentity().entityName().value()),
-              BookWorkflowFact.text(
-                  "functionalCurrency", opened.bookIdentity().functionalCurrency().code()),
-              BookWorkflowFact.text(
-                  "fiscalYearStart", opened.bookIdentity().fiscalYearStart().wireValue()));
+          ensureBookSucceeded(opened.initializedAt().toString(), opened.bookIdentity());
       case BookOpeningOutcome.Rejected rejected ->
-          LedgerPlanOutcomeMapper.administrationRejection(rejected.rejection());
+          reconcileEnsureBookRejection(bookIdentity, rejected.rejection());
     };
+  }
+
+  private LedgerPlanStepOutcome ensureBookSucceeded(
+      String initializedAt, dev.erst.fingrind.core.BookIdentity bookIdentity) {
+    return LedgerPlanStepOutcomes.stepSucceeded(
+        BookWorkflowFact.text("initializedAt", initializedAt),
+        BookWorkflowFact.text("entityName", bookIdentity.entityName().value()),
+        BookWorkflowFact.text("functionalCurrency", bookIdentity.functionalCurrency().code()),
+        BookWorkflowFact.text("fiscalYearStart", bookIdentity.fiscalYearStart().wireValue()));
+  }
+
+  private LedgerPlanStepOutcome reconcileEnsureBookRejection(
+      dev.erst.fingrind.core.BookIdentity requestedBookIdentity,
+      dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection rejection) {
+    if (!(rejection
+        instanceof
+        dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
+            .BookAlreadyInitialized)) {
+      return LedgerPlanRejectedOutcomes.administrationRejection(rejection);
+    }
+    BookLifecycleInspection inspection = inspectBook();
+    if (inspection instanceof BookLifecycleInspection.Initialized initialized) {
+      return initialized.bookIdentity().equals(requestedBookIdentity)
+          ? ensureBookSucceeded(initialized.initializedAt().toString(), initialized.bookIdentity())
+          : LedgerPlanStepOutcomes.ensureBookIdentityConflict(
+              initialized.bookIdentity(), requestedBookIdentity);
+    }
+    return LedgerPlanRejectedOutcomes.administrationRejection(rejection);
   }
 
   private LedgerPlanStepOutcome declareAccountOutcome(AccountDeclaration command) {
     return switch (bookAdministrationService.declareAccount(command)) {
       case AccountDeclarationOutcome.Declared declared ->
-          LedgerPlanOutcomeMapper.stepSucceeded(
+          LedgerPlanStepOutcomes.stepSucceeded(
               LedgerPlanFactMapper.declaredAccountFacts(declared.account()));
       case AccountDeclarationOutcome.Rejected rejected ->
-          LedgerPlanOutcomeMapper.administrationRejection(rejected.rejection());
+          LedgerPlanRejectedOutcomes.administrationRejection(rejected.rejection());
     };
   }
 
   private LedgerPlanStepOutcome preflightOutcome(BookWorkflowStep.PreflightEntry step) {
     return switch (postingApplicationService.preflight(step.command())) {
       case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted accepted ->
-          LedgerPlanOutcomeMapper.stepSucceeded(
+          LedgerPlanStepOutcomes.stepSucceeded(
               BookWorkflowFact.text("idempotencyKey", accepted.idempotencyKey().value()),
               BookWorkflowFact.text("effectiveDate", accepted.effectiveDate().toString()));
       case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected rejected ->
-          LedgerPlanOutcomeMapper.postingRejection(rejected.rejection());
+          LedgerPlanRejectedOutcomes.postingRejection(rejected.rejection());
     };
   }
 
   private LedgerPlanStepOutcome postEntryOutcome(BookWorkflowStep.PostEntry step) {
     return switch (postingApplicationService.commit(step.command())) {
       case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed committed ->
-          LedgerPlanOutcomeMapper.stepSucceeded(
+          LedgerPlanStepOutcomes.stepSucceeded(
               BookWorkflowFact.text("postingId", committed.postingId().value()),
               BookWorkflowFact.text("idempotencyKey", committed.idempotencyKey().value()),
               BookWorkflowFact.text("effectiveDate", committed.effectiveDate().toString()),
               BookWorkflowFact.text("recordedAt", committed.recordedAt().toString()));
       case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected ->
-          LedgerPlanOutcomeMapper.postingRejection(rejected.rejection());
+          LedgerPlanRejectedOutcomes.postingRejection(rejected.rejection());
     };
   }
 
   private LedgerPlanStepOutcome inspectBookOutcome() {
     BookLifecycleInspection inspection = inspectBook();
     BookLifecycleInspection.Status status = inspection.status();
-    return LedgerPlanOutcomeMapper.stepSucceeded(
+    return LedgerPlanStepOutcomes.stepSucceeded(
         BookWorkflowFact.text("state", status.wireValue()),
         BookWorkflowFact.flag("initialized", status.initialized()),
         BookWorkflowFact.flag("compatibleWithCurrentBinary", status.compatibleWithCurrentBinary()));
@@ -178,10 +209,10 @@ final class LedgerPlanStepExecutor {
   private LedgerPlanStepOutcome listAccountsOutcome(BookWorkflowStep.ListAccounts step) {
     return switch (bookkeepingReadService.listAccounts(step.query())) {
       case BookkeepingReadOutcome.Reported<AccountRegistryPage> reported ->
-          LedgerPlanOutcomeMapper.stepSucceeded(
+          LedgerPlanStepOutcomes.stepSucceeded(
               LedgerPlanFactMapper.accountPageFacts(reported.value()));
       case BookkeepingReadOutcome.Rejected<AccountRegistryPage> rejected ->
-          LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
+          LedgerPlanRejectedOutcomes.queryRejection(rejected.rejection());
     };
   }
 
@@ -189,31 +220,31 @@ final class LedgerPlanStepExecutor {
     return switch (bookkeepingReadService.getPosting(step.postingId())) {
       case BookkeepingReadOutcome.Reported<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
               reported ->
-          LedgerPlanOutcomeMapper.stepSucceeded(
-              LedgerPlanOutcomeMapper.postingFacts(reported.value())
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanStepOutcomes.postingFacts(reported.value())
                   .toArray(BookWorkflowFact[]::new));
       case BookkeepingReadOutcome.Rejected<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
               rejected ->
-          LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
+          LedgerPlanRejectedOutcomes.queryRejection(rejected.rejection());
     };
   }
 
   private LedgerPlanStepOutcome listPostingsOutcome(BookWorkflowStep.ListPostings step) {
     return switch (bookkeepingReadService.listPostings(step.query())) {
       case BookkeepingReadOutcome.Reported<PostingHistoryPage> reported ->
-          LedgerPlanOutcomeMapper.stepSucceeded(
+          LedgerPlanStepOutcomes.stepSucceeded(
               LedgerPlanFactMapper.postingPageFacts(reported.value()));
       case BookkeepingReadOutcome.Rejected<PostingHistoryPage> rejected ->
-          LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
+          LedgerPlanRejectedOutcomes.queryRejection(rejected.rejection());
     };
   }
 
   private LedgerPlanStepOutcome accountBalanceOutcome(BookWorkflowStep.AccountBalance step) {
     return switch (bookkeepingReadService.accountBalance(step.query())) {
       case BookkeepingReadOutcome.Reported<AccountBalanceView> reported ->
-          LedgerPlanOutcomeMapper.balanceFacts(reported.value());
+          LedgerPlanStepOutcomes.balanceFacts(reported.value());
       case BookkeepingReadOutcome.Rejected<AccountBalanceView> rejected ->
-          LedgerPlanOutcomeMapper.queryRejection(rejected.rejection());
+          LedgerPlanRejectedOutcomes.queryRejection(rejected.rejection());
     };
   }
 

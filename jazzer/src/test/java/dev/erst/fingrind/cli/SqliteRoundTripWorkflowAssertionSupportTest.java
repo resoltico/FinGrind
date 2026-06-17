@@ -230,15 +230,15 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
             new PostingRejection.TransferredPeriodResultViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
-        PostingLifecycleStatus.OPENING_BALANCE_WINDOW_CLOSED,
+        PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
         PostingLifecycleStatusMapper.forRejection(
-            new PostingRejection.OpeningBalanceWindowClosed(
+            new PostingRejection.OpenAccountingPositionWindowClosed(
                 dev.erst.fingrind.core.PostingKind.STANDARD,
                 java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
-        PostingLifecycleStatus.OPENING_BALANCE_TOUCHES_NOMINAL_ACCOUNT,
+        PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
         PostingLifecycleStatusMapper.forRejection(
-            new PostingRejection.OpeningBalanceTouchesNominalAccount(
+            new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
                 new AccountCode("4100"), dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
         PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,

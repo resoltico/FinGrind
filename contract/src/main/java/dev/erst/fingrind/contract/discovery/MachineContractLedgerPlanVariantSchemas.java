@@ -39,7 +39,14 @@ final class MachineContractLedgerPlanVariantSchemas {
 
   private static Map<String, Object> stepVariantSchema(LedgerStepKind kind) {
     return switch (kind) {
-      case OPEN_BOOK, INSPECT_BOOK ->
+      case ENSURE_BOOK ->
+          MachineContractSchemaSupport.objectSchema(
+              "Ledger-plan step `" + kind.wireValue() + "`.",
+              List.of(
+                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredEnsureBookField()));
+      case INSPECT_BOOK ->
           MachineContractSchemaSupport.objectSchema(
               "Ledger-plan step `" + kind.wireValue() + "`.",
               List.of(

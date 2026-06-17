@@ -99,7 +99,7 @@ class LedgerPlanServiceWorkflowTest {
       assertTrue(
           result.journal().steps().stream()
               .allMatch(step -> step.status() == LedgerStepStatus.SUCCEEDED));
-      assertEquals(LedgerJournalKind.OPEN_BOOK, result.journal().steps().getFirst().kind());
+      assertEquals(LedgerJournalKind.ENSURE_BOOK, result.journal().steps().getFirst().kind());
       assertEquals(LedgerJournalKind.ASSERT, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
@@ -224,17 +224,13 @@ class LedgerPlanServiceWorkflowTest {
   }
 
   @Test
-  void execute_rejectsAlreadyInitializedOpenBookAndConflictingRedeclaration() {
+  void execute_replaysEnsureBookAndRejectsConflictingRedeclaration() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       var openBookResult =
           service(bookSession)
               .execute(new LedgerPlan(planId("plan-open"), List.of(openBookStep("open"))));
 
-      assertEquals(LedgerPlanStatus.REJECTED, openBookResult.status());
-      assertEquals(
-          BookAdministrationRejection.wireCode(
-              new BookAdministrationRejection.BookAlreadyInitialized()),
-          openBookResult.journal().steps().getLast().requiredFailure().code());
+      assertEquals(LedgerPlanStatus.SUCCEEDED, openBookResult.status());
     }
 
     try (InMemoryBookSession bookSession = initializedBook()) {

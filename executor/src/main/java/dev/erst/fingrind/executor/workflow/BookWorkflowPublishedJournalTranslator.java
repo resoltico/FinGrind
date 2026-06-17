@@ -117,7 +117,7 @@ final class BookWorkflowPublishedJournalTranslator {
   private static LedgerJournalStep toPublishedJournalStep(BookWorkflowStep step) {
     Objects.requireNonNull(step, "step");
     return switch (step) {
-      case BookWorkflowStep.OpenBook _ -> LedgerJournalStep.standard(LedgerStepKind.OPEN_BOOK);
+      case BookWorkflowStep.EnsureBook _ -> LedgerJournalStep.standard(LedgerStepKind.ENSURE_BOOK);
       case BookWorkflowStep.DeclareAccount _ ->
           LedgerJournalStep.standard(LedgerStepKind.DECLARE_ACCOUNT);
       case BookWorkflowStep.PreflightEntry _ ->

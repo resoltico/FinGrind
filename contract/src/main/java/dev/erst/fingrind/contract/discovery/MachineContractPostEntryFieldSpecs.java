@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorType;
@@ -22,9 +23,15 @@ final class MachineContractPostEntryFieldSpecs {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-            "Caller-authored bookkeeping entry kind. Typed business events remain primary, and administrative adjustments use named entry kinds rather than a generic raw-journal tunnel.",
+            "Caller-authored bookkeeping entry kind. FinGrind accepts direct journals, explicit opening positions, and explicit reversal adjustments.",
             MachineContractScalarSchemas.enumStringSchema(
                 "Caller-authored bookkeeping entry kind.", BookkeepingEntryKind.wireValues())),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
+            "Optional higher-level journal recipe applied only when entryKind is JOURNAL.",
+            MachineContractScalarSchemas.enumStringSchema(
+                "Optional higher-level journal recipe applied only when entryKind is JOURNAL.",
+                JournalRecipeKind.wireValues())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
             "ISO-8601 local date that makes the bookkeeping entry effective.",
@@ -32,33 +39,30 @@ final class MachineContractPostEntryFieldSpecs {
                 "ISO-8601 local date that makes the bookkeeping entry effective.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-            "Declared cash account used by one cash-settled business event.",
-            accountCodeSchema("Declared cash account used by one cash-settled business event.")),
+            "Declared cash account used by one recipe-backed journal.",
+            accountCodeSchema("Declared cash account used by one recipe-backed journal.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
-            "Declared revenue account credited by one cash-revenue business event.",
-            accountCodeSchema(
-                "Declared revenue account credited by one cash-revenue business event.")),
+            "Declared revenue account credited by the CASH_REVENUE recipe.",
+            accountCodeSchema("Declared revenue account credited by the CASH_REVENUE recipe.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
-            "Declared expense account debited by one cash-expense business event.",
-            accountCodeSchema(
-                "Declared expense account debited by one cash-expense business event.")),
+            "Declared expense account debited by the CASH_EXPENSE recipe.",
+            accountCodeSchema("Declared expense account debited by the CASH_EXPENSE recipe.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-            "Declared equity account used by equity contribution or withdrawal business events.",
-            accountCodeSchema(
-                "Declared equity account used by equity contribution or withdrawal business events.")),
+            "Declared equity account used by one equity recipe.",
+            accountCodeSchema("Declared equity account used by one equity recipe.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.AMOUNT,
-            "Exact positive money object carried by one typed business event.",
+            "Exact positive money object carried by one recipe-backed journal.",
             MachineContractScalarSchemas.moneyObjectSchema(
-                "Exact positive money object carried by one typed business event.", true)),
+                "Exact positive money object carried by one recipe-backed journal.", true)),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.LINES,
-            "Balanced non-empty array of journal lines used only by reversal administrative entries.",
+            "Balanced non-empty array of journal lines used by direct JOURNAL requests and REVERSAL_ADJUSTMENT requests.",
             MachineContractSchemaSupport.arraySchema(
-                "Balanced non-empty array of journal lines used only by reversal administrative entries.",
+                "Balanced non-empty array of journal lines used by direct JOURNAL requests and REVERSAL_ADJUSTMENT requests.",
                 MachineContractPostEntryComponentSchemas.lineSchema(),
                 2)),
         MachineContractFieldSpec.optional(
@@ -126,9 +130,9 @@ final class MachineContractPostEntryFieldSpecs {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Evidence.SOURCE_DOCUMENTS,
-            "Non-empty ordered source-document references linked to this posting.",
+            "Non-empty ordered source-document references linked to this posting. Every posting request must retain at least one source document.",
             MachineContractSchemaSupport.arraySchema(
-                "Non-empty ordered source-document references linked to this posting.",
+                "Non-empty ordered source-document references linked to this posting. Every posting request must retain at least one source document.",
                 MachineContractPostEntryComponentSchemas.sourceDocumentSchema(),
                 1)),
         MachineContractFieldSpec.required(
@@ -151,9 +155,9 @@ final class MachineContractPostEntryFieldSpecs {
                 SourceDocumentId.maxLength())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_TYPE,
-            "Caller-authored source-document classification token.",
+            "Caller-authored source-document classification token. Inspect postEntry.evidenceProfiles[] for the live per-profile policy and any enumerated accepted values.",
             MachineContractScalarSchemas.tokenStringSchema(
-                "Caller-authored source-document classification token.",
+                "Caller-authored source-document classification token. Inspect postEntry.evidenceProfiles[] for the live per-profile policy and any enumerated accepted values.",
                 SourceDocumentType.pattern(),
                 SourceDocumentType.maxLength())),
         MachineContractFieldSpec.required(
@@ -291,9 +295,9 @@ final class MachineContractPostEntryFieldSpecs {
   static MachineContractFieldSpec requiredAmountField() {
     return MachineContractFieldSpec.required(
         ProtocolPostEntryFields.TopLevel.AMOUNT,
-        "Exact positive money object carried by this typed business event.",
+        "Exact positive money object carried by this recipe-backed journal.",
         MachineContractScalarSchemas.moneyObjectSchema(
-            "Exact positive money object carried by this typed business event.", true));
+            "Exact positive money object carried by this recipe-backed journal.", true));
   }
 
   static MachineContractFieldSpec requiredEvidenceField() {

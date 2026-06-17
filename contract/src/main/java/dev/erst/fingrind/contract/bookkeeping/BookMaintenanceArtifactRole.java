@@ -7,6 +7,8 @@ import java.util.List;
 public enum BookMaintenanceArtifactRole implements WireValue {
   LIVE_BOOK,
   BACKUP_SOURCE,
+  BACKUP_TARGET,
+  BACKUP_KEY_TARGET,
   ROLLBACK_ARTIFACT,
   RESTORED_TARGET;
 
@@ -15,6 +17,8 @@ public enum BookMaintenanceArtifactRole implements WireValue {
     return switch (this) {
       case LIVE_BOOK -> "live-book";
       case BACKUP_SOURCE -> "backup-source";
+      case BACKUP_TARGET -> "backup-target";
+      case BACKUP_KEY_TARGET -> "backup-key-target";
       case ROLLBACK_ARTIFACT -> "rollback-artifact";
       case RESTORED_TARGET -> "restored-target";
     };

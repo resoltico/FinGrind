@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
@@ -100,6 +101,33 @@ final class LedgerPlanWorkflowFailureMapper {
         postingRejectionFacts(publishedRejection));
   }
 
+  static BookWorkflowFailure ensureBookIdentityConflict(
+      BookIdentity existingBookIdentity, BookIdentity requestedBookIdentity) {
+    Objects.requireNonNull(existingBookIdentity, "existingBookIdentity");
+    Objects.requireNonNull(requestedBookIdentity, "requestedBookIdentity");
+    return new BookWorkflowFailure(
+        "ensure-book-identity-conflict",
+        "The selected book is already initialized with a different book identity.",
+        List.of(
+            BookWorkflowFact.text("existingEntityName", existingBookIdentity.entityName().value()),
+            BookWorkflowFact.text(
+                "existingFunctionalCurrency", existingBookIdentity.functionalCurrency().code()),
+            BookWorkflowFact.text(
+                "existingFiscalYearStart", existingBookIdentity.fiscalYearStart().wireValue()),
+            BookWorkflowFact.text(
+                "existingBookTemplateId",
+                existingBookIdentity.bookDoctrine().bookTemplateId().wireValue()),
+            BookWorkflowFact.text(
+                "requestedEntityName", requestedBookIdentity.entityName().value()),
+            BookWorkflowFact.text(
+                "requestedFunctionalCurrency", requestedBookIdentity.functionalCurrency().code()),
+            BookWorkflowFact.text(
+                "requestedFiscalYearStart", requestedBookIdentity.fiscalYearStart().wireValue()),
+            BookWorkflowFact.text(
+                "requestedBookTemplateId",
+                requestedBookIdentity.bookDoctrine().bookTemplateId().wireValue())));
+  }
+
   private static List<BookWorkflowFact> postingRejectionFacts(PostingRejection rejection) {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case PostingRejection.BookNotInitialized _ -> List.of();
@@ -118,7 +146,7 @@ final class LedgerPlanWorkflowFailureMapper {
               BookWorkflowFact.text(
                   "attemptedEffectiveDate",
                   transferredPeriodResultViolation.attemptedEffectiveDate().toString()));
-      case PostingRejection.OpeningBalanceWindowClosed openingBalanceWindowClosed ->
+      case PostingRejection.OpenAccountingPositionWindowClosed openingBalanceWindowClosed ->
           List.of(
               BookWorkflowFact.text(
                   "firstBlockingPostingKind",
@@ -126,7 +154,7 @@ final class LedgerPlanWorkflowFailureMapper {
               BookWorkflowFact.text(
                   "firstBlockingEffectiveDate",
                   openingBalanceWindowClosed.firstBlockingEffectiveDate().toString()));
-      case PostingRejection.OpeningBalanceTouchesNominalAccount openingBalanceNominal ->
+      case PostingRejection.OpenAccountingPositionTouchesNominalAccount openingBalanceNominal ->
           List.of(
               BookWorkflowFact.text("accountCode", openingBalanceNominal.accountCode().value()),
               BookWorkflowFact.text(
@@ -206,7 +234,7 @@ final class LedgerPlanWorkflowFailureMapper {
   }
 
   private static String missingBookMessage() {
-    return "The selected book does not exist or has not been initialized with an open book step.";
+    return "The selected book does not exist or has not been initialized with an ensure-book step.";
   }
 
   private static String accountRoleConflictMessage(

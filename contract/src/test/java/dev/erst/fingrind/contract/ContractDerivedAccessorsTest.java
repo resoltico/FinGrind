@@ -97,7 +97,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
                     new LedgerJournalEntry.Succeeded(
                         stepId("open"),
                         LedgerJournalStep.standard(
-                            dev.erst.fingrind.contract.protocol.LedgerStepKind.OPEN_BOOK),
+                            dev.erst.fingrind.contract.protocol.LedgerStepKind.ENSURE_BOOK),
                         startedAt,
                         finishedAt,
                         List.of()))));

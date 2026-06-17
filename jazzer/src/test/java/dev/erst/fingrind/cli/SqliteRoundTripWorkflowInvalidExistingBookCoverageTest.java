@@ -86,6 +86,13 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                     ContractDecision.rejected(
                         SqliteRoundTripWorkflowTestSupport.contractFailure("open rejected")),
                 bookPath));
+    assertDoesNotThrow(
+        () ->
+            SqliteRoundTripWorkflowInvalidExistingBookCoverage.assertNotOpened(
+                () -> {
+                  throw new IllegalStateException("open runtime");
+                },
+                bookPath));
 
     assertDoesNotThrow(
         () ->

@@ -37,7 +37,7 @@ final class LedgerPlanListQueryAssertions {
     return switch (kind) {
       case LIST_ACCOUNTS -> "account";
       case LIST_POSTINGS -> "posting";
-      case OPEN_BOOK,
+      case ENSURE_BOOK,
           DECLARE_ACCOUNT,
           PREFLIGHT_ENTRY,
           POST_ENTRY,

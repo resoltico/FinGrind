@@ -37,6 +37,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
@@ -402,7 +403,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
       String trialBalanceText,
       String trialBalanceCsv) {
     assertTrue(accountBalanceText.contains("Account Balance"));
-    assertTrue(accountBalanceText.contains("Range"));
+    assertTrue(accountBalanceText.contains("Effective date range"));
     assertTrue(
         accountBalanceCsv.contains(
             "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
@@ -542,13 +543,21 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new PeriodAccountActivityRow(contraRevenueAccount, balance)));
     assertEquals(
         "Contra", CliQueryLabelFormatAccess.displayAccountRoleLabel(AccountRole.POLARITY_INVERTED));
+    assertEquals(
+        "All posting kinds",
+        CliQueryLabelFormatAccess.displayPostingCoverage(PostingCoverage.ALL_POSTING_KINDS));
+    assertEquals(
+        "Non-transfer postings",
+        CliQueryLabelFormatAccess.displayPostingCoverage(PostingCoverage.NON_CLOSING_POSTINGS));
     assertEquals("Standard", CliQueryLabelFormatAccess.displayPostingKind(PostingKind.STANDARD));
     assertEquals(
         "Period result transfer",
         CliQueryLabelFormatAccess.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
     assertEquals(
-        "Opening balance",
+        "Opening accounting position",
         CliQueryLabelFormatAccess.displayPostingKind(PostingKind.OPENING_BALANCE));
+    assertEquals(
+        "Journal", CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.JOURNAL));
     assertEquals(
         "Cash revenue",
         CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.CASH_REVENUE));

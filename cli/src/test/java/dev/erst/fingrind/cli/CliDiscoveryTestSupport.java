@@ -95,7 +95,7 @@ final class CliDiscoveryTestSupport {
   static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.55.0",
+        "0.56.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

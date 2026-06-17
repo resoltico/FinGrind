@@ -21,7 +21,7 @@ final class CliAccountBalanceOutputRenderer {
                         snapshot.account().accountCode().value(),
                         snapshot.account().accountName().value())),
                 List.of(
-                    "Range",
+                    CliTemporalScopeText.summaryLabel(OperationId.ACCOUNT_BALANCE),
                     CliQueryScopeText.dateRange(
                         snapshot.effectiveDateFrom().orElse(null),
                         snapshot.effectiveDateTo().orElse(null)))));

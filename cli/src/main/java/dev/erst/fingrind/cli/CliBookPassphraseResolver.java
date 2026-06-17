@@ -75,7 +75,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
           SqliteBookKeyFile.loadDecision(keyFile.bookKeyFilePath());
       case BookAccess.PassphraseSource.StandardInput _ -> readFromStandardInput();
       case BookAccess.PassphraseSource.InteractivePrompt _ ->
-          readFromInteractivePrompt(bookFilePath, promptStyle);
+          readFromInteractivePrompt(bookFilePath, resolvedPromptStyle(bookFilePath, promptStyle));
     };
   }
 
@@ -267,18 +267,33 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
   private static PromptStyle promptStyle(SqlitePassphraseIntent intent) {
     return switch (Objects.requireNonNull(intent, "intent")) {
       case EXISTING_SECRET -> PromptStyle.SINGLE;
+      case PLAN_SETUP_SECRET -> PromptStyle.PLAN_SETUP;
       case NEW_SECRET -> PromptStyle.CONFIRMED_NEW_SECRET;
+    };
+  }
+
+  private static PromptStyle resolvedPromptStyle(Path bookFilePath, PromptStyle promptStyle) {
+    Objects.requireNonNull(bookFilePath, "bookFilePath");
+    return switch (Objects.requireNonNull(promptStyle, "promptStyle")) {
+      case SINGLE -> PromptStyle.SINGLE;
+      case PLAN_SETUP ->
+          java.nio.file.Files.exists(bookFilePath)
+              ? PromptStyle.SINGLE
+              : PromptStyle.CONFIRMED_NEW_SECRET;
+      case CONFIRMED_NEW_SECRET -> PromptStyle.CONFIRMED_NEW_SECRET;
     };
   }
 
   /** Prompt modes for existing-book secrets versus newly entered replacement secrets. */
   enum PromptStyle {
     SINGLE,
+    PLAN_SETUP,
     CONFIRMED_NEW_SECRET;
 
     String primaryPrompt(String displayPath) {
       return switch (this) {
         case SINGLE -> "Passphrase for %s: ".formatted(displayPath);
+        case PLAN_SETUP -> throw new IllegalStateException("PLAN_SETUP must be resolved first.");
         case CONFIRMED_NEW_SECRET -> "New passphrase for %s: ".formatted(displayPath);
       };
     }

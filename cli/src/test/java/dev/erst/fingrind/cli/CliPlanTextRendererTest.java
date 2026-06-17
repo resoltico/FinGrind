@@ -37,13 +37,13 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
         CliPlanTextRenderer.renderLedgerPlanResult(succeededPlanResult(), PlanResultDetail.FULL);
 
     assertTrue(rendered.contains("Journal"));
-    assertTrue(rendered.contains("01. open-book [succeeded]"));
-    assertTrue(rendered.contains("02. Plan Boundary (commit) [succeeded]"));
-    assertTrue(rendered.contains("book=Acme Studio"));
-    assertTrue(rendered.contains("bookOpened=true"));
-    assertTrue(rendered.contains("declaredAccounts=2"));
-    assertTrue(rendered.contains("netAmount=123.45 EUR"));
-    assertTrue(rendered.contains("summary={netAmount=123.45 EUR, balanceSide=DEBIT}"));
+    assertTrue(rendered.contains("01. Ensure Book [succeeded]"));
+    assertTrue(rendered.contains("02. Plan Boundary (Commit) [succeeded]"));
+    assertTrue(rendered.contains("Outcome"));
+    assertTrue(rendered.contains("Entity name"));
+    assertTrue(rendered.contains("Acme Studio"));
+    assertTrue(rendered.contains("Functional currency"));
+    assertTrue(rendered.contains("Fiscal year start"));
   }
 
   @Test
@@ -56,9 +56,9 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     assertTrue(rendered.contains("Failed step id"));
     assertTrue(rendered.contains("Failure code"));
     assertTrue(rendered.contains("Failure message"));
-    assertTrue(rendered.contains("02. assert (assert-account-balance) [assertion-failed]"));
-    assertTrue(rendered.contains("Failure facts"));
-    assertTrue(rendered.contains("expected={currency=EUR, netAmount=100.00 EUR}"));
+    assertTrue(rendered.contains("02. Assert (Assert Account Balance) [assertion-failed]"));
+    assertTrue(rendered.contains("Failure details"));
+    assertTrue(rendered.contains("100.00 EUR"));
   }
 
   @Test
@@ -69,7 +69,7 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
 
     assertTrue(rendered.contains("rejected"));
     assertTrue(rendered.contains("Failure code"));
-    assertFalse(rendered.contains("Failure facts"));
+    assertFalse(rendered.contains("Failure details"));
   }
 
   private static LedgerPlanResult.Succeeded succeededPlanResult() {
@@ -79,19 +79,14 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     LedgerJournalEntry.Succeeded openStep =
         new LedgerJournalEntry.Succeeded(
             stepId("open-book"),
-            LedgerJournalStep.standard(LedgerStepKind.OPEN_BOOK),
+            LedgerJournalStep.standard(LedgerStepKind.ENSURE_BOOK),
             startedAt,
             openFinishedAt,
             List.of(
-                LedgerFact.text("book", "Acme Studio"),
-                LedgerFact.flag("bookOpened", true),
-                LedgerFact.count("declaredAccounts", 2),
-                LedgerFact.money("netAmount", new MonetaryAmount("EUR", "12345")),
-                LedgerFact.group(
-                    "summary",
-                    List.of(
-                        LedgerFact.money("netAmount", new MonetaryAmount("EUR", "12345")),
-                        LedgerFact.text("balanceSide", "DEBIT")))));
+                LedgerFact.text("initializedAt", openFinishedAt.toString()),
+                LedgerFact.text("entityName", "Acme Studio"),
+                LedgerFact.text("functionalCurrency", "EUR"),
+                LedgerFact.text("fiscalYearStart", "01-01")));
     LedgerJournalEntry.Succeeded commitStep =
         new LedgerJournalEntry.Succeeded(
             stepId("@plan-boundary:commit"),

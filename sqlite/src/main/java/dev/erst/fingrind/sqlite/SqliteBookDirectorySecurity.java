@@ -66,7 +66,7 @@ final class SqliteBookDirectorySecurity {
         SqliteBookFilesystemSupport.requireBookParentDirectory(normalizedBookPath);
     SqliteBookFilesystemSupport.requireSupportedSecureFilesystem(parentDirectory);
     if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
-      requireSecureExistingDirectory(parentDirectory);
+      requireSecureExistingDirectory(normalizedBookPath, parentDirectory);
       return;
     }
     if (SqliteBookFilesystemSupport.supportsPosix(parentDirectory)) {
@@ -78,17 +78,20 @@ final class SqliteBookDirectorySecurity {
     hardenDirectory(parentDirectory);
   }
 
-  static void requireSecureExistingDirectory(Path parentDirectory) throws IOException {
+  static void requireSecureExistingDirectory(Path normalizedBookPath, Path parentDirectory)
+      throws IOException {
     if (!Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
-      throw new IllegalArgumentException(
-          "The FinGrind SQLite book path must resolve beneath an existing directory: "
+      throw new SqliteCallerPathContractException(
+          normalizedBookPath,
+          SqliteCallerPathFailure.PARENT_PATH_COLLISION,
+          "The FinGrind SQLite book path requires one real parent directory: "
               + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
     }
     if (SqliteBookFilesystemSupport.supportsPosix(parentDirectory)) {
-      requireSecurePosixDirectory(parentDirectory);
+      requireSecurePosixDirectory(normalizedBookPath, parentDirectory);
       return;
     }
-    requireSecureAclDirectory(parentDirectory);
+    requireSecureAclDirectory(normalizedBookPath, parentDirectory);
   }
 
   static void hardenDirectory(Path directoryPath) throws IOException {
@@ -102,23 +105,29 @@ final class SqliteBookDirectorySecurity {
     SqliteBookAclSupport.applyOwnerOnlyAcl(directoryPath, WINDOWS_OWNER_BOOK_DIRECTORY_PERMISSIONS);
   }
 
-  private static void requireSecurePosixDirectory(Path parentDirectory) throws IOException {
+  private static void requireSecurePosixDirectory(Path normalizedBookPath, Path parentDirectory)
+      throws IOException {
     Set<PosixFilePermission> permissions =
         Files.getPosixFilePermissions(parentDirectory, LinkOption.NOFOLLOW_LINKS);
     if (!permissions.contains(PosixFilePermission.OWNER_WRITE)
         || !permissions.contains(PosixFilePermission.OWNER_EXECUTE)) {
-      throw new IllegalStateException(
+      throw new SqliteCallerPathContractException(
+          normalizedBookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
           "The FinGrind SQLite book parent directory must be owner-writable and owner-searchable: "
               + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
     }
     if (!POSIX_BOOK_DIRECTORY_PERMISSIONS.containsAll(permissions)) {
-      throw new IllegalStateException(
+      throw new SqliteCallerPathContractException(
+          normalizedBookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
           "The FinGrind SQLite book parent directory must already use owner-only permissions: "
               + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
     }
   }
 
-  private static void requireSecureAclDirectory(Path parentDirectory) throws IOException {
+  private static void requireSecureAclDirectory(Path normalizedBookPath, Path parentDirectory)
+      throws IOException {
     AclFileAttributeView view = SqliteBookAclSupport.aclView(parentDirectory);
     UserPrincipal owner = view.getOwner();
     List<AclEntry> acl = List.copyOf(view.getAcl());
@@ -128,7 +137,9 @@ final class SqliteBookDirectorySecurity {
             .filter(entry -> owner.equals(entry.principal()))
             .anyMatch(entry -> entry.permissions().containsAll(ACL_DIRECTORY_REQUIRED_PERMISSIONS));
     if (!ownerCanTraverseAndWrite) {
-      throw new IllegalStateException(
+      throw new SqliteCallerPathContractException(
+          normalizedBookPath,
+          SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
           "The FinGrind SQLite book parent directory ACL must grant the directory owner traversal and write access: "
               + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
     }
@@ -142,7 +153,9 @@ final class SqliteBookDirectorySecurity {
         .findFirst()
         .ifPresent(
             entry -> {
-              throw new IllegalStateException(
+              throw new SqliteCallerPathContractException(
+                  normalizedBookPath,
+                  SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
                   "The FinGrind SQLite book parent directory ACL must grant book-directory access only to the directory owner: "
                       + SqliteBookFilesystemSupport.redactedPath(parentDirectory)
                       + " grants access to one non-owner principal.");

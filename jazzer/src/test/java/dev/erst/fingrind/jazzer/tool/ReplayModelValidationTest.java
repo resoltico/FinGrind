@@ -29,7 +29,7 @@ class ReplayModelValidationTest {
         IllegalArgumentException.class,
         () ->
             new LedgerPlanShapeDetails(
-                " plan-1 ", 1, LedgerStepKind.OPEN_BOOK, LedgerStepKind.INSPECT_BOOK, -1, true));
+                " plan-1 ", 1, LedgerStepKind.ENSURE_BOOK, LedgerStepKind.INSPECT_BOOK, -1, true));
     assertThrows(
         IllegalArgumentException.class,
         () -> new LedgerPlanExecutionDetails(LedgerPlanStatus.SUCCEEDED, 1, 0, 1));

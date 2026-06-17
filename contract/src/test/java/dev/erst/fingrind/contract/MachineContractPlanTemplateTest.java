@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
@@ -26,8 +27,8 @@ class MachineContractPlanTemplateTest {
   void planTemplatePublishesCanonicalAgentWorkflowMetadata() {
     ContractPlanTemplates.LedgerPlanTemplateDescriptor template = MachineContract.planTemplate();
     ContractPlanTemplates.LedgerPlanStepTemplateDescriptor initializeBook = template.steps().get(0);
-    ContractPlanTemplates.OpenBookTemplateDescriptor initializeBookTemplate =
-        initializeBook.openBook();
+    ContractPlanTemplates.EnsureBookTemplateDescriptor initializeBookTemplate =
+        initializeBook.ensureBook();
     ContractPlanTemplates.LedgerPlanStepTemplateDescriptor postJournal = template.steps().get(1);
     ContractTemplates.PostingRequestTemplateDescriptor postJournalTemplate = postJournal.posting();
     ContractPlanTemplates.LedgerPlanStepTemplateDescriptor assertCashBalance =
@@ -39,8 +40,8 @@ class MachineContractPlanTemplateTest {
     assertNotNull(assertCashBalanceTemplate);
     assertEquals("plan-1", template.planId());
     assertEquals(3, template.steps().size());
-    assertEquals("initialize-book", initializeBook.stepId());
-    assertEquals(LedgerStepKind.OPEN_BOOK, initializeBook.kind());
+    assertEquals("ensure-book", initializeBook.stepId());
+    assertEquals(LedgerStepKind.ENSURE_BOOK, initializeBook.kind());
     assertEquals("Acme Studio", initializeBookTemplate.entityName());
     assertEquals("EUR", initializeBookTemplate.functionalCurrency());
     assertEquals("01-01", initializeBookTemplate.fiscalYearStart());
@@ -48,7 +49,8 @@ class MachineContractPlanTemplateTest {
     assertEquals(LedgerStepKind.POST_ENTRY, postJournal.kind());
     assertEquals("2026-01-15", postJournalTemplate.effectiveDate());
     assertEquals(
-        dev.erst.fingrind.core.BookkeepingEntryKind.CASH_REVENUE, postJournalTemplate.entryKind());
+        dev.erst.fingrind.core.BookkeepingEntryKind.JOURNAL, postJournalTemplate.entryKind());
+    assertEquals(JournalRecipeKind.CASH_REVENUE, postJournalTemplate.recipeKind());
     assertEquals("cash", postJournalTemplate.cashAccountCode());
     assertEquals("service-revenue", postJournalTemplate.revenueAccountCode());
     assertEquals(ScaffoldPlaceholders.ACTOR_ID, postJournalTemplate.provenance().actorId());
@@ -60,7 +62,7 @@ class MachineContractPlanTemplateTest {
     assertEquals(new MonetaryAmount("EUR", "1000"), assertCashBalanceTemplate.netAmount());
     assertEquals(BalanceSide.DEBIT, assertCashBalanceTemplate.balanceSide());
     CapabilitiesDescriptor capabilities =
-        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.55.0", "test"));
+        MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.56.0", "test"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());

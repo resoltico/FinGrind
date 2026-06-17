@@ -2,9 +2,9 @@
   "planId": "plan-demo-1",
   "steps": [
     {
-      "stepId": "initialize-book",
-      "kind": "open-book",
-      "openBook": {
+      "stepId": "ensure-book",
+      "kind": "ensure-book",
+      "ensureBook": {
         "entityName": "Acme Studio",
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01"
@@ -14,7 +14,8 @@
       "stepId": "post-journal",
       "kind": "post-entry",
       "posting": {
-        "entryKind": "CASH_REVENUE",
+        "entryKind": "JOURNAL",
+        "recipeKind": "CASH_REVENUE",
         "effectiveDate": "2026-04-07",
         "cashAccountCode": "cash",
         "revenueAccountCode": "service-revenue",

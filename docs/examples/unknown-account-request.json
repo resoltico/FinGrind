@@ -1,5 +1,6 @@
 {
-  "entryKind": "CASH_REVENUE",
+  "entryKind": "JOURNAL",
+  "recipeKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-08",
   "cashAccountCode": "9998",
   "revenueAccountCode": "2000",

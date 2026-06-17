@@ -262,7 +262,8 @@ TEXT
                     esac
                 done
                 [[ -n "${request_file}" ]] || exit 1
-                grep -Fq '"entryKind": "CASH_REVENUE"' "${request_file}" || exit 1
+                grep -Fq '"entryKind": "JOURNAL"' "${request_file}" || exit 1
+                grep -Fq '"recipeKind": "CASH_REVENUE"' "${request_file}" || exit 1
                 grep -Fq '"cashAccountCode": "cash"' "${request_file}" || exit 1
                 grep -Fq '"revenueAccountCode": "service-revenue"' "${request_file}" || exit 1
                 grep -Fq '"sourceDocumentId": "release-protocol-cash-receipt-1"' "${request_file}" || exit 1

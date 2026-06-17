@@ -11,7 +11,7 @@ import java.util.Objects;
 
 /** Internal workflow step family for executing ordered book plans. */
 public sealed interface BookWorkflowStep
-    permits BookWorkflowStep.OpenBook,
+    permits BookWorkflowStep.EnsureBook,
         BookWorkflowStep.DeclareAccount,
         BookWorkflowStep.PreflightEntry,
         BookWorkflowStep.PostEntry,
@@ -24,11 +24,11 @@ public sealed interface BookWorkflowStep
   /** Stable caller-supplied step identifier. */
   BookWorkflowStepId stepId();
 
-  /** Initializes the selected book inside the workflow transaction. */
-  record OpenBook(BookWorkflowStepId stepId, BookIdentity bookIdentity)
+  /** Ensures the selected book identity is present inside the workflow transaction. */
+  record EnsureBook(BookWorkflowStepId stepId, BookIdentity bookIdentity)
       implements BookWorkflowStep {
     /** Validates the step. */
-    public OpenBook {
+    public EnsureBook {
       requireStepId(stepId);
       Objects.requireNonNull(bookIdentity, "bookIdentity");
     }

@@ -96,6 +96,6 @@ def verify_help_and_template_surfaces(
         f"{config.label} print-plan-template did not publish the canonical planId scaffold",
     )
     require(
-        payload_field(plan_template, "steps", 0, "stepId") == "initialize-book",
-        f"{config.label} print-plan-template did not publish the canonical initialize-book step",
+        payload_field(plan_template, "steps", 0, "stepId") == "ensure-book",
+        f"{config.label} print-plan-template did not publish the canonical ensure-book step",
     )

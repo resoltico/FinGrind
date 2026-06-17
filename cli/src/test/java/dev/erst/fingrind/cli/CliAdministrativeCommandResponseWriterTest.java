@@ -222,22 +222,26 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeAdministrativeAndWriteRejections_supportTextOutput() {
+  void writeAdministrativeAndWriteRejections_emitJsonEnvelopesWhenTextModeIsSelected()
+      throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeOpenBookResult(
         Path.of("books/book.sqlite"),
         new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
         OutputMode.TEXT);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Rejected"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("book-already-initialized"));
+    var json = readJson(outputStream);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("book-already-initialized", json.path("code").stringValue());
     outputStream.reset();
     responseWriter.writePostEntryResult(
         new PostEntryResult.PreflightRejected(
             new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
         OutputMode.TEXT);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Idempotency key"));
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("duplicate-idempotency-key"));
+    json = readJson(outputStream);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("duplicate-idempotency-key", json.path("code").stringValue());
+    assertEquals("idem-1", json.path("idempotencyKey").stringValue());
     outputStream.reset();
     responseWriter.writePeriodResultTransferResult(
         new PeriodResultTransferResult.Rejected(
@@ -245,10 +249,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 dev.erst.fingrind.core.FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of())),
         OutputMode.TEXT);
-    assertTrue(
-        outputStream
-            .toString(StandardCharsets.UTF_8)
-            .contains("result-holding-account-candidate-missing"));
+    json = readJson(outputStream);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("result-holding-account-candidate-missing", json.path("code").stringValue());
   }
 
   @Test
@@ -398,7 +401,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeMaintenanceRejections_emitStructuredDetails() throws Exception {
+  void writeMaintenanceRejections_emitStructuredJsonDetailsAcrossOutputModes() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeBackupBookResult(
@@ -409,10 +412,10 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                     hint(Path.of("books/entity.sqlite-wal")),
                     hint(Path.of("books/entity.sqlite-shm"))))),
         OutputMode.TEXT);
-    String text = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(text.contains("Rejected"));
-    assertTrue(text.contains("book-has-blocking-artifacts"));
-    assertTrue(text.contains("Blocking artifacts"));
+    var json = readJson(outputStream);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("book-has-blocking-artifacts", json.path("code").stringValue());
+    assertEquals(2, json.path("details").path("blockingArtifacts").size());
     outputStream.reset();
 
     responseWriter.writeInspectRekeyRollbackResult(
@@ -423,13 +426,13 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                     hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
                     hint(Path.of("books/entity.rekey-rollback-b.sqlite"))))),
         OutputMode.JSON);
-    String json = outputStream.toString(StandardCharsets.UTF_8);
-    assertJsonContains(json, "\"status\":\"rejected\"");
-    assertJsonContains(json, "\"code\":\"rollback-artifact-selection-required\"");
+    json = readJson(outputStream);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("rollback-artifact-selection-required", json.path("code").stringValue());
     assertEquals(
         publicHintValue(Path.of("books/entity.sqlite")),
-        readJson(outputStream).path("details").path("bookFile").asText().replace('\\', '/'));
-    assertEquals(2, readJson(outputStream).path("details").path("rollbackArtifacts").size());
+        json.path("details").path("bookFile").asText().replace('\\', '/'));
+    assertEquals(2, json.path("details").path("rollbackArtifacts").size());
   }
 
   @Test
@@ -495,7 +498,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeRekeyRollbackRestoreAndDelete_writeMaintenanceRejections() throws Exception {
+  void writeRekeyRollbackRestoreAndDelete_emitMaintenanceJsonRejectionsAcrossOutputModes()
+      throws Exception {
     ByteArrayOutputStream restoreOutput = new ByteArrayOutputStream();
     CliResponseWriter restoreWriter = new CliResponseWriter(utf8PrintStream(restoreOutput));
     restoreWriter.writeRestoreRekeyRollbackResult(
@@ -520,9 +524,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                     hint(Path.of("books/entity.rekey-rollback-b.sqlite"))))),
         OutputMode.TEXT);
 
-    String text = deleteOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(text.contains("Rejected"));
-    assertTrue(text.contains("rollback-artifact-selection-required"));
+    var json = readJson(deleteOutput);
+    assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("rollback-artifact-selection-required", json.path("code").stringValue());
   }
 
   @Test

@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
@@ -126,7 +127,9 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
 
   private static dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerifiedBook
       verifiedBook(SqliteProtectedBookMaintenanceStore store, ProtectedBookAccess sourceAccess) {
-    return switch (acceptedValue(store.verifyInitializedBook(sourceAccess))) {
+    return switch (acceptedValue(
+        store.verifyInitializedBook(
+            sourceAccess, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))) {
       case dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerifiedBook verifiedBook ->
           verifiedBook;
       case dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerificationFailure

@@ -16,8 +16,8 @@ final class JazzerReplayLedgerPlanFixtures {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book",
-              "openBook": %s
+              "kind": "ensure-book",
+              "ensureBook": %s
             },
             %s,
             %s,
@@ -79,8 +79,8 @@ final class JazzerReplayLedgerPlanFixtures {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book",
-              "openBook": %s
+              "kind": "ensure-book",
+              "ensureBook": %s
             },
             %s,
             %s,

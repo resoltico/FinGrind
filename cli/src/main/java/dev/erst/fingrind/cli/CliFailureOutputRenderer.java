@@ -129,7 +129,7 @@ final class CliFailureOutputRenderer {
       appendQueryOrPlanRejectionDetails(rows, queryOrPlanDetails);
       return;
     }
-    appendMaintenanceRejectionDetails(
+    CliMaintenanceFailureOutputRenderer.appendRows(
         rows, (CliRejectionJsonModels.MaintenanceRejectionDetails) rejectionDetails);
   }
 
@@ -171,11 +171,11 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Functional currency", details.functionalCurrency()));
         rows.add(List.of("Attempted currency", details.attemptedCurrency()));
       }
-      case CliRejectionJsonModels.OpeningBalanceWindowClosedDetails details -> {
+      case CliRejectionJsonModels.OpenAccountingPositionWindowClosedDetails details -> {
         rows.add(List.of("First blocking posting kind", details.firstBlockingPostingKind()));
         rows.add(List.of("First blocking effective date", details.firstBlockingEffectiveDate()));
       }
-      case CliRejectionJsonModels.OpeningBalanceNominalAccountDetails details -> {
+      case CliRejectionJsonModels.OpenAccountingPositionNominalAccountDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Account type", details.accountType()));
       }
@@ -281,46 +281,6 @@ final class CliFailureOutputRenderer {
           rows.add(List.of("Posting id", details.postingId()));
       case CliRejectionJsonModels.PlanRejectionDetails details ->
           rows.add(List.of("Plan id", details.plan().planId()));
-    }
-  }
-
-  private static void appendMaintenanceRejectionDetails(
-      List<List<String>> rows,
-      CliRejectionJsonModels.MaintenanceRejectionDetails rejectionDetails) {
-    switch (rejectionDetails) {
-      case CliRejectionJsonModels.BookFileDetails details ->
-          rows.add(List.of("Book file", details.bookFile()));
-      case CliRejectionJsonModels.BookAndBackupFileDetails details -> {
-        rows.add(List.of("Book file", details.bookFile()));
-        rows.add(List.of("Backup file", details.backupFile()));
-      }
-      case CliRejectionJsonModels.BlockingArtifactsDetails details -> {
-        rows.add(List.of("Book file", details.bookFile()));
-        rows.add(List.of("Blocking artifacts", CliTextFormat.joined(details.blockingArtifacts())));
-      }
-      case CliRejectionJsonModels.ArtifactBusyDetails details -> {
-        rows.add(List.of("Artifact role", details.artifactRole()));
-        rows.add(List.of("Artifact path", details.artifactPath()));
-      }
-      case CliRejectionJsonModels.BackupFileDetails details ->
-          rows.add(List.of("Backup file", details.backupFile()));
-      case CliRejectionJsonModels.BackupBookKeyFileDetails details ->
-          rows.add(List.of("Backup key file", details.backupBookKeyFile()));
-      case CliRejectionJsonModels.ArtifactVerificationFailureDetails details -> {
-        rows.add(List.of("Artifact role", details.artifactRole()));
-        rows.add(List.of("Artifact path", details.artifactPath()));
-        rows.add(List.of("Verification failure", details.verificationFailure()));
-      }
-      case CliRejectionJsonModels.RollbackArtifactDetails details ->
-          rows.add(List.of("Rollback artifact", details.rollbackArtifact()));
-      case CliRejectionJsonModels.RollbackArtifactMismatchDetails details -> {
-        rows.add(List.of("Book file", details.bookFile()));
-        rows.add(List.of("Rollback artifact", details.rollbackArtifact()));
-      }
-      case CliRejectionJsonModels.RollbackArtifactSelectionDetails details -> {
-        rows.add(List.of("Book file", details.bookFile()));
-        rows.add(List.of("Rollback artifacts", CliTextFormat.joined(details.rollbackArtifacts())));
-      }
     }
   }
 

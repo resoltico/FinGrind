@@ -13,7 +13,10 @@ final class SqliteBookFilesystemSupport {
 
   static void requireSupportedSecureFilesystem(Path path) {
     if (!supportsPosix(path) && !supportsAcl(path)) {
-      throw new IllegalStateException(unsupportedSecureFilesystemMessage(path));
+      throw new SqliteCallerPathContractException(
+          path,
+          SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+          unsupportedSecureFilesystemMessage(path));
     }
   }
 
@@ -29,7 +32,9 @@ final class SqliteBookFilesystemSupport {
     Path parentDirectory =
         Objects.requireNonNull(normalizedBookPath, "normalizedBookPath").getParent();
     if (parentDirectory == null) {
-      throw new IllegalArgumentException(
+      throw new SqliteCallerPathContractException(
+          normalizedBookPath,
+          SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
           "The FinGrind SQLite book path must resolve to a file beneath a parent directory: "
               + redactedPath(normalizedBookPath));
     }

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, transfer-period-result, financial-position, income-statement, changes-in-equity]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is transfer-period-result documented", "where are the primary statement models documented"]
@@ -627,29 +627,36 @@ public sealed interface BookQueryRejection
 
 - Variants: `BookNotInitialized`, `UnknownAccount`, `PostingNotFound`
 
-## `BookMaintenanceArtifactRole`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint`
+## `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint`
 
 These public maintenance-contract types keep verification-driven maintenance outcomes typed and
 redacted at the published-language edge.
 
 ```java
 public enum BookMaintenanceArtifactRole implements WireValue
+public enum BookMaintenancePathFailure implements WireValue
 public enum BookMaintenanceVerificationFailure implements WireValue
 public sealed interface BookMaintenanceRejection
 public record PublicPathHint(String value)
 ```
 
 - `BookMaintenanceArtifactRole`: keeps maintenance failures precise about whether the rejected
-  artifact was the live book, backup source, rollback artifact, or restored target
+  artifact was the live book, backup source, backup target, backup-key target, rollback artifact,
+  or restored target
+- `BookMaintenancePathFailure`: keeps maintenance path-contract refusals typed as missing parent
+  directory, parent path collision, missing owner traversal/write access, missing owner-only
+  protection, non-regular target path, or unsupported secure filesystem
 - `BookMaintenanceVerificationFailure`: keeps deterministic maintenance verification failures typed
   as missing, blank SQLite, foreign SQLite, unsupported format version, incomplete FinGrind book,
   or protected-book verification failure
 - `PublicPathHint`: redacts filesystem paths to `<redacted>` or
   `<redacted>/<smallest-distinguishing-trailing-context>` so public maintenance output proves
   which artifact failed without leaking absolute operator paths
-- Boundary: `BookMaintenanceRejection.ArtifactBusy` and
+- Boundary: `BookMaintenanceRejection.ArtifactPathInvalid`,
+  `BookMaintenanceRejection.ArtifactBusy`, and
   `BookMaintenanceRejection.ArtifactVerificationFailed` use these types so backup, restore, and
-  rekey-recovery refusals preserve artifact role, failure class, and redacted path hints as
+  rekey-recovery refusals preserve artifact role, path failure or verification class, and redacted
+  path hints as
   first-class machine contract
   instead of collapsing maintenance verification into generic runtime failure text
 
@@ -662,8 +669,8 @@ public sealed interface BookMaintenanceRejection
 ```
 
 - Variants: `BookHasBlockingArtifacts`, `BackupSourceHasBlockingArtifacts`,
-  `ArtifactBusy`, `BackupDestinationAlreadyExists`, `BackupKeyFileAlreadyExists`,
-  `ArtifactVerificationFailed`,
+  `ArtifactPathInvalid`, `ArtifactBusy`, `BackupDestinationAlreadyExists`,
+  `BackupKeyFileAlreadyExists`, `ArtifactVerificationFailed`,
   `NoRollbackArtifactsFound`, `RollbackArtifactSelectionRequired`,
   `RollbackArtifactNotFound`, and `RollbackArtifactNotForBook`
 - Purpose: preserve closed-copy and rollback-artifact safety as first-class rejection language

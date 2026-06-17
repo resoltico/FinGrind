@@ -22,7 +22,7 @@ class JazzerReplayLedgerPlanTest {
     assertEquals(
         new LedgerPlanReplayDetails(
             new LedgerPlanShapeDetails(
-                "plan-1", 5, LedgerStepKind.OPEN_BOOK, LedgerStepKind.ASSERT, 1, true),
+                "plan-1", 5, LedgerStepKind.ENSURE_BOOK, LedgerStepKind.ASSERT, 1, true),
             new LedgerPlanExecutionDetails(LedgerPlanStatus.SUCCEEDED, 5, 0, 0)),
         success.details());
     assertEquals(ReplayOutcomeKind.SUCCESS, success.kind());
@@ -40,7 +40,12 @@ class JazzerReplayLedgerPlanTest {
     assertEquals(
         new LedgerPlanReplayDetails(
             new LedgerPlanShapeDetails(
-                "plan-query-1", 6, LedgerStepKind.OPEN_BOOK, LedgerStepKind.LIST_POSTINGS, 0, true),
+                "plan-query-1",
+                6,
+                LedgerStepKind.ENSURE_BOOK,
+                LedgerStepKind.LIST_POSTINGS,
+                0,
+                true),
             new LedgerPlanExecutionDetails(LedgerPlanStatus.SUCCEEDED, 6, 2, 2)),
         success.details());
   }

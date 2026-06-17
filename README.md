@@ -1,20 +1,22 @@
 # FinGrind — command-line double-entry bookkeeping with one protected book per accounting entity
 
 FinGrind is a command-line bookkeeping tool for one accounting entity per protected SQLite book.
-The current public kernel is one narrow internal-management cash-bookkeeping profile with one
-seeded owner-managed service starter chart. You initialize the book explicitly, extend that chart
-when needed, seed first balances through one structured opening-position flow, commit typed
-cash-kernel bookkeeping entries or one ordered AI-agent ledger plan, manage the same protected book
-through explicit rekey and backup-recovery commands, and query that file for balances, ledgers, and
-built-in statements. Humans use the task guide in `help`; automation uses `capabilities --output json`.
-Invalid writes and invalid maintenance mutations are rejected before they change the selected book.
+The current public kernel is one narrow internal-management bookkeeping profile with one seeded
+owner-managed service starter chart. You initialize the book explicitly, extend that chart when
+needed, seed first balances through one structured opening-position flow, commit one balanced
+journal directly or through one optional recipe-backed cash or equity helper, run one ordered
+AI-agent ledger plan, manage the same protected book through explicit rekey and backup-recovery
+commands, and query that file for balances, ledgers, and built-in statements. Humans use the task
+guide in `help`; automation uses `capabilities --output json`. Invalid writes and invalid
+maintenance mutations are rejected before they change the selected book.
 
 - Open one encrypted book per accounting entity, protected by a generated key file
 - Start from one seeded owner-managed service starter chart, then declare supplemental accounts
   and chart nodes when the built-in template is not enough
-- Post typed cash-kernel bookkeeping entries with retained evidence, provenance, and idempotency
-  keys, or run one ordered AI-agent ledger plan; use the structured opening-position flow for first
-  balances and reserve administrative entries for explicit reversals
+- Post direct balanced journals or recipe-backed cash and equity helpers with retained evidence,
+  provenance, and idempotency keys, or run one ordered AI-agent ledger plan; use the structured
+  opening-position flow for first balances and reserve administrative entries for explicit
+  reversals
 - Rekey protected books, export verified encrypted backup pairs, and inspect, restore, or delete
   interrupted rekey rollback artifacts through explicit maintenance commands
 - Scaffold placeholder-first request and plan documents with `print-request-template` and
@@ -55,14 +57,15 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --limit 10
 
-# Copy the concrete first-post sample that ships with public bundles, or emit the canonical
-# placeholder-first request scaffold directly on source-checkout and container paths.
+# Copy the concrete first-post sample that ships with public bundles when you want a runnable
+# starting point.
 cp ./quick-start-request.json ./request.json
-# Alternative when that bundled sample is not present:
+# Or emit the canonical placeholder-first request scaffold when you want the live contract shape:
 fingrind print-request-template > ./request.json
 
-# Edit ./request.json so it replaces every replace-before-commit token with real evidence and
-# provenance values, then post one balanced entry
+# The bundled sample is concrete; the generated scaffold is placeholder-first. Both follow the
+# same journal-first request contract. In either case, replace every replace-before-commit token
+# with real evidence and provenance values, then post one balanced entry
 fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --request-file ./request.json
 
@@ -75,7 +78,8 @@ The interface is layered: `help` is the operator guide, `print-request-template`
 `print-plan-template` emit placeholder-first scaffold documents, and `capabilities --output json`
 exposes the machine-readable discovery surface. The default JSON discovery detail is compact; rerun
 with `--detail minimal` for the terse overview or `--detail full` for the exhaustive embedded
-schemas and doctrine surface. For shell automation or agent sessions that prefer structured stdout
+schemas, evidence profiles, accepted source-document vocabularies, temporal-scope facts, and
+account-reachability doctrine. For shell automation or agent sessions that prefer structured stdout
 by default, set `FINGRIND_DEFAULT_OUTPUT=json`; an explicit per-command `--output ...` flag still
 wins when you need a one-off text or CSV result.
 
@@ -105,6 +109,13 @@ Account         | Name            | Currency | Debit total | Credit total | Net 
 ----------------+-----------------+----------+-------------+--------------+------------+-------------
 cash            | Cash            | EUR      |       10.00 |         0.00 |      10.00 | Debit
 service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+
+Comparative Trial Balance
+-------------------------
+book start to 2025-04-08
+
+As of   : 2025-04-08
+Outcome : No account balances matched the selected scope.
 
 Context
 -------

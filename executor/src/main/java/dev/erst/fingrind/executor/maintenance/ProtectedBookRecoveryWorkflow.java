@@ -106,7 +106,8 @@ final class ProtectedBookRecoveryWorkflow {
       Path selectedRollbackArtifact) {
     ProtectedBookMaintenanceStore store = support.store();
     ProtectedBookMaintenanceStore.LeaseAcquisition liveBookLeaseAcquisition =
-        store.acquireExistingArtifactLease(normalizedBookPath);
+        store.acquireExistingArtifactLease(
+            normalizedBookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
     if (liveBookLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
       return MaintenanceDecision.accepted(
           new ProtectedBookRecoveryOutcome.Rejected(
@@ -114,7 +115,8 @@ final class ProtectedBookRecoveryWorkflow {
                   ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, leaseBusy.artifactPath())));
     }
     ProtectedBookMaintenanceStore.LeaseAcquisition rollbackLeaseAcquisition =
-        store.acquireExistingArtifactLease(selectedRollbackArtifact);
+        store.acquireExistingArtifactLease(
+            selectedRollbackArtifact, ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT);
     if (rollbackLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
       try (ProtectedBookMaintenanceStore.HeldLease ignored =
           (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition) {
@@ -146,6 +148,9 @@ final class ProtectedBookRecoveryWorkflow {
                       selectedRollbackArtifact,
                       stagedDeletion),
               MaintenanceDecision::failed);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookRecoveryOutcome.Rejected(exception.rejection()));
     }
   }
 

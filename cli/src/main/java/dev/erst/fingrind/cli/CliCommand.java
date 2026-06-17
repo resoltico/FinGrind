@@ -7,9 +7,10 @@ import org.jspecify.annotations.Nullable;
 
 /** Parsed CLI command model for one FinGrind process invocation. */
 sealed interface CliCommand
-    permits CliCommand.OutputModeCommand, CliCommand.JsonFailureCommand, CliCommand.ReportCommand {
-  /** Returns the operator-facing output mode to use for deterministic failures. */
-  OutputMode failureOutputMode();
+    permits CliCommand.OutputModeCommand,
+        CliCommand.ReportCommand,
+        PrintPlanTemplate,
+        PrintRequestTemplate {
 
   /** Executes this parsed command against one concrete CLI execution context. */
   int execute(CliExecutionContext executionContext);
@@ -35,31 +36,12 @@ sealed interface CliCommand
           CliBookQueryOutputModeCommand {
     /** Selected operator-facing output mode for this command. */
     OutputMode outputMode();
-
-    @Override
-    default OutputMode failureOutputMode() {
-      return outputMode();
-    }
-  }
-
-  /** Command family whose deterministic failures are always JSON machine envelopes. */
-  sealed interface JsonFailureCommand extends CliCommand
-      permits PrintRequestTemplate, PrintPlanTemplate {
-    @Override
-    default OutputMode failureOutputMode() {
-      return OutputMode.JSON;
-    }
   }
 
   /** Command family whose successful output can target either terminal text/JSON or a PDF file. */
   sealed interface ReportCommand extends CliCommand permits CliBookQueryReportCommand {
     /** Selected report presentation settings for this command. */
     ReportOutput output();
-
-    @Override
-    default OutputMode failureOutputMode() {
-      return output().outputMode();
-    }
   }
 
   /** Shared report-presentation settings for one successful report command. */

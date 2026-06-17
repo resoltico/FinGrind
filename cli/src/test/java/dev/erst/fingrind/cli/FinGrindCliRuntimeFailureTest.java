@@ -79,7 +79,8 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_rendersDeterministicWorkflowContractFailuresAsRejectedTextOutput() {
+  void run_emitsCanonicalJsonForDeterministicWorkflowContractFailuresInTextMode()
+      throws IOException {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("book.key");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -108,12 +109,16 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             });
 
     assertEquals(6, exitCode);
-    String outputText = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(outputText.contains("Rejected"));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals(
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
+        failureEnvelope.path("code").stringValue());
     assertTrue(
-        outputText.contains(ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code()));
-    assertTrue(outputText.contains("Verify the book passphrase source and try again."));
-    assertFalse(outputText.contains("\"status\""));
+        failureEnvelope
+            .path("hint")
+            .stringValue()
+            .contains("Verify the book passphrase source and try again."));
   }
 
   @Test
@@ -363,7 +368,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_mapsGenericRuntimeFailureToTextFailureAndDiagnosticsInTextMode() {
+  void run_mapsGenericRuntimeFailureToJsonDiagnosticsInTextMode() throws IOException {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -390,10 +395,17 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(70, exitCode);
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsOutput.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("internal-error", failureEnvelope.path("code").stringValue());
+    assertTrue(failureEnvelope.path("message").stringValue().contains("fg-internal-"));
+    assertTrue(
+        failureEnvelope
+            .path("hint")
+            .stringValue()
+            .contains("preserved one machine-readable error envelope on stderr"));
     String diagnosticsText = diagnosticsOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(diagnosticsText.contains("Error"));
-    assertTrue(diagnosticsText.contains("internal-error"));
-    assertTrue(diagnosticsText.contains("[internal-error] fg-internal-"));
-    assertTrue(diagnosticsText.contains("IllegalStateException: boom"));
+    assertFalse(diagnosticsText.contains("IllegalStateException"));
+    assertFalse(diagnosticsText.contains("boom"));
   }
 }

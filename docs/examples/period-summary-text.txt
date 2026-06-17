@@ -1,7 +1,8 @@
 Period Summary
 ==============
 
-Range              : 2026-04-07 to 2026-04-08
+Period start       : 2026-04-07
+Period end         : 2026-04-08
 Posting count      : 1
 Posting line count : 2
 Accounts touched   : 2

@@ -4,6 +4,8 @@ package dev.erst.fingrind.executor.maintenance;
 public enum ProtectedBookMaintenanceArtifactRole {
   LIVE_BOOK,
   BACKUP_SOURCE,
+  BACKUP_TARGET,
+  BACKUP_KEY_TARGET,
   ROLLBACK_ARTIFACT,
   RESTORED_TARGET
 }

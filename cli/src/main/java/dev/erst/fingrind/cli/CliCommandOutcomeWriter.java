@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import java.util.function.Consumer;
@@ -12,7 +11,6 @@ final class CliCommandOutcomeWriter {
 
   static <T> int writeResolvedResult(
       ContractDecision<T> decision,
-      OutputMode outputMode,
       Consumer<T> successWriter,
       ToIntFunction<T> successExitCode,
       CliFailureResponseWriter failureWriter) {
@@ -21,12 +19,12 @@ final class CliCommandOutcomeWriter {
           successWriter.accept(result);
           return successExitCode.applyAsInt(result);
         },
-        failure -> writeDeterministicFailure(failure, outputMode, failureWriter));
+        failure -> writeDeterministicFailure(failure, failureWriter));
   }
 
   static int writeDeterministicFailure(
-      ContractFailure failure, OutputMode outputMode, CliFailureResponseWriter failureWriter) {
-    failureWriter.writeDeterministicFailure(CliFailureMapper.contractFailure(failure), outputMode);
+      ContractFailure failure, CliFailureResponseWriter failureWriter) {
+    failureWriter.writeDeterministicFailure(CliFailureMapper.contractFailure(failure));
     return CliExecutionPolicy.contractFailureExitCode(failure);
   }
 }

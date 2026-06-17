@@ -18,8 +18,8 @@ public final class CliFuzzLedgerPlanFixtureSupport {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book",
-              "openBook": %s
+              "kind": "ensure-book",
+              "ensureBook": %s
             },
             %s
           ]
@@ -40,8 +40,8 @@ public final class CliFuzzLedgerPlanFixtureSupport {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book",
-              "openBook": %s
+              "kind": "ensure-book",
+              "ensureBook": %s
             },
             %s,
             %s,
@@ -105,8 +105,8 @@ public final class CliFuzzLedgerPlanFixtureSupport {
           "steps": [
             {
               "stepId": "open",
-              "kind": "open-book",
-              "openBook": %s
+              "kind": "ensure-book",
+              "ensureBook": %s
             },
             %s,
             %s,

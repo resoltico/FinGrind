@@ -18,19 +18,17 @@ final class CliQueryScopeText {
   }
 
   static String lowerDateBoundaryMeaning(@Nullable LocalDate effectiveDateFrom) {
-    return effectiveDateFrom == null ? "book-start" : "selected-date";
+    return CliTemporalScopeText.lowerDateBoundaryMeaning(effectiveDateFrom);
   }
 
   static String upperDateBoundaryMeaning(@Nullable LocalDate effectiveDateTo) {
-    return effectiveDateTo == null ? "current-book-horizon" : "selected-date";
+    return CliTemporalScopeText.upperDateBoundaryMeaning(effectiveDateTo);
   }
 
   static String upperDateBoundaryMeaning(
       @Nullable LocalDate selectedEffectiveDateTo, @Nullable LocalDate resolvedEffectiveDateTo) {
-    if (selectedEffectiveDateTo != null) {
-      return "selected-date";
-    }
-    return resolvedEffectiveDateTo == null ? "no-postings" : "latest-posting-effective-date";
+    return CliTemporalScopeText.resolvedUpperDateBoundaryMeaning(
+        selectedEffectiveDateTo, resolvedEffectiveDateTo);
   }
 
   static String lowerDateBoundaryLabel(@Nullable LocalDate effectiveDateFrom) {

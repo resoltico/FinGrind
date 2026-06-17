@@ -16,6 +16,7 @@ final class MachineContractLedgerPlanFieldSets {
     return List.of(
         MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
         MachineContractLedgerPlanStructureFieldSpecs.genericStepKindField(),
+        MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalEnsureBookField(),
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalPostingField(),
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalDeclareAccountField(),
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalQueryField(),

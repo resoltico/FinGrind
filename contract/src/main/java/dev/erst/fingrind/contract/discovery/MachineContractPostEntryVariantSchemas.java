@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
@@ -13,10 +14,11 @@ final class MachineContractPostEntryVariantSchemas {
     return MachineContractSchemaSupport.rootOneOfSchema(
         "Canonical bookkeeping entry request JSON document.",
         List.of(
-            cashRevenueSchema(),
-            cashExpenseSchema(),
-            equityContributionSchema(),
-            equityWithdrawalSchema(),
+            journalDirectSchema(),
+            cashRevenueRecipeSchema(),
+            cashExpenseRecipeSchema(),
+            equityContributionRecipeSchema(),
+            equityWithdrawalRecipeSchema(),
             openAccountingPositionSchema(),
             reversalAdjustmentSchema()));
   }
@@ -49,72 +51,86 @@ final class MachineContractPostEntryVariantSchemas {
     return MachineContractPostEntryComponentSchemas.reversalSchema();
   }
 
-  static Map<String, Object> cashRevenueSchema() {
-    return typedEventSchema(
-        BookkeepingEntryKind.CASH_REVENUE,
-        "Typed bookkeeping event for cash-settled revenue recognized immediately into one revenue account.",
-        "This request records one cash-revenue business event.",
+  static Map<String, Object> journalDirectSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Direct balanced operational journal written without a higher-level recipe.",
+        List.of(
+            MachineContractPostEntryComponentSchemas.requiredEntryKindField(
+                BookkeepingEntryKind.JOURNAL, "This request records one direct balanced journal."),
+            MachineContractPostEntryFieldSpecs.requiredEffectiveDateField(),
+            MachineContractFieldSpec.required(
+                ProtocolPostEntryFields.TopLevel.LINES,
+                "Balanced non-empty array of journal lines for one direct journal.",
+                MachineContractSchemaSupport.arraySchema(
+                    "Balanced non-empty array of journal lines for one direct journal.",
+                    lineSchema(),
+                    2)),
+            MachineContractPostEntryFieldSpecs.requiredEvidenceField(),
+            MachineContractPostEntryFieldSpecs.requiredProvenanceField()));
+  }
+
+  static Map<String, Object> cashRevenueRecipeSchema() {
+    return recipeSchema(
+        JournalRecipeKind.CASH_REVENUE,
+        "Recipe-backed journal that debits one asset cash account and credits one revenue account.",
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-            "Declared cash account debited by this business event.",
+            "Declared cash account debited by this recipe-backed journal.",
             MachineContractPostEntryFieldSpecs.accountCodeSchema(
-                "Declared cash account debited by this business event.")),
+                "Declared cash account debited by this recipe-backed journal.")),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
-            "Declared revenue account credited by this business event.",
+            "Declared revenue account credited by this recipe-backed journal.",
             MachineContractPostEntryFieldSpecs.accountCodeSchema(
-                "Declared revenue account credited by this business event.")));
+                "Declared revenue account credited by this recipe-backed journal.")));
   }
 
-  static Map<String, Object> cashExpenseSchema() {
-    return typedEventSchema(
-        BookkeepingEntryKind.CASH_EXPENSE,
-        "Typed bookkeeping event for one cash-settled expense recognized immediately into one expense account.",
-        "This request records one cash-expense business event.",
+  static Map<String, Object> cashExpenseRecipeSchema() {
+    return recipeSchema(
+        JournalRecipeKind.CASH_EXPENSE,
+        "Recipe-backed journal that debits one expense account and credits one asset cash account.",
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
-            "Declared expense account debited by this business event.",
+            "Declared expense account debited by this recipe-backed journal.",
             MachineContractPostEntryFieldSpecs.accountCodeSchema(
-                "Declared expense account debited by this business event.")),
+                "Declared expense account debited by this recipe-backed journal.")),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-            "Declared cash account credited by this business event.",
+            "Declared cash account credited by this recipe-backed journal.",
             MachineContractPostEntryFieldSpecs.accountCodeSchema(
-                "Declared cash account credited by this business event.")));
+                "Declared cash account credited by this recipe-backed journal.")));
   }
 
-  static Map<String, Object> equityContributionSchema() {
-    return typedEventSchema(
-        BookkeepingEntryKind.EQUITY_CONTRIBUTION,
-        "Typed bookkeeping event for one equity contribution paid into cash.",
-        "This request records one equity-contribution business event.",
+  static Map<String, Object> equityContributionRecipeSchema() {
+    return recipeSchema(
+        JournalRecipeKind.EQUITY_CONTRIBUTION,
+        "Recipe-backed journal that debits one asset cash account and credits one equity account.",
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-            "Declared cash account debited by this contribution.",
+            "Declared cash account debited by this recipe-backed journal.",
             MachineContractPostEntryFieldSpecs.accountCodeSchema(
-                "Declared cash account debited by this contribution.")),
+                "Declared cash account debited by this recipe-backed journal.")),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-            "Declared equity account credited by this contribution.",
+            "Declared equity account credited by this recipe-backed journal.",
             MachineContractPostEntryFieldSpecs.accountCodeSchema(
-                "Declared equity account credited by this contribution.")));
+                "Declared equity account credited by this recipe-backed journal.")));
   }
 
-  static Map<String, Object> equityWithdrawalSchema() {
-    return typedEventSchema(
-        BookkeepingEntryKind.EQUITY_WITHDRAWAL,
-        "Typed bookkeeping event for one equity withdrawal paid out of cash.",
-        "This request records one equity-withdrawal business event.",
+  static Map<String, Object> equityWithdrawalRecipeSchema() {
+    return recipeSchema(
+        JournalRecipeKind.EQUITY_WITHDRAWAL,
+        "Recipe-backed journal that debits one equity account and credits one asset cash account.",
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-            "Declared equity account debited by this withdrawal.",
+            "Declared equity account debited by this recipe-backed journal.",
             MachineContractPostEntryFieldSpecs.accountCodeSchema(
-                "Declared equity account debited by this withdrawal.")),
+                "Declared equity account debited by this recipe-backed journal.")),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-            "Declared cash account credited by this withdrawal.",
+            "Declared cash account credited by this recipe-backed journal.",
             MachineContractPostEntryFieldSpecs.accountCodeSchema(
-                "Declared cash account credited by this withdrawal.")));
+                "Declared cash account credited by this recipe-backed journal.")));
   }
 
   static Map<String, Object> openAccountingPositionSchema() {
@@ -159,17 +175,19 @@ final class MachineContractPostEntryVariantSchemas {
                 reversalSchema())));
   }
 
-  private static Map<String, Object> typedEventSchema(
-      BookkeepingEntryKind kind,
+  private static Map<String, Object> recipeSchema(
+      JournalRecipeKind recipeKind,
       String description,
-      String entryKindDescription,
       MachineContractFieldSpec debitOrSourceAccountField,
       MachineContractFieldSpec creditOrTargetAccountField) {
     return MachineContractSchemaSupport.objectSchema(
         description,
         List.of(
             MachineContractPostEntryComponentSchemas.requiredEntryKindField(
-                kind, entryKindDescription),
+                BookkeepingEntryKind.JOURNAL,
+                "This request records one journal backed by a named convenience recipe."),
+            MachineContractPostEntryComponentSchemas.requiredRecipeKindField(
+                recipeKind, "Selected journal recipe for this request."),
             MachineContractPostEntryFieldSpecs.requiredEffectiveDateField(),
             debitOrSourceAccountField,
             creditOrTargetAccountField,

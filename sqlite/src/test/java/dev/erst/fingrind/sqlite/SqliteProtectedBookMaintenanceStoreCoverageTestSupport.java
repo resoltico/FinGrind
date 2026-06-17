@@ -9,6 +9,7 @@ import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
@@ -63,12 +64,26 @@ abstract class SqliteProtectedBookMaintenanceStoreCoverageTestSupport
 
   protected static ProtectedBookMaintenanceStore.VerifiedBook verifiedBook(
       SqliteProtectedBookMaintenanceStore store, BookAccess bookAccess) {
-    return switch (acceptedValue(store.verifyInitializedBook(localAccess(bookAccess)))) {
+    return switch (acceptedValue(
+        store.verifyInitializedBook(
+            localAccess(bookAccess), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))) {
       case ProtectedBookMaintenanceStore.VerifiedBook verifiedBook -> verifiedBook;
       case ProtectedBookMaintenanceStore.VerificationFailure verificationFailure ->
           throw new AssertionError(
               "Expected one verified book but got " + verificationFailure.failure());
     };
+  }
+
+  protected static ProtectedBookMaintenanceStore.LeaseAcquisition acquireLiveArtifactLease(
+      SqliteProtectedBookMaintenanceStore store, Path artifactPath) {
+    return store.acquireExistingArtifactLease(
+        artifactPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
+  }
+
+  protected static ProtectedBookMaintenanceStore.LeaseAcquisition acquireRestoredTargetLease(
+      SqliteProtectedBookMaintenanceStore store, Path artifactPath) {
+    return store.acquireManagedArtifactLease(
+        artifactPath, ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
   }
 
   protected void initializeBook(BookAccess bookAccess) {

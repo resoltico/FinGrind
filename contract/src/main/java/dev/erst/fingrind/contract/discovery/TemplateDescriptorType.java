@@ -14,7 +14,7 @@ public sealed interface TemplateDescriptorType
         ContractTemplates.ReversalTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanStepTemplateDescriptor,
-        ContractPlanTemplates.OpenBookTemplateDescriptor,
+        ContractPlanTemplates.EnsureBookTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor,
         ContractTemplates.DeclareAccountTemplateDescriptor,
         ContractPlanTemplates.LedgerAssertionTemplateDescriptor {

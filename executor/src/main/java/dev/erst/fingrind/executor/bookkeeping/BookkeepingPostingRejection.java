@@ -10,8 +10,10 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceDocumentType;
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Local bookkeeping refusal family for posting validation and commit acceptance. */
@@ -22,8 +24,8 @@ public sealed interface BookkeepingPostingRejection
         BookkeepingPostingRejection.DuplicateIdempotencyKey,
         BookkeepingPostingRejection.BookFunctionalCurrencyMismatch,
         BookkeepingPostingRejection.TransferredPeriodResultViolation,
-        BookkeepingPostingRejection.OpeningBalanceWindowClosed,
-        BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount,
+        BookkeepingPostingRejection.OpenAccountingPositionWindowClosed,
+        BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount,
         BookkeepingPostingRejection.ResultHoldingAccountReserved,
         BookkeepingPostingRejection.ReversalTargetNotFound,
         BookkeepingPostingRejection.ReversalAlreadyExists,
@@ -124,20 +126,22 @@ public sealed interface BookkeepingPostingRejection
     }
   }
 
-  /** Refusal for an opening-balance posting after ordinary book activity has begun. */
-  record OpeningBalanceWindowClosed(
+  /** Refusal for an OPEN_ACCOUNTING_POSITION request after ordinary book activity has begun. */
+  record OpenAccountingPositionWindowClosed(
       PostingKind firstBlockingPostingKind, LocalDate firstBlockingEffectiveDate)
       implements BookkeepingPostingRejection {
-    public OpeningBalanceWindowClosed {
+    public OpenAccountingPositionWindowClosed {
       Objects.requireNonNull(firstBlockingPostingKind, "firstBlockingPostingKind");
       Objects.requireNonNull(firstBlockingEffectiveDate, "firstBlockingEffectiveDate");
     }
   }
 
-  /** Refusal for an opening-balance posting that touches nominal income-statement accounts. */
-  record OpeningBalanceTouchesNominalAccount(AccountCode accountCode, AccountType accountType)
-      implements BookkeepingPostingRejection {
-    public OpeningBalanceTouchesNominalAccount {
+  /**
+   * Refusal for an OPEN_ACCOUNTING_POSITION request that touches nominal income-statement accounts.
+   */
+  record OpenAccountingPositionTouchesNominalAccount(
+      AccountCode accountCode, AccountType accountType) implements BookkeepingPostingRejection {
+    public OpenAccountingPositionTouchesNominalAccount {
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(accountType, "accountType");
     }
@@ -180,7 +184,18 @@ public sealed interface BookkeepingPostingRejection
       AccountCode accountCode,
       AccountType expectedAccountType,
       AccountType actualAccountType) {
-    Objects.requireNonNull(entryKind, "entryKind");
+    return accountTypeMismatch(
+        entryKind.wireValue(), field, accountCode, expectedAccountType, actualAccountType);
+  }
+
+  /** Creates one entry-semantics violation for a typed entry using the wrong account type. */
+  static EntrySemanticsViolation accountTypeMismatch(
+      String entryLabel,
+      String field,
+      AccountCode accountCode,
+      AccountType expectedAccountType,
+      AccountType actualAccountType) {
+    Objects.requireNonNull(entryLabel, "entryLabel");
     Objects.requireNonNull(field, "field");
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(expectedAccountType, "expectedAccountType");
@@ -190,7 +205,7 @@ public sealed interface BookkeepingPostingRejection
         field,
         "Entry kind '%s' requires %s '%s' to be account type '%s', but the declared account type is '%s'."
             .formatted(
-                entryKind.wireValue(),
+                entryLabel,
                 field,
                 accountCode.value(),
                 expectedAccountType.wireValue(),
@@ -207,7 +222,21 @@ public sealed interface BookkeepingPostingRejection
       AccountCode accountCode,
       FinancialPositionLineClassification expectedClassification,
       @Nullable FinancialPositionLineClassification actualClassification) {
-    Objects.requireNonNull(entryKind, "entryKind");
+    return financialPositionClassificationMismatch(
+        entryKind.wireValue(), field, accountCode, expectedClassification, actualClassification);
+  }
+
+  /**
+   * Creates one entry-semantics violation for a typed entry using the wrong financial-position
+   * classification.
+   */
+  static EntrySemanticsViolation financialPositionClassificationMismatch(
+      String entryLabel,
+      String field,
+      AccountCode accountCode,
+      FinancialPositionLineClassification expectedClassification,
+      @Nullable FinancialPositionLineClassification actualClassification) {
+    Objects.requireNonNull(entryLabel, "entryLabel");
     Objects.requireNonNull(field, "field");
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(expectedClassification, "expectedClassification");
@@ -216,7 +245,7 @@ public sealed interface BookkeepingPostingRejection
         field,
         "Entry kind '%s' requires %s '%s' to use financialPositionLineClassification '%s', but the declared account uses '%s'."
             .formatted(
-                entryKind.wireValue(),
+                entryLabel,
                 field,
                 accountCode.value(),
                 expectedClassification.wireValue(),
@@ -228,7 +257,13 @@ public sealed interface BookkeepingPostingRejection
       BookkeepingEntryKind entryKind,
       SourceDocumentType sourceDocumentType,
       List<String> acceptedTypes) {
-    Objects.requireNonNull(entryKind, "entryKind");
+    return sourceDocumentTypeNotAccepted(entryKind.wireValue(), sourceDocumentType, acceptedTypes);
+  }
+
+  /** Creates one entry-semantics violation for a typed entry using an unsupported evidence type. */
+  static EntrySemanticsViolation sourceDocumentTypeNotAccepted(
+      String entryLabel, SourceDocumentType sourceDocumentType, List<String> acceptedTypes) {
+    Objects.requireNonNull(entryLabel, "entryLabel");
     Objects.requireNonNull(sourceDocumentType, "sourceDocumentType");
     List<String> acceptedDocumentTypes =
         List.copyOf(Objects.requireNonNull(acceptedTypes, "acceptedTypes"));
@@ -237,8 +272,40 @@ public sealed interface BookkeepingPostingRejection
         "evidence.sourceDocuments[].sourceDocumentType",
         "Entry kind '%s' does not accept sourceDocumentType '%s'. Accepted values: %s."
             .formatted(
-                entryKind.wireValue(),
-                sourceDocumentType.value(),
-                String.join(", ", acceptedDocumentTypes)));
+                entryLabel, sourceDocumentType.value(), String.join(", ", acceptedDocumentTypes)));
+  }
+
+  /** Creates one entry-semantics violation for typed entries that require distinct accounts. */
+  static EntrySemanticsViolation distinctRoleAccountsRequired(
+      BookkeepingEntryKind entryKind,
+      String firstField,
+      String secondField,
+      AccountCode accountCode) {
+    return distinctRoleAccountsRequired(
+        entryKind.wireValue(), firstField, secondField, accountCode);
+  }
+
+  /** Creates one entry-semantics violation for typed entries that require distinct accounts. */
+  static EntrySemanticsViolation distinctRoleAccountsRequired(
+      String entryLabel, String firstField, String secondField, AccountCode accountCode) {
+    Objects.requireNonNull(entryLabel, "entryLabel");
+    Objects.requireNonNull(firstField, "firstField");
+    Objects.requireNonNull(secondField, "secondField");
+    Objects.requireNonNull(accountCode, "accountCode");
+    return new EntrySemanticsViolation(
+        "distinct-role-accounts-required",
+        null,
+        "Entry kind '%s' requires %s and %s to reference distinct accounts, but both point to '%s'."
+            .formatted(entryLabel, firstField, secondField, accountCode.value()));
+  }
+
+  /** Returns one insertion-ordered set of referenced accounts without rejecting duplicates. */
+  static Set<AccountCode> referencedAccountSet(AccountCode... accountCodes) {
+    Objects.requireNonNull(accountCodes, "accountCodes");
+    Set<AccountCode> referencedAccounts = new LinkedHashSet<>();
+    for (AccountCode accountCode : accountCodes) {
+      referencedAccounts.add(Objects.requireNonNull(accountCode, "accountCode"));
+    }
+    return referencedAccounts;
   }
 }

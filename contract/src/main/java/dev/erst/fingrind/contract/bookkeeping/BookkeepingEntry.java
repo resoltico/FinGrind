@@ -7,102 +7,97 @@ import dev.erst.fingrind.core.JournalLine;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
-/** Public bookkeeping write-model entry shape with typed business events and named adjustments. */
+/**
+ * Public bookkeeping write model with one journal-first boundary plus opening and reversal
+ * profiles.
+ */
 public sealed interface BookkeepingEntry
-    permits BookkeepingEntry.CashRevenue,
-        BookkeepingEntry.CashExpense,
-        BookkeepingEntry.EquityContribution,
-        BookkeepingEntry.EquityWithdrawal,
+    permits BookkeepingEntry.Journal,
         BookkeepingEntry.OpenAccountingPosition,
         BookkeepingEntry.ReversalAdjustment {
+  /** Returns one journal entry backed by the cash-revenue convenience recipe. */
+  static Journal cashRevenue(
+      LocalDate effectiveDate,
+      AccountCode cashAccountCode,
+      AccountCode revenueAccountCode,
+      MonetaryAmount amount) {
+    return new Journal(
+        effectiveDate, new JournalRecipe.CashRevenue(cashAccountCode, revenueAccountCode, amount));
+  }
+
+  /** Returns one journal entry backed by the cash-expense convenience recipe. */
+  static Journal cashExpense(
+      LocalDate effectiveDate,
+      AccountCode expenseAccountCode,
+      AccountCode cashAccountCode,
+      MonetaryAmount amount) {
+    return new Journal(
+        effectiveDate, new JournalRecipe.CashExpense(expenseAccountCode, cashAccountCode, amount));
+  }
+
+  /** Returns one journal entry backed by the equity-contribution convenience recipe. */
+  static Journal equityContribution(
+      LocalDate effectiveDate,
+      AccountCode cashAccountCode,
+      AccountCode equityAccountCode,
+      MonetaryAmount amount) {
+    return new Journal(
+        effectiveDate,
+        new JournalRecipe.EquityContribution(cashAccountCode, equityAccountCode, amount));
+  }
+
+  /** Returns one journal entry backed by the equity-withdrawal convenience recipe. */
+  static Journal equityWithdrawal(
+      LocalDate effectiveDate,
+      AccountCode equityAccountCode,
+      AccountCode cashAccountCode,
+      MonetaryAmount amount) {
+    return new Journal(
+        effectiveDate,
+        new JournalRecipe.EquityWithdrawal(equityAccountCode, cashAccountCode, amount));
+  }
+
   /** Returns the stable caller-authored entry kind. */
   BookkeepingEntryKind entryKind();
 
   /** Returns the effective date carried by this caller-authored entry. */
   LocalDate effectiveDate();
 
-  /** Cash-settled revenue event posted directly from cash into one revenue account. */
-  record CashRevenue(
-      LocalDate effectiveDate,
-      AccountCode cashAccountCode,
-      AccountCode revenueAccountCode,
-      MonetaryAmount amount)
+  /**
+   * Canonical operational journal entry, optionally annotated with one higher-level business-event
+   * recipe that derives the same journal.
+   */
+  record Journal(JournalEntry journalEntry, @Nullable JournalRecipe recipe)
       implements BookkeepingEntry {
-    public CashRevenue {
-      Objects.requireNonNull(effectiveDate, "effectiveDate");
-      Objects.requireNonNull(cashAccountCode, "cashAccountCode");
-      Objects.requireNonNull(revenueAccountCode, "revenueAccountCode");
-      Objects.requireNonNull(amount, "amount");
-      requirePositive(amount, "amount");
+    public Journal {
+      Objects.requireNonNull(journalEntry, "journalEntry");
+      if (recipe != null
+          && !recipe.journalEntry(journalEntry.effectiveDate()).equals(journalEntry)) {
+        throw new IllegalArgumentException(
+            "journalEntry must equal the journal derived from the selected recipe.");
+      }
+    }
+
+    /** Builds one canonical journal from the supplied effective date and higher-level recipe. */
+    public Journal(LocalDate effectiveDate, JournalRecipe recipe) {
+      this(Objects.requireNonNull(recipe, "recipe").journalEntry(effectiveDate), recipe);
     }
 
     @Override
     public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.CASH_REVENUE;
-    }
-  }
-
-  /** Cash-settled expense event posted directly from one expense account into cash. */
-  record CashExpense(
-      LocalDate effectiveDate,
-      AccountCode expenseAccountCode,
-      AccountCode cashAccountCode,
-      MonetaryAmount amount)
-      implements BookkeepingEntry {
-    public CashExpense {
-      Objects.requireNonNull(effectiveDate, "effectiveDate");
-      Objects.requireNonNull(expenseAccountCode, "expenseAccountCode");
-      Objects.requireNonNull(cashAccountCode, "cashAccountCode");
-      Objects.requireNonNull(amount, "amount");
-      requirePositive(amount, "amount");
+      return BookkeepingEntryKind.JOURNAL;
     }
 
     @Override
-    public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.CASH_EXPENSE;
-    }
-  }
-
-  /** Equity contribution introduced into the book through cash. */
-  record EquityContribution(
-      LocalDate effectiveDate,
-      AccountCode cashAccountCode,
-      AccountCode equityAccountCode,
-      MonetaryAmount amount)
-      implements BookkeepingEntry {
-    public EquityContribution {
-      Objects.requireNonNull(effectiveDate, "effectiveDate");
-      Objects.requireNonNull(cashAccountCode, "cashAccountCode");
-      Objects.requireNonNull(equityAccountCode, "equityAccountCode");
-      Objects.requireNonNull(amount, "amount");
-      requirePositive(amount, "amount");
+    public LocalDate effectiveDate() {
+      return journalEntry.effectiveDate();
     }
 
-    @Override
-    public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.EQUITY_CONTRIBUTION;
-    }
-  }
-
-  /** Equity withdrawal taken out of the book through cash. */
-  record EquityWithdrawal(
-      LocalDate effectiveDate,
-      AccountCode equityAccountCode,
-      AccountCode cashAccountCode,
-      MonetaryAmount amount)
-      implements BookkeepingEntry {
-    public EquityWithdrawal {
-      Objects.requireNonNull(effectiveDate, "effectiveDate");
-      Objects.requireNonNull(equityAccountCode, "equityAccountCode");
-      Objects.requireNonNull(cashAccountCode, "cashAccountCode");
-      Objects.requireNonNull(amount, "amount");
-      requirePositive(amount, "amount");
-    }
-
-    @Override
-    public BookkeepingEntryKind entryKind() {
-      return BookkeepingEntryKind.EQUITY_WITHDRAWAL;
+    /** Returns the caller-authored journal lines after any optional recipe expansion. */
+    public List<JournalLine> lines() {
+      return journalEntry.lines();
     }
   }
 
@@ -143,7 +138,9 @@ public sealed interface BookkeepingEntry
         Objects.requireNonNull(accountCode, "accountCode");
         Objects.requireNonNull(side, "side");
         Objects.requireNonNull(amount, "amount");
-        requirePositive(amount, "amount");
+        if (!amount.toMoney().isPositive()) {
+          throw new IllegalArgumentException("amount must carry one positive amount.");
+        }
       }
     }
   }
@@ -169,12 +166,6 @@ public sealed interface BookkeepingEntry
     /** Returns the caller-authored lines for this reversal entry. */
     public List<JournalLine> lines() {
       return journalEntry.lines();
-    }
-  }
-
-  private static void requirePositive(MonetaryAmount amount, String fieldName) {
-    if (!amount.toMoney().isPositive()) {
-      throw new IllegalArgumentException(fieldName + " must carry one positive amount.");
     }
   }
 }

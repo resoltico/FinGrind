@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.discovery.MachineContract;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -36,21 +35,21 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeFailure_supportsTextOutput() {
+  void writeFailure_emitsCanonicalJsonEnvelope() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeFailure(
-        new CliFailure("invalid-request", "Unsupported argument: --bogus", "Try help", "--bogus"),
-        OutputMode.TEXT);
-    String text = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(text.contains("Error"));
-    assertTrue(text.contains("invalid-request"));
-    assertTrue(text.contains("Unsupported argument: --bogus"));
-    assertTrue(text.contains("Try help"));
+        new CliFailure("invalid-request", "Unsupported argument: --bogus", "Try help", "--bogus"));
+    JsonNode json = readJson(outputStream);
+    assertEquals("error", json.path("status").stringValue());
+    assertEquals("invalid-request", json.path("code").stringValue());
+    assertEquals("Unsupported argument: --bogus", json.path("message").stringValue());
+    assertEquals("Try help", json.path("hint").stringValue());
+    assertEquals("--bogus", json.path("argument").stringValue());
   }
 
   @Test
-  void writeFailure_supportsTextOutputWithStructuredViolations() {
+  void writeFailure_preservesStructuredDetails() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeFailure(
@@ -60,15 +59,17 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
             "Fix the request.",
             null,
             new CliErrorJsonModels.InvalidRequestDetails(
-                List.of("Journal entry must balance debits and credits."))),
-        OutputMode.TEXT);
-    String text = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(text.contains("Violations"));
-    assertTrue(text.contains("Journal entry must balance debits and credits."));
+                List.of("Journal entry must balance debits and credits."))));
+    JsonNode json = readJson(outputStream);
+    assertEquals("error", json.path("status").stringValue());
+    assertEquals("invalid-request", json.path("code").stringValue());
+    assertEquals(
+        "Journal entry must balance debits and credits.",
+        json.path("details").path("violations").get(0).stringValue());
   }
 
   @Test
-  void writeDeterministicFailure_supportsTextOutput() {
+  void writeDeterministicFailure_emitsCanonicalJsonEnvelope() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
@@ -77,13 +78,15 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
             "protected-book-verification-failed",
             "FinGrind could not verify the selected protected book with the supplied passphrase source.",
             "Inspect the passphrase source and the protected book, then rerun the command.",
-            null),
-        OutputMode.TEXT);
+            null));
 
-    String text = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(text.contains("Rejected"));
-    assertTrue(text.contains("protected-book-verification-failed"));
-    assertTrue(text.contains("Inspect the passphrase source and the protected book"));
+    JsonNode json = readJson(outputStream);
+    assertEquals("error", json.path("status").stringValue());
+    assertEquals("protected-book-verification-failed", json.path("code").stringValue());
+    assertTrue(
+        json.path("hint")
+            .stringValue()
+            .contains("Inspect the passphrase source and the protected book"));
   }
 
   @Test
@@ -134,9 +137,7 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   void writeRequestTemplate_writesCanonicalRawJsonTemplate() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    String expected =
-        new String(
-            CliWireJson.writeJsonBytes(MachineContract.requestTemplate()), StandardCharsets.UTF_8);
+    String expected = CliWireJson.prettyJsonText(MachineContract.requestTemplate());
 
     responseWriter.writeRequestTemplate(MachineContract.requestTemplate());
 
@@ -147,9 +148,7 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   void writePlanTemplate_writesCanonicalRawJsonTemplate() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    String expected =
-        new String(
-            CliWireJson.writeJsonBytes(MachineContract.planTemplate()), StandardCharsets.UTF_8);
+    String expected = CliWireJson.prettyJsonText(MachineContract.planTemplate());
 
     responseWriter.writePlanTemplate(MachineContract.planTemplate());
 

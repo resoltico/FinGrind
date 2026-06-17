@@ -214,6 +214,34 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
         descriptorField(requestShapes.path("ledgerPlan").path("queryFields"), "accountCode")
             .path("presence")
             .stringValue());
+    JsonNode journalSemantics = requestShapes.path("postEntry").path("entryKindSemantics").get(0);
+    assertEquals("JOURNAL", journalSemantics.path("entryKind").stringValue());
+    JsonNode cashRevenueSemantics =
+        requestShapes.path("postEntry").path("journalRecipeSemantics").get(0);
+    assertEquals("CASH_REVENUE", cashRevenueSemantics.path("recipeKind").stringValue());
+    JsonNode cashRevenueEvidenceProfile =
+        descriptorByFieldValue(
+            requestShapes.path("postEntry").path("evidenceProfiles"),
+            "profileId",
+            cashRevenueSemantics.path("evidenceProfileId").stringValue());
+    assertEquals(
+        "enumerated", cashRevenueEvidenceProfile.path("sourceDocumentTypeMode").stringValue());
+    assertTrue(cashRevenueEvidenceProfile.path("acceptedSourceDocumentTypes").isArray());
+    assertEquals(
+        1,
+        requestShapes
+            .path("postEntry")
+            .path("evidenceRequirement")
+            .path("minimumSourceDocuments")
+            .intValue());
+    assertEquals(
+        "sourceDocumentId",
+        requestShapes
+            .path("postEntry")
+            .path("evidenceRequirement")
+            .path("requiredSourceDocumentFields")
+            .get(0)
+            .stringValue());
   }
 
   protected static void assertEnvironmentRuntimeContract(JsonNode payload) {
@@ -350,6 +378,16 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
       }
     }
     throw new AssertionError("Missing descriptor field: " + fieldName);
+  }
+
+  protected static JsonNode descriptorByFieldValue(
+      JsonNode descriptors, String fieldName, String fieldValue) {
+    for (JsonNode descriptor : descriptors) {
+      if (fieldValue.equals(descriptor.path(fieldName).stringValue())) {
+        return descriptor;
+      }
+    }
+    throw new AssertionError("Missing descriptor where " + fieldName + " == " + fieldValue + ".");
   }
 
   protected static EnvironmentDescriptor unavailableRuntimeEnvironmentDescriptor() {

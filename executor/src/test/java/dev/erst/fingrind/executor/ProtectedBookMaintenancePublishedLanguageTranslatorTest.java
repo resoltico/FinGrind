@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
@@ -12,6 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
@@ -183,6 +185,31 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
     assertEquals(hint(rollback), notForBook.rollbackArtifactPath());
   }
 
+  @Test
+  void translator_projectsArtifactPathFailuresAcrossCanonicalMaintenanceRoles() {
+    Path backup = path("backup/acme.sqlite");
+    Path backupKey = path("backup/acme.book-key");
+
+    for (ProtectedBookMaintenancePathFailure localFailure :
+        ProtectedBookMaintenancePathFailure.values()) {
+      assertArtifactPathInvalidProjection(
+          ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET, backup, localFailure);
+    }
+
+    BookMaintenanceRejection.ArtifactPathInvalid backupKeyInvalid =
+        assertInstanceOf(
+            BookMaintenanceRejection.ArtifactPathInvalid.class,
+            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    backupKey,
+                    ProtectedBookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM)));
+    assertEquals(BookMaintenanceArtifactRole.BACKUP_KEY_TARGET, backupKeyInvalid.artifactRole());
+    assertEquals(hint(backupKey), backupKeyInvalid.artifactPath());
+    assertEquals(
+        BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM, backupKeyInvalid.pathFailure());
+  }
+
   private static Path path(String relativePath) {
     return Path.of(relativePath).toAbsolutePath().normalize();
   }
@@ -204,5 +231,20 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
     assertEquals(
         BookMaintenanceVerificationFailure.valueOf(localFailure.name()),
         failed.verificationFailure());
+  }
+
+  private static void assertArtifactPathInvalidProjection(
+      ProtectedBookMaintenanceArtifactRole localRole,
+      Path artifactPath,
+      ProtectedBookMaintenancePathFailure localFailure) {
+    BookMaintenanceRejection.ArtifactPathInvalid invalid =
+        assertInstanceOf(
+            BookMaintenanceRejection.ArtifactPathInvalid.class,
+            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
+                    localRole, artifactPath, localFailure)));
+    assertEquals(BookMaintenanceArtifactRole.valueOf(localRole.name()), invalid.artifactRole());
+    assertEquals(hint(artifactPath), invalid.artifactPath());
+    assertEquals(BookMaintenancePathFailure.valueOf(localFailure.name()), invalid.pathFailure());
   }
 }

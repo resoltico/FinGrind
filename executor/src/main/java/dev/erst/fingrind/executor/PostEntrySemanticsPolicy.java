@@ -1,9 +1,14 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipe;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
+import dev.erst.fingrind.contract.protocol.SourceDocumentTypePolicyMode;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
@@ -20,14 +25,8 @@ import java.util.Set;
 /** Application-boundary semantic validation for the published post-entry command surface. */
 final class PostEntrySemanticsPolicy {
   private static final PostEntrySemanticsPolicy CURRENT_KERNEL = new PostEntrySemanticsPolicy();
-  private static final List<String> CASH_REVENUE_SOURCE_DOCUMENT_TYPES =
-      List.of("cash-receipt", "bank-deposit", "card-settlement");
-  private static final List<String> CASH_EXPENSE_SOURCE_DOCUMENT_TYPES =
-      List.of("expense-receipt", "cash-disbursement", "bank-payment-confirmation");
-  private static final List<String> EQUITY_CONTRIBUTION_SOURCE_DOCUMENT_TYPES =
-      List.of("equity-contribution", "capital-deposit", "bank-deposit");
-  private static final List<String> EQUITY_WITHDRAWAL_SOURCE_DOCUMENT_TYPES =
-      List.of("equity-withdrawal", "distribution-payment", "bank-payment-confirmation");
+  private static final RequestSurfaceFacts REQUEST_SURFACE =
+      ProtocolCatalog.domain().requestSurface();
 
   private PostEntrySemanticsPolicy() {}
 
@@ -40,134 +39,181 @@ final class PostEntrySemanticsPolicy {
     Objects.requireNonNull(command, "command");
     Objects.requireNonNull(book, "book");
     List<BookkeepingPostingRejection.EntrySemanticsViolation> violations = new ArrayList<>();
+    RequestSurfaceFacts.SourceDocumentTypeFacts sourceDocumentTypeFacts =
+        REQUEST_SURFACE.evidenceProfile(evidenceProfileId(command.entry())).sourceDocumentTypes();
     Map<AccountCode, RegisteredAccount> accounts =
         book.findAccounts(referencedAccounts(command.entry()));
     switch (command.entry()) {
-      case BookkeepingEntry.CashRevenue event -> {
-        requireAccountType(
-            violations,
-            command,
-            accounts,
-            event.cashAccountCode(),
-            "cashAccountCode",
-            AccountType.ASSET);
-        requireAccountType(
-            violations,
-            command,
-            accounts,
-            event.revenueAccountCode(),
-            "revenueAccountCode",
-            AccountType.REVENUE);
-        requireSourceDocumentTypes(
-            violations,
-            command,
-            CASH_REVENUE_SOURCE_DOCUMENT_TYPES,
-            command.evidence().sourceDocuments());
-      }
-      case BookkeepingEntry.CashExpense event -> {
-        requireAccountType(
-            violations,
-            command,
-            accounts,
-            event.expenseAccountCode(),
-            "expenseAccountCode",
-            AccountType.EXPENSE);
-        requireAccountType(
-            violations,
-            command,
-            accounts,
-            event.cashAccountCode(),
-            "cashAccountCode",
-            AccountType.ASSET);
-        requireSourceDocumentTypes(
-            violations,
-            command,
-            CASH_EXPENSE_SOURCE_DOCUMENT_TYPES,
-            command.evidence().sourceDocuments());
-      }
-      case BookkeepingEntry.EquityContribution event -> {
-        requireAccountType(
-            violations,
-            command,
-            accounts,
-            event.cashAccountCode(),
-            "cashAccountCode",
-            AccountType.ASSET);
-        requireAccountType(
-            violations,
-            command,
-            accounts,
-            event.equityAccountCode(),
-            "equityAccountCode",
-            AccountType.EQUITY);
-        requireFinancialPositionClassification(
-            violations,
-            command,
-            accounts,
-            event.equityAccountCode(),
-            "equityAccountCode",
-            FinancialPositionLineClassification.EQUITY_CONTRIBUTION);
-        requireSourceDocumentTypes(
-            violations,
-            command,
-            EQUITY_CONTRIBUTION_SOURCE_DOCUMENT_TYPES,
-            command.evidence().sourceDocuments());
-      }
-      case BookkeepingEntry.EquityWithdrawal event -> {
-        requireAccountType(
-            violations,
-            command,
-            accounts,
-            event.equityAccountCode(),
-            "equityAccountCode",
-            AccountType.EQUITY);
-        requireFinancialPositionClassification(
-            violations,
-            command,
-            accounts,
-            event.equityAccountCode(),
-            "equityAccountCode",
-            FinancialPositionLineClassification.EQUITY_WITHDRAWAL);
-        requireAccountType(
-            violations,
-            command,
-            accounts,
-            event.cashAccountCode(),
-            "cashAccountCode",
-            AccountType.ASSET);
-        requireSourceDocumentTypes(
-            violations,
-            command,
-            EQUITY_WITHDRAWAL_SOURCE_DOCUMENT_TYPES,
-            command.evidence().sourceDocuments());
+      case BookkeepingEntry.Journal journal -> {
+        JournalRecipe recipe = journal.recipe();
+        if (recipe != null) {
+          validateJournalRecipe(violations, accounts, recipe);
+        }
       }
       case BookkeepingEntry.OpenAccountingPosition _ -> {}
       case BookkeepingEntry.ReversalAdjustment _ -> {}
     }
+    requireSourceDocumentTypes(
+        violations,
+        entryLabel(command.entry()),
+        sourceDocumentTypeFacts,
+        command.evidence().sourceDocuments());
     if (violations.isEmpty()) {
       return Optional.empty();
     }
     return Optional.of(new BookkeepingPostingRejection.EntrySemanticsViolations(violations));
   }
 
+  private static void validateJournalRecipe(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
+      JournalRecipe recipe) {
+    String entryLabel = recipe.recipeKind().wireValue();
+    switch (recipe) {
+      case JournalRecipe.CashRevenue event -> {
+        requireDistinctRoleAccounts(
+            violations,
+            entryLabel,
+            event.cashAccountCode(),
+            "cashAccountCode",
+            event.revenueAccountCode(),
+            "revenueAccountCode");
+        requireAccountType(
+            violations,
+            entryLabel,
+            accounts,
+            event.cashAccountCode(),
+            "cashAccountCode",
+            AccountType.ASSET);
+        requireAccountType(
+            violations,
+            entryLabel,
+            accounts,
+            event.revenueAccountCode(),
+            "revenueAccountCode",
+            AccountType.REVENUE);
+      }
+      case JournalRecipe.CashExpense event -> {
+        requireDistinctRoleAccounts(
+            violations,
+            entryLabel,
+            event.expenseAccountCode(),
+            "expenseAccountCode",
+            event.cashAccountCode(),
+            "cashAccountCode");
+        requireAccountType(
+            violations,
+            entryLabel,
+            accounts,
+            event.expenseAccountCode(),
+            "expenseAccountCode",
+            AccountType.EXPENSE);
+        requireAccountType(
+            violations,
+            entryLabel,
+            accounts,
+            event.cashAccountCode(),
+            "cashAccountCode",
+            AccountType.ASSET);
+      }
+      case JournalRecipe.EquityContribution event -> {
+        requireDistinctRoleAccounts(
+            violations,
+            entryLabel,
+            event.cashAccountCode(),
+            "cashAccountCode",
+            event.equityAccountCode(),
+            "equityAccountCode");
+        requireAccountType(
+            violations,
+            entryLabel,
+            accounts,
+            event.cashAccountCode(),
+            "cashAccountCode",
+            AccountType.ASSET);
+        requireAccountType(
+            violations,
+            entryLabel,
+            accounts,
+            event.equityAccountCode(),
+            "equityAccountCode",
+            AccountType.EQUITY);
+        requireFinancialPositionClassification(
+            violations,
+            entryLabel,
+            accounts,
+            event.equityAccountCode(),
+            "equityAccountCode",
+            FinancialPositionLineClassification.EQUITY_CONTRIBUTION);
+      }
+      case JournalRecipe.EquityWithdrawal event -> {
+        requireDistinctRoleAccounts(
+            violations,
+            entryLabel,
+            event.equityAccountCode(),
+            "equityAccountCode",
+            event.cashAccountCode(),
+            "cashAccountCode");
+        requireAccountType(
+            violations,
+            entryLabel,
+            accounts,
+            event.equityAccountCode(),
+            "equityAccountCode",
+            AccountType.EQUITY);
+        requireFinancialPositionClassification(
+            violations,
+            entryLabel,
+            accounts,
+            event.equityAccountCode(),
+            "equityAccountCode",
+            FinancialPositionLineClassification.EQUITY_WITHDRAWAL);
+        requireAccountType(
+            violations,
+            entryLabel,
+            accounts,
+            event.cashAccountCode(),
+            "cashAccountCode",
+            AccountType.ASSET);
+      }
+    }
+  }
+
   private static Set<AccountCode> referencedAccounts(BookkeepingEntry entry) {
     return switch (Objects.requireNonNull(entry, "entry")) {
-      case BookkeepingEntry.CashRevenue event ->
-          Set.of(event.cashAccountCode(), event.revenueAccountCode());
-      case BookkeepingEntry.CashExpense event ->
-          Set.of(event.expenseAccountCode(), event.cashAccountCode());
-      case BookkeepingEntry.EquityContribution event ->
-          Set.of(event.cashAccountCode(), event.equityAccountCode());
-      case BookkeepingEntry.EquityWithdrawal event ->
-          Set.of(event.equityAccountCode(), event.cashAccountCode());
-      case BookkeepingEntry.OpenAccountingPosition _ -> Set.of();
-      case BookkeepingEntry.ReversalAdjustment _ -> Set.of();
+      case BookkeepingEntry.Journal journal -> referencedAccounts(journal.lines());
+      case BookkeepingEntry.OpenAccountingPosition openingPosition ->
+          referencedAccounts(openingPosition.lines());
+      case BookkeepingEntry.ReversalAdjustment reversalAdjustment ->
+          referencedAccounts(reversalAdjustment.lines());
     };
+  }
+
+  private static Set<AccountCode> referencedAccounts(
+      List<dev.erst.fingrind.core.JournalLine> lines) {
+    return lines.stream()
+        .map(dev.erst.fingrind.core.JournalLine::accountCode)
+        .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+  }
+
+  private static void requireDistinctRoleAccounts(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      String entryLabel,
+      AccountCode firstAccountCode,
+      String firstField,
+      AccountCode secondAccountCode,
+      String secondField) {
+    if (!firstAccountCode.equals(secondAccountCode)) {
+      return;
+    }
+    violations.add(
+        BookkeepingPostingRejection.distinctRoleAccountsRequired(
+            entryLabel, firstField, secondField, firstAccountCode));
   }
 
   private static void requireAccountType(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      PostEntryCommand command,
+      String entryLabel,
       Map<AccountCode, RegisteredAccount> accounts,
       AccountCode accountCode,
       String field,
@@ -178,16 +224,12 @@ final class PostEntrySemanticsPolicy {
     }
     violations.add(
         BookkeepingPostingRejection.accountTypeMismatch(
-            command.entry().entryKind(),
-            field,
-            accountCode,
-            expectedAccountType,
-            account.accountType()));
+            entryLabel, field, accountCode, expectedAccountType, account.accountType()));
   }
 
   private static void requireFinancialPositionClassification(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      PostEntryCommand command,
+      String entryLabel,
       Map<AccountCode, RegisteredAccount> accounts,
       AccountCode accountCode,
       String field,
@@ -203,18 +245,53 @@ final class PostEntrySemanticsPolicy {
     }
     violations.add(
         BookkeepingPostingRejection.financialPositionClassificationMismatch(
-            command.entry().entryKind(),
-            field,
-            accountCode,
-            expectedClassification,
-            actualClassification));
+            entryLabel, field, accountCode, expectedClassification, actualClassification));
+  }
+
+  private static String evidenceProfileId(BookkeepingEntry entry) {
+    return switch (Objects.requireNonNull(entry, "entry")) {
+      case BookkeepingEntry.Journal journal -> journalEvidenceProfileId(journal);
+      case BookkeepingEntry.OpenAccountingPosition _ ->
+          REQUEST_SURFACE
+              .postEntryKind(BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION)
+              .evidenceProfileId();
+      case BookkeepingEntry.ReversalAdjustment _ ->
+          REQUEST_SURFACE
+              .postEntryKind(BookkeepingEntryKind.REVERSAL_ADJUSTMENT)
+              .evidenceProfileId();
+    };
+  }
+
+  private static String entryLabel(BookkeepingEntry entry) {
+    Objects.requireNonNull(entry, "entry");
+    if (entry instanceof BookkeepingEntry.Journal journal) {
+      return journalEntryLabel(journal);
+    }
+    return entry.entryKind().wireValue();
+  }
+
+  private static String journalEvidenceProfileId(BookkeepingEntry.Journal journal) {
+    JournalRecipe recipe = journal.recipe();
+    if (recipe == null) {
+      return REQUEST_SURFACE.postEntryKind(BookkeepingEntryKind.JOURNAL).evidenceProfileId();
+    }
+    return REQUEST_SURFACE.journalRecipe(recipe.recipeKind()).evidenceProfileId();
+  }
+
+  private static String journalEntryLabel(BookkeepingEntry.Journal journal) {
+    JournalRecipe recipe = journal.recipe();
+    return recipe == null ? journal.entryKind().wireValue() : recipe.recipeKind().wireValue();
   }
 
   private static void requireSourceDocumentTypes(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      PostEntryCommand command,
-      List<String> acceptedTypes,
+      String entryLabel,
+      RequestSurfaceFacts.SourceDocumentTypeFacts sourceDocumentTypeFacts,
       List<SourceDocumentReference> sourceDocuments) {
+    if (sourceDocumentTypeFacts.mode() != SourceDocumentTypePolicyMode.ENUMERATED) {
+      return;
+    }
+    List<String> acceptedTypes = sourceDocumentTypeFacts.acceptedValues();
     for (SourceDocumentReference sourceDocument : sourceDocuments) {
       SourceDocumentType sourceDocumentType = sourceDocument.sourceDocumentType();
       if (acceptedTypes.contains(sourceDocumentType.value())) {
@@ -222,7 +299,7 @@ final class PostEntrySemanticsPolicy {
       }
       violations.add(
           BookkeepingPostingRejection.sourceDocumentTypeNotAccepted(
-              command.entry().entryKind(), sourceDocumentType, acceptedTypes));
+              entryLabel, sourceDocumentType, acceptedTypes));
     }
   }
 }

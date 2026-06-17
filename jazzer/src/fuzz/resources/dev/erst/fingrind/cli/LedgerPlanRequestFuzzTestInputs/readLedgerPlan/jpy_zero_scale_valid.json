@@ -3,8 +3,8 @@
   "steps": [
     {
       "stepId": "open-jpy",
-      "kind": "open-book",
-      "openBook": {
+      "kind": "ensure-book",
+      "ensureBook": {
         "entityName": "Plan Seed JPY",
         "functionalCurrency": "JPY",
         "fiscalYearStart": "01-01"
@@ -40,7 +40,8 @@
       "stepId": "post-jpy",
       "kind": "post-entry",
       "posting": {
-        "entryKind": "CASH_REVENUE",
+        "entryKind": "JOURNAL",
+        "recipeKind": "CASH_REVENUE",
         "effectiveDate": "2026-06-16",
         "cashAccountCode": "7110",
         "revenueAccountCode": "8110",

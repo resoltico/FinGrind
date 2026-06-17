@@ -17,7 +17,7 @@ final class CliLedgerStepDataPayloadMapper {
       LedgerJournalEntry entry) {
     try {
       return switch (entry.kind()) {
-        case OPEN_BOOK -> openBookStepDataPayload(entry.facts());
+        case ENSURE_BOOK -> ensureBookStepDataPayload(entry.facts());
         case DECLARE_ACCOUNT ->
             new CliPlanJsonModels.DeclaredAccountStepDataPayload(
                 CliLedgerBookQueryPayloadMapper.accountPayload(entry.facts()));
@@ -50,9 +50,9 @@ final class CliLedgerStepDataPayloadMapper {
         CliLedgerFactPayloadMapper.factPayloads(failure.facts()));
   }
 
-  private static CliPlanJsonModels.OpenBookStepDataPayload openBookStepDataPayload(
+  private static CliPlanJsonModels.EnsureBookStepDataPayload ensureBookStepDataPayload(
       List<LedgerFact> facts) {
-    return new CliPlanJsonModels.OpenBookStepDataPayload(
+    return new CliPlanJsonModels.EnsureBookStepDataPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "initializedAt"),
         CliLedgerFactAccess.requiredTextFact(facts, "entityName"),
         CliLedgerFactAccess.requiredTextFact(facts, "functionalCurrency"),

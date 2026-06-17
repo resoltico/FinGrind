@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.Map;
@@ -55,5 +56,13 @@ final class MachineContractPostEntryComponentSchemas {
         ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
         description,
         MachineContractScalarSchemas.constSchema(kind.wireValue(), description));
+  }
+
+  static MachineContractFieldSpec requiredRecipeKindField(
+      JournalRecipeKind recipeKind, String description) {
+    return MachineContractFieldSpec.required(
+        ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
+        description,
+        MachineContractScalarSchemas.constSchema(recipeKind.wireValue(), description));
   }
 }

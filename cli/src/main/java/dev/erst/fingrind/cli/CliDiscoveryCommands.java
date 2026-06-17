@@ -75,8 +75,7 @@ record EnvironmentCommand(OutputMode outputMode) implements CliCommand.OutputMod
 }
 
 /** Requests one canonical request scaffold JSON document. */
-record PrintRequestTemplate(@Nullable OperationId commandTopic)
-    implements CliCommand.JsonFailureCommand {
+record PrintRequestTemplate(@Nullable OperationId commandTopic) implements CliCommand {
   PrintRequestTemplate() {
     this(null);
   }
@@ -90,7 +89,7 @@ record PrintRequestTemplate(@Nullable OperationId commandTopic)
 }
 
 /** Requests the canonical AI-agent ledger-plan scaffold JSON document. */
-record PrintPlanTemplate() implements CliCommand.JsonFailureCommand {
+record PrintPlanTemplate() implements CliCommand {
   @Override
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")

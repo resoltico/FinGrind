@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /** Canonical wire kinds accepted for top-level ledger-plan steps. */
 public enum LedgerStepKind implements WireValue {
-  OPEN_BOOK(OperationId.OPEN_BOOK),
+  ENSURE_BOOK("ensure-book"),
   DECLARE_ACCOUNT(OperationId.DECLARE_ACCOUNT),
   PREFLIGHT_ENTRY(OperationId.PREFLIGHT_ENTRY),
   POST_ENTRY(OperationId.POST_ENTRY),

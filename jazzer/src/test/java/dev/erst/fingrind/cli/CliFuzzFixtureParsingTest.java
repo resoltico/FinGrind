@@ -86,7 +86,7 @@ class CliFuzzFixtureParsingTest {
     PostEntryCommand cashExpenseCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            new BookkeepingEntry.CashExpense(
+            BookkeepingEntry.cashExpense(
                 LocalDate.parse("2026-04-09"),
                 new AccountCode("6100"),
                 new AccountCode("1100"),
@@ -94,7 +94,7 @@ class CliFuzzFixtureParsingTest {
     PostEntryCommand equityContributionCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            new BookkeepingEntry.EquityContribution(
+            BookkeepingEntry.equityContribution(
                 LocalDate.parse("2026-04-10"),
                 new AccountCode("1100"),
                 new AccountCode("3100"),
@@ -102,7 +102,7 @@ class CliFuzzFixtureParsingTest {
     PostEntryCommand equityWithdrawalCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            new BookkeepingEntry.EquityWithdrawal(
+            BookkeepingEntry.equityWithdrawal(
                 LocalDate.parse("2026-04-11"),
                 new AccountCode("3100"),
                 new AccountCode("1100"),

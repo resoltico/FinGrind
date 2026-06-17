@@ -10,27 +10,27 @@ public final class ProtocolRuntimeCatalog {
 
   /** Returns the canonical storage engine identifiers. */
   public List<StorageEngine> storageEngines() {
-    return ProtocolCatalogFacts.storageEngines();
+    return ProtocolCatalogFacts.STORAGE_ENGINES;
   }
 
   /** Returns the canonical storage-driver identifier. */
   public StorageDriver storageDriver() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().storageDriver();
+    return ProtocolCatalogFacts.RUNTIME_SURFACE_CONTRACT.storageDriver();
   }
 
   /** Returns the canonical storage-engine identifier. */
   public StorageEngine storageEngine() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().storageEngine();
+    return ProtocolCatalogFacts.RUNTIME_SURFACE_CONTRACT.storageEngine();
   }
 
   /** Returns the canonical book-protection mode. */
   public BookProtectionMode bookProtectionMode() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().bookProtectionMode();
+    return ProtocolCatalogFacts.RUNTIME_SURFACE_CONTRACT.bookProtectionMode();
   }
 
   /** Returns the canonical protected-book format contract. */
   public ProtectedBookFormatContract protectedBookFormat() {
-    return ProtocolCatalogFacts.protectedBookFormatContract();
+    return ProtocolCatalogFacts.PROTECTED_BOOK_FORMAT_CONTRACT;
   }
 
   /** Returns the canonical default book cipher. */
@@ -40,11 +40,11 @@ public final class ProtocolRuntimeCatalog {
 
   /** Returns the canonical SQLite library mode. */
   public SqliteLibraryMode sqliteLibraryMode() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteLibraryMode();
+    return ProtocolCatalogFacts.RUNTIME_SURFACE_CONTRACT.sqliteLibraryMode();
   }
 
   /** Returns the canonical bundle-home system property name. */
   public String sqliteBundleHomeSystemProperty() {
-    return ProtocolCatalogFacts.runtimeSurfaceContract().sqliteBundleHomeSystemProperty();
+    return ProtocolCatalogFacts.RUNTIME_SURFACE_CONTRACT.sqliteBundleHomeSystemProperty();
   }
 }

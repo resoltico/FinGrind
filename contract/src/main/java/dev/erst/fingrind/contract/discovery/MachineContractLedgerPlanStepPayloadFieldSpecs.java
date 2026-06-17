@@ -2,11 +2,26 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
+import dev.erst.fingrind.contract.protocol.ProtocolOpenBookFields;
+import java.util.List;
 import java.util.Map;
 
 /** Step-payload field specifications for executable ledger plans. */
 final class MachineContractLedgerPlanStepPayloadFieldSpecs {
   private MachineContractLedgerPlanStepPayloadFieldSpecs() {}
+
+  static MachineContractFieldSpec conditionalEnsureBookField() {
+    String description = "Replay-safe setup payload for ensure-book steps.";
+    return MachineContractFieldSpec.conditional(
+        ProtocolLedgerPlanFields.Step.ENSURE_BOOK, description, ensureBookSchema());
+  }
+
+  static MachineContractFieldSpec requiredEnsureBookField() {
+    return MachineContractFieldSpec.required(
+        conditionalEnsureBookField().name(),
+        conditionalEnsureBookField().description(),
+        MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalEnsureBookField()));
+  }
 
   static MachineContractFieldSpec conditionalPostingField() {
     String description =
@@ -98,5 +113,26 @@ final class MachineContractLedgerPlanStepPayloadFieldSpecs {
         conditionalPostingIdField().name(),
         conditionalPostingIdField().description(),
         MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalPostingIdField()));
+  }
+
+  private static Map<String, Object> ensureBookSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Replay-safe setup payload for ensure-book steps.",
+        List.of(
+            MachineContractFieldSpec.required(
+                ProtocolOpenBookFields.ENTITY_NAME,
+                "Accounting entity name for the selected protected book.",
+                MachineContractScalarSchemas.nonBlankStringSchema(
+                    "Accounting entity name for the selected protected book.")),
+            MachineContractFieldSpec.required(
+                ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
+                "Three-letter ISO functional currency code for the selected book.",
+                MachineContractScalarSchemas.currencyCodeSchema(
+                    "Three-letter ISO functional currency code for the selected book.")),
+            MachineContractFieldSpec.required(
+                ProtocolOpenBookFields.FISCAL_YEAR_START,
+                "Fiscal year start encoded as MM-dd.",
+                MachineContractScalarSchemas.nonBlankStringSchema(
+                    "Fiscal year start encoded as MM-dd."))));
   }
 }

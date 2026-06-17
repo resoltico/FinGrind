@@ -77,11 +77,11 @@ final class CliLedgerPlanParser {
             LedgerStepKind::fromWireValue);
     rejectUnexpectedStepFields(stepNode, kind);
     return switch (kind) {
-      case OPEN_BOOK ->
-          new LedgerStep.OpenBook(
+      case ENSURE_BOOK ->
+          new LedgerStep.EnsureBook(
               stepId,
-              readOpenBookCommand(
-                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.OPEN_BOOK)));
+              readEnsureBookCommand(
+                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ENSURE_BOOK)));
       case DECLARE_ACCOUNT ->
           new LedgerStep.DeclareAccount(
               stepId,
@@ -134,9 +134,9 @@ final class CliLedgerPlanParser {
         stepNode,
         kind,
         unexpectedFields,
-        ProtocolLedgerPlanFields.Step.OPEN_BOOK,
+        ProtocolLedgerPlanFields.Step.ENSURE_BOOK,
         ProtocolBookRequestFieldSets.openBookFields(),
-        LedgerStepKind.OPEN_BOOK);
+        LedgerStepKind.ENSURE_BOOK);
     rejectFlattenedNestedStepPayload(
         stepNode,
         kind,
@@ -200,21 +200,22 @@ final class CliLedgerPlanParser {
             + " ledger plan steps.");
   }
 
-  private static OpenBookCommand readOpenBookCommand(ObjectNode openBookNode) {
-    rejectUnexpectedFields(openBookNode, "openBook", ProtocolBookRequestFieldSets.openBookFields());
+  private static OpenBookCommand readEnsureBookCommand(ObjectNode ensureBookNode) {
+    rejectUnexpectedFields(
+        ensureBookNode, "ensureBook", ProtocolBookRequestFieldSets.openBookFields());
     return new OpenBookCommand(
         new BookIdentity(
             new EntityProfile(
                 CliOptionValues.parseBookEntityNameOption(
-                    requiredText(openBookNode, ProtocolOpenBookFields.ENTITY_NAME),
-                    "openBook." + ProtocolOpenBookFields.ENTITY_NAME)),
+                    requiredText(ensureBookNode, ProtocolOpenBookFields.ENTITY_NAME),
+                    "ensureBook." + ProtocolOpenBookFields.ENTITY_NAME)),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
             CliOptionValues.parseCurrencyUnitOption(
-                requiredText(openBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
-                "openBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
+                requiredText(ensureBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
+                "ensureBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
             CliOptionValues.parseFiscalYearStartOption(
-                requiredText(openBookNode, ProtocolOpenBookFields.FISCAL_YEAR_START),
-                "openBook." + ProtocolOpenBookFields.FISCAL_YEAR_START)));
+                requiredText(ensureBookNode, ProtocolOpenBookFields.FISCAL_YEAR_START),
+                "ensureBook." + ProtocolOpenBookFields.FISCAL_YEAR_START)));
   }
 
   private static LedgerAssertion readLedgerAssertion(ObjectNode assertionNode) {

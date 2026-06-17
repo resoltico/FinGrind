@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: USER_EXAMPLES
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -303,9 +303,10 @@ fingrind \
   print-request-template > ./request.json
 ```
 
-That generated scaffold is byte-identical to the checked-in
-[examples/request-template.json](./examples/request-template.json) fixture. Both intentionally
-publish one placeholder-first sample document and default to `"entryKind": "CASH_REVENUE"`.
+That generated scaffold uses the same canonical content as the checked-in
+[examples/request-template.json](./examples/request-template.json) companion example. Both
+intentionally publish one placeholder-first sample document and default to
+`"entryKind": "JOURNAL"` plus `"recipeKind": "CASH_REVENUE"`.
 The scaffold is request-first rather than demo-runnable: `actorType` defaults to `PERSON`,
 `evidence.approvals` starts as an empty array that callers may populate when one posting requires
 explicit approval references, and every `replace-before-commit-*` evidence or provenance token must be
@@ -361,11 +362,11 @@ fingrind \
   print-plan-template > ./plan.json
 ```
 
-Like `print-request-template`, this scaffold is byte-identical to the checked-in
-[examples/ledger-plan-template.json](./examples/ledger-plan-template.json) fixture.
-Its nested posting scaffold defaults to `"entryKind": "CASH_REVENUE"`, and the emitted workflow
-uses the same placeholder evidence and provenance tokens as the request template. Replace those
-placeholder values before real-world use.
+Like `print-request-template`, this scaffold uses the same canonical content as the checked-in
+[examples/ledger-plan-template.json](./examples/ledger-plan-template.json) companion example.
+Its nested posting scaffold defaults to `"entryKind": "JOURNAL"` plus
+`"recipeKind": "CASH_REVENUE"`, and the emitted workflow uses the same placeholder evidence and
+provenance tokens as the request template. Replace those placeholder values before real-world use.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -382,7 +383,7 @@ fingrind \
 ```
 
 That plan:
-- opens a new book
+- ensures a new book exists with the declared identity
 - posts one balanced entry
 - asserts the resulting cash balance
 
@@ -671,4 +672,4 @@ fingrind \
 When no supported controlling terminal is available, FinGrind returns the deterministic
 `interactive-prompt-unavailable` error with a repair hint pointing to `--book-key-file` or
 `--book-passphrase-stdin` and exits with code `5`. One example is checked in at
-[examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt).
+[examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json).

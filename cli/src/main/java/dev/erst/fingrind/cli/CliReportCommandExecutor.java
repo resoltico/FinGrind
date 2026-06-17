@@ -155,14 +155,12 @@ final class CliReportCommandExecutor {
                 output.outputMode(), bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, output.outputMode(), failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         resultSupplier.get(),
-        output.outputMode(),
         result -> {
           @Nullable Path exportedArtifactPath = exportAction.apply(result);
           writeResult.accept(result, exportedArtifactPath);

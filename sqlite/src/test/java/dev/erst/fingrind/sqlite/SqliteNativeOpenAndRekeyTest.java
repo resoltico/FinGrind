@@ -143,10 +143,11 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   void open_throwsForDirectoryTarget() throws Exception {
     Path directoryPath = tempDirectory.resolve("not-a-book");
     java.nio.file.Files.createDirectories(directoryPath);
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class, () -> openNativeDatabase(bookAccess(directoryPath)));
-    assertTrue(NullTestSupport.messageOf(exception).contains("regular non-symlink file"));
+    assertPathFailure(
+        directoryPath,
+        SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        "regular non-symlink file",
+        () -> openNativeDatabase(bookAccess(directoryPath)));
   }
 
   @Test
@@ -159,11 +160,11 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     try (SqliteBookPassphrase passphrase =
         SqliteBookPassphrase.fromCharacters(
             "symlink native passphrase", TEST_BOOK_KEY.toCharArray())) {
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteNativeConnections.open(symlinkBookPath, passphrase));
-      assertTrue(NullTestSupport.messageOf(exception).contains("regular non-symlink file"));
+      assertPathFailure(
+          symlinkBookPath,
+          SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+          "regular non-symlink file",
+          () -> SqliteNativeConnections.open(symlinkBookPath, passphrase));
     }
   }
 
@@ -402,5 +403,17 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
               SqliteNativeKeyConfiguration.applyKey(
                   MemorySegment.NULL, keyMaterial, sqliteApi, arena));
     }
+  }
+
+  private static void assertPathFailure(
+      Path expectedPath,
+      SqliteCallerPathFailure expectedFailure,
+      String expectedMessageFragment,
+      org.junit.jupiter.api.function.Executable executable) {
+    SqliteCallerPathContractException exception =
+        assertThrows(SqliteCallerPathContractException.class, executable);
+    assertEquals(expectedPath, exception.requestedPath());
+    assertEquals(expectedFailure, exception.pathFailure());
+    assertTrue(NullTestSupport.messageOf(exception).contains(expectedMessageFragment));
   }
 }

@@ -8,8 +8,11 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
@@ -94,6 +97,11 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   @Nullable MaintenanceDecision<StagedBackupPair> stageBackupFailure;
   @Nullable MaintenanceDecision<MaintenanceCompletion> appendAuditFailure;
   @Nullable MaintenanceDecision<MaintenanceCompletion> compensateAuditFailure;
+  @Nullable ProtectedBookMaintenanceRejection verifyInitializedBookRejection;
+  @Nullable ProtectedBookMaintenanceRejection existingLeaseRejection;
+  @Nullable ProtectedBookMaintenanceRejection managedLeaseRejection;
+  @Nullable ProtectedBookMaintenanceRejection stageReplacementRejection;
+  @Nullable ProtectedBookMaintenanceRejection stageRollbackDeletionRejection;
   @Nullable Path stagedReplacementPath;
   boolean failBackupPairCommit;
   boolean failRollbackDeletionCommit;
@@ -123,7 +131,11 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   }
 
   @Override
-  public LeaseAcquisition acquireExistingArtifactLease(Path normalizedArtifactPath) {
+  public LeaseAcquisition acquireExistingArtifactLease(
+      Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
+    if (existingLeaseRejection != null) {
+      throw new ProtectedBookMaintenanceRejectionException(existingLeaseRejection);
+    }
     if (busyExistingArtifacts.contains(normalizedArtifactPath)) {
       return new LeaseBusy(normalizedArtifactPath);
     }
@@ -131,7 +143,11 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   }
 
   @Override
-  public LeaseAcquisition acquireManagedArtifactLease(Path normalizedArtifactPath) {
+  public LeaseAcquisition acquireManagedArtifactLease(
+      Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
+    if (managedLeaseRejection != null) {
+      throw new ProtectedBookMaintenanceRejectionException(managedLeaseRejection);
+    }
     if (busyManagedArtifacts.contains(normalizedArtifactPath)) {
       return new LeaseBusy(normalizedArtifactPath);
     }
@@ -140,7 +156,10 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
 
   @Override
   public MaintenanceDecision<BookVerification> verifyInitializedBook(
-      ProtectedBookAccess bookAccess) {
+      ProtectedBookAccess bookAccess, ProtectedBookMaintenanceArtifactRole artifactRole) {
+    if (verifyInitializedBookRejection != null) {
+      throw new ProtectedBookMaintenanceRejectionException(verifyInitializedBookRejection);
+    }
     return verifications.getOrDefault(
         normalized(bookAccess.bookFilePath()),
         MaintenanceDecision.accepted(new FakeVerifiedBook(normalized(bookAccess.bookFilePath()))));
@@ -180,6 +199,9 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   @Override
   public StagedBookReplacement stageReplacement(
       Path normalizedSourceBookPath, Path normalizedTargetBookPath) {
+    if (stageReplacementRejection != null) {
+      throw new ProtectedBookMaintenanceRejectionException(stageReplacementRejection);
+    }
     Path stagedBookPath =
         stagedReplacementPath != null
             ? normalized(stagedReplacementPath)
@@ -202,6 +224,9 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   @Override
   public StagedRollbackArtifactDeletion stageRollbackArtifactDeletion(
       Path normalizedRollbackArtifactPath) {
+    if (stageRollbackDeletionRejection != null) {
+      throw new ProtectedBookMaintenanceRejectionException(stageRollbackDeletionRejection);
+    }
     return new FakeStagedRollbackArtifactDeletion();
   }
 

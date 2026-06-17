@@ -42,21 +42,29 @@ final class CliChangesInEquityCsvRenderer {
             "closingNetAmount",
             "closingBalanceSide",
             "message"),
-        java.util.stream.Stream.concat(
-                csvRows(
+        (CliReportSurfacePolicy.hasComparative(report)
+                ? java.util.stream.Stream.concat(
+                    csvRows(
+                        report,
+                        "current",
+                        report.rows(),
+                        report.openingTotals(),
+                        report.movementTotals(),
+                        report.closingTotals()),
+                    csvRows(
+                        report,
+                        "comparative",
+                        report.comparativeRows(),
+                        report.comparativeOpeningTotals(),
+                        report.comparativeMovementTotals(),
+                        report.comparativeClosingTotals()))
+                : csvRows(
                     report,
                     "current",
                     report.rows(),
                     report.openingTotals(),
                     report.movementTotals(),
-                    report.closingTotals()),
-                csvRows(
-                    report,
-                    "comparative",
-                    report.comparativeRows(),
-                    report.comparativeOpeningTotals(),
-                    report.comparativeMovementTotals(),
-                    report.comparativeClosingTotals()))
+                    report.closingTotals()))
             .toList());
   }
 

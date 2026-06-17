@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.ArtifactOutputDescriptor;
@@ -71,6 +72,10 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         List.of("help", "version", "capabilities"), OperationId.wireValues().subList(0, 3));
     assertEquals("post-entry", OperationId.POST_ENTRY.toString());
+    assertEquals(
+        List.of("CASH_REVENUE", "CASH_EXPENSE", "EQUITY_CONTRIBUTION", "EQUITY_WITHDRAWAL"),
+        JournalRecipeKind.wireValues());
+    assertEquals(JournalRecipeKind.CASH_REVENUE, JournalRecipeKind.fromWireValue("CASH_REVENUE"));
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
     assertEquals(23, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
@@ -82,7 +87,7 @@ class ContractProtocolVocabularyTest {
             "assert-account-balance"),
         LedgerAssertionKind.wireValues());
     assertEquals(List.of("text", "flag", "count", "money", "group"), LedgerFactKind.wireValues());
-    assertEquals("open-book", LedgerStepKind.wireValues().getFirst());
+    assertEquals("ensure-book", LedgerStepKind.wireValues().getFirst());
     assertThrows(NullPointerException.class, () -> LedgerStepKind.fromWireValue(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerStepKind.fromWireValue("post_entry"));
     assertThrows(NullPointerException.class, () -> LedgerAssertionKind.fromWireValue(nullOf()));
@@ -92,6 +97,9 @@ class ContractProtocolVocabularyTest {
     assertThrows(NullPointerException.class, () -> LedgerFactKind.fromWireValue(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerFactKind.fromWireValue("decimal"));
     assertThrows(IllegalArgumentException.class, () -> OperationId.fromWireValue("post_entry"));
+    assertThrows(NullPointerException.class, () -> JournalRecipeKind.fromWireValue(nullOf()));
+    assertThrows(
+        IllegalArgumentException.class, () -> JournalRecipeKind.fromWireValue("cash-revenue"));
   }
 
   @Test
@@ -173,6 +181,11 @@ class ContractProtocolVocabularyTest {
             ContractRequestShapes.PostEntryRequestShapeDescriptor.class,
             ContractRequestShapes.DeclareAccountRequestShapeDescriptor.class,
             ContractRequestShapes.LedgerPlanRequestShapeDescriptor.class,
+            ContractRequestShapes.EntryKindSemanticsDescriptor.class,
+            ContractRequestShapes.JournalRecipeSemanticsDescriptor.class,
+            ContractRequestShapes.EvidenceProfileDescriptor.class,
+            ContractRequestShapes.ReachabilityCellDescriptor.class,
+            ContractRequestShapes.EvidenceRequirementDescriptor.class,
             ContractRequestShapes.RequestFieldDescriptor.class,
             ContractRequestShapes.EnumVocabularyDescriptor.class),
         ContractRequestShapes.descriptorTypes());
@@ -203,7 +216,7 @@ class ContractProtocolVocabularyTest {
             ContractTemplates.ReversalTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanStepTemplateDescriptor.class,
-            ContractPlanTemplates.OpenBookTemplateDescriptor.class,
+            ContractPlanTemplates.EnsureBookTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor.class,
             ContractTemplates.DeclareAccountTemplateDescriptor.class,
             ContractPlanTemplates.LedgerAssertionTemplateDescriptor.class),
@@ -271,7 +284,8 @@ class ContractProtocolVocabularyTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.PostingRequestTemplateDescriptor(
-                BookkeepingEntryKind.CASH_REVENUE,
+                BookkeepingEntryKind.JOURNAL,
+                JournalRecipeKind.CASH_REVENUE,
                 "2026-04-25",
                 "1000",
                 "4000",
@@ -291,6 +305,7 @@ class ContractProtocolVocabularyTest {
         () ->
             new ContractTemplates.PostingRequestTemplateDescriptor(
                 BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+                null,
                 "2026-04-25",
                 null,
                 null,
@@ -312,7 +327,7 @@ class ContractProtocolVocabularyTest {
         () ->
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "open",
-                LedgerStepKind.OPEN_BOOK,
+                LedgerStepKind.ENSURE_BOOK,
                 null,
                 null,
                 new ContractTemplates.DeclareAccountTemplateDescriptor(

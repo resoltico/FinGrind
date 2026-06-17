@@ -24,9 +24,11 @@ internal object JavaSourceStructuralContracts {
         relativePath: String,
         packageName: String?,
         exportedPackages: Set<String>,
+        registrySnapshot: JavaReviewedSurfaceRegistrySnapshot =
+            ReviewedSurfaceRegistry.javaSnapshot(projectRootDirectory),
     ): JavaSourceStructuralContract {
         val defaultBudget = baselineBudgetFor(relativePath, packageName, exportedPackages)
-        ReviewedSurfaceRegistry.javaReviewedSurfaceMap(projectRootDirectory)[
+        registrySnapshot.surfaceMap[
             JavaReviewedSurfaceKey(projectPath, relativePath)
         ]?.let { reviewedSurface ->
             return JavaSourceStructuralContract(
@@ -57,14 +59,21 @@ internal object JavaSourceStructuralContracts {
             ?.groupValues
             ?.get(1)
 
-    fun reviewedSurfaces(projectRootDirectory: Path): List<ReviewedJavaSourceSurface> =
-        ReviewedSurfaceRegistry.javaReviewedSurfaces(projectRootDirectory)
+    fun reviewedSurfaces(
+        projectRootDirectory: Path,
+        registrySnapshot: JavaReviewedSurfaceRegistrySnapshot =
+            ReviewedSurfaceRegistry.javaSnapshot(projectRootDirectory),
+    ): List<ReviewedJavaSourceSurface> = registrySnapshot.surfaces
 
     fun reviewedSurfaces(
         projectRootDirectory: Path,
         projectPath: String,
+        registrySnapshot: JavaReviewedSurfaceRegistrySnapshot =
+            ReviewedSurfaceRegistry.javaSnapshot(projectRootDirectory),
     ): List<ReviewedJavaSourceSurface> =
-        reviewedSurfaces(projectRootDirectory).filter { it.projectPath == projectPath }
+        reviewedSurfaces(projectRootDirectory, registrySnapshot).filter {
+            it.projectPath == projectPath
+        }
 
     fun includeInDuplicationCheck(
         projectRootDirectory: Path,
@@ -72,8 +81,10 @@ internal object JavaSourceStructuralContracts {
         relativePath: String,
         packageName: String?,
         exportedPackages: Set<String>,
+        registrySnapshot: JavaReviewedSurfaceRegistrySnapshot =
+            ReviewedSurfaceRegistry.javaSnapshot(projectRootDirectory),
     ): Boolean =
-        ReviewedSurfaceRegistry.javaReviewedSurfaceMap(projectRootDirectory)[
+        registrySnapshot.surfaceMap[
             JavaReviewedSurfaceKey(projectPath, relativePath)
         ]?.duplicationExemptionReason == null
 
@@ -81,9 +92,11 @@ internal object JavaSourceStructuralContracts {
         projectRootDirectory: Path,
         projectPath: String,
         existingRelativePaths: Set<String>,
+        registrySnapshot: JavaReviewedSurfaceRegistrySnapshot =
+            ReviewedSurfaceRegistry.javaSnapshot(projectRootDirectory),
     ): List<String> =
         missingReviewedSurfaceViolations(
-            reviewedSurfaces = reviewedSurfaces(projectRootDirectory, projectPath),
+            reviewedSurfaces = reviewedSurfaces(projectRootDirectory, projectPath, registrySnapshot),
             projectScope = projectPath,
             existingRelativePaths = existingRelativePaths,
         )

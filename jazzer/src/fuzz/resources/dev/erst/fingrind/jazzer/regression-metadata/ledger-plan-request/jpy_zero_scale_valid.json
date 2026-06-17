@@ -10,7 +10,7 @@
       "plan": {
         "planId": "seed-plan-jpy-1",
         "stepCount": 5,
-        "firstStepKind": "open-book",
+        "firstStepKind": "ensure-book",
         "lastStepKind": "assert",
         "assertionStepCount": 1,
         "beginsWithOpenBook": true

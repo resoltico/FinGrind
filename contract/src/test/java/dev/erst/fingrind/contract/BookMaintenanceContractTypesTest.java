@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
@@ -39,6 +40,10 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(backupFile), List.of(hint(rollbackArtifact))),
             new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
                 hint(bookFile), hint(backupFile)),
+            new BookMaintenanceRejection.ArtifactPathInvalid(
+                BookMaintenanceArtifactRole.BACKUP_TARGET,
+                hint(backupFile),
+                BookMaintenancePathFailure.PARENT_PATH_COLLISION),
             new BookMaintenanceRejection.ArtifactBusy(
                 BookMaintenanceArtifactRole.LIVE_BOOK, hint(bookFile)),
             new BookMaintenanceRejection.BackupDestinationAlreadyExists(hint(backupFile)),
@@ -60,7 +65,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 Collectors.toUnmodifiableMap(
                     ContractResponse.RejectionDescriptor::code, descriptor -> descriptor));
 
-    assertEquals(11, descriptorsByCode.size());
+    assertEquals(12, descriptorsByCode.size());
     for (BookMaintenanceRejection rejection : rejections) {
       String code = BookMaintenanceRejection.wireCode(rejection);
       ContractResponse.RejectionDescriptor descriptor = descriptorsByCode.get(code);
@@ -89,6 +94,23 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
                 hint(bookFile), List.of(hint(rollbackArtifact))));
 
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookMaintenanceRejection.ArtifactPathInvalid(
+                nullOf(), hint(backupFile), BookMaintenancePathFailure.PARENT_PATH_COLLISION));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookMaintenanceRejection.ArtifactPathInvalid(
+                BookMaintenanceArtifactRole.BACKUP_TARGET,
+                nullOf(),
+                BookMaintenancePathFailure.PARENT_PATH_COLLISION));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookMaintenanceRejection.ArtifactPathInvalid(
+                BookMaintenanceArtifactRole.BACKUP_TARGET, hint(backupFile), nullOf()));
     assertThrows(
         NullPointerException.class,
         () -> new BookMaintenanceRejection.ArtifactBusy(nullOf(), hint(bookFile)));
@@ -244,12 +266,47 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
   @Test
   void maintenanceEnums_andPublicPathHints_publishCanonicalWireVocabulary() {
     assertIterableEquals(
-        List.of("live-book", "backup-source", "rollback-artifact", "restored-target"),
+        List.of(
+            "live-book",
+            "backup-source",
+            "backup-target",
+            "backup-key-target",
+            "rollback-artifact",
+            "restored-target"),
         BookMaintenanceArtifactRole.wireValues());
     assertEquals("live-book", BookMaintenanceArtifactRole.LIVE_BOOK.wireValue());
     assertEquals("backup-source", BookMaintenanceArtifactRole.BACKUP_SOURCE.wireValue());
+    assertEquals("backup-target", BookMaintenanceArtifactRole.BACKUP_TARGET.wireValue());
+    assertEquals("backup-key-target", BookMaintenanceArtifactRole.BACKUP_KEY_TARGET.wireValue());
     assertEquals("rollback-artifact", BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT.wireValue());
     assertEquals("restored-target", BookMaintenanceArtifactRole.RESTORED_TARGET.wireValue());
+
+    assertIterableEquals(
+        List.of(
+            "missing-parent-directory",
+            "parent-path-collision",
+            "parent-owner-access-required",
+            "parent-owner-only-required",
+            "target-must-be-regular-non-symlink-file",
+            "unsupported-secure-filesystem"),
+        BookMaintenancePathFailure.wireValues());
+    assertEquals(
+        "missing-parent-directory",
+        BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY.wireValue());
+    assertEquals(
+        "parent-path-collision", BookMaintenancePathFailure.PARENT_PATH_COLLISION.wireValue());
+    assertEquals(
+        "parent-owner-access-required",
+        BookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED.wireValue());
+    assertEquals(
+        "parent-owner-only-required",
+        BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED.wireValue());
+    assertEquals(
+        "target-must-be-regular-non-symlink-file",
+        BookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE.wireValue());
+    assertEquals(
+        "unsupported-secure-filesystem",
+        BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM.wireValue());
 
     assertIterableEquals(
         List.of(

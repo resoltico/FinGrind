@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.spi;
 import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
@@ -23,13 +24,16 @@ public interface ProtectedBookMaintenanceStore {
   List<Path> blockingArtifactsForBackupSource(Path normalizedBackupFilePath);
 
   /** Acquires one exclusive maintenance lease for one existing protected-book artifact path. */
-  LeaseAcquisition acquireExistingArtifactLease(Path normalizedArtifactPath);
+  LeaseAcquisition acquireExistingArtifactLease(
+      Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole);
 
   /** Acquires one exclusive maintenance lease for one managed protected-book artifact path. */
-  LeaseAcquisition acquireManagedArtifactLease(Path normalizedArtifactPath);
+  LeaseAcquisition acquireManagedArtifactLease(
+      Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole);
 
   /** Verifies that the supplied protected book opens as one initialized FinGrind book. */
-  MaintenanceDecision<BookVerification> verifyInitializedBook(ProtectedBookAccess bookAccess);
+  MaintenanceDecision<BookVerification> verifyInitializedBook(
+      ProtectedBookAccess bookAccess, ProtectedBookMaintenanceArtifactRole artifactRole);
 
   /**
    * Stages one encrypted backup pair from one already verified protected book without publishing it

@@ -57,12 +57,14 @@ def assert_fixture_generation(
 
         assert_request_payload(
             json.loads(fixture_scenario.request_sale.local_path.read_text(encoding="utf-8")),
+            "JOURNAL",
             "CASH_REVENUE",
             "fixture-regression-sale",
             expected_source_document("fixture-regression", "sale", "2026-04-07"),
         )
         assert_request_payload(
             json.loads(fixture_scenario.request_expense.local_path.read_text(encoding="utf-8")),
+            "JOURNAL",
             "CASH_EXPENSE",
             "fixture-regression-expense",
             expected_source_document("fixture-regression", "expense", "2026-04-08"),
@@ -97,10 +99,12 @@ def assert_fixture_generation(
 def assert_request_payload(
     request_payload: dict[str, object],
     expected_entry_kind: str,
+    expected_recipe_kind: str,
     expected_command_id: str,
     expected_document: dict[str, str],
 ) -> None:
     assert request_payload["entryKind"] == expected_entry_kind
+    assert request_payload["recipeKind"] == expected_recipe_kind
     assert request_payload["evidence"] == {
         "sourceDocuments": [expected_document],
         "approvals": [],

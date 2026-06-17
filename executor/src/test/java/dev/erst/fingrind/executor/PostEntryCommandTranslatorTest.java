@@ -26,7 +26,7 @@ class PostEntryCommandTranslatorTest {
   void toPostingCommand_translatesTypedCashRevenueIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.CashRevenue(
+            BookkeepingEntry.cashRevenue(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
@@ -61,7 +61,7 @@ class PostEntryCommandTranslatorTest {
   void toPostingCommand_translatesTypedCashExpenseIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.CashExpense(
+            BookkeepingEntry.cashExpense(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("5000"),
                 new AccountCode("1000"),
@@ -96,7 +96,7 @@ class PostEntryCommandTranslatorTest {
   void toPostingCommand_translatesEquityContributionIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.EquityContribution(
+            BookkeepingEntry.equityContribution(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("3000"),
@@ -133,7 +133,7 @@ class PostEntryCommandTranslatorTest {
   void toPostingCommand_translatesEquityWithdrawalIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.EquityWithdrawal(
+            BookkeepingEntry.equityWithdrawal(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("3000"),
                 new AccountCode("1000"),
@@ -269,6 +269,39 @@ class PostEntryCommandTranslatorTest {
             PostingLineageModel.direct(),
             accountingEvidence("correction-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
+            SourceChannel.CLI),
+        PostEntryCommandTranslator.toPostingCommand(command));
+  }
+
+  @Test
+  void toPostingCommand_translatesDirectJournalsIntoJournalOriginPostings() {
+    JournalEntry journalEntry =
+        new JournalEntry(
+            LocalDate.parse("2026-04-07"),
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "12.50")),
+                new JournalLine(
+                    new AccountCode("2100"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "12.50"))));
+    PostEntryCommand command =
+        new PostEntryCommand(
+            new BookkeepingEntry.Journal(journalEntry, null),
+            accountingEvidence("direct-journal"),
+            PostingApplicationServiceTestSupport.requestProvenance("idem-direct-journal"),
+            SourceChannel.CLI);
+
+    assertEquals(
+        new PostingCommand(
+            PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.JOURNAL,
+            journalEntry,
+            PostingLineageModel.direct(),
+            accountingEvidence("direct-journal"),
+            PostingApplicationServiceTestSupport.requestProvenance("idem-direct-journal"),
             SourceChannel.CLI),
         PostEntryCommandTranslator.toPostingCommand(command));
   }

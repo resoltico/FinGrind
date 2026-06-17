@@ -7,8 +7,8 @@
     },
     {
       "stepId": "open",
-      "kind": "open-book",
-      "openBook": {
+      "kind": "ensure-book",
+      "ensureBook": {
         "entityName": "Late Open Seed",
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01"

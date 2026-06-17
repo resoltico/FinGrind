@@ -40,15 +40,13 @@ final class CliMutationCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     LedgerPlan plan = requestReader.readLedgerPlan(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.executePlan(bookAccess, plan),
-        outputMode,
         result -> planResponseWriter.writeLedgerPlanResult(result, outputMode, resultDetail),
         CliPostingExitCodes::exitCodeFor,
         failureWriter);
@@ -59,15 +57,13 @@ final class CliMutationCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.preflight(bookAccess, command),
-        outputMode,
         result -> mutationResponseWriter.writePostEntryResult(result, outputMode),
         CliPostingExitCodes::exitCodeFor,
         failureWriter);
@@ -78,15 +74,13 @@ final class CliMutationCommandExecutor {
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, outputMode, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.commit(bookAccess, command),
-        outputMode,
         result -> mutationResponseWriter.writePostEntryResult(result, outputMode),
         CliPostingExitCodes::exitCodeFor,
         failureWriter);

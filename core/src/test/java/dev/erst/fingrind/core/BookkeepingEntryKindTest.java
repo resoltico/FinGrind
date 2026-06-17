@@ -11,36 +11,18 @@ import org.junit.jupiter.api.Test;
 class BookkeepingEntryKindTest {
   @Test
   void wireHelpers_publishStableVocabularyInDeclarationOrder() {
-    assertEquals("CASH_REVENUE", BookkeepingEntryKind.CASH_REVENUE.wireValue());
-    assertEquals("CASH_EXPENSE", BookkeepingEntryKind.CASH_EXPENSE.wireValue());
-    assertEquals("EQUITY_CONTRIBUTION", BookkeepingEntryKind.EQUITY_CONTRIBUTION.wireValue());
-    assertEquals("EQUITY_WITHDRAWAL", BookkeepingEntryKind.EQUITY_WITHDRAWAL.wireValue());
+    assertEquals("JOURNAL", BookkeepingEntryKind.JOURNAL.wireValue());
     assertEquals(
         "OPEN_ACCOUNTING_POSITION", BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION.wireValue());
     assertEquals("REVERSAL_ADJUSTMENT", BookkeepingEntryKind.REVERSAL_ADJUSTMENT.wireValue());
     assertEquals(
-        List.of(
-            "CASH_REVENUE",
-            "CASH_EXPENSE",
-            "EQUITY_CONTRIBUTION",
-            "EQUITY_WITHDRAWAL",
-            "OPEN_ACCOUNTING_POSITION",
-            "REVERSAL_ADJUSTMENT"),
+        List.of("JOURNAL", "OPEN_ACCOUNTING_POSITION", "REVERSAL_ADJUSTMENT"),
         BookkeepingEntryKind.wireValues());
   }
 
   @Test
   void fromWireValue_parsesStableVocabularyAndRejectsUnknownInput() {
-    assertEquals(
-        BookkeepingEntryKind.CASH_REVENUE, BookkeepingEntryKind.fromWireValue("CASH_REVENUE"));
-    assertEquals(
-        BookkeepingEntryKind.CASH_EXPENSE, BookkeepingEntryKind.fromWireValue("CASH_EXPENSE"));
-    assertEquals(
-        BookkeepingEntryKind.EQUITY_CONTRIBUTION,
-        BookkeepingEntryKind.fromWireValue("EQUITY_CONTRIBUTION"));
-    assertEquals(
-        BookkeepingEntryKind.EQUITY_WITHDRAWAL,
-        BookkeepingEntryKind.fromWireValue("EQUITY_WITHDRAWAL"));
+    assertEquals(BookkeepingEntryKind.JOURNAL, BookkeepingEntryKind.fromWireValue("JOURNAL"));
     assertEquals(
         BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
         BookkeepingEntryKind.fromWireValue("OPEN_ACCOUNTING_POSITION"));

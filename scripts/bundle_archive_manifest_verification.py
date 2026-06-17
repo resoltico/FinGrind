@@ -40,8 +40,12 @@ def _verify_quick_start_request(bundle_root: Path) -> None:
         (bundle_root / "quick-start-request.json").read_text(encoding="utf-8")
     )
     require(
-        quick_start_request.get("entryKind") == "CASH_REVENUE",
-        "bundled quick-start request did not publish the canonical first-post entry kind",
+        quick_start_request.get("entryKind") == "JOURNAL",
+        "bundled quick-start request did not publish the canonical direct-journal entry kind",
+    )
+    require(
+        quick_start_request.get("recipeKind") == "CASH_REVENUE",
+        "bundled quick-start request did not publish the canonical first-post recipe kind",
     )
     require(
         quick_start_request.get("cashAccountCode") == "cash",

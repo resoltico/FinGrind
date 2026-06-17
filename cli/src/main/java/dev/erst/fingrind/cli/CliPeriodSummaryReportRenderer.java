@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.List;
 
 /** Renders period-summary text and CSV outputs. */
@@ -11,7 +12,12 @@ final class CliPeriodSummaryReportRenderer {
     String summary =
         CliTextFormat.renderKeyValueBlock(
             List.of(
-                List.of("Range", report.effectiveDateFrom() + " to " + report.effectiveDateTo()),
+                List.of(
+                    CliTemporalScopeText.lowerLabel(OperationId.PERIOD_SUMMARY),
+                    report.effectiveDateFrom().toString()),
+                List.of(
+                    CliTemporalScopeText.upperLabel(OperationId.PERIOD_SUMMARY),
+                    report.effectiveDateTo().toString()),
                 List.of("Posting count", Integer.toString(report.postingCount())),
                 List.of("Posting line count", Integer.toString(report.postingLineCount())),
                 List.of("Accounts touched", Integer.toString(report.accountsTouched()))));

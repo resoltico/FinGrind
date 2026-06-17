@@ -175,6 +175,14 @@ class StructuralGovernanceContractTest {
                 "project.name" !in verifierSource,
                 "Java verification task ${verifier.fileName} must not read project.name during task execution.",
             )
+            assertTrue(
+                "abstract val reviewedSurfaceRegistryFiles: ConfigurableFileCollection" in verifierSource,
+                "Java verification task ${verifier.fileName} must declare reviewed-surface registry fragments as explicit inputs so waiver edits invalidate the task graph.",
+            )
+            assertTrue(
+                "ReviewedSurfaceRegistry.registryFragmentFiles(projectDir.toPath())" in verifierSource,
+                "Java verification task ${verifier.fileName} must source its registry-file inputs from the reviewed-surface registry locator instead of relying on daemon memory.",
+            )
         }
     }
 }

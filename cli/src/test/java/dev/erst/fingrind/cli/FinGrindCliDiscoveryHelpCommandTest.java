@@ -140,10 +140,12 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     int exitCode = cli.run(new String[] {"help", "--output", "text", "--detail", "full"});
 
     assertEquals(1, exitCode);
-    String output = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(output.contains("invalid-request"));
-    assertTrue(output.contains("Argument : --output"));
-    assertTrue(output.contains("resolved output mode is json"));
+    JsonNode output =
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(outputStream.toByteArray()));
+    assertEquals("error", output.path("status").stringValue());
+    assertEquals("invalid-request", output.path("code").stringValue());
+    assertEquals("--output", output.path("argument").stringValue());
+    assertTrue(output.path("message").stringValue().contains("resolved output mode is json"));
   }
 
   @Test
@@ -155,10 +157,12 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     int exitCode = cli.run(new String[] {"capabilities", "--output", "text", "--detail", "full"});
 
     assertEquals(1, exitCode);
-    String output = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(output.contains("invalid-request"));
-    assertTrue(output.contains("Argument : --output"));
-    assertTrue(output.contains("resolved output mode is json"));
+    JsonNode output =
+        assertDoesNotThrow(() -> new ObjectMapper().readTree(outputStream.toByteArray()));
+    assertEquals("error", output.path("status").stringValue());
+    assertEquals("invalid-request", output.path("code").stringValue());
+    assertEquals("--output", output.path("argument").stringValue());
+    assertTrue(output.path("message").stringValue().contains("resolved output mode is json"));
   }
 
   @Test

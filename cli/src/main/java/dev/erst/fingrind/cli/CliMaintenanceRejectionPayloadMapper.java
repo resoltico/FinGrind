@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliArtifactPathFailureDetails;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
@@ -52,6 +53,8 @@ final class CliMaintenanceRejectionPayloadMapper {
           "Choose one backup copy path that differs from the selected --book-file path, then rerun "
               + RESTORE_BOOK_OPERATION
               + ".";
+      case BookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
+          pathFailureHint(invalidArtifactPath);
       case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
           "Close the process using the "
               + artifactBusy.artifactRole().wireValue()
@@ -106,6 +109,11 @@ final class CliMaintenanceRejectionPayloadMapper {
           new CliRejectionJsonModels.BookAndBackupFileDetails(
               sourceMatchesLiveBook.bookFilePath().value(),
               sourceMatchesLiveBook.backupFilePath().value());
+      case BookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
+          new CliArtifactPathFailureDetails(
+              invalidArtifactPath.artifactRole().wireValue(),
+              invalidArtifactPath.artifactPath().value(),
+              invalidArtifactPath.pathFailure().wireValue());
       case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
           new CliRejectionJsonModels.ArtifactBusyDetails(
               artifactBusy.artifactRole().wireValue(), artifactBusy.artifactPath().value());
@@ -136,6 +144,23 @@ final class CliMaintenanceRejectionPayloadMapper {
           new CliRejectionJsonModels.RollbackArtifactMismatchDetails(
               rollbackArtifactNotForBook.bookFilePath().value(),
               rollbackArtifactNotForBook.rollbackArtifactPath().value());
+    };
+  }
+
+  private static String pathFailureHint(BookMaintenanceRejection.ArtifactPathInvalid rejection) {
+    return switch (rejection.pathFailure()) {
+      case MISSING_PARENT_DIRECTORY ->
+          "Choose a path whose parent directory already exists or whose missing parent chain FinGrind can create securely, then rerun the maintenance command.";
+      case PARENT_PATH_COLLISION ->
+          "Choose a path whose parent chain is made only of real directories, not existing files or symlinks, then rerun the maintenance command.";
+      case PARENT_OWNER_ACCESS_REQUIRED ->
+          "Choose a path beneath a parent directory that the owner can traverse and write, then rerun the maintenance command.";
+      case PARENT_OWNER_ONLY_REQUIRED ->
+          "Choose a path beneath one owner-only parent directory, or tighten the existing parent directory first, then rerun the maintenance command.";
+      case TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE ->
+          "Choose a regular non-symlink artifact path for this maintenance workflow, then rerun the command.";
+      case UNSUPPORTED_SECURE_FILESYSTEM ->
+          "Choose a path on a filesystem that supports POSIX owner-only permissions or Windows owner-only ACLs, then rerun the maintenance command.";
     };
   }
 }

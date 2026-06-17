@@ -111,7 +111,11 @@ public final class SqliteBookKeyFileGenerator {
     Objects.requireNonNull(secureParentDirectoryEnsurer, "secureParentDirectoryEnsurer");
     Objects.requireNonNull(emptyKeyFileCreator, "emptyKeyFileCreator");
     Path normalizedPath = normalize(bookKeyFilePath);
-    SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedPath);
+    try {
+      SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedPath);
+    } catch (SqliteCallerPathContractException exception) {
+      return ContractDecision.rejected(SqliteCallerPathFailureMapper.invalidBookKeyFile(exception));
+    }
     byte[] encodedPassphrase = encodedPassphraseBytes(secureRandom);
     boolean created = false;
     try {
@@ -131,6 +135,11 @@ public final class SqliteBookKeyFileGenerator {
               GENERATED_ENCODING,
               GENERATED_ENTROPY_BITS,
               SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(normalizedPath)));
+    } catch (SqliteCallerPathContractException exception) {
+      if (created) {
+        deleteQuietly(normalizedPath);
+      }
+      return ContractDecision.rejected(SqliteCallerPathFailureMapper.invalidBookKeyFile(exception));
     } catch (IOException exception) {
       if (created) {
         deleteQuietly(normalizedPath);

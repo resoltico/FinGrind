@@ -36,9 +36,7 @@ final class CliMaintenanceMutationResponseWriter {
               });
       case BackupBookResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()));
     }
   }
 
@@ -62,9 +60,7 @@ final class CliMaintenanceMutationResponseWriter {
               });
       case RestoreBookResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()));
     }
   }
 
@@ -89,9 +85,7 @@ final class CliMaintenanceMutationResponseWriter {
               });
       case RekeyRollbackResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()));
       default ->
           throw new IllegalArgumentException(
               "Inspect rekey rollback received unexpected result type: "
@@ -118,9 +112,7 @@ final class CliMaintenanceMutationResponseWriter {
               });
       case RekeyRollbackResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()));
       default ->
           throw new IllegalArgumentException(
               "Restore rekey rollback received unexpected result type: "
@@ -147,9 +139,7 @@ final class CliMaintenanceMutationResponseWriter {
               });
       case RekeyRollbackResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()));
       default ->
           throw new IllegalArgumentException(
               "Delete rekey rollback received unexpected result type: "

@@ -39,7 +39,8 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
   protected static String validRequestJson() {
     return """
             {
-              "entryKind": "CASH_REVENUE",
+              "entryKind": "JOURNAL",
+              "recipeKind": "CASH_REVENUE",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "revenueAccountCode": "2000",
@@ -107,8 +108,8 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
               "steps": [
                 {
                   "stepId": "open",
-                  "kind": "open-book",
-                  "openBook": {
+                  "kind": "ensure-book",
+                  "ensureBook": {
                     "entityName": "Acme Studio",
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01"

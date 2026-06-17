@@ -14,8 +14,8 @@ public record BookWorkflowPlan(BookWorkflowPlanId planId, List<BookWorkflowStep>
     }
   }
 
-  /** Returns whether this plan begins by initializing the selected book. */
-  public boolean beginsWithOpenBook() {
-    return steps.getFirst() instanceof BookWorkflowStep.OpenBook;
+  /** Returns whether this plan begins by ensuring the selected book exists. */
+  public boolean beginsWithEnsureBook() {
+    return steps.getFirst() instanceof BookWorkflowStep.EnsureBook;
   }
 }

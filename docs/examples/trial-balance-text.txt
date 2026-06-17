@@ -17,6 +17,13 @@ Account         | Name            | Currency | Debit total | Credit total | Net 
 cash            | Cash            | EUR      |       10.00 |         0.00 |      10.00 | Debit
 service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 
+Comparative Trial Balance
+-------------------------
+book start to 2025-04-08
+
+As of   : 2025-04-08
+Outcome : No account balances matched the selected scope.
+
 Context
 -------
 Entity              : Acme Studio

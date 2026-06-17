@@ -11,7 +11,9 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
@@ -51,6 +53,10 @@ class ProtectedBookMaintenanceModelTest {
     assertEquals(
         rollback, new ProtectedBookRecoveryOutcome.Deleted(book, rollback).rollbackArtifactPath());
     assertEquals(rejection, new ProtectedBookRecoveryOutcome.Rejected(rejection).rejection());
+    ProtectedBookMaintenanceRejectionException rejectionException =
+        new ProtectedBookMaintenanceRejectionException(rejection);
+    assertEquals(rejection, rejectionException.rejection());
+    assertEquals(rejection.toString(), rejectionException.getMessage());
 
     assertEquals(book, localAccess.toPublished().bookFilePath());
     assertEquals(localAccess, ProtectedBookAccess.fromPublished(localAccess.toPublished()));
@@ -122,6 +128,8 @@ class ProtectedBookMaintenanceModelTest {
     assertThrows(
         NullPointerException.class,
         () -> new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(nullOf(), backup));
+    assertThrows(
+        NullPointerException.class, () -> new ProtectedBookMaintenanceRejectionException(nullOf()));
     assertThrows(NullPointerException.class, () -> new ProtectedBookAccess(book, nullOf()));
   }
 
@@ -131,9 +139,20 @@ class ProtectedBookMaintenanceModelTest {
         List.of(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
             ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
             ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT,
             ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET),
         List.of(ProtectedBookMaintenanceArtifactRole.values()));
+    assertIterableEquals(
+        List.of(
+            ProtectedBookMaintenancePathFailure.MISSING_PARENT_DIRECTORY,
+            ProtectedBookMaintenancePathFailure.PARENT_PATH_COLLISION,
+            ProtectedBookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED,
+            ProtectedBookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED,
+            ProtectedBookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+            ProtectedBookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM),
+        List.of(ProtectedBookMaintenancePathFailure.values()));
     assertIterableEquals(
         List.of(
             ProtectedBookVerificationFailure.MISSING,

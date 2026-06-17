@@ -2,41 +2,52 @@ package dev.erst.fingrind.contract.protocol;
 
 import java.util.Set;
 
-/** Canonical post-entry request-field sets for typed events and administrative adjustments. */
+/** Canonical post-entry request-field sets for direct journals, recipes, and special profiles. */
 public final class ProtocolPostingRequestFieldSets {
   private static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
-  private static final Set<String> CASH_REVENUE_FIELDS =
+  private static final Set<String> JOURNAL_DIRECT_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.LINES,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  private static final Set<String> CASH_REVENUE_RECIPE_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> CASH_EXPENSE_FIELDS =
+  private static final Set<String> CASH_EXPENSE_RECIPE_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
           ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> EQUITY_CONTRIBUTION_FIELDS =
+  private static final Set<String> EQUITY_CONTRIBUTION_RECIPE_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> EQUITY_WITHDRAWAL_FIELDS =
+  private static final Set<String> EQUITY_WITHDRAWAL_RECIPE_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
           ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
@@ -79,24 +90,29 @@ public final class ProtocolPostingRequestFieldSets {
     return POST_ENTRY_TOP_LEVEL_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for {@code CASH_REVENUE} post-entry requests. */
-  public static Set<String> cashRevenueFields() {
-    return CASH_REVENUE_FIELDS;
+  /** Returns the accepted top-level fields for direct operational journal requests. */
+  public static Set<String> journalDirectFields() {
+    return JOURNAL_DIRECT_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for {@code CASH_EXPENSE} post-entry requests. */
-  public static Set<String> cashExpenseFields() {
-    return CASH_EXPENSE_FIELDS;
+  /** Returns the accepted top-level fields for the {@code CASH_REVENUE} journal recipe. */
+  public static Set<String> cashRevenueRecipeFields() {
+    return CASH_REVENUE_RECIPE_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for equity contribution post-entry requests. */
-  public static Set<String> equityContributionFields() {
-    return EQUITY_CONTRIBUTION_FIELDS;
+  /** Returns the accepted top-level fields for the {@code CASH_EXPENSE} journal recipe. */
+  public static Set<String> cashExpenseRecipeFields() {
+    return CASH_EXPENSE_RECIPE_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for equity withdrawal post-entry requests. */
-  public static Set<String> equityWithdrawalFields() {
-    return EQUITY_WITHDRAWAL_FIELDS;
+  /** Returns the accepted top-level fields for the equity-contribution journal recipe. */
+  public static Set<String> equityContributionRecipeFields() {
+    return EQUITY_CONTRIBUTION_RECIPE_FIELDS;
+  }
+
+  /** Returns the accepted top-level fields for the equity-withdrawal journal recipe. */
+  public static Set<String> equityWithdrawalRecipeFields() {
+    return EQUITY_WITHDRAWAL_RECIPE_FIELDS;
   }
 
   /** Returns the accepted top-level fields for open-accounting-position requests. */

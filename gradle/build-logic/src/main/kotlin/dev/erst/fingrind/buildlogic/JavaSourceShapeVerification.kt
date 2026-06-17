@@ -43,6 +43,9 @@ internal fun Project.registerJavaSourceShapeTask() =
                     exclude("**/build/**", "**/.gradle/**")
                 },
             )
+            reviewedSurfaceRegistryFiles.from(
+                files(ReviewedSurfaceRegistry.registryFragmentFiles(projectDir.toPath())),
+            )
             outputs.upToDateWhen { false }
         }
     }
@@ -58,6 +61,10 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sourceFiles: ConfigurableFileCollection
 
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val reviewedSurfaceRegistryFiles: ConfigurableFileCollection
+
     @get:OutputFile
     abstract val reportFile: RegularFileProperty
 
@@ -68,6 +75,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
     fun verify() {
         val projectDirectory = File(projectDirectoryPath.get())
         val projectRootDirectory = projectDirectory.toPath()
+        val reviewedSurfaceRegistrySnapshot = ReviewedSurfaceRegistry.javaSnapshot(projectRootDirectory)
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
         val projectPath = moduleName.get()
         val currentDate = LocalDate.now()
@@ -93,6 +101,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                         relativePath = relativePath,
                         packageName = packageName,
                         exportedPackages = exportedPackages,
+                        registrySnapshot = reviewedSurfaceRegistrySnapshot,
                     )
                 val defaultBudget = contract.defaultBudget
                 val metrics = JavaSourceShapeMetrics.measure(file)
@@ -149,6 +158,7 @@ abstract class VerifyJavaSourceShapeTask : DefaultTask() {
                 projectRootDirectory = projectRootDirectory,
                 projectPath = projectPath,
                 existingRelativePaths = existingRelativePaths,
+                registrySnapshot = reviewedSurfaceRegistrySnapshot,
             )
         val renderedReport =
             rows.joinToString(System.lineSeparator(), postfix = System.lineSeparator())

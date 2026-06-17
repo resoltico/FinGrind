@@ -76,7 +76,8 @@ public final class CliFuzzHarnessTestSupport {
   public static String cashRevenueRequestJson(CashRevenueRequestInput request) {
     return """
         {
-          "entryKind": "CASH_REVENUE",
+          "entryKind": "JOURNAL",
+          "recipeKind": "CASH_REVENUE",
           "effectiveDate": "%s",
           "cashAccountCode": "%s",
           "revenueAccountCode": "%s",

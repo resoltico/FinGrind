@@ -45,16 +45,12 @@ final class CliMutationResponseWriter {
               });
       case PostEntryResult.PreflightRejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
               CliRejectionPayloadMapper.postingRejectedEnvelope(
-                  rejected.requestIdempotencyKey().value(), rejected.rejection()),
-              rejected.requestIdempotencyKey().value());
+                  rejected.requestIdempotencyKey().value(), rejected.rejection()));
       case PostEntryResult.CommitRejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
               CliRejectionPayloadMapper.postingRejectedEnvelope(
-                  rejected.requestIdempotencyKey().value(), rejected.rejection()),
-              rejected.requestIdempotencyKey().value());
+                  rejected.requestIdempotencyKey().value(), rejected.rejection()));
     }
   }
 

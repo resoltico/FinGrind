@@ -13,6 +13,7 @@ class PostingOriginKindTest {
   void wireValues_areStableAndRoundTrip() {
     assertEquals(
         List.of(
+            "JOURNAL",
             "CASH_REVENUE",
             "CASH_EXPENSE",
             "EQUITY_CONTRIBUTION",

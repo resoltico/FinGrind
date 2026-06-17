@@ -62,13 +62,17 @@ final class SqliteBookMaintenanceLease {
     Path parent =
         Objects.requireNonNull(normalizedArtifactPath.getParent(), "normalizedArtifactPath parent");
     if (!Files.exists(parent, LinkOption.NOFOLLOW_LINKS)) {
-      throw new IllegalStateException(
+      throw new SqliteCallerPathContractException(
+          normalizedArtifactPath,
+          SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
           "The FinGrind maintenance lease requires one existing artifact parent directory: "
               + normalizedArtifactPath
               + ".");
     }
     if (!Files.isRegularFile(normalizedArtifactPath, LinkOption.NOFOLLOW_LINKS)) {
-      throw new IllegalStateException(
+      throw new SqliteCallerPathContractException(
+          normalizedArtifactPath,
+          SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
           "The FinGrind maintenance lease requires one existing regular artifact file: "
               + normalizedArtifactPath
               + ".");

@@ -60,15 +60,18 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode = cli.run(openBookPromptArguments(bookFilePath));
     assertEquals(5, exitCode);
-    String outputText = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(outputText.contains("Rejected"));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals(
+        ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.code(),
+        failureEnvelope.path("code").stringValue());
     assertTrue(
-        outputText.contains(ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.code()));
-    assertTrue(
-        outputText.contains(
-            "FinGrind cannot prompt for a book passphrase because no interactive console is available."));
-    assertTrue(outputText.contains("--book-key-file"));
-    assertFalse(outputText.contains("\"status\""));
+        failureEnvelope
+            .path("message")
+            .stringValue()
+            .contains(
+                "FinGrind cannot prompt for a book passphrase because no interactive console is available."));
+    assertTrue(failureEnvelope.path("hint").stringValue().contains("--book-key-file"));
   }
 
   @Test
@@ -148,7 +151,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_listAccountsWithWrongStandardInputPassphrase_rendersRejectedTextOutput()
+  void run_listAccountsWithWrongStandardInputPassphrase_emitsJsonFailureInTextMode()
       throws IOException {
     Path bookFilePath = tempDirectory.resolve("wrong-stdin-text-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
@@ -178,10 +181,11 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             }));
 
     String outputText = listOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(outputText.contains("Rejected"));
-    assertTrue(
-        outputText.contains(ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code()));
-    assertFalse(outputText.contains("\"status\""));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals(
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
+        failureEnvelope.path("code").stringValue());
     assertFalse(outputText.contains(wrongSecret));
   }
 

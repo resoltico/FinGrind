@@ -470,24 +470,6 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   @Test
   void executionPolicy_coversMaintenanceFailureModesAndTypedExitCodes() {
     assertEquals(
-        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.DISCOVERY).mode(),
-        CliExecutionPolicy.inferredFailureOutputMode(new String[] {"help"}));
-    assertEquals(
-        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.DISCOVERY).mode(),
-        CliExecutionPolicy.inferredFailureOutputMode(new String[] {"version"}));
-    assertEquals(
-        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.DISCOVERY).mode(),
-        CliExecutionPolicy.inferredFailureOutputMode(new String[] {"capabilities"}));
-    assertEquals(
-        OutputMode.JSON,
-        CliExecutionPolicy.inferredFailureOutputMode(
-            new String[] {OperationId.PRINT_REQUEST_TEMPLATE.wireName()}));
-    assertEquals(
-        OutputMode.JSON,
-        CliExecutionPolicy.inferredFailureOutputMode(
-            new String[] {"backup-book", "--output", "csv"}));
-
-    assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
             new BackupBookResult.BackedUp(

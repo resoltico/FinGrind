@@ -2,10 +2,13 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipe;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
@@ -25,7 +28,8 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
         readFromStandardInput(
             """
             {
-              "entryKind": "CASH_EXPENSE",
+              "entryKind": "JOURNAL",
+              "recipeKind": "CASH_EXPENSE",
               "effectiveDate": "2026-04-07",
               "expenseAccountCode": "5000",
               "cashAccountCode": "1000",
@@ -41,11 +45,14 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             """
                 .formatted(eurMoneyJson("1000")));
 
-    BookkeepingEntry.CashExpense entry =
-        assertInstanceOf(BookkeepingEntry.CashExpense.class, command.entry());
+    BookkeepingEntry.Journal entry =
+        assertInstanceOf(BookkeepingEntry.Journal.class, command.entry());
+    JournalRecipe.CashExpense recipe =
+        assertInstanceOf(JournalRecipe.CashExpense.class, entry.recipe());
 
-    assertEquals(new AccountCode("5000"), entry.expenseAccountCode());
-    assertEquals(new AccountCode("1000"), entry.cashAccountCode());
+    assertEquals(BookkeepingEntryKind.JOURNAL, entry.entryKind());
+    assertEquals(new AccountCode("5000"), recipe.expenseAccountCode());
+    assertEquals(new AccountCode("1000"), recipe.cashAccountCode());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -55,7 +62,8 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
         readFromStandardInput(
             """
             {
-              "entryKind": "EQUITY_CONTRIBUTION",
+              "entryKind": "JOURNAL",
+              "recipeKind": "EQUITY_CONTRIBUTION",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "equityAccountCode": "3000",
@@ -71,11 +79,14 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             """
                 .formatted(eurMoneyJson("1000")));
 
-    BookkeepingEntry.EquityContribution entry =
-        assertInstanceOf(BookkeepingEntry.EquityContribution.class, command.entry());
+    BookkeepingEntry.Journal entry =
+        assertInstanceOf(BookkeepingEntry.Journal.class, command.entry());
+    JournalRecipe.EquityContribution recipe =
+        assertInstanceOf(JournalRecipe.EquityContribution.class, entry.recipe());
 
-    assertEquals(new AccountCode("1000"), entry.cashAccountCode());
-    assertEquals(new AccountCode("3000"), entry.equityAccountCode());
+    assertEquals(BookkeepingEntryKind.JOURNAL, entry.entryKind());
+    assertEquals(new AccountCode("1000"), recipe.cashAccountCode());
+    assertEquals(new AccountCode("3000"), recipe.equityAccountCode());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -85,7 +96,8 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
         readFromStandardInput(
             """
             {
-              "entryKind": "EQUITY_WITHDRAWAL",
+              "entryKind": "JOURNAL",
+              "recipeKind": "EQUITY_WITHDRAWAL",
               "effectiveDate": "2026-04-07",
               "equityAccountCode": "3000",
               "cashAccountCode": "1000",
@@ -101,11 +113,14 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             """
                 .formatted(eurMoneyJson("1000")));
 
-    BookkeepingEntry.EquityWithdrawal entry =
-        assertInstanceOf(BookkeepingEntry.EquityWithdrawal.class, command.entry());
+    BookkeepingEntry.Journal entry =
+        assertInstanceOf(BookkeepingEntry.Journal.class, command.entry());
+    JournalRecipe.EquityWithdrawal recipe =
+        assertInstanceOf(JournalRecipe.EquityWithdrawal.class, entry.recipe());
 
-    assertEquals(new AccountCode("3000"), entry.equityAccountCode());
-    assertEquals(new AccountCode("1000"), entry.cashAccountCode());
+    assertEquals(BookkeepingEntryKind.JOURNAL, entry.entryKind());
+    assertEquals(new AccountCode("3000"), recipe.equityAccountCode());
+    assertEquals(new AccountCode("1000"), recipe.cashAccountCode());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -134,11 +149,54 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             new ByteArrayInputStream(validRequestJson(false).getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
-    BookkeepingEntry.CashRevenue entry =
-        assertInstanceOf(BookkeepingEntry.CashRevenue.class, command.entry());
+    BookkeepingEntry.Journal entry =
+        assertInstanceOf(BookkeepingEntry.Journal.class, command.entry());
+    JournalRecipe.CashRevenue recipe =
+        assertInstanceOf(JournalRecipe.CashRevenue.class, entry.recipe());
 
-    assertEquals(new AccountCode("1000"), entry.cashAccountCode());
-    assertEquals(new AccountCode("2000"), entry.revenueAccountCode());
+    assertEquals(BookkeepingEntryKind.JOURNAL, entry.entryKind());
+    assertEquals(new AccountCode("1000"), recipe.cashAccountCode());
+    assertEquals(new AccountCode("2000"), recipe.revenueAccountCode());
+    assertEquals(SourceChannel.CLI, command.sourceChannel());
+  }
+
+  @Test
+  void readPostEntryCommand_readsDirectJournalEntriesWithoutRecipeKind() {
+    PostEntryCommand command =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "JOURNAL",
+              "effectiveDate": "2026-04-07",
+              "lines": [
+                {
+                  "accountCode": "1000",
+                  "side": "DEBIT",
+                  "amount": %s
+                },
+                {
+                  "accountCode": "2000",
+                  "side": "CREDIT",
+                  "amount": %s
+                }
+              ],
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-direct-journal",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000"), eurMoneyJson("1000")));
+
+    BookkeepingEntry.Journal entry =
+        assertInstanceOf(BookkeepingEntry.Journal.class, command.entry());
+
+    assertEquals(BookkeepingEntryKind.JOURNAL, entry.entryKind());
+    assertEquals(2, entry.lines().size());
+    assertNull(entry.recipe());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -236,7 +294,8 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -267,7 +326,8 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 withEvidence(
                         """
                 {
-                  "entryKind": "CASH_REVENUE",
+                  "entryKind": "JOURNAL",
+                  "recipeKind": "CASH_REVENUE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",

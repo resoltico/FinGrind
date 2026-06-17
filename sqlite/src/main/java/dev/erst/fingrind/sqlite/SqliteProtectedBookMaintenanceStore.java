@@ -4,8 +4,10 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
@@ -49,26 +51,36 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
   }
 
   @Override
-  public LeaseAcquisition acquireExistingArtifactLease(Path normalizedArtifactPath) {
-    return switch (SqliteBookMaintenanceLease.acquire(
-        normalizedArtifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT)) {
-      case SqliteHeldLease heldLease -> heldLease;
-      case SqliteLeaseBusy leaseBusy -> new LeaseBusy(leaseBusy.artifactPath());
-    };
+  public LeaseAcquisition acquireExistingArtifactLease(
+      Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
+    try {
+      return switch (SqliteBookMaintenanceLease.acquire(
+          normalizedArtifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT)) {
+        case SqliteHeldLease heldLease -> heldLease;
+        case SqliteLeaseBusy leaseBusy -> new LeaseBusy(leaseBusy.artifactPath());
+      };
+    } catch (SqliteCallerPathContractException exception) {
+      throw maintenanceRejection(artifactRole, exception);
+    }
   }
 
   @Override
-  public LeaseAcquisition acquireManagedArtifactLease(Path normalizedArtifactPath) {
-    return switch (SqliteBookMaintenanceLease.acquire(
-        normalizedArtifactPath, SqliteMaintenanceLeaseIntent.MANAGED_TARGET)) {
-      case SqliteHeldLease heldLease -> heldLease;
-      case SqliteLeaseBusy leaseBusy -> new LeaseBusy(leaseBusy.artifactPath());
-    };
+  public LeaseAcquisition acquireManagedArtifactLease(
+      Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
+    try {
+      return switch (SqliteBookMaintenanceLease.acquire(
+          normalizedArtifactPath, SqliteMaintenanceLeaseIntent.MANAGED_TARGET)) {
+        case SqliteHeldLease heldLease -> heldLease;
+        case SqliteLeaseBusy leaseBusy -> new LeaseBusy(leaseBusy.artifactPath());
+      };
+    } catch (SqliteCallerPathContractException exception) {
+      throw maintenanceRejection(artifactRole, exception);
+    }
   }
 
   @Override
   public MaintenanceDecision<BookVerification> verifyInitializedBook(
-      ProtectedBookAccess bookAccess) {
+      ProtectedBookAccess bookAccess, ProtectedBookMaintenanceArtifactRole artifactRole) {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Path normalizedBookPath = normalize(bookAccess.bookFilePath(), "bookFilePath");
     ProtectedBookAccess normalizedAccess =
@@ -83,7 +95,8 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
             normalizedAccess.passphraseSource().toPublished(),
             SqlitePassphraseIntent.EXISTING_SECRET)
         .fold(
-            bookPassphrase -> verifyInitializedResolvedBook(normalizedBookPath, bookPassphrase),
+            bookPassphrase ->
+                verifyInitializedResolvedBook(normalizedBookPath, bookPassphrase, artifactRole),
             failure -> MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(failure)));
   }
 
@@ -95,12 +108,20 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
     SqliteVerifiedBook verifiedSourceBook = requireVerifiedBook(sourceBook);
     Objects.requireNonNull(normalizedBackupFilePath, "normalizedBackupFilePath");
     Objects.requireNonNull(normalizedBackupBookKeyFilePath, "normalizedBackupBookKeyFilePath");
-    return SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
-        verifiedSourceBook.artifactPath(),
-        normalizedBackupFilePath,
-        normalizedBackupBookKeyFilePath,
-        verifiedSourceBook.passphraseCopy(),
-        verificationSupport);
+    try {
+      return SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
+          verifiedSourceBook.artifactPath(),
+          normalizedBackupFilePath,
+          normalizedBackupBookKeyFilePath,
+          verifiedSourceBook.passphraseCopy(),
+          verificationSupport);
+    } catch (SqliteCallerPathContractException exception) {
+      ProtectedBookMaintenanceArtifactRole artifactRole =
+          exception.requestedPath().equals(normalizedBackupBookKeyFilePath)
+              ? ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET
+              : ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET;
+      throw maintenanceRejection(artifactRole, exception);
+    }
   }
 
   @Override
@@ -109,13 +130,19 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
     Objects.requireNonNull(normalizedReplicaBookPath, "normalizedReplicaBookPath");
     SqliteVerifiedBook verifiedSourceBook = requireVerifiedBook(sourceBook);
     return verifyInitializedResolvedBook(
-        normalizedReplicaBookPath, verifiedSourceBook.passphraseCopy());
+        normalizedReplicaBookPath,
+        verifiedSourceBook.passphraseCopy(),
+        ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
   }
 
   @Override
   public StagedBookReplacement stageReplacement(
       Path normalizedSourceBookPath, Path normalizedTargetBookPath) {
-    return SqliteStagedBookReplacement.create(normalizedSourceBookPath, normalizedTargetBookPath);
+    try {
+      return SqliteStagedBookReplacement.create(normalizedSourceBookPath, normalizedTargetBookPath);
+    } catch (SqliteCallerPathContractException exception) {
+      throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, exception);
+    }
   }
 
   @Override
@@ -142,8 +169,13 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
   @Override
   public StagedRollbackArtifactDeletion stageRollbackArtifactDeletion(
       Path normalizedRollbackArtifactPath) {
-    SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(normalizedRollbackArtifactPath);
-    return SqliteStagedRollbackDeletion.create(normalizedRollbackArtifactPath);
+    try {
+      SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(
+          normalizedRollbackArtifactPath);
+      return SqliteStagedRollbackDeletion.create(normalizedRollbackArtifactPath);
+    } catch (SqliteCallerPathContractException exception) {
+      throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, exception);
+    }
   }
 
   @Override
@@ -175,13 +207,20 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
   }
 
   private MaintenanceDecision<BookVerification> verifyInitializedResolvedBook(
-      Path normalizedBookPath, SqliteBookPassphrase bookPassphrase) {
+      Path normalizedBookPath,
+      SqliteBookPassphrase bookPassphrase,
+      ProtectedBookMaintenanceArtifactRole artifactRole) {
     if (!Files.exists(normalizedBookPath, LinkOption.NOFOLLOW_LINKS)) {
       bookPassphrase.close();
       return MaintenanceDecision.accepted(
           new VerificationFailure(normalizedBookPath, ProtectedBookVerificationFailure.MISSING));
     }
-    SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(normalizedBookPath);
+    try {
+      SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(normalizedBookPath);
+    } catch (SqliteCallerPathContractException exception) {
+      bookPassphrase.close();
+      throw maintenanceRejection(artifactRole, exception);
+    }
     return verificationSupport.verifyResolvedBook(normalizedBookPath, bookPassphrase);
   }
 
@@ -192,5 +231,12 @@ public final class SqliteProtectedBookMaintenanceStore implements ProtectedBookM
     }
     throw new IllegalArgumentException(
         "The SQLite maintenance store requires one verified SQLite book handle.");
+  }
+
+  private static ProtectedBookMaintenanceRejectionException maintenanceRejection(
+      ProtectedBookMaintenanceArtifactRole artifactRole,
+      SqliteCallerPathContractException exception) {
+    return new ProtectedBookMaintenanceRejectionException(
+        SqliteCallerPathFailureMapper.maintenanceRejection(artifactRole, exception));
   }
 }

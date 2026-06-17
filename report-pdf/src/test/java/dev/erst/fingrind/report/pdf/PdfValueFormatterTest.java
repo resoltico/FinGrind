@@ -292,7 +292,7 @@ class PdfValueFormatterTest {
         "Period result transfer",
         PdfPostingValueFormatter.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
     assertEquals(
-        "Opening balance",
+        "Opening accounting position",
         PdfPostingValueFormatter.displayPostingKind(PostingKind.OPENING_BALANCE));
   }
 

@@ -147,7 +147,7 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     JsonNode json = new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
     assertEquals("plan-1", json.path("planId").stringValue());
     assertFalse(json.has("executionPolicy"));
-    assertEquals("initialize-book", json.path("steps").get(0).path("stepId").stringValue());
+    assertEquals("ensure-book", json.path("steps").get(0).path("stepId").stringValue());
     assertEquals("assert-cash-balance", json.path("steps").get(2).path("stepId").stringValue());
     assertEquals(
         "assert-account-balance",

@@ -14,8 +14,8 @@ public final class PostingAcceptancePolicy {
       new PostingCurrencyAcceptancePolicy();
   private final PostingTransferredPeriodResultPolicy postingTransferredPeriodResultPolicy =
       new PostingTransferredPeriodResultPolicy();
-  private final OpeningBalanceAcceptancePolicy openingBalanceAcceptancePolicy =
-      new OpeningBalanceAcceptancePolicy();
+  private final OpenAccountingPositionAcceptancePolicy openAccountingPositionAcceptancePolicy =
+      new OpenAccountingPositionAcceptancePolicy();
   private final PostingAccountStatePolicy postingAccountStatePolicy =
       new PostingAccountStatePolicy();
 
@@ -46,20 +46,20 @@ public final class PostingAcceptancePolicy {
     if (transferredPeriodResultRejection.isPresent()) {
       return transferredPeriodResultRejection;
     }
-    Optional<BookkeepingPostingRejection> openingBalanceWindowRejection =
-        openingBalanceAcceptancePolicy.windowRejection(postingRequest, book);
-    if (openingBalanceWindowRejection.isPresent()) {
-      return openingBalanceWindowRejection;
+    Optional<BookkeepingPostingRejection> openAccountingPositionWindowRejection =
+        openAccountingPositionAcceptancePolicy.windowRejection(postingRequest, book);
+    if (openAccountingPositionWindowRejection.isPresent()) {
+      return openAccountingPositionWindowRejection;
     }
     Optional<BookkeepingPostingRejection> accountRejection =
         postingAccountStatePolicy.rejectionFor(postingRequest, book);
     if (accountRejection.isPresent()) {
       return accountRejection;
     }
-    Optional<BookkeepingPostingRejection> openingBalanceNominalRejection =
-        openingBalanceAcceptancePolicy.nominalAccountRejection(postingRequest, book);
-    if (openingBalanceNominalRejection.isPresent()) {
-      return openingBalanceNominalRejection;
+    Optional<BookkeepingPostingRejection> openAccountingPositionNominalRejection =
+        openAccountingPositionAcceptancePolicy.nominalAccountRejection(postingRequest, book);
+    if (openAccountingPositionNominalRejection.isPresent()) {
+      return openAccountingPositionNominalRejection;
     }
     Optional<BookkeepingPostingRejection> resultHoldingReservationRejection =
         new ResultHoldingReservationPolicy(

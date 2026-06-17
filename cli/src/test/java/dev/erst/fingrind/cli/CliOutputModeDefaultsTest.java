@@ -30,10 +30,17 @@ class CliOutputModeDefaultsTest {
         OutputMode.CSV,
         CliOutputModeDefaults.resolved(
             OutputMode.CSV, CliOutputModeDefaults.OutputSurface.SELECTABLE));
+    assertEquals(
+        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE).mode(),
+        CliOutputModeDefaults.inferredDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE));
   }
 
   @Test
   void outputModeDefaults_coverBlankInvalidAndRejectedConfiguredValues() {
+    assertEquals(
+        OutputMode.TEXT,
+        CliOutputModeDefaults.inferredDefault(
+            null, CliOutputModeDefaults.OutputSurface.SELECTABLE));
     assertEquals(
         OutputMode.JSON,
         CliOutputModeDefaults.inferredDefault(
@@ -48,6 +55,10 @@ class CliOutputModeDefaultsTest {
     assertEquals(
         OutputMode.TEXT,
         CliOutputModeDefaults.outputDefault(" ", CliOutputModeDefaults.OutputSurface.DISCOVERY)
+            .mode());
+    assertEquals(
+        OutputMode.TEXT,
+        CliOutputModeDefaults.outputDefault(null, CliOutputModeDefaults.OutputSurface.DISCOVERY)
             .mode());
     assertEquals(
         OutputMode.TEXT,

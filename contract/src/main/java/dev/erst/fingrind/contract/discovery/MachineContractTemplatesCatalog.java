@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -64,7 +65,8 @@ final class MachineContractTemplatesCatalog {
 
   static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
-        BookkeepingEntryKind.CASH_REVENUE,
+        BookkeepingEntryKind.JOURNAL,
+        JournalRecipeKind.CASH_REVENUE,
         SAMPLE_EFFECTIVE_DATE,
         "cash",
         "service-revenue",
@@ -110,9 +112,10 @@ final class MachineContractTemplatesCatalog {
         "plan-1",
         List.of(
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                "initialize-book",
-                LedgerStepKind.OPEN_BOOK,
-                new ContractPlanTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
+                "ensure-book",
+                LedgerStepKind.ENSURE_BOOK,
+                new ContractPlanTemplates.EnsureBookTemplateDescriptor(
+                    "Acme Studio", "EUR", "01-01"),
                 null,
                 null,
                 null,

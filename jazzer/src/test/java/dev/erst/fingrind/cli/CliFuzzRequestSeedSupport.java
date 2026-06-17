@@ -93,6 +93,27 @@ public final class CliFuzzRequestSeedSupport {
         .getBytes(UTF_8);
   }
 
+  static byte[] sameAccountCashRevenueRequestBytes() {
+    return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
+            new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
+                "2026-04-09",
+                "1000",
+                "1000",
+                "EUR",
+                "1000",
+                new CliFuzzHarnessTestSupport.RequestContext(
+                    "document-idem-same-account-1",
+                    "cash-receipt",
+                    "2026-04-09",
+                    "actor-same-account-1",
+                    "AGENT",
+                    "command-same-account-1",
+                    "idem-same-account-1",
+                    "cause-same-account-1",
+                    null)))
+        .getBytes(UTF_8);
+  }
+
   static byte[] missingReversalReasonRequestBytes() {
     return CliFuzzHarnessTestSupport.reversalAdjustmentRequestJson(
             new CliFuzzHarnessTestSupport.ReversalAdjustmentRequestInput(

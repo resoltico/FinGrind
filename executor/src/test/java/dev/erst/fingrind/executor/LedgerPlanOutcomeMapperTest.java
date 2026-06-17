@@ -53,8 +53,10 @@ import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslat
 import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
 import dev.erst.fingrind.executor.workflow.BookWorkflowStepId;
 import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
-import dev.erst.fingrind.executor.workflow.LedgerPlanOutcomeMapper;
+import dev.erst.fingrind.executor.workflow.LedgerPlanRejectedOutcomes;
 import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcome;
+import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcomes;
+import dev.erst.fingrind.executor.workflow.LedgerPlanUnexpectedOutcomes;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -68,10 +70,10 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void unexpectedExecutionFailure_omitsDetailWhenMessageIsBlank() {
     LedgerStep step =
-        new LedgerStep.OpenBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
+        new LedgerStep.EnsureBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
 
     var journalEntry =
-        LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
             workflowStep(step), FIXED_INSTANT, FIXED_INSTANT, new IllegalStateException("   "));
 
     assertEquals(
@@ -82,10 +84,10 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void unexpectedExecutionFailure_omitsDetailWhenMessageIsNull() {
     LedgerStep step =
-        new LedgerStep.OpenBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
+        new LedgerStep.EnsureBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
 
     var journalEntry =
-        LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
             workflowStep(step), FIXED_INSTANT, FIXED_INSTANT, new IllegalStateException());
 
     assertEquals(
@@ -96,10 +98,10 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void unexpectedExecutionFailure_includesNonBlankDetail() {
     LedgerStep step =
-        new LedgerStep.OpenBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
+        new LedgerStep.EnsureBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
 
     var journalEntry =
-        LedgerPlanOutcomeMapper.unexpectedExecutionFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
             workflowStep(step),
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -114,11 +116,11 @@ class LedgerPlanOutcomeMapperTest {
   void unexpectedPlanFailure_recordsPhaseCleanupAndPriorFailureFacts() {
     BookWorkflowStep step =
         workflowStep(
-            new LedgerStep.OpenBook(
+            new LedgerStep.EnsureBook(
                 stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
 
     var journalEntry =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -171,11 +173,11 @@ class LedgerPlanOutcomeMapperTest {
   void unexpectedPlanFailure_omitsDetailWhenMessageIsBlank() {
     BookWorkflowStep step =
         workflowStep(
-            new LedgerStep.OpenBook(
+            new LedgerStep.EnsureBook(
                 stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
 
     var journalEntry =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -194,11 +196,11 @@ class LedgerPlanOutcomeMapperTest {
   void unexpectedPlanFailure_omitsDetailWhenMessageIsNull() {
     BookWorkflowStep step =
         workflowStep(
-            new LedgerStep.OpenBook(
+            new LedgerStep.EnsureBook(
                 stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
 
     var journalEntry =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -227,7 +229,7 @@ class LedgerPlanOutcomeMapperTest {
                     dev.erst.fingrind.core.BalanceSide.DEBIT)));
 
     var journalEntry =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -251,7 +253,7 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void unexpectedPlanFailure_recordsBoundaryTriggerFactsWhenDescriptorIsBoundary() {
     var journalEntry =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -273,7 +275,7 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void unexpectedPlanFailure_withoutTriggerStepUsesPlainBoundaryMessages() {
     var begin =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.BEGIN,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -283,7 +285,7 @@ class LedgerPlanOutcomeMapperTest {
             null,
             null);
     var initializationCheck =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.INITIALIZATION_CHECK,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -293,7 +295,7 @@ class LedgerPlanOutcomeMapperTest {
             null,
             null);
     var commit =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -303,7 +305,7 @@ class LedgerPlanOutcomeMapperTest {
             null,
             null);
     var rollback =
-        LedgerPlanOutcomeMapper.unexpectedPlanFailure(
+        LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
             BookWorkflowBoundaryPhase.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
@@ -332,37 +334,37 @@ class LedgerPlanOutcomeMapperTest {
     CommittedPosting posting = committedPosting();
 
     assertEquals(
-        LedgerPlanFactMapper.postingFacts(posting), LedgerPlanOutcomeMapper.postingFacts(posting));
+        LedgerPlanFactMapper.postingFacts(posting), LedgerPlanStepOutcomes.postingFacts(posting));
   }
 
   @Test
   void administrationRejection_projectsEveryLocalAdministrationVariant() {
     var bookNotInitialized =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.administrationRejection(
+            LedgerPlanRejectedOutcomes.administrationRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
                     .BookNotInitialized());
     var bookContainsSchema =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.administrationRejection(
+            LedgerPlanRejectedOutcomes.administrationRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
                     .BookContainsSchema());
     var accountTypeConflict =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.administrationRejection(
+            LedgerPlanRejectedOutcomes.administrationRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
                     .AccountTypeConflict(
                     new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY));
     var accountRoleConflict =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.administrationRejection(
+            LedgerPlanRejectedOutcomes.administrationRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
                     .AccountRoleConflict(
                     new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED));
 
     assertEquals("administration-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals(
-        "The selected book does not exist or has not been initialized with an open book step.",
+        "The selected book does not exist or has not been initialized with an ensure-book step.",
         bookNotInitialized.failure().message());
     assertEquals("book-contains-schema", bookContainsSchema.failure().code());
     assertEquals(
@@ -388,57 +390,57 @@ class LedgerPlanOutcomeMapperTest {
   void postingRejection_projectsEveryRemainingPostingVariant() {
     var bookNotInitialized =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .BookNotInitialized());
     var duplicateIdempotencyKey =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .DuplicateIdempotencyKey());
     var reversalTargetNotFound =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .ReversalTargetNotFound(new PostingId("posting-1")));
     var reversalAlreadyExists =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .ReversalAlreadyExists(new PostingId("posting-2")));
     var reversalDoesNotNegateTarget =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .ReversalDoesNotNegateTarget(new PostingId("posting-3")));
     var functionalCurrencyMismatch =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .BookFunctionalCurrencyMismatch(
                     dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
                     dev.erst.fingrind.core.CurrencyUnit.of("USD")));
     var transferredPeriodResultViolation =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .TransferredPeriodResultViolation(
                     LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-06")));
     var openingBalanceWindowClosed =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .OpeningBalanceWindowClosed(
+                    .OpenAccountingPositionWindowClosed(
                     PostingKind.STANDARD, LocalDate.parse("2026-04-07")));
     var openingBalanceNominalAccount =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .OpeningBalanceTouchesNominalAccount(
+                    .OpenAccountingPositionTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE));
     var resultHoldingReserved =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .ResultHoldingAccountReserved(new AccountCode("3200")));
 
@@ -449,9 +451,11 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals("reversal-does-not-negate-target", reversalDoesNotNegateTarget.failure().code());
     assertEquals("book-functional-currency-mismatch", functionalCurrencyMismatch.failure().code());
     assertEquals("closed-period-violation", transferredPeriodResultViolation.failure().code());
-    assertEquals("opening-balance-window-closed", openingBalanceWindowClosed.failure().code());
     assertEquals(
-        "opening-balance-touches-nominal-account", openingBalanceNominalAccount.failure().code());
+        "open-accounting-position-window-closed", openingBalanceWindowClosed.failure().code());
+    assertEquals(
+        "open-accounting-position-touches-nominal-account",
+        openingBalanceNominalAccount.failure().code());
     assertEquals("result-holding-account-reserved", resultHoldingReserved.failure().code());
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-1")),
@@ -491,7 +495,7 @@ class LedgerPlanOutcomeMapperTest {
   void postingRejection_recordsInactiveAccountViolationsInWorkflowFacts() {
     var rejected =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .AccountStateViolations(
                     List.of(
@@ -514,7 +518,7 @@ class LedgerPlanOutcomeMapperTest {
   void postingRejection_recordsNonPostableAndEntrySemanticsViolationsInWorkflowFacts() {
     var nonPostableRejected =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .AccountStateViolations(
                     List.of(
@@ -524,7 +528,7 @@ class LedgerPlanOutcomeMapperTest {
                             dev.erst.fingrind.core.AccountNodeKind.HEADER))));
     var entrySemanticsRejected =
         (LedgerPlanStepOutcome.Rejected)
-            LedgerPlanOutcomeMapper.postingRejection(
+            LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .EntrySemanticsViolations(
                     List.of(
@@ -573,45 +577,45 @@ class LedgerPlanOutcomeMapperTest {
   void missingBookCode_usesTheBoundaryOwnedRejectionFamilyForEachWorkflowStep() {
     assertEquals(
         BookAdministrationRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
-            new BookWorkflowStep.OpenBook(internalStepId("open"), bookIdentity())));
+        LedgerPlanStepOutcomes.missingBookCode(
+            new BookWorkflowStep.EnsureBook(internalStepId("open"), bookIdentity())));
     assertEquals(
         BookAdministrationRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.DeclareAccount(internalStepId("declare"), accountDeclaration())));
     assertEquals(
         PostingRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.PreflightEntry(
                 internalStepId("preflight"), postingCommand("idem-1"))));
     assertEquals(
         PostingRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.PostEntry(internalStepId("post"), postingCommand("idem-2"))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.InspectBook(internalStepId("inspect"))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.ListAccounts(
                 internalStepId("accounts"), new AccountRegistryQuery(1, Optional.empty()))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.GetPosting(
                 internalStepId("posting"), new PostingId("posting-1"))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.ListPostings(
                 internalStepId("postings"),
                 new PostingHistoryQuery(
                     Optional.empty(), EffectiveDateRange.unbounded(), 1, Optional.empty()))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.AccountBalance(
                 internalStepId("balance"),
                 new AccountBalanceCriteria(
@@ -620,7 +624,7 @@ class LedgerPlanOutcomeMapperTest {
                     PostingCoverage.ALL_POSTING_KINDS))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
-        LedgerPlanOutcomeMapper.missingBookCode(
+        LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.Assert(
                 internalStepId("assert"),
                 new BookWorkflowAssertion.AccountBalanceEquals(
@@ -653,7 +657,7 @@ class LedgerPlanOutcomeMapperTest {
 
   private static PostEntryCommand postingCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.CashRevenue(
+        BookkeepingEntry.cashRevenue(
             LocalDate.parse("2026-05-05"),
             new AccountCode("1000"),
             new AccountCode("2000"),

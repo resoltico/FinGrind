@@ -11,6 +11,7 @@ public final class ProtocolPostEntryFields {
     return List.of(
         TopLevel.ENTRY_KIND,
         TopLevel.EFFECTIVE_DATE,
+        TopLevel.RECIPE_KIND,
         TopLevel.CASH_ACCOUNT_CODE,
         TopLevel.REVENUE_ACCOUNT_CODE,
         TopLevel.EXPENSE_ACCOUNT_CODE,
@@ -80,6 +81,7 @@ public final class ProtocolPostEntryFields {
   public static final class TopLevel {
     public static final String ENTRY_KIND = "entryKind";
     public static final String EFFECTIVE_DATE = "effectiveDate";
+    public static final String RECIPE_KIND = "recipeKind";
     public static final String CASH_ACCOUNT_CODE = "cashAccountCode";
     public static final String REVENUE_ACCOUNT_CODE = "revenueAccountCode";
     public static final String EXPENSE_ACCOUNT_CODE = "expenseAccountCode";

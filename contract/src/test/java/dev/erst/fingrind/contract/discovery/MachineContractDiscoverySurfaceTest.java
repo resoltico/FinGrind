@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
+import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
@@ -26,7 +28,7 @@ import org.junit.jupiter.api.Test;
 /** Coverage and contract tests for the published machine-discovery surfaces. */
 class MachineContractDiscoverySurfaceTest {
   private static final ApplicationIdentity IDENTITY =
-      new ApplicationIdentity("FinGrind", "0.55.0", "Protected bookkeeping kernel");
+      new ApplicationIdentity("FinGrind", "0.56.0", "Protected bookkeeping kernel");
 
   @Test
   void helpWithoutTopicPublishesCanonicalQuickStartForEveryRuntimeDistribution() {
@@ -127,7 +129,8 @@ class MachineContractDiscoverySurfaceTest {
         MachineContractTemplatesCatalog.declareAccountCashJson().contains("\"cash-reserve\""));
     assertTrue(
         MachineContractTemplatesCatalog.declareAccountRevenueJson().contains("\"misc-revenue\""));
-    assertEquals(BookkeepingEntryKind.CASH_REVENUE, MachineContract.requestTemplate().entryKind());
+    assertEquals(BookkeepingEntryKind.JOURNAL, MachineContract.requestTemplate().entryKind());
+    assertEquals(JournalRecipeKind.CASH_REVENUE, MachineContract.requestTemplate().recipeKind());
     assertEquals("cash-reserve", MachineContract.declareAccountTemplate().accountCode());
     assertEquals("plan-1", MachineContract.planTemplate().planId());
     assertNull(MachineContractTemplatesCatalog.requestShapesFor(null));
@@ -143,6 +146,66 @@ class MachineContractDiscoverySurfaceTest {
     assertNotNull(
         MachineContractTemplatesCatalog.requestShapesFor(
             ProtocolCatalog.operation(OperationId.EXECUTE_PLAN)));
+  }
+
+  @Test
+  void requestSurfaceFactsDrivePostingDiscoverySemantics() {
+    CapabilitiesDescriptor capabilities = MachineContract.capabilities(IDENTITY);
+    RequestSurfaceFacts requestSurface = ProtocolCatalog.domain().requestSurface();
+    var postEntry = capabilities.requestShapes().postEntry();
+    assertNotNull(postEntry);
+    assertEquals(
+        requestSurface.postEntryEvidence().minimumSourceDocuments(),
+        postEntry.evidenceRequirement().minimumSourceDocuments());
+    assertEquals(
+        requestSurface.postEntryEvidence().requiredSourceDocumentFields(),
+        postEntry.evidenceRequirement().requiredSourceDocumentFields());
+    ContractRequestShapes.JournalRecipeSemanticsDescriptor cashRevenue =
+        postEntry.journalRecipeSemantics().stream()
+            .filter(descriptor -> descriptor.recipeKind() == JournalRecipeKind.CASH_REVENUE)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(
+        requestSurface.journalRecipe(JournalRecipeKind.CASH_REVENUE).evidenceProfileId(),
+        cashRevenue.evidenceProfileId());
+    assertEquals(
+        requestSurface
+            .evidenceProfile(
+                requestSurface.journalRecipe(JournalRecipeKind.CASH_REVENUE).evidenceProfileId())
+            .sourceDocumentTypes()
+            .acceptedValues(),
+        postEntry.evidenceProfiles().stream()
+            .filter(
+                profile ->
+                    profile
+                        .profileId()
+                        .equals(
+                            requestSurface
+                                .journalRecipe(JournalRecipeKind.CASH_REVENUE)
+                                .evidenceProfileId()))
+            .findFirst()
+            .orElseThrow()
+            .acceptedSourceDocumentTypes());
+    ContractRequestShapes.EntryKindSemanticsDescriptor openAccountingPosition =
+        postEntry.entryKindSemantics().stream()
+            .filter(
+                descriptor ->
+                    descriptor.entryKind() == BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(
+        requestSurface
+            .postEntryKind(BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION)
+            .evidenceProfileId(),
+        openAccountingPosition.evidenceProfileId());
+    assertTrue(
+        postEntry.evidenceProfiles().stream()
+            .filter(
+                profile -> profile.profileId().equals(openAccountingPosition.evidenceProfileId()))
+            .findFirst()
+            .orElseThrow()
+            .acceptedSourceDocumentTypes()
+            .isEmpty());
   }
 
   @Test

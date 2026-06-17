@@ -216,7 +216,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
   }
 
   private static CapabilitiesDescriptor capabilitiesDescriptor() {
-    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.55.0", "desc"));
+    return MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.56.0", "desc"));
   }
 
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {

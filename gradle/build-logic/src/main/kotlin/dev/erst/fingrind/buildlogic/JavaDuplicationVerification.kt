@@ -38,6 +38,9 @@ internal fun Project.registerJavaSourceDuplicationTask() =
                     file("src/main/java"),
                 ).filter(File::isDirectory),
             )
+            reviewedSurfaceRegistryFiles.from(
+                files(ReviewedSurfaceRegistry.registryFragmentFiles(projectDir.toPath())),
+            )
             reportFile.set(layout.buildDirectory.file("reports/pmd/cpd.xml"))
             auditMirrorFile.set(
                 FinGrindFilesystemLayout.structuralGovernanceAuditFile(
@@ -59,6 +62,10 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val sourceRoots: ConfigurableFileCollection
 
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val reviewedSurfaceRegistryFiles: ConfigurableFileCollection
+
     @get:OutputFile
     abstract val reportFile: RegularFileProperty
 
@@ -70,6 +77,7 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
         val existingSourceRoots = sourceRoots.files.filter(File::isDirectory).sortedBy { it.path }
         val projectDirectory = File(projectDirectoryPath.get())
         val projectRootDirectory = projectDirectory.toPath()
+        val reviewedSurfaceRegistrySnapshot = ReviewedSurfaceRegistry.javaSnapshot(projectRootDirectory)
         val projectPath = moduleName.get()
         val exportedPackages = JavaSourceStructuralContracts.exportedPackages(projectDirectory)
         val report = reportFile.get().asFile
@@ -112,6 +120,7 @@ abstract class VerifyJavaSourceDuplicationTask : DefaultTask() {
                                 relativePath = relativePath,
                                 packageName = JavaSourceStructuralContracts.packageNameFor(sourceFile),
                                 exportedPackages = exportedPackages,
+                                registrySnapshot = reviewedSurfaceRegistrySnapshot,
                             )
                         }
                         .forEach { sourceFile ->

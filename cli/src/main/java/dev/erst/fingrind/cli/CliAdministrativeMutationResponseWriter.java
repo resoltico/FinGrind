@@ -42,9 +42,7 @@ final class CliAdministrativeMutationResponseWriter {
               });
       case OpenBookResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()));
     }
   }
 
@@ -92,9 +90,7 @@ final class CliAdministrativeMutationResponseWriter {
               });
       case RekeyBookResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()));
     }
   }
 
@@ -115,9 +111,7 @@ final class CliAdministrativeMutationResponseWriter {
               });
       case DeclareAccountResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()));
     }
   }
 
@@ -158,9 +152,7 @@ final class CliAdministrativeMutationResponseWriter {
               });
       case PeriodResultTransferResult.Rejected rejected ->
           outputChannel.writeMutationRejection(
-              outputMode,
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
-              null);
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()));
     }
   }
 

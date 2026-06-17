@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.55.0"
+version: "0.56.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-06-16"
+updated: "2026-06-17"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -147,7 +147,8 @@ public final class BookkeepingPublishedLanguageTranslator
 
 - `PostingAcceptancePolicy`: composes the bookkeeping-side admission rules for initialization,
   duplicate idempotency, caller-authored posting family, functional-currency alignment,
-  closed-period checks, opening-balance restrictions, account state, result-holding reservation,
+  closed-period checks, OPEN_ACCOUNTING_POSITION admission rules, account state,
+  result-holding reservation,
   and reversal admissibility against one `PostingValidationStore`
 - `BookkeepingAdministrationRejection`: local refusal family for bookkeeping initialization and
   account-declaration rules before translation into public `BookAdministrationRejection`
@@ -177,8 +178,8 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps)
 ```
 
 - Purpose: bundle one ordered workflow with stable per-step ids
-- Validation: rejects blank plan ids, empty step lists, duplicate step ids, and `open-book` outside
-  the first step
+- Validation: rejects blank plan ids, empty step lists, duplicate step ids, and `ensure-book`
+  outside the first step
 - Boundary: executor translates this published plan into the internal workflow context before any
   bookkeeping step executes
 
@@ -190,7 +191,7 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps)
 public sealed interface LedgerStep
 ```
 
-- Families: `OpenBook`, `DeclareAccount`, `PreflightEntry`, `PostEntry`, `InspectBook`,
+- Families: `EnsureBook`, `DeclareAccount`, `PreflightEntry`, `PostEntry`, `InspectBook`,
   `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`, `Assert`
 - Purpose: keep plan execution exhaustively typed instead of routing through maps
 - Scope: current ledger plans intentionally stop at book inspection, listings, posting lookup, and

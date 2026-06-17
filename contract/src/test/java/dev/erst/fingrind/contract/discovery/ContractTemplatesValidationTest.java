@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -86,8 +87,8 @@ class ContractTemplatesValidationTest {
         () -> {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "open",
-              LedgerStepKind.OPEN_BOOK,
-              new ContractPlanTemplates.OpenBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
+              LedgerStepKind.ENSURE_BOOK,
+              new ContractPlanTemplates.EnsureBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
               null,
               null,
               null,
@@ -285,49 +286,41 @@ class ContractTemplatesValidationTest {
     ContractTemplates.PostingRequestTemplateDescriptor cashRevenue = postingTemplate();
     ContractTemplates.PostingRequestTemplateDescriptor cashExpense =
         new ContractTemplates.PostingRequestTemplateDescriptor(
-            BookkeepingEntryKind.CASH_EXPENSE,
+            JournalRecipeKind.CASH_EXPENSE,
             "2026-04-25",
             "1000",
             null,
             "5000",
             null,
             new MonetaryAmount("EUR", "1000"),
-            null,
-            null,
             evidenceTemplate(java.util.List.of()),
-            provenanceTemplate(),
-            null);
+            provenanceTemplate());
     ContractTemplates.PostingRequestTemplateDescriptor equityContribution =
         new ContractTemplates.PostingRequestTemplateDescriptor(
-            BookkeepingEntryKind.EQUITY_CONTRIBUTION,
+            JournalRecipeKind.EQUITY_CONTRIBUTION,
             "2026-04-25",
             "1000",
             null,
             null,
             "3000",
             new MonetaryAmount("EUR", "1000"),
-            null,
-            null,
             evidenceTemplate(java.util.List.of()),
-            provenanceTemplate(),
-            null);
+            provenanceTemplate());
     ContractTemplates.PostingRequestTemplateDescriptor equityWithdrawal =
         new ContractTemplates.PostingRequestTemplateDescriptor(
-            BookkeepingEntryKind.EQUITY_WITHDRAWAL,
+            JournalRecipeKind.EQUITY_WITHDRAWAL,
             "2026-04-25",
             "1000",
             null,
             null,
             "3010",
             new MonetaryAmount("EUR", "1000"),
-            null,
-            null,
             evidenceTemplate(java.util.List.of()),
-            provenanceTemplate(),
-            null);
+            provenanceTemplate());
     ContractTemplates.PostingRequestTemplateDescriptor openAccountingPosition =
         new ContractTemplates.PostingRequestTemplateDescriptor(
             BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+            null,
             "2026-04-25",
             null,
             null,
@@ -344,6 +337,7 @@ class ContractTemplatesValidationTest {
     ContractTemplates.PostingRequestTemplateDescriptor reversalAdjustment =
         new ContractTemplates.PostingRequestTemplateDescriptor(
             BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+            null,
             "2026-04-25",
             null,
             null,
@@ -358,12 +352,16 @@ class ContractTemplatesValidationTest {
             provenanceTemplate(),
             new ContractTemplates.ReversalTemplateDescriptor("posting-1", "operator reversal"));
 
-    assertEquals(BookkeepingEntryKind.CASH_REVENUE, cashRevenue.entryKind());
-    assertEquals(BookkeepingEntryKind.CASH_EXPENSE, cashExpense.entryKind());
+    assertEquals(BookkeepingEntryKind.JOURNAL, cashRevenue.entryKind());
+    assertEquals(JournalRecipeKind.CASH_REVENUE, cashRevenue.recipeKind());
+    assertEquals(BookkeepingEntryKind.JOURNAL, cashExpense.entryKind());
+    assertEquals(JournalRecipeKind.CASH_EXPENSE, cashExpense.recipeKind());
     assertEquals("5000", cashExpense.expenseAccountCode());
-    assertEquals(BookkeepingEntryKind.EQUITY_CONTRIBUTION, equityContribution.entryKind());
+    assertEquals(BookkeepingEntryKind.JOURNAL, equityContribution.entryKind());
+    assertEquals(JournalRecipeKind.EQUITY_CONTRIBUTION, equityContribution.recipeKind());
     assertEquals("3000", equityContribution.equityAccountCode());
-    assertEquals(BookkeepingEntryKind.EQUITY_WITHDRAWAL, equityWithdrawal.entryKind());
+    assertEquals(BookkeepingEntryKind.JOURNAL, equityWithdrawal.entryKind());
+    assertEquals(JournalRecipeKind.EQUITY_WITHDRAWAL, equityWithdrawal.recipeKind());
     assertEquals("3010", equityWithdrawal.equityAccountCode());
     assertEquals(BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION, openAccountingPosition.entryKind());
     assertEquals(
@@ -375,13 +373,39 @@ class ContractTemplatesValidationTest {
   }
 
   @Test
+  void postingRequestTemplates_acceptDirectJournalShapesWithoutRecipes() {
+    ContractTemplates.PostingRequestTemplateDescriptor directJournal =
+        new ContractTemplates.PostingRequestTemplateDescriptor(
+            BookkeepingEntryKind.JOURNAL,
+            null,
+            "2026-04-25",
+            null,
+            null,
+            null,
+            null,
+            null,
+            java.util.List.of(
+                journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+            null,
+            evidenceTemplate(java.util.List.of()),
+            provenanceTemplate(),
+            null);
+
+    assertEquals(BookkeepingEntryKind.JOURNAL, directJournal.entryKind());
+    assertEquals(null, directJournal.recipeKind());
+    assertEquals(2, java.util.Objects.requireNonNull(directJournal.lines()).size());
+  }
+
+  @Test
   void postingRequestTemplates_rejectTypedEventShapeViolations() {
     IllegalArgumentException missingCashAccount =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.CASH_REVENUE,
+                    BookkeepingEntryKind.JOURNAL,
+                    JournalRecipeKind.CASH_REVENUE,
                     "2026-04-25",
                     null,
                     "4000",
@@ -400,7 +424,8 @@ class ContractTemplatesValidationTest {
             IllegalArgumentException.class,
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.CASH_EXPENSE,
+                    BookkeepingEntryKind.JOURNAL,
+                    JournalRecipeKind.CASH_EXPENSE,
                     "2026-04-25",
                     "1000",
                     "4000",
@@ -421,7 +446,8 @@ class ContractTemplatesValidationTest {
             IllegalArgumentException.class,
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.EQUITY_CONTRIBUTION,
+                    BookkeepingEntryKind.JOURNAL,
+                    JournalRecipeKind.EQUITY_CONTRIBUTION,
                     "2026-04-25",
                     "1000",
                     null,
@@ -440,7 +466,8 @@ class ContractTemplatesValidationTest {
             IllegalArgumentException.class,
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.EQUITY_WITHDRAWAL,
+                    BookkeepingEntryKind.JOURNAL,
+                    JournalRecipeKind.EQUITY_WITHDRAWAL,
                     "2026-04-25",
                     "1000",
                     null,
@@ -459,7 +486,8 @@ class ContractTemplatesValidationTest {
             IllegalArgumentException.class,
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.CASH_REVENUE,
+                    BookkeepingEntryKind.JOURNAL,
+                    JournalRecipeKind.CASH_REVENUE,
                     "2026-04-25",
                     "1000",
                     "4000",
@@ -479,7 +507,8 @@ class ContractTemplatesValidationTest {
             IllegalArgumentException.class,
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.CASH_REVENUE,
+                    BookkeepingEntryKind.JOURNAL,
+                    JournalRecipeKind.CASH_REVENUE,
                     "2026-04-25",
                     "1000",
                     "4000",
@@ -503,6 +532,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -525,6 +555,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -546,6 +577,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -569,6 +601,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -585,7 +618,7 @@ class ContractTemplatesValidationTest {
                     provenanceTemplate(),
                     null));
     assertEquals(
-        "lines must be absent for openAccountingPosition.",
+        "lines must be absent for this entryKind.",
         openAccountingPositionForbidsLines.getMessage());
   }
 
@@ -597,6 +630,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -619,6 +653,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -641,6 +676,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -664,6 +700,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -690,6 +727,7 @@ class ContractTemplatesValidationTest {
             () ->
                 new ContractTemplates.PostingRequestTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+                    null,
                     "2026-04-25",
                     null,
                     null,
@@ -705,6 +743,56 @@ class ContractTemplatesValidationTest {
                     null));
     assertEquals(
         "amount must be absent for reversalAdjustment.", forbiddenManualAmount.getMessage());
+  }
+
+  @Test
+  void postingRequestTemplates_rejectRecipeKindsOutsideJournalEntries() {
+    IllegalArgumentException openingRecipeKind =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
+                    JournalRecipeKind.CASH_REVENUE,
+                    "2026-04-25",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    java.util.List.of(
+                        openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                        openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    null));
+    assertEquals(
+        "recipeKind must be absent for OPEN_ACCOUNTING_POSITION.", openingRecipeKind.getMessage());
+
+    IllegalArgumentException reversalRecipeKind =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ContractTemplates.PostingRequestTemplateDescriptor(
+                    BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
+                    JournalRecipeKind.CASH_REVENUE,
+                    "2026-04-25",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    java.util.List.of(
+                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                        journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                    null,
+                    evidenceTemplate(java.util.List.of()),
+                    provenanceTemplate(),
+                    new ContractTemplates.ReversalTemplateDescriptor(
+                        "posting-1", "manual-correction")));
+    assertEquals(
+        "recipeKind must be absent for REVERSAL_ADJUSTMENT.", reversalRecipeKind.getMessage());
   }
 
   @Test
@@ -728,7 +816,7 @@ class ContractTemplatesValidationTest {
             () ->
                 ContractTemplateShapeValidator.stepRequirements(
                     java.util.Map.of(
-                        LedgerStepKind.OPEN_BOOK,
+                        LedgerStepKind.ENSURE_BOOK,
                         new ContractTemplateStepShapeRequirements(
                             ContractTemplateFieldPresence.REQUIRED,
                             ContractTemplateFieldPresence.FORBIDDEN,
@@ -764,18 +852,15 @@ class ContractTemplatesValidationTest {
 
   private static ContractTemplates.PostingRequestTemplateDescriptor postingTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
-        BookkeepingEntryKind.CASH_REVENUE,
+        JournalRecipeKind.CASH_REVENUE,
         "2026-04-25",
         "1000",
         "4000",
         null,
         null,
         new MonetaryAmount("EUR", "1000"),
-        null,
-        null,
         evidenceTemplate(java.util.List.of()),
-        provenanceTemplate(),
-        null);
+        provenanceTemplate());
   }
 
   private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {

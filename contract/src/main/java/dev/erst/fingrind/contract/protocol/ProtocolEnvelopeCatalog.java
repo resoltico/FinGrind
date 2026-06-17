@@ -10,21 +10,21 @@ public final class ProtocolEnvelopeCatalog {
 
   /** Returns the canonical top-level JSON-envelope statuses. */
   public List<ProtocolEnvelopeStatus> statuses() {
-    return ProtocolCatalogFacts.envelopeStatuses();
+    return ProtocolCatalogFacts.ENVELOPE_STATUSES;
   }
 
   /** Returns the canonical success envelope status. */
   public ProtocolEnvelopeStatus successStatus() {
-    return ProtocolCatalogFacts.successStatus();
+    return ProtocolCatalogFacts.SUCCESS_STATUS;
   }
 
   /** Returns the canonical deterministic rejection envelope status. */
   public ProtocolEnvelopeStatus rejectionStatus() {
-    return ProtocolCatalogFacts.rejectionStatus();
+    return ProtocolCatalogFacts.REJECTION_STATUS;
   }
 
   /** Returns the canonical runtime or invalid-request error envelope status. */
   public ProtocolEnvelopeStatus errorStatus() {
-    return ProtocolCatalogFacts.errorStatus();
+    return ProtocolCatalogFacts.ERROR_STATUS;
   }
 }

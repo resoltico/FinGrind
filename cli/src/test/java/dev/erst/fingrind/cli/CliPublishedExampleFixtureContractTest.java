@@ -239,10 +239,10 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             brokenBookFile.toString(),
             "--book-key-file",
             brokenBookKeyFile.toString()));
-    recordTextFixture(
+    recordJsonFixture(
         recordedFixtures,
-        "interactive-prompt-unavailable-error.txt",
-        runPlainCommand(
+        "interactive-prompt-unavailable-error.json",
+        runJsonCommandExpectingExit(
             5,
             "inspect-book",
             "--book-file",

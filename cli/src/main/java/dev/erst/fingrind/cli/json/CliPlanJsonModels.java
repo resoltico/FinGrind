@@ -152,7 +152,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
 
   /** Tagged union for typed execute-plan journal step payloads. */
   sealed interface LedgerStepDataPayload
-      permits OpenBookStepDataPayload,
+      permits EnsureBookStepDataPayload,
           DeclaredAccountStepDataPayload,
           PreflightEntryStepDataPayload,
           CommittedEntryStepDataPayload,
@@ -165,10 +165,10 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
           PostingIdAssertionStepDataPayload,
           PlanBoundaryStepDataPayload {}
 
-  record OpenBookStepDataPayload(
+  record EnsureBookStepDataPayload(
       String initializedAt, String entityName, String functionalCurrency, String fiscalYearStart)
       implements LedgerStepDataPayload {
-    public OpenBookStepDataPayload {
+    public EnsureBookStepDataPayload {
       initializedAt = requireText(initializedAt, "initializedAt");
       entityName = requireText(entityName, "entityName");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");

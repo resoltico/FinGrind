@@ -40,7 +40,8 @@ JSON
 
 cat > "${report_root}/posting.json" <<'JSON'
 {
-  "entryKind": "CASH_REVENUE",
+  "entryKind": "JOURNAL",
+  "recipeKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-08",
   "cashAccountCode": "cash",
   "revenueAccountCode": "service-revenue",

@@ -236,7 +236,7 @@ class BookkeepingStatementModelTest {
     assertEquals(currencyBalance("0.10", "0.04", "0.06", BalanceSide.DEBIT), totals.balance());
     assertEquals(
         AccountType.REVENUE,
-        new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+        new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
                 new AccountCode("4000"), AccountType.REVENUE)
             .accountType());
     assertEquals(
@@ -272,7 +272,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingPostingRejection.OpeningBalanceTouchesNominalAccount(
+                    new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
                         new AccountCode("4000"), nullOf(AccountType.class)))
             .getMessage());
     assertEquals(
