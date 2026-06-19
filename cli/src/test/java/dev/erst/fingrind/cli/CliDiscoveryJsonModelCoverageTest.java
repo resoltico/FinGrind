@@ -35,7 +35,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload helpOverview =
         new CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload(
             "FinGrind",
-            "0.56.0",
+            "0.57.0",
             "Compact help overview",
             DiscoveryDetail.COMPACT,
             null,
@@ -50,7 +50,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload capabilities =
         new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
             "FinGrind",
-            "0.56.0",
+            "0.57.0",
             DiscoveryDetail.COMPACT,
             DiscoveryFocus.OVERVIEW,
             capabilitiesDescriptor.storage().bookBoundary(),
@@ -72,7 +72,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload compactPayload =
         new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
             "FinGrind",
-            "0.56.0",
+            "0.57.0",
             DiscoveryDetail.COMPACT,
             DiscoveryFocus.OVERVIEW,
             capabilitiesDescriptor.storage(),
@@ -89,7 +89,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload(
                 "FinGrind",
-                "0.56.0",
+                "0.57.0",
                 "Compact help overview",
                 DiscoveryDetail.MINIMAL,
                 null,
@@ -102,7 +102,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
                 "FinGrind",
-                "0.56.0",
+                "0.57.0",
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage().bookBoundary(),
@@ -126,7 +126,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
                 "FinGrind",
-                "0.56.0",
+                "0.57.0",
                 DiscoveryDetail.COMPACT,
                 DiscoveryFocus.COMMANDS,
                 capabilitiesDescriptor.storage().bookBoundary(),
@@ -161,7 +161,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload slicePayload =
         new CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload(
             "FinGrind",
-            "0.56.0",
+            "0.57.0",
             DiscoveryDetail.MINIMAL,
             DiscoveryFocus.REQUEST_INPUT,
             null,
@@ -217,7 +217,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
-                "0.56.0",
+                "0.57.0",
                 DiscoveryDetail.MINIMAL,
                 DiscoveryFocus.COMMANDS,
                 "scope",
@@ -233,7 +233,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
-                "0.56.0",
+                "0.57.0",
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.COMMANDS,
                 capabilitiesDescriptor.storage(),
@@ -246,7 +246,7 @@ class CliDiscoveryJsonModelCoverageTest {
         () ->
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload(
                 "FinGrind",
-                "0.56.0",
+                "0.57.0",
                 DiscoveryDetail.MINIMAL,
                 DiscoveryFocus.OVERVIEW,
                 null,
@@ -346,7 +346,7 @@ class CliDiscoveryJsonModelCoverageTest {
   private static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.56.0",
+        "0.57.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 

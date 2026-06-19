@@ -111,29 +111,31 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     rootProject.layout.projectDirectory.file("gradle/build-logic/settings.gradle.kts"),
                     rootProject.layout.projectDirectory.dir("gradle/build-logic/src/main"),
                 )
-            val sourceCheckoutRuntimeInputs =
-                objects.fileCollection().from(
-                    rootProject.fileTree("cli/src/main"),
-                    rootProject.fileTree("contract/src/main"),
-                    rootProject.fileTree("core/src/main"),
-                    rootProject.fileTree("executor/src/main"),
-                    rootProject.fileTree("report-pdf/src/main"),
-                    rootProject.fileTree("sqlite/src/main"),
-                    rootProject.fileTree("gradle/build-logic/src/main"),
-                    rootProject.fileTree("third_party/sqlite/$managedSqlitePackageId"),
-                    rootProject.layout.projectDirectory.file("build.gradle.kts"),
-                    rootProject.layout.projectDirectory.file("settings.gradle.kts"),
-                    rootProject.layout.projectDirectory.file("gradle.properties"),
-                    rootProject.layout.projectDirectory.file("gradle/libs.versions.toml"),
-                    rootProject.layout.projectDirectory.file("gradle/fingrind-build.properties"),
-                    rootProject.layout.projectDirectory.file("gradle/build-logic/build.gradle.kts"),
-                    rootProject.layout.projectDirectory.file("gradle/build-logic/settings.gradle.kts"),
-                    rootProject.layout.projectDirectory.file("LICENSE"),
-                    rootProject.layout.projectDirectory.file("LICENSE-APACHE-2.0"),
-                    rootProject.layout.projectDirectory.file("LICENSE-SIL-OFL-1.1"),
-                    rootProject.layout.projectDirectory.file("LICENSE-SQLITE3MULTIPLECIPHERS"),
-                    rootProject.layout.projectDirectory.file("NOTICE"),
+            val sourceCheckoutRuntimeInputInventory =
+                listOf(
+                    rootProject.layout.projectDirectory.dir("cli/src/main").asFile,
+                    rootProject.layout.projectDirectory.dir("contract/src/main").asFile,
+                    rootProject.layout.projectDirectory.dir("core/src/main").asFile,
+                    rootProject.layout.projectDirectory.dir("executor/src/main").asFile,
+                    rootProject.layout.projectDirectory.dir("report-pdf/src/main").asFile,
+                    rootProject.layout.projectDirectory.dir("sqlite/src/main").asFile,
+                    rootProject.layout.projectDirectory.dir("gradle/build-logic/src/main").asFile,
+                    rootProject.layout.projectDirectory.dir("third_party/sqlite/$managedSqlitePackageId").asFile,
+                    rootProject.layout.projectDirectory.file("build.gradle.kts").asFile,
+                    rootProject.layout.projectDirectory.file("settings.gradle.kts").asFile,
+                    rootProject.layout.projectDirectory.file("gradle.properties").asFile,
+                    rootProject.layout.projectDirectory.file("gradle/libs.versions.toml").asFile,
+                    rootProject.layout.projectDirectory.file("gradle/fingrind-build.properties").asFile,
+                    rootProject.layout.projectDirectory.file("gradle/build-logic/build.gradle.kts").asFile,
+                    rootProject.layout.projectDirectory.file("gradle/build-logic/settings.gradle.kts").asFile,
+                    rootProject.layout.projectDirectory.file("LICENSE").asFile,
+                    rootProject.layout.projectDirectory.file("LICENSE-APACHE-2.0").asFile,
+                    rootProject.layout.projectDirectory.file("LICENSE-SIL-OFL-1.1").asFile,
+                    rootProject.layout.projectDirectory.file("LICENSE-SQLITE3MULTIPLECIPHERS").asFile,
+                    rootProject.layout.projectDirectory.file("NOTICE").asFile,
                 )
+            val sourceCheckoutRuntimeInputs =
+                objects.fileCollection().from(sourceCheckoutRuntimeInputInventory)
             val runtimeModuleListOutputFile = layout.buildDirectory.file("bundle/runtime-modules.txt")
             val runtimeImageDirectory = layout.buildDirectory.dir("bundle/runtime-image")
             val bundleWorkspaceDirectory = layout.buildDirectory.dir("bundle")
@@ -234,6 +236,11 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     nativeAccessModule.set("dev.erst.fingrind.cli")
                     applicationModule.set("dev.erst.fingrind.cli/dev.erst.fingrind.cli.App")
                     runtimeInputs.from(sourceCheckoutRuntimeInputs)
+                    runtimeInputPaths.set(
+                        sourceCheckoutRuntimeInputInventory.map { runtimeInput ->
+                            runtimeInput.toPath().toAbsolutePath().normalize().toString()
+                        },
+                    )
                     outputFile.set(sourceCheckoutRuntimeManifestOutputFile)
                 }
 

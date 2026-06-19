@@ -10,9 +10,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Executes the published quick-start and example workflows against the live CLI surface. */
 class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @Test
   void quickStartGuide_describesTheAgentScaffoldAndPublishedWorkflowRuns() throws IOException {
@@ -26,8 +28,10 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(guide.contains("--functional-currency"));
     assertTrue(guide.contains("--fiscal-year-start"));
     assertTrue(guide.contains("starter chart"));
-    assertTrue(guide.contains("\"cashAccountCode\": \"cash\""));
-    assertTrue(guide.contains("\"revenueAccountCode\": \"service-revenue\""));
+    assertTrue(guide.contains("\"lines\": ["));
+    assertTrue(guide.contains("\"accountCode\": \"cash\""));
+    assertTrue(guide.contains("\"accountCode\": \"service-revenue\""));
+    assertFalse(guide.contains("\"recipeKind\": \"CASH_REVENUE\""));
     assertTrue(guide.contains("quick-start-request.json"));
     Path workspace = tempDirectory.resolve("quick-start");
     Path bookFile = workspace.resolve("acme.sqlite");
@@ -51,8 +55,11 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         openBook.path("payload").path("bookIdentity").path("entityName").stringValue());
     JsonNode requestTemplate = runRawJsonCommand("print-request-template");
     assertEquals("2026-01-15", requestTemplate.path("effectiveDate").stringValue());
-    assertEquals("cash", requestTemplate.path("cashAccountCode").stringValue());
-    assertEquals("service-revenue", requestTemplate.path("revenueAccountCode").stringValue());
+    assertTrue(requestTemplate.path("recipeKind").isMissingNode());
+    assertEquals(2, requestTemplate.path("lines").size());
+    assertEquals("cash", requestTemplate.path("lines").get(0).path("accountCode").stringValue());
+    assertEquals(
+        "service-revenue", requestTemplate.path("lines").get(1).path("accountCode").stringValue());
     assertEquals(
         "replace-before-commit-source-document-id",
         requestTemplate
@@ -132,8 +139,12 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(examplesGuide.contains("--functional-currency"));
     assertTrue(examplesGuide.contains("--fiscal-year-start"));
     assertTrue(examplesGuide.contains("starter chart"));
+    assertTrue(examplesGuide.contains("entry-semantics-multi-violation-request.json"));
+    assertTrue(examplesGuide.contains("entry-semantics-violations-text.txt"));
     assertTrue(requestsGuide.contains("placeholder-first sample"));
     assertTrue(requestsGuide.contains("single-use per book"));
+    assertTrue(requestsGuide.contains("account-state-violations-text.txt"));
+    assertTrue(requestsGuide.contains("entry-semantics-violations-text.txt"));
     assertFalse(requestsGuide.contains("businessActivityTags"));
     assertFalse(
         requestsGuide.contains(
@@ -145,11 +156,29 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     Path declareRevenueFile = copyExampleFixture("declare-account-supplemental-misc-revenue.json");
     Path postingRequestFile = copyExampleFixture("basic-posting-request.json");
     Path unknownAccountRequestFile = copyExampleFixture("unknown-account-request.json");
+    Path entrySemanticsRequestFile =
+        copyExampleFixture("entry-semantics-multi-violation-request.json");
     Path reversalRequestFile = copyExampleFixture("reversal-request.json");
     Path planBookFile = workspace.resolve("acme-plan.sqlite");
     Path planRequestFile = copyExampleFixture("ledger-plan-request.json");
     Path queryPlanBookFile = workspace.resolve("acme-plan-query.sqlite");
     Path queryPlanRequestFile = copyExampleFixture("ledger-plan-query-request.json");
+    JsonNode postingRequest = readJson(postingRequestFile);
+    assertTrue(postingRequest.path("recipeKind").isMissingNode());
+    assertEquals(2, postingRequest.path("lines").size());
+    JsonNode planRequest = readJson(planRequestFile);
+    JsonNode planPosting = canonicalPostingStep(planRequest).path("posting");
+    assertTrue(planPosting.path("recipeKind").isMissingNode());
+    assertEquals(2, planPosting.path("lines").size());
+    JsonNode queryPlanRequest = readJson(queryPlanRequestFile);
+    assertEquals(
+        "CASH_REVENUE",
+        canonicalPostingStep(queryPlanRequest).path("posting").path("recipeKind").stringValue());
+    JsonNode unknownAccountRequest = readJson(unknownAccountRequestFile);
+    assertEquals("CASH_REVENUE", unknownAccountRequest.path("recipeKind").stringValue());
+    JsonNode entrySemanticsRequest = readJson(entrySemanticsRequestFile);
+    assertEquals("JOURNAL", entrySemanticsRequest.path("entryKind").stringValue());
+    assertEquals("CASH_REVENUE", entrySemanticsRequest.path("recipeKind").stringValue());
     runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     runJsonCommand(
@@ -192,6 +221,21 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals("rejected", unknownAccountPreflight.path("status").stringValue());
     assertEquals("account-state-violations", unknownAccountPreflight.path("code").stringValue());
     assertTrue(unknownAccountPreflight.toString().contains("\"accountCode\":\"9998\""));
+    JsonNode entrySemanticsPreflight =
+        runJsonDiagnosticsCommandExpectingExit(
+            2,
+            "preflight-entry",
+            "--book-file",
+            bookFile.toString(),
+            "--book-key-file",
+            bookKeyFile.toString(),
+            "--request-file",
+            entrySemanticsRequestFile.toString());
+    assertEquals("rejected", entrySemanticsPreflight.path("status").stringValue());
+    assertEquals("entry-semantics-violations", entrySemanticsPreflight.path("code").stringValue());
+    assertTrue(entrySemanticsPreflight.toString().contains("\"distinct-role-accounts-required\""));
+    assertTrue(
+        entrySemanticsPreflight.toString().contains("\"source-document-type-not-accepted\""));
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =
         runJsonCommand(
@@ -216,7 +260,9 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "10");
     assertPostingIdsContain(listing.path("payload").path("postings"), postingId, reversalPostingId);
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
-    JsonNode rawPlanPosting = rawPlanTemplate.path("steps").get(1).path("posting");
+    JsonNode rawPlanPosting = canonicalPostingStep(rawPlanTemplate).path("posting");
+    assertTrue(rawPlanPosting.path("recipeKind").isMissingNode());
+    assertEquals(2, rawPlanPosting.path("lines").size());
     assertEquals(
         "replace-before-commit-source-document-id",
         rawPlanPosting
@@ -264,5 +310,27 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
       }
     }
     throw new AssertionError("Missing plan journal step: " + stepId);
+  }
+
+  private static JsonNode canonicalPostingStep(JsonNode planDocument) {
+    JsonNode matchingStep = null;
+    for (JsonNode step : planDocument.path("steps")) {
+      if ("post-entry".equals(step.path("kind").stringValue()) && step.has("posting")) {
+        if (matchingStep != null) {
+          throw new AssertionError(
+              "Expected exactly one canonical POST_ENTRY scaffold step in the plan document.");
+        }
+        matchingStep = step;
+      }
+    }
+    if (matchingStep == null) {
+      throw new AssertionError(
+          "Expected exactly one canonical POST_ENTRY scaffold step in the plan document.");
+    }
+    return matchingStep;
+  }
+
+  private static JsonNode readJson(Path path) throws IOException {
+    return OBJECT_MAPPER.readTree(Files.readString(path, StandardCharsets.UTF_8));
   }
 }

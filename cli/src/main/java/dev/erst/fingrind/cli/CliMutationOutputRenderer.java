@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
@@ -151,7 +152,7 @@ final class CliMutationOutputRenderer {
     rows.add(List.of("Transfer order", Integer.toString(transferredPeriodResult.transferOrder())));
     rows.add(
         List.of(
-            "Effective date range",
+            CliTemporalScopeText.summaryLabel(OperationId.TRANSFER_PERIOD_RESULT),
             transferredPeriodResult.reportingPeriod().effectiveDateFrom()
                 + " to "
                 + transferredPeriodResult.reportingPeriod().effectiveDateTo()));
@@ -184,11 +185,12 @@ final class CliMutationOutputRenderer {
 
   static String renderPreflightAcceptedText(PostEntryResult.PreflightAccepted accepted) {
     return CliTextFormat.renderTitledBlock(
-        "Entry Preflight Accepted",
+        "Entry Preflight Passed",
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Idempotency key", accepted.idempotencyKey().value()),
-                List.of("Effective date", accepted.effectiveDate().toString()))));
+                List.of("Effective date", accepted.effectiveDate().toString()),
+                List.of("Commit status", "Not committed"))));
   }
 
   static String renderCommittedText(PostEntryResult.Committed committed) {

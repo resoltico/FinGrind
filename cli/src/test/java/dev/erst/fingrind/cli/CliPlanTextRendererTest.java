@@ -44,6 +44,8 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     assertTrue(rendered.contains("Acme Studio"));
     assertTrue(rendered.contains("Functional currency"));
     assertTrue(rendered.contains("Fiscal year start"));
+    assertFalse(rendered.contains("Outcome shape"));
+    assertFalse(rendered.contains("Succeeded"));
   }
 
   @Test

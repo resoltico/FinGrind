@@ -255,18 +255,35 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }
-    Path unsupportedBookPath = tempDirectory.resolve("inspect-unsupported.sqlite");
-    initializeBookOnDisk(unsupportedBookPath);
-    int unsupportedVersion = SqliteBookContract.FORMAT_VERSION + 1;
+    Path unsupportedOlderBookPath = tempDirectory.resolve("inspect-unsupported-older.sqlite");
+    initializeBookOnDisk(unsupportedOlderBookPath);
+    int olderUnsupportedVersion = SqliteBookContract.FORMAT_VERSION - 1;
     withStandaloneDatabase(
-        bookAccess(unsupportedBookPath),
-        database -> database.executeStatement("pragma user_version = " + unsupportedVersion));
-    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(unsupportedBookPath))) {
+        bookAccess(unsupportedOlderBookPath),
+        database -> database.executeStatement("pragma user_version = " + olderUnsupportedVersion));
+    try (SqlitePostingFactStore postingFactStore =
+        openStore(bookAccess(unsupportedOlderBookPath))) {
       assertEquals(
           new BookLifecycleInspection.Existing(
               BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
               SqliteBookContract.APPLICATION_ID,
-              unsupportedVersion,
+              olderUnsupportedVersion,
+              SqliteBookContract.FORMAT_VERSION),
+          postingFactStore.inspectBook());
+    }
+    Path unsupportedNewerBookPath = tempDirectory.resolve("inspect-unsupported-newer.sqlite");
+    initializeBookOnDisk(unsupportedNewerBookPath);
+    int newerUnsupportedVersion = SqliteBookContract.FORMAT_VERSION + 1;
+    withStandaloneDatabase(
+        bookAccess(unsupportedNewerBookPath),
+        database -> database.executeStatement("pragma user_version = " + newerUnsupportedVersion));
+    try (SqlitePostingFactStore postingFactStore =
+        openStore(bookAccess(unsupportedNewerBookPath))) {
+      assertEquals(
+          new BookLifecycleInspection.Existing(
+              BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+              SqliteBookContract.APPLICATION_ID,
+              newerUnsupportedVersion,
               SqliteBookContract.FORMAT_VERSION),
           postingFactStore.inspectBook());
     }

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: DEVELOPER
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -181,7 +181,7 @@ FinGrind's current public model is:
   taxonomy once first stored, while `normalBalance` is derived from those role and polarity facts
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `21`, owned by `BookFormatContract`
+- the current supported on-disk format is `24`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break phase, so schema evolution advances by replacing the current

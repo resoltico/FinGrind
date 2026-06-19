@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: USER_CLI
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use"]
@@ -50,7 +50,12 @@ vocabularies, or doctrine bodies, and `--focus` / `--category` when you want one
 slice instead of the full catalog family.
 Request-file commands such as `declare-account`, `post-entry`, `preflight-entry`, and
 `execute-plan` also inline the accepted request shape, one canonical template, and the relevant
-enum vocabulary so an operator or agent can form a valid payload from the CLI alone.
+enum vocabulary so an operator or agent can form a valid payload from the CLI alone. Text help
+publishes the caller-submittable fields only; machine help keeps the full presence-marked request
+shape, including forbidden fields that remain part of the truthful contract metadata. On
+`execute-plan`, both help surfaces keep the posting contract nested under the ledger-plan request
+shape at `steps[].posting`, instead of reappearing as a second top-level accepted posting
+document.
 `print-request-template` returns one raw JSON scaffold document so it can be redirected into a file
 or piped into another process. With no topic it emits the canonical posting scaffold; with
 `declare-account` it emits the canonical account-declaration scaffold; `post-entry` and
@@ -95,7 +100,7 @@ journal in either surface.
 `preflight-entry` and `post-entry` both require an already initialized book and declared active
 accounts for every journal line they touch, and surface those failures as
 `account-state-violations` with structured `details.violations`.
-`preflight-entry` is advisory only: FinGrind still re-checks commit-time durability rules inside
+`preflight-entry` is advisory only: FinGrind re-checks commit-time durability rules inside
 the write transaction before `post-entry` succeeds.
 Every journal entry is single-currency; mixed-currency lines inside one entry are not supported.
 Every journal-line amount must be greater than zero.
@@ -304,11 +309,11 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | `1` | invalid invocation or malformed request | `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, and similar |
 | `2` | deterministic refusal after the command was understood | `rejected` for single-command business refusals, or `ok` with `payload.status: "rejected"` for `execute-plan` |
 | `3` | valid `execute-plan` request whose assertion step failed | `ok` with `payload.status: "assertion-failed"` |
-| `4` | classified runtime/storage failure while executing an otherwise valid invocation | `error` with code `storage-runtime-failure` or `pdf-export-failure` |
+| `4` | classified runtime failure while executing an otherwise valid invocation | `error` with code `storage-runtime-failure` or `pdf-export-failure` |
 | `5` | interactive prompt or managed runtime environment precondition failure | `error` with code `interactive-prompt-unavailable`, `interactive-prompt-failed`, or `managed-runtime-failure` |
 | `6` | protected-book passphrase, key-file, or verification failure | `error` with code `protected-book-verification-failed`, `invalid-book-key-file`, or `invalid-book-passphrase-source` |
 | `7` | protected-book maintenance precondition or destination-collision failure | `rejected` with code `backup-destination-already-exists`, `backup-key-file-already-exists`, `book-has-blocking-artifacts`, `backup-source-has-blocking-artifacts`, or `artifact-busy`; also `error` with code `book-key-file-already-exists`, `artifact-output-already-exists`, or `book-maintenance-in-progress` |
-| `70` | internal software defect outside the published runtime families | `error` with code `internal-error` plus one opaque error id and one parseable diagnostics envelope |
+| `70` | internal software defect or leaked persistence invariant outside the published runtime families | `error` with code `internal-error` plus one opaque error id and one parseable diagnostics envelope |
 
 ## Common Failures
 
@@ -330,7 +335,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | malformed `list-accounts --cursor` or `list-postings --cursor` | `1` | `invalid-page-cursor` | `Unsupported account page cursor: ...` or `Unsupported posting page cursor: ...` |
 | book is missing or never opened | `2` | `administration-book-not-initialized`, `query-book-not-initialized`, or `posting-book-not-initialized` | `The selected book does not exist or has not been initialized with open-book.` |
 | query names an undeclared account | `2` | `unknown-account` | `Account '...' is not declared in this book.` |
-| posting uses undeclared or inactive accounts | `2` | `account-state-violations` | `Posting references undeclared or inactive accounts.` plus `details.violations` |
+| posting uses undeclared, inactive, or non-postable accounts | `2` | `account-state-violations` | stable top-level summary message plus ordered `details.violations[]` items carrying `code`, `field`, `message`, `category`, `repair`, `accountCode`, and optional `accountNodeKind` |
+| posting violates the selected entry semantics | `2` | `entry-semantics-violations` | stable top-level summary message plus ordered `details.violations[]`, where each item publishes `code`, `field`, `message`, `category`, and `repair` |
 | duplicate idempotency or reversal policy refusal | `2` | `duplicate-idempotency-key`, `reversal-target-not-found`, and similar | request was understood but refused by current book state |
 | wrong book key, damaged/truncated protected book, or unsupported protected SQLite variant | `6` | `protected-book-verification-failed` | `FinGrind could not verify the selected protected book with the supplied passphrase source.` |
 | invalid key-file contents, file permissions, parent-directory permissions, or unreadable key-file path | `6` | `invalid-book-key-file` | `Book access refused because the selected book key file path, permissions, parent directory, or contents do not satisfy the protected-book contract.` |
@@ -341,6 +347,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | requested PDF artifact cannot be written for one report command that requested `--pdf-out` | `4` | `pdf-export-failure` | the command fails atomically because the requested PDF artifact was not produced |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `5` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
+| SQLite persistence rejects one write through `CONSTRAINT_CHECK` after FinGrind accepted the request | `70` | `internal-error` | opaque public failure stating that one upstream invariant should have rejected the request before commit |
 | other unexpected software defect outside the managed-runtime and storage families | `70` | `internal-error` | opaque public failure carrying one error id in one JSON diagnostics envelope without a raw stack trace |
 
 ## Notes
@@ -520,7 +527,16 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   supported runtime, any temp spill files fall outside the documented encrypted-book boundary.
 - successful `post-entry` responses carry a FinGrind-generated UUID v7 `postingId`
 - posting-side account failures are reported as `account-state-violations` with one or more
-  structured issue objects in `details.violations`
+  structured issue objects in `details.violations[]`; their machine envelope keeps a stable summary
+  and omits a top-level repair `hint`
+- posting-side entry-semantic failures are reported as `entry-semantics-violations` with one or
+  more ordered issue objects in `details.violations[]`, and each issue carries stable `category`
+  plus action-first `repair` guidance; their machine envelope likewise keeps a stable summary and
+  omits a top-level repair `hint`
+- the operator-facing `--output text` projection for those two nested repairable posting families
+  renders one top-level `Summary` row plus one `Issue N | <code>` section per violation; checked-in
+  examples live at [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt)
+  and [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt)
 - Wrong passphrases, damaged or truncated protected books, and unsupported protected SQLite files
   are reported as the deterministic `protected-book-verification-failed` error instead of leaking
   raw SQLite symptoms such as `SQLITE_NOTADB`.

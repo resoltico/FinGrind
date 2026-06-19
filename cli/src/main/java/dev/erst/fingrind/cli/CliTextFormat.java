@@ -10,11 +10,15 @@ final class CliTextFormat {
   private CliTextFormat() {}
 
   static String renderKeyValueBlock(List<List<String>> rows) {
-    return CliTextTableFormat.renderKeyValueBlock(rows);
+    return CliTextKeyValueBlockFormat.renderKeyValueBlock(rows);
   }
 
   static String renderKeyValueBlock(List<List<String>> rows, int totalWidth) {
-    return CliTextTableFormat.renderKeyValueBlock(rows, totalWidth);
+    return CliTextKeyValueBlockFormat.renderKeyValueBlock(rows, totalWidth);
+  }
+
+  static String renderKeyValueBlock(List<List<String>> rows, int totalWidth, int labelWidthCap) {
+    return CliTextKeyValueBlockFormat.renderKeyValueBlock(rows, totalWidth, labelWidthCap);
   }
 
   static String renderTitledBlock(String title, String body) {

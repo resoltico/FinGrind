@@ -26,6 +26,7 @@ final class MachineContractLedgerPlanSchemas {
             MachineContractLedgerPlanFieldSets.queryFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractLedgerPlanFieldSets.assertionFields()),
+        MachineContractPostEntrySchemas.descriptor(),
         MachineContractLedgerPlanRoles.administrationStepKinds(),
         MachineContractLedgerPlanRoles.queryStepKinds(),
         MachineContractLedgerPlanRoles.writeStepKinds(),

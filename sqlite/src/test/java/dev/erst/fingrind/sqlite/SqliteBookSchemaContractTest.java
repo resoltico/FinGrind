@@ -7,18 +7,28 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
+import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
+import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -33,6 +43,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
       Pattern.compile("^pragma\\s+application_id\\s*=\\s*(\\d+)\\s*;\\s*$", Pattern.MULTILINE);
   private static final Pattern USER_VERSION_PRAGMA =
       Pattern.compile("^pragma\\s+user_version\\s*=\\s*(\\d+)\\s*;\\s*$", Pattern.MULTILINE);
+  private static final ApplicationIdentity TEST_IDENTITY =
+      new ApplicationIdentity("FinGrind", "0.56.0-test", "SQLite schema test identity");
 
   @Test
   void ensureParentDirectory_acceptsBareBookFileNames() {
@@ -125,6 +137,16 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     assertEquals(
         SqliteBookContract.APPLICATION_ID, Integer.parseInt(applicationIdMatcher.group(1)));
     assertEquals(SqliteBookContract.FORMAT_VERSION, Integer.parseInt(userVersionMatcher.group(1)));
+  }
+
+  @Test
+  void schemaResource_postingTaxonomyAllowlistsMatchCanonicalOwnersAndPublishedRequestSurface()
+      throws Exception {
+    String schema = schemaResourceText();
+    assertEquals(PostingKind.wireValues(), schemaAllowlist(schema, "posting_kind"));
+    assertEquals(PostingOriginKind.wireValues(), schemaAllowlist(schema, "posting_origin_kind"));
+    assertEquals(PostingKind.wireValues(), publishedPostingKinds());
+    assertEquals(PostingOriginKind.wireValues(), publishedPostingOriginKinds());
   }
 
   @Test
@@ -255,6 +277,92 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
           NullTestSupport.messageOf(accountException)
               .contains("format version " + unsupportedVersion + " is unsupported"));
     }
+  }
+
+  private static String schemaResourceText() {
+    try {
+      return new String(
+          java.util.Objects.requireNonNull(
+                  SqliteBookSchemaBootstrap.class.getResourceAsStream("book_schema.sql"),
+                  "Missing schema resource.")
+              .readAllBytes(),
+          StandardCharsets.UTF_8);
+    } catch (IOException exception) {
+      throw new UncheckedIOException("Failed to read schema resource.", exception);
+    }
+  }
+
+  private static List<String> schemaAllowlist(String schema, String columnName) {
+    Pattern allowlistPattern =
+        Pattern.compile(
+            columnName
+                + "\\s+text\\s+not\\s+null\\s+check\\s*\\(\\s*"
+                + columnName
+                + "\\s+in\\s*\\((.*?)\\)\\s*\\)",
+            Pattern.DOTALL);
+    Matcher allowlistMatcher = allowlistPattern.matcher(schema);
+    assertTrue(allowlistMatcher.find(), "Missing allowlist check for " + columnName);
+    Matcher literalMatcher = Pattern.compile("'([^']+)'").matcher(allowlistMatcher.group(1));
+    List<String> values = new java.util.ArrayList<>();
+    while (literalMatcher.find()) {
+      values.add(literalMatcher.group(1));
+    }
+    return List.copyOf(values);
+  }
+
+  private static List<String> publishedPostingKinds() {
+    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
+        publishedPostEntryShape();
+    Set<String> publishedValues = new LinkedHashSet<>();
+    for (ContractRequestShapes.EntryKindSemanticsDescriptor semantics :
+        postEntryShape.entryKindSemantics()) {
+      switch (semantics.entryKind()) {
+        case JOURNAL, REVERSAL_ADJUSTMENT -> publishedValues.add(PostingKind.STANDARD.wireValue());
+        case OPEN_ACCOUNTING_POSITION ->
+            publishedValues.add(PostingKind.OPENING_BALANCE.wireValue());
+      }
+    }
+    publishedValues.add(PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
+    return PostingKind.wireValues().stream().filter(publishedValues::contains).toList();
+  }
+
+  private static List<String> publishedPostingOriginKinds() {
+    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
+        publishedPostEntryShape();
+    Set<String> publishedValues = new LinkedHashSet<>();
+    for (ContractRequestShapes.EntryKindSemanticsDescriptor semantics :
+        postEntryShape.entryKindSemantics()) {
+      publishedValues.add(postingOriginKindFor(semantics.entryKind()).wireValue());
+    }
+    for (ContractRequestShapes.JournalRecipeSemanticsDescriptor semantics :
+        postEntryShape.journalRecipeSemantics()) {
+      publishedValues.add(postingOriginKindFor(semantics.recipeKind()).wireValue());
+    }
+    publishedValues.add(PostingOriginKind.PERIOD_RESULT_TRANSFER.wireValue());
+    return PostingOriginKind.wireValues().stream().filter(publishedValues::contains).toList();
+  }
+
+  private static ContractRequestShapes.PostEntryRequestShapeDescriptor publishedPostEntryShape() {
+    return java.util.Objects.requireNonNull(
+        MachineContract.capabilities(TEST_IDENTITY).requestShapes().postEntry(),
+        "Published machine contract must expose the post-entry request shape.");
+  }
+
+  private static PostingOriginKind postingOriginKindFor(BookkeepingEntryKind entryKind) {
+    return switch (entryKind) {
+      case JOURNAL -> PostingOriginKind.JOURNAL;
+      case OPEN_ACCOUNTING_POSITION -> PostingOriginKind.OPEN_ACCOUNTING_POSITION;
+      case REVERSAL_ADJUSTMENT -> PostingOriginKind.REVERSAL_ADJUSTMENT;
+    };
+  }
+
+  private static PostingOriginKind postingOriginKindFor(JournalRecipeKind recipeKind) {
+    return switch (recipeKind) {
+      case CASH_REVENUE -> PostingOriginKind.CASH_REVENUE;
+      case CASH_EXPENSE -> PostingOriginKind.CASH_EXPENSE;
+      case EQUITY_CONTRIBUTION -> PostingOriginKind.EQUITY_CONTRIBUTION;
+      case EQUITY_WITHDRAWAL -> PostingOriginKind.EQUITY_WITHDRAWAL;
+    };
   }
 
   @Test

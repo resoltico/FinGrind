@@ -30,8 +30,8 @@ require_nonempty_container_file() {
 }
 
 seed_public_fixture() {
-    cat > "${report_root}/declare-cash.json" <<'JSON'
-{"accountCode":"cash-reserve","accountName":"Cash Reserve","accountType":"ASSET","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
+    cat > "${report_root}/declare-bank.json" <<'JSON'
+{"accountCode":"operating-bank","accountName":"Operating Bank","accountType":"ASSET","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
 JSON
 
     cat > "${report_root}/declare-revenue.json" <<'JSON'
@@ -68,6 +68,51 @@ cat > "${report_root}/posting.json" <<'JSON'
     "commandId": "release-protocol-posting",
     "idempotencyKey": "release-protocol-idem-1",
     "causationId": "release-protocol-cause-1"
+  }
+}
+JSON
+
+cat > "${report_root}/raw-transfer.json" <<'JSON'
+{
+  "entryKind": "JOURNAL",
+  "effectiveDate": "2026-04-08",
+  "lines": [
+    {
+      "accountCode": "operating-bank",
+      "side": "DEBIT",
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "250"
+      }
+    },
+    {
+      "accountCode": "cash",
+      "side": "CREDIT",
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "250"
+      }
+    }
+  ],
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "release-protocol-bank-deposit-1",
+        "sourceDocumentType": "bank-deposit",
+        "documentDate": "2026-04-08",
+        "capturedAt": "2026-04-08T10:15:30Z",
+        "storageLocator": "vault://release-protocol/bank-deposit-1",
+        "contentSha256": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+      }
+    ],
+    "approvals": []
+  },
+  "provenance": {
+    "actorId": "release-protocol",
+    "actorType": "AGENT",
+    "commandId": "release-protocol-transfer",
+    "idempotencyKey": "release-protocol-idem-transfer",
+    "causationId": "release-protocol-cause-transfer"
   }
 }
 JSON

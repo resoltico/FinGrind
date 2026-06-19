@@ -219,7 +219,7 @@ class PostEntrySemanticsPolicyTest {
   }
 
   @Test
-  void rejectionFor_acceptsDirectJournalsWithCallerAuthoredEvidenceTypes() {
+  void rejectionFor_acceptsDirectJournalsWithCallerAuthoredEvidenceTypesWhenTheyMoveBalances() {
     PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
     PostingValidationStoreDouble emptyBook = new PostingValidationStoreDouble(Map.of());
 
@@ -236,13 +236,52 @@ class PostEntrySemanticsPolicyTest {
                         new dev.erst.fingrind.core.JournalLine(
                             new AccountCode("2100"),
                             dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                            Money.parse("EUR", "10.00")))),
+                            Money.parse("EUR", "4.00")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("2200"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            Money.parse("EUR", "6.00")))),
                 null),
             generatedEvidence("direct-journal", "operator-note"),
             requestProvenance("direct-journal"),
             SourceChannel.CLI);
 
     assertTrue(policy.rejectionFor(command, emptyBook).isEmpty());
+  }
+
+  @Test
+  void rejectionFor_rejectsEconomicallyNullDirectJournalsAfterPerAccountNetting() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble emptyBook = new PostingValidationStoreDouble(Map.of());
+
+    PostEntryCommand command =
+        new PostEntryCommand(
+            new BookkeepingEntry.Journal(
+                new dev.erst.fingrind.core.JournalEntry(
+                    LocalDate.parse("2026-04-07"),
+                    List.of(
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            Money.parse("EUR", "10.00")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("2000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            Money.parse("EUR", "10.00")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("2000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            Money.parse("EUR", "10.00")),
+                        new dev.erst.fingrind.core.JournalLine(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            Money.parse("EUR", "10.00")))),
+                null),
+            generatedEvidence("economic-null-journal", "operator-note"),
+            requestProvenance("economic-null-journal"),
+            SourceChannel.CLI);
+
+    assertSingleViolation(policy.rejectionFor(command, emptyBook), "economic-null-journal");
   }
 
   private static void assertViolationCodes(

@@ -19,6 +19,7 @@ import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.Money;
@@ -113,22 +114,65 @@ class PostingApplicationServicePreflightTest {
               new IdempotencyKey("idem-semantics"),
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
-                      PostingRejection.accountTypeMismatch(
+                      PostingRejectionSemantics.accountTypeMismatch(
                           JournalRecipeKind.CASH_REVENUE.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           dev.erst.fingrind.core.AccountType.ASSET,
                           dev.erst.fingrind.core.AccountType.REVENUE),
-                      PostingRejection.accountTypeMismatch(
+                      PostingRejectionSemantics.accountTypeMismatch(
                           JournalRecipeKind.CASH_REVENUE.wireValue(),
                           "revenueAccountCode",
                           new AccountCode("1000"),
                           dev.erst.fingrind.core.AccountType.REVENUE,
                           dev.erst.fingrind.core.AccountType.ASSET),
-                      PostingRejection.sourceDocumentTypeNotAccepted(
+                      PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
                           JournalRecipeKind.CASH_REVENUE.wireValue(),
                           new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                           List.of("cash-receipt", "bank-deposit", "card-settlement"))))),
+          result);
+    }
+  }
+
+  @Test
+  void preflight_rejectsEconomicallyNullDirectJournalsBeforeBookkeepingCommitChecks() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.Journal(
+                  new dev.erst.fingrind.core.JournalEntry(
+                      LocalDate.parse("2026-04-07"),
+                      List.of(
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("2000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("2000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              Money.parse("EUR", "10.00")))),
+                  null),
+              generatedEvidence("idem-economic-null", "operator-note"),
+              requestProvenance("idem-economic-null"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.preflight(command);
+
+      assertEquals(
+          preflightRejected(
+              new IdempotencyKey("idem-economic-null"),
+              new PostingRejection.EntrySemanticsViolations(
+                  List.of(PostingRejectionSemantics.economicNullJournal("JOURNAL")))),
           result);
     }
   }

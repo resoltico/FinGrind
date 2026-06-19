@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 23;
+pragma user_version = 24;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -350,6 +350,7 @@ create table if not exists posting_fact (
     ),
     posting_origin_kind text not null check (
         posting_origin_kind in (
+            'JOURNAL',
             'CASH_REVENUE',
             'CASH_EXPENSE',
             'EQUITY_CONTRIBUTION',

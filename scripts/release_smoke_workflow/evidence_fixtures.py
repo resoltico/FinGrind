@@ -47,4 +47,5 @@ def source_document_type(evidence_suffix: str) -> str:
     return {
         "sale": "cash-receipt",
         "expense": "expense-receipt",
+        "transfer": "bank-deposit",
     }.get(evidence_suffix, "cash-receipt")

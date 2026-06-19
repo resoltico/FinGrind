@@ -45,6 +45,7 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
     $javaExecutable = $null
     $applicationModule = $null
     $nativeAccessModule = $null
+    $runtimeInputPaths = [System.Collections.Generic.List[string]]::new()
     $formatVersion = $null
     foreach ($line in [System.IO.File]::ReadAllLines($ManifestPath, [System.Text.Encoding]::UTF8)) {
         if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("ownerTask=")) {
@@ -63,14 +64,21 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
             "javaInstallationDirectory" { }
             "applicationModule" { $applicationModule = $parts[1] }
             "nativeAccessModule" { $nativeAccessModule = $parts[1] }
+            "runtimeInputPath" {
+                if ([string]::IsNullOrWhiteSpace($parts[1])) {
+                    throw $StaleMessage
+                }
+                $runtimeInputPaths.Add($parts[1])
+            }
             default { throw $StaleMessage }
         }
     }
 
-    if ($formatVersion -ne "3" -or
+    if ($formatVersion -ne "4" -or
         [string]::IsNullOrWhiteSpace($javaExecutable) -or
         [string]::IsNullOrWhiteSpace($applicationModule) -or
-        [string]::IsNullOrWhiteSpace($nativeAccessModule)) {
+        [string]::IsNullOrWhiteSpace($nativeAccessModule) -or
+        $runtimeInputPaths.Count -eq 0) {
         throw $StaleMessage
     }
     if (-not (Test-Path -LiteralPath $javaExecutable -PathType Leaf)) {
@@ -81,7 +89,45 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
         JavaExecutable = $javaExecutable
         ApplicationModule = $applicationModule
         NativeAccessModule = $nativeAccessModule
+        RuntimeInputPaths = $runtimeInputPaths.ToArray()
     }
+}
+
+function Test-FinGrindCliWrapperRuntimeFreshness {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$RuntimeInputPaths
+    )
+
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        return $false
+    }
+    if ($RuntimeInputPaths.Count -eq 0) {
+        return $false
+    }
+    $manifestWriteTime = (Get-Item -LiteralPath $ManifestPath).LastWriteTimeUtc
+    foreach ($runtimeInputPath in $RuntimeInputPaths) {
+        if (Test-Path -LiteralPath $runtimeInputPath -PathType Container) {
+            $newerInput =
+                Get-ChildItem -LiteralPath $runtimeInputPath -File -Recurse -ErrorAction SilentlyContinue |
+                Where-Object { $_.LastWriteTimeUtc -gt $manifestWriteTime } |
+                Select-Object -First 1
+            if ($null -ne $newerInput) {
+                return $false
+            }
+            continue
+        }
+        if (-not (Test-Path -LiteralPath $runtimeInputPath -PathType Leaf)) {
+            return $false
+        }
+        if ((Get-Item -LiteralPath $runtimeInputPath).LastWriteTimeUtc -gt $manifestWriteTime) {
+            return $false
+        }
+    }
+    return $true
 }
 
 function Invoke-FinGrindCliWrapperRefreshLock {
@@ -132,13 +178,22 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
         [string]$RuntimeManifestStaleMessage
     )
 
+    $forceRerun = $false
     if ((Test-Path -LiteralPath $Context.RawJar -PathType Leaf) -and
         (Test-Path -LiteralPath $Context.SourceCheckoutRuntimeManifest -PathType Leaf)) {
         try {
-            return Read-FinGrindSourceCheckoutRuntimeManifest `
+            $runtimeManifest = Read-FinGrindSourceCheckoutRuntimeManifest `
                 -ManifestPath $Context.SourceCheckoutRuntimeManifest `
                 -MissingMessage $RuntimeManifestMissingMessage `
                 -StaleMessage $RuntimeManifestStaleMessage
+            if (
+                Test-FinGrindCliWrapperRuntimeFreshness `
+                    -ManifestPath $Context.SourceCheckoutRuntimeManifest `
+                    -RuntimeInputPaths $runtimeManifest.RuntimeInputPaths
+            ) {
+                return $runtimeManifest
+            }
+            $forceRerun = $true
         }
         catch {
         }
@@ -154,18 +209,29 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
         if ((Test-Path -LiteralPath $Context.RawJar -PathType Leaf) -and
             (Test-Path -LiteralPath $Context.SourceCheckoutRuntimeManifest -PathType Leaf)) {
             try {
-                Read-FinGrindSourceCheckoutRuntimeManifest `
+                $runtimeManifest = Read-FinGrindSourceCheckoutRuntimeManifest `
                     -ManifestPath $Context.SourceCheckoutRuntimeManifest `
                     -MissingMessage $RuntimeManifestMissingMessage `
-                    -StaleMessage $RuntimeManifestStaleMessage | Out-Null
-                return
+                    -StaleMessage $RuntimeManifestStaleMessage
+                if (
+                    Test-FinGrindCliWrapperRuntimeFreshness `
+                        -ManifestPath $Context.SourceCheckoutRuntimeManifest `
+                        -RuntimeInputPaths $runtimeManifest.RuntimeInputPaths
+                ) {
+                    return
+                }
+                $forceRerun = $true
             }
             catch {
             }
         }
         Push-Location $Context.RepoRoot
         try {
-            & $gradleWrapper @GradleTasks "--quiet" *> $null
+            if ($forceRerun) {
+                & $gradleWrapper @GradleTasks "--rerun-tasks" "--quiet" *> $null
+            } else {
+                & $gradleWrapper @GradleTasks "--quiet" *> $null
+            }
             if ($LASTEXITCODE -ne 0) {
                 throw "failed to prepare $ArtifactLabel via $gradleWrapper $($GradleTasks -join ' ')"
             }

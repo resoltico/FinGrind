@@ -419,7 +419,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Version"));
-    assertTrue(rendered.contains("0.56.0"));
+    assertTrue(rendered.contains("0.57.0"));
   }
 
   private static dev.erst.fingrind.contract.runtime.EnvironmentDescriptor

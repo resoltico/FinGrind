@@ -22,6 +22,10 @@ final class CliFailureMapper {
   }
 
   static @Nullable CliFailure runtimeFailure(RuntimeException exception) {
+    return runtimeFailure(exception, null);
+  }
+
+  static @Nullable CliFailure runtimeFailure(RuntimeException exception, @Nullable String errorId) {
     if (exception instanceof CliArtifactOutputExistsException outputExistsException) {
       return new CliFailure(
           ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.code(),
@@ -46,6 +50,8 @@ final class CliFailureMapper {
               message,
               "Run a supported FinGrind launcher surface: the extracted published Linux bundle launcher (bin/fingrind), the published container image, or from a local source checkout run ./gradlew :cli:prepareSourceCheckoutCliRuntime and rerun the generated launcher or developer direct-Java wrapper from that checkout.",
               null);
+      case PERSISTENCE_INVARIANT ->
+          errorId == null ? null : internalPersistenceInvariantError(errorId);
       case STORAGE ->
           new CliFailure(
               ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE.code(),
@@ -63,12 +69,29 @@ final class CliFailureMapper {
         "FinGrind encountered an internal error. Quote error id "
             + normalizedErrorId
             + " when reporting this defect.",
-        internalErrorHint(),
+        internalErrorHint(null),
         null);
   }
 
-  private static String internalErrorHint() {
-    return "FinGrind preserved one machine-readable error envelope on stderr and omitted raw stack traces for this invocation. Quote the error id when reporting the defect; if you need crash details locally, reproduce the failure against a disposable copy under a debugger or test harness.";
+  private static CliFailure internalPersistenceInvariantError(String errorId) {
+    String normalizedErrorId = requireErrorId(errorId);
+    return new CliFailure(
+        ContractErrors.Descriptor.INTERNAL_ERROR.code(),
+        "FinGrind encountered an internal persistence-contract breach. One upstream invariant should have rejected this request before commit. Quote error id "
+            + normalizedErrorId
+            + " when reporting this defect.",
+        internalErrorHint(
+            "This failure class means one deterministic invariant leaked past pre-commit validation into SQLite persistence."),
+        null);
+  }
+
+  private static String internalErrorHint(@Nullable String additionalContext) {
+    String baseHint =
+        "FinGrind preserved one machine-readable error envelope on stderr and omitted raw stack traces for this invocation. Quote the error id when reporting the defect; if you need crash details locally, reproduce the failure against a disposable copy under a debugger or test harness.";
+    if (additionalContext == null) {
+      return baseHint;
+    }
+    return additionalContext + " " + baseHint;
   }
 
   private static String message(Exception exception) {

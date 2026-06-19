@@ -47,6 +47,20 @@ class CliTextFormatTest {
   }
 
   @Test
+  void renderKeyValueBlock_cappedModeSupportsUnboundedValueWidth() {
+    String overCapLabel = "O".repeat(33);
+    String rendered =
+        CliTextFormat.renderKeyValueBlock(
+            List.of(List.of("Short", "alpha beta"), List.of(overCapLabel, "gamma delta")),
+            Integer.MAX_VALUE,
+            32);
+
+    assertTrue(rendered.contains("Short" + " ".repeat(27) + " : alpha beta"), rendered);
+    assertTrue(rendered.contains(overCapLabel + ":"), rendered);
+    assertTrue(rendered.contains(" ".repeat(35) + "gamma delta"), rendered);
+  }
+
+  @Test
   void wrapAndAdaptiveRenderers_coverCompactFallbackAndEdgeCases() {
     assertTrue(
         CliTextFormat.renderAdaptiveTable(12, List.of("Account", "Amount"), List.of())

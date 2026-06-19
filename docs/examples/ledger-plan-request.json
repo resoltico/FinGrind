@@ -15,14 +15,25 @@
       "kind": "post-entry",
       "posting": {
         "entryKind": "JOURNAL",
-        "recipeKind": "CASH_REVENUE",
         "effectiveDate": "2026-04-07",
-        "cashAccountCode": "cash",
-        "revenueAccountCode": "service-revenue",
-        "amount": {
-          "currencyCode": "EUR",
-          "minorUnits": "1000"
-        },
+        "lines": [
+          {
+            "accountCode": "cash",
+            "side": "DEBIT",
+            "amount": {
+              "currencyCode": "EUR",
+              "minorUnits": "1000"
+            }
+          },
+          {
+            "accountCode": "service-revenue",
+            "side": "CREDIT",
+            "amount": {
+              "currencyCode": "EUR",
+              "minorUnits": "1000"
+            }
+          }
+        ],
         "evidence": {
           "sourceDocuments": [
             {

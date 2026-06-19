@@ -54,6 +54,9 @@ class RequestSurfaceFactsTest {
         facts.temporalScopeFor(OperationId.TRANSFER_PERIOD_RESULT).archetype());
     assertEquals("As of", facts.temporalScopeFor(OperationId.FINANCIAL_POSITION).summaryLabel());
     assertEquals(
+        "One explicit closed reporting window. Both boundaries must be supplied, and neither boundary falls back to book start or the current book horizon.",
+        facts.temporalScope(TemporalScopeArchetype.BOUNDED_PERIOD).boundarySemantics());
+    assertEquals(
         AccountClassificationReachability.currentKernel().stream()
             .map(
                 cell ->
@@ -120,6 +123,7 @@ class RequestSurfaceFactsTest {
                     "As of",
                     "As of",
                     "As of",
+                    "One point-in-time effective-date cutoff.",
                     "selected-date",
                     "book-start",
                     "current-book-horizon",
@@ -417,6 +421,7 @@ class RequestSurfaceFactsTest {
         "As of",
         "As of",
         "As of",
+        "One point-in-time effective-date cutoff.",
         "selected-date",
         "book-start",
         "current-book-horizon",

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, request-json, response-json, provenance, reversal, idempotency, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, ledger-plan, execute-plan]
   questions: ["what request json does fingrind accept", "what response envelopes does fingrind return", "how does list-accounts pagination work in fingrind", "what does inspect-book return", "what ledger plan shape does execute-plan accept"]
@@ -58,12 +58,16 @@ The scaffold is intentionally placeholder-first: `provenance.actorType` defaults
 emitted document carries explicit `replace-before-commit-*` evidence and provenance tokens, and
 those placeholder values must be replaced before real-world use. On one book, an `idempotencyKey`
 becomes single-use per book after the first committed posting.
+The default posting scaffold uses direct balanced `JOURNAL` `lines` so the canonical write
+boundary is visible without recipe expansion. Recipe helpers remain supported shortcut surfaces.
 
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
 `help post-entry`, `help declare-account`, and `help execute-plan` inline one canonical template
-plus the accepted fields and enum vocabularies for their `--request-file` payloads. When you need
-the raw scaffold bytes directly, `print-request-template` now accepts the request-bearing topic
-`declare-account` in addition to the posting-surface defaults.
+plus the accepted fields and enum vocabularies for their `--request-file` payloads. On
+`execute-plan`, the posting model remains nested under the ledger-plan request shape rather than
+surfacing as a second top-level posting document. When you need the raw scaffold bytes directly,
+`print-request-template` now accepts the request-bearing topic `declare-account` in addition to the
+posting-surface defaults.
 
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
@@ -90,6 +94,7 @@ Current posting-request rules:
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - every direct `JOURNAL` or `REVERSAL_ADJUSTMENT` entry must contain at least one `DEBIT` line and at least one `CREDIT` line
 - every line inside one direct `JOURNAL` or `REVERSAL_ADJUSTMENT` entry must share the same `lines[].amount.currencyCode`
+- every direct `JOURNAL` entry is rejected when debit-credit netting reduces every referenced account to zero, because that request would record no durable account movement
 - every posted money amount must use the selected book's functional currency
 - `reversal` is required only for `REVERSAL_ADJUSTMENT` and must be absent for every other `entryKind`
 - required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
@@ -160,6 +165,10 @@ Or, in a source checkout, inspect the checked-in runnable example:
 ```bash
 cat docs/examples/ledger-plan-request.json
 ```
+
+The default ledger-plan scaffold and the primary runnable plan example both use raw `JOURNAL`
+lines inside their posting step. Recipe-backed plan examples remain available as labeled
+shortcuts when compactness matters more than exposing the underlying journal lines inline.
 
 Current ledger-plan rules:
 - top-level fields are `planId` and `steps`
@@ -247,7 +256,8 @@ Dynamic fields:
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; both
   intentionally publish placeholder-first sample documents whose evidence and provenance values
-  should be replaced before real-world use
+  should be replaced before real-world use, and both teach the direct raw-journal path rather than
+  one recipe shortcut
 - `generate-book-key-file.payload.bookKeyFile` is a redacted public path hint for the created key
   file
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
@@ -323,6 +333,8 @@ Discovery output also has two intentionally different JSON scopes:
 - `requestShapes.*.enumVocabularies` are arrays of `{ "name", "values" }` sourced from the live enum constants
 - `responseModel.rejections` is an array of deterministic business rejections rendered from the
   administration, query, and posting rejection families
+- `responseModel.rejections[].detailRejections` publishes the nested stable rejection catalog for
+  structured detail families such as `account-state-violations` and `entry-semantics-violations`
 - `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
   descriptors such as `invalid-page-cursor`, `protected-book-verification-failed`,
   `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
@@ -668,8 +680,14 @@ Checked-in template and ledger-plan examples:
 | `account-role-conflict` | `declare-account` attempted to amend an existing account's immutable doctrinal role | `accountCode`, `existingAccountRole`, `requestedAccountRole` |
 | `unknown-account` | a query named an undeclared account | `accountCode` |
 | `posting-not-found` | `get-posting` targeted a posting id that does not exist in the selected book | `postingId` |
-| `account-state-violations` | `preflight-entry` or `post-entry` found one or more undeclared or inactive accounts | `violations[]`, where each item includes `code` and `accountCode` |
-| `inactive-account` | one item inside `account-state-violations.violations[]` named an inactive account | `accountCode` |
+| `account-state-violations` | `preflight-entry` or `post-entry` found one or more undeclared, inactive, or non-postable accounts | `violations[]`, where each item includes `code`, `field`, `message`, `category`, `repair`, `accountCode`, and optional `accountNodeKind` |
+| `inactive-account` | one item inside `account-state-violations.violations[]` named an inactive account | `code`, `field`, `message`, `category`, `repair`, `accountCode` |
+| `entry-semantics-violations` | `preflight-entry` or `post-entry` found one or more ordered entry-semantics conflicts in the selected posting request | `violations[]`, where each item includes `code`, `field`, `message`, `category`, and `repair` |
+| `economic-null-journal` | one item inside `entry-semantics-violations.violations[]` found that the supplied `JOURNAL` lines net every referenced account to zero | `code`, `field`, `message`, `category`, `repair` |
+| `distinct-role-accounts-required` | one item inside `entry-semantics-violations.violations[]` found that two semantic role fields point to the same account even though the entry kind requires distinct accounts | `code`, `field`, `message`, `category`, `repair` |
+| `account-type-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one referenced account uses the wrong declared `accountType` for the selected entry kind | `code`, `field`, `message`, `category`, `repair` |
+| `financial-position-classification-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one referenced account uses the wrong declared `financialPositionLineClassification` for the selected entry kind | `code`, `field`, `message`, `category`, `repair` |
+| `source-document-type-not-accepted` | one item inside `entry-semantics-violations.violations[]` found that the selected evidence uses one unsupported `sourceDocumentType` | `code`, `field`, `message`, `category`, `repair` |
 | `duplicate-idempotency-key` | the selected book already contains the same `idempotencyKey` | none |
 | `open-accounting-position-window-closed` | `OPEN_ACCOUNTING_POSITION` was submitted after the book already contains its first committed posting | `firstBlockingPostingKind`, `firstBlockingEffectiveDate` |
 | `open-accounting-position-touches-nominal-account` | `OPEN_ACCOUNTING_POSITION` touched a revenue or expense account | `accountCode`, `accountType` |
@@ -677,19 +695,13 @@ Checked-in template and ledger-plan examples:
 | `reversal-already-exists` | the target posting already has a full reversal | `priorPostingId` |
 | `reversal-does-not-negate-target` | a reversal request does not negate the target posting exactly | `priorPostingId` |
 
-`unknown-account` and `posting-not-found` are query-side rejections.
-`account-state-violations` is the posting-side rejection for account-registry failures, and may
-report multiple issues in one response so callers can repair the entire entry before retrying.
-One checked-in example lives at
-[examples/account-state-violations-response.json](./examples/account-state-violations-response.json).
+`unknown-account` and `posting-not-found` are query-side rejections. `account-state-violations` is the posting-side rejection for account-registry failures, and its ordered `details.violations[]` payload owns the machine-readable per-issue repair guidance while the top-level machine `message` stays a stable count-summary and no top-level repair `hint` is emitted.
+`entry-semantics-violations` follows the same rule for semantic contradictions inside one accepted request shape. The paired `--output text` surface renders one `Summary` header plus one `Issue N | <code>` section per violation for both nested repairable posting families.
+Checked-in machine and operator examples live at [examples/account-state-violations-response.json](./examples/account-state-violations-response.json), [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt), [examples/entry-semantics-violations-response.json](./examples/entry-semantics-violations-response.json), and [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt).
 
-Malformed JSON, wrong field types, missing required fields, invalid date/time text, and
-domain-validation failures return `status: "error"` with code `invalid-request`.
-Argument and parsing failures may also carry a `hint` and `argument` field so a caller can correct
-the invocation mechanically.
-Journal-entry validation now reports every detected journal grammar violation in one deterministic
-`invalid-request` response and publishes the full ordered set under `details.violations[]`, so
-callers can repair the whole request before retrying without scraping prose.
+Malformed JSON, wrong field types, missing required fields, invalid date/time text, and domain-validation failures return `status: "error"` with code `invalid-request`.
+Argument and parsing failures may also carry a `hint` and `argument` field so a caller can correct the invocation mechanically.
+Journal-entry validation now reports every detected journal grammar violation in one deterministic `invalid-request` response and publishes the full ordered set under `details.violations[]`, so callers can repair the whole request before retrying without scraping prose.
 
 Deterministic CLI-side `status: "error"` examples are also checked in:
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json)

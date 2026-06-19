@@ -299,6 +299,21 @@ public sealed interface BookkeepingPostingRejection
             .formatted(entryLabel, firstField, secondField, accountCode.value()));
   }
 
+  /** Creates one entry-semantics violation for raw journals that net every account to zero. */
+  static EntrySemanticsViolation economicNullJournal(BookkeepingEntryKind entryKind) {
+    return economicNullJournal(entryKind.wireValue());
+  }
+
+  /** Creates one entry-semantics violation for raw journals that net every account to zero. */
+  static EntrySemanticsViolation economicNullJournal(String entryLabel) {
+    Objects.requireNonNull(entryLabel, "entryLabel");
+    return new EntrySemanticsViolation(
+        "economic-null-journal",
+        "lines",
+        "Entry kind '%s' uses journal lines whose debit-credit netting reduces every referenced account to zero, so the journal would record no durable account movement."
+            .formatted(entryLabel));
+  }
+
   /** Returns one insertion-ordered set of referenced accounts without rejecting duplicates. */
   static Set<AccountCode> referencedAccountSet(AccountCode... accountCodes) {
     Objects.requireNonNull(accountCodes, "accountCodes");

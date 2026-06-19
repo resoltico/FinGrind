@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 /** Renders CLI text tables and summary blocks with one fixed-width layout policy. */
 final class CliTextTableFormat {
   private static final String TEXT_LINE_SEPARATOR = "\n";
-  private static final int MINIMUM_WRAP_VALUE_WIDTH = 24;
 
   private CliTextTableFormat() {}
 
@@ -18,36 +17,6 @@ final class CliTextTableFormat {
   private enum TextAlignment {
     LEFT,
     RIGHT
-  }
-
-  static String renderKeyValueBlock(List<List<String>> rows) {
-    return renderKeyValueBlock(rows, Integer.MAX_VALUE);
-  }
-
-  static String renderKeyValueBlock(List<List<String>> rows, int totalWidth) {
-    int labelWidth = rows.stream().mapToInt(row -> row.getFirst().length()).max().orElse(0);
-    StringBuilder document = new StringBuilder();
-    for (List<String> row : rows) {
-      List<String> wrappedValueLines =
-          CliTextWrap.wrapLines(
-              row.get(1),
-              totalWidth == Integer.MAX_VALUE
-                  ? Integer.MAX_VALUE
-                  : Math.max(MINIMUM_WRAP_VALUE_WIDTH, totalWidth - labelWidth - 3));
-      document
-          .append(padded(row.getFirst(), labelWidth, TextAlignment.LEFT))
-          .append(" : ")
-          .append(wrappedValueLines.getFirst())
-          .append(TEXT_LINE_SEPARATOR);
-      for (int index = 1; index < wrappedValueLines.size(); index++) {
-        document
-            .append(" ".repeat(labelWidth))
-            .append("   ")
-            .append(wrappedValueLines.get(index))
-            .append(TEXT_LINE_SEPARATOR);
-      }
-    }
-    return document.toString().stripTrailing();
   }
 
   static String renderTable(
@@ -162,7 +131,8 @@ final class CliTextTableFormat {
       summary = "Row " + (rowIndex + 1);
     }
     List<List<String>> detailRows = detailRows(headers, row, summaryColumnCount);
-    return CliTextFormat.renderSummaryBlock(summary, renderKeyValueBlock(detailRows, maxWidth));
+    return CliTextFormat.renderSummaryBlock(
+        summary, CliTextKeyValueBlockFormat.renderKeyValueBlock(detailRows, maxWidth));
   }
 
   private static List<List<String>> detailRows(

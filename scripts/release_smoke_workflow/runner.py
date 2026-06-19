@@ -14,6 +14,7 @@ from .fixtures import prepare_fixture_directories, write_acceptance_fixtures
 from .maintenance_checks import verify_backup_restore_and_rollback_surfaces
 from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
 from .query_checks import verify_operator_queries_and_reports, verify_preflight_and_commit
+from .raw_journal_checks import verify_raw_journal_commit_and_readback
 from .rekey_failure_checks import verify_rekey_and_wrong_key_semantics
 from .request_failure_checks import verify_deterministic_nonsense_workflows
 from .setup_checks import (
@@ -45,6 +46,7 @@ def run_release_smoke(config: ReleaseSmokeConfig) -> None:
     verify_account_registry(config, operation_ids)
     verify_preflight_and_commit(config, operation_ids)
     verify_operator_queries_and_reports(config, operation_ids)
+    verify_raw_journal_commit_and_readback(config, operation_ids)
     verify_backup_restore_and_rollback_surfaces(config, operation_ids)
     verify_rekey_and_wrong_key_semantics(config, operation_ids, error_exit_codes)
     verify_deterministic_nonsense_workflows(config, operation_ids, error_exit_codes)

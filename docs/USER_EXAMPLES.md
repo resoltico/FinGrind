@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: USER_EXAMPLES
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -305,13 +305,15 @@ fingrind \
 
 That generated scaffold uses the same canonical content as the checked-in
 [examples/request-template.json](./examples/request-template.json) companion example. Both
-intentionally publish one placeholder-first sample document and default to
-`"entryKind": "JOURNAL"` plus `"recipeKind": "CASH_REVENUE"`.
+intentionally publish one placeholder-first sample document and default to one direct balanced
+`"entryKind": "JOURNAL"` posting with explicit `lines` over the seeded starter accounts.
 The scaffold is request-first rather than demo-runnable: `actorType` defaults to `PERSON`,
 `evidence.approvals` starts as an empty array that callers may populate when one posting requires
 explicit approval references, and every `replace-before-commit-*` evidence or provenance token must be
 replaced before real-world use.
 A committed `idempotencyKey` is single-use per book.
+Recipe shortcuts remain supported for compact convenience cases, but the default scaffold teaches
+the raw journal boundary first.
 
 For the concrete walkthrough below, reuse the checked-in example request:
 
@@ -364,9 +366,9 @@ fingrind \
 
 Like `print-request-template`, this scaffold uses the same canonical content as the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) companion example.
-Its nested posting scaffold defaults to `"entryKind": "JOURNAL"` plus
-`"recipeKind": "CASH_REVENUE"`, and the emitted workflow uses the same placeholder evidence and
-provenance tokens as the request template. Replace those placeholder values before real-world use.
+Its nested posting scaffold defaults to one direct balanced `"entryKind": "JOURNAL"` posting with
+explicit `lines`, and the emitted workflow uses the same placeholder evidence and provenance
+tokens as the request template. Replace those placeholder values before real-world use.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -392,15 +394,16 @@ That plan:
 and the full execution journal.
 
 Checked-in plan examples:
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json)
-- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
-- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the canonical raw-journal plan scaffold
+- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable plan example using direct journal lines
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): labeled recipe-shortcut plan that keeps the posting compact while demonstrating in-plan queries
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
 - [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json)
 
 If you want the plan itself to inspect paginated state before it finishes, use the checked-in
-query example:
+query example. It intentionally keeps the posting step recipe-backed so the example can stay short
+while focusing on the query steps:
 
 - `./ledger-plan-query-request.json`: copy [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
 
@@ -541,10 +544,38 @@ fingrind \
   --request-file ./unknown-account-request.json
 ```
 
-One deterministic rejection is checked in at
-[examples/account-state-violations-response.json](./examples/account-state-violations-response.json).
+Checked-in machine and operator examples live at
+[examples/account-state-violations-response.json](./examples/account-state-violations-response.json)
+and
+[examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt).
 Posting-side account failures are now aggregated under `account-state-violations` so callers can
-repair every reported account issue before retrying.
+repair every reported account issue before retrying; the machine envelope keeps a stable summary
+while the ordered `details.violations[]` items and the text-mode `Issue N | <code>` sections carry
+the actionable per-issue repair data. This example intentionally stays recipe-backed so the
+rejection focuses on undeclared-account handling rather than on raw-line construction.
+
+## Entry-Semantics Rejections Explain Every Issue
+
+Create this local file first:
+- `./entry-semantics-multi-violation-request.json`: copy [examples/entry-semantics-multi-violation-request.json](./examples/entry-semantics-multi-violation-request.json)
+
+```bash
+fingrind \
+  preflight-entry \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
+  --request-file ./entry-semantics-multi-violation-request.json \
+  --output text
+```
+
+Checked-in machine and operator examples live at
+[examples/entry-semantics-violations-response.json](./examples/entry-semantics-violations-response.json)
+and
+[examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt).
+The machine envelope keeps a stable family summary plus ordered `details.violations[]` items, while
+the text surface renders the same family as one `Summary` header plus one `Issue N | <code>`
+section per violation so an operator can repair every problem without scraping one concatenated
+paragraph.
 
 ## Duplicate Rejection
 

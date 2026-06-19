@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes.LedgerPlanRequestShapeDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -22,13 +23,15 @@ import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and contract tests for the published machine-discovery surfaces. */
 class MachineContractDiscoverySurfaceTest {
   private static final ApplicationIdentity IDENTITY =
-      new ApplicationIdentity("FinGrind", "0.56.0", "Protected bookkeeping kernel");
+      new ApplicationIdentity("FinGrind", "0.57.0", "Protected bookkeeping kernel");
 
   @Test
   void helpWithoutTopicPublishesCanonicalQuickStartForEveryRuntimeDistribution() {
@@ -130,7 +133,8 @@ class MachineContractDiscoverySurfaceTest {
     assertTrue(
         MachineContractTemplatesCatalog.declareAccountRevenueJson().contains("\"misc-revenue\""));
     assertEquals(BookkeepingEntryKind.JOURNAL, MachineContract.requestTemplate().entryKind());
-    assertEquals(JournalRecipeKind.CASH_REVENUE, MachineContract.requestTemplate().recipeKind());
+    assertNull(MachineContract.requestTemplate().recipeKind());
+    assertEquals(2, Objects.requireNonNull(MachineContract.requestTemplate().lines()).size());
     assertEquals("cash-reserve", MachineContract.declareAccountTemplate().accountCode());
     assertEquals("plan-1", MachineContract.planTemplate().planId());
     assertNull(MachineContractTemplatesCatalog.requestShapesFor(null));
@@ -206,6 +210,31 @@ class MachineContractDiscoverySurfaceTest {
             .orElseThrow()
             .acceptedSourceDocumentTypes()
             .isEmpty());
+  }
+
+  @Test
+  void executePlanHelpPublishesExactlyOneTopLevelShapeAndAContractOwnedNestedPostingModel() {
+    HelpDescriptor executePlanHelp =
+        MachineContract.help(
+            IDENTITY,
+            environment(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE),
+            OperationId.EXECUTE_PLAN);
+
+    ContractRequestShapes.RequestShapesDescriptor requestShapes =
+        Objects.requireNonNull(executePlanHelp.requestShapes());
+    assertNull(requestShapes.postEntry());
+    assertNull(requestShapes.declareAccount());
+    assertNotNull(requestShapes.ledgerPlan());
+    assertNotNull(executePlanHelp.planTemplate());
+    assertEquals(
+        dev.erst.fingrind.core.BookkeepingEntryKind.JOURNAL,
+        Objects.requireNonNull(executePlanHelp.planTemplate())
+            .canonicalPostingTemplate()
+            .entryKind());
+    assertTrue(
+        recordComponentNames(LedgerPlanRequestShapeDescriptor.class).contains("postingModel"),
+        () ->
+            "Expected ledger-plan request discovery to own one nested postingModel descriptor for execute-plan help.");
   }
 
   @Test
@@ -436,5 +465,11 @@ class MachineContractDiscoverySurfaceTest {
     return runtimeDistribution == RuntimeDistribution.SELF_CONTAINED_BUNDLE
         ? PublicCliBundleTarget.LINUX_X86_64
         : null;
+  }
+
+  private static List<String> recordComponentNames(Class<?> recordType) {
+    return Stream.of(recordType.getRecordComponents())
+        .map(component -> component.getName())
+        .toList();
   }
 }

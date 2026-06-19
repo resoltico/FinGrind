@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -13,6 +12,7 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -66,14 +66,14 @@ final class MachineContractTemplatesCatalog {
   static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.JOURNAL,
-        JournalRecipeKind.CASH_REVENUE,
+        null,
         SAMPLE_EFFECTIVE_DATE,
-        "cash",
-        "service-revenue",
         null,
         null,
-        new MonetaryAmount("EUR", "1000"),
         null,
+        null,
+        null,
+        directJournalLines(),
         null,
         new ContractTemplates.AccountingEvidenceTemplateDescriptor(
             List.of(
@@ -93,6 +93,14 @@ final class MachineContractTemplatesCatalog {
             SAMPLE_CAUSATION_ID,
             null),
         null);
+  }
+
+  private static List<ContractTemplates.JournalLineTemplateDescriptor> directJournalLines() {
+    return List.of(
+        new ContractTemplates.JournalLineTemplateDescriptor(
+            "cash", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
+        new ContractTemplates.JournalLineTemplateDescriptor(
+            "service-revenue", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000")));
   }
 
   static ContractTemplates.DeclareAccountTemplateDescriptor declareAccountTemplate() {

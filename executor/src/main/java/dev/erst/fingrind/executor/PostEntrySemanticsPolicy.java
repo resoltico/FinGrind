@@ -48,6 +48,9 @@ final class PostEntrySemanticsPolicy {
         JournalRecipe recipe = journal.recipe();
         if (recipe != null) {
           validateJournalRecipe(violations, accounts, recipe);
+        } else {
+          requireEconomicAccountMovement(
+              violations, journal.entryKind().wireValue(), journal.lines());
         }
       }
       case BookkeepingEntry.OpenAccountingPosition _ -> {}
@@ -209,6 +212,16 @@ final class PostEntrySemanticsPolicy {
     violations.add(
         BookkeepingPostingRejection.distinctRoleAccountsRequired(
             entryLabel, firstField, secondField, firstAccountCode));
+  }
+
+  private static void requireEconomicAccountMovement(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      String entryLabel,
+      List<dev.erst.fingrind.core.JournalLine> lines) {
+    if (!JournalEconomicMovement.isEconomicallyNull(lines)) {
+      return;
+    }
+    violations.add(BookkeepingPostingRejection.economicNullJournal(entryLabel));
   }
 
   private static void requireAccountType(

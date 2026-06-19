@@ -105,7 +105,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "--backup-book-key-file-out",
               "backup/entity.key",
               "--output",
-              "text"
+              "json"
             });
 
     assertFailure(observed, 6, "rejected", "artifact-path-invalid");
@@ -143,7 +143,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "--backup-book-key-file",
               "backup/entity.key",
               "--output",
-              "text"
+              "json"
             });
 
     assertFailure(observed, 6, "rejected", "artifact-path-invalid");

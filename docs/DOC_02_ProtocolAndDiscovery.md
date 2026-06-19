@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
@@ -507,8 +507,8 @@ public final class ProtocolManagedSqliteCatalog
   current-kernel account-classification reachability owner instead of one hand-maintained discovery
   copy
 - `TemporalScopeArchetype` keeps ranged-filter, bounded-period, and as-of-date semantics explicit so
-  option names, labels, and empty-state wording derive from one owned vocabulary instead of
-  parallel literals
+  option names, labels, help-level boundary guidance, and empty-state wording derive from one
+  owned vocabulary instead of parallel literals
 - Boundary: each catalog owns one coherent slice of public protocol metadata and leaves field-level
   structure to the narrower protocol field owners above
 
@@ -694,7 +694,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 23`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 24`
 
 ## `ProtectedBookFormatContract`
 

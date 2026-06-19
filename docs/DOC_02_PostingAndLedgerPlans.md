@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
@@ -28,8 +28,8 @@ public sealed interface PostingLineage
 
 ## `BookkeepingEntry` And `BookkeepingEntryKind`
 
-`BookkeepingEntry` is the public bookkeeping write model that makes typed business events the
-default write surface, and `BookkeepingEntryKind` is the closed caller-authored vocabulary that
+`BookkeepingEntry` is the public bookkeeping write model that makes the balanced journal the
+canonical write surface, and `BookkeepingEntryKind` is the closed caller-authored vocabulary that
 selects those entry families.
 
 ```java
@@ -37,12 +37,14 @@ public sealed interface BookkeepingEntry
 public enum BookkeepingEntryKind
 ```
 
-- Typed events: `CashRevenue`, `CashExpense`, `EquityContribution`, and `EquityWithdrawal`
-- Administrative adjustments: `OpeningBalanceAdjustment`, `CorrectionAdjustment`, and
-  `ReversalAdjustment` are the explicit non-business-event routes for adoption balances,
-  corrections, and exact reversal postings
-- Purpose: keep business-event intent explicit at the public boundary before the executor projects
-  it into canonical journal postings
+- Direct journal: `Journal` carries one caller-authored `JournalEntry` and can optionally retain
+  one matching `JournalRecipe` as higher-level metadata
+- Opening positions: `OpenAccountingPosition` carries the typed book-seeding balances used before
+  operating activity begins
+- Reversals: `ReversalAdjustment` preserves one explicit reversal lineage over caller-authored
+  journal lines
+- Purpose: keep the canonical journal write boundary explicit while preserving optional recipe
+  intent and bounded non-routine write profiles
 
 ## `PostEntryCommand`
 
@@ -58,11 +60,12 @@ public record PostEntryCommand(
 ```
 
 - Purpose: carry the write-boundary payload after CLI parsing and request validation, including the
-  caller-authored business event plus first-class retained evidence and provenance
-- Boundary: typed business events are primary; raw journal lines appear only through the named
-  administrative adjustment variants
-- Money policy: typed entry amounts arrive as exact positive `MonetaryAmount` values, while the
-  administrative adjustment variants carry one already-validated `JournalEntry`
+  caller-authored journal or bounded write profile plus first-class retained evidence and
+  provenance
+- Boundary: direct balanced journal lines are first-class; recipes are optional metadata that must
+  derive the exact same journal entry
+- Money policy: public money amounts arrive as exact positive `MonetaryAmount` values, while the
+  direct journal and reversal variants carry one already-validated `JournalEntry`
 
 ## `PostEntryCommandTranslator`
 
@@ -73,11 +76,10 @@ required by the built-in bookkeeping kernel.
 public final class PostEntryCommandTranslator
 ```
 
-- Purpose: keep typed business-event recipes owned at the application boundary instead of leaking
-  raw journal construction into the CLI, request loaders, or posting service
-- Current scope: `CashRevenue`, `CashExpense`, `EquityContribution`, and `EquityWithdrawal` become
-  canonical standard postings, while the three named administrative adjustment variants preserve
-  explicit caller-authored `JournalEntry` handling for their bounded purposes
+- Purpose: keep optional recipe expansion owned at the application boundary instead of leaking it
+  into the CLI, request loaders, or posting service
+- Current scope: direct journals pass through unchanged, while `CashRevenue`, `CashExpense`,
+  `EquityContribution`, and `EquityWithdrawal` expand into the exact canonical journal they claim
 
 ## `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult`
 
@@ -427,14 +429,22 @@ public final class UuidV7PostingIdGenerator implements PostingIdGenerator
 
 - Purpose: generate time-ordered UUID v7 posting ids without an external dependency
 
-## `PostingRejection`
+## `PostingRejection` And `PostingRejectionSemantics`
 
-`PostingRejection` is the closed family of deterministic write-side refusals.
+`PostingRejection` is the closed family of deterministic write-side refusals, and
+`PostingRejectionSemantics` is the canonical owner for building entry-semantics violation details
+from business facts.
 
 ```java
 public sealed interface PostingRejection
+public final class PostingRejectionSemantics
 ```
 
-- Variants: `BookNotInitialized`, `AccountStateViolations`, `DuplicateIdempotencyKey`,
+- Variants: `BookNotInitialized`, `AccountStateViolations`, `EntrySemanticsViolations`,
+  `DuplicateIdempotencyKey`, `BookFunctionalCurrencyMismatch`,
+  `TransferredPeriodResultViolation`, `OpenAccountingPositionWindowClosed`,
+  `OpenAccountingPositionTouchesNominalAccount`, `ResultHoldingAccountReserved`,
   `ReversalTargetNotFound`, `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
-- Purpose: keep validly parsed but inadmissible postings machine-distinguishable
+- `PostingRejection`: keep validly parsed but inadmissible postings machine-distinguishable
+- `PostingRejectionSemantics`: build canonical account-type, classification, evidence, role, and
+  economic-nullity violations plus the referenced-account set used to evaluate them

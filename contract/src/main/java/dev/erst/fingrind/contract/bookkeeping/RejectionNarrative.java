@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.bookkeeping;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Canonical plain-language rejection prose for public rejection contracts. */
 public final class RejectionNarrative {
@@ -35,5 +36,10 @@ public final class RejectionNarrative {
   /** Returns the canonical plain-language message for a posting rejection. */
   public static String message(PostingRejection rejection) {
     return PostingRejectionNarrative.message(Objects.requireNonNull(rejection, "rejection"));
+  }
+
+  /** Returns the canonical operator repair hint for a posting rejection when one exists. */
+  public static @Nullable String hint(PostingRejection rejection) {
+    return PostingRejectionNarrative.hint(Objects.requireNonNull(rejection, "rejection"));
   }
 }

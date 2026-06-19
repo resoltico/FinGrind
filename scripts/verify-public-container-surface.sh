@@ -132,6 +132,7 @@ TEXT
 verify_mounted_book_surface() {
     local image_ref="${image_name}:${primary_tag_ref}"
     local text_output pdf_path="${report_root}/trial-balance.pdf" pdf_signature=''
+    local raw_post_output raw_posting_id raw_get_output
 
     seed_public_fixture
 
@@ -145,7 +146,7 @@ verify_mounted_book_surface() {
         --functional-currency "${fixture_functional_currency}" \
         --fiscal-year-start "${fixture_fiscal_year_start}" >/dev/null
     mounted_container_run "${image_ref}" \
-        declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-cash.json >/dev/null
+        declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-bank.json >/dev/null
     mounted_container_run "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-revenue.json >/dev/null
     mounted_container_run "${image_ref}" \
@@ -170,6 +171,34 @@ verify_mounted_book_surface() {
     fi
     [[ "${pdf_signature}" == '%PDF-' ]] || die \
         "published container wrote a non-PDF trial-balance artifact"
+
+    raw_post_output="$(
+        mounted_container_run "${image_ref}" \
+            post-entry --book-file /work/book.sqlite --book-key-file /work/book.key \
+            --request-file /work/raw-transfer.json --output json | tr -d '\r'
+    )"
+    require_match "${raw_post_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' || die \
+        "published container did not commit the direct journal transfer fixture"
+    raw_posting_id="$(
+        printf '%s\n' "${raw_post_output}" \
+            | sed -n 's/.*"postingId"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+    )"
+    [[ -n "${raw_posting_id}" ]] || die \
+        "published container did not report the direct journal transfer posting id"
+
+    raw_get_output="$(
+        mounted_container_run "${image_ref}" \
+            get-posting --book-file /work/book.sqlite --book-key-file /work/book.key \
+            --posting-id "${raw_posting_id}" --output json | tr -d '\r'
+    )"
+    require_match "${raw_get_output}" '"postingOriginKind"[[:space:]]*:[[:space:]]*"JOURNAL"' \
+        || die "published container did not read back the direct journal posting as JOURNAL origin"
+    require_match "${raw_get_output}" '"sourceDocumentType"[[:space:]]*:[[:space:]]*"bank-deposit"' \
+        || die "published container did not preserve direct journal evidence on read-back"
+    require_match "${raw_get_output}" '"accountCode"[[:space:]]*:[[:space:]]*"operating-bank"' \
+        || die "published container did not preserve the declared bank transfer destination account"
+    require_match "${raw_get_output}" '"accountCode"[[:space:]]*:[[:space:]]*"cash"' \
+        || die "published container did not preserve the starter cash account in the direct journal"
 
     printf 'Verified mounted public workflow: %s\n' "${image_ref}"
 }

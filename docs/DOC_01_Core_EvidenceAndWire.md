@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: CORE
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, core, source-document, storage-locator, content-sha256, reversal, source-channel, wire-value]
   questions: ["where are fingrind source-document primitives documented", "how does reversal lineage work in the core model", "what is WireValue in fingrind core"]

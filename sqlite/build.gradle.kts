@@ -41,6 +41,7 @@ dependencies {
     implementation(project(":contract"))
     implementation(project(":executor"))
     testImplementation(libs.jackson.databind)
+    testImplementation(testFixtures(project(":executor")))
     testFixturesImplementation(project(":executor"))
 }
 

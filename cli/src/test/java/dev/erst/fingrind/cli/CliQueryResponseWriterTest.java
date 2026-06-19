@@ -57,15 +57,15 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeQueryRejection_emitsJsonEnvelopeWhenTextModeIsSelected() throws IOException {
+  void writeQueryRejection_rendersTextWhenTextModeIsSelected() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeListAccountsResult(
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
         OutputMode.TEXT);
-    JsonNode json = readJson(outputStream);
-    assertEquals("rejected", json.path("status").stringValue());
-    assertEquals("query-book-not-initialized", json.path("code").stringValue());
+    String rendered = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("Rejected"), rendered);
+    assertTrue(rendered.contains("query-book-not-initialized"), rendered);
   }
 
   @Test
@@ -700,9 +700,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         .writeIncomeStatementResult(
             new IncomeStatementResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             OutputMode.TEXT);
-    assertEquals("rejected", readJson(incomeStatementOutput).path("status").stringValue());
-    assertEquals(
-        "query-book-not-initialized", readJson(incomeStatementOutput).path("code").stringValue());
+    String rendered = incomeStatementOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("Rejected"), rendered);
+    assertTrue(rendered.contains("query-book-not-initialized"), rendered);
 
     ByteArrayOutputStream changesInEquityOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityOutput))

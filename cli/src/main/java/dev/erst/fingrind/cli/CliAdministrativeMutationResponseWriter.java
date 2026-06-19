@@ -41,8 +41,9 @@ final class CliAdministrativeMutationResponseWriter {
                     CliOperationText.unsupportedCsvOutput(OperationId.OPEN_BOOK));
               });
       case OpenBookResult.Rejected rejected ->
-          outputChannel.writeMutationRejection(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()));
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              outputMode);
     }
   }
 
@@ -89,8 +90,9 @@ final class CliAdministrativeMutationResponseWriter {
                     CliOperationText.unsupportedCsvOutput(OperationId.REKEY_BOOK));
               });
       case RekeyBookResult.Rejected rejected ->
-          outputChannel.writeMutationRejection(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()));
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              outputMode);
     }
   }
 
@@ -110,8 +112,9 @@ final class CliAdministrativeMutationResponseWriter {
                     CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_ACCOUNT));
               });
       case DeclareAccountResult.Rejected rejected ->
-          outputChannel.writeMutationRejection(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()));
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              outputMode);
     }
   }
 
@@ -151,8 +154,9 @@ final class CliAdministrativeMutationResponseWriter {
                     CliOperationText.unsupportedCsvOutput(OperationId.TRANSFER_PERIOD_RESULT));
               });
       case PeriodResultTransferResult.Rejected rejected ->
-          outputChannel.writeMutationRejection(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()));
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.administrationRejectedEnvelope(rejected.rejection()),
+              outputMode);
     }
   }
 

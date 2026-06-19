@@ -160,12 +160,12 @@ final class FinGrindCli {
       failureWriter.writeDeterministicFailure(failure);
       return CliExecutionPolicy.failureExitCode(failure);
     } catch (RuntimeException exception) {
-      CliFailure failure = CliFailureMapper.runtimeFailure(exception);
+      String errorId = nextInternalErrorId();
+      CliFailure failure = CliFailureMapper.runtimeFailure(exception, errorId);
       if (failure != null) {
         failureWriter.writeFailure(failure);
         return CliExecutionPolicy.failureExitCode(failure);
       }
-      String errorId = nextInternalErrorId();
       CliFailure internalFailure = CliFailureMapper.internalError(errorId);
       failureWriter.writeFailure(internalFailure);
       return CliExecutionPolicy.failureExitCode(internalFailure);

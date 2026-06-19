@@ -27,8 +27,9 @@ class ReleaseSmokeConfig:
     book_key_output_permissions: str
     request_sale: SmokePath
     request_expense: SmokePath
+    request_raw_journal: SmokePath
     invalid_request: SmokePath
-    declare_asset_supplement: SmokePath
+    declare_bank_account: SmokePath
     declare_expense_supplement: SmokePath
     book: SmokePath
     book_key: SmokePath
@@ -54,8 +55,8 @@ class ReleaseSmokeConfig:
     starter_cash_account_name: str
     starter_revenue_account_code: str
     starter_revenue_account_name: str
-    asset_supplement_account_code: str
-    asset_supplement_account_name: str
+    bank_account_code: str
+    bank_account_name: str
     expense_supplement_account_code: str
     expense_supplement_account_name: str
 
@@ -64,8 +65,9 @@ class ReleaseSmokeConfig:
 class ReleaseSmokeScenario:
     request_sale: SmokePath
     request_expense: SmokePath
+    request_raw_journal: SmokePath
     invalid_request: SmokePath
-    declare_asset_supplement: SmokePath
+    declare_bank_account: SmokePath
     declare_expense_supplement: SmokePath
     book: SmokePath
     book_key: SmokePath
@@ -90,8 +92,8 @@ class ReleaseSmokeScenario:
     starter_cash_account_name: str
     starter_revenue_account_code: str
     starter_revenue_account_name: str
-    asset_supplement_account_code: str
-    asset_supplement_account_name: str
+    bank_account_code: str
+    bank_account_name: str
     expense_supplement_account_code: str
     expense_supplement_account_name: str
 

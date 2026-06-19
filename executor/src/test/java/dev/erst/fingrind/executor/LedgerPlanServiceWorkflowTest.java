@@ -209,10 +209,7 @@ class LedgerPlanServiceWorkflowTest {
               new PostingRejection.AccountStateViolations(
                   List.of(new PostingRejection.UnknownAccount(new AccountCode("2000"))))),
           failure.code());
-      assertTrue(
-          failure
-              .message()
-              .contains("Posting references undeclared, inactive, or non-postable accounts."));
+      assertEquals("Posting rejected with 1 account-state issue.", failure.message());
       assertTrue(
           failure.facts().stream()
               .anyMatch(

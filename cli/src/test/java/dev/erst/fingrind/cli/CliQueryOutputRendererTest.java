@@ -391,7 +391,18 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(declaredAccountText.contains("(none)"));
     assertTrue(childAccountText.contains("Parent account"));
     assertTrue(childAccountText.contains("1000"));
-    assertTrue(preflightText.contains("Entry Preflight Accepted"));
+    assertTrue(preflightText.contains("Entry Preflight Passed"));
+    assertTrue(preflightText.contains("Commit status"));
+    assertTrue(preflightText.contains("Not committed"));
+    assertEquals(
+        """
+        Entry Preflight Passed
+        ======================
+
+        Idempotency key : coverage-idem
+        Effective date  : 2026-04-07
+        Commit status   : Not committed""",
+        preflightText);
     assertTrue(committedText.contains("Entry Committed"));
     assertTrue(committedText.contains("posting-committed"));
     assertTrue(committedText.contains("coverage-idem"));

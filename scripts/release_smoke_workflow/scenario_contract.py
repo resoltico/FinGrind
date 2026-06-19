@@ -69,6 +69,13 @@ def assert_fixture_generation(
             "fixture-regression-expense",
             expected_source_document("fixture-regression", "expense", "2026-04-08"),
         )
+        assert_direct_journal_payload(
+            json.loads(fixture_scenario.request_raw_journal.local_path.read_text(encoding="utf-8")),
+            "JOURNAL",
+            "fixture-regression-transfer",
+            expected_source_document("fixture-regression", "transfer", "2026-04-08"),
+            ["operating-bank", "cash"],
+        )
 
         sale_request = json.loads(
             fixture_scenario.request_sale.local_path.read_text(encoding="utf-8")
@@ -84,7 +91,7 @@ def assert_fixture_generation(
         assert expense_request["amount"]["minorUnits"] == "400"
         assert (
             json.loads(
-                fixture_scenario.declare_asset_supplement.local_path.read_text(encoding="utf-8")
+                fixture_scenario.declare_bank_account.local_path.read_text(encoding="utf-8")
             )["accountNodeKind"]
             == "POSTABLE"
         )
@@ -110,3 +117,24 @@ def assert_request_payload(
         "approvals": [],
     }
     assert request_payload["provenance"]["commandId"] == expected_command_id
+
+
+def assert_direct_journal_payload(
+    request_payload: dict[str, object],
+    expected_entry_kind: str,
+    expected_command_id: str,
+    expected_document: dict[str, str],
+    expected_account_codes: list[str],
+) -> None:
+    assert request_payload["entryKind"] == expected_entry_kind
+    assert "recipeKind" not in request_payload
+    assert request_payload["evidence"] == {
+        "sourceDocuments": [expected_document],
+        "approvals": [],
+    }
+    assert request_payload["provenance"]["commandId"] == expected_command_id
+    lines = request_payload["lines"]
+    assert isinstance(lines, list)
+    assert len(lines) == 2
+    assert [line["accountCode"] for line in lines] == expected_account_codes
+    assert [line["side"] for line in lines] == ["DEBIT", "CREDIT"]

@@ -1,13 +1,21 @@
 {
   "entryKind" : "JOURNAL",
-  "recipeKind" : "CASH_REVENUE",
   "effectiveDate" : "2026-01-15",
-  "cashAccountCode" : "cash",
-  "revenueAccountCode" : "service-revenue",
-  "amount" : {
-    "currencyCode" : "EUR",
-    "minorUnits" : "1000"
-  },
+  "lines" : [ {
+    "accountCode" : "cash",
+    "side" : "DEBIT",
+    "amount" : {
+      "currencyCode" : "EUR",
+      "minorUnits" : "1000"
+    }
+  }, {
+    "accountCode" : "service-revenue",
+    "side" : "CREDIT",
+    "amount" : {
+      "currencyCode" : "EUR",
+      "minorUnits" : "1000"
+    }
+  } ],
   "evidence" : {
     "sourceDocuments" : [ {
       "sourceDocumentId" : "replace-before-commit-source-document-id",
