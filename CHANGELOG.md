@@ -4,6 +4,32 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [0.57.0] - 2026-06-19
+
+### Changed
+
+- Bumped the repo-owned GitHub Actions checkout baseline to `actions/checkout` `7.0.0`.
+- Bumped the repo-owned Python lint baseline to Ruff `0.15.18`.
+- Hard-broke the protected-book format contract to version `24` so the canonical posting taxonomy, SQLite schema allowlists, protected-book fixtures, and `inspect-book` compatibility surface all describe the same live direct-journal storage line.
+- Hard-broke the default teaching surface onto the raw journal path. `print-request-template`, `print-plan-template`, the bundled quick-start request, the primary posting and ledger-plan examples, and the checked-in scaffold companions now all demonstrate direct balanced `JOURNAL` lines first, while recipe-backed examples remain published only as labeled shortcuts.
+- Hard-broke posting readback vocabulary onto the journal-first taxonomy. `get-posting`, `list-postings`, and the checked-in response examples now report direct postings as `postingOriginKind: JOURNAL`, including recipe-backed helper commits, instead of presenting one recipe helper label as the posting origin itself.
+- Hard-broke posting-side entry-semantic refusals onto one canonical violation owner. The public `entry-semantics-violations` payload now publishes ordered `details.violations[]` items with stable `code`, `field`, `message`, `category`, and `repair` fields; nested machine-contract `detailRejections`; one stable top-level count summary; no top-level repair `hint`; and text-mode deterministic rejections that render one typed issue section per violation.
+- Hard-broke posting-side account-registry refusals onto the same repairable violation discipline. The public `account-state-violations` payload now publishes ordered `details.violations[]` items with stable `code`, `field`, `message`, `category`, `repair`, `accountCode`, and optional `accountNodeKind` fields; matching nested machine-contract `detailRejections`; one stable top-level count summary; no top-level repair `hint`; and text-mode deterministic rejections that render one typed issue section per violation instead of a thin aggregate blob.
+- Hard-broke `execute-plan` discovery onto one ledger-plan-owned posting contract. The nested posting model remains under the ledger-plan request shape, and text plus JSON help now derive the canonical posting scaffold from the published `POST_ENTRY` plan step instead of ad hoc local selection or standalone posting-template fallback.
+- Hard-broke repairable posting-rejection discovery onto full nested catalogs. `capabilities --output json --detail full` now publishes `detailRejections` for both `entry-semantics-violations` and `account-state-violations`, so agents can enumerate per-issue codes, categories, and repairs from the machine contract without scraping prose examples.
+
+### Fixed
+
+- Fixed raw direct-journal persistence drift so caller-authored `JOURNAL` postings now commit through the encrypted SQLite book path instead of leaking into one schema-level `CONSTRAINT_CHECK` breach.
+- Fixed CLI runtime classification drift so SQLite persistence-invariant breaches now publish `internal-error` with one opaque error id and one truthful "should have been rejected before commit" message instead of the user-repairable `storage-runtime-failure` hint family.
+- Fixed preflight/commit contract drift so deterministic bookkeeping invariants are rechecked before the commit store runs, and text-mode preflight success now says `Entry Preflight Passed` plus `Commit status | Not committed` instead of implying a commit guarantee.
+- Fixed plan text leakage and release-surface proof gaps so full text `execute-plan` output no longer exposes internal Java class names, and the standing bundle, public-doc, example-fixture, release-smoke, and container verification surfaces now prove both the canonical raw-journal path and the retained recipe shortcut path together.
+- Fixed direct raw-journal semantic drift so caller-authored `JOURNAL` requests now reject journals whose debit-credit netting reduces every referenced account to zero, preventing no-op account movement from reaching either preflight success or commit-time storage.
+- Fixed reachability proof drift so the published account-classification matrix is now exercised through the real encrypted SQLite commit boundary instead of stopping at in-memory posting-acceptance checks.
+- Fixed temporal-scope surface drift so read-command help and bounded-period status output now teach each command's scope archetype, boundary flags, labels, and boundary behavior from the canonical temporal-scope owner rather than partial hand-authored text.
+- Fixed help-surface drift so text discovery now teaches one shared caller-submittable posting model for `post-entry` and nested `execute-plan` help, drops `presence: forbidden` fields only from the text projection while keeping the machine contract unchanged, renders Support command pointers under subordinate labels as shell-safe literal command blocks, applies a help-only key-width cap without perturbing non-help text surfaces, renders over-cap help keys on their own line with continuation descriptions at the shared value column, and refreshes the source-checkout launcher runtime automatically when runtime-owned checkout inputs outpace the prepared manifest.
+- Fixed rejection-surface publication drift so the checked-in public example set now includes stderr text fixtures for `account-state-violations` and `entry-semantics-violations`, the user guides teach the `Summary` plus `Issue N | <code>` text layout explicitly, and the governing rejection-text contract doc matches the live canonical category and repair owners.
+
 ## [0.56.0] - 2026-06-17
 
 ### Changed
@@ -101,18 +127,9 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
-- Bumped the release-workflow artifact staging actions to the current Node24-backed pins.
-  `release.yml` now uses `actions/upload-artifact` `v7.0.1` and
-  `actions/download-artifact` `v8.0.1`, and the release-workflow contract test now locks those
-  publication-staging pins so deprecated Node20 runtime drift cannot quietly re-enter the release
-  path.
-- Bumped the repository-owned Python lint pin to Ruff `0.15.15`, the included-build Kotlin pin
-  to the stable `2.4.0` GA line, and the pinned JaCoCo snapshot artifact contract to build
-  `0.8.15.202606030734` resolving as `0.8.15-20260603.073432-117`.
-- Hard-broke book identity, doctrine, and initialization onto one explicit built-in bookkeeping
-  profile. Initialized books now persist and publish the accounting-kernel profile, accounting
-  basis, framework posture, entity form, and seeded book template together, while `open-book`
-  now initializes the owner-managed service starter chart as the canonical first-run book shape.
+- Bumped the release-workflow artifact staging actions to the current Node24-backed pins. `release.yml` now uses `actions/upload-artifact` `v7.0.1` and `actions/download-artifact` `v8.0.1`, and the release-workflow contract test now locks those publication-staging pins so deprecated Node20 runtime drift cannot quietly re-enter the release path.
+- Bumped the repository-owned Python lint pin to Ruff `0.15.15`, the included-build Kotlin pin to the stable `2.4.0` GA line, and the pinned JaCoCo snapshot artifact contract to build `0.8.15.202606030734` resolving as `0.8.15-20260603.073432-117`.
+- Hard-broke book identity, doctrine, and initialization onto one explicit built-in bookkeeping profile. Initialized books now persist and publish the accounting-kernel profile, accounting basis, framework posture, entity form, and seeded book template together, while `open-book` now initializes the owner-managed service starter chart as the canonical first-run book shape.
 - Hard-broke bookkeeping operation language toward one narrower cash-kernel write model. Public
   write flows now treat the seeded owner-managed service chart as the canonical operating shape,
   use one structured `OPEN_ACCOUNTING_POSITION` workflow for initial balances, and reserve the
@@ -127,13 +144,8 @@ Notable changes to this project are documented in this file. The format is based
   operator-first, terminal JSON defaults to pretty-printed output, discovery focuses own distinct
   detail ladders instead of coarse overfetch-only tiers, and request and report guidance now
   branch from the shortest runnable path before deeper machine-contract material.
-- Hard-broke starter-chart guidance and checked-in public examples into one coherent progression.
-  The seeded owner-managed service chart remains the canonical first-run path, while extra
-  declaration fixtures are now named and documented as supplemental starter-chart extensions
-  rather than alternate zero-state starters.
-- The self-contained public CLI bundle is now the primary Gradle `assemble` outcome. `assemble`
-  now owns the bundle archive manifest that names the emitted archive and checksum paths, while
-  the raw shadow JAR remains an internal packaging input rather than the primary distributable.
+- Hard-broke starter-chart guidance and checked-in public examples into one coherent progression. The seeded owner-managed service chart remains the canonical first-run path, while extra declaration fixtures are now named and documented as supplemental starter-chart extensions rather than alternate zero-state starters.
+- The self-contained public CLI bundle is now the primary Gradle `assemble` outcome. `assemble` now owns the bundle archive manifest that names the emitted archive and checksum paths, while the raw shadow JAR remains an internal packaging input rather than the primary distributable.
 - Release publication now stages one Linux container image per supported public bundle target and
   promotes the verified staging images onto the public version and `latest` tags only after the
   staged release surface passes verification. Historical public GHCR package versions are no
@@ -2778,7 +2790,7 @@ Notable changes to this project are documented in this file. The format is based
 ### Added
 - Initial release.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.56.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.57.0...HEAD
 [0.51.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.51.0
 [0.54.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.54.0
 [0.53.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.53.0
@@ -2834,5 +2846,6 @@ Notable changes to this project are documented in this file. The format is based
 [0.3.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.3.0
 [0.2.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.2.0
 [0.1.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.1.0
+[0.57.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.57.0
 [0.56.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.56.0
 [0.55.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.55.0

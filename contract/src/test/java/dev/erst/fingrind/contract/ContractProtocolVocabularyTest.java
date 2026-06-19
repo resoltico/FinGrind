@@ -77,7 +77,7 @@ class ContractProtocolVocabularyTest {
         JournalRecipeKind.wireValues());
     assertEquals(JournalRecipeKind.CASH_REVENUE, JournalRecipeKind.fromWireValue("CASH_REVENUE"));
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(23, BookFormatContract.FORMAT_VERSION);
+    assertEquals(24, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(

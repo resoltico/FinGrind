@@ -69,9 +69,6 @@ final class CliPlanTextRenderer {
     detailRows.add(List.of("Finished at", CliTextDisplay.instant(step.finishedAt())));
     CliPlanJsonModels.LedgerStepDataPayload dataPayload =
         CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(step);
-    if (dataPayload != null) {
-      detailRows.add(List.of("Outcome shape", dataPayload.getClass().getSimpleName()));
-    }
     List<String> sections = new ArrayList<>();
     sections.add(CliTextFormat.renderKeyValueBlock(detailRows));
     if (dataPayload != null) {

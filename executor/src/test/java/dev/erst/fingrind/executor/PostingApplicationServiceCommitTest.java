@@ -23,6 +23,7 @@ import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
@@ -128,22 +129,65 @@ class PostingApplicationServiceCommitTest {
               new IdempotencyKey("idem-semantics"),
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
-                      PostingRejection.accountTypeMismatch(
+                      PostingRejectionSemantics.accountTypeMismatch(
                           JournalRecipeKind.CASH_REVENUE.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           AccountType.ASSET,
                           AccountType.REVENUE),
-                      PostingRejection.accountTypeMismatch(
+                      PostingRejectionSemantics.accountTypeMismatch(
                           JournalRecipeKind.CASH_REVENUE.wireValue(),
                           "revenueAccountCode",
                           new AccountCode("1000"),
                           AccountType.REVENUE,
                           AccountType.ASSET),
-                      PostingRejection.sourceDocumentTypeNotAccepted(
+                      PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
                           JournalRecipeKind.CASH_REVENUE.wireValue(),
                           new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                           List.of("cash-receipt", "bank-deposit", "card-settlement"))))),
+          result);
+    }
+  }
+
+  @Test
+  void commit_rejectsEconomicallyNullDirectJournalsBeforeDurableWriteExecution() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.Journal(
+                  new dev.erst.fingrind.core.JournalEntry(
+                      LocalDate.parse("2026-04-07"),
+                      List.of(
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("2000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("2000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              Money.parse("EUR", "10.00")))),
+                  null),
+              generatedEvidence("idem-economic-null", "operator-note"),
+              requestProvenance("idem-economic-null"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.commit(command);
+
+      assertEquals(
+          commitRejected(
+              new IdempotencyKey("idem-economic-null"),
+              new PostingRejection.EntrySemanticsViolations(
+                  List.of(PostingRejectionSemantics.economicNullJournal("JOURNAL")))),
           result);
     }
   }
@@ -185,6 +229,50 @@ class PostingApplicationServiceCommitTest {
                 reversalReference("posting-1"),
                 Optional.of(new ReversalReason("full reversal")),
                 reversalJournalEntry())));
+  }
+
+  @Test
+  void commit_rejectsDeterministicDuplicateIdempotencyBeforeCommitStoreRuns() {
+    PostingApplicationServiceTestSupport.PostingBookSession bookSession =
+        new PostingApplicationServiceTestSupport.DelegatingPostingBookSession() {
+          @Override
+          public BookLifecycleInspection inspectBook() {
+            return initializedLifecycleInspection(1001, 1, 1, FIXED_CLOCK.instant());
+          }
+
+          @Override
+          public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
+            return Optional.of(
+                registeredAccount(
+                    accountCode,
+                    new AccountName("Synthetic"),
+                    "1000".equals(accountCode.value()) ? AccountType.ASSET : AccountType.REVENUE,
+                    "1000".equals(accountCode.value()) ? NormalBalance.DEBIT : NormalBalance.CREDIT,
+                    true,
+                    FIXED_CLOCK.instant()));
+          }
+
+          @Override
+          public Optional<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
+              findExistingPosting(IdempotencyKey idempotencyKey) {
+            return Optional.of(existingPosting("posting-existing", idempotencyKey.value()));
+          }
+
+          @Override
+          public PostingCommitResult commit(
+              dev.erst.fingrind.executor.spi.PostingDraft postingDraft,
+              dev.erst.fingrind.executor.spi.PostingIdGenerator postingIdGenerator) {
+            throw new AssertionError("commitStore.commit should not run for duplicate idempotency");
+          }
+        };
+    PostingApplicationService applicationService = applicationService(bookSession);
+
+    PostEntryResult result = applicationService.commit(command("idem-duplicate"));
+
+    assertEquals(
+        commitRejected(
+            new IdempotencyKey("idem-duplicate"), new PostingRejection.DuplicateIdempotencyKey()),
+        result);
   }
 
   @Test

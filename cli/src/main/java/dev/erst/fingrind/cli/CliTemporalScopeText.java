@@ -29,6 +29,14 @@ final class CliTemporalScopeText {
     return REQUEST_SURFACE.temporalScopeFor(operationId).upperLabel();
   }
 
+  static String scopeKind(OperationId operationId) {
+    return REQUEST_SURFACE.temporalScopeFor(operationId).archetype().wireValue();
+  }
+
+  static String boundarySemantics(OperationId operationId) {
+    return REQUEST_SURFACE.temporalScopeFor(operationId).boundarySemantics();
+  }
+
   static String firstOption(OperationId operationId) {
     return optionNames(operationId).getFirst();
   }
@@ -69,7 +77,7 @@ final class CliTemporalScopeText {
         : facts.resolvedUpperBoundaryMeaning();
   }
 
-  private static List<String> optionNames(OperationId operationId) {
+  static List<String> optionNames(OperationId operationId) {
     return REQUEST_SURFACE.temporalScopeFor(operationId).optionNames();
   }
 }

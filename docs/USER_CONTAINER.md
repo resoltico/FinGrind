@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: USER_CONTAINER
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]
@@ -61,6 +61,8 @@ Create the request scaffold locally:
 fingrind print-request-template > ./request.json
 ```
 
+The scaffold emits one direct balanced journal with placeholder evidence and provenance. Recipe
+helpers remain supported, but the default mounted workflow teaches the raw journal boundary.
 Replace the placeholder values in `./request.json`, then validate and commit:
 
 ```bash

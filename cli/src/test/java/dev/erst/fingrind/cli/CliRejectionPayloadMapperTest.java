@@ -1,15 +1,20 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
@@ -23,14 +28,21 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.SourceDocumentType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.RecordComponent;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for deterministic CLI rejection payload mapping. */
 class CliRejectionPayloadMapperTest {
@@ -398,10 +410,14 @@ class CliRejectionPayloadMapperTest {
             accountStateViolations.details());
     assertEquals(3, accountStateDetails.violations().size());
     assertEquals("unknown-account", accountStateDetails.violations().get(0).code());
+    assertEquals("lines[].accountCode", accountStateDetails.violations().get(0).field());
+    assertEquals("account-registry", accountStateDetails.violations().get(0).category());
     assertEquals("1000", accountStateDetails.violations().get(0).accountCode());
     assertEquals("inactive-account", accountStateDetails.violations().get(1).code());
+    assertEquals("account-activation", accountStateDetails.violations().get(1).category());
     assertEquals("2000", accountStateDetails.violations().get(1).accountCode());
     assertEquals("non-postable-account", accountStateDetails.violations().get(2).code());
+    assertEquals("account-node-kind", accountStateDetails.violations().get(2).category());
     assertEquals("3000", accountStateDetails.violations().get(2).accountCode());
     assertEquals("HEADER", accountStateDetails.violations().get(2).accountNodeKind());
     assertTrue(
@@ -445,55 +461,134 @@ class CliRejectionPayloadMapperTest {
             "idem-semantics",
             new PostingRejection.EntrySemanticsViolations(
                 List.of(
-                    new PostingRejection.EntrySemanticsViolation(
-                        "account-type-mismatch",
+                    PostingRejectionSemantics.accountTypeMismatch(
+                        "CASH_REVENUE",
                         "cashAccountCode",
-                        "cash account must be declared as ASSET"),
-                    new PostingRejection.EntrySemanticsViolation(
-                        "source-document-type-not-accepted",
-                        null,
-                        "invoice does not prove cash receipt"))));
+                        new AccountCode("1000"),
+                        AccountType.ASSET,
+                        AccountType.REVENUE),
+                    PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
+                        "CASH_REVENUE",
+                        new SourceDocumentType("invoice"),
+                        List.of("cash-receipt", "cash-sale")))));
 
-    assertTrue(
-        Objects.requireNonNull(envelope.hint())
-            .contains("Choose accounts and source-document types"));
+    assertEquals("Posting rejected with 2 entry-semantics issues.", envelope.message());
+    assertNull(envelope.hint());
     CliRejectionJsonModels.EntrySemanticsViolationsDetails details =
         assertInstanceOf(
             CliRejectionJsonModels.EntrySemanticsViolationsDetails.class, envelope.details());
     assertEquals(2, details.violations().size());
-    assertEquals("account-type-mismatch", details.violations().get(0).code());
-    assertEquals("cashAccountCode", details.violations().get(0).field());
-    assertEquals("cash account must be declared as ASSET", details.violations().get(0).message());
-    assertEquals("source-document-type-not-accepted", details.violations().get(1).code());
-    assertNull(details.violations().get(1).field());
-    assertEquals("invoice does not prove cash receipt", details.violations().get(1).message());
+    assertEquals(
+        List.of("code", "field", "message", "category", "repair"),
+        recordComponentNames(CliEntrySemanticsViolationPayload.class));
   }
 
   @Test
   void entrySemanticsCliJsonModels_validatePayloadsAndRejectEmptyOrBlankValues() {
+    assertEquals(
+        List.of("code", "field", "message", "category", "repair"),
+        recordComponentNames(CliEntrySemanticsViolationPayload.class));
+
     IllegalArgumentException emptyViolations =
-        org.junit.jupiter.api.Assertions.assertThrows(
+        assertThrows(
             IllegalArgumentException.class,
             () -> new CliRejectionJsonModels.EntrySemanticsViolationsDetails(List.of()));
     IllegalArgumentException blankCode =
-        org.junit.jupiter.api.Assertions.assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new CliRejectionJsonModels.EntrySemanticsViolationPayload(" ", "field", "message"));
+        assertEntrySemanticsPayloadValidationFailure(
+            " ", "field", "message", "classification", "repair");
     IllegalArgumentException blankField =
-        org.junit.jupiter.api.Assertions.assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new CliRejectionJsonModels.EntrySemanticsViolationPayload("code", " ", "message"));
+        assertEntrySemanticsPayloadValidationFailure(
+            "code", " ", "message", "classification", "repair");
     IllegalArgumentException blankMessage =
-        org.junit.jupiter.api.Assertions.assertThrows(
-            IllegalArgumentException.class,
-            () -> new CliRejectionJsonModels.EntrySemanticsViolationPayload("code", null, " "));
+        assertEntrySemanticsPayloadValidationFailure("code", null, " ", "classification", "repair");
+    IllegalArgumentException blankCategory =
+        assertEntrySemanticsPayloadValidationFailure("code", null, "message", " ", "repair");
+    IllegalArgumentException blankRepair =
+        assertEntrySemanticsPayloadValidationFailure(
+            "code", null, "message", "classification", " ");
 
     assertEquals("violations must not be empty.", emptyViolations.getMessage());
     assertEquals("code must not be blank.", blankCode.getMessage());
     assertEquals("field must not be blank.", blankField.getMessage());
     assertEquals("message must not be blank.", blankMessage.getMessage());
+    assertEquals("category must not be blank.", blankCategory.getMessage());
+    assertEquals("repair must not be blank.", blankRepair.getMessage());
+  }
+
+  @Test
+  void accountStateViolationsPayload_isPreparedForTheUniformRepairableViolationCore()
+      throws Exception {
+    var accountStateViolations =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-account",
+            new PostingRejection.AccountStateViolations(
+                List.of(
+                    new PostingRejection.UnknownAccount(new AccountCode("1000")),
+                    new PostingRejection.NonPostableAccount(
+                        new AccountCode("3000"), AccountNodeKind.HEADER))));
+    assertEquals("Posting rejected with 2 account-state issues.", accountStateViolations.message());
+    assertNull(accountStateViolations.hint());
+    JsonNode payload =
+        new ObjectMapper()
+            .readTree(
+                CliWireJson.jsonText(Objects.requireNonNull(accountStateViolations.details())));
+    JsonNode firstViolation = payload.path("violations").get(0);
+
+    assertTrue(firstViolation.has("code"), payload.toPrettyString());
+    assertTrue(firstViolation.has("field"), payload.toPrettyString());
+    assertTrue(firstViolation.has("message"), payload.toPrettyString());
+    assertTrue(firstViolation.has("category"), payload.toPrettyString());
+    assertTrue(firstViolation.has("repair"), payload.toPrettyString());
+    assertTrue(firstViolation.has("accountCode"), payload.toPrettyString());
+  }
+
+  @Test
+  void singletonPostingRejectionPayloadsRemainSingleIssueEnvelopes() throws Exception {
+    var duplicateIdempotencyKey =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-dup", new PostingRejection.DuplicateIdempotencyKey());
+    var functionalCurrencyMismatch =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-2",
+            new PostingRejection.BookFunctionalCurrencyMismatch(
+                CurrencyUnit.of("EUR"), CurrencyUnit.of("USD")));
+
+    assertNull(duplicateIdempotencyKey.details());
+    JsonNode functionalCurrencyDetails =
+        new ObjectMapper()
+            .readTree(
+                CliWireJson.jsonText(Objects.requireNonNull(functionalCurrencyMismatch.details())));
+    assertFalse(
+        functionalCurrencyDetails.has("violations"), functionalCurrencyDetails.toPrettyString());
+  }
+
+  @Test
+  void postingRejectedEnvelope_composesEntrySemanticsNarrativeInCanonicalOwnerOrder() {
+    var envelope =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-owner-order",
+            new PostingRejection.EntrySemanticsViolations(
+                List.of(
+                    PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
+                        "CASH_REVENUE",
+                        new SourceDocumentType("invoice"),
+                        List.of("cash-receipt", "cash-sale")),
+                    PostingRejectionSemantics.accountTypeMismatch(
+                        "CASH_REVENUE",
+                        "revenueAccountCode",
+                        new AccountCode("1000"),
+                        AccountType.REVENUE,
+                        AccountType.ASSET),
+                    PostingRejectionSemantics.distinctRoleAccountsRequired(
+                        "CASH_REVENUE",
+                        "cashAccountCode",
+                        "revenueAccountCode",
+                        new AccountCode("1000")))));
+
+    String message = envelope.message().toLowerCase(Locale.ROOT);
+    assertFalse(message.contains("published semantics"), message);
+    assertEquals("posting rejected with 3 entry-semantics issues.", message);
+    assertNull(envelope.hint());
   }
 
   @Test
@@ -563,5 +658,25 @@ class CliRejectionPayloadMapperTest {
                 + hintedFlags.stream().filter(flag -> !publishedOptions.contains(flag)).toList()
                 + " in: "
                 + hint);
+  }
+
+  private static List<String> recordComponentNames(Class<?> recordType) {
+    return List.of(recordType.getRecordComponents()).stream()
+        .map(RecordComponent::getName)
+        .toList();
+  }
+
+  private static IllegalArgumentException assertEntrySemanticsPayloadValidationFailure(
+      String code, @Nullable String field, String message, String category, String repair) {
+    Constructor<CliEntrySemanticsViolationPayload> constructor =
+        assertDoesNotThrow(
+            () ->
+                CliEntrySemanticsViolationPayload.class.getDeclaredConstructor(
+                    String.class, String.class, String.class, String.class, String.class));
+    InvocationTargetException invocationTargetException =
+        assertThrows(
+            InvocationTargetException.class,
+            () -> constructor.newInstance(code, field, message, category, repair));
+    return assertInstanceOf(IllegalArgumentException.class, invocationTargetException.getCause());
   }
 }

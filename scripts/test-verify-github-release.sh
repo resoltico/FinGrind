@@ -94,7 +94,7 @@ attest_job_surface="$(
         --job attest-release-assets \
         --next-job verify-release
 )"
-printf '%s' "${attest_job_surface}" | grep -Fq 'uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2' || die \
+printf '%s' "${attest_job_surface}" | grep -Fq 'uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0' || die \
     "release workflow attestation job no longer checks out the repository before invoking repo-owned downloader scripts"
 printf '%s' "${attest_job_surface}" | grep -Fq 'path: workflow-owner-surface' || die \
     "release workflow attestation job no longer checks out the workflow-owner helper surface for rerun-safe draft asset downloads"

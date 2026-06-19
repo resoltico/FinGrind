@@ -38,6 +38,12 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
     return OBJECT_MAPPER.readTree(runPlainCommand(expectedExitCode, jsonArguments(arguments)));
   }
 
+  protected JsonNode runJsonDiagnosticsCommandExpectingExit(
+      int expectedExitCode, String... arguments) throws IOException {
+    return OBJECT_MAPPER.readTree(
+        runDiagnosticsCommand(expectedExitCode, jsonArguments(arguments)));
+  }
+
   protected JsonNode runRawJsonCommand(String... arguments) throws IOException {
     return OBJECT_MAPPER.readTree(runPlainCommand(arguments));
   }
@@ -60,6 +66,39 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
                 + "\n"
                 + outputStream.toString(StandardCharsets.UTF_8));
     return outputStream.toString(StandardCharsets.UTF_8);
+  }
+
+  protected String runDiagnosticsCommand(int expectedExitCode, String... arguments) {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
+            fixedClock());
+    int exitCode = cli.run(arguments);
+    String stdout = outputStream.toString(StandardCharsets.UTF_8);
+    String stderr = diagnosticsStream.toString(StandardCharsets.UTF_8);
+    assertEquals(
+        expectedExitCode,
+        exitCode,
+        () ->
+            "command failed: "
+                + String.join(" ", arguments)
+                + "\nstdout:\n"
+                + stdout
+                + "\nstderr:\n"
+                + stderr);
+    assertEquals(
+        "",
+        stdout,
+        () ->
+            "expected empty stdout for diagnostics command: "
+                + String.join(" ", arguments)
+                + "\nstderr:\n"
+                + stderr);
+    return stderr;
   }
 
   protected Path copyExampleFixture(String fileName) throws IOException {

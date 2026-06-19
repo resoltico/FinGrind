@@ -61,6 +61,68 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
         .formatted(evidenceJson().indent(14).stripLeading());
   }
 
+  protected static String rawJournalRequestJson(
+      String effectiveDate,
+      String commandId,
+      String idempotencyKey,
+      String sourceDocumentId,
+      String sourceDocumentType,
+      String... lines) {
+    return """
+            {
+              "entryKind": "JOURNAL",
+              "effectiveDate": "%s",
+              "lines": [
+            %s
+              ],
+              "evidence": {
+                "sourceDocuments": [
+                  {
+                    "sourceDocumentId": "%s",
+                    "sourceDocumentType": "%s",
+                    "documentDate": "%s",
+                    "capturedAt": "%sT10:15:30Z",
+                    "storageLocator": "vault://fixtures/%s",
+                    "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                  }
+                ],
+                "approvals": []
+              },
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "%s",
+                "idempotencyKey": "%s",
+                "causationId": "cause-1"
+              }
+            }
+            """
+        .formatted(
+            effectiveDate,
+            String.join(",\n", lines),
+            sourceDocumentId,
+            sourceDocumentType,
+            effectiveDate,
+            effectiveDate,
+            sourceDocumentId,
+            commandId,
+            idempotencyKey);
+  }
+
+  protected static String journalLineJson(String accountCode, String side, String minorUnits) {
+    return """
+                  {
+                    "accountCode": "%s",
+                    "side": "%s",
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "%s"
+                    }
+                  }
+            """
+        .formatted(accountCode, side, minorUnits);
+  }
+
   protected static String evidenceJson() {
     return """
         {

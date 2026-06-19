@@ -59,21 +59,41 @@ fg_cli_wrapper_initialize() {
     fg_cli_wrapper_java_executable=''
     fg_cli_wrapper_application_module=''
     fg_cli_wrapper_native_access_module=''
+    fg_cli_wrapper_runtime_input_paths=()
 }
 
 fg_cli_wrapper_prepare_runtime_if_needed() {
     local prepare_failure_message=$1
-    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] && fg_cli_wrapper_runtime_manifest_is_usable; then
+    local force_rerun=false
+    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
+        && fg_cli_wrapper_runtime_manifest_is_usable \
+        && fg_cli_wrapper_runtime_inputs_are_fresh; then
         return 0
     fi
+    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
+        && fg_cli_wrapper_runtime_manifest_is_usable \
+        && ! fg_cli_wrapper_runtime_inputs_are_fresh; then
+        force_rerun=true
+    fi
     acquire_lock
-    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] && fg_cli_wrapper_runtime_manifest_is_usable; then
+    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
+        && fg_cli_wrapper_runtime_manifest_is_usable \
+        && fg_cli_wrapper_runtime_inputs_are_fresh; then
         cleanup_lock
         return 0
     fi
+    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
+        && fg_cli_wrapper_runtime_manifest_is_usable \
+        && ! fg_cli_wrapper_runtime_inputs_are_fresh; then
+        force_rerun=true
+    fi
     if ! (
         cd "${fg_cli_wrapper_repo_root}"
-        ./gradlew :cli:prepareSourceCheckoutCliRuntime --quiet >/dev/null
+        if [[ "${force_rerun}" == true ]]; then
+            ./gradlew :cli:prepareSourceCheckoutCliRuntime --rerun-tasks --quiet >/dev/null 2>&1
+        else
+            ./gradlew :cli:prepareSourceCheckoutCliRuntime --quiet >/dev/null 2>&1
+        fi
     ); then
         cleanup_lock
         fg_cli_wrapper_die "${prepare_failure_message}"
@@ -105,7 +125,32 @@ fg_cli_wrapper_runtime_manifest_is_usable() {
     [[ -n "${fg_cli_wrapper_java_executable}" ]] || return 1
     [[ -n "${fg_cli_wrapper_application_module}" ]] || return 1
     [[ -n "${fg_cli_wrapper_native_access_module}" ]] || return 1
+    (( ${#fg_cli_wrapper_runtime_input_paths[@]} > 0 )) || return 1
     [[ -x "${fg_cli_wrapper_java_executable}" ]] || return 1
+    return 0
+}
+
+fg_cli_wrapper_runtime_inputs_are_fresh() {
+    local runtime_input_path=''
+
+    [[ -f "${fg_cli_wrapper_source_checkout_runtime_manifest}" ]] || return 1
+    (( ${#fg_cli_wrapper_runtime_input_paths[@]} > 0 )) || return 1
+    for runtime_input_path in "${fg_cli_wrapper_runtime_input_paths[@]}"; do
+        if [[ -d "${runtime_input_path}" ]]; then
+            if find "${runtime_input_path}" -type f -newer \
+                "${fg_cli_wrapper_source_checkout_runtime_manifest}" -print -quit 2>/dev/null \
+                | grep -q .; then
+                return 1
+            fi
+            continue
+        fi
+        if [[ ! -f "${runtime_input_path}" ]]; then
+            return 1
+        fi
+        if [[ "${runtime_input_path}" -nt "${fg_cli_wrapper_source_checkout_runtime_manifest}" ]]; then
+            return 1
+        fi
+    done
     return 0
 }
 
@@ -119,6 +164,7 @@ fg_cli_wrapper_parse_runtime_manifest() {
     fg_cli_wrapper_java_executable=''
     fg_cli_wrapper_application_module=''
     fg_cli_wrapper_native_access_module=''
+    fg_cli_wrapper_runtime_input_paths=()
     while IFS="$(printf '\t')" read -r record_type record_value || [[ -n "${record_type}${record_value}" ]]; do
         case "${record_type}" in
             javaExecutable)
@@ -129,6 +175,10 @@ fg_cli_wrapper_parse_runtime_manifest() {
                 ;;
             nativeAccessModule)
                 fg_cli_wrapper_native_access_module="${record_value}"
+                ;;
+            runtimeInputPath)
+                [[ -n "${record_value}" ]] || return 1
+                fg_cli_wrapper_runtime_input_paths+=("${record_value}")
                 ;;
             javaInstallationDirectory)
                 ;;
@@ -142,7 +192,7 @@ fg_cli_wrapper_parse_runtime_manifest() {
                 ;;
         esac
     done < "${fg_cli_wrapper_source_checkout_runtime_manifest}"
-    [[ "${format_version}" == '3' ]] || return 1
+    [[ "${format_version}" == '4' ]] || return 1
     return 0
 }
 

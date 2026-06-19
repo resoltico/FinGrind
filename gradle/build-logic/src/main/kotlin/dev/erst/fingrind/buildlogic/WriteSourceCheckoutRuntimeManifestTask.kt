@@ -7,6 +7,7 @@ import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.InputFiles
@@ -38,6 +39,9 @@ abstract class WriteSourceCheckoutRuntimeManifestTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val runtimeInputs: ConfigurableFileCollection
 
+    @get:Input
+    abstract val runtimeInputPaths: ListProperty<String>
+
     @get:OutputFile
     abstract val outputFile: RegularFileProperty
 
@@ -54,14 +58,17 @@ abstract class WriteSourceCheckoutRuntimeManifestTask : DefaultTask() {
         }
         val manifestLines =
             listOf(
-                "formatVersion=3",
+                "formatVersion=4",
                 "ownerTask=${ownerTaskName.get()}",
                 "javaExecutable\t$executablePath",
                 "javaInstallationDirectory\t$installationPath",
                 "nativeAccessModule\t${nativeAccessModule.get()}",
                 "applicationModule\t${applicationModule.get()}",
-                "",
-            )
+            ) +
+                runtimeInputPaths.get().map { runtimeInputPath ->
+                    "runtimeInputPath\t$runtimeInputPath"
+                } +
+                listOf("")
         val manifestPath = outputFile.get().asFile.toPath()
         Files.createDirectories(manifestPath.parent)
         Files.writeString(manifestPath, manifestLines.joinToString("\n"), StandardCharsets.UTF_8)

@@ -147,6 +147,9 @@ raw_jar_environment_stdout="${tmp_dir}/raw-jar-environment.out"
 raw_jar_environment_stderr="${tmp_dir}/raw-jar-environment.err"
 raw_jar_open_stdout="${tmp_dir}/raw-jar-open.out"
 raw_jar_open_stderr="${tmp_dir}/raw-jar-open.err"
+stale_runtime_help_stdout="${tmp_dir}/stale-runtime-help.out"
+stale_runtime_help_stderr="${tmp_dir}/stale-runtime-help.err"
+stale_runtime_probe="${tmp_dir}/stale-runtime-probe"
 
 readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
@@ -205,7 +208,6 @@ python3 "${launcher_contract_test_support}" \
     assert-request-template \
     --document "${template_request_stdout}" \
     --label 'source-checkout launcher' \
-    --forbid-lines \
     --require-evidence-fields
 
 progress 'source-checkout plan template'
@@ -241,6 +243,21 @@ python3 "${launcher_contract_test_support}" \
     assert-request-template \
     --document "${healed_template_request_stdout}" \
     --label 'source-checkout launcher self-refresh'
+
+touch -t 200001010000 "${source_checkout_runtime_manifest}"
+: >"${stale_runtime_probe}"
+
+progress 'source-checkout stale-runtime refresh'
+"${launcher_wrapper}" help execute-plan --output text >"${stale_runtime_help_stdout}" \
+    2>"${stale_runtime_help_stderr}" || die \
+    "source-checkout launcher did not self-refresh after runtime input staleness"
+
+[[ ! -s "${stale_runtime_help_stderr}" ]] || die \
+    "source-checkout launcher stale-runtime refresh wrote diagnostics"
+[[ "${source_checkout_runtime_manifest}" -nt "${stale_runtime_probe}" ]] || die \
+    "source-checkout launcher did not refresh the stale runtime manifest"
+grep -Fq 'steps[].posting.evidence.sourceDocuments[].contentSha256' "${stale_runtime_help_stdout}" || die \
+    "source-checkout launcher stale-runtime refresh did not publish the nested posting evidence structure"
 
 progress 'source-checkout key generation'
 "${launcher_wrapper}" generate-book-key-file --book-key-file "${key_file}" --output json >"${key_stdout}" 2>"${key_stderr}" ||

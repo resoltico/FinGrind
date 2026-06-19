@@ -114,6 +114,8 @@ class BookkeepingPostingRejectionTest {
             JournalRecipeKind.CASH_EXPENSE.wireValue(),
             new SourceDocumentType("invoice"),
             List.of("expense-receipt", "cash-disbursement"));
+    BookkeepingPostingRejection.EntrySemanticsViolation economicNullJournal =
+        BookkeepingPostingRejection.economicNullJournal(BookkeepingEntryKind.JOURNAL);
 
     assertEquals("account-type-mismatch", accountTypeMismatch.code());
     assertEquals("cashAccountCode", accountTypeMismatch.field());
@@ -131,6 +133,11 @@ class BookkeepingPostingRejectionTest {
     assertEquals(
         "Entry kind 'CASH_EXPENSE' does not accept sourceDocumentType 'invoice'. Accepted values: expense-receipt, cash-disbursement.",
         sourceDocumentTypeNotAccepted.message());
+    assertEquals("economic-null-journal", economicNullJournal.code());
+    assertEquals("lines", economicNullJournal.field());
+    assertEquals(
+        "Entry kind 'JOURNAL' uses journal lines whose debit-credit netting reduces every referenced account to zero, so the journal would record no durable account movement.",
+        economicNullJournal.message());
     assertNull(
         new BookkeepingPostingRejection.EntrySemanticsViolation("code", null, "message").field());
   }

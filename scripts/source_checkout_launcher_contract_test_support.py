@@ -8,6 +8,13 @@ import re
 import stat
 import sys
 
+from source_checkout_launcher_template_contract_support import (
+    assert_plan_template as assert_launcher_plan_template,
+)
+from source_checkout_launcher_template_contract_support import (
+    assert_request_template as assert_launcher_request_template,
+)
+
 
 def normalized_contains(args: argparse.Namespace) -> int:
     needle = re.sub(r"\s+", " ", args.needle).strip()
@@ -80,18 +87,10 @@ def managed_runtime_failure_exit(args: argparse.Namespace) -> int:
 
 def assert_request_template(args: argparse.Namespace) -> int:
     document = json.loads(pathlib.Path(args.document).read_text(encoding="utf-8"))
-    if document["entryKind"] != "JOURNAL":
-        raise SystemExit(
-            f"{args.label} request template did not expose the canonical journal entry kind"
-        )
-    if document.get("recipeKind") != "CASH_REVENUE":
-        raise SystemExit(
-            f"{args.label} request template did not expose the canonical cash-revenue recipe"
-        )
-    if "postingKind" in document:
-        raise SystemExit(f"{args.label} request template leaked retired postingKind")
-    if args.forbid_lines and "lines" in document:
-        raise SystemExit(f"{args.label} request template leaked retired journal lines")
+    assert_launcher_request_template(
+        document,
+        label=f"{args.label} request template",
+    )
     if args.require_evidence_fields:
         evidence = document["evidence"]["sourceDocuments"][0]
         for required_field in ("documentDate", "capturedAt", "storageLocator", "contentSha256"):
@@ -104,31 +103,7 @@ def assert_request_template(args: argparse.Namespace) -> int:
 
 def assert_plan_template(args: argparse.Namespace) -> int:
     document = json.loads(pathlib.Path(args.document).read_text(encoding="utf-8"))
-    ensure_book = document["steps"][0]["ensureBook"]
-    if "businessActivityTags" in ensure_book:
-        raise SystemExit(
-            "source-checkout launcher plan template leaked retired business activity tags"
-        )
-    if "accountingBasis" in ensure_book:
-        raise SystemExit(
-            "source-checkout launcher plan template leaked doctrine-owned identity fields into open-book input"
-        )
-    post_entry = document["steps"][1]["posting"]
-    if post_entry["entryKind"] != "JOURNAL":
-        raise SystemExit(
-            "source-checkout launcher plan template did not expose the canonical journal entry kind"
-        )
-    if post_entry.get("recipeKind") != "CASH_REVENUE":
-        raise SystemExit(
-            "source-checkout launcher plan template did not expose the canonical cash-revenue recipe"
-        )
-    if "postingKind" in post_entry:
-        raise SystemExit("source-checkout launcher plan template leaked retired postingKind")
-    assertion = document["steps"][2]["assertion"]
-    if assertion["accountCode"] != "cash":
-        raise SystemExit(
-            "source-checkout launcher plan template did not target the seeded cash account"
-        )
+    assert_launcher_plan_template(document)
     return 0
 
 
@@ -235,7 +210,6 @@ def build_parser() -> argparse.ArgumentParser:
     request_template = subparsers.add_parser("assert-request-template")
     request_template.add_argument("--document", required=True)
     request_template.add_argument("--label", required=True)
-    request_template.add_argument("--forbid-lines", action="store_true")
     request_template.add_argument("--require-evidence-fields", action="store_true")
     request_template.set_defaults(handler=assert_request_template)
 

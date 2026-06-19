@@ -37,8 +37,7 @@ public final class BookkeepingPostingService {
   /** Validates whether one posting command is admissible for later commit. */
   public PostingPreflightOutcome preflight(PostingCommand command) {
     Objects.requireNonNull(command, "command");
-    Optional<BookkeepingPostingRejection> rejection =
-        acceptancePolicy.rejectionFor(command, validationStore);
+    Optional<BookkeepingPostingRejection> rejection = deterministicRejectionFor(command);
     if (rejection.isPresent()) {
       return new PostingPreflightOutcome.Rejected(rejection.orElseThrow());
     }
@@ -49,6 +48,10 @@ public final class BookkeepingPostingService {
   /** Commits one posting command into the selected book using the configured posting id source. */
   public PostingCommitResult commit(PostingCommand command) {
     Objects.requireNonNull(command, "command");
+    Optional<BookkeepingPostingRejection> rejection = deterministicRejectionFor(command);
+    if (rejection.isPresent()) {
+      return new PostingCommitResult.Rejected(rejection.orElseThrow());
+    }
     PostingDraft postingDraft =
         new PostingDraft(
             command.journalEntry(),
@@ -59,5 +62,9 @@ public final class BookkeepingPostingService {
             new CommittedProvenance(
                 command.requestProvenance(), clock.instant(), command.sourceChannel()));
     return commitStore.commit(postingDraft, postingIdGenerator);
+  }
+
+  private Optional<BookkeepingPostingRejection> deterministicRejectionFor(PostingCommand command) {
+    return acceptancePolicy.rejectionFor(command, validationStore);
   }
 }

@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
 import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
@@ -26,14 +27,26 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
+import dev.erst.fingrind.core.SourceDocumentType;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the bookkeeping published-language translator. */
 class BookkeepingPublishedLanguageTranslatorTest {
+  private static final List<String> ENTRY_SEMANTICS_CANONICAL_CODES =
+      List.of(
+          "economic-null-journal",
+          "distinct-role-accounts-required",
+          "account-type-mismatch",
+          "financial-position-classification-mismatch",
+          "source-document-type-not-accepted");
+
   @Test
   void bookkeepingPublishedLanguageTranslator_translatesBookOpeningOutcomes() {
     Instant initializedAt = Instant.parse("2026-05-05T09:15:30Z");
@@ -136,6 +149,34 @@ class BookkeepingPublishedLanguageTranslatorTest {
         PostingLineageModel.reversal(reversalReference, reversalReason),
         BookkeepingPublishedLanguageTranslator.fromPublished(
             PostingLineage.reversal(reversalReference, reversalReason)));
+  }
+
+  @Test
+  void bookkeepingEntrySemanticsCodes_matchThePublishedCanonicalDescriptorOwner() {
+    assertEquals(
+        ENTRY_SEMANTICS_CANONICAL_CODES,
+        PostingRejection.descriptors().stream()
+            .filter(descriptor -> "entry-semantics-violations".equals(descriptor.code()))
+            .findFirst()
+            .orElseThrow()
+            .detailRejections()
+            .stream()
+            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
+            .toList());
+    assertEquals(
+        ENTRY_SEMANTICS_CANONICAL_CODES,
+        Arrays.stream(BookkeepingPostingRejection.class.getDeclaredMethods())
+            .filter(
+                method ->
+                    Modifier.isStatic(method.getModifiers())
+                        && method.getReturnType()
+                            == BookkeepingPostingRejection.EntrySemanticsViolation.class
+                        && method.getParameterCount() > 0
+                        && method.getParameterTypes()[0] == String.class)
+            .map(BookkeepingPublishedLanguageTranslatorTest::invokeBookkeepingEntrySemanticsFactory)
+            .map(BookkeepingPostingRejection.EntrySemanticsViolation::code)
+            .sorted(java.util.Comparator.comparingInt(ENTRY_SEMANTICS_CANONICAL_CODES::indexOf))
+            .toList());
   }
 
   @Test
@@ -372,25 +413,29 @@ class BookkeepingPublishedLanguageTranslatorTest {
     assertEquals(
         new PostingRejection.EntrySemanticsViolations(
             List.of(
-                new PostingRejection.EntrySemanticsViolation(
-                    "account-type-mismatch",
+                PostingRejectionSemantics.accountTypeMismatch(
+                    "CASH_REVENUE",
                     "cashAccountCode",
-                    "Entry kind 'CASH_REVENUE' requires cashAccountCode '2000' to be account type 'ASSET', but the declared account type is 'REVENUE'."),
-                new PostingRejection.EntrySemanticsViolation(
-                    "source-document-type-not-accepted",
-                    "evidence.sourceDocuments[].sourceDocumentType",
-                    "Entry kind 'CASH_REVENUE' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement."))),
+                    new AccountCode("2000"),
+                    AccountType.ASSET,
+                    AccountType.REVENUE),
+                PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
+                    "CASH_REVENUE",
+                    new SourceDocumentType("invoice"),
+                    List.of("cash-receipt", "bank-deposit", "card-settlement")))),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.EntrySemanticsViolations(
                 List.of(
-                    new BookkeepingPostingRejection.EntrySemanticsViolation(
-                        "account-type-mismatch",
+                    BookkeepingPostingRejection.accountTypeMismatch(
+                        "CASH_REVENUE",
                         "cashAccountCode",
-                        "Entry kind 'CASH_REVENUE' requires cashAccountCode '2000' to be account type 'ASSET', but the declared account type is 'REVENUE'."),
-                    new BookkeepingPostingRejection.EntrySemanticsViolation(
-                        "source-document-type-not-accepted",
-                        "evidence.sourceDocuments[].sourceDocumentType",
-                        "Entry kind 'CASH_REVENUE' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement.")))));
+                        new AccountCode("2000"),
+                        AccountType.ASSET,
+                        AccountType.REVENUE),
+                    BookkeepingPostingRejection.sourceDocumentTypeNotAccepted(
+                        "CASH_REVENUE",
+                        new SourceDocumentType("invoice"),
+                        List.of("cash-receipt", "bank-deposit", "card-settlement"))))));
     assertEquals(
         new PostingRejection.ReversalTargetNotFound(
             new dev.erst.fingrind.core.PostingId("posting-1")),
@@ -409,5 +454,52 @@ class BookkeepingPublishedLanguageTranslatorTest {
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(
                 new dev.erst.fingrind.core.PostingId("posting-1"))));
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeBookkeepingEntrySemanticsFactory(Method method) {
+    try {
+      return switch (method.getName()) {
+        case "accountTypeMismatch" ->
+            (BookkeepingPostingRejection.EntrySemanticsViolation)
+                method.invoke(
+                    null,
+                    "CASH_REVENUE",
+                    "cashAccountCode",
+                    new AccountCode("1000"),
+                    AccountType.ASSET,
+                    AccountType.REVENUE);
+        case "financialPositionClassificationMismatch" ->
+            (BookkeepingPostingRejection.EntrySemanticsViolation)
+                method.invoke(
+                    null,
+                    "EQUITY_CONTRIBUTION",
+                    "equityAccountCode",
+                    new AccountCode("3000"),
+                    FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
+                    null);
+        case "sourceDocumentTypeNotAccepted" ->
+            (BookkeepingPostingRejection.EntrySemanticsViolation)
+                method.invoke(
+                    null,
+                    "CASH_REVENUE",
+                    new SourceDocumentType("invoice"),
+                    List.of("cash-receipt", "cash-sale"));
+        case "distinctRoleAccountsRequired" ->
+            (BookkeepingPostingRejection.EntrySemanticsViolation)
+                method.invoke(
+                    null,
+                    "CASH_REVENUE",
+                    "cashAccountCode",
+                    "revenueAccountCode",
+                    new AccountCode("1000"));
+        case "economicNullJournal" ->
+            (BookkeepingPostingRejection.EntrySemanticsViolation) method.invoke(null, "JOURNAL");
+        default ->
+            throw new AssertionError("Unexpected entry-semantics factory: " + method.getName());
+      };
+    } catch (ReflectiveOperationException exception) {
+      throw new LinkageError(exception.getMessage(), exception);
+    }
   }
 }

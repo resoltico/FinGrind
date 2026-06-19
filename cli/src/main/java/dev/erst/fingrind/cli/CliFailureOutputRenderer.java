@@ -64,6 +64,12 @@ final class CliFailureOutputRenderer {
       @Nullable String hint,
       @Nullable String idempotencyKey,
       CliRejectionJsonModels.@Nullable RejectionDetails details) {
+    @Nullable String dedicatedPostingText =
+        CliPostingRejectionTextRenderer.renderDedicatedRejectedText(
+            code, message, idempotencyKey, details);
+    if (dedicatedPostingText != null) {
+      return dedicatedPostingText;
+    }
     return renderTextDocument("Rejected", code, message, hint, null, idempotencyKey, null, details);
   }
 
@@ -112,7 +118,7 @@ final class CliFailureOutputRenderer {
       return;
     }
     if (rejectionDetails instanceof CliRejectionJsonModels.PostingRejectionDetails postingDetails) {
-      appendPostingRejectionDetails(rows, postingDetails);
+      CliPostingRejectionTextRenderer.appendRows(rows, postingDetails);
       return;
     }
     if (rejectionDetails instanceof CliRejectionJsonModels.AccountRejectionDetails accountDetails) {
@@ -131,59 +137,6 @@ final class CliFailureOutputRenderer {
     }
     CliMaintenanceFailureOutputRenderer.appendRows(
         rows, (CliRejectionJsonModels.MaintenanceRejectionDetails) rejectionDetails);
-  }
-
-  private static void appendPostingRejectionDetails(
-      List<List<String>> rows, CliRejectionJsonModels.PostingRejectionDetails rejectionDetails) {
-    switch (rejectionDetails) {
-      case CliRejectionJsonModels.AccountStateViolationsDetails violations ->
-          rows.add(
-              List.of(
-                  "Violations",
-                  violations.violations().stream()
-                      .map(
-                          violation ->
-                              violation.code()
-                                  + " ("
-                                  + violation.accountCode()
-                                  + (violation.accountNodeKind() == null
-                                      ? ""
-                                      : ", " + violation.accountNodeKind())
-                                  + ")")
-                      .collect(java.util.stream.Collectors.joining(", "))));
-      case CliRejectionJsonModels.EntrySemanticsViolationsDetails violations ->
-          rows.add(
-              List.of(
-                  "Violations",
-                  violations.violations().stream()
-                      .map(
-                          violation ->
-                              violation.code()
-                                  + " ("
-                                  + (violation.field() == null
-                                      ? violation.message()
-                                      : violation.field() + ": " + violation.message())
-                                  + ")")
-                      .collect(java.util.stream.Collectors.joining(", "))));
-      case CliRejectionJsonModels.PriorPostingDetails details ->
-          rows.add(List.of("Prior posting id", details.priorPostingId()));
-      case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
-        rows.add(List.of("Functional currency", details.functionalCurrency()));
-        rows.add(List.of("Attempted currency", details.attemptedCurrency()));
-      }
-      case CliRejectionJsonModels.OpenAccountingPositionWindowClosedDetails details -> {
-        rows.add(List.of("First blocking posting kind", details.firstBlockingPostingKind()));
-        rows.add(List.of("First blocking effective date", details.firstBlockingEffectiveDate()));
-      }
-      case CliRejectionJsonModels.OpenAccountingPositionNominalAccountDetails details -> {
-        rows.add(List.of("Account code", details.accountCode()));
-        rows.add(List.of("Account type", details.accountType()));
-      }
-      case CliRejectionJsonModels.TransferredPeriodResultViolationDetails details -> {
-        rows.add(List.of("Transferred through", details.transferredThroughEffectiveDate()));
-        rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
-      }
-    }
   }
 
   private static void appendAccountRejectionDetails(

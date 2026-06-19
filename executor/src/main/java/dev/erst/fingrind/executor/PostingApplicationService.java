@@ -43,18 +43,9 @@ public final class PostingApplicationService {
   /** Validates a request and reports whether a later commit attempt is admissible. */
   public PreflightEntryResult preflight(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
-    if (bookNotInitialized()) {
-      return rejectedPreflight(
-          command,
-          BookkeepingPublishedLanguageTranslator.toPublished(
-              new BookkeepingPostingRejection.BookNotInitialized()));
-    }
-    java.util.Optional<BookkeepingPostingRejection> entryRejection =
-        entryAcceptancePolicy.rejectionFor(command, validationStore);
-    if (entryRejection.isPresent()) {
-      return rejectedPreflight(
-          command,
-          BookkeepingPublishedLanguageTranslator.toPublished(entryRejection.orElseThrow()));
+    java.util.Optional<PostingRejection> rejection = applicationRejectionFor(command);
+    if (rejection.isPresent()) {
+      return rejectedPreflight(command, rejection.orElseThrow());
     }
     PostingCommand postingCommand = localPostingCommand(command);
     return switch (bookkeepingPostingService.preflight(postingCommand)) {
@@ -70,18 +61,9 @@ public final class PostingApplicationService {
   /** Commits a request as one durable posting fact or returns a deterministic rejection. */
   public CommitEntryResult commit(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
-    if (bookNotInitialized()) {
-      return rejectedCommit(
-          command,
-          BookkeepingPublishedLanguageTranslator.toPublished(
-              new BookkeepingPostingRejection.BookNotInitialized()));
-    }
-    java.util.Optional<BookkeepingPostingRejection> entryRejection =
-        entryAcceptancePolicy.rejectionFor(command, validationStore);
-    if (entryRejection.isPresent()) {
-      return rejectedCommit(
-          command,
-          BookkeepingPublishedLanguageTranslator.toPublished(entryRejection.orElseThrow()));
+    java.util.Optional<PostingRejection> rejection = applicationRejectionFor(command);
+    if (rejection.isPresent()) {
+      return rejectedCommit(command, rejection.orElseThrow());
     }
     PostingCommand postingCommand = localPostingCommand(command);
     return switch (bookkeepingPostingService.commit(postingCommand)) {
@@ -114,6 +96,17 @@ public final class PostingApplicationService {
 
   private boolean bookNotInitialized() {
     return !(validationStore.inspectBook() instanceof BookLifecycleInspection.Initialized);
+  }
+
+  private java.util.Optional<PostingRejection> applicationRejectionFor(PostEntryCommand command) {
+    if (bookNotInitialized()) {
+      return java.util.Optional.of(
+          BookkeepingPublishedLanguageTranslator.toPublished(
+              new BookkeepingPostingRejection.BookNotInitialized()));
+    }
+    return entryAcceptancePolicy
+        .rejectionFor(command, validationStore)
+        .map(BookkeepingPublishedLanguageTranslator::toPublished);
   }
 
   private PostingCommand localPostingCommand(PostEntryCommand command) {

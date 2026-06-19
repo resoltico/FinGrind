@@ -21,7 +21,7 @@ import tools.jackson.databind.JsonNode;
 class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport {
   @Test
   void run_emitsOneCanonicalInvalidRequestEnvelopeAcrossExplicitOutputModes() throws IOException {
-    assertCanonicalAcrossExplicitOutputModes(
+    assertCanonicalJsonAcrossExplicitOutputModes(
         () -> new CliBookWorkflowAdapter() {},
         invalidTrialBalanceArguments(),
         1,
@@ -30,20 +30,29 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
   }
 
   @Test
-  void run_emitsOneCanonicalRejectedEnvelopeAcrossExplicitOutputModes() throws IOException {
-    assertCanonicalAcrossExplicitOutputModes(
+  void run_emitsJsonForJsonModeAndPlainTextForTextAndCsvRejectedOutputs() throws IOException {
+    Supplier<CliBookWorkflow> workflowFactory =
         () ->
             reportingWorkflow(
-                new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized())),
-        reportTrialBalanceArguments(),
-        2,
-        "rejected",
-        "query-book-not-initialized");
+                new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()));
+
+    ObservedInvocation jsonObserved =
+        runCli(workflowFactory.get(), withExplicitOutput(reportTrialBalanceArguments(), "json"));
+    ObservedInvocation textObserved =
+        runCli(workflowFactory.get(), withExplicitOutput(reportTrialBalanceArguments(), "text"));
+    ObservedInvocation csvObserved =
+        runCli(workflowFactory.get(), withExplicitOutput(reportTrialBalanceArguments(), "csv"));
+
+    assertJsonFailure(jsonObserved, 2, "rejected", "query-book-not-initialized");
+    assertTextFailure(textObserved, 2, "Rejected", "query-book-not-initialized");
+    assertTextFailure(csvObserved, 2, "Rejected", "query-book-not-initialized");
+    assertEquals(
+        normalizedFailureText(textObserved.stderr()), normalizedFailureText(csvObserved.stderr()));
   }
 
   @Test
   void run_emitsOneCanonicalInternalErrorEnvelopeAcrossExplicitOutputModes() throws IOException {
-    assertCanonicalAcrossExplicitOutputModes(
+    assertCanonicalJsonAcrossExplicitOutputModes(
         FinGrindCliDeterministicFailureEnvelopeTest::internalErrorWorkflow,
         reportTrialBalanceArguments(),
         70,
@@ -52,21 +61,27 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
   }
 
   @Test
-  void run_honorsConfiguredDefaultOutputForInvalidRejectedAndInternalFailures()
+  void run_keepsInvalidAndInternalFailuresMachineReadableAcrossConfiguredDefaults()
       throws IOException, InterruptedException {
-    assertCanonicalAcrossConfiguredOutputModes(
+    assertCanonicalJsonAcrossConfiguredOutputModes(
         "invalid-request", invalidTrialBalanceArguments(), 1, "error", "invalid-request");
-    assertCanonicalAcrossConfiguredOutputModes(
-        "report-rejected",
-        reportTrialBalanceArguments(),
-        2,
-        "rejected",
-        "query-book-not-initialized");
-    assertCanonicalAcrossConfiguredOutputModes(
+    assertCanonicalJsonAcrossConfiguredOutputModes(
         "report-internal-error", reportTrialBalanceArguments(), 70, "error", "internal-error");
   }
 
-  private void assertCanonicalAcrossExplicitOutputModes(
+  @Test
+  void run_honorsConfiguredDefaultOutputForRejectedQueryDiagnostics()
+      throws IOException, InterruptedException {
+    ObservedInvocation jsonObserved =
+        runChildProbe("report-rejected", "json", reportTrialBalanceArguments());
+    ObservedInvocation textObserved =
+        runChildProbe("report-rejected", "text", reportTrialBalanceArguments());
+
+    assertJsonFailure(jsonObserved, 2, "rejected", "query-book-not-initialized");
+    assertTextFailure(textObserved, 2, "Rejected", "query-book-not-initialized");
+  }
+
+  private void assertCanonicalJsonAcrossExplicitOutputModes(
       Supplier<CliBookWorkflow> workflowFactory,
       String[] argumentsWithoutOutput,
       int expectedExitCode,
@@ -77,7 +92,7 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
     for (String outputMode : List.of("text", "json", "csv")) {
       ObservedInvocation observed =
           runCli(workflowFactory.get(), withExplicitOutput(argumentsWithoutOutput, outputMode));
-      assertFailure(observed, expectedExitCode, expectedStatus, expectedCode);
+      assertJsonFailure(observed, expectedExitCode, expectedStatus, expectedCode);
       String normalizedEnvelope = normalizedFailureEnvelope(observed.stderr());
       if (baseline == null) {
         baseline = normalizedEnvelope;
@@ -87,7 +102,7 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
     }
   }
 
-  private void assertCanonicalAcrossConfiguredOutputModes(
+  private void assertCanonicalJsonAcrossConfiguredOutputModes(
       String scenario,
       String[] cliArguments,
       int expectedExitCode,
@@ -97,7 +112,7 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
     String baseline = null;
     for (String configuredOutputMode : List.of("text", "json")) {
       ObservedInvocation observed = runChildProbe(scenario, configuredOutputMode, cliArguments);
-      assertFailure(observed, expectedExitCode, expectedStatus, expectedCode);
+      assertJsonFailure(observed, expectedExitCode, expectedStatus, expectedCode);
       String normalizedEnvelope = normalizedFailureEnvelope(observed.stderr());
       if (baseline == null) {
         baseline = normalizedEnvelope;
@@ -145,7 +160,7 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
     }
   }
 
-  private static void assertFailure(
+  private static void assertJsonFailure(
       ObservedInvocation observed, int expectedExitCode, String expectedStatus, String expectedCode)
       throws IOException {
     assertEquals(expectedExitCode, observed.exitCode(), observed.stderr());
@@ -156,9 +171,25 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
     assertTrue(observed.stderr().endsWith(System.lineSeparator()), observed.stderr());
   }
 
+  private static void assertTextFailure(
+      ObservedInvocation observed,
+      int expectedExitCode,
+      String expectedTitle,
+      String expectedCode) {
+    assertEquals(expectedExitCode, observed.exitCode(), observed.stderr());
+    assertEquals("", observed.stdout(), observed.stdout());
+    assertTrue(observed.stderr().contains(expectedTitle), observed.stderr());
+    assertTrue(observed.stderr().contains(expectedCode), observed.stderr());
+    assertTrue(observed.stderr().endsWith(System.lineSeparator()), observed.stderr());
+  }
+
   private static String normalizedFailureEnvelope(String document) {
     return canonicalJsonText(document)
         .replaceAll("fg-internal-[A-Za-z0-9-]+", "fg-internal-<normalized>");
+  }
+
+  private static String normalizedFailureText(String document) {
+    return document.replaceAll("\\r\\n", "\n");
   }
 
   private static String[] withExplicitOutput(String[] argumentsWithoutOutput, String outputMode) {

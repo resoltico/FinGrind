@@ -9,6 +9,7 @@ public final class SqliteFailureClassifier {
   /** Stable hint category for one runtime failure. */
   public enum Category {
     MANAGED_RUNTIME,
+    PERSISTENCE_INVARIANT,
     STORAGE,
     OTHER
   }
@@ -24,6 +25,9 @@ public final class SqliteFailureClassifier {
           || cause instanceof UnsupportedSqliteSourceIdException
           || cause instanceof UnsupportedSqliteCompileOptionsException) {
         return Category.MANAGED_RUNTIME;
+      }
+      if (cause instanceof SqlitePersistenceInvariantException) {
+        return Category.PERSISTENCE_INVARIANT;
       }
       if (cause instanceof SqliteStorageFailureException
           || cause instanceof SqliteNativeException) {

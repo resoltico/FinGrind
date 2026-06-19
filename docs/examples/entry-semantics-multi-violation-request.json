@@ -1,0 +1,31 @@
+{
+  "entryKind": "JOURNAL",
+  "recipeKind": "CASH_REVENUE",
+  "effectiveDate": "2026-04-07",
+  "cashAccountCode": "1000",
+  "revenueAccountCode": "1000",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-multi-violation",
+        "sourceDocumentType": "invoice",
+        "documentDate": "2026-04-07",
+        "capturedAt": "2026-04-07T10:15:30Z",
+        "storageLocator": "vault://fixtures/document-multi-violation",
+        "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      }
+    ],
+    "approvals": []
+  },
+  "provenance": {
+    "actorId": "actor-multi-violation",
+    "actorType": "AGENT",
+    "commandId": "command-multi-violation",
+    "idempotencyKey": "idem-multi-violation",
+    "causationId": "cause-multi-violation"
+  }
+}

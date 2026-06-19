@@ -82,13 +82,15 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new PeriodResultTransferResult.Transferred(
             CliFixtureSupport.sampleTransferredPeriodResult()),
         OutputMode.TEXT);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Period Closed"));
+    String periodClosedText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(periodClosedText.contains("Period Closed"));
+    assertTrue(periodClosedText.contains("Reporting period"));
     outputStream.reset();
     responseWriter.writePostEntryResult(
         new PostEntryResult.PreflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-17")),
         OutputMode.TEXT);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Entry Preflight Accepted"));
+    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Entry Preflight Passed"));
     outputStream.reset();
     responseWriter.writePostEntryResult(
         new PostEntryResult.Committed(
@@ -222,7 +224,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeAdministrativeAndWriteRejections_emitJsonEnvelopesWhenTextModeIsSelected()
+  void writeAdministrativeAndWriteRejections_renderTextDiagnosticsWhenTextModeIsSelected()
       throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
@@ -230,18 +232,17 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         Path.of("books/book.sqlite"),
         new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
         OutputMode.TEXT);
-    var json = readJson(outputStream);
-    assertEquals("rejected", json.path("status").stringValue());
-    assertEquals("book-already-initialized", json.path("code").stringValue());
+    String rendered = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("Rejected"), rendered);
+    assertTrue(rendered.contains("book-already-initialized"), rendered);
     outputStream.reset();
     responseWriter.writePostEntryResult(
         new PostEntryResult.PreflightRejected(
             new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
         OutputMode.TEXT);
-    json = readJson(outputStream);
-    assertEquals("rejected", json.path("status").stringValue());
-    assertEquals("duplicate-idempotency-key", json.path("code").stringValue());
-    assertEquals("idem-1", json.path("idempotencyKey").stringValue());
+    rendered = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("duplicate-idempotency-key"), rendered);
+    assertTrue(rendered.contains("idem-1"), rendered);
     outputStream.reset();
     responseWriter.writePeriodResultTransferResult(
         new PeriodResultTransferResult.Rejected(
@@ -249,9 +250,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 dev.erst.fingrind.core.FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of())),
         OutputMode.TEXT);
-    json = readJson(outputStream);
-    assertEquals("rejected", json.path("status").stringValue());
-    assertEquals("result-holding-account-candidate-missing", json.path("code").stringValue());
+    rendered = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("result-holding-account-candidate-missing"), rendered);
   }
 
   @Test
@@ -401,7 +401,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
   }
 
   @Test
-  void writeMaintenanceRejections_emitStructuredJsonDetailsAcrossOutputModes() throws Exception {
+  void writeMaintenanceRejections_renderTextDiagnosticsWhenTextModeIsSelected() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writeBackupBookResult(
@@ -412,10 +412,12 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                     hint(Path.of("books/entity.sqlite-wal")),
                     hint(Path.of("books/entity.sqlite-shm"))))),
         OutputMode.TEXT);
-    var json = readJson(outputStream);
-    assertEquals("rejected", json.path("status").stringValue());
-    assertEquals("book-has-blocking-artifacts", json.path("code").stringValue());
-    assertEquals(2, json.path("details").path("blockingArtifacts").size());
+    String rendered = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("Rejected"), rendered);
+    assertTrue(rendered.contains("book-has-blocking-artifacts"), rendered);
+    assertTrue(rendered.contains("Blocking artifacts"), rendered);
+    assertTrue(rendered.contains("entity.sqlite-wal"), rendered);
+    assertTrue(rendered.contains("entity.sqlite-shm"), rendered);
     outputStream.reset();
 
     responseWriter.writeInspectRekeyRollbackResult(
@@ -426,7 +428,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                     hint(Path.of("books/entity.rekey-rollback-a.sqlite")),
                     hint(Path.of("books/entity.rekey-rollback-b.sqlite"))))),
         OutputMode.JSON);
-    json = readJson(outputStream);
+    var json = readJson(outputStream);
     assertEquals("rejected", json.path("status").stringValue());
     assertEquals("rollback-artifact-selection-required", json.path("code").stringValue());
     assertEquals(
@@ -524,9 +526,9 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                     hint(Path.of("books/entity.rekey-rollback-b.sqlite"))))),
         OutputMode.TEXT);
 
-    var json = readJson(deleteOutput);
-    assertEquals("rejected", json.path("status").stringValue());
-    assertEquals("rollback-artifact-selection-required", json.path("code").stringValue());
+    String rendered = deleteOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("Rejected"), rendered);
+    assertTrue(rendered.contains("rollback-artifact-selection-required"), rendered);
   }
 
   @Test

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -18,7 +18,7 @@ route:
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 23;
+pragma user_version = 24;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -369,6 +369,7 @@ create table if not exists posting_fact (
     ),
     posting_origin_kind text not null check (
         posting_origin_kind in (
+            'JOURNAL',
             'CASH_REVENUE',
             'CASH_EXPENSE',
             'EQUITY_CONTRIBUTION',
@@ -1216,7 +1217,7 @@ Columns:
 - `posting_order`: `integer primary key`
 - `posting_id`: `text not null unique`
 - `posting_kind`: `text not null check ( posting_kind in ('STANDARD', 'OPENING_BALANCE', 'PERIOD_RESULT_TRANSFER') )`
-- `posting_origin_kind`: `text not null check ( posting_origin_kind in ( 'CASH_REVENUE', 'CASH_EXPENSE', 'EQUITY_CONTRIBUTION', 'EQUITY_WITHDRAWAL', 'OPEN_ACCOUNTING_POSITION', 'REVERSAL_ADJUSTMENT', 'PERIOD_RESULT_TRANSFER' ) )`
+- `posting_origin_kind`: `text not null check ( posting_origin_kind in ( 'JOURNAL', 'CASH_REVENUE', 'CASH_EXPENSE', 'EQUITY_CONTRIBUTION', 'EQUITY_WITHDRAWAL', 'OPEN_ACCOUNTING_POSITION', 'REVERSAL_ADJUSTMENT', 'PERIOD_RESULT_TRANSFER' ) )`
 - `effective_date`: `text not null check ( effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]' and substr(effective_date, 6, 2) between '01' and '12' and ( ( substr(effective_date, 6, 2) in ('01', '03', '05', '07', '08', '10', '12') and substr(effective_date, 9, 2) between '01' and '31' ) or ( substr(effective_date, 6, 2) in ('04', '06', '09', '11') and substr(effective_date, 9, 2) between '01' and '30' ) or ( substr(effective_date, 6, 2) = '02' and ( substr(effective_date, 9, 2) between '01' and '28' or ( substr(effective_date, 9, 2) = '29' and ( cast(substr(effective_date, 1, 4) as integer) % 400 = 0 or ( cast(substr(effective_date, 1, 4) as integer) % 4 = 0 and cast(substr(effective_date, 1, 4) as integer) % 100 <> 0 ) ) ) ) ) ) )`
 - `recorded_at`: `text not null check ( ( recorded_at glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z' or ( substr(recorded_at, 1, 19) glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]' and substr(recorded_at, 20, 1) = '.' and substr(recorded_at, length(recorded_at), 1) = 'Z' and ( (length(recorded_at) = 24 and substr(recorded_at, 21, 3) not glob '*[^0-9]*') or (length(recorded_at) = 27 and substr(recorded_at, 21, 6) not glob '*[^0-9]*') or (length(recorded_at) = 30 and substr(recorded_at, 21, 9) not glob '*[^0-9]*') ) ) ) and substr(recorded_at, 6, 2) between '01' and '12' and ( ( substr(recorded_at, 6, 2) in ('01', '03', '05', '07', '08', '10', '12') and substr(recorded_at, 9, 2) between '01' and '31' ) or ( substr(recorded_at, 6, 2) in ('04', '06', '09', '11') and substr(recorded_at, 9, 2) between '01' and '30' ) or ( substr(recorded_at, 6, 2) = '02' and ( substr(recorded_at, 9, 2) between '01' and '28' or ( substr(recorded_at, 9, 2) = '29' and ( cast(substr(recorded_at, 1, 4) as integer) % 400 = 0 or ( cast(substr(recorded_at, 1, 4) as integer) % 4 = 0 and cast(substr(recorded_at, 1, 4) as integer) % 100 <> 0 ) ) ) ) ) ) and substr(recorded_at, 12, 2) between '00' and '23' and substr(recorded_at, 15, 2) between '00' and '59' and substr(recorded_at, 18, 2) between '00' and '59' )`
 - `actor_id`: `text not null check (length(trim(actor_id)) > 0)`
@@ -1354,7 +1355,7 @@ Table-level constraints:
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `23`
+- `user_version`: `24`
 - Canonical durable tables: `book_meta`, `book_identity`, `account`, `posting_fact`, `posting_source_document`, `posting_approval`, `journal_line`, `period_result_transfer`, `period_result_transfer_total`, `period_result_transfer_posting`, `audit_event`
 - Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `period_result_transfer_by_effective_date_to`, `period_result_transfer_total_by_currency`, `period_result_transfer_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.

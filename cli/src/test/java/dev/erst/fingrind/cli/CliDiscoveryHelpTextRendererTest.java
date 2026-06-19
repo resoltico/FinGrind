@@ -1,16 +1,20 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
@@ -20,25 +24,16 @@ import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Focused tests for discovery help text rendering and template guidance. */
-class CliDiscoveryHelpTextRendererTest {
+class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
   private record BrokenTemplate(BrokenEnum status) {}
 
   /** Deliberately non-wire-safe enum used to exercise JSON template failure handling. */
   private enum BrokenEnum {
     BROKEN
-  }
-
-  private static String renderHelpText(HelpDescriptor helpDescriptor) {
-    return CliDiscoveryOutputRenderer.renderHelpText(
-        helpDescriptor, CliDiscoveryTestSupport.environment(), false);
-  }
-
-  private static String renderHelpText(
-      HelpDescriptor helpDescriptor, EnvironmentDescriptor environmentDescriptor, boolean terse) {
-    return CliDiscoveryOutputRenderer.renderHelpText(helpDescriptor, environmentDescriptor, terse);
   }
 
   @Test
@@ -421,6 +416,198 @@ class CliDiscoveryHelpTextRendererTest {
   }
 
   @Test
+  void renderHelpText_executePlanRejectsMissingOrAmbiguousCanonicalPostingScaffoldStep() {
+    HelpDescriptor executePlanCanonical =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            OperationId.EXECUTE_PLAN);
+    ContractPlanTemplates.LedgerPlanTemplateDescriptor baseTemplate =
+        Objects.requireNonNull(executePlanCanonical.planTemplate());
+    ContractPlanTemplates.LedgerPlanTemplateDescriptor withoutCanonicalPosting =
+        new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
+            baseTemplate.planId(),
+            baseTemplate.steps().stream()
+                .filter(step -> step.kind() != LedgerStepKind.POST_ENTRY)
+                .toList());
+    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor canonicalPosting =
+        baseTemplate.canonicalPostingScaffoldStep();
+    ContractPlanTemplates.LedgerPlanTemplateDescriptor ambiguousTemplate =
+        new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
+            baseTemplate.planId(),
+            java.util.stream.Stream.concat(
+                    baseTemplate.steps().stream(), java.util.stream.Stream.of(canonicalPosting))
+                .toList());
+
+    IllegalStateException missingFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                renderHelpText(
+                    helpDescriptorWithPlanTemplate(executePlanCanonical, withoutCanonicalPosting)));
+    IllegalStateException ambiguousFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                renderHelpText(
+                    helpDescriptorWithPlanTemplate(executePlanCanonical, ambiguousTemplate)));
+
+    assertTrue(
+        Objects.requireNonNull(missingFailure.getMessage())
+            .contains("canonical POST_ENTRY scaffold"),
+        missingFailure::getMessage);
+    assertTrue(
+        Objects.requireNonNull(ambiguousFailure.getMessage())
+            .contains("canonical POST_ENTRY scaffold"),
+        ambiguousFailure::getMessage);
+  }
+
+  @Test
+  void renderHelpText_executePlanIgnoresConflictingTopLevelPostingTemplateFallback() {
+    HelpDescriptor executePlanCanonical =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            OperationId.EXECUTE_PLAN);
+    HelpDescriptor mutatedHelp =
+        new HelpDescriptor(
+            executePlanCanonical.application(),
+            executePlanCanonical.version(),
+            executePlanCanonical.description(),
+            executePlanCanonical.usage(),
+            executePlanCanonical.bookModel(),
+            executePlanCanonical.bookkeepingKernel(),
+            executePlanCanonical.requestShapes(),
+            conflictingOpenAccountingPositionTemplate(),
+            executePlanCanonical.declareAccountTemplate(),
+            executePlanCanonical.planTemplate(),
+            executePlanCanonical.commands(),
+            executePlanCanonical.quickStart(),
+            executePlanCanonical.exitCodes(),
+            executePlanCanonical.preflight(),
+            executePlanCanonical.currencyModel());
+
+    String rendered = renderHelpText(mutatedHelp);
+
+    assertTrue(rendered.contains("Canonical scaffold value: JOURNAL."), rendered);
+    assertFalse(rendered.contains("Canonical scaffold value: OPEN_ACCOUNTING_POSITION."), rendered);
+  }
+
+  @Test
+  void renderHelpText_executePlanPublishesLedgerPlanStructureInsteadOfFlatPostingModel() {
+    HelpDescriptor executePlanCanonical =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            OperationId.EXECUTE_PLAN);
+
+    String rendered = renderHelpText(executePlanCanonical);
+    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape =
+        Objects.requireNonNull(
+            Objects.requireNonNull(executePlanCanonical.requestShapes()).ledgerPlan());
+
+    for (ContractRequestShapes.RequestFieldDescriptor topLevelField :
+        ledgerPlanShape.topLevelFields()) {
+      String renderedFieldName =
+          "steps".equals(topLevelField.name()) ? "steps[]" : topLevelField.name();
+      assertTrue(rendered.contains(renderedFieldName), rendered);
+    }
+    for (ContractRequestShapes.RequestFieldDescriptor stepField : ledgerPlanShape.stepFields()) {
+      assertTrue(rendered.contains("steps[]." + stepField.name()), rendered);
+    }
+    for (ContractRequestShapes.RequestFieldDescriptor queryField : ledgerPlanShape.queryFields()) {
+      assertTrue(rendered.contains("steps[].query." + queryField.name()), rendered);
+    }
+    for (ContractRequestShapes.RequestFieldDescriptor assertionField :
+        ledgerPlanShape.assertionFields()) {
+      assertTrue(rendered.contains("steps[].assertion." + assertionField.name()), rendered);
+    }
+    assertContainsNestedPostingModelPaths(rendered, ledgerPlanShape.postingModel());
+    assertFalse(rendered.contains("Posting model\n-------------\nentryKind"), rendered);
+  }
+
+  @Test
+  void renderHelpText_postEntryAndExecutePlanShareTheSameOrderedAcceptedPostingModel() {
+    HelpDescriptor postEntryCanonical =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            OperationId.POST_ENTRY);
+    HelpDescriptor executePlanCanonical =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            OperationId.EXECUTE_PLAN);
+
+    String postEntryRendered = renderHelpText(postEntryCanonical);
+    String executePlanRendered = renderHelpText(executePlanCanonical);
+    ContractRequestShapes.PostEntryRequestShapeDescriptor postingModel =
+        Objects.requireNonNull(
+            Objects.requireNonNull(postEntryCanonical.requestShapes()).postEntry());
+    List<String> acceptedPostingLabels = acceptedPostingFieldPaths(postingModel);
+    List<String> postEntryAcceptedBlocks =
+        extractRenderedFieldBlocks(postEntryRendered, acceptedPostingLabels);
+    List<String> executePlanAcceptedBlocks =
+        normalizeNestedPostingBlocks(
+            extractRenderedFieldBlocks(
+                executePlanRendered,
+                acceptedPostingLabels.stream().map(label -> "steps[].posting." + label).toList()),
+            "steps[].posting.");
+
+    assertAll(
+        () ->
+            assertEquals(
+                acceptedPostingLabels,
+                renderedFieldLabels(postEntryAcceptedBlocks),
+                postEntryRendered),
+        () ->
+            assertEquals(
+                acceptedPostingLabels,
+                renderedFieldLabels(executePlanAcceptedBlocks),
+                executePlanRendered),
+        () ->
+            assertEquals(
+                normalizedFieldBlocks(postEntryAcceptedBlocks),
+                normalizedFieldBlocks(executePlanAcceptedBlocks),
+                "post-entry:\n" + postEntryRendered + "\n\nexecute-plan:\n" + executePlanRendered));
+  }
+
+  @Test
+  void renderHelpText_supportUsesShellCommandBlocksAcrossPublicCommandCatalog() {
+    for (var operation : ProtocolCatalog.operations()) {
+      HelpDescriptor helpDescriptor =
+          MachineContract.help(
+              CliDiscoveryTestSupport.identity(),
+              CliDiscoveryTestSupport.environment(),
+              operation.id());
+      String rendered = renderHelpText(helpDescriptor);
+
+      assertContainsShellCommandBlock(
+          rendered,
+          CliInvocationText.commandExample(OperationId.HELP) + " " + operation.id().wireName());
+      assertContainsShellCommandBlock(
+          rendered,
+          CliInvocationText.commandExample(OperationId.HELP)
+              + " "
+              + operation.id().wireName()
+              + " --output json --detail full");
+      assertFalse(rendered.contains("Command help     :"), rendered);
+      assertFalse(rendered.contains("Machine contract :"), rendered);
+      assertFalse(rendered.contains("--detail\n"), rendered);
+
+      Optional<String> expectedTemplateCommand =
+          expectedRequestTemplateSupportCommand(helpDescriptor, operation.id());
+      if (expectedTemplateCommand.isPresent()) {
+        assertContainsShellCommandBlock(rendered, expectedTemplateCommand.orElseThrow());
+        assertFalse(rendered.contains("Request template :"), rendered);
+      } else {
+        assertTrue(rendered.contains("Request template : (not applicable)"), rendered);
+        assertFalse(rendered.contains("$ (not applicable)"), rendered);
+      }
+    }
+  }
+
+  @Test
   void renderHelpText_includesCsvContractForCsvCapableCommands() {
     String rendered =
         renderHelpText(
@@ -714,13 +901,5 @@ class CliDiscoveryHelpTextRendererTest {
 
     assertTrue(rendered.contains("Step 1"));
     assertTrue(rendered.contains("fingrind custom-seam"));
-  }
-
-  private static void restoreRuntimeDistribution(String previousDistribution) {
-    if (previousDistribution == null) {
-      System.clearProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY);
-      return;
-    }
-    System.setProperty(FinGrindCli.RUNTIME_DISTRIBUTION_PROPERTY, previousDistribution);
   }
 }

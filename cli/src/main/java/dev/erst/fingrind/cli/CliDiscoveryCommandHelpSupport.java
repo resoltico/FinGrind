@@ -7,10 +7,41 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /** Builds per-command help sections for operator-facing discovery text. */
 final class CliDiscoveryCommandHelpSupport {
   private CliDiscoveryCommandHelpSupport() {}
+
+  /** Typed Support entry used to distinguish shell-command guidance from plain notes. */
+  sealed interface SupportEntry permits SupportCommandEntry, SupportNoteEntry {
+    /** Returns the operator-facing label shown inside the Support section. */
+    String label();
+
+    /** Creates one Support entry that renders as a copy-paste-safe shell command block. */
+    static SupportEntry command(String label, String command) {
+      return new SupportCommandEntry(label, command);
+    }
+
+    /** Creates one Support entry that renders as a plain note row. */
+    static SupportEntry note(String label, String note) {
+      return new SupportNoteEntry(label, note);
+    }
+  }
+
+  private record SupportCommandEntry(String label, String command) implements SupportEntry {
+    private SupportCommandEntry {
+      label = requireText(label, "label");
+      command = requireText(command, "command");
+    }
+  }
+
+  private record SupportNoteEntry(String label, String note) implements SupportEntry {
+    private SupportNoteEntry {
+      label = requireText(label, "label");
+      note = requireText(note, "note");
+    }
+  }
 
   static String renderCommandHelpText(HelpDescriptor helpDescriptor) {
     CommandDescriptor command = helpDescriptor.commands().getFirst();
@@ -21,6 +52,7 @@ final class CliDiscoveryCommandHelpSupport {
         CliDiscoveryTextSupport.joinSections(
             summary,
             renderGrammar(operation, command),
+            CliDiscoveryCommandGuidance.renderTemporalScopeGuidance(command.name()),
             CliDiscoveryCommandGuidance.renderRequestGuidance(helpDescriptor, command.name()),
             CliDiscoveryCommandGuidance.renderPreparation(command.name()),
             renderOutputContract(command),
@@ -86,22 +118,61 @@ final class CliDiscoveryCommandHelpSupport {
   private static String renderRepairGuidance(OperationId operationId) {
     return CliDiscoveryTextSupport.section(
         "Support",
-        CliTextFormat.renderKeyValueBlock(
+        renderSupportEntries(
             List.of(
-                List.of(
+                SupportEntry.command(
                     "Command help",
                     CliInvocationText.commandExample(OperationId.HELP)
                         + " "
                         + operationId.wireName()),
-                List.of(
+                SupportEntry.command(
                     "Machine contract",
                     CliInvocationText.commandExample(OperationId.HELP)
                         + " "
                         + operationId.wireName()
-                        + " --output json"),
-                List.of(
-                    "Request template",
-                    CliDiscoveryCommandGuidance.requestTemplateHint(operationId))),
-            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
+                        + " --output json --detail full"),
+                CliDiscoveryCommandGuidance.requestTemplateHint(operationId))));
+  }
+
+  private static String renderSupportEntries(List<SupportEntry> entries) {
+    List<String> sections = new ArrayList<>();
+    List<List<String>> noteRows = new ArrayList<>();
+    for (SupportEntry entry : entries) {
+      switch (entry) {
+        case SupportCommandEntry commandEntry -> {
+          flushSupportNotes(sections, noteRows);
+          sections.add(renderSupportCommandEntry(commandEntry));
+        }
+        case SupportNoteEntry noteEntry ->
+            noteRows.add(List.of(noteEntry.label(), noteEntry.note()));
+      }
+    }
+    flushSupportNotes(sections, noteRows);
+    return CliDiscoveryTextSupport.joinSections(sections.toArray(String[]::new));
+  }
+
+  private static void flushSupportNotes(List<String> sections, List<List<String>> noteRows) {
+    if (noteRows.isEmpty()) {
+      return;
+    }
+    sections.add(
+        CliTextFormat.renderKeyValueBlock(
+            List.copyOf(noteRows), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
+    noteRows.clear();
+  }
+
+  private static String renderSupportCommandEntry(SupportCommandEntry commandEntry) {
+    return commandEntry.label()
+        + System.lineSeparator()
+        + CliTextFormat.renderShellCommandBlock(
+            List.of(commandEntry.command()), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+  }
+
+  private static String requireText(String value, String fieldName) {
+    Objects.requireNonNull(value, fieldName);
+    if (value.isBlank()) {
+      throw new IllegalArgumentException(fieldName + " must not be blank.");
+    }
+    return value;
   }
 }

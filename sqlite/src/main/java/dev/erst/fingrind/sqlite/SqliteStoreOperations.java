@@ -47,11 +47,18 @@ final class SqliteStoreOperations {
     }
   }
 
-  static SqliteStorageFailureException sqliteFailure(
-      String message, SqliteNativeException exception) {
-    String detail = Objects.requireNonNullElse(exception.getMessage(), "SQLite native failure.");
-    return new SqliteStorageFailureException(
-        message + " " + exception.resultName() + ": " + detail, exception);
+  static IllegalStateException sqliteFailure(String message, SqliteNativeException exception) {
+    String resultName = exception.resultName();
+    if (SqliteNativeResultCode.matchesAny(exception.resultCode(), "CONSTRAINT_CHECK")) {
+      return new SqlitePersistenceInvariantException(
+          message + " One upstream invariant should have rejected this request before commit.",
+          exception);
+    }
+    String detail =
+        normalizedNativeDetail(
+            Objects.requireNonNullElse(exception.getMessage(), "SQLite native failure."),
+            resultName);
+    return new SqliteStorageFailureException(message + " " + resultName + ": " + detail, exception);
   }
 
   static <T> T retryTransientLockFailures(SqliteNativeWork<T> work) {
@@ -141,5 +148,14 @@ final class SqliteStoreOperations {
   interface SqliteNativeWork<T> {
     /** Executes one SQLite-native unit of work for transient-lock retry handling. */
     T run();
+  }
+
+  private static String normalizedNativeDetail(String detail, String resultName) {
+    String normalizedDetail = detail.strip();
+    String resultPrefix = resultName + ":";
+    if (normalizedDetail.startsWith(resultPrefix)) {
+      normalizedDetail = normalizedDetail.substring(resultPrefix.length()).strip();
+    }
+    return normalizedDetail.isEmpty() ? "SQLite native failure." : normalizedDetail;
   }
 }

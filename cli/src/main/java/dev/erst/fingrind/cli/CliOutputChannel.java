@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.io.PrintStream;
 import java.util.Objects;
@@ -63,5 +64,20 @@ final class CliOutputChannel {
 
   void writeQueryRejection(CliEnvelopeJsonModels.RejectedEnvelope envelope) {
     writeDiagnosticEnvelope(envelope);
+  }
+
+  void writeRejectedEnvelope(
+      CliEnvelopeJsonModels.RejectedEnvelope envelope, OutputMode requestedOutputMode) {
+    if (requestedOutputMode == OutputMode.JSON) {
+      writeDiagnosticEnvelope(envelope);
+      return;
+    }
+    writeFailureText(
+        CliFailureOutputRenderer.renderRejectedText(
+            envelope.code(),
+            envelope.message(),
+            envelope.hint(),
+            envelope.idempotencyKey(),
+            envelope.details()));
   }
 }

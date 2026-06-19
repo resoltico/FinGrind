@@ -1,5 +1,8 @@
 package dev.erst.fingrind.contract;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,6 +12,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.core.AccountCode;
@@ -256,7 +260,7 @@ class RejectionNarrativeTest {
     PostingRejection.EntrySemanticsViolations entrySemanticsViolations =
         new PostingRejection.EntrySemanticsViolations(
             List.of(
-                PostingRejection.sourceDocumentTypeNotAccepted(
+                PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
                     "CASH_REVENUE",
                     new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                     List.of("cash-receipt", "bank-deposit"))));
@@ -264,9 +268,35 @@ class RejectionNarrativeTest {
     assertTrue(
         RejectionNarrative.message(new PostingRejection.BookNotInitialized())
             .contains("open-book"));
-    assertTrue(RejectionNarrative.message(accountStateViolations).contains("Reported issues: 2"));
-    assertTrue(
+    assertEquals(
+        "Posting rejected with 2 account-state issues.",
+        RejectionNarrative.message(accountStateViolations));
+    assertEquals(
+        "Posting rejected with 1 entry-semantics issue.",
+        RejectionNarrative.message(entrySemanticsViolations));
+    assertFalse(
         RejectionNarrative.message(entrySemanticsViolations).contains("published semantics"));
+    PostingRejection.EntrySemanticsViolations multipleEntrySemanticsViolations =
+        new PostingRejection.EntrySemanticsViolations(
+            List.of(
+                PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
+                    "CASH_REVENUE",
+                    new dev.erst.fingrind.core.SourceDocumentType("invoice"),
+                    List.of("cash-receipt", "bank-deposit")),
+                PostingRejectionSemantics.accountTypeMismatch(
+                    "CASH_REVENUE",
+                    "revenueAccountCode",
+                    new AccountCode("1000"),
+                    AccountType.REVENUE,
+                    AccountType.ASSET),
+                PostingRejectionSemantics.distinctRoleAccountsRequired(
+                    "CASH_REVENUE",
+                    "cashAccountCode",
+                    "revenueAccountCode",
+                    new AccountCode("1000"))));
+    String multipleEntrySemanticsMessage =
+        RejectionNarrative.message(multipleEntrySemanticsViolations);
+    assertEquals("Posting rejected with 3 entry-semantics issues.", multipleEntrySemanticsMessage);
     assertTrue(
         RejectionNarrative.message(new PostingRejection.DuplicateIdempotencyKey())
             .contains("same idempotency key"));
@@ -307,6 +337,92 @@ class RejectionNarrativeTest {
         RejectionNarrative.message(
                 new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1")))
             .contains("does not negate"));
+  }
+
+  @Test
+  void postingHintsCoverEveryRejection() {
+    PostingRejection.EntrySemanticsViolations singleEntrySemanticsViolation =
+        new PostingRejection.EntrySemanticsViolations(
+            List.of(PostingRejectionSemantics.economicNullJournal("JOURNAL")));
+    PostingRejection.EntrySemanticsViolations multipleEntrySemanticsViolations =
+        new PostingRejection.EntrySemanticsViolations(
+            List.of(
+                PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
+                    "CASH_REVENUE",
+                    new dev.erst.fingrind.core.SourceDocumentType("invoice"),
+                    List.of("cash-receipt", "bank-deposit")),
+                PostingRejectionSemantics.accountTypeMismatch(
+                    "CASH_REVENUE",
+                    "revenueAccountCode",
+                    new AccountCode("1000"),
+                    AccountType.REVENUE,
+                    AccountType.ASSET),
+                PostingRejectionSemantics.distinctRoleAccountsRequired(
+                    "CASH_REVENUE",
+                    "cashAccountCode",
+                    "revenueAccountCode",
+                    new AccountCode("1000"))));
+
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(new PostingRejection.BookNotInitialized()))
+            .contains("open-book"));
+    assertNull(
+        RejectionNarrative.hint(
+            new PostingRejection.AccountStateViolations(
+                List.of(new PostingRejection.UnknownAccount(new AccountCode("9999"))))));
+    assertNull(RejectionNarrative.hint(singleEntrySemanticsViolation));
+    assertNull(RejectionNarrative.hint(multipleEntrySemanticsViolations));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(new PostingRejection.DuplicateIdempotencyKey()))
+            .contains("retrying the same key"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new PostingRejection.BookFunctionalCurrencyMismatch(
+                        dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
+                        dev.erst.fingrind.core.CurrencyUnit.of("USD"))))
+            .contains("functional currency"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new PostingRejection.TransferredPeriodResultViolation(
+                        LocalDate.parse("2026-05-01"), LocalDate.parse("2026-04-30"))))
+            .contains("transferred-through horizon"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new PostingRejection.OpenAccountingPositionWindowClosed(
+                        dev.erst.fingrind.core.PostingKind.STANDARD,
+                        LocalDate.parse("2026-05-02"))))
+            .contains("first committed posting"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
+                        new AccountCode("4000"), AccountType.REVENUE)))
+            .contains("asset, liability, or equity"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3000"))))
+            .contains("transfer-period-result"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))))
+            .contains("get-posting"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))))
+            .contains("existing reversal"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))))
+            .contains("full negating journal entry"));
   }
 
   @Test

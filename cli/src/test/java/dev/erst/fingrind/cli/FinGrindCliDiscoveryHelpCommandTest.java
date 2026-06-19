@@ -3,12 +3,16 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
+import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -17,13 +21,14 @@ import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Discovery help and front-door command tests for {@link FinGrindCli}. */
-class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTestSupport {
+class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpCommandTestSupport {
   @Test
   void run_rendersTextHelpWhenExplicitlyRequested() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -76,6 +81,240 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
                     dev.erst.fingrind.contract.protocol.OperationId.PRINT_REQUEST_TEMPLATE)
                 + " post-entry > request.json"));
     assertTrue(help.contains("Output Contract"));
+  }
+
+  @Test
+  void run_postEntryHelpPublishesPostingModelForDirectPostingSurface() {
+    String help = runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY);
+
+    assertTrue(help.contains("Posting model"), help);
+    assertTrue(help.contains("JOURNAL"), help);
+    assertTrue(help.contains("lines"), help);
+    assertTrue(help.contains("side"), help);
+    assertTrue(help.contains("recipeKind"), help);
+    assertTrue(help.contains("Input Contract"), help);
+  }
+
+  @Test
+  void run_executePlanHelpPublishesLedgerPlanStructureInsteadOfFlatPostingSection() {
+    String help = runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.EXECUTE_PLAN);
+
+    HelpDescriptor executePlanHelpDescriptor =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            dev.erst.fingrind.contract.protocol.OperationId.EXECUTE_PLAN);
+    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape =
+        Objects.requireNonNull(
+            Objects.requireNonNull(executePlanHelpDescriptor.requestShapes()).ledgerPlan());
+
+    for (ContractRequestShapes.RequestFieldDescriptor topLevelField :
+        ledgerPlanShape.topLevelFields()) {
+      String renderedFieldName =
+          "steps".equals(topLevelField.name()) ? "steps[]" : topLevelField.name();
+      assertTrue(help.contains(renderedFieldName), help);
+    }
+    for (ContractRequestShapes.RequestFieldDescriptor stepField : ledgerPlanShape.stepFields()) {
+      assertTrue(help.contains("steps[]." + stepField.name()), help);
+    }
+    for (ContractRequestShapes.RequestFieldDescriptor queryField : ledgerPlanShape.queryFields()) {
+      assertTrue(help.contains("steps[].query." + queryField.name()), help);
+    }
+    for (ContractRequestShapes.RequestFieldDescriptor assertionField :
+        ledgerPlanShape.assertionFields()) {
+      assertTrue(help.contains("steps[].assertion." + assertionField.name()), help);
+    }
+    assertContainsNestedPostingModelPaths(help, ledgerPlanShape.postingModel());
+    assertFalse(help.contains("Posting model\n-------------\nentryKind"), help);
+
+    String postEntryHelp =
+        runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY);
+    assertTrue(postEntryHelp.contains("Posting model"), postEntryHelp);
+    assertTrue(postEntryHelp.contains("entryKind"), postEntryHelp);
+
+    String preflightHelp =
+        runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.PREFLIGHT_ENTRY);
+    assertTrue(preflightHelp.contains("Posting model"), preflightHelp);
+    assertTrue(preflightHelp.contains("entryKind"), preflightHelp);
+
+    String declareAccountHelp =
+        runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.DECLARE_ACCOUNT);
+    assertFalse(declareAccountHelp.contains("Posting model"), declareAccountHelp);
+  }
+
+  @Test
+  void run_helpSupportRendersCommandsAsLiteralShellBlocksAndLeavesNotesTabular() {
+    for (dev.erst.fingrind.contract.protocol.ProtocolOperation operation :
+        dev.erst.fingrind.contract.protocol.ProtocolCatalog.operations()) {
+      String help = runCommandHelpText(operation.id());
+      assertContainsShellCommandBlock(
+          help,
+          CliInvocationText.commandExample(dev.erst.fingrind.contract.protocol.OperationId.HELP)
+              + " "
+              + operation.id().wireName());
+      assertContainsShellCommandBlock(
+          help,
+          CliInvocationText.commandExample(dev.erst.fingrind.contract.protocol.OperationId.HELP)
+              + " "
+              + operation.id().wireName()
+              + " --output json --detail full");
+      assertFalse(help.contains("Command help     :"), help);
+      assertFalse(help.contains("Machine contract :"), help);
+      assertFalse(help.contains("--detail\n"), help);
+
+      Optional<String> expectedTemplateCommand =
+          expectedRequestTemplateSupportCommand(operation.id());
+      if (expectedTemplateCommand.isPresent()) {
+        assertContainsShellCommandBlock(help, expectedTemplateCommand.orElseThrow());
+        assertFalse(help.contains("Request template :"), help);
+      } else {
+        assertTrue(help.contains("Request template : (not applicable)"), help);
+        assertFalse(help.contains("$ (not applicable)"), help);
+      }
+    }
+  }
+
+  @Test
+  void run_declareAccountHelpDoesNotPublishPostingModel() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"help", "declare-account", "--output", "text"});
+
+    assertEquals(0, exitCode);
+    String help = outputStream.toString(StandardCharsets.UTF_8);
+    assertFalse(help.contains("Posting model"), help);
+  }
+
+  @Test
+  void run_executePlanHelpFullJsonPublishesNestedPostingModelWithoutTopLevelPostingLeak()
+      throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode =
+        cli.run(new String[] {"help", "execute-plan", "--output", "json", "--detail", "full"});
+
+    assertEquals(0, exitCode);
+    JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    JsonNode requestShapes = payload.path("requestFile").path("requestShapes");
+    assertTrue(requestShapes.isObject(), payload.toPrettyString());
+    assertTrue(requestShapes.path("postEntry").isMissingNode(), requestShapes.toPrettyString());
+    assertTrue(
+        requestShapes.path("declareAccount").isMissingNode(), requestShapes.toPrettyString());
+    JsonNode ledgerPlan = requestShapes.path("ledgerPlan");
+    assertTrue(ledgerPlan.isObject(), requestShapes.toPrettyString());
+    JsonNode postingModel = ledgerPlan.path("postingModel");
+    assertTrue(postingModel.isObject(), ledgerPlan.toPrettyString());
+    assertTrue(
+        hasNamedField(postingModel.path("topLevelFields"), "lines"), postingModel.toPrettyString());
+    assertTrue(
+        hasNamedField(postingModel.path("topLevelFields"), "recipeKind"),
+        postingModel.toPrettyString());
+    assertTrue(
+        hasNamedField(postingModel.path("lineFields"), "side"), postingModel.toPrettyString());
+  }
+
+  @Test
+  void run_textHelpOmitsForbiddenPostingFieldsWhileFullJsonRetainsForbiddenPresence()
+      throws Exception {
+    String postEntryTextHelp =
+        runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY);
+    assertFalse(postEntryTextHelp.contains("provenance.recordedAt"), postEntryTextHelp);
+    assertFalse(postEntryTextHelp.contains("provenance.sourceChannel"), postEntryTextHelp);
+    assertFalse(postEntryTextHelp.contains("reversal.kind"), postEntryTextHelp);
+
+    String executePlanTextHelp =
+        runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.EXECUTE_PLAN);
+    assertFalse(
+        executePlanTextHelp.contains("steps[].posting.provenance.recordedAt"), executePlanTextHelp);
+    assertFalse(
+        executePlanTextHelp.contains("steps[].posting.provenance.sourceChannel"),
+        executePlanTextHelp);
+    assertFalse(executePlanTextHelp.contains("steps[].posting.reversal.kind"), executePlanTextHelp);
+
+    JsonNode postEntryRequestShape =
+        runCommandHelpPayloadJson(dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY)
+            .path("requestFile")
+            .path("requestShapes")
+            .path("postEntry");
+    assertForbiddenPresence(postEntryRequestShape.path("provenanceFields"), "recordedAt");
+    assertForbiddenPresence(postEntryRequestShape.path("provenanceFields"), "sourceChannel");
+    assertForbiddenPresence(postEntryRequestShape.path("reversalFields"), "kind");
+
+    JsonNode executePlanPostingModel =
+        runCommandHelpPayloadJson(dev.erst.fingrind.contract.protocol.OperationId.EXECUTE_PLAN)
+            .path("requestFile")
+            .path("requestShapes")
+            .path("ledgerPlan")
+            .path("postingModel");
+    assertForbiddenPresence(executePlanPostingModel.path("provenanceFields"), "recordedAt");
+    assertForbiddenPresence(executePlanPostingModel.path("provenanceFields"), "sourceChannel");
+    assertForbiddenPresence(executePlanPostingModel.path("reversalFields"), "kind");
+  }
+
+  @Test
+  void renderRequestGuidance_rejectsMissingPostingModelFieldDescriptors() {
+    HelpDescriptor baseHelp =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY);
+    ContractRequestShapes.RequestShapesDescriptor requestShapes =
+        Objects.requireNonNull(baseHelp.requestShapes());
+    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
+        Objects.requireNonNull(requestShapes.postEntry());
+    HelpDescriptor mutatedHelp =
+        new HelpDescriptor(
+            baseHelp.application(),
+            baseHelp.version(),
+            baseHelp.description(),
+            baseHelp.usage(),
+            baseHelp.bookModel(),
+            baseHelp.bookkeepingKernel(),
+            new ContractRequestShapes.RequestShapesDescriptor(
+                requestShapes.schemaDialect(),
+                new ContractRequestShapes.PostEntryRequestShapeDescriptor(
+                    postEntryShape.topLevelFields().stream()
+                        .filter(field -> !"recipeKind".equals(field.name()))
+                        .toList(),
+                    postEntryShape.lineFields(),
+                    postEntryShape.openingBalanceFields(),
+                    postEntryShape.evidenceFields(),
+                    postEntryShape.sourceDocumentFields(),
+                    postEntryShape.approvalFields(),
+                    postEntryShape.provenanceFields(),
+                    postEntryShape.reversalFields(),
+                    postEntryShape.entryKindSemantics(),
+                    postEntryShape.journalRecipeSemantics(),
+                    postEntryShape.evidenceProfiles(),
+                    postEntryShape.reachabilityMatrix(),
+                    postEntryShape.evidenceRequirement(),
+                    postEntryShape.enumVocabularies(),
+                    postEntryShape.schema()),
+                requestShapes.declareAccount(),
+                requestShapes.ledgerPlan()),
+            baseHelp.requestTemplate(),
+            baseHelp.declareAccountTemplate(),
+            baseHelp.planTemplate(),
+            baseHelp.commands(),
+            baseHelp.quickStart(),
+            baseHelp.exitCodes(),
+            baseHelp.preflight(),
+            baseHelp.currencyModel());
+
+    IllegalStateException missingField =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                CliDiscoveryCommandGuidance.renderRequestGuidance(
+                    mutatedHelp, dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY));
+
+    assertTrue(
+        Objects.requireNonNull(missingField.getMessage())
+            .contains("posting-request field 'recipeKind'"));
   }
 
   @Test
@@ -176,6 +415,25 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryCommandTes
     assertTrue(help.contains("post-entry"));
     assertTrue(help.contains("Examples"));
     assertTrue(help.contains("Input Contract"));
+  }
+
+  @Test
+  void run_returnsTemporalScopeGuidanceForReadHelpTopics() {
+    assertTemporalScopeHelp(
+        "account-ledger",
+        "ranged-filter",
+        "--effective-date-from, --effective-date-to",
+        "Omit the lower boundary to start at book start");
+    assertTemporalScopeHelp(
+        "period-summary",
+        "bounded-period",
+        "--period-start, --period-end",
+        "Both boundaries must be supplied");
+    assertTemporalScopeHelp(
+        "financial-position",
+        "as-of-date",
+        "--effective-date-as-of",
+        "Supply --effective-date-as-of to pin that cutoff explicitly");
   }
 
   @Test

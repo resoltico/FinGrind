@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
+import dev.erst.fingrind.sqlite.SqlitePersistenceInvariantException;
 import dev.erst.fingrind.sqlite.SqliteStorageFailureException;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -82,6 +83,30 @@ class CliFailureMapperTest {
   @Test
   void runtimeFailure_returnsNullWhenNoPublicRuntimeClassifierApplies() {
     assertNull(CliFailureMapper.runtimeFailure(new RuntimeException()));
+  }
+
+  @Test
+  void runtimeFailure_returnsNullForPersistenceInvariantWithoutGeneratedErrorId() {
+    assertNull(
+        CliFailureMapper.runtimeFailure(
+            new RuntimeException(
+                new SqlitePersistenceInvariantException("constraint leaked past validation"))));
+  }
+
+  @Test
+  void runtimeFailure_mapsPersistenceInvariantBreachesToInternalErrorFamily() {
+    CliFailure failure =
+        CliFailureMapper.runtimeFailure(
+            new RuntimeException(
+                new SqlitePersistenceInvariantException("constraint leaked past validation")),
+            "fg-internal-123");
+
+    assertNotNull(failure);
+    assertEquals("internal-error", failure.code());
+    assertTrue(failure.message().contains("fg-internal-123"));
+    assertTrue(failure.message().contains("One upstream invariant should have rejected"));
+    assertNotNull(failure.hint());
+    assertTrue(failure.hint().contains("pre-commit validation"));
   }
 
   @Test

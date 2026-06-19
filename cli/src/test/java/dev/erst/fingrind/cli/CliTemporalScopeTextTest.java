@@ -33,6 +33,18 @@ class CliTemporalScopeTextTest {
         "latest-posting-effective-date",
         CliTemporalScopeText.resolvedUpperDateBoundaryMeaning(null, LocalDate.parse("2026-04-30")));
     assertEquals("no-postings", CliTemporalScopeText.resolvedUpperDateBoundaryMeaning(null, null));
+    assertEquals("ranged-filter", CliTemporalScopeText.scopeKind(OperationId.ACCOUNT_LEDGER));
+    assertEquals("bounded-period", CliTemporalScopeText.scopeKind(OperationId.PERIOD_SUMMARY));
+    assertEquals("as-of-date", CliTemporalScopeText.scopeKind(OperationId.FINANCIAL_POSITION));
+    assertEquals(
+        "Optional lower and upper effective-date filters over committed postings. Omit the lower boundary to start at book start; omit the upper boundary to end at the current book horizon.",
+        CliTemporalScopeText.boundarySemantics(OperationId.ACCOUNT_LEDGER));
+    assertEquals(
+        "One explicit closed reporting window. Both boundaries must be supplied, and neither boundary falls back to book start or the current book horizon.",
+        CliTemporalScopeText.boundarySemantics(OperationId.PERIOD_SUMMARY));
+    assertEquals(
+        "One point-in-time effective-date cutoff. Supply --effective-date-as-of to pin that cutoff explicitly, or omit it to resolve the current book horizon for the selected report.",
+        CliTemporalScopeText.boundarySemantics(OperationId.FINANCIAL_POSITION));
   }
 
   @Test

@@ -6,15 +6,11 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
-import dev.erst.fingrind.core.SourceDocumentType;
 import java.time.LocalDate;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Closed family of domain rejections that can refuse a posting request deterministically. */
@@ -52,6 +48,20 @@ public sealed interface PostingRejection
     return PostingRejectionDescriptors.descriptors();
   }
 
+  /** Returns the stable structured detail payload for one account-state violation. */
+  static AccountStateViolationDetail accountStateDetail(AccountStateViolation violation) {
+    PostingRejection.AccountStateViolation requiredViolation =
+        Objects.requireNonNull(violation, "violation");
+    return new AccountStateViolationDetail(
+        AccountStateViolationOwner.code(requiredViolation),
+        AccountStateViolationOwner.field(requiredViolation),
+        AccountStateViolationOwner.message(requiredViolation),
+        AccountStateViolationOwner.category(requiredViolation),
+        AccountStateViolationOwner.repair(requiredViolation),
+        AccountStateViolationOwner.accountCode(requiredViolation).value(),
+        AccountStateViolationOwner.accountNodeKind(requiredViolation));
+  }
+
   /** Rejection for a posting request against a missing or uninitialized book. */
   record BookNotInitialized() implements PostingRejection {}
 
@@ -66,7 +76,7 @@ public sealed interface PostingRejection
       implements PostingRejection {
     /** Validates the account-state violation payload. */
     public AccountStateViolations {
-      violations = ContractDescriptorValidation.copyList(violations, "violations");
+      violations = AccountStateViolationOwner.inCanonicalOrder(violations);
       if (violations.isEmpty()) {
         throw new IllegalArgumentException(
             "Posting account-state violations must contain at least one issue.");
@@ -74,12 +84,47 @@ public sealed interface PostingRejection
     }
   }
 
+  /** Stable structured account-state issue emitted for one rejected posting line. */
+  record AccountStateViolationDetail(
+      String code,
+      String field,
+      String message,
+      String category,
+      String repair,
+      String accountCode,
+      @Nullable String accountNodeKind) {
+    public AccountStateViolationDetail {
+      code = ContractDescriptorValidation.requireText(code, "code");
+      field = ContractDescriptorValidation.requireText(field, "field");
+      message = ContractDescriptorValidation.requireText(message, "message");
+      category = ContractDescriptorValidation.requireText(category, "category");
+      repair = ContractDescriptorValidation.requireText(repair, "repair");
+      accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
+      accountNodeKind =
+          ContractDescriptorValidation.requireOptionalText(accountNodeKind, "accountNodeKind");
+    }
+  }
+
   /** Stable structured entry-semantics issue emitted for one rejected typed entry. */
-  record EntrySemanticsViolation(String code, @Nullable String field, String message) {
+  record EntrySemanticsViolation(
+      String code, @Nullable String field, String message, String category, String repair) {
+    /** Creates one entry-semantics violation from the canonical code-owned metadata. */
+    public EntrySemanticsViolation(String code, @Nullable String field, String message) {
+      this(
+          code,
+          field,
+          message,
+          EntrySemanticsViolationOwner.require(code).category(),
+          EntrySemanticsViolationOwner.require(code).repair());
+    }
+
     public EntrySemanticsViolation {
       code = ContractDescriptorValidation.requireText(code, "code");
       field = ContractDescriptorValidation.requireOptionalText(field, "field");
       message = ContractDescriptorValidation.requireText(message, "message");
+      category = ContractDescriptorValidation.requireText(category, "category");
+      repair = ContractDescriptorValidation.requireText(repair, "repair");
+      EntrySemanticsViolationOwner.validateKnownMetadata(code, category, repair);
     }
   }
 
@@ -87,7 +132,7 @@ public sealed interface PostingRejection
   record EntrySemanticsViolations(List<EntrySemanticsViolation> violations)
       implements PostingRejection {
     public EntrySemanticsViolations {
-      violations = ContractDescriptorValidation.copyList(violations, "violations");
+      violations = EntrySemanticsViolationOwner.inCanonicalOrder(violations);
       if (violations.isEmpty()) {
         throw new IllegalArgumentException(
             "Entry semantics violations must contain at least one issue.");
@@ -193,101 +238,5 @@ public sealed interface PostingRejection
     public ReversalDoesNotNegateTarget {
       Objects.requireNonNull(priorPostingId, "priorPostingId");
     }
-  }
-
-  /**
-   * Returns one entry-semantics violation for an account whose declared type contradicts the
-   * request.
-   */
-  static EntrySemanticsViolation accountTypeMismatch(
-      String entryLabel,
-      String field,
-      AccountCode accountCode,
-      AccountType expectedAccountType,
-      AccountType actualAccountType) {
-    String requiredEntryLabel = ContractDescriptorValidation.requireText(entryLabel, "entryLabel");
-    Objects.requireNonNull(field, "field");
-    Objects.requireNonNull(accountCode, "accountCode");
-    Objects.requireNonNull(expectedAccountType, "expectedAccountType");
-    Objects.requireNonNull(actualAccountType, "actualAccountType");
-    return new EntrySemanticsViolation(
-        "account-type-mismatch",
-        field,
-        "Entry kind '%s' requires %s '%s' to be account type '%s', but the declared account type is '%s'."
-            .formatted(
-                requiredEntryLabel,
-                field,
-                accountCode.value(),
-                expectedAccountType.wireValue(),
-                actualAccountType.wireValue()));
-  }
-
-  /**
-   * Returns one entry-semantics violation for an account whose declared financial-position
-   * classification contradicts the entry.
-   */
-  static EntrySemanticsViolation financialPositionClassificationMismatch(
-      String entryLabel,
-      String field,
-      AccountCode accountCode,
-      FinancialPositionLineClassification expectedClassification,
-      @Nullable FinancialPositionLineClassification actualClassification) {
-    String requiredEntryLabel = ContractDescriptorValidation.requireText(entryLabel, "entryLabel");
-    Objects.requireNonNull(field, "field");
-    Objects.requireNonNull(accountCode, "accountCode");
-    Objects.requireNonNull(expectedClassification, "expectedClassification");
-    return new EntrySemanticsViolation(
-        "financial-position-classification-mismatch",
-        field,
-        "Entry kind '%s' requires %s '%s' to use financialPositionLineClassification '%s', but the declared account uses '%s'."
-            .formatted(
-                requiredEntryLabel,
-                field,
-                accountCode.value(),
-                expectedClassification.wireValue(),
-                actualClassification == null ? "<absent>" : actualClassification.wireValue()));
-  }
-
-  /**
-   * Returns one entry-semantics violation for evidence whose source-document type is not admitted.
-   */
-  static EntrySemanticsViolation sourceDocumentTypeNotAccepted(
-      String entryLabel, SourceDocumentType sourceDocumentType, List<String> acceptedTypes) {
-    String requiredEntryLabel = ContractDescriptorValidation.requireText(entryLabel, "entryLabel");
-    Objects.requireNonNull(sourceDocumentType, "sourceDocumentType");
-    List<String> acceptedTypeValues =
-        List.copyOf(Objects.requireNonNull(acceptedTypes, "acceptedTypes"));
-    return new EntrySemanticsViolation(
-        "source-document-type-not-accepted",
-        "evidence.sourceDocuments[].sourceDocumentType",
-        "Entry kind '%s' does not accept sourceDocumentType '%s'. Accepted values: %s."
-            .formatted(
-                requiredEntryLabel,
-                sourceDocumentType.value(),
-                String.join(", ", acceptedTypeValues)));
-  }
-
-  /** Returns one entry-semantics violation when two semantic roles collapse onto one account. */
-  static EntrySemanticsViolation distinctRoleAccountsRequired(
-      String entryLabel, String firstField, String secondField, AccountCode accountCode) {
-    String requiredEntryLabel = ContractDescriptorValidation.requireText(entryLabel, "entryLabel");
-    Objects.requireNonNull(firstField, "firstField");
-    Objects.requireNonNull(secondField, "secondField");
-    Objects.requireNonNull(accountCode, "accountCode");
-    return new EntrySemanticsViolation(
-        "distinct-role-accounts-required",
-        null,
-        "Entry kind '%s' requires %s and %s to reference distinct accounts, but both point to '%s'."
-            .formatted(requiredEntryLabel, firstField, secondField, accountCode.value()));
-  }
-
-  /** Returns one insertion-ordered set of referenced accounts without rejecting duplicates. */
-  static Set<AccountCode> referencedAccountSet(AccountCode... accountCodes) {
-    Objects.requireNonNull(accountCodes, "accountCodes");
-    Set<AccountCode> referencedAccounts = new LinkedHashSet<>();
-    for (AccountCode accountCode : accountCodes) {
-      referencedAccounts.add(Objects.requireNonNull(accountCode, "accountCode"));
-    }
-    return referencedAccounts;
   }
 }

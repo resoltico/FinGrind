@@ -162,6 +162,7 @@ public final class ContractRequestShapes {
       List<RequestFieldDescriptor> stepFields,
       List<RequestFieldDescriptor> queryFields,
       List<RequestFieldDescriptor> assertionFields,
+      PostEntryRequestShapeDescriptor postingModel,
       List<LedgerStepKind> administrationStepKinds,
       List<LedgerStepKind> queryStepKinds,
       List<LedgerStepKind> writeStepKinds,
@@ -176,6 +177,7 @@ public final class ContractRequestShapes {
       stepFields = ContractDescriptorValidation.copyList(stepFields, "stepFields");
       queryFields = ContractDescriptorValidation.copyList(queryFields, "queryFields");
       assertionFields = ContractDescriptorValidation.copyList(assertionFields, "assertionFields");
+      postingModel = ContractDescriptorValidation.requireValue(postingModel, "postingModel");
       administrationStepKinds =
           ContractDescriptorValidation.copyList(administrationStepKinds, "administrationStepKinds");
       queryStepKinds = ContractDescriptorValidation.copyList(queryStepKinds, "queryStepKinds");

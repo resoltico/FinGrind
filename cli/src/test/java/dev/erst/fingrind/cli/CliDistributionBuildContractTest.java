@@ -358,17 +358,20 @@ class CliDistributionBuildContractTest {
     assertTrue(shellWrapperCommon.contains("fg_gradle_source_checkout_runtime_manifest_path"));
     assertTrue(shellWrapperCommon.contains("fg_cli_wrapper_load_runtime_manifest"));
     assertTrue(shellWrapperCommon.contains("fg_cli_wrapper_prepare_runtime_if_needed"));
+    assertTrue(shellWrapperCommon.contains("fg_cli_wrapper_runtime_inputs_are_fresh"));
+    assertTrue(shellWrapperCommon.contains("runtimeInputPath"));
     assertTrue(shellWrapperCommon.contains("./gradlew :cli:prepareSourceCheckoutCliRuntime"));
-    assertFalse(shellWrapperCommon.contains("fg_cli_wrapper_runtime_is_current"));
-    assertFalse(shellWrapperCommon.contains("runtimeInput)"));
     assertTrue(
         shellWrapperCommon.contains(
-            "./gradlew :cli:prepareSourceCheckoutCliRuntime --quiet >/dev/null"));
+            "./gradlew :cli:prepareSourceCheckoutCliRuntime --quiet >/dev/null 2>&1"));
+    assertTrue(
+        shellWrapperCommon.contains(
+            "./gradlew :cli:prepareSourceCheckoutCliRuntime --rerun-tasks --quiet >/dev/null 2>&1"));
     assertTrue(powerShellWrapperCommon.contains("Invoke-FinGrindEnsureCliWrapperRuntime"));
     assertTrue(powerShellWrapperCommon.contains("Read-FinGrindSourceCheckoutRuntimeManifest"));
+    assertTrue(powerShellWrapperCommon.contains("Test-FinGrindCliWrapperRuntimeFreshness"));
+    assertTrue(powerShellWrapperCommon.contains("runtimeInputPath"));
     assertTrue(powerShellWrapperCommon.contains("repo-locks/cli-runtime-prepare.lock"));
-    assertFalse(powerShellWrapperCommon.contains("Test-FinGrindCliWrapperRuntimeIsCurrent"));
-    assertFalse(powerShellWrapperCommon.contains("RuntimeInputs = @($runtimeInputs)"));
     assertTrue(powerShellWrapperCommon.contains("New-Item -ItemType Directory"));
     assertTrue(sourceCheckoutPowerShell.contains("source-checkout-cli-common.ps1"));
     assertTrue(directJavaPowerShell.contains("source-checkout-cli-common.ps1"));
@@ -446,9 +449,10 @@ class CliDistributionBuildContractTest {
     assertFalse(distributionPlugin.contains("src/bundle/root/bundle-manifest.json"));
     assertTrue(bundleReadme.contains("quick-start-request.json"));
     assertTrue(quickStartRequest.contains("\"entryKind\": \"JOURNAL\""));
-    assertTrue(quickStartRequest.contains("\"recipeKind\": \"CASH_REVENUE\""));
-    assertTrue(quickStartRequest.contains("\"cashAccountCode\": \"cash\""));
-    assertTrue(quickStartRequest.contains("\"revenueAccountCode\": \"service-revenue\""));
+    assertTrue(quickStartRequest.contains("\"lines\": ["));
+    assertTrue(quickStartRequest.contains("\"accountCode\": \"cash\""));
+    assertTrue(quickStartRequest.contains("\"accountCode\": \"service-revenue\""));
+    assertFalse(quickStartRequest.contains("\"recipeKind\": \"CASH_REVENUE\""));
   }
 
   @Test

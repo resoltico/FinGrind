@@ -511,71 +511,6 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void helpPayload_mapsPostingRequestGuidanceForPostingCommands() {
-    assertPostingGuidance(OperationId.POST_ENTRY);
-    assertPostingGuidance(OperationId.PREFLIGHT_ENTRY);
-  }
-
-  @Test
-  void helpPayload_mapsDeclareAccountAndLedgerPlanRequestGuidance() {
-    CliDiscoveryHelpJsonModels.CommandHelpPayload declarePayload =
-        assertInstanceOf(
-            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
-            fullHelpPayload(
-                MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT)));
-    CliDiscoveryHelpJsonModels.CommandHelpPayload compactDeclarePayload =
-        assertInstanceOf(
-            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
-            compactHelpPayload(
-                MachineContract.help(identity(), environment(), OperationId.DECLARE_ACCOUNT)));
-    CliDiscoveryHelpJsonModels.CommandHelpPayload planPayload =
-        assertInstanceOf(
-            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
-            fullHelpPayload(
-                MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN)));
-    CliDiscoveryHelpJsonModels.CommandHelpPayload compactPlanPayload =
-        assertInstanceOf(
-            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
-            compactHelpPayload(
-                MachineContract.help(identity(), environment(), OperationId.EXECUTE_PLAN)));
-
-    assertNotNull(declarePayload.requestFile());
-    assertEquals(
-        ProtocolCatalog.operation(OperationId.DECLARE_ACCOUNT).usage(), declarePayload.syntax());
-    assertNull(declarePayload.requestFile().postingTemplate());
-    assertNotNull(declarePayload.requestFile().declareAccountTemplate());
-    assertNull(declarePayload.requestFile().ledgerPlanTemplate());
-    assertTrue(
-        Objects.requireNonNull(declarePayload.requestFile().shortcutCommand())
-            .contains("declare-account"));
-    assertNotNull(compactDeclarePayload.requestFile());
-    assertNull(compactDeclarePayload.requestFile().postingTemplate());
-    assertNull(compactDeclarePayload.requestFile().declareAccountTemplate());
-    assertNull(compactDeclarePayload.requestFile().ledgerPlanTemplate());
-    assertNull(compactDeclarePayload.requestFile().requestShapes());
-    assertTrue(
-        Objects.requireNonNull(compactDeclarePayload.requestFile().shortcutCommand())
-            .contains("declare-account"));
-
-    assertNotNull(planPayload.requestFile());
-    assertEquals(ProtocolCatalog.operation(OperationId.EXECUTE_PLAN).usage(), planPayload.syntax());
-    assertNull(planPayload.requestFile().postingTemplate());
-    assertNull(planPayload.requestFile().declareAccountTemplate());
-    assertNotNull(planPayload.requestFile().ledgerPlanTemplate());
-    assertEquals(
-        CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
-        planPayload.requestFile().shortcutCommand());
-    assertNotNull(compactPlanPayload.requestFile());
-    assertNull(compactPlanPayload.requestFile().postingTemplate());
-    assertNull(compactPlanPayload.requestFile().declareAccountTemplate());
-    assertNull(compactPlanPayload.requestFile().ledgerPlanTemplate());
-    assertNull(compactPlanPayload.requestFile().requestShapes());
-    assertEquals(
-        CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
-        compactPlanPayload.requestFile().shortcutCommand());
-  }
-
-  @Test
   void helpPayload_omitsRequestGuidanceWhenArtifactsAreMissing() {
     HelpDescriptor postEntry =
         MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
@@ -896,23 +831,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     assertNotNull(payload.requestShapes());
   }
 
-  private static void assertPostingGuidance(OperationId operationId) {
-    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
-        assertInstanceOf(
-            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
-            fullHelpPayload(MachineContract.help(identity(), environment(), operationId)));
-
-    assertNotNull(payload.requestFile());
-    assertNotNull(payload.requestFile().postingTemplate());
-    assertNull(payload.requestFile().declareAccountTemplate());
-    assertNull(payload.requestFile().ledgerPlanTemplate());
-    assertNotNull(payload.requestFile().requestShapes());
-    assertEquals(
-        CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE),
-        payload.requestFile().shortcutCommand());
-  }
-
-  private static Object compactHelpPayload(HelpDescriptor helpDescriptor) {
+  static Object compactHelpPayload(HelpDescriptor helpDescriptor) {
     return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.COMPACT, null);
   }
 
@@ -920,7 +839,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.MINIMAL, null);
   }
 
-  private static Object fullHelpPayload(HelpDescriptor helpDescriptor) {
+  static Object fullHelpPayload(HelpDescriptor helpDescriptor) {
     return CliDiscoveryPayloadMapper.helpPayload(helpDescriptor, DiscoveryDetail.FULL, null);
   }
 
@@ -928,14 +847,14 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     return CliDiscoverySelections.overview();
   }
 
-  private static ApplicationIdentity identity() {
+  static ApplicationIdentity identity() {
     return new ApplicationIdentity(
         "FinGrind",
-        "0.56.0",
+        "0.57.0",
         "Command-line double-entry bookkeeping with one protected book per accounting entity");
   }
 
-  private static EnvironmentDescriptor environment() {
+  static EnvironmentDescriptor environment() {
     return environmentDescriptor(
         RuntimeDistribution.SELF_CONTAINED_BUNDLE.wireValue(),
         SqliteCompileOptionsVerificationStatus.VERIFIED,

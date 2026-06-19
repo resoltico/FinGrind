@@ -100,7 +100,7 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
 
 def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> None:
     print(f"{config.label}: verifying account declaration and registry listing")
-    declare_asset_output = run_cli(
+    declare_bank_output = run_cli(
         config,
         operation_ids["declareAccount"],
         "--book-file",
@@ -108,7 +108,7 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         "--book-key-file",
         config.book_key.argument,
         "--request-file",
-        config.declare_asset_supplement.argument,
+        config.declare_bank_account.argument,
         "--output",
         "json",
     )
@@ -135,9 +135,9 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         "json",
     )
     require_match(
-        declare_asset_output,
-        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.asset_supplement_account_code}"',
-        f"{config.label} asset-supplement declaration did not echo the requested account",
+        declare_bank_output,
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.bank_account_code}"',
+        f"{config.label} bank-account declaration did not echo the requested account",
     )
     require_match(
         declare_revenue_output,
@@ -156,8 +156,8 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
     )
     require_match(
         list_output,
-        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.asset_supplement_account_code}"',
-        f"{config.label} account listing did not include the declared asset supplement",
+        rf'"accountCode"[[:space:]]*:[[:space:]]*"{config.bank_account_code}"',
+        f"{config.label} account listing did not include the declared bank account",
     )
     require_match(
         list_output,

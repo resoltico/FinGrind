@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: USER_QUICK_START
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, quick start, first run, open book, starter chart, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -131,7 +131,8 @@ cp ./quick-start-request.json ./request.json
 
 That bundled file is a concrete sample document. Replace the sample evidence, provenance, and
 idempotency values before real-world use. Reusing one committed `idempotencyKey` against the same
-book is rejected.
+book is rejected. The sample uses direct balanced journal lines so the canonical write boundary is
+visible immediately; recipe shortcuts remain available in the broader examples and request docs.
 
 `./quick-start-request.json` already contains one balanced entry that uses the seeded starter
 accounts:
@@ -139,14 +140,25 @@ accounts:
 ```json
 {
   "entryKind": "JOURNAL",
-  "recipeKind": "CASH_REVENUE",
   "effectiveDate": "2026-04-08",
-  "cashAccountCode": "cash",
-  "revenueAccountCode": "service-revenue",
-  "amount": {
-    "currencyCode": "EUR",
-    "minorUnits": "1000"
-  },
+  "lines": [
+    {
+      "accountCode": "cash",
+      "side": "DEBIT",
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
+    },
+    {
+      "accountCode": "service-revenue",
+      "side": "CREDIT",
+      "amount": {
+        "currencyCode": "EUR",
+        "minorUnits": "1000"
+      }
+    }
+  ],
   "evidence": {
     "sourceDocuments": [
       {

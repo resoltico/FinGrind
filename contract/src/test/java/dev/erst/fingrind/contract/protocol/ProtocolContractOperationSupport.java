@@ -179,22 +179,10 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
         ContractErrors.descriptors().stream()
             .map(dev.erst.fingrind.contract.runtime.ContractResponse.ErrorDescriptor::code)
             .toList());
-    ids.addAll(
-        BookAdministrationRejection.descriptors().stream()
-            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
-            .toList());
-    ids.addAll(
-        BookQueryRejection.descriptors().stream()
-            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
-            .toList());
-    ids.addAll(
-        BookMaintenanceRejection.descriptors().stream()
-            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
-            .toList());
-    ids.addAll(
-        PostingRejection.descriptors().stream()
-            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
-            .toList());
+    ids.addAll(collectRejectionCodes(BookAdministrationRejection.descriptors()));
+    ids.addAll(collectRejectionCodes(BookQueryRejection.descriptors()));
+    ids.addAll(collectRejectionCodes(BookMaintenanceRejection.descriptors()));
+    ids.addAll(collectRejectionCodes(PostingRejection.descriptors()));
     ids.addAll(LedgerAssertionKind.wireValues());
     ids.addAll(LedgerBoundaryPhase.wireValues());
     ids.addAll(LedgerJournalKind.wireValues());
@@ -219,5 +207,19 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(PlanFailurePolicy.wireValues());
     ids.addAll(PlanResultDetail.wireValues());
     return Set.copyOf(ids);
+  }
+
+  private static Set<String> collectRejectionCodes(
+      List<dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor> descriptors) {
+    Set<String> codes = new HashSet<>();
+    descriptors.forEach(descriptor -> collectRejectionCodes(descriptor, codes));
+    return Set.copyOf(codes);
+  }
+
+  private static void collectRejectionCodes(
+      dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor descriptor,
+      Set<String> codes) {
+    codes.add(descriptor.code());
+    descriptor.detailRejections().forEach(detail -> collectRejectionCodes(detail, codes));
   }
 }

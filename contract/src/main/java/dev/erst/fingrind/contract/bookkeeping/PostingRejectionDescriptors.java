@@ -19,7 +19,7 @@ final class PostingRejectionDescriptors {
   }
 
   static String wireCode(PostingRejection.AccountStateViolation violation) {
-    return detailDescriptorFor(violation).code();
+    return AccountStateViolationOwner.code(Objects.requireNonNull(violation, "violation"));
   }
 
   static List<ContractResponse.RejectionDescriptor> descriptors() {
@@ -50,16 +50,6 @@ final class PostingRejectionDescriptors {
       case PostingRejection.ReversalAlreadyExists _ -> Descriptor.REVERSAL_ALREADY_EXISTS;
       case PostingRejection.ReversalDoesNotNegateTarget _ ->
           Descriptor.REVERSAL_DOES_NOT_NEGATE_TARGET;
-    };
-  }
-
-  private static AccountStateDetailDescriptor detailDescriptorFor(
-      PostingRejection.AccountStateViolation violation) {
-    return switch (Objects.requireNonNull(violation, "violation")) {
-      case PostingRejection.UnknownAccount _ -> AccountStateDetailDescriptor.UNKNOWN_ACCOUNT;
-      case PostingRejection.InactiveAccount _ -> AccountStateDetailDescriptor.INACTIVE_ACCOUNT;
-      case PostingRejection.NonPostableAccount _ ->
-          AccountStateDetailDescriptor.NON_POSTABLE_ACCOUNT;
     };
   }
 
@@ -103,9 +93,9 @@ final class PostingRejectionDescriptors {
                 + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
                 + ".";
         case ACCOUNT_STATE_VIOLATIONS ->
-            "Posting refused because one or more journal lines reference undeclared or inactive accounts.";
+            "Posting refused because one or more journal lines reference undeclared, inactive, or non-postable accounts.";
         case ENTRY_SEMANTICS_VIOLATIONS ->
-            "Posting refused because the selected typed entry contradicts its own published accounting semantics.";
+            "Posting refused because one or more canonical entry-semantics violations were detected. details.violations[] carries ordered issue objects with stable code, field, message, category, and repair metadata.";
         case DUPLICATE_IDEMPOTENCY_KEY ->
             "Posting refused because the selected book already contains the same idempotency key.";
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
@@ -134,12 +124,12 @@ final class PostingRejectionDescriptors {
             List.of(
                 detailField(
                     "violations",
-                    "Array of per-line account-state issue objects with stable code and accountCode."));
+                    "Array of ordered account-state issue objects with stable code, field, message, category, repair, accountCode, and optional accountNodeKind."));
         case ENTRY_SEMANTICS_VIOLATIONS ->
             List.of(
                 detailField(
                     "violations",
-                    "Array of typed-entry semantic issue objects with stable code, field, and message."));
+                    "Array of ordered entry-semantics issue objects with stable code, field, message, category, and repair."));
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
             List.of(
                 detailField(
@@ -195,9 +185,9 @@ final class PostingRejectionDescriptors {
 
     private List<ContractResponse.RejectionDescriptor> detailRejections() {
       return switch (this) {
-        case ACCOUNT_STATE_VIOLATIONS -> AccountStateDetailDescriptor.descriptors();
+        case ACCOUNT_STATE_VIOLATIONS -> AccountStateViolationOwner.descriptors();
+        case ENTRY_SEMANTICS_VIOLATIONS -> EntrySemanticsViolationOwner.descriptors();
         case BOOK_NOT_INITIALIZED,
-            ENTRY_SEMANTICS_VIOLATIONS,
             DUPLICATE_IDEMPOTENCY_KEY,
             BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
             CLOSED_PERIOD_VIOLATION,
@@ -232,62 +222,6 @@ final class PostingRejectionDescriptors {
               REVERSAL_DOES_NOT_NEGATE_TARGET)
           .stream()
           .map(Descriptor::descriptor)
-          .toList();
-    }
-  }
-
-  /** Canonical metadata for nested account-state detail rejections. */
-  enum AccountStateDetailDescriptor {
-    UNKNOWN_ACCOUNT,
-    INACTIVE_ACCOUNT,
-    NON_POSTABLE_ACCOUNT;
-
-    private String code() {
-      return switch (this) {
-        case UNKNOWN_ACCOUNT -> "unknown-account";
-        case INACTIVE_ACCOUNT -> "inactive-account";
-        case NON_POSTABLE_ACCOUNT -> "non-postable-account";
-      };
-    }
-
-    private String description() {
-      return switch (this) {
-        case UNKNOWN_ACCOUNT -> "One journal line references an undeclared account.";
-        case INACTIVE_ACCOUNT -> "One journal line references an inactive account.";
-        case NON_POSTABLE_ACCOUNT ->
-            "One journal line references a header account that cannot accept direct postings.";
-      };
-    }
-
-    private List<ContractResponse.FieldDescriptor> detailFields() {
-      return switch (this) {
-        case UNKNOWN_ACCOUNT ->
-            List.of(
-                detailField(
-                    "accountCode",
-                    "Undeclared accountCode referenced by one rejected journal line."));
-        case INACTIVE_ACCOUNT ->
-            List.of(
-                detailField(
-                    "accountCode",
-                    "Inactive accountCode referenced by one rejected journal line."));
-        case NON_POSTABLE_ACCOUNT ->
-            List.of(
-                detailField(
-                    "accountCode", "Header accountCode referenced by one rejected journal line."),
-                detailField(
-                    "accountNodeKind", "Declared accountNodeKind that forbids direct postings."));
-      };
-    }
-
-    private ContractResponse.RejectionDescriptor descriptor() {
-      return new ContractResponse.RejectionDescriptor(
-          code(), description(), detailFields(), List.of());
-    }
-
-    private static List<ContractResponse.RejectionDescriptor> descriptors() {
-      return List.of(UNKNOWN_ACCOUNT, INACTIVE_ACCOUNT, NON_POSTABLE_ACCOUNT).stream()
-          .map(AccountStateDetailDescriptor::descriptor)
           .toList();
     }
   }

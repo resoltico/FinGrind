@@ -1,0 +1,19 @@
+Rejected
+========
+
+Code            : entry-semantics-violations
+Summary         : Posting rejected with 2 entry-semantics issues.
+Idempotency key : idem-multi-violation
+
+Issue 1 | distinct-role-accounts-required
+-----------------------------------------
+Category : account-role-assignment
+Why      : Entry kind 'CASH_REVENUE' requires cashAccountCode and revenueAccountCode to reference distinct accounts, but both point to '1000'.
+Repair   : Assign distinct accounts to the semantic role fields named in the violation.
+
+Issue 2 | source-document-type-not-accepted
+-------------------------------------------
+Field    : evidence.sourceDocuments[].sourceDocumentType
+Category : source-document-type
+Why      : Entry kind 'CASH_REVENUE' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement.
+Repair   : Use an accepted source document type for the selected entry kind's evidence profile.

@@ -214,6 +214,7 @@ public record RequestSurfaceFacts(
       String summaryLabel,
       String lowerLabel,
       String upperLabel,
+      String boundarySemantics,
       String selectedBoundaryMeaning,
       String omittedLowerBoundaryMeaning,
       String omittedUpperBoundaryMeaning,
@@ -226,6 +227,8 @@ public record RequestSurfaceFacts(
       summaryLabel = ContractDescriptorValidation.requireText(summaryLabel, "summaryLabel");
       lowerLabel = ContractDescriptorValidation.requireText(lowerLabel, "lowerLabel");
       upperLabel = ContractDescriptorValidation.requireText(upperLabel, "upperLabel");
+      boundarySemantics =
+          ContractDescriptorValidation.requireText(boundarySemantics, "boundarySemantics");
       selectedBoundaryMeaning =
           ContractDescriptorValidation.requireText(
               selectedBoundaryMeaning, "selectedBoundaryMeaning");

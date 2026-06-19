@@ -93,10 +93,61 @@ class SqliteStoreOperationsTest {
     SqliteNativeException cause = nonTransientFailure();
 
     SqliteStorageFailureException exception =
-        SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", cause);
+        assertInstanceOf(
+            SqliteStorageFailureException.class,
+            SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", cause));
 
     assertEquals(
         "Failed to query SQLite book. SQLITE_CANTOPEN: unable to open file",
+        exception.getMessage());
+    assertSame(cause, exception.getCause());
+  }
+
+  @Test
+  void sqliteFailure_deduplicatesRepeatedNativeResultNamePrefixes() {
+    SqliteNativeException cause =
+        new SqliteNativeException(
+            SqliteNativeResultCode.code("CANTOPEN"), "SQLITE_CANTOPEN: unable to open file");
+
+    SqliteStorageFailureException exception =
+        assertInstanceOf(
+            SqliteStorageFailureException.class,
+            SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", cause));
+
+    assertEquals(
+        "Failed to query SQLite book. SQLITE_CANTOPEN: unable to open file",
+        exception.getMessage());
+  }
+
+  @Test
+  void sqliteFailure_usesFallbackNativeDetailWhenPrefixConsumesWholeMessage() {
+    SqliteNativeException cause =
+        new SqliteNativeException(SqliteNativeResultCode.code("CANTOPEN"), "SQLITE_CANTOPEN:");
+
+    SqliteStorageFailureException exception =
+        assertInstanceOf(
+            SqliteStorageFailureException.class,
+            SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", cause));
+
+    assertEquals(
+        "Failed to query SQLite book. SQLITE_CANTOPEN: SQLite native failure.",
+        exception.getMessage());
+  }
+
+  @Test
+  void sqliteFailure_wrapsConstraintCheckAsPersistenceInvariant() {
+    SqliteNativeException cause =
+        new SqliteNativeException(
+            SqliteNativeResultCode.code("CONSTRAINT_CHECK"),
+            "SQLITE_CONSTRAINT_CHECK: constraint failed");
+
+    SqlitePersistenceInvariantException exception =
+        assertInstanceOf(
+            SqlitePersistenceInvariantException.class,
+            SqliteStoreOperations.sqliteFailure("Failed to commit SQLite posting fact.", cause));
+
+    assertEquals(
+        "Failed to commit SQLite posting fact. One upstream invariant should have rejected this request before commit.",
         exception.getMessage());
     assertSame(cause, exception.getCause());
   }

@@ -19,8 +19,8 @@ STARTER_CASH_ACCOUNT_CODE = "cash"
 STARTER_CASH_ACCOUNT_NAME = "Cash"
 STARTER_REVENUE_ACCOUNT_CODE = "service-revenue"
 STARTER_REVENUE_ACCOUNT_NAME = "Service Revenue"
-ASSET_SUPPLEMENT_ACCOUNT_CODE = "cash-reserve"
-ASSET_SUPPLEMENT_ACCOUNT_NAME = "Cash Reserve"
+BANK_ACCOUNT_CODE = "operating-bank"
+BANK_ACCOUNT_NAME = "Operating Bank"
 EXPENSE_SUPPLEMENT_ACCOUNT_CODE = "misc-expense"
 EXPENSE_SUPPLEMENT_ACCOUNT_NAME = "Misc Expense"
 
@@ -44,15 +44,21 @@ def build_release_smoke_scenario(
             normalized_path_mode,
             Path("requests odd") / f"expense [{normalized_scenario_id}].json",
         ),
+        request_raw_journal=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("requests odd") / f"bank transfer [{normalized_scenario_id}].json",
+        ),
         invalid_request=smoke_path(
             work_root,
             normalized_path_mode,
             Path("requests odd") / f"bad fields [{normalized_scenario_id}].json",
         ),
-        declare_asset_supplement=smoke_path(
+        declare_bank_account=smoke_path(
             work_root,
             normalized_path_mode,
-            Path("requests odd") / f"declare account cash reserve [{normalized_scenario_id}].json",
+            Path("requests odd")
+            / f"declare account operating bank [{normalized_scenario_id}].json",
         ),
         declare_expense_supplement=smoke_path(
             work_root,
@@ -137,8 +143,8 @@ def build_release_smoke_scenario(
         starter_cash_account_name=STARTER_CASH_ACCOUNT_NAME,
         starter_revenue_account_code=STARTER_REVENUE_ACCOUNT_CODE,
         starter_revenue_account_name=STARTER_REVENUE_ACCOUNT_NAME,
-        asset_supplement_account_code=ASSET_SUPPLEMENT_ACCOUNT_CODE,
-        asset_supplement_account_name=ASSET_SUPPLEMENT_ACCOUNT_NAME,
+        bank_account_code=BANK_ACCOUNT_CODE,
+        bank_account_name=BANK_ACCOUNT_NAME,
         expense_supplement_account_code=EXPENSE_SUPPLEMENT_ACCOUNT_CODE,
         expense_supplement_account_name=EXPENSE_SUPPLEMENT_ACCOUNT_NAME,
     )

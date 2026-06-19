@@ -1,7 +1,11 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliAccountStateViolationPayload;
+import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
@@ -10,6 +14,7 @@ import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -59,19 +64,42 @@ class CliFailureOutputRendererTest {
 
   @Test
   void renderRejectedText_rendersEveryStructuredRejectionShape() {
-    assertRenderedRejection(
+    assertRenderedNestedRepairableRejection(
+        "account-state-violations",
+        "Posting rejected with 3 account-state issues.",
         new CliRejectionJsonModels.AccountStateViolationsDetails(
             List.of(
-                new CliRejectionJsonModels.AccountStateViolationPayload(
-                    "unknown-account", "1000", null),
-                new CliRejectionJsonModels.AccountStateViolationPayload(
-                    "inactive-account", "2000", null),
-                new CliRejectionJsonModels.AccountStateViolationPayload(
-                    "non-postable-account", "3000", "HEADER"))),
-        "Violations",
-        "unknown-account (1000)",
-        "inactive-account (2000)",
-        "non-postable-account (3000, HEADER)");
+                new CliAccountStateViolationPayload(
+                    "unknown-account",
+                    "lines[].accountCode",
+                    "Journal line references undeclared account '1000'.",
+                    "account-registry",
+                    "Declare the missing account before retrying the posting.",
+                    "1000",
+                    null),
+                new CliAccountStateViolationPayload(
+                    "inactive-account",
+                    "lines[].accountCode",
+                    "Journal line references inactive account '2000'.",
+                    "account-activation",
+                    "Reactivate the account or replace it with an active posting account before retrying.",
+                    "2000",
+                    null),
+                new CliAccountStateViolationPayload(
+                    "non-postable-account",
+                    "lines[].accountCode",
+                    "Journal line references header account '3000', declared as 'HEADER', which cannot accept direct postings.",
+                    "account-node-kind",
+                    "Replace the header account with a postable account before retrying.",
+                    "3000",
+                    "HEADER"))),
+        "Summary",
+        "Issue 1 | unknown-account",
+        "Issue 2 | inactive-account",
+        "Issue 3 | non-postable-account",
+        "Account node kind",
+        "HEADER",
+        "Why");
     assertRenderedRejection(
         new CliRejectionJsonModels.PriorPostingDetails("posting-9"),
         "Prior posting id",
@@ -234,27 +262,67 @@ class CliFailureOutputRendererTest {
     String rendered =
         CliFailureOutputRenderer.renderRejectedText(
             "entry-semantics-violations",
-            "Typed entry contradicts declared account or evidence doctrine.",
-            "Choose matching accounts and evidence.",
-            "idem-semantics",
+            "Posting rejected with 2 entry-semantics issues.",
+            null,
+            null,
             new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
                 List.of(
-                    new CliRejectionJsonModels.EntrySemanticsViolationPayload(
+                    new CliEntrySemanticsViolationPayload(
                         "account-type-mismatch",
                         "cashAccountCode",
-                        "cash account must be declared as ASSET"),
-                    new CliRejectionJsonModels.EntrySemanticsViolationPayload(
+                        "cash account must be declared as ASSET",
+                        "account-type",
+                        "Use accounts whose declared account type matches the violated field requirement."),
+                    new CliEntrySemanticsViolationPayload(
                         "source-document-type-not-accepted",
                         null,
-                        "invoice does not prove cash receipt"))));
+                        "invoice does not prove cash receipt",
+                        "source-document-type",
+                        "Use an accepted source document type for the selected entry kind's evidence profile."))));
 
     assertTrue(rendered.contains("entry-semantics-violations"));
-    assertTrue(
-        rendered.contains(
-            "account-type-mismatch (cashAccountCode: cash account must be declared as ASSET)"));
-    assertTrue(
-        rendered.contains(
-            "source-document-type-not-accepted (invoice does not prove cash receipt)"));
+    assertTrue(rendered.contains("Summary"));
+    assertTrue(rendered.contains("Issue 1 | account-type-mismatch"));
+    assertTrue(rendered.contains("Issue 2 | source-document-type-not-accepted"));
+    assertTrue(rendered.contains("Field"));
+    assertTrue(rendered.contains("cashAccountCode"));
+    assertTrue(rendered.contains("Repair"));
+    assertTrue(rendered.contains("Why"));
+    assertTrue(rendered.contains("invoice does not prove cash receipt"));
+    assertFalse(rendered.contains("Hint"));
+    assertFalse(rendered.contains("Idempotency key"));
+  }
+
+  @Test
+  void renderRejectedText_rejectsRoutingNestedPostingDetailsThroughTheSharedRowAppender() {
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            CliPostingRejectionTextRenderer.appendRows(
+                new ArrayList<>(),
+                new CliRejectionJsonModels.AccountStateViolationsDetails(
+                    List.of(
+                        new CliAccountStateViolationPayload(
+                            "unknown-account",
+                            "lines[].accountCode",
+                            "Journal line references undeclared account '1000'.",
+                            "account-registry",
+                            "Declare the missing account before retrying the posting.",
+                            "1000",
+                            null)))));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            CliPostingRejectionTextRenderer.appendRows(
+                new ArrayList<>(),
+                new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
+                    List.of(
+                        new CliEntrySemanticsViolationPayload(
+                            "account-type-mismatch",
+                            "cashAccountCode",
+                            "cash account must be declared as ASSET",
+                            "account-type",
+                            "Use accounts whose declared account type matches the violated field requirement.")))));
   }
 
   private static void assertRenderedRejection(
@@ -266,6 +334,24 @@ class CliFailureOutputRendererTest {
     assertTrue(rendered.contains("Idempotency key"));
     assertTrue(rendered.contains("idem-1"));
     assertTrue(rendered.contains("Repair hint."));
+    for (String expectedFragment : expectedFragments) {
+      assertTrue(rendered.contains(expectedFragment));
+    }
+  }
+
+  private static void assertRenderedNestedRepairableRejection(
+      String code,
+      String summary,
+      CliRejectionJsonModels.RejectionDetails details,
+      String... expectedFragments) {
+    String rendered =
+        CliFailureOutputRenderer.renderRejectedText(code, summary, null, "idem-1", details);
+    assertTrue(rendered.contains("Rejected"));
+    assertTrue(rendered.contains("Idempotency key"));
+    assertTrue(rendered.contains("idem-1"));
+    assertTrue(rendered.contains("Summary"));
+    assertTrue(rendered.contains(summary));
+    assertFalse(rendered.contains("Hint"));
     for (String expectedFragment : expectedFragments) {
       assertTrue(rendered.contains(expectedFragment));
     }

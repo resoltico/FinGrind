@@ -1,24 +1,15 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAccountStateViolationPayload;
+import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
-import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 
 /** Maps posting rejections into the CLI rejected-envelope contract. */
 final class CliPostingRejectionPayloadMapper {
-  private static final String OPEN_BOOK_OPERATION =
-      ProtocolCatalog.operationName(OperationId.OPEN_BOOK);
-  private static final String GET_POSTING_OPERATION =
-      ProtocolCatalog.operationName(OperationId.GET_POSTING);
-  private static final String LIST_POSTINGS_OPERATION =
-      ProtocolCatalog.operationName(OperationId.LIST_POSTINGS);
-  private static final String TRANSFER_PERIOD_RESULT_OPERATION =
-      ProtocolCatalog.operationName(OperationId.TRANSFER_PERIOD_RESULT);
-
   private CliPostingRejectionPayloadMapper() {}
 
   static CliEnvelopeJsonModels.RejectedEnvelope rejectedEnvelope(
@@ -27,50 +18,9 @@ final class CliPostingRejectionPayloadMapper {
         ProtocolEnvelopeStatus.REJECTED,
         PostingRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
-        rejectionHint(rejection),
+        RejectionNarrative.hint(rejection),
         requestIdempotencyKey,
         rejectionDetails(rejection));
-  }
-
-  private static String rejectionHint(PostingRejection rejection) {
-    return switch (rejection) {
-      case PostingRejection.BookNotInitialized _ ->
-          "Run "
-              + OPEN_BOOK_OPERATION
-              + " first for a new book, or verify the selected --book-file and book passphrase source for an existing book.";
-      case PostingRejection.AccountStateViolations _ ->
-          "Declare or reactivate every account named in details.violations, then rerun the request with a fresh provenance.idempotencyKey.";
-      case PostingRejection.EntrySemanticsViolations _ ->
-          "Choose accounts and source-document types that match the selected entry kind, then rerun the request with a fresh provenance.idempotencyKey.";
-      case PostingRejection.DuplicateIdempotencyKey _ ->
-          "Inspect the already-committed posting for this idempotency key instead of retrying the same key, or submit a new posting with a fresh provenance.idempotencyKey.";
-      case PostingRejection.BookFunctionalCurrencyMismatch _ ->
-          "Use the selected book's functional currency for every journal line in this request, or open a separate book for another currency.";
-      case PostingRejection.TransferredPeriodResultViolation _ ->
-          "Use an effective date after the transferred-through horizon, or close the next contiguous reporting period before posting into later dates.";
-      case PostingRejection.OpenAccountingPositionWindowClosed rejectionWindowClosed ->
-          "OPEN_ACCOUNTING_POSITION is only accepted before the first committed posting in the book. The window closed with "
-              + rejectionWindowClosed.firstBlockingPostingKind().wireValue()
-              + " on "
-              + rejectionWindowClosed.firstBlockingEffectiveDate()
-              + "; create a new book if the opening statement was not seeded completely.";
-      case PostingRejection.OpenAccountingPositionTouchesNominalAccount _ ->
-          "OPEN_ACCOUNTING_POSITION may seed only asset, liability, or equity accounts. Move revenue and expense setup into real operating-period postings instead.";
-      case PostingRejection.ResultHoldingAccountReserved _ ->
-          "Post directly to ordinary accounts only; let "
-              + TRANSFER_PERIOD_RESULT_OPERATION
-              + " generate result-holding postings automatically.";
-      case PostingRejection.ReversalTargetNotFound _ ->
-          "Use "
-              + GET_POSTING_OPERATION
-              + " or "
-              + LIST_POSTINGS_OPERATION
-              + " to confirm the prior posting id before retrying the reversal.";
-      case PostingRejection.ReversalAlreadyExists _ ->
-          "Inspect the existing reversal for the referenced posting instead of retrying another reversal.";
-      case PostingRejection.ReversalDoesNotNegateTarget _ ->
-          "Build a full negating journal entry for the referenced posting so every line, amount, and side inverts the original exactly.";
-    };
   }
 
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
@@ -120,30 +70,27 @@ final class CliPostingRejectionPayloadMapper {
     };
   }
 
-  private static CliRejectionJsonModels.AccountStateViolationPayload accountStateViolationPayload(
+  private static CliAccountStateViolationPayload accountStateViolationPayload(
       PostingRejection.AccountStateViolation violation) {
-    return switch (violation) {
-      case PostingRejection.UnknownAccount unknownAccount ->
-          new CliRejectionJsonModels.AccountStateViolationPayload(
-              PostingRejection.wireCode(unknownAccount),
-              unknownAccount.accountCode().value(),
-              null);
-      case PostingRejection.InactiveAccount inactiveAccount ->
-          new CliRejectionJsonModels.AccountStateViolationPayload(
-              PostingRejection.wireCode(inactiveAccount),
-              inactiveAccount.accountCode().value(),
-              null);
-      case PostingRejection.NonPostableAccount nonPostableAccount ->
-          new CliRejectionJsonModels.AccountStateViolationPayload(
-              PostingRejection.wireCode(nonPostableAccount),
-              nonPostableAccount.accountCode().value(),
-              nonPostableAccount.accountNodeKind().wireValue());
-    };
+    PostingRejection.AccountStateViolationDetail detail =
+        PostingRejection.accountStateDetail(violation);
+    return new CliAccountStateViolationPayload(
+        detail.code(),
+        detail.field(),
+        detail.message(),
+        detail.category(),
+        detail.repair(),
+        detail.accountCode(),
+        detail.accountNodeKind());
   }
 
-  private static CliRejectionJsonModels.EntrySemanticsViolationPayload
-      entrySemanticsViolationPayload(PostingRejection.EntrySemanticsViolation violation) {
-    return new CliRejectionJsonModels.EntrySemanticsViolationPayload(
-        violation.code(), violation.field(), violation.message());
+  private static CliEntrySemanticsViolationPayload entrySemanticsViolationPayload(
+      PostingRejection.EntrySemanticsViolation violation) {
+    return new CliEntrySemanticsViolationPayload(
+        violation.code(),
+        violation.field(),
+        violation.message(),
+        violation.category(),
+        violation.repair());
   }
 }

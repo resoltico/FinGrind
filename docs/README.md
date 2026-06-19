@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -30,12 +30,16 @@ Then choose one of the user, developer, or reference tracks below.
 
 The checked-in `examples/*` files below are source-checkout fixtures for review and copying.
 Public release bundles do not include the repository's `docs/examples/` tree.
-- [examples/basic-posting-request.json](./examples/basic-posting-request.json): minimal valid request payload
-- [examples/request-template.json](./examples/request-template.json): checked-in source-copy companion for the `print-request-template` posting scaffold
+- [examples/basic-posting-request.json](./examples/basic-posting-request.json): primary raw-journal posting example
+- [examples/request-template.json](./examples/request-template.json): checked-in source-copy companion for the `print-request-template` raw-journal scaffold
 - [examples/declare-account-supplemental-cash-reserve.json](./examples/declare-account-supplemental-cash-reserve.json): supplemental account-declaration request for an additional cash reserve account on top of the seeded starter chart
 - [examples/declare-account-supplemental-misc-revenue.json](./examples/declare-account-supplemental-misc-revenue.json): supplemental account-declaration request for an additional miscellaneous revenue account on top of the seeded starter chart
-- [examples/unknown-account-request.json](./examples/unknown-account-request.json): posting request that deterministically rejects for an undeclared account
-- [examples/account-state-violations-response.json](./examples/account-state-violations-response.json): posting rejection example with aggregated account-state details
+- [examples/unknown-account-request.json](./examples/unknown-account-request.json): recipe-shortcut posting request that deterministically rejects for an undeclared account
+- [examples/account-state-violations-response.json](./examples/account-state-violations-response.json): machine rejection example with a stable family summary plus aggregated account-state details
+- [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt): operator-facing text rejection example with one `Summary` header plus one typed issue section per account-state violation
+- [examples/entry-semantics-multi-violation-request.json](./examples/entry-semantics-multi-violation-request.json): recipe-backed posting request that deterministically rejects with multiple entry-semantics violations
+- [examples/entry-semantics-violations-response.json](./examples/entry-semantics-violations-response.json): machine rejection example with ordered entry-semantics `details.violations[]` items
+- [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt): operator-facing text rejection example with one `Summary` header plus one typed issue section per entry-semantics violation
 - [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json): example committed response with a UUID v7 `postingId`
 - [examples/inspect-book-response.json](./examples/inspect-book-response.json): example `inspect-book` compatibility snapshot
 - [examples/list-accounts-response.json](./examples/list-accounts-response.json): example paginated account-registry response
@@ -54,9 +58,9 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
 - [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` ledger-plan scaffold
-- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): runnable `execute-plan` request for a fresh book
-- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): runnable `execute-plan` request that pages accounts and postings inside the plan journal
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` raw-journal ledger-plan scaffold
+- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable `execute-plan` request for a fresh book using direct journal lines
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): recipe-shortcut `execute-plan` request that pages accounts and postings inside the plan journal
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with `resultDetail: "full"` and a per-step journal
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json): example failed assertion ledger-plan response with `resultDetail: "full"` and a bounded per-step journal
 - [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json): example committed ledger-plan response with `resultDetail: "full"` whose query steps retain pagination facts and structured row groups
@@ -82,6 +86,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md): committed harness coverage and remaining hostile-input focus areas
 - [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md): GitHub Release publication topology, attestation invariants, Windows ZIP canary behavior, and post-tag workflow repair
 - [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md): canonical security model, threat boundary, secret transport, and runtime-identity rules
+- [DEVELOPER_REJECTION_TEXT_SURFACE.md](./DEVELOPER_REJECTION_TEXT_SURFACE.md): review gate for the lean machine posting-rejection envelope and the dedicated per-violation text-mode rendering
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md): managed SQLite3MC runtime, protected-book format, and storage threat boundary
 - [ADR_SQLITE_JOURNAL_MODE.md](./ADR_SQLITE_JOURNAL_MODE.md): why FinGrind pins `journal_mode=DELETE` instead of WAL on the current storage line
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md): first-time GitHub repository bootstrap and workflow bring-up

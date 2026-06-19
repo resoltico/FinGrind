@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.56.0"
+version: "0.57.0"
 domain: ADAPTERS
-updated: "2026-06-17"
+updated: "2026-06-19"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -500,11 +500,12 @@ public final class SqliteRuntime
 public final class SqliteFailureClassifier
 ```
 
-- Purpose: separate managed-runtime failures from storage failures and unrelated errors
+- Purpose: separate managed-runtime failures, persistence-invariant breaches, storage failures,
+  and unrelated errors
 - `SqliteFailureClassifier.Category`: stable classification family with `MANAGED_RUNTIME`,
-  `STORAGE`, and `OTHER`
+  `PERSISTENCE_INVARIANT`, `STORAGE`, and `OTHER`
 
-## `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, And `SqliteStorageFailureException`
+## `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, And `SqliteStorageFailureException`
 
 These public exception types distinguish important SQLite failure categories.
 
@@ -512,6 +513,7 @@ These public exception types distinguish important SQLite failure categories.
 public final class ManagedSqliteRuntimeUnavailableException extends IllegalStateException
 public final class UnsupportedManagedSqliteLibraryIdentityException extends IllegalStateException
 public final class UnsupportedSqliteCompileOptionsException extends IllegalStateException
+public final class SqlitePersistenceInvariantException extends IllegalStateException
 public final class SqliteStorageFailureException extends IllegalStateException
 ```
 
@@ -522,6 +524,8 @@ public final class SqliteStorageFailureException extends IllegalStateException
   with the public contract distinguishing bundle-sidecar and source-checkout-sidecar provenance
   separately
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
+- `SqlitePersistenceInvariantException`: SQLite rejected one write through a persistence invariant
+  that FinGrind should have rejected before commit, so the CLI classifies it as `internal-error`
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
 ## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodResultTransferSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqlitePeriodResultTransferSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`

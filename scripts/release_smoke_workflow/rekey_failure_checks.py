@@ -11,6 +11,18 @@ def verify_rekey_and_wrong_key_semantics(
     error_exit_codes: dict[str, int],
 ) -> None:
     print(f"{config.label}: verifying rekey and wrong-key semantics")
+    baseline_trial_balance_output = run_cli(
+        config,
+        operation_ids["trialBalance"],
+        "--book-file",
+        config.book.argument,
+        "--book-key-file",
+        config.book_key.argument,
+        "--effective-date-as-of",
+        "2026-04-08",
+        "--output",
+        "text",
+    )
     replacement_key_output = parse_json_output(
         run_cli(
             config,
@@ -85,7 +97,11 @@ def verify_rekey_and_wrong_key_semantics(
         f"{config.label} rekeyed book did not render the trial-balance title",
     )
     require_match(
-        replacement_key_trial_balance_output,
-        r"6\.00",
-        f"{config.label} trial-balance did not remain readable after rekey",
+        baseline_trial_balance_output,
+        r"^Trial Balance$",
+        f"{config.label} baseline trial-balance did not render the trial-balance title before rekey",
+    )
+    require(
+        replacement_key_trial_balance_output == baseline_trial_balance_output,
+        f"{config.label} trial-balance output changed across rekey",
     )

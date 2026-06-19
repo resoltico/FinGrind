@@ -144,4 +144,179 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     assertJsonContains(balanceOutput, "\"accountCode\":\"1000\"");
     assertTrue(balanceOutput.toString(StandardCharsets.UTF_8).contains("\"balances\""));
   }
+
+  @Test
+  void run_twoLineBankTransferRawJournalThroughEncryptedBookAndReadItBack() throws IOException {
+    RawJournalWorkflowContext workflow = openRawJournalWorkflow();
+    String postingId = commitRawJournal(workflow, writeRawBankTransferRequest());
+    assertPostingReadback(workflow, postingId, "bank-deposit", 2, "operating-bank", "1000");
+    assertPostingListingContains(workflow, postingId);
+  }
+
+  @Test
+  void run_threeLineSplitRawJournalThroughEncryptedBookAndReadItBack() throws IOException {
+    RawJournalWorkflowContext workflow = openRawJournalWorkflow();
+    String postingId = commitRawJournal(workflow, writeRawSplitRequest());
+    assertPostingReadback(workflow, postingId, "cash-receipt", 3, "1000", "5000", "operating-bank");
+    assertPostingListingContains(workflow, postingId);
+  }
+
+  private RawJournalWorkflowContext openRawJournalWorkflow() throws IOException {
+    Path declareCashFile =
+        writeNamedRequest("raw-declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
+    Path declareBankFile =
+        writeNamedRequest(
+            "raw-declare-bank.json",
+            declareAccountJson("operating-bank", "Operating Bank", "ASSET", "ORDINARY"));
+    Path declareExpenseFile =
+        writeNamedRequest(
+            "raw-declare-expense.json",
+            declareAccountJson("5000", "Misc Expense", "EXPENSE", "ORDINARY"));
+    Path bookFilePath = tempDirectory.resolve("raw-journal-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
+    for (Path declaration :
+        java.util.List.of(declareCashFile, declareBankFile, declareExpenseFile)) {
+      assertDeclareAccountSucceeds(bookFilePath, bookKeyFilePath, declaration);
+    }
+    return new RawJournalWorkflowContext(bookFilePath, bookKeyFilePath, new ObjectMapper());
+  }
+
+  private void assertDeclareAccountSucceeds(
+      Path bookFilePath, Path bookKeyFilePath, Path declarationFile) {
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                new String[] {
+                  "declare-account",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  declarationFile.toString()
+                }));
+  }
+
+  private Path writeRawBankTransferRequest() throws IOException {
+    return writeNamedRequest(
+        "raw-bank-transfer-request.json",
+        rawJournalRequestJson(
+            "2026-04-07",
+            "command-transfer",
+            "idem-transfer",
+            "bank-deposit-1",
+            "bank-deposit",
+            journalLineJson("operating-bank", "DEBIT", "400"),
+            journalLineJson("1000", "CREDIT", "400")));
+  }
+
+  private Path writeRawSplitRequest() throws IOException {
+    return writeNamedRequest(
+        "raw-split-request.json",
+        rawJournalRequestJson(
+            "2026-04-08",
+            "command-split",
+            "idem-split",
+            "cash-receipt-1",
+            "cash-receipt",
+            journalLineJson("1000", "DEBIT", "1000"),
+            journalLineJson("5000", "DEBIT", "250"),
+            journalLineJson("operating-bank", "CREDIT", "1250")));
+  }
+
+  private String commitRawJournal(RawJournalWorkflowContext workflow, Path requestFile)
+      throws IOException {
+    ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
+    int exitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
+            .run(
+                jsonArguments(
+                    "post-entry",
+                    "--book-file",
+                    workflow.bookFilePath().toString(),
+                    "--book-key-file",
+                    workflow.bookKeyFilePath().toString(),
+                    "--request-file",
+                    requestFile.toString()));
+    assertEquals(0, exitCode, commitOutput.toString(StandardCharsets.UTF_8));
+    return workflow
+        .json()
+        .readTree(commitOutput.toByteArray())
+        .path("payload")
+        .path("postingId")
+        .stringValue();
+  }
+
+  private void assertPostingReadback(
+      RawJournalWorkflowContext workflow,
+      String postingId,
+      String sourceDocumentType,
+      int expectedLineCount,
+      String... expectedAccountCodes)
+      throws IOException {
+    ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(getPostingOutput), fixedClock())
+            .run(
+                jsonArguments(
+                    "get-posting",
+                    "--book-file",
+                    workflow.bookFilePath().toString(),
+                    "--book-key-file",
+                    workflow.bookKeyFilePath().toString(),
+                    "--posting-id",
+                    postingId)));
+    String getPostingJson = getPostingOutput.toString(StandardCharsets.UTF_8);
+    assertJsonContains(getPostingJson, "\"postingOriginKind\":\"JOURNAL\"");
+    assertJsonContains(getPostingJson, "\"sourceDocumentType\":\"" + sourceDocumentType + "\"");
+    for (String expectedAccountCode : expectedAccountCodes) {
+      assertJsonContains(getPostingJson, "\"accountCode\":\"" + expectedAccountCode + "\"");
+    }
+    assertEquals(
+        expectedLineCount,
+        workflow
+            .json()
+            .readTree(getPostingOutput.toByteArray())
+            .path("payload")
+            .path("posting")
+            .path("lines")
+            .size());
+  }
+
+  private void assertPostingListingContains(RawJournalWorkflowContext workflow, String postingId) {
+    ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(listPostingsOutput),
+                fixedClock())
+            .run(
+                jsonArguments(
+                    "list-postings",
+                    "--book-file",
+                    workflow.bookFilePath().toString(),
+                    "--book-key-file",
+                    workflow.bookKeyFilePath().toString(),
+                    "--limit",
+                    "10")));
+    String listPostingsJson = listPostingsOutput.toString(StandardCharsets.UTF_8);
+    assertJsonContains(listPostingsJson, "\"postingOriginKind\":\"JOURNAL\"");
+    assertTrue(listPostingsJson.contains(postingId));
+  }
+
+  private record RawJournalWorkflowContext(
+      Path bookFilePath, Path bookKeyFilePath, ObjectMapper json) {}
 }

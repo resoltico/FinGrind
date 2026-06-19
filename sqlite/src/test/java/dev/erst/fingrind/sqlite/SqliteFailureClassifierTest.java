@@ -47,6 +47,11 @@ class SqliteFailureClassifierTest {
                 "3.53.2",
                 "2.3.5")));
     assertEquals(
+        SqliteFailureClassifier.Category.PERSISTENCE_INVARIANT,
+        SqliteFailureClassifier.classify(
+            new RuntimeException(
+                new SqlitePersistenceInvariantException("deterministic invariant leaked"))));
+    assertEquals(
         SqliteFailureClassifier.Category.STORAGE,
         SqliteFailureClassifier.classify(
             new RuntimeException(new SqliteStorageFailureException("storage failure"))));

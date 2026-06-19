@@ -235,8 +235,8 @@ TEXT
                     esac
                 done
                 [[ -n "${request_file}" ]] || exit 1
-                if grep -Fq 'cash-reserve' "${request_file}"; then
-                    printf '{"status":"ok","payload":{"accountCode":"cash-reserve"}}\n'
+                if grep -Fq 'operating-bank' "${request_file}"; then
+                    printf '{"status":"ok","payload":{"accountCode":"operating-bank"}}\n'
                 elif grep -Fq 'misc-revenue' "${request_file}"; then
                     printf '{"status":"ok","payload":{"accountCode":"misc-revenue"}}\n'
                 else
@@ -248,7 +248,7 @@ TEXT
                 request_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
-                        --book-file|--book-key-file)
+                        --book-file|--book-key-file|--output)
                             shift 2
                             ;;
                         --request-file)
@@ -263,17 +263,50 @@ TEXT
                 done
                 [[ -n "${request_file}" ]] || exit 1
                 grep -Fq '"entryKind": "JOURNAL"' "${request_file}" || exit 1
-                grep -Fq '"recipeKind": "CASH_REVENUE"' "${request_file}" || exit 1
-                grep -Fq '"cashAccountCode": "cash"' "${request_file}" || exit 1
-                grep -Fq '"revenueAccountCode": "service-revenue"' "${request_file}" || exit 1
-                grep -Fq '"sourceDocumentId": "release-protocol-cash-receipt-1"' "${request_file}" || exit 1
-                grep -Fq '"sourceDocumentType": "cash-receipt"' "${request_file}" || exit 1
-                grep -Fq '"documentDate": "2026-04-08"' "${request_file}" || exit 1
-                grep -Fq '"capturedAt": "2026-04-08T10:15:30Z"' "${request_file}" || exit 1
-                grep -Fq '"storageLocator": "vault://release-protocol/cash-receipt-1"' "${request_file}" || exit 1
-                grep -Fq '"contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"' "${request_file}" || exit 1
-                grep -Fq '"approvals": []' "${request_file}" || exit 1
-                printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
+                if grep -Fq '"recipeKind": "CASH_REVENUE"' "${request_file}"; then
+                    grep -Fq '"cashAccountCode": "cash"' "${request_file}" || exit 1
+                    grep -Fq '"revenueAccountCode": "service-revenue"' "${request_file}" || exit 1
+                    grep -Fq '"sourceDocumentId": "release-protocol-cash-receipt-1"' "${request_file}" || exit 1
+                    grep -Fq '"sourceDocumentType": "cash-receipt"' "${request_file}" || exit 1
+                    grep -Fq '"documentDate": "2026-04-08"' "${request_file}" || exit 1
+                    grep -Fq '"capturedAt": "2026-04-08T10:15:30Z"' "${request_file}" || exit 1
+                    grep -Fq '"storageLocator": "vault://release-protocol/cash-receipt-1"' "${request_file}" || exit 1
+                    grep -Fq '"contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"' "${request_file}" || exit 1
+                    grep -Fq '"approvals": []' "${request_file}" || exit 1
+                    printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
+                elif grep -Fq '"sourceDocumentType": "bank-deposit"' "${request_file}"; then
+                    grep -Fq '"accountCode": "operating-bank"' "${request_file}" || exit 1
+                    grep -Fq '"accountCode": "cash"' "${request_file}" || exit 1
+                    grep -Fq '"side": "DEBIT"' "${request_file}" || exit 1
+                    grep -Fq '"side": "CREDIT"' "${request_file}" || exit 1
+                    grep -Fq '"approvals": []' "${request_file}" || exit 1
+                    printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f73","idempotencyKey":"release-protocol-idem-transfer","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z"}}\n'
+                else
+                    printf 'unexpected post-entry fixture\n' >&2
+                    exit 1
+                fi
+                ;;
+            get-posting)
+                posting_id=''
+                while [[ $# -gt 0 ]]; do
+                    case "${1}" in
+                        --book-file|--book-key-file|--output)
+                            shift 2
+                            ;;
+                        --posting-id)
+                            posting_id="${2:-}"
+                            shift 2
+                            ;;
+                        *)
+                            printf 'unsupported get-posting argument: %s\n' "${1}" >&2
+                            exit 1
+                            ;;
+                    esac
+                done
+                [[ "${posting_id}" == '01963c70-8d65-7b56-8a64-3c92745d8f73' ]] || exit 1
+                cat <<JSON
+{"status":"ok","payload":{"posting":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f73","postingKind":"STANDARD","postingOriginKind":"JOURNAL","reversalState":"direct","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z","actorId":"release-protocol","actorType":"AGENT","commandId":"release-protocol-transfer","idempotencyKey":"release-protocol-idem-transfer","causationId":"release-protocol-cause-transfer","sourceChannel":"CLI","evidence":{"sourceDocuments":[{"sourceDocumentId":"release-protocol-bank-deposit-1","sourceDocumentType":"bank-deposit","documentDate":"2026-04-08","capturedAt":"2026-04-08T10:15:30Z","storageLocator":"vault://release-protocol/bank-deposit-1","contentSha256":"fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}],"approvals":[]},"lines":[{"accountCode":"operating-bank","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"250"}},{"accountCode":"cash","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"250"}}]}}}
+JSON
                 ;;
             trial-balance)
                 pdf_out=''

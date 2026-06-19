@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
+import dev.erst.fingrind.sqlite.SqlitePersistenceInvariantException;
 import dev.erst.fingrind.sqlite.SqliteStorageFailureException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -150,6 +151,50 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
     assertJsonContains(diagnosticsStream, "\"code\":\"storage-runtime-failure\"");
     assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("initialization state"));
+  }
+
+  @Test
+  void run_mapsPersistenceInvariantBreachesToInternalErrorWithoutStorageHint() throws IOException {
+    Path requestFile = writeRequest(validRequestJson());
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
+            fixedClock(),
+            new ExplodingWorkflow(
+                new SqlitePersistenceInvariantException(
+                    "Failed to commit SQLite posting fact. One upstream invariant should have rejected this request before commit.")));
+
+    int exitCode =
+        cli.run(
+            jsonArguments(
+                "post-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
+
+    assertEquals(70, exitCode);
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    String diagnosticsText = diagnosticsStream.toString(StandardCharsets.UTF_8);
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsStream.toByteArray());
+    assertEquals("internal-error", failureEnvelope.path("code").stringValue());
+    assertTrue(
+        failureEnvelope
+            .path("message")
+            .stringValue()
+            .contains("One upstream invariant should have rejected this request before commit."));
+    assertTrue(diagnosticsText.contains("fg-internal-"));
+    assertFalse(diagnosticsText.contains("storage-runtime-failure"));
+    assertFalse(diagnosticsText.contains("book file path"));
+    assertFalse(diagnosticsText.contains("SQLITE_CONSTRAINT_CHECK"));
   }
 
   @Test

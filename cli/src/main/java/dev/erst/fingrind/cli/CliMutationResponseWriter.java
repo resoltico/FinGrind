@@ -44,13 +44,15 @@ final class CliMutationResponseWriter {
                 throw new IllegalArgumentException("entry success does not support CSV output.");
               });
       case PostEntryResult.PreflightRejected rejected ->
-          outputChannel.writeMutationRejection(
+          outputChannel.writeRejectedEnvelope(
               CliRejectionPayloadMapper.postingRejectedEnvelope(
-                  rejected.requestIdempotencyKey().value(), rejected.rejection()));
+                  rejected.requestIdempotencyKey().value(), rejected.rejection()),
+              outputMode);
       case PostEntryResult.CommitRejected rejected ->
-          outputChannel.writeMutationRejection(
+          outputChannel.writeRejectedEnvelope(
               CliRejectionPayloadMapper.postingRejectedEnvelope(
-                  rejected.requestIdempotencyKey().value(), rejected.rejection()));
+                  rejected.requestIdempotencyKey().value(), rejected.rejection()),
+              outputMode);
     }
   }
 

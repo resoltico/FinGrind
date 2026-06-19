@@ -213,6 +213,9 @@ final class CliDiscoveryHelpPayloadMapper {
         || helpDescriptor.planTemplate() == null) {
       return Optional.empty();
     }
+    if (detail == DiscoveryDetail.FULL) {
+      helpDescriptor.planTemplate().canonicalPostingScaffoldStep();
+    }
     return Optional.of(
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
             "Provide one ledger plan JSON object through --request-file <path|->.",

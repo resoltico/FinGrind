@@ -1,7 +1,19 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import org.jspecify.annotations.Nullable;
+
 /** Posting-rejection narrative catalog split out from the public rejection facade. */
 final class PostingRejectionNarrative {
+  private static final String GET_POSTING_OPERATION =
+      dev.erst.fingrind.contract.protocol.ProtocolCatalog.operationName(
+          dev.erst.fingrind.contract.protocol.OperationId.GET_POSTING);
+  private static final String LIST_POSTINGS_OPERATION =
+      dev.erst.fingrind.contract.protocol.ProtocolCatalog.operationName(
+          dev.erst.fingrind.contract.protocol.OperationId.LIST_POSTINGS);
+  private static final String TRANSFER_PERIOD_RESULT_OPERATION =
+      dev.erst.fingrind.contract.protocol.ProtocolCatalog.operationName(
+          dev.erst.fingrind.contract.protocol.OperationId.TRANSFER_PERIOD_RESULT);
+
   private PostingRejectionNarrative() {}
 
   static String message(PostingRejection rejection) {
@@ -11,15 +23,9 @@ final class PostingRejectionNarrative {
               + RejectionNarrative.openBookOperation()
               + ".";
       case PostingRejection.AccountStateViolations violations ->
-          "Posting references undeclared, inactive, or non-postable accounts."
-              + " Fix every issue in details.violations before retrying."
-              + " Reported issues: "
-              + violations.violations().size();
+          AccountStateViolationOwner.envelopeMessage(violations.violations());
       case PostingRejection.EntrySemanticsViolations violations ->
-          "Posting contradicts the published semantics of the selected entry kind."
-              + " Fix every issue in details.violations before retrying."
-              + " Reported issues: "
-              + violations.violations().size();
+          EntrySemanticsViolationOwner.envelopeMessage(violations.violations());
       case PostingRejection.DuplicateIdempotencyKey _ ->
           "A posting with the same idempotency key already exists in this book.";
       case PostingRejection.BookFunctionalCurrencyMismatch functionalCurrencyMismatch ->
@@ -54,6 +60,45 @@ final class PostingRejectionNarrative {
       case PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget ->
           "Reversal candidate does not negate posting '%s'."
               .formatted(reversalDoesNotNegateTarget.priorPostingId().value());
+    };
+  }
+
+  static @Nullable String hint(PostingRejection rejection) {
+    return switch (rejection) {
+      case PostingRejection.BookNotInitialized _ ->
+          "Run "
+              + RejectionNarrative.openBookOperation()
+              + " first for a new book, or verify the selected --book-file and book passphrase source for an existing book.";
+      case PostingRejection.AccountStateViolations _ -> null;
+      case PostingRejection.EntrySemanticsViolations _ -> null;
+      case PostingRejection.DuplicateIdempotencyKey _ ->
+          "Inspect the already-committed posting for this idempotency key instead of retrying the same key, or submit a new posting with a fresh provenance.idempotencyKey.";
+      case PostingRejection.BookFunctionalCurrencyMismatch _ ->
+          "Use the selected book's functional currency for every journal line in this request, or open a separate book for another currency.";
+      case PostingRejection.TransferredPeriodResultViolation _ ->
+          "Use an effective date after the transferred-through horizon, or close the next contiguous reporting period before posting into later dates.";
+      case PostingRejection.OpenAccountingPositionWindowClosed rejectionWindowClosed ->
+          "OPEN_ACCOUNTING_POSITION is only accepted before the first committed posting in the book. The window closed with "
+              + rejectionWindowClosed.firstBlockingPostingKind().wireValue()
+              + " on "
+              + rejectionWindowClosed.firstBlockingEffectiveDate()
+              + "; create a new book if the opening statement was not seeded completely.";
+      case PostingRejection.OpenAccountingPositionTouchesNominalAccount _ ->
+          "OPEN_ACCOUNTING_POSITION may seed only asset, liability, or equity accounts. Move revenue and expense setup into real operating-period postings instead.";
+      case PostingRejection.ResultHoldingAccountReserved _ ->
+          "Post directly to ordinary accounts only; let "
+              + TRANSFER_PERIOD_RESULT_OPERATION
+              + " generate result-holding postings automatically.";
+      case PostingRejection.ReversalTargetNotFound _ ->
+          "Use "
+              + GET_POSTING_OPERATION
+              + " or "
+              + LIST_POSTINGS_OPERATION
+              + " to confirm the prior posting id before retrying the reversal.";
+      case PostingRejection.ReversalAlreadyExists _ ->
+          "Inspect the existing reversal for the referenced posting instead of retrying another reversal.";
+      case PostingRejection.ReversalDoesNotNegateTarget _ ->
+          "Build a full negating journal entry for the referenced posting so every line, amount, and side inverts the original exactly.";
     };
   }
 }

@@ -1,13 +1,17 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
+import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 /** Builds operator-facing preparation, request, and exit guidance for command help. */
 final class CliDiscoveryCommandGuidance {
+  private static final int HELP_STRUCTURE_LABEL_WIDTH_CAP = 32;
   private static final Set<OperationId> BOOK_READ_OPERATIONS =
       Set.of(
           OperationId.ACCOUNT_BALANCE,
@@ -22,6 +26,17 @@ final class CliDiscoveryCommandGuidance {
 
   private static final Set<OperationId> ENTRY_REQUEST_OPERATIONS =
       Set.of(OperationId.POST_ENTRY, OperationId.PREFLIGHT_ENTRY);
+  private static final Set<OperationId> TEMPORAL_SCOPE_OPERATIONS =
+      Set.of(
+          OperationId.ACCOUNT_BALANCE,
+          OperationId.ACCOUNT_LEDGER,
+          OperationId.TRIAL_BALANCE,
+          OperationId.FINANCIAL_POSITION,
+          OperationId.INCOME_STATEMENT,
+          OperationId.CHANGES_IN_EQUITY,
+          OperationId.PERIOD_SUMMARY,
+          OperationId.LIST_POSTINGS,
+          OperationId.TRANSFER_PERIOD_RESULT);
 
   private CliDiscoveryCommandGuidance() {}
 
@@ -56,21 +71,42 @@ final class CliDiscoveryCommandGuidance {
         : CliDiscoveryTextSupport.section("Exit Behavior", CliTextFormat.renderKeyValueBlock(rows));
   }
 
-  static String requestTemplateHint(OperationId operationId) {
+  static String renderTemporalScopeGuidance(OperationId operationId) {
+    if (!TEMPORAL_SCOPE_OPERATIONS.contains(operationId)) {
+      return "";
+    }
+    return CliDiscoveryTextSupport.section(
+        "Temporal Scope",
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of("Scope kind", CliTemporalScopeText.scopeKind(operationId)),
+                List.of(
+                    "Boundary flags",
+                    String.join(", ", CliTemporalScopeText.optionNames(operationId))),
+                List.of(
+                    "Boundary behavior", CliTemporalScopeText.boundarySemantics(operationId)))));
+  }
+
+  static CliDiscoveryCommandHelpSupport.SupportEntry requestTemplateHint(OperationId operationId) {
     if (ENTRY_REQUEST_OPERATIONS.contains(operationId)) {
-      return CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-          + " "
-          + operationId.wireName();
+      return CliDiscoveryCommandHelpSupport.SupportEntry.command(
+          "Request template",
+          CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+              + " "
+              + operationId.wireName());
     }
     if (operationId == OperationId.DECLARE_ACCOUNT) {
-      return CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-          + " "
-          + OperationId.DECLARE_ACCOUNT.wireName();
+      return CliDiscoveryCommandHelpSupport.SupportEntry.command(
+          "Request template",
+          CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+              + " "
+              + OperationId.DECLARE_ACCOUNT.wireName());
     }
     if (operationId == OperationId.EXECUTE_PLAN) {
-      return CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE);
+      return CliDiscoveryCommandHelpSupport.SupportEntry.command(
+          "Request template", CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE));
     }
-    return "(not applicable)";
+    return CliDiscoveryCommandHelpSupport.SupportEntry.note("Request template", "(not applicable)");
   }
 
   private static List<List<String>> preparationRows(OperationId operationId) {
@@ -107,13 +143,21 @@ final class CliDiscoveryCommandGuidance {
         || helpDescriptor.requestTemplate() == null) {
       return "";
     }
-    return CliDiscoveryTextSupport.section(
-        "Input Contract",
-        requestFileGuidance(
-            "Pass one JSON object through --request-file <path|->.",
-            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-                + " "
-                + operationId.wireName()));
+    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
+        helpDescriptor.requestShapes().postEntry();
+    ContractTemplates.PostingRequestTemplateDescriptor requestTemplate =
+        helpDescriptor.requestTemplate();
+    return CliDiscoveryTextSupport.joinSections(
+        CliDiscoveryTextSupport.section(
+            "Input Contract",
+            requestFileGuidance(
+                "Pass one JSON object through --request-file <path|->.",
+                CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                    + " "
+                    + operationId.wireName())),
+        CliDiscoveryTextSupport.section(
+            "Posting model",
+            CliDiscoveryPostingModelGuidance.renderPostingModel(postEntryShape, requestTemplate)));
   }
 
   private static String renderDeclareAccountRequestGuidance(HelpDescriptor helpDescriptor) {
@@ -137,11 +181,18 @@ final class CliDiscoveryCommandGuidance {
         || helpDescriptor.planTemplate() == null) {
       return "";
     }
-    return CliDiscoveryTextSupport.section(
-        "Input Contract",
-        requestFileGuidance(
-            "Pass one ledger plan JSON object through --request-file <path|->.",
-            CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
+    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape =
+        helpDescriptor.requestShapes().ledgerPlan();
+    ContractTemplates.PostingRequestTemplateDescriptor postingTemplate =
+        helpDescriptor.planTemplate().canonicalPostingTemplate();
+    return CliDiscoveryTextSupport.joinSections(
+        CliDiscoveryTextSupport.section(
+            "Input Contract",
+            requestFileGuidance(
+                "Pass one ledger plan JSON object through --request-file <path|->.",
+                CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE))),
+        CliDiscoveryTextSupport.section(
+            "Plan structure", renderLedgerPlanStructure(ledgerPlanShape, postingTemplate)));
   }
 
   private static String requestFileGuidance(String introduction, String shortcutCommand) {
@@ -151,5 +202,39 @@ final class CliDiscoveryCommandGuidance {
         "Starter file command"
             + System.lineSeparator()
             + CliTextFormat.renderLiteralBlock(List.of(shortcutCommand), "$ "));
+  }
+
+  private static String renderLedgerPlanStructure(
+      ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape,
+      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+    List<List<String>> rows = new ArrayList<>();
+    appendTopLevelLedgerPlanRows(rows, ledgerPlanShape.topLevelFields(), "steps");
+    appendLedgerPlanRows(rows, ledgerPlanShape.stepFields(), "steps[].");
+    appendLedgerPlanRows(rows, ledgerPlanShape.queryFields(), "steps[].query.");
+    appendLedgerPlanRows(rows, ledgerPlanShape.assertionFields(), "steps[].assertion.");
+    rows.addAll(
+        CliDiscoveryPostingModelGuidance.postingModelRows(
+            ledgerPlanShape.postingModel(), postingTemplate, "steps[].posting."));
+    return CliTextFormat.renderKeyValueBlock(
+        List.copyOf(rows), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH, HELP_STRUCTURE_LABEL_WIDTH_CAP);
+  }
+
+  private static void appendTopLevelLedgerPlanRows(
+      List<List<String>> rows,
+      List<ContractRequestShapes.RequestFieldDescriptor> fields,
+      String arrayFieldName) {
+    for (ContractRequestShapes.RequestFieldDescriptor field : fields) {
+      String fieldPath = arrayFieldName.equals(field.name()) ? field.name() + "[]" : field.name();
+      rows.add(List.of(fieldPath, field.description()));
+    }
+  }
+
+  private static void appendLedgerPlanRows(
+      List<List<String>> rows,
+      List<ContractRequestShapes.RequestFieldDescriptor> fields,
+      String prefix) {
+    for (ContractRequestShapes.RequestFieldDescriptor field : fields) {
+      rows.add(List.of(prefix + field.name(), field.description()));
+    }
   }
 }

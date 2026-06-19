@@ -67,7 +67,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           RollbackArtifactMismatchDetails,
           RollbackArtifactSelectionDetails {}
 
-  record AccountStateViolationsDetails(List<AccountStateViolationPayload> violations)
+  record AccountStateViolationsDetails(List<CliAccountStateViolationPayload> violations)
       implements PostingRejectionDetails {
     public AccountStateViolationsDetails {
       violations = copyList(violations, "violations");
@@ -77,30 +77,13 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record AccountStateViolationPayload(
-      String code, String accountCode, @Nullable String accountNodeKind) {
-    public AccountStateViolationPayload {
-      code = requireText(code, "code");
-      accountCode = requireText(accountCode, "accountCode");
-      accountNodeKind = requireOptionalText(accountNodeKind, "accountNodeKind");
-    }
-  }
-
-  record EntrySemanticsViolationsDetails(List<EntrySemanticsViolationPayload> violations)
+  record EntrySemanticsViolationsDetails(List<CliEntrySemanticsViolationPayload> violations)
       implements PostingRejectionDetails {
     public EntrySemanticsViolationsDetails {
       violations = copyList(violations, "violations");
       if (violations.isEmpty()) {
         throw new IllegalArgumentException("violations must not be empty.");
       }
-    }
-  }
-
-  record EntrySemanticsViolationPayload(String code, @Nullable String field, String message) {
-    public EntrySemanticsViolationPayload {
-      code = requireText(code, "code");
-      field = requireOptionalText(field, "field");
-      message = requireText(message, "message");
     }
   }
 
