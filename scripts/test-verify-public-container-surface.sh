@@ -236,6 +236,7 @@ TEXT
                 done
                 [[ -n "${request_file}" ]] || exit 1
                 if grep -Fq 'operating-bank' "${request_file}"; then
+                    grep -Fq '"cashFlowAssetClassification":"CASH_AND_CASH_EQUIVALENT"' "${request_file}" || exit 1
                     printf '{"status":"ok","payload":{"accountCode":"operating-bank"}}\n'
                 elif grep -Fq 'misc-revenue' "${request_file}"; then
                     printf '{"status":"ok","payload":{"accountCode":"misc-revenue"}}\n'
