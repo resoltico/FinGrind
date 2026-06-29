@@ -176,3 +176,124 @@ repo_hygiene_print_local_state_report() {
             printf '  %-6s %-16s %-23s %s\n' "${size}" "${category}" "${cleanup_flag}" "${path}"
         done
 }
+
+repo_hygiene_verify_repo_owned_refs() {
+    local repo_root=$1
+    local error_file
+    local head_ref=''
+    error_file="$(mktemp "${TMPDIR:-/tmp}/fingrind-git-refs.XXXXXX")"
+    head_ref="$(git -C "${repo_root}" symbolic-ref -q HEAD 2>/dev/null || true)"
+
+    if ! git -C "${repo_root}" rev-parse --verify -q HEAD >/dev/null 2>"${error_file}"; then
+        if [[ -n "${head_ref}" ]]; then
+            if ! git -C "${repo_root}" show-ref --verify --quiet "${head_ref}" 2>>"${error_file}"; then
+                repo_owned_ref_output="$(cat "${error_file}")"
+                rm -f "${error_file}"
+                if [[ -z "${repo_owned_ref_output}" ]]; then
+                    repo_owned_ref_output="HEAD points at missing repo-owned ref ${head_ref}."
+                fi
+                return 1
+            fi
+        else
+            repo_owned_ref_output="$(cat "${error_file}")"
+            rm -f "${error_file}"
+            return 1
+        fi
+    fi
+
+    : >"${error_file}"
+    git -C "${repo_root}" for-each-ref --format='%(refname) %(objectname)' \
+        refs/heads \
+        refs/tags \
+        refs/remotes \
+        refs/notes >/dev/null 2>"${error_file}"
+    local ref_scan_status=$?
+    repo_owned_ref_output="$(cat "${error_file}")"
+    rm -f "${error_file}"
+    if (( ref_scan_status != 0 )) || [[ -n "${repo_owned_ref_output}" ]]; then
+        return 1
+    fi
+}
+
+repo_hygiene_process_is_live() {
+    local pid=$1
+    local process_state
+    process_state="$(ps -o stat= -p "${pid}" 2>/dev/null | awk 'NR == 1 {print $1}')"
+    [[ -n "${process_state}" && "${process_state}" != Z* ]]
+}
+
+repo_hygiene_run_object_store_verification_with_heartbeat() {
+    local repo_root=$1
+    local git_objects_dir=$2
+    local heartbeat_seconds=30
+    local elapsed_seconds=0
+    local object_format
+    local output_file
+    local heartbeat_pid
+    local idx_path
+
+    object_format="$(git -C "${repo_root}" rev-parse --show-object-format)"
+    output_file="$(mktemp "${TMPDIR:-/tmp}/fingrind-git-fsck.XXXXXX")"
+    printf '%s\n' 'repo hygiene verification: checking git object store'
+    (
+        shopt -s nullglob
+        for idx_path in "${git_objects_dir}/pack/"*.idx; do
+            git verify-pack -s "${idx_path}" >/dev/null
+        done
+        shopt -u nullglob
+
+        python3 - "${git_objects_dir}" "${object_format}" <<'PY'
+import hashlib
+import pathlib
+import sys
+import zlib
+
+objects_dir = pathlib.Path(sys.argv[1])
+object_format = sys.argv[2]
+
+try:
+    hashlib.new(object_format)
+except ValueError as exc:
+    raise SystemExit(f"unsupported Git object format {object_format!r}: {exc}") from exc
+
+for prefix in sorted(objects_dir.iterdir()):
+    if not prefix.is_dir():
+        continue
+    if prefix.name in {"info", "pack"}:
+        continue
+    if len(prefix.name) != 2:
+        continue
+    for object_file in prefix.iterdir():
+        if not object_file.is_file():
+            continue
+        expected_oid = prefix.name + object_file.name
+        try:
+            raw_object = zlib.decompress(object_file.read_bytes())
+        except zlib.error as exc:
+            raise SystemExit(f"corrupt loose object {object_file}: {exc}") from exc
+        actual_oid = hashlib.new(object_format, raw_object).hexdigest()
+        if actual_oid != expected_oid:
+            raise SystemExit(
+                f"loose object hash mismatch for {object_file}: expected {expected_oid}, got {actual_oid}"
+            )
+PY
+    ) >"${output_file}" 2>&1 &
+    local verification_pid=$!
+    (
+        while repo_hygiene_process_is_live "${verification_pid}"; do
+            sleep "${heartbeat_seconds}"
+            elapsed_seconds=$((elapsed_seconds + heartbeat_seconds))
+            if repo_hygiene_process_is_live "${verification_pid}"; then
+                printf 'repo hygiene verification: object-store scan still running (%ss elapsed)\n' "${elapsed_seconds}"
+            fi
+        done
+    ) &
+    heartbeat_pid=$!
+    wait "${verification_pid}"
+    local verification_status=$?
+    kill "${heartbeat_pid}" 2>/dev/null || true
+    wait "${heartbeat_pid}" 2>/dev/null || true
+    object_store_output="$(cat "${output_file}")"
+    rm -f "${output_file}"
+    return "${verification_status}"
+}

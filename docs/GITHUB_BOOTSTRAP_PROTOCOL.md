@@ -90,10 +90,11 @@ gh api \
 
 ## Step 5
 
-Enable branch protection on `main` only after the required CI status-check name exists.
-For FinGrind, the single required check is `Gate`. That aggregate check is the canonical owner of
-the release-blocking CI contract and already covers the current public-product jobs plus the
-path-gated contributor-devcontainer surface.
+Enable branch protection on `main` only after the required CI status-check name exists and the
+protected-path review owner file is committed. For FinGrind, the single required check is `Gate`,
+and `.github/CODEOWNERS` is the canonical owner of the protected-path review surface. `Gate`
+remains the canonical owner of the release-blocking CI contract and already covers the current
+public-product jobs plus the path-gated contributor-devcontainer surface.
 
 Apply protection:
 
@@ -108,7 +109,12 @@ gh api \
     "contexts": ["Gate"]
   },
   "enforce_admins": true,
-  "required_pull_request_reviews": null,
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": true,
+    "required_approving_review_count": 1,
+    "require_last_push_approval": false
+  },
   "restrictions": null
 }
 EOF
@@ -124,6 +130,7 @@ Recommended repository settings alignment:
 - Actions workflow permissions default to write
 - `main` protection enforces admins
 - required checks remain exactly `Gate`
+- code-owner review is required on the paths owned by `.github/CODEOWNERS`
 - the separate `Contributor devcontainer` CI job remains visible under that aggregate Gate contract
 
 ## Step 7
