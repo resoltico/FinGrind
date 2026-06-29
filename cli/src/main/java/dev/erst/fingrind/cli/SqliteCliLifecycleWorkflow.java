@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.sqlite.SqliteAdministrationSessions;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
@@ -47,7 +48,8 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
                 new BookAdministrationService(bookSession, bookSession, bookSession, clock)
-                    .openBook(BookkeepingPublishedLanguageTranslator.fromPublished(command))));
+                    .openBook(
+                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
   }
 
   @Override

@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
@@ -21,7 +20,6 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
-import dev.erst.fingrind.core.StorageLocator;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -87,14 +85,14 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
 
     PostEntryCommand approvalBearingCommand =
         new PostEntryCommand(
-            new BookkeepingEntry.OpenAccountingPosition(
+            new BookkeepingEntry.OpeningPosition(
                 CliFuzzFixtures.journalEntry(command).effectiveDate(),
                 List.of(
-                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         JournalLine.EntrySide.DEBIT,
                         new MonetaryAmount("EUR", "1000")),
-                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         JournalLine.EntrySide.CREDIT,
                         new MonetaryAmount("EUR", "1000")))),
@@ -103,11 +101,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                     new SourceDocumentReference(
                         new SourceDocumentId("document-approval-seed"),
                         new SourceDocumentType("cash-receipt"),
-                        LocalDate.parse("2026-04-07"),
-                        Instant.parse("2026-04-07T12:00:00Z"),
-                        new StorageLocator("s3://evidence/document-approval-seed.pdf"),
-                        new ContentSha256(
-                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+                        LocalDate.parse("2026-04-07"))),
                 List.of(
                     new ApprovalReference(
                         new ApprovalId("approval-seed"),
@@ -146,18 +140,18 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
     PostEntryCommand derivedDirectCommand =
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
             baseCommand, "typed-to-opening-position");
-    assertTrue(derivedDirectCommand.entry() instanceof BookkeepingEntry.OpenAccountingPosition);
+    assertTrue(derivedDirectCommand.entry() instanceof BookkeepingEntry.OpeningPosition);
 
     PostEntryCommand openingPositionCommand =
         new PostEntryCommand(
-            new BookkeepingEntry.OpenAccountingPosition(
+            new BookkeepingEntry.OpeningPosition(
                 LocalDate.parse("2026-04-07"),
                 List.of(
-                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         JournalLine.EntrySide.DEBIT,
                         new MonetaryAmount("EUR", "1000")),
-                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         JournalLine.EntrySide.CREDIT,
                         new MonetaryAmount("EUR", "1000")))),
@@ -168,55 +162,59 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
     PostEntryCommand derivedOpeningPositionCommand =
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
             openingPositionCommand, "opening-position-direct");
-    assertTrue(
-        derivedOpeningPositionCommand.entry() instanceof BookkeepingEntry.OpenAccountingPosition);
+    assertTrue(derivedOpeningPositionCommand.entry() instanceof BookkeepingEntry.OpeningPosition);
 
     PostEntryCommand cashExpenseCommand =
         withEntry(
             baseCommand,
-            BookkeepingEntry.cashExpense(
+            new BookkeepingEntry.Expense(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("6100"),
                 new AccountCode("1000"),
-                new MonetaryAmount("EUR", "2500")));
+                new MonetaryAmount("EUR", "2500"),
+                null,
+                null,
+                null));
     assertTrue(
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     cashExpenseCommand, "cash-expense-direct")
                 .entry()
-            instanceof BookkeepingEntry.OpenAccountingPosition);
+            instanceof BookkeepingEntry.OpeningPosition);
 
     PostEntryCommand equityContributionCommand =
         withEntry(
             baseCommand,
-            BookkeepingEntry.equityContribution(
+            new BookkeepingEntry.OwnerContribution(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("1000"),
                 new AccountCode("3000"),
-                new MonetaryAmount("EUR", "2500")));
+                new MonetaryAmount("EUR", "2500"),
+                null));
     assertTrue(
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     equityContributionCommand, "equity-contribution-direct")
                 .entry()
-            instanceof BookkeepingEntry.OpenAccountingPosition);
+            instanceof BookkeepingEntry.OpeningPosition);
 
     PostEntryCommand equityWithdrawalCommand =
         withEntry(
             baseCommand,
-            BookkeepingEntry.equityWithdrawal(
+            new BookkeepingEntry.OwnerWithdrawal(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("3000"),
                 new AccountCode("1000"),
-                new MonetaryAmount("EUR", "2500")));
+                new MonetaryAmount("EUR", "2500"),
+                null));
     assertTrue(
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     equityWithdrawalCommand, "equity-withdrawal-direct")
                 .entry()
-            instanceof BookkeepingEntry.OpenAccountingPosition);
+            instanceof BookkeepingEntry.OpeningPosition);
 
     PostEntryCommand reversalCommand =
         withEntry(
             baseCommand,
-            new BookkeepingEntry.ReversalAdjustment(
+            new BookkeepingEntry.Reversal(
                 new JournalEntry(
                     LocalDate.parse("2026-04-08"),
                     List.of(
@@ -231,13 +229,13 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                     new dev.erst.fingrind.core.ReversalReference(
                         new dev.erst.fingrind.core.PostingId("posting-2")),
-                    new dev.erst.fingrind.core.ReversalReason(
-                        "reverse direct derivation target"))));
+                    new dev.erst.fingrind.core.ReversalReason("reverse direct derivation target")),
+                null));
     assertTrue(
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     reversalCommand, "reversal-direct")
                 .entry()
-            instanceof BookkeepingEntry.OpenAccountingPosition);
+            instanceof BookkeepingEntry.OpeningPosition);
   }
 
   private static PostEntryCommand withEntry(PostEntryCommand template, BookkeepingEntry entry) {

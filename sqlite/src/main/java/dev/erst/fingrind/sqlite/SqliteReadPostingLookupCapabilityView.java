@@ -7,13 +7,14 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.spi.PostingHistoryStore;
 import dev.erst.fingrind.executor.spi.PostingLookupStore;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.util.Optional;
 
 /** Shared posting-lookup and posting-history defaults for SQLite read wrappers. */
 interface SqliteReadPostingLookupCapabilityView
     extends PostingLookupStore, PostingHistoryStore, SqliteLifecycleInspectionCapabilityView {
   @Override
-  default Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+  default Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     storeThreadOwner().requireOwnerThread();
     return storeReadOperations().findExistingPosting(idempotencyKey);
   }

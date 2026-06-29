@@ -2,18 +2,10 @@ Rejected
 ========
 
 Code            : account-state-violations
-Summary         : Posting rejected with 2 account-state issues.
+Summary         : Posting rejected with 1 account-state issue.
 Idempotency key : idem-unknown-1
 
 Issue 1 | unknown-account
--------------------------
-Field        : lines[].accountCode
-Category     : account-registry
-Account code : 2000
-Why          : Journal line references undeclared account '2000'.
-Repair       : Declare the missing account before retrying the posting.
-
-Issue 2 | unknown-account
 -------------------------
 Field        : lines[].accountCode
 Category     : account-registry

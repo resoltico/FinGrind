@@ -36,7 +36,8 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
             new PostingId("posting-1"),
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),
-            Instant.parse("2026-04-07T10:15:30Z")));
+            Instant.parse("2026-04-07T10:15:30Z"),
+            false));
     assertJsonContains(outputStream, "\"status\":\"ok\"");
   }
 
@@ -56,9 +57,9 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
 
   @Test
   void writePostEntryResult_writesDuplicateIdempotencyRejectionWithoutDetails() {
-    String json = rejectedJson(new PostingRejection.DuplicateIdempotencyKey());
-    assertJsonContains(json, "\"code\":\"duplicate-idempotency-key\"");
-    assertTrue(json.contains("same idempotency key"));
+    String json = rejectedJson(new PostingRejection.IdempotencyKeyConflict());
+    assertJsonContains(json, "\"code\":\"idempotency-key-conflict\"");
+    assertTrue(json.contains("different committed posting request"));
     assertFalse(json.contains("\"details\""));
   }
 

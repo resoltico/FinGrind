@@ -2,9 +2,8 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
+import dev.erst.fingrind.core.AccountTaxonomyDoctrine;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
@@ -16,7 +15,6 @@ public record RegisteredAccount(
     AccountCode accountCode,
     AccountName accountName,
     AccountType accountType,
-    AccountRole accountRole,
     AccountTaxonomy accountTaxonomy,
     boolean active,
     Instant declaredAt) {
@@ -25,15 +23,19 @@ public record RegisteredAccount(
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(accountName, "accountName");
     Objects.requireNonNull(accountType, "accountType");
-    Objects.requireNonNull(accountRole, "accountRole");
     Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
     Objects.requireNonNull(declaredAt, "declaredAt");
-    AccountSemantics.validate(accountType, accountRole, accountTaxonomy);
+    AccountTaxonomyDoctrine.validate(accountType, accountTaxonomy);
   }
 
   /** Returns the doctrinal journal side that increases this account. */
   public NormalBalance normalBalance() {
-    return AccountSemantics.normalBalance(accountType, accountRole);
+    return AccountTaxonomyDoctrine.normalBalance(accountType, accountTaxonomy);
+  }
+
+  /** Returns whether this declared account participates in cash and cash equivalents. */
+  public boolean cashAndCashEquivalent() {
+    return AccountTaxonomyDoctrine.cashAndCashEquivalent(accountType, accountTaxonomy);
   }
 
   /**
@@ -49,7 +51,6 @@ public record RegisteredAccount(
         declaration.accountCode(),
         declaration.accountName(),
         declaration.accountType(),
-        declaration.accountRole(),
         declaration.accountTaxonomy(),
         true,
         declaredAt);
@@ -75,11 +76,6 @@ public record RegisteredAccount(
           new BookkeepingAdministrationRejection.AccountTypeConflict(
               declaration.accountCode(), existingAccount.accountType(), declaration.accountType()));
     }
-    if (existingAccount.accountRole() != declaration.accountRole()) {
-      return new AccountDeclarationOutcome.Rejected(
-          new BookkeepingAdministrationRejection.AccountRoleConflict(
-              declaration.accountCode(), existingAccount.accountRole(), declaration.accountRole()));
-    }
     if (!existingAccount.accountTaxonomy().equals(declaration.accountTaxonomy())) {
       return new AccountDeclarationOutcome.Rejected(
           new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
@@ -87,14 +83,20 @@ public record RegisteredAccount(
               existingAccount.accountTaxonomy(),
               declaration.accountTaxonomy()));
     }
-    return new AccountDeclarationOutcome.Declared(
+    RegisteredAccount requestedState =
         new RegisteredAccount(
             existingAccount.accountCode(),
             declaration.accountName(),
             existingAccount.accountType(),
-            existingAccount.accountRole(),
             existingAccount.accountTaxonomy(),
             true,
-            declaredAt));
+            existingAccount.declaredAt());
+    if (!existingAccount.active()) {
+      return new AccountDeclarationOutcome.Reactivated(requestedState);
+    }
+    if (!existingAccount.accountName().equals(declaration.accountName())) {
+      return new AccountDeclarationOutcome.Renamed(requestedState);
+    }
+    return new AccountDeclarationOutcome.Unchanged(existingAccount);
   }
 }

@@ -105,11 +105,6 @@ final class SqliteAccountLedgerReader {
           int bindIndex = 1;
           statement.bindText(bindIndex, query.accountCode().value());
           bindIndex++;
-          if (query.postingCoverage().isNonClosingOnly()) {
-            statement.bindText(
-                bindIndex, dev.erst.fingrind.core.PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
-            bindIndex++;
-          }
           if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
             statement.bindText(
                 bindIndex,

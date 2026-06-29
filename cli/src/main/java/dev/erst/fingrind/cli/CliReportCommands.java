@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
@@ -104,6 +105,23 @@ final class IncomeStatement extends CliBookQueryReportCommand<IncomeStatementQue
       IncomeStatementQuery query,
       CliCommand.ReportOutput output) {
     return executionContext.report().runIncomeStatementCommand(bookAccess, query, output);
+  }
+}
+
+/** Report CLI commands that can render to terminal output or a PDF file. */
+final class CashFlowStatement extends CliBookQueryReportCommand<CashFlowStatementQuery> {
+  CashFlowStatement(
+      BookAccess bookAccess, CashFlowStatementQuery query, CliCommand.ReportOutput output) {
+    super(bookAccess, query, output);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      CashFlowStatementQuery query,
+      CliCommand.ReportOutput output) {
+    return executionContext.report().runCashFlowStatementCommand(bookAccess, query, output);
   }
 }
 

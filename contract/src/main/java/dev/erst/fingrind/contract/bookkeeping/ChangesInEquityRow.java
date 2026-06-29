@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -14,7 +13,6 @@ public record ChangesInEquityRow(
     String lineCode,
     String lineName,
     Optional<AccountType> lineType,
-    Optional<AccountRole> lineRole,
     Optional<FinancialPositionLineClassification> lineClassification,
     StatementLineKind lineKind,
     CurrencyBalance openingBalance,
@@ -25,7 +23,6 @@ public record ChangesInEquityRow(
     lineCode = ContractDescriptorValidation.requireText(lineCode, "lineCode");
     lineName = ContractDescriptorValidation.requireText(lineName, "lineName");
     lineType = ContractDescriptorValidation.requireValue(lineType, "lineType");
-    lineRole = ContractDescriptorValidation.requireValue(lineRole, "lineRole");
     lineClassification =
         ContractDescriptorValidation.requireValue(lineClassification, "lineClassification");
     Objects.requireNonNull(lineKind, "lineKind");

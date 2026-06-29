@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
+import dev.erst.fingrind.cli.json.CliCloseTargetReadinessPayload;
 import dev.erst.fingrind.cli.json.CliSuccessPayload;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
@@ -45,7 +46,7 @@ final class CliBookInspectionPayloadMapper {
               migrationPolicyPayload(initialized.migrationPolicy()),
               initialized.initializedAt().toString(),
               bookIdentityPayload(initialized.bookIdentity()),
-              resultTransferReadinessPayload(initialized.resultTransferReadiness()));
+              closeReadinessPayload(initialized.closeReadiness()));
     };
   }
 
@@ -72,17 +73,24 @@ final class CliBookInspectionPayloadMapper {
         bookIdentity.fiscalYearStart().wireValue());
   }
 
-  static CliAdministrationJsonModels.ResultTransferReadinessPayload resultTransferReadinessPayload(
-      BookInspection.ResultTransferReadiness resultTransferReadiness) {
-    return new CliAdministrationJsonModels.ResultTransferReadinessPayload(
-        resultTransferReadiness.ready(),
-        resultTransferReadiness.requiredFinancialPositionLineClassification().wireValue(),
-        resultTransferReadiness.resultHoldingAccountCode() == null
+  static CliAdministrationJsonModels.CloseReadinessPayload closeReadinessPayload(
+      BookInspection.CloseReadiness closeReadiness) {
+    return new CliAdministrationJsonModels.CloseReadinessPayload(
+        closeTargetReadinessPayload(closeReadiness.interimResultTarget()),
+        closeTargetReadinessPayload(closeReadiness.retainedAccumulatedTarget()));
+  }
+
+  static CliCloseTargetReadinessPayload closeTargetReadinessPayload(
+      BookInspection.CloseTargetReadiness closeTargetReadiness) {
+    return new CliCloseTargetReadinessPayload(
+        closeTargetReadiness.ready(),
+        closeTargetReadiness.requiredFinancialPositionLineClassification().wireValue(),
+        closeTargetReadiness.accountCode() == null
             ? null
-            : resultTransferReadiness.resultHoldingAccountCode().value(),
-        resultTransferReadiness.blockingCode(),
-        resultTransferReadiness.blockingMessage(),
-        resultTransferReadiness.candidateAccountCodes().stream().map(AccountCode::value).toList());
+            : closeTargetReadiness.accountCode().value(),
+        closeTargetReadiness.blockingCode(),
+        closeTargetReadiness.blockingMessage(),
+        closeTargetReadiness.candidateAccountCodes().stream().map(AccountCode::value).toList());
   }
 
   private static String absolutePath(Path bookFilePath) {

@@ -13,14 +13,15 @@ class PostingOriginKindTest {
   void wireValues_areStableAndRoundTrip() {
     assertEquals(
         List.of(
-            "JOURNAL",
-            "CASH_REVENUE",
-            "CASH_EXPENSE",
-            "EQUITY_CONTRIBUTION",
-            "EQUITY_WITHDRAWAL",
-            "OPEN_ACCOUNTING_POSITION",
-            "REVERSAL_ADJUSTMENT",
-            "PERIOD_RESULT_TRANSFER"),
+            "DIRECT_JOURNAL",
+            "SALE",
+            "EXPENSE",
+            "OWNER_CONTRIBUTION",
+            "OWNER_WITHDRAWAL",
+            "OPENING_POSITION",
+            "REVERSAL",
+            "INTERIM_RESULT_SWEEP",
+            "FISCAL_YEAR_CLOSE"),
         PostingOriginKind.wireValues());
     for (PostingOriginKind postingOriginKind : PostingOriginKind.values()) {
       assertEquals(

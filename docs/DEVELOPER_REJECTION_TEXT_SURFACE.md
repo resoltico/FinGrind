@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_REJECTION_TEXT_SURFACE
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [rejection text surface, text rejection layout, violation sections, machine envelope, operator guidance, repair guidance]
   questions: ["how does FinGrind render posting rejection text after the lean machine-envelope break", "what text layout governs nested repairable rejection families", "what owns the slim posting rejection message and hint contract"]
@@ -117,8 +117,8 @@ Additional rule:
 Issue 2 | source-document-type-not-accepted
   Field     evidence.sourceDocuments[].sourceDocumentType
   Category  source-document-type
-  Why       Entry kind 'CASH_REVENUE' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement.
-  Repair    Use an accepted source document type for the selected entry kind's evidence profile.
+  Why       Entry kind 'SALE' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement.
+  Repair    Use an accepted source document type for the selected entry kind's source-document policy.
 ```
 
 Additional rule:
@@ -134,14 +134,14 @@ Rejected
 
 Issue 1 | distinct-role-accounts-required
   Category  account-role-assignment
-  Why       Entry kind 'CASH_REVENUE' requires cashAccountCode and revenueAccountCode to reference distinct accounts, but both point to '1000'.
+  Why       Entry kind 'SALE' requires cashAccountCode and revenueAccountCode to reference distinct accounts, but both point to '1000'.
   Repair    Assign distinct accounts to the semantic role fields named in the violation.
 
 Issue 2 | source-document-type-not-accepted
   Field     evidence.sourceDocuments[].sourceDocumentType
   Category  source-document-type
-  Why       Entry kind 'CASH_REVENUE' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement.
-  Repair    Use an accepted source document type for the selected entry kind's evidence profile.
+  Why       Entry kind 'SALE' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement.
+  Repair    Use an accepted source document type for the selected entry kind's source-document policy.
 ```
 
 ### Example: non-postable account with node kind

@@ -8,6 +8,7 @@ import java.util.List;
 /** Renders account-balance query payloads for text and CSV output modes. */
 final class CliAccountBalanceOutputRenderer {
   private static final String OPERATION_ID = OperationId.ACCOUNT_BALANCE.wireName();
+  private static final String RECORD_KIND = CliCsvExportFamilies.ACCOUNT_BALANCE;
 
   private CliAccountBalanceOutputRenderer() {}
 
@@ -49,10 +50,6 @@ final class CliAccountBalanceOutputRenderer {
                         CliAccountStatementLabels.displayLineTypeLabel(
                             snapshot.account().accountType())),
                     List.of(
-                        "Account role",
-                        CliAccountStatementLabels.displayAccountRoleLabel(
-                            snapshot.account().accountRole())),
-                    List.of(
                         "Normal balance",
                         CliAccountStatementLabels.displayNormalBalanceLabel(
                             snapshot.account().normalBalance())),
@@ -76,7 +73,6 @@ final class CliAccountBalanceOutputRenderer {
             "accountCode",
             "accountName",
             "accountType",
-            "accountRole",
             "normalBalance",
             "effectiveDateFrom",
             "effectiveDateTo",
@@ -89,15 +85,14 @@ final class CliAccountBalanceOutputRenderer {
         snapshot.balances().isEmpty()
             ? List.of(
                 List.of(
-                    CliCsvExportFamilies.FLAT_REGISTER,
+                    CliCsvExportFamilies.ACCOUNT_BALANCE,
                     OPERATION_ID + "-empty:" + snapshot.account().accountCode().value(),
                     "",
                     "scope-empty",
-                    CliCsvEmptyKinds.SCOPE_EMPTY,
+                    RECORD_KIND,
                     snapshot.account().accountCode().value(),
                     snapshot.account().accountName().value(),
                     snapshot.account().accountType().wireValue(),
-                    snapshot.account().accountRole().wireValue(),
                     snapshot.account().normalBalance().wireValue(),
                     snapshot.effectiveDateFrom().map(LocalDate::toString).orElse(""),
                     snapshot.effectiveDateTo().map(LocalDate::toString).orElse(""),
@@ -111,7 +106,7 @@ final class CliAccountBalanceOutputRenderer {
                 .map(
                     balance ->
                         List.of(
-                            CliCsvExportFamilies.FLAT_REGISTER,
+                            CliCsvExportFamilies.ACCOUNT_BALANCE,
                             OPERATION_ID
                                 + ":"
                                 + snapshot.account().accountCode().value()
@@ -119,11 +114,10 @@ final class CliAccountBalanceOutputRenderer {
                                 + balance.netAmount().currencyUnit().code(),
                             "",
                             "balance",
-                            "row",
+                            RECORD_KIND,
                             snapshot.account().accountCode().value(),
                             snapshot.account().accountName().value(),
                             snapshot.account().accountType().wireValue(),
-                            snapshot.account().accountRole().wireValue(),
                             snapshot.account().normalBalance().wireValue(),
                             snapshot.effectiveDateFrom().map(LocalDate::toString).orElse(""),
                             snapshot.effectiveDateTo().map(LocalDate::toString).orElse(""),

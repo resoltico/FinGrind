@@ -4,12 +4,13 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registere
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
@@ -19,6 +20,7 @@ import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -50,6 +52,7 @@ import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -131,6 +134,140 @@ class LedgerPlanFactMapperTest {
   }
 
   @Test
+  void postingFacts_includeCallerAuthoredSaleEntryGroup() {
+    BookkeepingEntry.Sale sale =
+        new BookkeepingEntry.Sale(
+            LocalDate.parse("2026-04-23"),
+            new AccountCode("cash"),
+            new AccountCode("service-revenue"),
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            null);
+    dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting =
+        BookkeepingPublishedLanguageTranslator.fromPublished(
+            new PostingFact(
+                new PostingId("posting-sale-1"),
+                sale.journalEntry(),
+                sale.postingLineage(),
+                sale.postingKind(),
+                sale.postingOriginKind(),
+                new AccountingEvidence(
+                    List.of(
+                        new SourceDocumentReference(
+                            new SourceDocumentId("document-sale-1"),
+                            new SourceDocumentType("cash-receipt"),
+                            LocalDate.parse("2026-04-23"))),
+                    List.of()),
+                new CommittedProvenance(
+                    new RequestProvenance(
+                        new ActorId("actor-sale-1"),
+                        ActorType.PERSON,
+                        new CommandId("command-sale-1"),
+                        new IdempotencyKey("idem-sale-1"),
+                        new CausationId("cause-sale-1"),
+                        Optional.empty()),
+                    FIXED_INSTANT,
+                    SourceChannel.CLI),
+                sale));
+
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingFacts(posting);
+
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Group group
+                        && "entry".equals(group.name())
+                        && group.facts().stream()
+                            .anyMatch(
+                                nested ->
+                                    nested instanceof BookWorkflowFact.Text text
+                                        && "entryKind".equals(text.name())
+                                        && "SALE".equals(text.value()))));
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Group group
+                        && "entry".equals(group.name())
+                        && group.facts().stream()
+                            .anyMatch(
+                                nested ->
+                                    nested instanceof BookWorkflowFact.Text text
+                                        && "revenueAccountCode".equals(text.name())
+                                        && "service-revenue".equals(text.value()))));
+  }
+
+  @Test
+  void postingFacts_includeRemainingCallerAuthoredEntryVariants() {
+    assertEntryFacts(
+        new BookkeepingEntry.DirectJournal(
+            new JournalEntry(
+                LocalDate.parse("2026-04-23"),
+                List.of(
+                    line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                    line("4000", JournalLine.EntrySide.CREDIT, "10.00"))),
+            null),
+        facts ->
+            assertEntryText(
+                facts,
+                "entryKind",
+                dev.erst.fingrind.core.BookkeepingEntryKind.DIRECT_JOURNAL.wireValue()));
+    assertEntryFacts(
+        new BookkeepingEntry.Expense(
+            LocalDate.parse("2026-04-23"),
+            new AccountCode("5000"),
+            new AccountCode("1000"),
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            null),
+        facts -> assertEntryText(facts, "expenseAccountCode", "5000"));
+    assertEntryFacts(
+        new BookkeepingEntry.OwnerContribution(
+            LocalDate.parse("2026-04-23"),
+            new AccountCode("1000"),
+            new AccountCode("3000"),
+            new MonetaryAmount("EUR", "1000"),
+            null),
+        facts -> assertEntryText(facts, "equityAccountCode", "3000"));
+    assertEntryFacts(
+        new BookkeepingEntry.OwnerWithdrawal(
+            LocalDate.parse("2026-04-23"),
+            new AccountCode("3010"),
+            new AccountCode("1000"),
+            new MonetaryAmount("EUR", "1000"),
+            null),
+        facts -> assertEntryText(facts, "equityAccountCode", "3010"));
+    assertEntryFacts(
+        new BookkeepingEntry.OpeningPosition(
+            LocalDate.parse("2026-04-23"),
+            List.of(
+                new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    new MonetaryAmount("EUR", "1000")),
+                new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                    new AccountCode("3000"),
+                    JournalLine.EntrySide.CREDIT,
+                    new MonetaryAmount("EUR", "1000")))),
+        facts -> assertEntryGroupContainsText(facts, "openingBalance", "accountCode", "1000"));
+    assertEntryFacts(
+        new BookkeepingEntry.Reversal(
+            new JournalEntry(
+                LocalDate.parse("2026-04-23"),
+                List.of(
+                    line("1000", JournalLine.EntrySide.CREDIT, "10.00"),
+                    line("4000", JournalLine.EntrySide.DEBIT, "10.00"))),
+            new PostingLineage.Reversal(
+                new ReversalReference(new PostingId("prior-posting")),
+                new ReversalReason("operator reversal")),
+            null),
+        facts -> assertEntryGroupContainsText(facts, "reversal", "reason", "operator reversal"));
+  }
+
+  @Test
   void balanceFacts_includeOptionalDateBoundsWhenPresent() {
     RegisteredAccount account =
         registeredAccount(
@@ -184,23 +321,30 @@ class LedgerPlanFactMapperTest {
   }
 
   @Test
-  void declaredAccountFacts_includeParentAccountCodeWhenTaxonomyIsNested() {
+  void accountDeclarationFacts_includeOutcomeAndParentAccountCodeWhenTaxonomyIsNested() {
     RegisteredAccount account =
         registeredAccount(
             new AccountCode("1110"),
             new AccountName("Operating Cash"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
             new AccountTaxonomy(
                 AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1100")),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                Optional.empty()),
+                Optional.empty(),
+                Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
             true,
             FIXED_INSTANT);
 
-    List<BookWorkflowFact> facts = LedgerPlanFactMapper.declaredAccountFacts(account);
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.accountDeclarationFacts("renamed", account);
 
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Text text
+                        && "outcome".equals(text.name())
+                        && "renamed".equals(text.value())));
     assertTrue(
         facts.stream()
             .anyMatch(
@@ -222,17 +366,13 @@ class LedgerPlanFactMapperTest {
             new ReversalReference(new PostingId("prior-posting")),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         new AccountingEvidence(
             List.of(
                 new SourceDocumentReference(
                     new SourceDocumentId("document-idem-1"),
                     new SourceDocumentType("cash-receipt"),
-                    LocalDate.parse("2026-04-07"),
-                    Instant.parse("2026-04-07T10:15:30Z"),
-                    new dev.erst.fingrind.core.StorageLocator("vault://fixtures/document-idem-1"),
-                    new dev.erst.fingrind.core.ContentSha256(
-                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+                    LocalDate.parse("2026-04-07"))),
             List.of(
                 new ApprovalReference(
                     new ApprovalId("approval-idem-1"),
@@ -255,6 +395,74 @@ class LedgerPlanFactMapperTest {
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
     return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
+  }
+
+  private static void assertEntryFacts(
+      BookkeepingEntry entry, java.util.function.Consumer<List<BookWorkflowFact>> assertion) {
+    List<BookWorkflowFact> facts =
+        LedgerPlanFactMapper.postingFacts(
+            BookkeepingPublishedLanguageTranslator.fromPublished(
+                new PostingFact(
+                    new PostingId(
+                        "posting-" + entry.entryKind().wireValue().toLowerCase(Locale.ROOT)),
+                    entry.journalEntry(),
+                    entry.postingLineage(),
+                    entry.postingKind(),
+                    entry.postingOriginKind(),
+                    new AccountingEvidence(
+                        List.of(
+                            new SourceDocumentReference(
+                                new SourceDocumentId("document-entry"),
+                                new SourceDocumentType("source-document"),
+                                entry.effectiveDate())),
+                        List.of()),
+                    new CommittedProvenance(
+                        new RequestProvenance(
+                            new ActorId("actor-entry"),
+                            ActorType.PERSON,
+                            new CommandId("command-entry"),
+                            new IdempotencyKey("idem-entry"),
+                            new CausationId("cause-entry"),
+                            Optional.empty()),
+                        FIXED_INSTANT,
+                        SourceChannel.CLI),
+                    entry)));
+    BookWorkflowFact.Group entryGroup =
+        facts.stream()
+            .filter(
+                fact ->
+                    fact instanceof BookWorkflowFact.Group group && "entry".equals(group.name()))
+            .map(BookWorkflowFact.Group.class::cast)
+            .findFirst()
+            .orElseThrow();
+    assertion.accept(entryGroup.facts());
+  }
+
+  private static void assertEntryText(
+      List<BookWorkflowFact> entryFacts, String fieldName, String expectedValue) {
+    assertTrue(
+        entryFacts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Text text
+                        && fieldName.equals(text.name())
+                        && expectedValue.equals(text.value())));
+  }
+
+  private static void assertEntryGroupContainsText(
+      List<BookWorkflowFact> entryFacts, String groupName, String fieldName, String expectedValue) {
+    assertTrue(
+        entryFacts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Group group
+                        && groupName.equals(group.name())
+                        && group.facts().stream()
+                            .anyMatch(
+                                nested ->
+                                    nested instanceof BookWorkflowFact.Text text
+                                        && fieldName.equals(text.name())
+                                        && expectedValue.equals(text.value()))));
   }
 
   private static CurrencyBalance currencyBalance(

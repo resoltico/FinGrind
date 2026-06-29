@@ -26,9 +26,6 @@ final class AccountLedgerPdfRenderer {
                     "Account type",
                     PdfValueFormatter.displayAccountType(report.account().accountType())),
                 List.of(
-                    "Account role",
-                    PdfValueFormatter.displayAccountRole(report.account().accountRole())),
-                List.of(
                     "Normal balance",
                     PdfValueFormatter.displayNormalBalance(report.account().normalBalance())),
                 List.of("Active", PdfValueFormatter.displayBoolean(report.account().active())),

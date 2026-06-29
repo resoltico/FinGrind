@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -146,7 +146,7 @@ Then the supported local gates are:
 - creates the mounted book-key fixtures with owner-only permissions (`0600`) so containerized
   verification matches the real protected-book contract
 - verifies `declare-account` and `list-accounts`
-- verifies `preflight-entry` and `post-entry` after the explicit Phase 2 lifecycle setup
+- verifies `preflight-entry` and `post-entry` after the explicit second lifecycle setup
 - verifies the containerized protected-book metadata surface:
   `bookProtectionMode`, `defaultProtectedBookFormat.cipher`,
   `defaultProtectedBookFormat.pageSize`, `requiredSqlite3mcVersion`, and

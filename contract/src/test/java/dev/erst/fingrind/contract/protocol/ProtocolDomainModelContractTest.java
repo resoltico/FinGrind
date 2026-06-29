@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -84,11 +85,29 @@ class ProtocolDomainModelContractTest extends ProtocolContractRepositorySupport 
   }
 
   @Test
+  void developerDomainModelReference_namesCashReceiptsAndPaymentsAsCurrentBuiltInReport()
+      throws IOException {
+    String document =
+        Files.readString(repositoryRoot().resolve("docs/DEVELOPER_DOMAIN_MODEL.md"))
+            .replace("\r\n", "\n");
+    String flattened = document.replaceAll("\\s+", " ");
+
+    assertTrue(
+        flattened.contains(
+            "the current built-in reporting surface is financial position, income statement, cash receipts and payments, and changes in equity"),
+        "docs/DEVELOPER_DOMAIN_MODEL.md must list cash receipts and payments among the current built-in reports.");
+    assertFalse(
+        document.contains("statement of cash flows, OCI"),
+        "docs/DEVELOPER_DOMAIN_MODEL.md must not describe cash-flow reporting as a future domain once it is built in.");
+  }
+
+  @Test
   void executorInternalBoundedContexts_keepPublishedLanguageAtTranslatorEdges() throws IOException {
     Set<String> violations = new LinkedHashSet<>();
     assertOnlyTranslatorImportsPublishedLanguage(
         repositoryRoot().resolve("executor/src/main/java/dev/erst/fingrind/executor/bookkeeping"),
         Set.of(
+            "BookkeepingRequestPublishedLanguageTranslator.java",
             "BookkeepingPublishedLanguageTranslator.java",
             "BookkeepingReadPagePublishedLanguageTranslator.java",
             "BookkeepingReadReportPublishedLanguageTranslator.java",
@@ -127,7 +146,7 @@ class ProtocolDomainModelContractTest extends ProtocolContractRepositorySupport 
             "BookWorkflowPublishedJournalTranslator.java"),
         Set.of(
             "import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;",
-            "import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;",
+            "import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;",
             "import dev.erst.fingrind.contract.workflow.LedgerAssertion;",
             "import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;",
             "import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;",

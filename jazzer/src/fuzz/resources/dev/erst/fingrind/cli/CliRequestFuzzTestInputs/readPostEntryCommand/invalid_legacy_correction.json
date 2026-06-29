@@ -28,13 +28,12 @@
       {
         "sourceDocumentId": "document-idem-8",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-08",
-        "capturedAt": "2026-04-08T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-idem-8",
-        "contentSha256": "d46369881b0c20053667a6aa3037aab83d6f7e1a1084c32dd5744091d0b30a13"
+        "documentDate": "2026-04-08"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "actor-8",

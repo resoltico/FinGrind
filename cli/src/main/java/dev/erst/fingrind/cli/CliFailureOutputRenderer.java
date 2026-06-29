@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
+import dev.erst.fingrind.cli.json.CliTaxRejectionJsonModels;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -126,13 +127,17 @@ final class CliFailureOutputRenderer {
       return;
     }
     if (rejectionDetails
-        instanceof CliRejectionJsonModels.PeriodResultTransferRejectionDetails periodDetails) {
-      appendPeriodResultTransferRejectionDetails(rows, periodDetails);
+        instanceof CliRejectionJsonModels.CloseWindowRejectionDetails closeWindowDetails) {
+      appendCloseWindowRejectionDetails(rows, closeWindowDetails);
       return;
     }
     if (rejectionDetails
         instanceof CliRejectionJsonModels.QueryOrPlanRejectionDetails queryOrPlanDetails) {
       appendQueryOrPlanRejectionDetails(rows, queryOrPlanDetails);
+      return;
+    }
+    if (rejectionDetails instanceof CliTaxRejectionJsonModels.TaxRejectionDetails taxDetails) {
+      appendTaxRejectionDetails(rows, taxDetails);
       return;
     }
     CliMaintenanceFailureOutputRenderer.appendRows(
@@ -142,11 +147,6 @@ final class CliFailureOutputRenderer {
   private static void appendAccountRejectionDetails(
       List<List<String>> rows, CliRejectionJsonModels.AccountRejectionDetails rejectionDetails) {
     switch (rejectionDetails) {
-      case CliRejectionJsonModels.AccountRoleConflictDetails details -> {
-        rows.add(List.of("Account code", details.accountCode()));
-        rows.add(List.of("Existing account role", details.existingAccountRole()));
-        rows.add(List.of("Requested account role", details.requestedAccountRole()));
-      }
       case CliRejectionJsonModels.AccountTypeConflictDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Existing account type", details.existingAccountType()));
@@ -167,12 +167,6 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Parent account code", details.parentAccountCode()));
         rows.add(List.of("Parent account type", details.parentAccountType()));
       }
-      case CliRejectionJsonModels.ParentAccountRoleConflictDetails details -> {
-        rows.add(List.of("Account code", details.accountCode()));
-        rows.add(List.of("Requested account role", details.requestedAccountRole()));
-        rows.add(List.of("Parent account code", details.parentAccountCode()));
-        rows.add(List.of("Parent account role", details.parentAccountRole()));
-      }
       case CliRejectionJsonModels.ParentAccountNodeKindDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Parent account code", details.parentAccountCode()));
@@ -184,9 +178,14 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Parent account code", details.parentAccountCode()));
         appendTaxonomyRows(rows, "Parent", details.parentAccountTaxonomy());
       }
-      case CliRejectionJsonModels.ResultHoldingAccountDetails details ->
-          rows.add(List.of("Account code", details.accountCode()));
-      case CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails details -> {
+      case CliRejectionJsonModels.ReservedResultClassificationDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(
+            List.of(
+                "Financial position classification",
+                details.financialPositionLineClassification()));
+      }
+      case CliRejectionJsonModels.CloseTargetAccountCandidateMissingDetails details -> {
         rows.add(
             List.of(
                 "Required financial position classification",
@@ -196,7 +195,7 @@ final class CliFailureOutputRenderer {
                 "Inactive candidate account codes",
                 CliTextFormat.joined(details.inactiveCandidateAccountCodes())));
       }
-      case CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails details -> {
+      case CliRejectionJsonModels.CloseTargetAccountCandidateAmbiguousDetails details -> {
         rows.add(
             List.of(
                 "Required financial position classification",
@@ -208,19 +207,25 @@ final class CliFailureOutputRenderer {
     }
   }
 
-  private static void appendPeriodResultTransferRejectionDetails(
+  private static void appendCloseWindowRejectionDetails(
       List<List<String>> rows,
-      CliRejectionJsonModels.PeriodResultTransferRejectionDetails rejectionDetails) {
+      CliRejectionJsonModels.CloseWindowRejectionDetails rejectionDetails) {
     switch (rejectionDetails) {
-      case CliRejectionJsonModels.PeriodResultTransferStartDetails details ->
+      case CliRejectionJsonModels.InterimResultSweepStartDetails details ->
           rows.add(List.of("Required start date", details.requiredEffectiveDateFrom()));
-      case CliRejectionJsonModels.PeriodResultTransferFutureDateDetails details ->
+      case CliRejectionJsonModels.InterimResultSweepFutureDateDetails details ->
           rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
-      case CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails details -> {
+      case CliRejectionJsonModels.InterimResultSweepFiscalYearDetails details -> {
         rows.add(List.of("Attempted start date", details.attemptedEffectiveDateFrom()));
         rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
         rows.add(List.of("Fiscal year start", details.fiscalYearStart()));
       }
+      case CliRejectionJsonModels.FiscalYearCloseStartDetails details ->
+          rows.add(List.of("Required start date", details.requiredEffectiveDateFrom()));
+      case CliRejectionJsonModels.FiscalYearCloseEndDetails details ->
+          rows.add(List.of("Required end date", details.requiredEffectiveDateTo()));
+      case CliRejectionJsonModels.FiscalYearCloseFutureDateDetails details ->
+          rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
     }
   }
 
@@ -234,6 +239,33 @@ final class CliFailureOutputRenderer {
           rows.add(List.of("Posting id", details.postingId()));
       case CliRejectionJsonModels.PlanRejectionDetails details ->
           rows.add(List.of("Plan id", details.plan().planId()));
+    }
+  }
+
+  private static void appendTaxRejectionDetails(
+      List<List<String>> rows, CliTaxRejectionJsonModels.TaxRejectionDetails rejectionDetails) {
+    switch (rejectionDetails) {
+      case CliTaxRejectionJsonModels.TaxDefinitionViolationsDetails details -> {
+        int index = 1;
+        for (CliTaxRejectionJsonModels.TaxDefinitionViolationDetails violation :
+            details.violations()) {
+          String fieldPrefix = violation.field() == null ? violation.code() : violation.field();
+          rows.add(
+              List.of(
+                  "Violation " + index,
+                  fieldPrefix + " [" + violation.code() + "]: " + violation.message()));
+          index++;
+        }
+      }
+      case CliTaxRejectionJsonModels.UnknownTaxRegistrationDetails details ->
+          rows.add(List.of("Tax registration id", details.taxRegistrationId()));
+      case CliTaxRejectionJsonModels.ObligationPeriodMismatchDetails details -> {
+        rows.add(
+            List.of(
+                "Obligation frequency", CliTextDisplay.wireLabel(details.obligationFrequency())));
+        rows.add(List.of("Requested period start", details.effectiveDateFrom()));
+        rows.add(List.of("Requested period end", details.effectiveDateTo()));
+      }
     }
   }
 

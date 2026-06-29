@@ -95,7 +95,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                 planFile.toString()));
     assertEquals(2, exitCode);
     assertJsonContains(outputStream, "\"status\":\"rejected\"");
-    assertJsonContains(outputStream, "\"failureCode\":\"administration-book-not-initialized\"");
+    assertJsonContains(outputStream, "\"code\":\"administration-book-not-initialized\"");
   }
 
   @Test
@@ -242,7 +242,6 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     assertEquals("1000", data.path("accounts").get(0).path("accountCode").stringValue());
     assertEquals("Cash", data.path("accounts").get(0).path("accountName").stringValue());
     assertEquals("ASSET", data.path("accounts").get(0).path("accountType").stringValue());
-    assertEquals("ORDINARY", data.path("accounts").get(0).path("accountRole").stringValue());
     assertEquals("DEBIT", data.path("accounts").get(0).path("normalBalance").stringValue());
   }
 
@@ -300,9 +299,9 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                     "accountCode": "1000",
                     "accountName": "Cash",
                     "accountType": "ASSET",
-                    "accountRole": "ORDINARY",
                     "accountNodeKind": "POSTABLE",
-                    "financialPositionLineClassification": "CURRENT_ASSET"
+                    "financialPositionLineClassification": "CURRENT_ASSET",
+                    "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
                   }
                 },
                 {

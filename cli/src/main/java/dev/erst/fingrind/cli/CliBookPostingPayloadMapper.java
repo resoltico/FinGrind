@@ -14,11 +14,18 @@ final class CliBookPostingPayloadMapper {
   private CliBookPostingPayloadMapper() {}
 
   static CliBookQueryJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
+    return postingPayload(postingFact, null);
+  }
+
+  static CliBookQueryJsonModels.PostingPayload postingPayload(
+      PostingFact postingFact, @org.jspecify.annotations.Nullable String reversedByPostingId) {
     return new CliBookQueryJsonModels.PostingPayload(
         postingFact.postingId().value(),
         postingFact.postingKind().wireValue(),
         postingFact.postingOriginKind().wireValue(),
         postingFact.reversalReference().isPresent() ? "reversal" : "direct",
+        reversesPostingId(postingFact),
+        reversedByPostingId,
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
         postingFact.provenance().requestProvenance().actorId().value(),
@@ -34,6 +41,7 @@ final class CliBookPostingPayloadMapper {
             .orElse(null),
         postingFact.provenance().sourceChannel().wireValue(),
         evidencePayload(postingFact.evidence()),
+        CliPostingEntryPayloadSupport.entryPayload(postingFact.callerAuthoredEntry().orElse(null)),
         postingFact
             .postingLineage()
             .reversalReference()
@@ -50,15 +58,18 @@ final class CliBookPostingPayloadMapper {
 
   static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
       PostingFact postingFact) {
+    return postingSummaryPayload(postingFact, null);
+  }
+
+  static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
+      PostingFact postingFact, @org.jspecify.annotations.Nullable String reversedByPostingId) {
     return new CliBookQueryJsonModels.PostingSummaryPayload(
         postingFact.postingId().value(),
         postingFact.postingKind().wireValue(),
         postingFact.postingOriginKind().wireValue(),
         postingFact.reversalReference().isPresent() ? "reversal" : "direct",
-        postingFact
-            .reversalReference()
-            .map(reference -> reference.priorPostingId().value())
-            .orElse(null),
+        reversesPostingId(postingFact),
+        reversedByPostingId,
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
         MonetaryAmount.of(postingDebitTotal(postingFact)),
@@ -105,10 +116,7 @@ final class CliBookPostingPayloadMapper {
     return new CliBookQueryJsonModels.SourceDocumentPayload(
         sourceDocument.sourceDocumentId().value(),
         sourceDocument.sourceDocumentType().value(),
-        sourceDocument.documentDate().toString(),
-        sourceDocument.capturedAt().toString(),
-        sourceDocument.storageLocator().value(),
-        sourceDocument.contentSha256().value());
+        sourceDocument.documentDate().toString());
   }
 
   private static CliBookQueryJsonModels.ApprovalPayload approvalPayload(
@@ -140,5 +148,13 @@ final class CliBookPostingPayloadMapper {
             .sum();
     return dev.erst.fingrind.core.Money.ofMinorUnits(
         postingFact.journalEntry().currencyUnit(), creditMinorUnits);
+  }
+
+  private static @org.jspecify.annotations.Nullable String reversesPostingId(
+      PostingFact postingFact) {
+    return postingFact
+        .reversalReference()
+        .map(reference -> reference.priorPostingId().value())
+        .orElse(null);
   }
 }

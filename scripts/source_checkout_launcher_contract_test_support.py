@@ -90,10 +90,11 @@ def assert_request_template(args: argparse.Namespace) -> int:
     assert_launcher_request_template(
         document,
         label=f"{args.label} request template",
+        expected_entry_kind=args.expected_entry_kind,
     )
     if args.require_evidence_fields:
         evidence = document["evidence"]["sourceDocuments"][0]
-        for required_field in ("documentDate", "capturedAt", "storageLocator", "contentSha256"):
+        for required_field in ("documentDate",):
             if required_field not in evidence:
                 raise SystemExit(
                     f"{args.label} request template omitted retained evidence field {required_field}"
@@ -141,15 +142,13 @@ def assert_open_book(args: argparse.Namespace) -> int:
         raise SystemExit(f"{args.label} open-book did not return ok")
     if book_identity["entityName"] != args.entity_name:
         raise SystemExit(f"{args.label} open-book returned the wrong entity name")
-    if book_identity["accountingKernelProfile"] != "internal-management-cash-bookkeeping-kernel":
+    if book_identity["accountingKernelProfile"] != "internal-management-bookkeeping-kernel":
         raise SystemExit(f"{args.label} open-book returned the wrong accounting kernel")
-    if book_identity["accountingBasis"] != "CASH_BASIS":
-        raise SystemExit(f"{args.label} open-book returned the wrong accounting basis")
     if book_identity["accountingFrameworkPosition"] != "NON_STATUTORY_INTERNAL_MANAGEMENT":
         raise SystemExit(f"{args.label} open-book returned the wrong framework posture")
     if book_identity["entityForm"] != "OWNER_MANAGED_SINGLE_ENTITY":
         raise SystemExit(f"{args.label} open-book returned the wrong entity form")
-    if book_identity["bookTemplateId"] != "OWNER_MANAGED_SERVICE_CASH":
+    if book_identity["bookTemplateId"] != "OWNER_MANAGED_SERVICE":
         raise SystemExit(f"{args.label} open-book returned the wrong book template")
     if book_identity["functionalCurrency"] != args.functional_currency:
         raise SystemExit(f"{args.label} open-book returned the wrong functional currency")
@@ -210,6 +209,11 @@ def build_parser() -> argparse.ArgumentParser:
     request_template = subparsers.add_parser("assert-request-template")
     request_template.add_argument("--document", required=True)
     request_template.add_argument("--label", required=True)
+    request_template.add_argument(
+        "--expected-entry-kind",
+        choices=("DIRECT_JOURNAL", "SALE"),
+        default="SALE",
+    )
     request_template.add_argument("--require-evidence-fields", action="store_true")
     request_template.set_defaults(handler=assert_request_template)
 

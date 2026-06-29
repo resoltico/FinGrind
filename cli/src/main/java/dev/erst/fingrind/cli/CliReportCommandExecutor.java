@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
@@ -24,19 +25,16 @@ import org.jspecify.annotations.Nullable;
 final class CliReportCommandExecutor {
   private final CliReportResponseWriter responseWriter;
   private final CliFailureResponseWriter failureWriter;
-  private final CliDiagnosticsWriter diagnosticsWriter;
   private final CliBookReadWorkflow readWorkflow;
   private final CliPdfReportExporter pdfReportExporter;
 
   CliReportCommandExecutor(
       CliReportResponseWriter responseWriter,
       CliFailureResponseWriter failureWriter,
-      CliDiagnosticsWriter diagnosticsWriter,
       CliBookReadWorkflow readWorkflow,
       CliPdfReportExporter pdfReportExporter) {
     this.responseWriter = Objects.requireNonNull(responseWriter, "responseWriter");
     this.failureWriter = Objects.requireNonNull(failureWriter, "failureWriter");
-    this.diagnosticsWriter = Objects.requireNonNull(diagnosticsWriter, "diagnosticsWriter");
     this.readWorkflow = Objects.requireNonNull(readWorkflow, "readWorkflow");
     this.pdfReportExporter = Objects.requireNonNull(pdfReportExporter, "pdfReportExporter");
   }
@@ -113,6 +111,18 @@ final class CliReportCommandExecutor {
         CliReportExitCodes::exitCodeFor);
   }
 
+  int runCashFlowStatementCommand(
+      BookAccess bookAccess, CashFlowStatementQuery query, CliCommand.ReportOutput output) {
+    return runReportCommand(
+        bookAccess,
+        output,
+        () -> readWorkflow.cashFlowStatement(bookAccess, query),
+        CliReportResultAccess::cashFlowStatementReport,
+        pdfReportExporter::exportCashFlowStatement,
+        responseWriter::writeCashFlowStatementResult,
+        CliReportExitCodes::exitCodeFor);
+  }
+
   int runChangesInEquityCommand(
       BookAccess bookAccess, ChangesInEquityQuery query, CliCommand.ReportOutput output) {
     return runReportCommand(
@@ -164,7 +174,6 @@ final class CliReportCommandExecutor {
         result -> {
           @Nullable Path exportedArtifactPath = exportAction.apply(result);
           writeResult.accept(result, exportedArtifactPath);
-          writePdfExportInfo(output.outputMode(), exportedArtifactPath);
         },
         successExitCode,
         failureWriter);
@@ -187,12 +196,6 @@ final class CliReportCommandExecutor {
   private @Nullable Path exportPdf(Path outputPath, Consumer<Path> pdfExport) {
     pdfExport.accept(outputPath);
     return outputPath.toAbsolutePath().normalize();
-  }
-
-  private void writePdfExportInfo(OutputMode outputMode, @Nullable Path outputPath) {
-    if (outputPath != null && outputMode != OutputMode.JSON) {
-      diagnosticsWriter.writePdfExportInfo(outputPath);
-    }
   }
 
   /** Exports one reported read-side value into one PDF artifact path. */

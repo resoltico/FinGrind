@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: USER_EXAMPLES
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
-  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
+  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
 ---
 
@@ -119,7 +119,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-cash-bookkeeping-kernel","accountingBasis":"CASH_BASIS","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE_CASH","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
+{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-bookkeeping-kernel","accountingBasis":"CASH_BASIS","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
 ```
 
 That initialized book starts from the seeded owner-managed service starter chart. Review it with
@@ -180,7 +180,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","replacementPassphraseSource":"key-file","replacementBookKeyFile":"<redacted>/keys/acme.rotated.book-key"}}
+{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","replacementPassphraseSource":"key-file"},"artifacts":[{"format":"book-key-file","path":"<redacted>/keys/acme.rotated.book-key"}]}
 ```
 
 ## Back Up And Restore One Closed Protected Book
@@ -305,15 +305,16 @@ fingrind \
 
 That generated scaffold uses the same canonical content as the checked-in
 [examples/request-template.json](./examples/request-template.json) companion example. Both
-intentionally publish one placeholder-first sample document and default to one direct balanced
-`"entryKind": "JOURNAL"` posting with explicit `lines` over the seeded starter accounts.
+intentionally publish one placeholder-first sample document and default to one minimal
+`"entryKind": "SALE"` posting with `cashAccountCode`, `revenueAccountCode`, and `amount` over the
+seeded starter accounts.
 The scaffold is request-first rather than demo-runnable: `actorType` defaults to `PERSON`,
 `evidence.approvals` starts as an empty array that callers may populate when one posting requires
 explicit approval references, and every `replace-before-commit-*` evidence or provenance token must be
 replaced before real-world use.
 A committed `idempotencyKey` is single-use per book.
-Recipe shortcuts remain supported for compact convenience cases, but the default scaffold teaches
-the raw journal boundary first.
+Typed business-entry commands remain the primary write surface, and the raw direct-journal boundary
+remains available through `print-request-template post-entry` when you need it explicitly.
 
 For the concrete walkthrough below, reuse the checked-in example request:
 
@@ -327,7 +328,7 @@ fingrind \
   --request-file ./basic-posting-request.json
 
 fingrind \
-  post-entry \
+  record-sale \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json
@@ -339,8 +340,9 @@ One successful preflight response:
 {"status":"ok","payload":{"idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08"}}
 ```
 
-That response is advisory, not a durable commit guarantee. `post-entry` re-runs its authoritative
-commit-time checks inside the write transaction.
+That response is advisory, not a durable commit guarantee. The matching commit command such as
+`record-sale` re-runs its authoritative commit-time checks inside the write transaction. Raw
+`post-entry` does the same when the submitted request itself is a direct journal.
 
 One successful commit response:
 
@@ -352,8 +354,8 @@ One successful commit response:
 The request shape is checked in at [examples/basic-posting-request.json](./examples/basic-posting-request.json).
 One example committed response is checked in at
 [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json).
-Every line in that request uses the same `currencyCode`; mixed-currency entries are rejected, and
-every journal line amount must be greater than zero.
+This example uses the sale-first request language with `cashAccountCode`, `revenueAccountCode`,
+and one exact positive `amount`.
 
 ## Run One Atomic Ledger Plan
 
@@ -366,8 +368,8 @@ fingrind \
 
 Like `print-request-template`, this scaffold uses the same canonical content as the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) companion example.
-Its nested posting scaffold defaults to one direct balanced `"entryKind": "JOURNAL"` posting with
-explicit `lines`, and the emitted workflow uses the same placeholder evidence and provenance
+Its nested posting scaffold defaults to one minimal `"entryKind": "SALE"` posting with
+`cashAccountCode`, `revenueAccountCode`, and `amount`, and the emitted workflow uses the same placeholder evidence and provenance
 tokens as the request template. Replace those placeholder values before real-world use.
 
 Or execute the checked-in runnable example plan directly against a fresh book:
@@ -394,16 +396,16 @@ That plan:
 and the full execution journal.
 
 Checked-in plan examples:
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the canonical raw-journal plan scaffold
-- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable plan example using direct journal lines
-- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): labeled recipe-shortcut plan that keeps the posting compact while demonstrating in-plan queries
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the canonical minimal sale plan scaffold
+- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable plan example using one sale entry
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): sale-first plan that also demonstrates in-plan queries
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
 - [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json)
 
 If you want the plan itself to inspect paginated state before it finishes, use the checked-in
-query example. It intentionally keeps the posting step recipe-backed so the example can stay short
-while focusing on the query steps:
+query example. It keeps the posting step in the sale-first request language while focusing on the
+query steps:
 
 - `./ledger-plan-query-request.json`: copy [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
 
@@ -477,8 +479,8 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --account-code cash \
-  --period-start 2026-04-07 \
-  --period-end 2026-04-08 \
+  --effective-date-from 2026-04-07 \
+  --effective-date-to 2026-04-08 \
   --output csv
 
 fingrind \
@@ -490,10 +492,20 @@ fingrind \
   --output text
 
 fingrind \
+  cash-flow-statement \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
+  --period-start 2026-04-07 \
+  --period-end 2026-04-08 \
+  --comparative prior-period \
+  --output text
+
+fingrind \
   trial-balance \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --effective-date-as-of 2026-04-08 \
+  --comparative prior-period \
   --output text \
   --pdf-out ./acme-trial-balance.pdf
 ```
@@ -508,9 +520,12 @@ Checked-in report examples:
 
 These report commands keep JSON as the default machine surface, while `--output text` and
 `--output csv` render accounting-grade display scale for operators and spreadsheet tools.
+`cash-flow-statement` is the bounded statement of cash receipts and payments and classifies
+movement into operating, investing, and financing sections from the declared counterpart accounts.
 `--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
 is selected on stdout, the success envelope also publishes one redacted PDF path hint under
-`artifacts[]`. Text and CSV stdout flows emit an info diagnostic with the same redacted written-path hint. If the
+`artifacts[]`. `--output text --pdf-out <path>` writes one artifact confirmation block to stdout
+instead of the full report body, and `--output csv` cannot be paired with `--pdf-out`. If the
 artifact write fails, the command returns one deterministic `pdf-export-failure` error instead of
 publishing a successful report. FinGrind does not check PDF binaries into `docs/examples`;
 the checked-in text and CSV examples remain the canonical review fixtures.
@@ -551,8 +566,8 @@ and
 Posting-side account failures are now aggregated under `account-state-violations` so callers can
 repair every reported account issue before retrying; the machine envelope keeps a stable summary
 while the ordered `details.violations[]` items and the text-mode `Issue N | <code>` sections carry
-the actionable per-issue repair data. This example intentionally stays recipe-backed so the
-rejection focuses on undeclared-account handling rather than on raw-line construction.
+the actionable per-issue repair data. This example uses the same sale-first surface as the runnable
+posting flow so the rejection stays anchored to the primary write language.
 
 ## Entry-Semantics Rejections Explain Every Issue
 
@@ -577,21 +592,24 @@ the text surface renders the same family as one `Summary` header plus one `Issue
 section per violation so an operator can repair every problem without scraping one concatenated
 paragraph.
 
-## Duplicate Rejection
+## Idempotent Replay
 
 ```bash
 fingrind \
-  post-entry \
+  record-sale \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json
 ```
 
-One repeat commit response:
+One repeat commit response for the exact same normalized request:
 
 ```json
-{"status":"rejected","code":"duplicate-idempotency-key","message":"A posting with the same idempotency key already exists in this book.","idempotencyKey":"idem-basic-1"}
+{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z","idempotentReplay":true}}
 ```
+
+If the same `idempotencyKey` is reused with a different normalized request, the book still
+rejects it with `idempotency-key-conflict`.
 
 ## Read The Request From Standard Input
 

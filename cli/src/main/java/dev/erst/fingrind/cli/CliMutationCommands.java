@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -66,5 +67,27 @@ final class PostEntry extends CliBookRequestOutputModeCommand {
       Path requestFile,
       OutputMode outputMode) {
     return executionContext.mutation().runPostEntryCommand(bookAccess, requestFile, outputMode);
+  }
+}
+
+/** Mutation CLI command that commits one typed business-entry request. */
+final class RecordEntry extends CliBookRequestOutputModeCommand {
+  private final OperationId operationId;
+
+  RecordEntry(
+      BookAccess bookAccess, Path requestFile, OutputMode outputMode, OperationId operationId) {
+    super(bookAccess, requestFile, outputMode);
+    this.operationId = Objects.requireNonNull(operationId, "operationId");
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
+        .mutation()
+        .runRecordEntryCommand(bookAccess, requestFile, outputMode, operationId);
   }
 }

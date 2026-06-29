@@ -1,6 +1,5 @@
 {
-  "entryKind": "JOURNAL",
-  "recipeKind": "CASH_REVENUE",
+  "entryKind": "SALE",
   "effectiveDate": "2026-06-14",
   "cashAccountCode": "5110",
   "revenueAccountCode": "6110",
@@ -13,13 +12,12 @@
       {
         "sourceDocumentId": "document-seed-sqlite-jpy-idem-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-06-14",
-        "capturedAt": "2026-06-14T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-seed-sqlite-jpy-idem-1",
-        "contentSha256": "c4bebaf83f7c7f7d92ea0dbcc4f18eb90ccc9091116a15565e2777f817dc71ae"
+        "documentDate": "2026-06-14"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "seed-sqlite-jpy-1",

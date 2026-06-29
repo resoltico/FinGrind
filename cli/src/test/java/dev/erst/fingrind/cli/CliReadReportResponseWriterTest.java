@@ -76,7 +76,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 new ListAccountsResult.Listed(
                     accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,parentAccountCode,accountType,accountRole,financialPositionLineClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
+        "accountCode,accountName,parentAccountCode,accountType,financialPositionLineClassification,cashFlowAssetClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
     assertWriterOutput(
         writer ->
             writer.writeGetPostingResult(
@@ -107,7 +107,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 new ListPostingsResult.Listed(
                     postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,currencyCode,debitTotal,creditTotal,accountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message");
+        "exportFamily,rowId,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversesPostingId,reversedByPostingId,currencyCode,debitTotal,creditTotal,accountCodes,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions,message");
   }
 
   @Test
@@ -171,7 +171,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message");
+        "recordKind,accountCode,accountName,accountType,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message");
     assertWriterOutput(
         writer ->
             writer.writeTrialBalanceResult(
@@ -189,7 +189,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message");
+        "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
@@ -207,7 +207,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message");
+        "recordKind,accountCode,accountName,accountType,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message");
     assertWriterOutput(
         writer ->
             writer.writePeriodSummaryResult(

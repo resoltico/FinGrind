@@ -9,14 +9,15 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /** Rejection-detail JSON records emitted by the CLI transport layer. */
-public interface CliRejectionJsonModels extends CliPlanJsonModels {
+public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejectionJsonModels {
 
   /** Sealed marker for machine-readable CLI rejection detail payloads. */
-  sealed interface RejectionDetails
+  sealed interface RejectionDetails extends CliEnvelopeJsonModels.EnvelopeDetails
       permits PostingRejectionDetails,
           AccountRejectionDetails,
-          PeriodResultTransferRejectionDetails,
+          CloseWindowRejectionDetails,
           QueryOrPlanRejectionDetails,
+          CliTaxRejectionJsonModels.TaxRejectionDetails,
           MaintenanceRejectionDetails {}
 
   /** Sealed category for posting lifecycle rejection payloads. */
@@ -25,29 +26,30 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
           EntrySemanticsViolationsDetails,
           PriorPostingDetails,
           FunctionalCurrencyMismatchDetails,
-          OpenAccountingPositionWindowClosedDetails,
-          OpenAccountingPositionNominalAccountDetails,
-          TransferredPeriodResultViolationDetails {}
+          OpeningPositionWindowClosedDetails,
+          OpeningPositionNominalAccountDetails,
+          SweptInterimResultViolationDetails {}
 
   /** Sealed category for account-registry rejection payloads. */
   sealed interface AccountRejectionDetails extends RejectionDetails
-      permits AccountRoleConflictDetails,
-          AccountTypeConflictDetails,
+      permits AccountTypeConflictDetails,
           AccountTaxonomyConflictDetails,
           ParentAccountDetails,
           ParentAccountTypeConflictDetails,
-          ParentAccountRoleConflictDetails,
           ParentAccountNodeKindDetails,
           ParentAccountTaxonomyConflictDetails,
-          ResultHoldingAccountDetails,
-          ResultHoldingAccountCandidateMissingDetails,
-          ResultHoldingAccountCandidateAmbiguousDetails {}
+          ReservedResultClassificationDetails,
+          CloseTargetAccountCandidateMissingDetails,
+          CloseTargetAccountCandidateAmbiguousDetails {}
 
   /** Sealed category for close-window rejection payloads. */
-  sealed interface PeriodResultTransferRejectionDetails extends RejectionDetails
-      permits PeriodResultTransferStartDetails,
-          PeriodResultTransferFutureDateDetails,
-          PeriodResultTransferFiscalYearDetails {}
+  sealed interface CloseWindowRejectionDetails extends RejectionDetails
+      permits InterimResultSweepStartDetails,
+          InterimResultSweepFutureDateDetails,
+          InterimResultSweepFiscalYearDetails,
+          FiscalYearCloseStartDetails,
+          FiscalYearCloseEndDetails,
+          FiscalYearCloseFutureDateDetails {}
 
   /** Sealed category for query and workflow rejection payloads. */
   sealed interface QueryOrPlanRejectionDetails extends RejectionDetails
@@ -93,16 +95,6 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record AccountRoleConflictDetails(
-      String accountCode, String existingAccountRole, String requestedAccountRole)
-      implements AccountRejectionDetails {
-    public AccountRoleConflictDetails {
-      accountCode = requireText(accountCode, "accountCode");
-      existingAccountRole = requireText(existingAccountRole, "existingAccountRole");
-      requestedAccountRole = requireText(requestedAccountRole, "requestedAccountRole");
-    }
-  }
-
   record AccountTypeConflictDetails(
       String accountCode, String existingAccountType, String requestedAccountType)
       implements AccountRejectionDetails {
@@ -144,20 +136,6 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
       requestedAccountType = requireText(requestedAccountType, "requestedAccountType");
       parentAccountCode = requireText(parentAccountCode, "parentAccountCode");
       parentAccountType = requireText(parentAccountType, "parentAccountType");
-    }
-  }
-
-  record ParentAccountRoleConflictDetails(
-      String accountCode,
-      String requestedAccountRole,
-      String parentAccountCode,
-      String parentAccountRole)
-      implements AccountRejectionDetails {
-    public ParentAccountRoleConflictDetails {
-      accountCode = requireText(accountCode, "accountCode");
-      requestedAccountRole = requireText(requestedAccountRole, "requestedAccountRole");
-      parentAccountCode = requireText(parentAccountCode, "parentAccountCode");
-      parentAccountRole = requireText(parentAccountRole, "parentAccountRole");
     }
   }
 
@@ -209,35 +187,39 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record OpenAccountingPositionNominalAccountDetails(String accountCode, String accountType)
+  record OpeningPositionNominalAccountDetails(String accountCode, String accountType)
       implements PostingRejectionDetails {
-    public OpenAccountingPositionNominalAccountDetails {
+    public OpeningPositionNominalAccountDetails {
       accountCode = requireText(accountCode, "accountCode");
       accountType = requireText(accountType, "accountType");
     }
   }
 
-  record OpenAccountingPositionWindowClosedDetails(
+  record OpeningPositionWindowClosedDetails(
       String firstBlockingPostingKind, String firstBlockingEffectiveDate)
       implements PostingRejectionDetails {
-    public OpenAccountingPositionWindowClosedDetails {
+    public OpeningPositionWindowClosedDetails {
       firstBlockingPostingKind = requireText(firstBlockingPostingKind, "firstBlockingPostingKind");
       firstBlockingEffectiveDate =
           requireText(firstBlockingEffectiveDate, "firstBlockingEffectiveDate");
     }
   }
 
-  record ResultHoldingAccountDetails(String accountCode) implements AccountRejectionDetails {
-    public ResultHoldingAccountDetails {
+  record ReservedResultClassificationDetails(
+      String accountCode, String financialPositionLineClassification)
+      implements AccountRejectionDetails {
+    public ReservedResultClassificationDetails {
       accountCode = requireText(accountCode, "accountCode");
+      financialPositionLineClassification =
+          requireText(financialPositionLineClassification, "financialPositionLineClassification");
     }
   }
 
-  record ResultHoldingAccountCandidateMissingDetails(
+  record CloseTargetAccountCandidateMissingDetails(
       String requiredFinancialPositionLineClassification,
       List<String> inactiveCandidateAccountCodes)
       implements AccountRejectionDetails {
-    public ResultHoldingAccountCandidateMissingDetails {
+    public CloseTargetAccountCandidateMissingDetails {
       requiredFinancialPositionLineClassification =
           requireText(
               requiredFinancialPositionLineClassification,
@@ -247,10 +229,10 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record ResultHoldingAccountCandidateAmbiguousDetails(
+  record CloseTargetAccountCandidateAmbiguousDetails(
       String requiredFinancialPositionLineClassification, List<String> candidateAccountCodes)
       implements AccountRejectionDetails {
-    public ResultHoldingAccountCandidateAmbiguousDetails {
+    public CloseTargetAccountCandidateAmbiguousDetails {
       requiredFinancialPositionLineClassification =
           requireText(
               requiredFinancialPositionLineClassification,
@@ -259,25 +241,25 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record PeriodResultTransferStartDetails(String requiredEffectiveDateFrom)
-      implements PeriodResultTransferRejectionDetails {
-    public PeriodResultTransferStartDetails {
+  record InterimResultSweepStartDetails(String requiredEffectiveDateFrom)
+      implements CloseWindowRejectionDetails {
+    public InterimResultSweepStartDetails {
       requiredEffectiveDateFrom =
           requireText(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
     }
   }
 
-  record PeriodResultTransferFutureDateDetails(String attemptedEffectiveDateTo)
-      implements PeriodResultTransferRejectionDetails {
-    public PeriodResultTransferFutureDateDetails {
+  record InterimResultSweepFutureDateDetails(String attemptedEffectiveDateTo)
+      implements CloseWindowRejectionDetails {
+    public InterimResultSweepFutureDateDetails {
       attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
     }
   }
 
-  record PeriodResultTransferFiscalYearDetails(
+  record InterimResultSweepFiscalYearDetails(
       String attemptedEffectiveDateFrom, String attemptedEffectiveDateTo, String fiscalYearStart)
-      implements PeriodResultTransferRejectionDetails {
-    public PeriodResultTransferFiscalYearDetails {
+      implements CloseWindowRejectionDetails {
+    public InterimResultSweepFiscalYearDetails {
       attemptedEffectiveDateFrom =
           requireText(attemptedEffectiveDateFrom, "attemptedEffectiveDateFrom");
       attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
@@ -285,10 +267,32 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels {
     }
   }
 
-  record TransferredPeriodResultViolationDetails(
+  record FiscalYearCloseStartDetails(String requiredEffectiveDateFrom)
+      implements CloseWindowRejectionDetails {
+    public FiscalYearCloseStartDetails {
+      requiredEffectiveDateFrom =
+          requireText(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
+    }
+  }
+
+  record FiscalYearCloseEndDetails(String requiredEffectiveDateTo)
+      implements CloseWindowRejectionDetails {
+    public FiscalYearCloseEndDetails {
+      requiredEffectiveDateTo = requireText(requiredEffectiveDateTo, "requiredEffectiveDateTo");
+    }
+  }
+
+  record FiscalYearCloseFutureDateDetails(String attemptedEffectiveDateTo)
+      implements CloseWindowRejectionDetails {
+    public FiscalYearCloseFutureDateDetails {
+      attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
+    }
+  }
+
+  record SweptInterimResultViolationDetails(
       String transferredThroughEffectiveDate, String attemptedEffectiveDate)
       implements PostingRejectionDetails {
-    public TransferredPeriodResultViolationDetails {
+    public SweptInterimResultViolationDetails {
       transferredThroughEffectiveDate =
           requireText(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
       attemptedEffectiveDate = requireText(attemptedEffectiveDate, "attemptedEffectiveDate");

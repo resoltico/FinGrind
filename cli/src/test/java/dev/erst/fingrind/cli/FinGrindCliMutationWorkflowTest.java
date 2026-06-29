@@ -198,7 +198,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli.run(
             jsonArguments(
-                "post-entry",
+                "record-sale",
                 "--book-file",
                 bookFilePath.toString(),
                 "--book-key-file",
@@ -258,7 +258,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         1,
         commitCli.run(
             jsonArguments(
-                "post-entry",
+                "record-sale",
                 "--book-file",
                 bookFilePath.toString(),
                 "--book-key-file",

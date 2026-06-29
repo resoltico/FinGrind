@@ -1,20 +1,15 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
+import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.PostingCoverage;
-import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
-import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.nio.file.Files;
-import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-/** Point-query and inspection reads over one SQLite-backed book session. */
+/** Account, tax-registry, and inspection reads over one SQLite-backed book session. */
 final class SqliteStoreQueryOperations {
   /** One initialized-book point query executed against a live SQLite handle. */
   @FunctionalInterface
@@ -60,7 +55,8 @@ final class SqliteStoreQueryOperations {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
-        activeDatabase -> SqliteStatementQueries.findOneAccount(activeDatabase, accountCode));
+        activeDatabase ->
+            SqliteAccountStatementQueries.findOneAccount(activeDatabase, accountCode));
   }
 
   Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
@@ -72,7 +68,8 @@ final class SqliteStoreQueryOperations {
     }
     return queryInitialized(
         "Failed to query SQLite book.",
-        activeDatabase -> SqliteStatementQueries.findAccounts(activeDatabase, requestedAccounts));
+        activeDatabase ->
+            SqliteAccountStatementQueries.findAccounts(activeDatabase, requestedAccounts));
   }
 
   List<RegisteredAccount> allAccounts() {
@@ -80,134 +77,36 @@ final class SqliteStoreQueryOperations {
     return queryInitialized(
         "Failed to query SQLite book.",
         activeDatabase ->
-            SqliteStatementQueries.loadAllAccounts(
+            SqliteAccountStatementQueries.loadAllAccounts(
                 activeDatabase, SqlitePostingSql.LOAD_ALL_ACCOUNTS));
+  }
+
+  Optional<DeclaredTaxRegistration> findTaxRegistration(TaxRegistrationId taxRegistrationId) {
+    lifecycle.ensureOpenSession();
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase ->
+            SqliteTaxStatementQueries.findOneTaxRegistration(activeDatabase, taxRegistrationId));
+  }
+
+  List<DeclaredTaxRegistration> allTaxRegistrations() {
+    lifecycle.ensureOpenSession();
+    return queryInitialized(
+        "Failed to query SQLite book.", SqliteTaxStatementQueries::loadAllTaxRegistrations);
+  }
+
+  TaxRegistrationPage listTaxRegistrations(ListTaxRegistrationsQuery query) {
+    lifecycle.ensureOpenSession();
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase -> SqliteTaxStatementQueries.loadTaxRegistrationPage(activeDatabase, query));
   }
 
   AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     lifecycle.ensureOpenSession();
     return queryInitialized(
         "Failed to query SQLite book.",
-        activeDatabase -> SqliteStatementQueries.loadAccountPage(activeDatabase, query));
-  }
-
-  Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
-    lifecycle.ensureOpenSession();
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase ->
-            context
-                .postingReader()
-                .findOneCommittedPosting(
-                    activeDatabase,
-                    SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,
-                    statement -> statement.bindText(1, idempotencyKey.value())));
-  }
-
-  Optional<CommittedPosting> findPosting(PostingId postingId) {
-    lifecycle.ensureOpenSession();
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase ->
-            context
-                .postingReader()
-                .findOneCommittedPosting(
-                    activeDatabase,
-                    SqlitePostingSql.FIND_POSTING_BY_ID,
-                    statement -> statement.bindText(1, postingId.value())));
-  }
-
-  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
-    lifecycle.ensureOpenSession();
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase ->
-            context
-                .postingReader()
-                .findOneCommittedPosting(
-                    activeDatabase,
-                    SqlitePostingSql.FIND_REVERSAL_FOR,
-                    statement -> statement.bindText(1, priorPostingId.value())));
-  }
-
-  PostingHistoryPage listPostings(PostingHistoryQuery query) {
-    lifecycle.ensureOpenSession();
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase -> context.postingReader().loadPostingPage(activeDatabase, query));
-  }
-
-  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
-    lifecycle.ensureOpenSession();
-    EffectiveDateRange range = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase ->
-            context
-                .postingReader()
-                .loadCommittedPostings(
-                    activeDatabase,
-                    SqlitePostingSql.LOAD_POSTINGS_IN_RANGE,
-                    statement -> {
-                      String effectiveDateFrom =
-                          range.effectiveDateFrom().map(LocalDate::toString).orElse(null);
-                      String effectiveDateTo =
-                          range.effectiveDateTo().map(LocalDate::toString).orElse(null);
-                      statement.bindText(1, effectiveDateFrom);
-                      statement.bindText(2, effectiveDateFrom);
-                      statement.bindText(3, effectiveDateTo);
-                      statement.bindText(4, effectiveDateTo);
-                    }));
-  }
-
-  Optional<LocalDate> earliestPostingEffectiveDate() {
-    lifecycle.ensureOpenSession();
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase ->
-            SqliteStatementQueries.loadOptionalText(
-                    activeDatabase,
-                    SqlitePostingSql.FIND_EARLIEST_POSTING_EFFECTIVE_DATE,
-                    statement -> {})
-                .map(LocalDate::parse));
-  }
-
-  Optional<LocalDate> latestPostingEffectiveDate() {
-    lifecycle.ensureOpenSession();
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase ->
-            SqliteStatementQueries.loadOptionalText(
-                    activeDatabase,
-                    SqlitePostingSql.FIND_LATEST_POSTING_EFFECTIVE_DATE,
-                    statement -> {})
-                .map(LocalDate::parse));
-  }
-
-  Optional<LocalDate> transferredThroughEffectiveDate() {
-    lifecycle.ensureOpenSession();
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase ->
-            SqliteStatementQueries.loadOptionalText(
-                    activeDatabase,
-                    SqlitePostingSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE,
-                    statement -> {})
-                .map(LocalDate::parse));
-  }
-
-  List<AccountCurrencyTotals> accountTotals(
-      EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
-    lifecycle.ensureOpenSession();
-    EffectiveDateRange range = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
-    PostingCoverage requiredPostingCoverage =
-        Objects.requireNonNull(postingCoverage, "postingCoverage");
-    return queryInitialized(
-        "Failed to query SQLite book.",
-        activeDatabase ->
-            context
-                .postingBalanceReader()
-                .loadAccountTotals(activeDatabase, range, requiredPostingCoverage));
+        activeDatabase -> SqliteAccountStatementQueries.loadAccountPage(activeDatabase, query));
   }
 
   private <T> T queryInitialized(String failureMessage, NativeQuery<T> query) {

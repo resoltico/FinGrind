@@ -1,5 +1,7 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.ComparativeMode;
+import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 
 /** Canonical public CLI option spellings used by the protocol catalog and parser. */
@@ -46,6 +48,9 @@ public final class ProtocolOptions {
   /** Option selecting a durable posting identifier. */
   public static final String POSTING_ID = "--posting-id";
 
+  /** Option selecting one declared tax registration identifier. */
+  public static final String TAX_REGISTRATION_ID = "--tax-registration-id";
+
   /** Option selecting a book-local account code. */
   public static final String ACCOUNT_CODE = "--account-code";
 
@@ -63,6 +68,9 @@ public final class ProtocolOptions {
 
   /** Option selecting one as-of effective date for as-of report commands. */
   public static final String EFFECTIVE_DATE_AS_OF = "--effective-date-as-of";
+
+  /** Option selecting one comparative mode or explicit comparative range for supported reports. */
+  public static final String COMPARATIVE = "--comparative";
 
   /** Option selecting the accounting-entity name used when initializing one new book. */
   public static final String ENTITY_NAME = "--entity-name";
@@ -164,6 +172,21 @@ public final class ProtocolOptions {
             dev.erst.fingrind.core.WireValue.wireValues(
                 dev.erst.fingrind.core.PostingCoverage.class))
         + ">]";
+  }
+
+  /** Returns the rendered optional comparative syntax for as-of report commands. */
+  public static String optionalAsOfComparativeSyntax() {
+    return "[" + COMPARATIVE + " <none|prior-period|..YYYY-MM-DD>]";
+  }
+
+  /** Returns the rendered optional comparative syntax for bounded-period report commands. */
+  public static String optionalPeriodComparativeSyntax() {
+    return "[" + COMPARATIVE + " <none|prior-period|YYYY-MM-DD..YYYY-MM-DD>]";
+  }
+
+  /** Returns the published comparative capability mode inventory in stable wire order. */
+  public static List<String> comparativeModes() {
+    return WireValue.wireValues(ComparativeMode.class);
   }
 
   /** Returns the rendered optional execute-plan result-detail syntax. */

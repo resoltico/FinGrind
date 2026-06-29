@@ -22,8 +22,9 @@ final class CliPlanDetailTextRenderer {
                   List.of("Entity name", ensureBook.entityName()),
                   List.of("Functional currency", ensureBook.functionalCurrency()),
                   List.of("Fiscal year start", ensureBook.fiscalYearStart())));
-      case CliPlanJsonModels.DeclaredAccountStepDataPayload declaredAccount ->
-          CliPlanBookkeepingTextRenderer.renderDeclaredAccount(declaredAccount.account());
+      case CliPlanJsonModels.AccountDeclarationStepDataPayload accountDeclaration ->
+          CliPlanBookkeepingTextRenderer.renderDeclaredAccount(
+              accountDeclaration.outcome(), accountDeclaration.account());
       case CliPlanJsonModels.PreflightEntryStepDataPayload preflightEntry ->
           CliTextFormat.renderKeyValueBlock(
               List.of(
@@ -63,7 +64,7 @@ final class CliPlanDetailTextRenderer {
               List.of(List.of("Posting id", postingIdAssertion.postingId())));
       case CliPlanJsonModels.PlanBoundaryStepDataPayload boundary ->
           CliTextFormat.renderKeyValueBlock(
-              List.of(List.of("Phase", CliTextDisplay.wireLabel(boundary.phase()))));
+              List.of(List.of("Checkpoint", CliTextDisplay.wireLabel(boundary.checkpoint()))));
     };
   }
 

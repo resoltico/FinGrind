@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Any
 
 from .fixture_payloads import (
-    cash_expense_request,
-    cash_revenue_request,
     declare_account_request,
+    expense_request,
     raw_transfer_request,
+    sale_request,
 )
 from .models import ReleaseSmokeConfig
 
@@ -33,7 +33,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     actor_prefix = config.actor_prefix
     write_json(
         config.request_sale.local_path,
-        cash_revenue_request(
+        sale_request(
             actor_prefix=actor_prefix,
             effective_date="2026-04-07",
             cash_account_code=config.starter_cash_account_code,
@@ -47,7 +47,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     )
     write_json(
         config.request_expense.local_path,
-        cash_expense_request(
+        expense_request(
             actor_prefix=actor_prefix,
             effective_date="2026-04-08",
             expense_account_code=config.expense_supplement_account_code,
@@ -79,9 +79,9 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
             account_code="invalid-supplement",
             account_name="Invalid Supplement",
             account_type="ASSET",
-            account_role="ORDINARY",
             account_node_kind="POSTABLE",
             financial_position_line_classification="CURRENT_ASSET",
+            cash_flow_asset_classification="CASH_AND_CASH_EQUIVALENT",
             nonsense_one="unexpected",
             nonsense_two="unexpected",
         ),
@@ -92,9 +92,9 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
             account_code=config.bank_account_code,
             account_name=config.bank_account_name,
             account_type="ASSET",
-            account_role="ORDINARY",
             account_node_kind="POSTABLE",
             financial_position_line_classification="CURRENT_ASSET",
+            cash_flow_asset_classification="CASH_AND_CASH_EQUIVALENT",
         ),
     )
     write_json(
@@ -103,7 +103,6 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
             account_code=config.expense_supplement_account_code,
             account_name=config.expense_supplement_account_name,
             account_type="EXPENSE",
-            account_role="ORDINARY",
             account_node_kind="POSTABLE",
             profit_and_loss_line_classification="OPERATING_EXPENSE",
         ),

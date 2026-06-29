@@ -34,13 +34,9 @@ public final class AccountCodePolicy {
    * taxonomy metadata instead of being inferred from the code text.
    */
   public static void validate(
-      AccountCode accountCode,
-      AccountType accountType,
-      AccountRole accountRole,
-      AccountTaxonomy accountTaxonomy) {
+      AccountCode accountCode, AccountType accountType, AccountTaxonomy accountTaxonomy) {
     Objects.requireNonNull(accountCode, "accountCode");
     Objects.requireNonNull(accountType, "accountType");
-    Objects.requireNonNull(accountRole, "accountRole");
     Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
   }
 }

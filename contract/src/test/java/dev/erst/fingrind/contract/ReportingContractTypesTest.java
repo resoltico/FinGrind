@@ -35,7 +35,6 @@ import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -43,6 +42,7 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -66,12 +66,7 @@ import org.junit.jupiter.api.Test;
 class ReportingContractTypesTest {
   private static final DeclaredAccount CASH_ACCOUNT =
       ContractFixtures.declaredAccount(
-          "1000",
-          "Cash",
-          AccountType.ASSET,
-          AccountRole.ORDINARY,
-          true,
-          Instant.parse("2026-04-07T10:15:30Z"));
+          "1000", "Cash", AccountType.ASSET, true, Instant.parse("2026-04-07T10:15:30Z"));
   private static final CurrencyBalance EUR_DEBIT_BALANCE =
       CurrencyBalance.ofTotals(Money.parse("EUR", "15.00"), Money.parse("EUR", "0.00"));
 
@@ -79,7 +74,9 @@ class ReportingContractTypesTest {
   void reportingQueriesReportsAndResults_preserveCanonicalState() {
     TrialBalanceQuery trialBalanceQuery =
         new TrialBalanceQuery(
-            Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.ALL_POSTING_KINDS);
+            Optional.of(LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            ComparativeSelection.none());
     TrialBalanceReport trialBalanceReport =
         new TrialBalanceReport(
             ContractFixtures.bookIdentity(),
@@ -146,7 +143,7 @@ class ReportingContractTypesTest {
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized());
     GetPostingResult.Found foundPosting =
         new GetPostingResult.Found(
-            ContractFixtures.bookIdentity(), postingFact("posting-3", "idem-3"));
+            ContractFixtures.bookIdentity(), postingFact("posting-3", "idem-3"), Optional.empty());
     GetPostingResult.Rejected rejectedPosting =
         new GetPostingResult.Rejected(new BookQueryRejection.BookNotInitialized());
     ListPostingsResult.Listed listedPostings =
@@ -172,6 +169,7 @@ class ReportingContractTypesTest {
         new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), trialBalanceQuery.effectiveDateAsOf());
     assertEquals(PostingCoverage.ALL_POSTING_KINDS, trialBalanceQuery.postingCoverage());
+    assertEquals(ComparativeSelection.none(), trialBalanceQuery.comparativeSelection());
     assertEquals(
         List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)), trialBalanceReport.rows());
     assertSame(trialBalanceReport, reportedTrialBalance.report());
@@ -219,7 +217,9 @@ class ReportingContractTypesTest {
   void reportingValueTypes_rejectInvalidInputs() {
     assertThrows(
         NullPointerException.class,
-        () -> new TrialBalanceQuery(nullOf(), PostingCoverage.ALL_POSTING_KINDS));
+        () ->
+            new TrialBalanceQuery(
+                nullOf(), PostingCoverage.ALL_POSTING_KINDS, ComparativeSelection.none()));
     assertEquals(
         "rows must not be null.",
         assertThrows(
@@ -471,7 +471,7 @@ class ReportingContractTypesTest {
                     Money.parse("EUR", "15.00")))),
         PostingLineage.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(

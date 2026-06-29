@@ -168,7 +168,7 @@ if (( repo_owned_ref_status != 0 )); then
 fi
 
 set +e
-repo_hygiene_run_object_store_verification_with_heartbeat "${repo_root}" "${git_common_dir}/objects"
+repo_hygiene_run_git_fsck_with_heartbeat "${repo_root}"
 object_store_status=$?
 set -e
 

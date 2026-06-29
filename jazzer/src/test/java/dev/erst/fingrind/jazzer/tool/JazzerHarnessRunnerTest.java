@@ -86,9 +86,9 @@ class JazzerHarnessRunnerTest {
               .contains(
                   "[JAZZER-PULSE] harness-class="
                       + SuccessfulFuzzHarnessFixture.class.getName()
-                      + " phase=plan total-tests=1 fuzz-test=fuzz"));
+                      + " event=plan total-tests=1 fuzz-test=fuzz"));
       assertTrue(
-          output.toString().contains("phase=finish status=SUCCESS fuzz-test=fuzz exit-code=0"));
+          output.toString().contains("event=finish status=SUCCESS fuzz-test=fuzz exit-code=0"));
       assertEquals("fuzz", executedMethod[0]);
       assertTrue(errors.toString().isBlank());
     }
@@ -141,7 +141,7 @@ class JazzerHarnessRunnerTest {
 
       assertEquals(77, exitCode);
       assertTrue(
-          output.toString().contains("phase=finish status=FAILURE fuzz-test=fuzz exit-code=77"));
+          output.toString().contains("event=finish status=FAILURE fuzz-test=fuzz exit-code=77"));
       assertTrue(errors.toString().contains("exit code 77"));
     }
 
@@ -197,7 +197,7 @@ class JazzerHarnessRunnerTest {
               });
 
       assertEquals(1, exitCode);
-      assertTrue(output.toString().contains("phase=finish status=FAILURE"));
+      assertTrue(output.toString().contains("event=finish status=FAILURE"));
       assertTrue(errors.toString().contains("executor boom"));
     }
 
@@ -214,7 +214,7 @@ class JazzerHarnessRunnerTest {
       assertTrue(
           output
               .toString(StandardCharsets.UTF_8)
-              .contains("phase=finish status=SUCCESS fuzz-test=fuzz exit-code=0"));
+              .contains("event=finish status=SUCCESS fuzz-test=fuzz exit-code=0"));
       assertTrue(errors.toString(StandardCharsets.UTF_8).isBlank());
     }
   }
@@ -338,7 +338,7 @@ class JazzerHarnessRunnerTest {
 
     assertEquals(23, exitCode);
     assertTrue(
-        output.toString().contains("phase=finish status=FAILURE fuzz-test=fuzz exit-code=23"));
+        output.toString().contains("event=finish status=FAILURE fuzz-test=fuzz exit-code=23"));
     assertTrue(errors.toString().contains("exit code 23"));
   }
 

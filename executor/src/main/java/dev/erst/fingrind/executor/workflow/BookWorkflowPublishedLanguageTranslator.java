@@ -12,7 +12,7 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import java.util.Objects;
@@ -61,11 +61,12 @@ public final class BookWorkflowPublishedLanguageTranslator {
       case LedgerStep.EnsureBook ensureBook ->
           new BookWorkflowStep.EnsureBook(
               fromPublished(ensureBook.stepId()),
-              BookkeepingPublishedLanguageTranslator.fromPublished(ensureBook.command()));
+              BookkeepingRequestPublishedLanguageTranslator.fromPublished(ensureBook.command()));
       case LedgerStep.DeclareAccount declareAccount ->
           new BookWorkflowStep.DeclareAccount(
               fromPublished(declareAccount.stepId()),
-              BookkeepingPublishedLanguageTranslator.fromPublished(declareAccount.command()));
+              BookkeepingRequestPublishedLanguageTranslator.fromPublished(
+                  declareAccount.command()));
       case LedgerStep.PreflightEntry preflightEntry ->
           new BookWorkflowStep.PreflightEntry(
               fromPublished(preflightEntry.stepId()), preflightEntry.command());

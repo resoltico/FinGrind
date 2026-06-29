@@ -42,7 +42,6 @@ public interface CliStatementJsonModels extends CliReportSupportJsonModels {
       String lineCode,
       String lineName,
       String lineType,
-      @Nullable String lineRole,
       @Nullable String lineClassification,
       String lineKind,
       BalanceBucketPayload balance) {
@@ -50,7 +49,6 @@ public interface CliStatementJsonModels extends CliReportSupportJsonModels {
       lineCode = requireText(lineCode, "lineCode");
       lineName = requireText(lineName, "lineName");
       lineType = requireText(lineType, "lineType");
-      lineRole = requireOptionalText(lineRole, "lineRole");
       lineClassification = requireOptionalText(lineClassification, "lineClassification");
       lineKind = requireText(lineKind, "lineKind");
       Objects.requireNonNull(balance, "balance");
@@ -91,7 +89,6 @@ public interface CliStatementJsonModels extends CliReportSupportJsonModels {
       String lineCode,
       String lineName,
       String lineType,
-      @Nullable String lineRole,
       String lineClassification,
       String lineKind,
       BalanceBucketPayload movement) {
@@ -99,8 +96,77 @@ public interface CliStatementJsonModels extends CliReportSupportJsonModels {
       lineCode = requireText(lineCode, "lineCode");
       lineName = requireText(lineName, "lineName");
       lineType = requireText(lineType, "lineType");
-      lineRole = requireOptionalText(lineRole, "lineRole");
       lineClassification = requireText(lineClassification, "lineClassification");
+      lineKind = requireText(lineKind, "lineKind");
+      Objects.requireNonNull(movement, "movement");
+    }
+  }
+
+  record CashFlowStatementPayload(
+      String effectiveDateFrom,
+      String effectiveDateTo,
+      ReportContextPayload context,
+      List<BalanceBucketPayload> openingCashTotals,
+      List<CashFlowSectionPayload> sections,
+      List<BalanceBucketPayload> movementTotals,
+      List<BalanceBucketPayload> closingCashTotals,
+      List<BalanceBucketPayload> comparativeOpeningCashTotals,
+      List<CashFlowSectionPayload> comparativeSections,
+      List<BalanceBucketPayload> comparativeMovementTotals,
+      List<BalanceBucketPayload> comparativeClosingCashTotals)
+      implements CliSuccessPayload {
+    public CashFlowStatementPayload {
+      var statementWindow =
+          CliStatementPayloadValidation.requireStatementWindow(
+              effectiveDateFrom, effectiveDateTo, context);
+      effectiveDateFrom = statementWindow.effectiveDateFrom();
+      effectiveDateTo = statementWindow.effectiveDateTo();
+      context = statementWindow.context();
+      var balanceBuckets =
+          CliStatementPayloadValidation.copyComparativeBalanceBuckets(
+              openingCashTotals,
+              movementTotals,
+              closingCashTotals,
+              comparativeOpeningCashTotals,
+              comparativeMovementTotals,
+              comparativeClosingCashTotals);
+      openingCashTotals = balanceBuckets.openingTotals();
+      sections = copyList(sections, "sections");
+      movementTotals = balanceBuckets.movementTotals();
+      closingCashTotals = balanceBuckets.closingTotals();
+      comparativeOpeningCashTotals = balanceBuckets.comparativeOpeningTotals();
+      comparativeSections = copyList(comparativeSections, "comparativeSections");
+      comparativeMovementTotals = balanceBuckets.comparativeMovementTotals();
+      comparativeClosingCashTotals = balanceBuckets.comparativeClosingTotals();
+    }
+  }
+
+  record CashFlowSectionPayload(
+      String sectionKind, List<CashFlowRowPayload> rows, List<BalanceBucketPayload> totals) {
+    public CashFlowSectionPayload {
+      sectionKind = requireText(sectionKind, "sectionKind");
+      rows = copyList(rows, "rows");
+      totals = copyList(totals, "totals");
+    }
+  }
+
+  record CashFlowRowPayload(
+      String lineCode,
+      String lineName,
+      String lineType,
+      @Nullable String financialPositionLineClassification,
+      @Nullable String profitAndLossLineClassification,
+      String lineKind,
+      BalanceBucketPayload movement) {
+    public CashFlowRowPayload {
+      lineCode = requireText(lineCode, "lineCode");
+      lineName = requireText(lineName, "lineName");
+      lineType = requireText(lineType, "lineType");
+      financialPositionLineClassification =
+          requireOptionalText(
+              financialPositionLineClassification, "financialPositionLineClassification");
+      profitAndLossLineClassification =
+          requireOptionalText(profitAndLossLineClassification, "profitAndLossLineClassification");
       lineKind = requireText(lineKind, "lineKind");
       Objects.requireNonNull(movement, "movement");
     }
@@ -120,17 +186,28 @@ public interface CliStatementJsonModels extends CliReportSupportJsonModels {
       List<BalanceBucketPayload> comparativeClosingTotals)
       implements CliSuccessPayload {
     public ChangesInEquityPayload {
-      effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
-      effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
-      Objects.requireNonNull(context, "context");
+      var statementWindow =
+          CliStatementPayloadValidation.requireStatementWindow(
+              effectiveDateFrom, effectiveDateTo, context);
+      effectiveDateFrom = statementWindow.effectiveDateFrom();
+      effectiveDateTo = statementWindow.effectiveDateTo();
+      context = statementWindow.context();
+      var balanceBuckets =
+          CliStatementPayloadValidation.copyComparativeBalanceBuckets(
+              openingTotals,
+              movementTotals,
+              closingTotals,
+              comparativeOpeningTotals,
+              comparativeMovementTotals,
+              comparativeClosingTotals);
       rows = copyList(rows, "rows");
-      openingTotals = copyList(openingTotals, "openingTotals");
-      movementTotals = copyList(movementTotals, "movementTotals");
-      closingTotals = copyList(closingTotals, "closingTotals");
+      openingTotals = balanceBuckets.openingTotals();
+      movementTotals = balanceBuckets.movementTotals();
+      closingTotals = balanceBuckets.closingTotals();
       comparativeRows = copyList(comparativeRows, "comparativeRows");
-      comparativeOpeningTotals = copyList(comparativeOpeningTotals, "comparativeOpeningTotals");
-      comparativeMovementTotals = copyList(comparativeMovementTotals, "comparativeMovementTotals");
-      comparativeClosingTotals = copyList(comparativeClosingTotals, "comparativeClosingTotals");
+      comparativeOpeningTotals = balanceBuckets.comparativeOpeningTotals();
+      comparativeMovementTotals = balanceBuckets.comparativeMovementTotals();
+      comparativeClosingTotals = balanceBuckets.comparativeClosingTotals();
     }
   }
 
@@ -138,7 +215,6 @@ public interface CliStatementJsonModels extends CliReportSupportJsonModels {
       String lineCode,
       String lineName,
       @Nullable String lineType,
-      @Nullable String lineRole,
       @Nullable String lineClassification,
       String lineKind,
       BalanceBucketPayload openingBalance,
@@ -148,7 +224,6 @@ public interface CliStatementJsonModels extends CliReportSupportJsonModels {
       lineCode = requireText(lineCode, "lineCode");
       lineName = requireText(lineName, "lineName");
       lineType = requireOptionalText(lineType, "lineType");
-      lineRole = requireOptionalText(lineRole, "lineRole");
       lineClassification = requireOptionalText(lineClassification, "lineClassification");
       lineKind = requireText(lineKind, "lineKind");
       Objects.requireNonNull(openingBalance, "openingBalance");

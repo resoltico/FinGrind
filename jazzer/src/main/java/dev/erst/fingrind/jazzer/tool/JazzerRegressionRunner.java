@@ -105,7 +105,7 @@ public final class JazzerRegressionRunner {
 
     outputWriter.println(
         PULSE_PREFIX
-            + "regression-target phase=plan target="
+            + "regression-target event=plan target="
             + harness.key()
             + " total-inputs="
             + metadataPaths.size());
@@ -158,7 +158,7 @@ public final class JazzerRegressionRunner {
 
     outputWriter.println(
         PULSE_PREFIX
-            + "regression-target phase=finish target="
+            + "regression-target event=finish target="
             + harness.key()
             + " status=SUCCESS");
     return 0;

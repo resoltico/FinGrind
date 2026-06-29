@@ -3,7 +3,6 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.time.LocalDate;
@@ -14,6 +13,8 @@ import java.util.stream.Stream;
 
 /** Builds CSV row families for the financial-position report surface. */
 final class CliFinancialPositionCsvRows {
+  private static final String RECORD_KIND = CliCsvExportFamilies.FINANCIAL_POSITION;
+
   private CliFinancialPositionCsvRows() {}
 
   static Stream<List<String>> rows(
@@ -61,17 +62,16 @@ final class CliFinancialPositionCsvRows {
       FinancialPositionSection section,
       FinancialPositionRow row) {
     return List.of(
-        CliCsvExportFamilies.STATEMENT,
+        CliCsvExportFamilies.FINANCIAL_POSITION,
         "financial-position-row:" + reportBasis + ":" + row.lineCode(),
         sectionRowId(reportBasis, section),
         "line",
         reportBasis,
-        "row",
+        RECORD_KIND,
         effectiveDateAsOf,
         section.accountType().wireValue(),
         row.lineCode(),
         row.lineName(),
-        row.lineRole().map(AccountRole::wireValue).orElse(""),
         row.lineType().wireValue(),
         row.lineClassification().map(FinancialPositionLineClassification::wireValue).orElse(""),
         row.lineKind().wireValue(),
@@ -89,7 +89,7 @@ final class CliFinancialPositionCsvRows {
       FinancialPositionSection section,
       CurrencyBalance total) {
     return List.of(
-        CliCsvExportFamilies.STATEMENT,
+        CliCsvExportFamilies.FINANCIAL_POSITION,
         "financial-position-section-total:"
             + reportBasis
             + ":"
@@ -105,7 +105,6 @@ final class CliFinancialPositionCsvRows {
         section.accountType().wireValue().toLowerCase(Locale.ROOT) + "-total",
         CliAccountStatementLabels.displayAccountTypeSectionLabel(section.accountType()) + " total",
         "",
-        section.accountType().wireValue(),
         "",
         "SECTION_TOTAL",
         total.netAmount().currencyUnit().code(),
@@ -122,18 +121,17 @@ final class CliFinancialPositionCsvRows {
       String effectiveDateAsOf,
       FinancialPositionSection section) {
     return List.of(
-        CliCsvExportFamilies.STATEMENT,
+        CliCsvExportFamilies.FINANCIAL_POSITION,
         "financial-position-section-empty:" + reportBasis + ":" + section.accountType().wireValue(),
         sectionRowId(reportBasis, section),
         "section-empty",
         reportBasis,
-        CliCsvEmptyKinds.SECTION_EMPTY,
+        RECORD_KIND,
         effectiveDateAsOf,
         section.accountType().wireValue(),
         "",
         "",
         "",
-        section.accountType().wireValue(),
         "",
         "",
         report.bookIdentity().functionalCurrency().code(),
@@ -148,14 +146,13 @@ final class CliFinancialPositionCsvRows {
   private static List<String> reportEmptyRow(
       FinancialPositionReport report, String reportBasis, String effectiveDateAsOf) {
     return List.of(
-        CliCsvExportFamilies.STATEMENT,
+        CliCsvExportFamilies.FINANCIAL_POSITION,
         "financial-position-report-empty:" + reportBasis + ":" + effectiveDateAsOf,
         "",
         "report-empty",
         reportBasis,
-        CliCsvEmptyKinds.REPORT_EMPTY,
+        RECORD_KIND,
         effectiveDateAsOf,
-        "",
         "",
         "",
         "",

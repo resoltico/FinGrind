@@ -21,7 +21,6 @@ class ContractSchemaSections:
     bundle_layout: dict[str, object]
     bundle_publication: dict[str, object]
     release_publication: dict[str, object]
-    operation_id: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -46,7 +45,6 @@ def load_contract_schema_sections(repo_root: Path) -> ContractSchemaSections:
         bundle_layout=required_object(schema_keys, "bundleLayout"),
         bundle_publication=required_object(schema_keys, "bundlePublication"),
         release_publication=required_object(schema_keys, "releasePublication"),
-        operation_id=required_object(schema_keys, "operationIdContract"),
     )
 
 

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_JAVA
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -294,7 +294,7 @@ Expected outcomes:
 - `JAVA_HOME` resolves inside `jdk-26.jdk`
 - both zsh modes resolve `java` and `javac`
 - `java --version` and `javac --version` report version 26
-- `./gradlew --version` reports Gradle `9.5.1`
+- `./gradlew --version` reports Gradle `9.6.1`
 
 ## Full Toolchain Verification
 

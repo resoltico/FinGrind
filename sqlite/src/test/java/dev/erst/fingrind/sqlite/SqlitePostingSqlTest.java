@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
@@ -25,6 +26,9 @@ import org.junit.jupiter.api.Test;
 
 /** Unit tests for query-shape builders in {@link SqlitePostingSql}. */
 class SqlitePostingSqlTest {
+  private static final String NON_CLOSING_POSTING_KIND_FILTER =
+      "posting_fact.posting_kind not in ('INTERIM_RESULT_SWEEP', 'FISCAL_YEAR_CLOSE')";
+
   @Test
   void listPostings_includesOnlyRequestedFilters() {
     String unfiltered =
@@ -80,8 +84,8 @@ class SqlitePostingSqlTest {
 
     assertFalse(unfiltered.contains("posting_fact.effective_date >= ?"));
     assertFalse(unfiltered.contains("posting_fact.effective_date <= ?"));
-    assertFalse(unfiltered.contains("posting_fact.posting_kind <> ?"));
-    assertTrue(nonClosingOnly.contains(" and posting_fact.posting_kind <> ?"));
+    assertFalse(unfiltered.contains(NON_CLOSING_POSTING_KIND_FILTER));
+    assertTrue(nonClosingOnly.contains(NON_CLOSING_POSTING_KIND_FILTER));
     assertTrue(fullyFiltered.contains(" and posting_fact.effective_date >= ?"));
     assertTrue(fullyFiltered.contains(" and posting_fact.effective_date <= ?"));
   }
@@ -119,11 +123,12 @@ class SqlitePostingSqlTest {
 
     assertFalse(unfilteredTrialBalance.contains("posting_fact.effective_date <= ?"));
     assertTrue(filteredTrialBalance.contains(" and posting_fact.effective_date <= ?"));
+    assertTrue(unfilteredTrialBalance.contains("account.cash_flow_asset_classification"));
 
     assertFalse(unboundedLedger.contains("effective_date >= ?"));
     assertFalse(unboundedLedger.contains("effective_date <= ?"));
-    assertFalse(unboundedLedger.contains("posting_fact.posting_kind <> ?"));
-    assertTrue(nonClosingLedger.contains(" and posting_fact.posting_kind <> ?"));
+    assertFalse(unboundedLedger.contains(NON_CLOSING_POSTING_KIND_FILTER));
+    assertTrue(nonClosingLedger.contains(NON_CLOSING_POSTING_KIND_FILTER));
     assertTrue(lowerBoundLedger.contains(" and effective_date >= ?"));
     assertFalse(lowerBoundLedger.contains("effective_date <= ?"));
     assertFalse(upperBoundLedger.contains("effective_date >= ?"));
@@ -137,14 +142,16 @@ class SqlitePostingSqlTest {
     String allPostingKinds =
         SqlitePostingSql.loadTrialBalanceLines(
             new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
-                Optional.empty(), PostingCoverage.ALL_POSTING_KINDS));
+                Optional.empty(), PostingCoverage.ALL_POSTING_KINDS, ComparativeSelection.none()));
     String nonClosingOnly =
         SqlitePostingSql.loadTrialBalanceLines(
             new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
-                Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.NON_CLOSING_POSTINGS));
+                Optional.of(LocalDate.parse("2026-04-30")),
+                PostingCoverage.NON_CLOSING_POSTINGS,
+                ComparativeSelection.none()));
 
-    assertFalse(allPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'"));
-    assertTrue(nonClosingOnly.contains("posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'"));
+    assertFalse(allPostingKinds.contains(NON_CLOSING_POSTING_KIND_FILTER));
+    assertTrue(nonClosingOnly.contains(NON_CLOSING_POSTING_KIND_FILTER));
     assertTrue(nonClosingOnly.contains(" and posting_fact.effective_date <= ?"));
   }
 
@@ -153,14 +160,16 @@ class SqlitePostingSqlTest {
     String queryWithoutEffectiveDateTo =
         SqlitePostingSql.loadAccountTotals(
             new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
-                Optional.empty(), PostingCoverage.ALL_POSTING_KINDS));
+                Optional.empty(), PostingCoverage.ALL_POSTING_KINDS, ComparativeSelection.none()));
     String unboundedAllPostingKinds =
         SqlitePostingSql.loadAccountTotals(
             EffectiveDateRange.of(null, null), PostingCoverage.ALL_POSTING_KINDS);
     String toOnlyNonClosing =
         SqlitePostingSql.loadAccountTotals(
             new dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria(
-                Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.NON_CLOSING_POSTINGS));
+                Optional.of(LocalDate.parse("2026-04-30")),
+                PostingCoverage.NON_CLOSING_POSTINGS,
+                ComparativeSelection.none()));
     String fromOnlyAllPostingKinds =
         SqlitePostingSql.loadAccountTotals(
             EffectiveDateRange.of(LocalDate.parse("2026-04-01"), null),
@@ -170,13 +179,13 @@ class SqlitePostingSqlTest {
             EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS);
 
-    assertFalse(
-        unboundedAllPostingKinds.contains("posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'"));
+    assertFalse(unboundedAllPostingKinds.contains(NON_CLOSING_POSTING_KIND_FILTER));
     assertFalse(unboundedAllPostingKinds.contains("posting_fact.effective_date >= ?"));
     assertFalse(unboundedAllPostingKinds.contains("posting_fact.effective_date <= ?"));
+    assertTrue(unboundedAllPostingKinds.contains("account.cash_flow_asset_classification"));
     assertFalse(queryWithoutEffectiveDateTo.contains("posting_fact.effective_date <= ?"));
 
-    assertTrue(toOnlyNonClosing.contains("posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'"));
+    assertTrue(toOnlyNonClosing.contains(NON_CLOSING_POSTING_KIND_FILTER));
     assertFalse(toOnlyNonClosing.contains("posting_fact.effective_date >= ?"));
     assertTrue(toOnlyNonClosing.contains("posting_fact.effective_date <= ?"));
 
@@ -209,8 +218,9 @@ class SqlitePostingSqlTest {
             .sorted(SqliteReportRowValues.BALANCE_ORDER)
             .toList();
 
-    assertFalse(allPostingKinds.contains("posting_fact.posting_kind <> ?"));
-    assertTrue(nonClosingOnly.contains(" and posting_fact.posting_kind <> ?"));
+    assertFalse(allPostingKinds.contains(NON_CLOSING_POSTING_KIND_FILTER));
+    assertTrue(nonClosingOnly.contains(NON_CLOSING_POSTING_KIND_FILTER));
+    assertTrue(allPostingKinds.contains("account.cash_flow_asset_classification"));
     assertEquals(BalanceSide.DEBIT, sortedBalances.getFirst().balanceSide());
     assertEquals("EUR", sortedBalances.getFirst().netAmount().currencyUnit().code());
     assertEquals("USD", sortedBalances.getLast().netAmount().currencyUnit().code());
@@ -219,5 +229,12 @@ class SqlitePostingSqlTest {
   @Test
   void findAccountsByCodeCount_rejectsNonPositiveCounts() {
     assertThrows(IllegalArgumentException.class, () -> SqlitePostingSql.findAccountsByCodeCount(0));
+  }
+
+  @Test
+  void listAccounts_andPositiveAccountLookupCounts_delegateToTheCanonicalQueryOwner() {
+    assertTrue(SqlitePostingSql.listAccounts().contains("order by account_code limit ?"));
+    assertTrue(
+        SqlitePostingSql.findAccountsByCodeCount(2).contains("where account_code in (?, ?)"));
   }
 }

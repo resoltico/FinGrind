@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.core.AccountClassificationReachability;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -14,7 +13,7 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for the canonical request-surface fact owner. */
 class RequestSurfaceFactsTest {
   @Test
-  void requestSurfacePublishesStableWireVocabularyAndCanonicalLookups() {
+  void requestSurfacePublishesStableLookupsAndSourceDocumentPolicies() {
     RequestSurfaceFacts facts = ProtocolCatalog.domain().requestSurface();
 
     assertEquals(List.of("enumerated", "pattern-only"), SourceDocumentTypePolicyMode.wireValues());
@@ -23,39 +22,44 @@ class RequestSurfaceFactsTest {
         TemporalScopeArchetype.wireValues());
     assertEquals(
         SourceDocumentTypePolicyMode.ENUMERATED,
+        facts.bookkeepingEntryKind(BookkeepingEntryKind.SALE).sourceDocumentTypes().mode());
+    assertEquals(
+        List.of("cash-receipt", "bank-deposit", "card-settlement"),
         facts
-            .evidenceProfile(
-                facts.journalRecipe(JournalRecipeKind.CASH_REVENUE).evidenceProfileId())
+            .bookkeepingEntryKind(BookkeepingEntryKind.SALE)
             .sourceDocumentTypes()
-            .mode());
+            .acceptedValues());
+    assertEquals(
+        "cash-receipt",
+        facts
+            .bookkeepingEntryKind(BookkeepingEntryKind.SALE)
+            .sourceDocumentTypes()
+            .scaffoldValue());
     assertEquals(
         SourceDocumentTypePolicyMode.PATTERN_ONLY,
         facts
-            .evidenceProfile(
-                facts
-                    .postEntryKind(BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION)
-                    .evidenceProfileId())
+            .bookkeepingEntryKind(BookkeepingEntryKind.OPENING_POSITION)
             .sourceDocumentTypes()
             .mode());
     assertEquals(
-        SourceDocumentTypePolicyMode.PATTERN_ONLY,
+        List.of(),
         facts
-            .evidenceProfile(
-                facts
-                    .postEntryKind(BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION)
-                    .evidenceProfileId())
+            .bookkeepingEntryKind(BookkeepingEntryKind.OPENING_POSITION)
             .sourceDocumentTypes()
-            .mode());
+            .acceptedValues());
+    assertEquals(
+        "opening-balance-support",
+        facts
+            .bookkeepingEntryKind(BookkeepingEntryKind.OPENING_POSITION)
+            .sourceDocumentTypes()
+            .scaffoldValue());
     assertEquals(
         List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END),
         facts.temporalScope(TemporalScopeArchetype.BOUNDED_PERIOD).optionNames());
     assertEquals(
         TemporalScopeArchetype.BOUNDED_PERIOD,
-        facts.temporalScopeFor(OperationId.TRANSFER_PERIOD_RESULT).archetype());
+        facts.temporalScopeFor(OperationId.INTERIM_RESULT_SWEEP).archetype());
     assertEquals("As of", facts.temporalScopeFor(OperationId.FINANCIAL_POSITION).summaryLabel());
-    assertEquals(
-        "One explicit closed reporting window. Both boundaries must be supplied, and neither boundary falls back to book start or the current book horizon.",
-        facts.temporalScope(TemporalScopeArchetype.BOUNDED_PERIOD).boundarySemantics());
     assertEquals(
         AccountClassificationReachability.currentKernel().stream()
             .map(
@@ -81,7 +85,8 @@ class RequestSurfaceFactsTest {
                 new RequestSurfaceFacts.SourceDocumentTypeFacts(
                     SourceDocumentTypePolicyMode.ENUMERATED,
                     List.of(),
-                    "Accepted source-document types."));
+                    "Accepted source-document types.",
+                    "cash-receipt"));
     assertEquals(
         "acceptedValues must not be empty when source-document types are enumerated.",
         emptyEnumeratedTypes.getMessage());
@@ -93,23 +98,37 @@ class RequestSurfaceFactsTest {
                 new RequestSurfaceFacts.SourceDocumentTypeFacts(
                     SourceDocumentTypePolicyMode.PATTERN_ONLY,
                     List.of("invoice"),
-                    "Pattern-only source-document types."));
+                    "Pattern-only source-document types.",
+                    "working-note"));
     assertEquals(
         "acceptedValues must be empty when source-document types are pattern-only.",
         patternOnlyAcceptedValues.getMessage());
 
+    IllegalArgumentException invalidPostEntryFacts =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new RequestSurfaceFacts.BookkeepingEntryKindFacts(
+                    BookkeepingEntryKind.SALE,
+                    List.of("effectiveDate"),
+                    List.of(),
+                    List.of("lines"),
+                    List.of(),
+                    enumeratedSourceDocumentTypes(),
+                    "Sale semantics."));
+    assertEquals(
+        "requiredSourceDocumentFields must not be empty.", invalidPostEntryFacts.getMessage());
+
     IllegalArgumentException invalidEvidenceFacts =
         assertThrows(
             IllegalArgumentException.class,
-            () -> new RequestSurfaceFacts.EvidenceRequirementFacts("Evidence", 0, List.of("id")));
+            () -> new RequestSurfaceFacts.EvidenceRequirementFacts("Evidence", 0));
     assertEquals("minimumSourceDocuments must be at least one.", invalidEvidenceFacts.getMessage());
 
     IllegalArgumentException invalidEvidenceDescriptor =
         assertThrows(
             IllegalArgumentException.class,
-            () ->
-                new ContractRequestShapes.EvidenceRequirementDescriptor(
-                    "Evidence", 0, List.of("id")));
+            () -> new ContractRequestShapes.EvidenceRequirementDescriptor("Evidence", 0));
     assertEquals(
         "minimumSourceDocuments must be at least one.", invalidEvidenceDescriptor.getMessage());
 
@@ -147,38 +166,6 @@ class RequestSurfaceFactsTest {
         "Non-declarable reachability cells must not report any reachable write path.",
         nonDeclarableReachability.getMessage());
 
-    IllegalArgumentException nonDeclarableOperationalReachability =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new RequestSurfaceFacts.ReachabilityCellFacts(
-                    "financial-position",
-                    dev.erst.fingrind.core.AccountType.ASSET,
-                    "cash",
-                    false,
-                    false,
-                    true,
-                    false));
-    assertEquals(
-        "Non-declarable reachability cells must not report any reachable write path.",
-        nonDeclarableOperationalReachability.getMessage());
-
-    IllegalArgumentException nonDeclarableReversalReachability =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new RequestSurfaceFacts.ReachabilityCellFacts(
-                    "financial-position",
-                    dev.erst.fingrind.core.AccountType.ASSET,
-                    "cash",
-                    false,
-                    false,
-                    false,
-                    true));
-    assertEquals(
-        "Non-declarable reachability cells must not report any reachable write path.",
-        nonDeclarableReversalReachability.getMessage());
-
     assertFalse(
         new RequestSurfaceFacts.ReachabilityCellFacts(
                 "financial-position",
@@ -189,6 +176,28 @@ class RequestSurfaceFactsTest {
                 false,
                 false)
             .declarable());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new RequestSurfaceFacts.ReachabilityCellFacts(
+                "financial-position",
+                dev.erst.fingrind.core.AccountType.ASSET,
+                "cash",
+                false,
+                false,
+                true,
+                false));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new RequestSurfaceFacts.ReachabilityCellFacts(
+                "financial-position",
+                dev.erst.fingrind.core.AccountType.ASSET,
+                "cash",
+                false,
+                false,
+                false,
+                true));
   }
 
   @Test
@@ -199,10 +208,8 @@ class RequestSurfaceFactsTest {
             () ->
                 new RequestSurfaceFacts(
                     List.of(
-                        postEntryKindFacts(BookkeepingEntryKind.JOURNAL),
-                        postEntryKindFacts(BookkeepingEntryKind.JOURNAL)),
-                    List.of(journalRecipeFacts(JournalRecipeKind.CASH_REVENUE)),
-                    List.of(evidenceProfileFacts("cash-revenue")),
+                        postEntryKindFacts(BookkeepingEntryKind.SALE),
+                        postEntryKindFacts(BookkeepingEntryKind.SALE)),
                     List.of(),
                     evidenceFacts(),
                     List.of(temporalScopeFacts(TemporalScopeArchetype.AS_OF_DATE)),
@@ -210,16 +217,14 @@ class RequestSurfaceFactsTest {
                         commandTemporalScopeFacts(
                             OperationId.ACCOUNT_BALANCE, TemporalScopeArchetype.AS_OF_DATE))));
     assertEquals(
-        "Duplicate request-surface facts for entryKind JOURNAL.", duplicateEntryKinds.getMessage());
+        "Duplicate request-surface facts for entryKind SALE.", duplicateEntryKinds.getMessage());
 
     IllegalArgumentException duplicateTemporalScopes =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new RequestSurfaceFacts(
-                    List.of(postEntryKindFacts(BookkeepingEntryKind.JOURNAL)),
-                    List.of(journalRecipeFacts(JournalRecipeKind.CASH_REVENUE)),
-                    List.of(evidenceProfileFacts("cash-revenue")),
+                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE)),
                     List.of(),
                     evidenceFacts(),
                     List.of(
@@ -232,53 +237,12 @@ class RequestSurfaceFactsTest {
         "Duplicate temporal-scope facts for archetype AS_OF_DATE.",
         duplicateTemporalScopes.getMessage());
 
-    IllegalArgumentException duplicateRecipeKinds =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new RequestSurfaceFacts(
-                    List.of(postEntryKindFacts(BookkeepingEntryKind.JOURNAL)),
-                    List.of(
-                        journalRecipeFacts(JournalRecipeKind.CASH_REVENUE),
-                        journalRecipeFacts(JournalRecipeKind.CASH_REVENUE)),
-                    List.of(evidenceProfileFacts("cash-revenue")),
-                    List.of(),
-                    evidenceFacts(),
-                    List.of(temporalScopeFacts(TemporalScopeArchetype.AS_OF_DATE)),
-                    List.of(
-                        commandTemporalScopeFacts(
-                            OperationId.ACCOUNT_BALANCE, TemporalScopeArchetype.AS_OF_DATE))));
-    assertEquals(
-        "Duplicate journal recipe facts for recipeKind CASH_REVENUE.",
-        duplicateRecipeKinds.getMessage());
-
-    IllegalArgumentException duplicateEvidenceProfiles =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new RequestSurfaceFacts(
-                    List.of(postEntryKindFacts(BookkeepingEntryKind.JOURNAL)),
-                    List.of(journalRecipeFacts(JournalRecipeKind.CASH_REVENUE)),
-                    List.of(
-                        evidenceProfileFacts("cash-revenue"), evidenceProfileFacts("cash-revenue")),
-                    List.of(),
-                    evidenceFacts(),
-                    List.of(temporalScopeFacts(TemporalScopeArchetype.AS_OF_DATE)),
-                    List.of(
-                        commandTemporalScopeFacts(
-                            OperationId.ACCOUNT_BALANCE, TemporalScopeArchetype.AS_OF_DATE))));
-    assertEquals(
-        "Duplicate evidence profile facts for profileId cash-revenue.",
-        duplicateEvidenceProfiles.getMessage());
-
     IllegalArgumentException duplicateReachabilityCells =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new RequestSurfaceFacts(
-                    List.of(postEntryKindFacts(BookkeepingEntryKind.JOURNAL)),
-                    List.of(journalRecipeFacts(JournalRecipeKind.CASH_REVENUE)),
-                    List.of(evidenceProfileFacts("cash-revenue")),
+                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE)),
                     List.of(
                         new RequestSurfaceFacts.ReachabilityCellFacts(
                             "financial-position",
@@ -310,9 +274,7 @@ class RequestSurfaceFactsTest {
             IllegalArgumentException.class,
             () ->
                 new RequestSurfaceFacts(
-                    List.of(postEntryKindFacts(BookkeepingEntryKind.JOURNAL)),
-                    List.of(journalRecipeFacts(JournalRecipeKind.CASH_REVENUE)),
-                    List.of(evidenceProfileFacts("cash-revenue")),
+                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE)),
                     List.of(),
                     evidenceFacts(),
                     List.of(temporalScopeFacts(TemporalScopeArchetype.AS_OF_DATE)),
@@ -322,16 +284,12 @@ class RequestSurfaceFactsTest {
                         commandTemporalScopeFacts(
                             OperationId.ACCOUNT_BALANCE, TemporalScopeArchetype.BOUNDED_PERIOD))));
     assertEquals(
-        "Duplicate temporal-scope facts for command "
-            + OperationId.ACCOUNT_BALANCE.wireName()
-            + ".",
+        "Duplicate temporal-scope facts for command account-balance.",
         duplicateCommandMappings.getMessage());
 
     RequestSurfaceFacts limitedFacts =
         new RequestSurfaceFacts(
-            List.of(postEntryKindFacts(BookkeepingEntryKind.JOURNAL)),
-            List.of(journalRecipeFacts(JournalRecipeKind.CASH_REVENUE)),
-            List.of(evidenceProfileFacts("cash-revenue")),
+            List.of(postEntryKindFacts(BookkeepingEntryKind.SALE)),
             List.of(),
             evidenceFacts(),
             List.of(temporalScopeFacts(TemporalScopeArchetype.AS_OF_DATE)),
@@ -340,21 +298,10 @@ class RequestSurfaceFactsTest {
                     OperationId.ACCOUNT_BALANCE, TemporalScopeArchetype.AS_OF_DATE)));
 
     assertEquals(
-        "No posting request facts are registered for OPEN_ACCOUNTING_POSITION.",
+        "No bookkeeping-entry request facts are registered for OPENING_POSITION.",
         assertThrows(
                 IllegalStateException.class,
-                () -> limitedFacts.postEntryKind(BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION))
-            .getMessage());
-    assertEquals(
-        "No journal recipe facts are registered for CASH_EXPENSE.",
-        assertThrows(
-                IllegalStateException.class,
-                () -> limitedFacts.journalRecipe(JournalRecipeKind.CASH_EXPENSE))
-            .getMessage());
-    assertEquals(
-        "No evidence profile facts are registered for opening-balance.",
-        assertThrows(
-                IllegalStateException.class, () -> limitedFacts.evidenceProfile("opening-balance"))
+                () -> limitedFacts.bookkeepingEntryKind(BookkeepingEntryKind.OPENING_POSITION))
             .getMessage());
     assertEquals(
         "No temporal-scope facts are registered for BOUNDED_PERIOD.",
@@ -363,54 +310,36 @@ class RequestSurfaceFactsTest {
                 () -> limitedFacts.temporalScope(TemporalScopeArchetype.BOUNDED_PERIOD))
             .getMessage());
     assertEquals(
-        "No temporal-scope facts are registered for " + OperationId.PERIOD_SUMMARY.wireName() + ".",
+        "No temporal-scope facts are registered for period-summary.",
         assertThrows(
                 IllegalStateException.class,
                 () -> limitedFacts.temporalScopeFor(OperationId.PERIOD_SUMMARY))
             .getMessage());
   }
 
-  private static RequestSurfaceFacts.PostEntryKindFacts postEntryKindFacts(
+  private static RequestSurfaceFacts.BookkeepingEntryKindFacts postEntryKindFacts(
       BookkeepingEntryKind entryKind) {
-    return new RequestSurfaceFacts.PostEntryKindFacts(
+    return new RequestSurfaceFacts.BookkeepingEntryKindFacts(
         entryKind,
         List.of("effectiveDate"),
-        List.of("journalEntry"),
-        "cash-revenue",
+        List.of(),
+        List.of("lines"),
+        List.of("sourceDocumentId", "sourceDocumentType", "documentDate"),
+        enumeratedSourceDocumentTypes(),
         "Posting request semantics.");
   }
 
-  private static RequestSurfaceFacts.JournalRecipeFacts journalRecipeFacts(
-      JournalRecipeKind recipeKind) {
-    return new RequestSurfaceFacts.JournalRecipeFacts(
-        recipeKind,
-        List.of("effectiveDate", "recipeKind"),
-        List.of("lines"),
-        "cash-revenue",
-        "Recipe semantics.");
-  }
-
-  private static RequestSurfaceFacts.EvidenceProfileFacts evidenceProfileFacts(String profileId) {
-    return new RequestSurfaceFacts.EvidenceProfileFacts(
-        profileId,
-        new RequestSurfaceFacts.SourceDocumentTypeFacts(
-            SourceDocumentTypePolicyMode.ENUMERATED,
-            List.of("cash-receipt"),
-            "Accepted source-document types."),
-        "Evidence profile semantics.");
+  private static RequestSurfaceFacts.SourceDocumentTypeFacts enumeratedSourceDocumentTypes() {
+    return new RequestSurfaceFacts.SourceDocumentTypeFacts(
+        SourceDocumentTypePolicyMode.ENUMERATED,
+        List.of("cash-receipt"),
+        "Accepted source-document types.",
+        "cash-receipt");
   }
 
   private static RequestSurfaceFacts.EvidenceRequirementFacts evidenceFacts() {
     return new RequestSurfaceFacts.EvidenceRequirementFacts(
-        "Every posting request must retain one source document.",
-        1,
-        List.of(
-            "sourceDocumentType",
-            "sourceDocumentId",
-            "sourceDocumentLineId",
-            "counterpartyId",
-            "counterpartyName",
-            "narrative"));
+        "Every posting request must retain one source document.", 1);
   }
 
   private static RequestSurfaceFacts.TemporalScopeFacts temporalScopeFacts(

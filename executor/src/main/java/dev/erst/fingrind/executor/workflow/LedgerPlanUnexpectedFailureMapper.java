@@ -24,7 +24,7 @@ final class LedgerPlanUnexpectedFailureMapper {
   }
 
   static BookWorkflowJournalEntry.Rejected unexpectedPlanFailure(
-      BookWorkflowBoundaryPhase phase,
+      BookWorkflowBoundaryCheckpoint checkpoint,
       Instant startedAt,
       Instant finishedAt,
       @Nullable BookWorkflowStepId triggerStepId,
@@ -33,7 +33,7 @@ final class LedgerPlanUnexpectedFailureMapper {
       @Nullable RuntimeException cleanupFailure,
       @Nullable BookWorkflowFailure priorFailure) {
     List<BookWorkflowFact> failureFacts = new ArrayList<>();
-    failureFacts.add(BookWorkflowFact.text("phase", phase.wireValue()));
+    failureFacts.add(BookWorkflowFact.text("checkpoint", checkpoint.wireValue()));
     failureFacts.add(BookWorkflowFact.text("exceptionType", failure.getClass().getName()));
     if (triggerStepId != null) {
       failureFacts.add(BookWorkflowFact.text("triggerStepId", triggerStepId.value()));
@@ -57,14 +57,14 @@ final class LedgerPlanUnexpectedFailureMapper {
                   BookWorkflowFact.text("message", priorFailure.message()))));
     }
     return new BookWorkflowJournalEntry.Rejected(
-        boundaryStepId(phase),
-        new BookWorkflowJournalDescriptor.Boundary(phase),
+        boundaryStepId(checkpoint),
+        new BookWorkflowJournalDescriptor.Boundary(checkpoint),
         startedAt,
         finishedAt,
         List.of(),
         new BookWorkflowFailure(
             "unexpected-plan-failure",
-            unexpectedPlanFailureMessage(phase, triggerStepId, failure),
+            unexpectedPlanFailureMessage(checkpoint, triggerStepId, failure),
             failureFacts));
   }
 
@@ -80,33 +80,33 @@ final class LedgerPlanUnexpectedFailureMapper {
   }
 
   private static String unexpectedPlanFailureMessage(
-      BookWorkflowBoundaryPhase phase,
+      BookWorkflowBoundaryCheckpoint checkpoint,
       @Nullable BookWorkflowStepId triggerStepId,
       RuntimeException failure) {
     String detail = String.valueOf(failure.getMessage()).strip();
-    String phaseContext;
-    if (phase == BookWorkflowBoundaryPhase.BEGIN) {
-      phaseContext = "during begin";
-    } else if (phase == BookWorkflowBoundaryPhase.INITIALIZATION_CHECK) {
-      phaseContext =
+    String checkpointContext;
+    if (checkpoint == BookWorkflowBoundaryCheckpoint.BEGIN) {
+      checkpointContext = "during begin";
+    } else if (checkpoint == BookWorkflowBoundaryCheckpoint.INITIALIZATION_CHECK) {
+      checkpointContext =
           triggerStepId == null
               ? "during initialization-check"
               : "during initialization-check before step '%s'".formatted(triggerStepId.value());
-    } else if (phase == BookWorkflowBoundaryPhase.COMMIT) {
-      phaseContext =
+    } else if (checkpoint == BookWorkflowBoundaryCheckpoint.COMMIT) {
+      checkpointContext =
           triggerStepId == null
               ? "during commit"
               : "during commit after step '%s'".formatted(triggerStepId.value());
     } else {
-      phaseContext =
+      checkpointContext =
           triggerStepId == null
               ? "during rollback"
               : "during rollback after step '%s'".formatted(triggerStepId.value());
     }
     if (detail.isEmpty() || "null".equals(detail)) {
-      return "Ledger plan execution failed unexpectedly %s.".formatted(phaseContext);
+      return "Ledger plan execution failed unexpectedly %s.".formatted(checkpointContext);
     }
-    return "Ledger plan execution failed unexpectedly %s: %s".formatted(phaseContext, detail);
+    return "Ledger plan execution failed unexpectedly %s: %s".formatted(checkpointContext, detail);
   }
 
   private static void appendTriggerDescriptorFacts(
@@ -117,11 +117,12 @@ final class LedgerPlanUnexpectedFailureMapper {
       facts.add(BookWorkflowFact.text("triggerDetailKind", journalStep.detailKind().wireValue()));
     }
     if (descriptor instanceof BookWorkflowJournalDescriptor.Boundary boundary) {
-      facts.add(BookWorkflowFact.text("triggerBoundaryPhase", boundary.phase().wireValue()));
+      facts.add(
+          BookWorkflowFact.text("triggerBoundaryCheckpoint", boundary.checkpoint().wireValue()));
     }
   }
 
-  private static BookWorkflowStepId boundaryStepId(BookWorkflowBoundaryPhase phase) {
-    return new BookWorkflowStepId("@plan-boundary:" + phase.wireValue());
+  private static BookWorkflowStepId boundaryStepId(BookWorkflowBoundaryCheckpoint checkpoint) {
+    return new BookWorkflowStepId("@plan-boundary:" + checkpoint.wireValue());
   }
 }

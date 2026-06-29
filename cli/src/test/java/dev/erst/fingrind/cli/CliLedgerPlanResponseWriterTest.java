@@ -10,7 +10,7 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
@@ -47,7 +47,6 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
                         LedgerFact.text("accountCode", "1000"),
                         LedgerFact.text("accountName", "Cash"),
                         LedgerFact.text("accountType", "ASSET"),
-                        LedgerFact.text("accountRole", "ORDINARY"),
                         LedgerFact.text("accountNodeKind", "POSTABLE"),
                         LedgerFact.text("normalBalance", "DEBIT"),
                         LedgerFact.flag("active", true),
@@ -101,10 +100,11 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         PlanResultDetail.FULL);
     JsonNode json = readJson(outputStream);
     assertEquals("rejected", json.path("status").stringValue());
+    assertEquals("administration-book-not-initialized", json.path("code").stringValue());
+    assertEquals("Book is not initialized.", json.path("message").stringValue());
     assertEquals("rejected", json.path("payload").path("status").stringValue());
     assertEquals(
-        "administration-book-not-initialized",
-        json.path("payload").path("summary").path("failureCode").stringValue());
+        "declare-cash", json.path("payload").path("summary").path("failedStepId").stringValue());
   }
 
   @Test
@@ -129,13 +129,15 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         PlanResultDetail.FULL);
     JsonNode json = readJson(outputStream);
     assertEquals("error", json.path("status").stringValue());
+    assertEquals("assertion-failed", json.path("code").stringValue());
+    assertEquals("Balance mismatch.", json.path("message").stringValue());
     assertEquals("assertion-failed", json.path("payload").path("status").stringValue());
     assertEquals(
-        "assertion-failed", json.path("payload").path("summary").path("failureCode").stringValue());
+        "assert-balance", json.path("payload").path("summary").path("failedStepId").stringValue());
   }
 
   @Test
-  void writeLedgerPlanResult_routesRejectedMachineEnvelopeToDiagnosticsStream() throws IOException {
+  void writeLedgerPlanResult_routesRejectedMachineEnvelopeToStdout() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter =
@@ -159,16 +161,14 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         OutputMode.JSON,
         PlanResultDetail.FULL);
 
-    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
-    JsonNode json = readJson(diagnosticsStream);
+    JsonNode json = readJson(outputStream);
     assertEquals("rejected", json.path("status").stringValue());
-    assertEquals(
-        "administration-book-not-initialized",
-        json.path("payload").path("summary").path("failureCode").stringValue());
+    assertEquals("administration-book-not-initialized", json.path("code").stringValue());
+    assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
   }
 
   @Test
-  void writeLedgerPlanResult_routesRejectedTextToDiagnosticsStream() {
+  void writeLedgerPlanResult_routesRejectedTextToStdout() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter =
@@ -192,14 +192,15 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         OutputMode.TEXT,
         PlanResultDetail.FULL);
 
-    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
-    String diagnosticsText = diagnosticsStream.toString(StandardCharsets.UTF_8);
-    assertTrue(diagnosticsText.contains("rejected"));
-    assertTrue(diagnosticsText.contains("administration-book-not-initialized"));
+    String rendered = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("rejected"));
+    assertTrue(rendered.contains("administration-book-not-initialized"));
+    assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
   }
 
   @Test
-  void writeLedgerPlanResult_emitsBoundaryJournalEntriesWithBoundaryPhase() throws IOException {
+  void writeLedgerPlanResult_emitsBoundaryJournalEntriesWithBoundaryCheckpoint()
+      throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
@@ -207,7 +208,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     LedgerJournalEntry.Rejected boundaryEntry =
         new LedgerJournalEntry.Rejected(
             stepId("@plan-boundary:commit"),
-            LedgerJournalStep.boundary(LedgerBoundaryPhase.COMMIT),
+            LedgerJournalStep.boundary(LedgerBoundaryCheckpoint.COMMIT),
             startedAt,
             finishedAt,
             List.of(),
@@ -220,7 +221,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         PlanResultDetail.FULL);
     JsonNode step = readJson(outputStream).path("payload").path("journal").path("steps").get(0);
     assertEquals("plan-boundary", step.path("kind").stringValue());
-    assertEquals("commit", step.path("boundaryPhase").stringValue());
+    assertEquals("commit", step.path("boundaryCheckpoint").stringValue());
     assertTrue(step.path("detailKind").isMissingNode() || step.path("detailKind").isNull());
   }
 
@@ -246,7 +247,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     LedgerJournalEntry.Rejected boundaryEntry =
         new LedgerJournalEntry.Rejected(
             stepId("@plan-boundary:commit"),
-            LedgerJournalStep.boundary(LedgerBoundaryPhase.COMMIT),
+            LedgerJournalStep.boundary(LedgerBoundaryCheckpoint.COMMIT),
             startedAt,
             finishedAt,
             List.of(),
@@ -263,10 +264,10 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     List<CliPlanJsonModels.LedgerJournalEntryPayload> steps = rejectedJournal.steps();
     assertEquals("ensure-book", steps.get(0).kind().wireValue());
     assertNull(steps.get(0).detailKind());
-    assertNull(steps.get(0).boundaryPhase());
+    assertNull(steps.get(0).boundaryCheckpoint());
     assertEquals("plan-boundary", steps.get(1).kind().wireValue());
     assertNull(steps.get(1).detailKind());
-    assertEquals(LedgerBoundaryPhase.COMMIT, steps.get(1).boundaryPhase());
+    assertEquals(LedgerBoundaryCheckpoint.COMMIT, steps.get(1).boundaryCheckpoint());
     CliPlanJsonModels.LedgerPlanPayload assertionFailedPayload =
         CliPlanPayloadMapper.ledgerPlanPayload(
             new LedgerPlanResult.AssertionFailed(
@@ -278,7 +279,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     CliPlanJsonModels.LedgerJournalEntryPayload assertionStep = assertionJournal.steps().getFirst();
     assertEquals("assert", assertionStep.kind().wireValue());
     assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, assertionStep.detailKind());
-    assertNull(assertionStep.boundaryPhase());
+    assertNull(assertionStep.boundaryCheckpoint());
   }
 
   @Test
@@ -313,8 +314,6 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(1, payload.summary().succeededStepCount());
     assertEquals(0, payload.summary().failedStepCount());
     assertNull(payload.summary().failedStepId());
-    assertNull(payload.summary().failureCode());
-    assertNull(payload.summary().failureMessage());
     assertNull(payload.journal());
   }
 }

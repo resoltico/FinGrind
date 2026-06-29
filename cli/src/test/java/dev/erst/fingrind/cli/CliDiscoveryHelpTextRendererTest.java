@@ -14,7 +14,6 @@ import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.discovery.WorkflowDescriptor;
 import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
-import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
@@ -115,7 +114,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
     assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("Generate one key file"));
     assertTrue(rendered.contains("Review the seeded starter chart"));
-    assertTrue(rendered.contains("Create the first request"));
+    assertTrue(rendered.contains("Create the first sale request"));
     assertTrue(rendered.contains("Command Catalog"));
     assertTrue(rendered.contains("Reference"));
   }
@@ -155,9 +154,9 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
     int generateKeyIndex = rendered.indexOf("Generate one key file");
     int openBookIndex = rendered.indexOf("Open one protected book");
     int starterChartIndex = rendered.indexOf("Review the seeded starter chart");
-    int entryScaffoldIndex = rendered.indexOf("Create the first request");
-    int preflightIndex = rendered.indexOf("Validate the first request");
-    int postEntryIndex = rendered.indexOf("Commit the first entry");
+    int entryScaffoldIndex = rendered.indexOf("Create the first sale request");
+    int preflightIndex = rendered.indexOf("Validate the first sale request");
+    int postEntryIndex = rendered.indexOf("Commit the first sale");
     int firstReportIndex = rendered.indexOf("Read the first report");
 
     assertTrue(generateKeyIndex >= 0, rendered);
@@ -427,9 +426,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
     ContractPlanTemplates.LedgerPlanTemplateDescriptor withoutCanonicalPosting =
         new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
             baseTemplate.planId(),
-            baseTemplate.steps().stream()
-                .filter(step -> step.kind() != LedgerStepKind.POST_ENTRY)
-                .toList());
+            baseTemplate.steps().stream().filter(step -> !step.kind().commitsPosting()).toList());
     ContractPlanTemplates.LedgerPlanStepTemplateDescriptor canonicalPosting =
         baseTemplate.canonicalPostingScaffoldStep();
     ContractPlanTemplates.LedgerPlanTemplateDescriptor ambiguousTemplate =
@@ -454,11 +451,11 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
 
     assertTrue(
         Objects.requireNonNull(missingFailure.getMessage())
-            .contains("canonical POST_ENTRY scaffold"),
+            .contains("canonical committed-posting scaffold"),
         missingFailure::getMessage);
     assertTrue(
         Objects.requireNonNull(ambiguousFailure.getMessage())
-            .contains("canonical POST_ENTRY scaffold"),
+            .contains("canonical committed-posting scaffold"),
         ambiguousFailure::getMessage);
   }
 
@@ -473,13 +470,15 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
         new HelpDescriptor(
             executePlanCanonical.application(),
             executePlanCanonical.version(),
+            executePlanCanonical.protocolVersion(),
             executePlanCanonical.description(),
             executePlanCanonical.usage(),
             executePlanCanonical.bookModel(),
             executePlanCanonical.bookkeepingKernel(),
             executePlanCanonical.requestShapes(),
-            conflictingOpenAccountingPositionTemplate(),
+            conflictingOpeningPositionTemplate(),
             executePlanCanonical.declareAccountTemplate(),
+            executePlanCanonical.declareTaxRegistrationTemplate(),
             executePlanCanonical.planTemplate(),
             executePlanCanonical.commands(),
             executePlanCanonical.quickStart(),
@@ -489,8 +488,9 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
 
     String rendered = renderHelpText(mutatedHelp);
 
-    assertTrue(rendered.contains("Canonical scaffold value: JOURNAL."), rendered);
-    assertFalse(rendered.contains("Canonical scaffold value: OPEN_ACCOUNTING_POSITION."), rendered);
+    assertTrue(rendered.contains("Canonical scaffold value: SALE."), rendered);
+    assertFalse(rendered.contains("Canonical scaffold value: OPENING_POSITION."), rendered);
+    assertFalse(rendered.contains("Canonical scaffold value: DIRECT_JOURNAL."), rendered);
   }
 
   @Test
@@ -527,26 +527,26 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
   }
 
   @Test
-  void renderHelpText_postEntryAndExecutePlanShareTheSameOrderedAcceptedPostingModel() {
-    HelpDescriptor postEntryCanonical =
+  void renderHelpText_recordSaleAndExecutePlanShareTheSameOrderedAcceptedPostingModel() {
+    HelpDescriptor recordSaleCanonical =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
             CliDiscoveryTestSupport.environment(),
-            OperationId.POST_ENTRY);
+            OperationId.RECORD_SALE);
     HelpDescriptor executePlanCanonical =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
             CliDiscoveryTestSupport.environment(),
             OperationId.EXECUTE_PLAN);
 
-    String postEntryRendered = renderHelpText(postEntryCanonical);
+    String recordSaleRendered = renderHelpText(recordSaleCanonical);
     String executePlanRendered = renderHelpText(executePlanCanonical);
-    ContractRequestShapes.PostEntryRequestShapeDescriptor postingModel =
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         Objects.requireNonNull(
-            Objects.requireNonNull(postEntryCanonical.requestShapes()).postEntry());
+            Objects.requireNonNull(recordSaleCanonical.requestShapes()).bookkeepingEntry());
     List<String> acceptedPostingLabels = acceptedPostingFieldPaths(postingModel);
-    List<String> postEntryAcceptedBlocks =
-        extractRenderedFieldBlocks(postEntryRendered, acceptedPostingLabels);
+    List<String> recordSaleAcceptedBlocks =
+        extractRenderedFieldBlocks(recordSaleRendered, acceptedPostingLabels);
     List<String> executePlanAcceptedBlocks =
         normalizeNestedPostingBlocks(
             extractRenderedFieldBlocks(
@@ -558,18 +558,33 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
         () ->
             assertEquals(
                 acceptedPostingLabels,
-                renderedFieldLabels(postEntryAcceptedBlocks),
-                postEntryRendered),
+                renderedFieldLabels(recordSaleAcceptedBlocks),
+                recordSaleRendered),
         () ->
             assertEquals(
                 acceptedPostingLabels,
                 renderedFieldLabels(executePlanAcceptedBlocks),
                 executePlanRendered),
         () ->
+            assertTrue(
+                normalizedFieldBlocks(recordSaleAcceptedBlocks)
+                    .getFirst()
+                    .contains("Canonical scaffold value: SALE."),
+                recordSaleRendered),
+        () ->
+            assertTrue(
+                normalizedFieldBlocks(executePlanAcceptedBlocks)
+                    .getFirst()
+                    .contains("Canonical scaffold value: SALE."),
+                executePlanRendered),
+        () ->
             assertEquals(
-                normalizedFieldBlocks(postEntryAcceptedBlocks),
+                normalizedFieldBlocks(recordSaleAcceptedBlocks),
                 normalizedFieldBlocks(executePlanAcceptedBlocks),
-                "post-entry:\n" + postEntryRendered + "\n\nexecute-plan:\n" + executePlanRendered));
+                "record-sale:\n"
+                    + recordSaleRendered
+                    + "\n\nexecute-plan:\n"
+                    + executePlanRendered));
   }
 
   @Test
@@ -632,7 +647,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
               MachineContract.help(
                   CliDiscoveryTestSupport.identity(),
                   CliDiscoveryTestSupport.environment(),
-                  OperationId.POST_ENTRY));
+                  OperationId.RECORD_SALE));
 
       assertTrue(rendered.contains("cp ./quick-start-request.json ./request.json"));
     } finally {
@@ -683,6 +698,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 postEntryCanonical.application(),
                 postEntryCanonical.version(),
+                postEntryCanonical.protocolVersion(),
                 postEntryCanonical.description(),
                 postEntryCanonical.usage(),
                 postEntryCanonical.bookModel(),
@@ -690,6 +706,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 null,
                 postEntryCanonical.requestTemplate(),
                 postEntryCanonical.declareAccountTemplate(),
+                postEntryCanonical.declareTaxRegistrationTemplate(),
                 postEntryCanonical.planTemplate(),
                 postEntryCanonical.commands(),
                 postEntryCanonical.quickStart(),
@@ -701,6 +718,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 postEntryCanonical.application(),
                 postEntryCanonical.version(),
+                postEntryCanonical.protocolVersion(),
                 postEntryCanonical.description(),
                 postEntryCanonical.usage(),
                 postEntryCanonical.bookModel(),
@@ -709,9 +727,11 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                     Objects.requireNonNull(postEntryCanonical.requestShapes()).schemaDialect(),
                     null,
                     postEntryCanonical.requestShapes().declareAccount(),
+                    postEntryCanonical.requestShapes().declareTaxRegistration(),
                     postEntryCanonical.requestShapes().ledgerPlan()),
                 postEntryCanonical.requestTemplate(),
                 postEntryCanonical.declareAccountTemplate(),
+                postEntryCanonical.declareTaxRegistrationTemplate(),
                 postEntryCanonical.planTemplate(),
                 postEntryCanonical.commands(),
                 postEntryCanonical.quickStart(),
@@ -723,6 +743,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 postEntryCanonical.application(),
                 postEntryCanonical.version(),
+                postEntryCanonical.protocolVersion(),
                 postEntryCanonical.description(),
                 postEntryCanonical.usage(),
                 postEntryCanonical.bookModel(),
@@ -730,6 +751,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 postEntryCanonical.requestShapes(),
                 null,
                 postEntryCanonical.declareAccountTemplate(),
+                postEntryCanonical.declareTaxRegistrationTemplate(),
                 postEntryCanonical.planTemplate(),
                 postEntryCanonical.commands(),
                 postEntryCanonical.quickStart(),
@@ -741,6 +763,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
+                declareCanonical.protocolVersion(),
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
@@ -748,6 +771,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 null,
                 declareCanonical.requestTemplate(),
                 declareCanonical.declareAccountTemplate(),
+                declareCanonical.declareTaxRegistrationTemplate(),
                 declareCanonical.planTemplate(),
                 declareCanonical.commands(),
                 declareCanonical.quickStart(),
@@ -759,17 +783,20 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
+                declareCanonical.protocolVersion(),
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
                 declareCanonical.bookkeepingKernel(),
                 new ContractRequestShapes.RequestShapesDescriptor(
                     Objects.requireNonNull(declareCanonical.requestShapes()).schemaDialect(),
-                    declareCanonical.requestShapes().postEntry(),
+                    declareCanonical.requestShapes().bookkeepingEntry(),
                     null,
+                    declareCanonical.requestShapes().declareTaxRegistration(),
                     declareCanonical.requestShapes().ledgerPlan()),
                 declareCanonical.requestTemplate(),
                 declareCanonical.declareAccountTemplate(),
+                declareCanonical.declareTaxRegistrationTemplate(),
                 declareCanonical.planTemplate(),
                 declareCanonical.commands(),
                 declareCanonical.quickStart(),
@@ -781,6 +808,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 declareCanonical.application(),
                 declareCanonical.version(),
+                declareCanonical.protocolVersion(),
                 declareCanonical.description(),
                 declareCanonical.usage(),
                 declareCanonical.bookModel(),
@@ -788,6 +816,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 declareCanonical.requestShapes(),
                 declareCanonical.requestTemplate(),
                 null,
+                declareCanonical.declareTaxRegistrationTemplate(),
                 declareCanonical.planTemplate(),
                 declareCanonical.commands(),
                 declareCanonical.quickStart(),
@@ -799,6 +828,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
+                executePlanCanonical.protocolVersion(),
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
@@ -806,6 +836,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 null,
                 executePlanCanonical.requestTemplate(),
                 executePlanCanonical.declareAccountTemplate(),
+                executePlanCanonical.declareTaxRegistrationTemplate(),
                 executePlanCanonical.planTemplate(),
                 executePlanCanonical.commands(),
                 executePlanCanonical.quickStart(),
@@ -817,17 +848,20 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
+                executePlanCanonical.protocolVersion(),
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
                 executePlanCanonical.bookkeepingKernel(),
                 new ContractRequestShapes.RequestShapesDescriptor(
                     Objects.requireNonNull(executePlanCanonical.requestShapes()).schemaDialect(),
-                    executePlanCanonical.requestShapes().postEntry(),
+                    executePlanCanonical.requestShapes().bookkeepingEntry(),
                     executePlanCanonical.requestShapes().declareAccount(),
+                    executePlanCanonical.requestShapes().declareTaxRegistration(),
                     null),
                 executePlanCanonical.requestTemplate(),
                 executePlanCanonical.declareAccountTemplate(),
+                executePlanCanonical.declareTaxRegistrationTemplate(),
                 executePlanCanonical.planTemplate(),
                 executePlanCanonical.commands(),
                 executePlanCanonical.quickStart(),
@@ -839,6 +873,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             new HelpDescriptor(
                 executePlanCanonical.application(),
                 executePlanCanonical.version(),
+                executePlanCanonical.protocolVersion(),
                 executePlanCanonical.description(),
                 executePlanCanonical.usage(),
                 executePlanCanonical.bookModel(),
@@ -846,6 +881,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 executePlanCanonical.requestShapes(),
                 executePlanCanonical.requestTemplate(),
                 executePlanCanonical.declareAccountTemplate(),
+                executePlanCanonical.declareTaxRegistrationTemplate(),
                 null,
                 executePlanCanonical.commands(),
                 executePlanCanonical.quickStart(),
@@ -901,5 +937,44 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
 
     assertTrue(rendered.contains("Step 1"));
     assertTrue(rendered.contains("fingrind custom-seam"));
+  }
+
+  @Test
+  void renderHelpText_labelsPostEntryQuickStartCommandsAsFirstEntryCommit() {
+    String rendered =
+        renderHelpText(
+            CliDiscoveryTestSupport.helpDescriptor(
+                CliDiscoveryTestSupport.identity(),
+                List.of("fingrind help"),
+                new ContractResponse.BookModelDescriptor(
+                    "single-sqlite-file",
+                    "entity-book",
+                    "local-path",
+                    "key-file",
+                    "explicit-open-book",
+                    "declared-accounts",
+                    "single-currency-entry"),
+                List.of(
+                    new CommandDescriptor(
+                        OperationId.HELP,
+                        List.of(),
+                        List.of(),
+                        ExecutionMode.JSON_ENVELOPE,
+                        List.of(
+                            dev.erst.fingrind.contract.protocol.OutputMode.JSON,
+                            dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
+                        List.of(),
+                        "Show help")),
+                List.of(
+                    new WorkflowDescriptor(
+                        dev.erst.fingrind.contract.discovery.WorkflowSurface.BUNDLE_POSIX_SHELL,
+                        List.of(
+                            WorkflowStepDescriptor.command(
+                                "fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./keys/acme.book-key --request-file ./request.json")))),
+                List.of(new ExitCodeDescriptor(0, "ok")),
+                new ContractResponse.PreflightDescriptor(
+                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+    assertTrue(rendered.contains("Commit the first entry"));
   }
 }

@@ -11,6 +11,9 @@ import java.util.Collections;
 
 /** Behavioral SQL assembly on top of the canonical posting SQL owners. */
 final class SqlitePostingQuerySql {
+  private static final String NON_CLOSING_POSTING_KIND_FILTER =
+      " posting_fact.posting_kind not in ('INTERIM_RESULT_SWEEP', 'FISCAL_YEAR_CLOSE')";
+
   static final String FIND_LATEST_POSTING_EFFECTIVE_DATE =
       """
       select effective_date
@@ -25,10 +28,10 @@ final class SqlitePostingQuerySql {
           account.account_code,
           account.account_name,
           account.account_type,
-          account.account_role,
           account.account_node_kind,
           account.parent_account_code,
           account.financial_position_line_classification,
+          account.cash_flow_asset_classification,
           account.profit_and_loss_line_classification,
           account.active,
           account.declared_at,
@@ -110,7 +113,7 @@ final class SqlitePostingQuerySql {
         new StringBuilder(LOAD_ACCOUNT_LINES_FOR_BALANCE.length() + 96)
             .append(LOAD_ACCOUNT_LINES_FOR_BALANCE);
     if (query.postingCoverage().isNonClosingOnly()) {
-      sql.append(" and posting_fact.posting_kind <> ?");
+      sql.append(" and").append(NON_CLOSING_POSTING_KIND_FILTER);
     }
     if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       sql.append(" and posting_fact.effective_date >= ?");
@@ -129,7 +132,7 @@ final class SqlitePostingQuerySql {
             .append(BASE_REPORT_LINE_SELECT)
             .append(" where 1 = 1");
     if (query.postingCoverage().isNonClosingOnly()) {
-      sql.append(" and posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'");
+      sql.append(" and").append(NON_CLOSING_POSTING_KIND_FILTER);
     }
     if (query.effectiveDateAsOf().isPresent()) {
       sql.append(" and posting_fact.effective_date <= ?");
@@ -158,10 +161,10 @@ final class SqlitePostingQuerySql {
                     account.account_code,
                     account.account_name,
                     account.account_type,
-                    account.account_role,
                     account.account_node_kind,
                     account.parent_account_code,
                     account.financial_position_line_classification,
+                    account.cash_flow_asset_classification,
                     account.profit_and_loss_line_classification,
                     account.active,
                     account.declared_at,
@@ -174,7 +177,7 @@ final class SqlitePostingQuerySql {
                 where 1 = 1
                 """);
     if (postingCoverage.isNonClosingOnly()) {
-      sql.append(" and posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'");
+      sql.append(" and").append(NON_CLOSING_POSTING_KIND_FILTER);
     }
     if (effectiveDateRange.effectiveDateFrom().isPresent()) {
       sql.append(" and posting_fact.effective_date >= ?");
@@ -188,10 +191,10 @@ final class SqlitePostingQuerySql {
              account.account_code,
              account.account_name,
              account.account_type,
-             account.account_role,
              account.account_node_kind,
              account.parent_account_code,
              account.financial_position_line_classification,
+             account.cash_flow_asset_classification,
              account.profit_and_loss_line_classification,
              account.active,
              account.declared_at,
@@ -211,7 +214,7 @@ final class SqlitePostingQuerySql {
                    and posting_fact.effective_date <= ?
                 """);
     if (query.postingCoverage().isNonClosingOnly()) {
-      sql.append(" and posting_fact.posting_kind <> ?");
+      sql.append(" and").append(NON_CLOSING_POSTING_KIND_FILTER);
     }
     sql.append(
         """
@@ -234,7 +237,7 @@ final class SqlitePostingQuerySql {
                  )
                 """);
     if (query.postingCoverage().isNonClosingOnly()) {
-      sql.append(" and posting_fact.posting_kind <> ?");
+      sql.append(" and").append(NON_CLOSING_POSTING_KIND_FILTER);
     }
     if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       sql.append(" and effective_date >= ?");

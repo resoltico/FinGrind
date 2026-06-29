@@ -17,6 +17,11 @@ enum EntrySemanticsViolationOwner {
       "journal-lines",
       "The supplied raw journal reduces every referenced account to zero after debit-credit netting.",
       "Adjust the journal lines so at least one referenced account retains non-zero movement after debit-credit netting."),
+  CASH_BASIS_ACCOUNT_REQUIRED(
+      "cash-basis-account-required",
+      "cash-basis",
+      "One direct journal would bypass cash-basis truth because none of its referenced accounts are declared cash-and-cash-equivalent asset accounts.",
+      "Use at least one declared cash-and-cash-equivalent asset account in lines[].accountCode."),
   DISTINCT_ROLE_ACCOUNTS_REQUIRED(
       "distinct-role-accounts-required",
       "account-role-assignment",
@@ -27,6 +32,11 @@ enum EntrySemanticsViolationOwner {
       "account-type",
       "One referenced account uses a declared account type that the selected entry kind does not accept.",
       "Use accounts whose declared account type matches the violated field requirement."),
+  CASH_FLOW_ASSET_CLASSIFICATION_MISMATCH(
+      "cash-flow-asset-classification-mismatch",
+      "cash-flow-asset-classification",
+      "One referenced account uses a declared cashFlowAssetClassification that the selected entry kind does not accept.",
+      "Use accounts whose declared cashFlowAssetClassification matches the violated field requirement."),
   FINANCIAL_POSITION_CLASSIFICATION_MISMATCH(
       "financial-position-classification-mismatch",
       "financialPositionClassification",
@@ -36,7 +46,22 @@ enum EntrySemanticsViolationOwner {
       "source-document-type-not-accepted",
       "source-document-type",
       "One evidence source document uses a sourceDocumentType that the selected entry kind does not accept.",
-      "Use an accepted source document type for the selected entry kind's evidence profile.");
+      "Use an accepted source document type for the selected entry kind's source-document policy."),
+  UNKNOWN_TAX_REGISTRATION(
+      "unknown-tax-registration",
+      "tax-registration",
+      "One tax selector references a taxRegistrationId that is not declared in this book.",
+      "Declare the referenced tax registration first or use an existing taxRegistrationId."),
+  UNKNOWN_TAX_CODE(
+      "unknown-tax-code",
+      "tax-code",
+      "One tax selector references a taxCode that the declared tax registration does not define.",
+      "Use a taxCode declared on the referenced tax registration."),
+  TAX_APPLICATION_KIND_MISMATCH(
+      "tax-application-kind-mismatch",
+      "tax-application-kind",
+      "One tax selector resolves to a tax applicationKind that the selected entry kind does not accept.",
+      "Use a taxCode whose declared applicationKind matches the selected entry kind.");
 
   private static final Map<String, EntrySemanticsViolationOwner> BY_CODE =
       Arrays.stream(values())

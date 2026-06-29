@@ -56,7 +56,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
 
       assertEquals(
           new PostingCommitResult.Committed(
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())),
+              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()), false),
           commitPosting(
               postingFactStore,
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
@@ -81,7 +81,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
           new PostingCommitResult.Committed(
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())),
+              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()), false),
           commitPosting(
               postingFactStore,
               postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
@@ -120,7 +120,8 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
                   "posting-2",
                   "idem-2",
                   Optional.of(new ReversalReference(new PostingId("posting-1"))),
-                  Optional.of(new ReversalReason("full reversal")))),
+                  Optional.of(new ReversalReason("full reversal"))),
+              false),
           commitPosting(
               postingFactStore,
               postingFact(
@@ -131,51 +132,56 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
     }
   }
 
-  /** One deterministic failure hook that trips once for one selected posting and phase. */
+  /**
+   * One deterministic failure hook that trips once for one selected posting and injection point.
+   */
   private static final class OneShotCommitFaultHook implements SqliteCommitFaultHook {
     private final PostingId targetPostingId;
-    private final Phase phase;
+    private final InjectionPoint injectionPoint;
     private boolean tripped;
 
-    private OneShotCommitFaultHook(PostingId targetPostingId, Phase phase) {
+    private OneShotCommitFaultHook(PostingId targetPostingId, InjectionPoint injectionPoint) {
       this.targetPostingId = targetPostingId;
-      this.phase = phase;
+      this.injectionPoint = injectionPoint;
     }
 
     static OneShotCommitFaultHook afterPostingFactInsert(PostingId postingId) {
-      return new OneShotCommitFaultHook(postingId, Phase.AFTER_POSTING_FACT_INSERT);
+      return new OneShotCommitFaultHook(postingId, InjectionPoint.AFTER_POSTING_FACT_INSERT);
     }
 
     static OneShotCommitFaultHook beforePersistJournalLines(PostingId postingId) {
-      return new OneShotCommitFaultHook(postingId, Phase.BEFORE_PERSIST_JOURNAL_LINES);
+      return new OneShotCommitFaultHook(postingId, InjectionPoint.BEFORE_PERSIST_JOURNAL_LINES);
     }
 
     @Override
     public void afterPostingFactInserted(
         dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting) {
-      maybeFail(posting, Phase.AFTER_POSTING_FACT_INSERT);
+      maybeFail(posting, InjectionPoint.AFTER_POSTING_FACT_INSERT);
     }
 
     @Override
     public void beforePersistJournalLines(
         dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting) {
-      maybeFail(posting, Phase.BEFORE_PERSIST_JOURNAL_LINES);
+      maybeFail(posting, InjectionPoint.BEFORE_PERSIST_JOURNAL_LINES);
     }
 
     private void maybeFail(
-        dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting, Phase currentPhase) {
-      if (!tripped && phase == currentPhase && posting.postingId().equals(targetPostingId)) {
+        dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting,
+        InjectionPoint currentInjectionPoint) {
+      if (!tripped
+          && injectionPoint == currentInjectionPoint
+          && posting.postingId().equals(targetPostingId)) {
         tripped = true;
         throw new IllegalStateException(
-            switch (currentPhase) {
+            switch (currentInjectionPoint) {
               case AFTER_POSTING_FACT_INSERT -> "forced failure after posting_fact insert";
               case BEFORE_PERSIST_JOURNAL_LINES -> "forced failure before journal_line persistence";
             });
       }
     }
 
-    /** The precise injected-commit phase where one deterministic failure should trip. */
-    private enum Phase {
+    /** The precise injected-commit point where one deterministic failure should trip. */
+    private enum InjectionPoint {
       AFTER_POSTING_FACT_INSERT,
       BEFORE_PERSIST_JOURNAL_LINES
     }

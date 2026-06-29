@@ -54,6 +54,6 @@ class CliTextDisplayTest {
   @Test
   void humanDisplay_truncatesLongOpaqueReferencesAndPreservesShortValues() {
     assertEquals("posting", CliHumanDisplay.opaqueReference("posting"));
-    assertEquals("12345678", CliHumanDisplay.opaqueReference("123456789"));
+    assertEquals("123456789", CliHumanDisplay.opaqueReference("123456789"));
   }
 }

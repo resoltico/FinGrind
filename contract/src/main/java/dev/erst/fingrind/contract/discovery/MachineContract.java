@@ -12,7 +12,14 @@ import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable contract assembler for the FinGrind CLI surface. */
 public final class MachineContract {
+  private static final String PROTOCOL_VERSION = "12";
+
   private MachineContract() {}
+
+  /** Returns the current public machine-contract protocol version. */
+  public static String protocolVersion() {
+    return PROTOCOL_VERSION;
+  }
 
   /** Builds the canonical help descriptor. */
   public static HelpDescriptor help(
@@ -32,6 +39,7 @@ public final class MachineContract {
     return new HelpDescriptor(
         identity.application(),
         identity.version(),
+        protocolVersion(),
         identity.description(),
         selectedOperation == null
             ? ProtocolCatalog.operations().stream().map(ProtocolOperation::usage).toList()
@@ -41,6 +49,7 @@ public final class MachineContract {
         MachineContractTemplatesCatalog.requestShapesFor(selectedOperation),
         postingRequestTemplateFor(selectedOperation),
         declareAccountTemplateFor(selectedOperation),
+        declareTaxRegistrationTemplateFor(selectedOperation),
         ledgerPlanTemplateFor(selectedOperation),
         selectedOperation == null
             ? MachineContractDomainDescriptors.commandDescriptors()
@@ -64,6 +73,7 @@ public final class MachineContract {
     return new CapabilitiesDescriptor(
         identity.application(),
         identity.version(),
+        protocolVersion(),
         new StorageSurfaceDescriptor(
             ProtocolCatalog.runtime().storageEngines(), "single-sqlite-file"),
         MachineContractDomainDescriptors.commandCatalog(),
@@ -83,7 +93,7 @@ public final class MachineContract {
   public static VersionDescriptor version(ApplicationIdentity identity) {
     Objects.requireNonNull(identity, "identity");
     return new VersionDescriptor(
-        identity.application(), identity.version(), identity.description());
+        identity.application(), identity.version(), protocolVersion(), identity.description());
   }
 
   /** Builds the canonical minimal posting-request template descriptor. */
@@ -91,9 +101,22 @@ public final class MachineContract {
     return MachineContractTemplatesCatalog.requestTemplate();
   }
 
+  /** Builds one command-specific posting-request template descriptor when the command owns one. */
+  public static ContractTemplates.@Nullable PostingRequestTemplateDescriptor requestTemplate(
+      OperationId commandTopic) {
+    Objects.requireNonNull(commandTopic, "commandTopic");
+    return postingRequestTemplateFor(ProtocolCatalog.operation(commandTopic));
+  }
+
   /** Builds the canonical minimal declare-account request template descriptor. */
   public static ContractTemplates.DeclareAccountTemplateDescriptor declareAccountTemplate() {
     return MachineContractTemplatesCatalog.declareAccountTemplate();
+  }
+
+  /** Builds the canonical minimal declare-tax-registration request template descriptor. */
+  public static ContractTemplates.DeclareTaxRegistrationTemplateDescriptor
+      declareTaxRegistrationTemplate() {
+    return MachineContractTemplatesCatalog.declareTaxRegistrationTemplate();
   }
 
   /** Builds the canonical minimal AI-agent ledger-plan template descriptor. */
@@ -109,6 +132,11 @@ public final class MachineContract {
   private static ContractTemplates.@Nullable DeclareAccountTemplateDescriptor
       declareAccountTemplateFor(@Nullable ProtocolOperation selectedOperation) {
     return MachineContractTemplatesCatalog.declareAccountTemplateFor(selectedOperation);
+  }
+
+  private static ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor
+      declareTaxRegistrationTemplateFor(@Nullable ProtocolOperation selectedOperation) {
+    return MachineContractTemplatesCatalog.declareTaxRegistrationTemplateFor(selectedOperation);
   }
 
   private static ContractPlanTemplates.@Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplateFor(

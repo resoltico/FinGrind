@@ -22,9 +22,9 @@ class CliStarterChartWorkflowRegressionTest extends CliBookWorkflowFixtureSuppor
               "accountCode": "1000",
               "accountName": "Cash",
               "accountType": "ASSET",
-              "accountRole": "ORDINARY",
               "accountNodeKind": "POSTABLE",
-              "financialPositionLineClassification": "CURRENT_ASSET"
+              "financialPositionLineClassification": "CURRENT_ASSET",
+              "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
             }
             """);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

@@ -51,7 +51,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -112,7 +113,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -176,7 +178,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -236,7 +239,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -284,7 +288,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             CliRequestReaderTestSupport.withEvidence(
                 """
             {
-              "entryKind": "REVERSAL_ADJUSTMENT",
+              "entryKind": "REVERSAL",
               "effectiveDate": "2026-04-07",
               "lines": %s,
               "provenance": {
@@ -325,7 +329,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -375,8 +380,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                   "kind": "declare-account",
                   "accountCode": "1000",
                   "accountName": "Cash",
-                  "accountType": "ASSET",
-                  "accountRole": "ORDINARY"
+                  "accountType": "ASSET"
                 }
               ]
             }
@@ -402,7 +406,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -426,7 +431,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     assertEquals("error", failureEnvelope.path("status").stringValue());
     assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
     assertEquals(
-        "Fields accountCode, accountName, accountType, accountRole must be nested under declareAccount for declare-account ledger plan steps.",
+        "Fields accountCode, accountName, accountType must be nested under declareAccount for declare-account ledger plan steps.",
         failureEnvelope.path("message").stringValue());
     assertTrue(
         failureEnvelope
@@ -459,7 +464,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -516,7 +522,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -572,7 +579,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(

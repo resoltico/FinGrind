@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.RequestFingerprint;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -187,6 +189,18 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
 
   @Test
   void persistedPostingLifecycleAudit_rejectsDurableLifecycleViolations() {
+    assertRejectsLateOpeningBalanceLifecycle();
+    assertRejectsOpeningBalancePostedToNominalAccount();
+    assertRejectsInactiveAccountLifecycle();
+    assertRejectsClosedPeriodBackfillLifecycle();
+    assertRejectsInvalidInterimSweepLinkLifecycle();
+    assertRejectsUnlinkedInterimSweepPostingLifecycle();
+    assertRejectsInvalidInterimSweepTargetLifecycle();
+    assertRejectsInvalidFiscalYearCloseLinkLifecycle();
+    assertRejectsInvalidFiscalYearCloseTargetLifecycle();
+  }
+
+  private void assertRejectsLateOpeningBalanceLifecycle() {
     assertRejectedPersistedPostingLifecycle(
         "persisted-late-opening-balance.sqlite",
         """
@@ -213,6 +227,9 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   "CLI",
                   "null"));
         });
+  }
+
+  private void assertRejectsOpeningBalancePostedToNominalAccount() {
     assertRejectedPersistedPostingLifecycle(
         "persisted-opening-balance-nominal.sqlite",
         """
@@ -242,6 +259,9 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
           insertJournalLineRow(
               database, "posting-opening-balance", 1, "1000", "DEBIT", "EUR", 1000);
         });
+  }
+
+  private void assertRejectsInactiveAccountLifecycle() {
     assertRejectedPersistedPostingLifecycle(
         "persisted-inactive-account-line.sqlite",
         """
@@ -253,6 +273,9 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
           insertJournalLineRow(database, "posting-inactive", 0, "1000", "DEBIT", "EUR", 1000);
           insertJournalLineRow(database, "posting-inactive", 1, "2000", "CREDIT", "EUR", 1000);
         });
+  }
+
+  private void assertRejectsClosedPeriodBackfillLifecycle() {
     assertRejectedPersistedPostingLifecycle(
         "persisted-closed-period-backfill.sqlite",
         """
@@ -260,35 +283,42 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
         """,
         database -> {
           insertAccountRow(
-              database, "3000", "Retained Earnings", "EQUITY", "CREDIT", 1, "2026-04-07T10:15:30Z");
+              database,
+              "3000",
+              "Result holding",
+              "EQUITY",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.RESULT_HOLDING),
+              1,
+              "2026-04-07T10:15:30Z");
           insertPostingFactRow(
               database,
-              "posting-period-result-transfer",
-              "PERIOD_RESULT_TRANSFER",
+              "posting-interim-result-sweep",
+              "INTERIM_RESULT_SWEEP",
               "2026-04-30",
               "2026-04-30T23:59:59Z",
               new PostingFactSqlLiterals(
-                  "system:periodResultTransfer",
+                  "system:interimResultSweep",
                   "SYSTEM",
-                  "periodResultTransfer:2026-04",
-                  "periodResultTransfer:2026-04",
-                  "periodResultTransfer:2026-04",
-                  "'periodResultTransfer:2026-04'",
+                  "interimResultSweep:2026-04",
+                  "interimResultSweep:2026-04",
+                  "interimResultSweep:2026-04",
+                  "'interimResultSweep:2026-04'",
                   "null",
                   "SYSTEM",
                   "null"));
           insertJournalLineRow(
-              database, "posting-period-result-transfer", 0, "2000", "DEBIT", "EUR", 1000);
+              database, "posting-interim-result-sweep", 0, "2000", "DEBIT", "EUR", 1000);
           insertJournalLineRow(
-              database, "posting-period-result-transfer", 1, "3000", "CREDIT", "EUR", 1000);
+              database, "posting-interim-result-sweep", 1, "3000", "CREDIT", "EUR", 1000);
           database.executeStatement(
               """
-              insert into period_result_transfer (
-                  period_result_transfer_order,
+              insert into interim_result_sweep (
+                  interim_result_sweep_order,
                   effective_date_from,
                   effective_date_to,
-                  closing_equity_account_code,
-                  closed_at
+                  result_holding_account_code,
+                  swept_at
               ) values (
                   1,
                   '2026-04-01',
@@ -299,12 +329,12 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
               """);
           database.executeStatement(
               """
-              insert into period_result_transfer_posting (
-                  period_result_transfer_order,
+              insert into interim_result_sweep_posting (
+                  interim_result_sweep_order,
                   posting_id
               ) values (
                   1,
-                  'posting-period-result-transfer'
+                  'posting-interim-result-sweep'
               )
               """);
           insertPostingFactRow(
@@ -324,25 +354,35 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   "CLI",
                   "null"));
         });
+  }
+
+  private void assertRejectsInvalidInterimSweepLinkLifecycle() {
     assertRejectedPersistedPostingLifecycle(
-        "persisted-period-result-transfer-link.sqlite",
+        "persisted-interim-result-sweep-link.sqlite",
         """
-        drop trigger period_result_transfer_posting_validate_period_result_transfer_posting_on_insert
+        drop trigger interim_result_sweep_posting_validate_interim_result_sweep_posting_on_insert
         """,
         database -> {
           insertAccountRow(
-              database, "3000", "Retained Earnings", "EQUITY", "CREDIT", 1, "2026-04-07T10:15:30Z");
+              database,
+              "3000",
+              "Result holding",
+              "EQUITY",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.RESULT_HOLDING),
+              1,
+              "2026-04-07T10:15:30Z");
           insertPostingFactRow(database, "posting-standard", "idem-standard");
           insertJournalLineRow(database, "posting-standard", 0, "1000", "DEBIT", "EUR", 1000);
           insertJournalLineRow(database, "posting-standard", 1, "2000", "CREDIT", "EUR", 1000);
           database.executeStatement(
               """
-              insert into period_result_transfer (
-                  period_result_transfer_order,
+              insert into interim_result_sweep (
+                  interim_result_sweep_order,
                   effective_date_from,
                   effective_date_to,
-                  closing_equity_account_code,
-                  closed_at
+                  result_holding_account_code,
+                  swept_at
               ) values (
                   1,
                   '2026-04-01',
@@ -353,8 +393,8 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
               """);
           database.executeStatement(
               """
-              insert into period_result_transfer_posting (
-                  period_result_transfer_order,
+              insert into interim_result_sweep_posting (
+                  interim_result_sweep_order,
                   posting_id
               ) values (
                   1,
@@ -362,56 +402,188 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
               )
               """);
         });
+  }
+
+  private void assertRejectsUnlinkedInterimSweepPostingLifecycle() {
     assertRejectedPersistedPostingLifecycle(
-        "persisted-unlinked-period-result-transfer.sqlite",
+        "persisted-unlinked-interim-result-sweep.sqlite",
         """
-        drop trigger posting_fact_validate_period_result_transfer_provenance_on_insert
+        drop trigger posting_fact_validate_generated_close_provenance_on_insert
         """,
         database -> {
           insertAccountRow(
-              database, "3000", "Retained Earnings", "EQUITY", "CREDIT", 1, "2026-04-07T10:15:30Z");
+              database,
+              "3000",
+              "Result holding",
+              "EQUITY",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.RESULT_HOLDING),
+              1,
+              "2026-04-07T10:15:30Z");
           insertPostingFactRow(
               database,
-              "posting-period-result-transfer",
-              "PERIOD_RESULT_TRANSFER",
+              "posting-interim-result-sweep",
+              "INTERIM_RESULT_SWEEP",
               "2026-04-30",
               "2026-04-30T23:59:59Z",
               new PostingFactSqlLiterals(
-                  "system:periodResultTransfer",
+                  "system:interimResultSweep",
                   "SYSTEM",
-                  "periodResultTransfer:2026-04",
-                  "periodResultTransfer:2026-04",
-                  "periodResultTransfer:2026-04",
-                  "'periodResultTransfer:2026-04'",
+                  "interimResultSweep:2026-04",
+                  "interimResultSweep:2026-04",
+                  "interimResultSweep:2026-04",
+                  "'interimResultSweep:2026-04'",
                   "null",
                   "SYSTEM",
                   "null"));
           insertJournalLineRow(
-              database, "posting-period-result-transfer", 0, "2000", "DEBIT", "EUR", 1000);
+              database, "posting-interim-result-sweep", 0, "2000", "DEBIT", "EUR", 1000);
           insertJournalLineRow(
-              database, "posting-period-result-transfer", 1, "3000", "CREDIT", "EUR", 1000);
+              database, "posting-interim-result-sweep", 1, "3000", "CREDIT", "EUR", 1000);
         });
+  }
+
+  private void assertRejectsInvalidInterimSweepTargetLifecycle() {
     assertRejectedPersistedPostingLifecycle(
-        "persisted-invalid-period-result-transfer-target.sqlite",
+        "persisted-invalid-interim-result-sweep-target.sqlite",
         """
-        drop trigger period_result_transfer_validate_closing_equity_account_on_insert
+        drop trigger interim_result_sweep_validate_result_holding_account_on_insert
         """,
         database -> {
           database.executeStatement("update account set active = 0 where account_code = '1000'");
           database.executeStatement(
               """
-              insert into period_result_transfer (
-                  period_result_transfer_order,
+              insert into interim_result_sweep (
+                  interim_result_sweep_order,
                   effective_date_from,
                   effective_date_to,
-                  closing_equity_account_code,
-                  closed_at
+                  result_holding_account_code,
+                  swept_at
               ) values (
                   1,
                   '2026-04-01',
                   '2026-04-30',
                   '1000',
                   '2026-04-30T23:59:59Z'
+              )
+              """);
+        });
+  }
+
+  private void assertRejectsInvalidFiscalYearCloseLinkLifecycle() {
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-invalid-fiscal-year-close-link.sqlite",
+        """
+        drop trigger fiscal_year_close_posting_validate_fiscal_year_close_posting_on_insert
+        """,
+        database -> {
+          insertAccountRow(
+              database,
+              "3000",
+              "Capital",
+              "EQUITY",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+              1,
+              "2026-04-07T10:15:30Z");
+          insertAccountRow(
+              database,
+              "3200",
+              "Result holding",
+              "EQUITY",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.RESULT_HOLDING),
+              1,
+              "2026-04-07T10:15:30Z");
+          insertAccountRow(
+              database,
+              "3300",
+              "Retained accumulated",
+              "EQUITY",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.RETAINED_ACCUMULATED),
+              1,
+              "2026-04-07T10:15:30Z");
+          insertPostingFactRow(database, "posting-standard", "idem-standard");
+          insertJournalLineRow(database, "posting-standard", 0, "1000", "DEBIT", "EUR", 1000);
+          insertJournalLineRow(database, "posting-standard", 1, "2000", "CREDIT", "EUR", 1000);
+          database.executeStatement(
+              """
+              insert into fiscal_year_close (
+                  fiscal_year_close_order,
+                  effective_date_from,
+                  effective_date_to,
+                  capital_account_code,
+                  result_holding_account_code,
+                  retained_accumulated_account_code,
+                  closed_at
+              ) values (
+                  1,
+                  '2026-01-01',
+                  '2026-12-31',
+                  '3000',
+                  '3200',
+                  '3300',
+                  '2026-12-31T23:59:59Z'
+              )
+              """);
+          database.executeStatement(
+              """
+              insert into fiscal_year_close_posting (
+                  fiscal_year_close_order,
+                  posting_id
+              ) values (
+                  1,
+                  'posting-standard'
+              )
+              """);
+        });
+  }
+
+  private void assertRejectsInvalidFiscalYearCloseTargetLifecycle() {
+    assertRejectedPersistedPostingLifecycle(
+        "persisted-invalid-fiscal-year-close-target.sqlite",
+        """
+        drop trigger fiscal_year_close_validate_target_accounts_on_insert
+        """,
+        database -> {
+          insertAccountRow(
+              database,
+              "3200",
+              "Result holding",
+              "EQUITY",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.RESULT_HOLDING),
+              1,
+              "2026-04-07T10:15:30Z");
+          insertAccountRow(
+              database,
+              "3300",
+              "Retained accumulated",
+              "EQUITY",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.RETAINED_ACCUMULATED),
+              1,
+              "2026-04-07T10:15:30Z");
+          database.executeStatement("update account set active = 0 where account_code = '1000'");
+          database.executeStatement(
+              """
+              insert into fiscal_year_close (
+                  fiscal_year_close_order,
+                  effective_date_from,
+                  effective_date_to,
+                  capital_account_code,
+                  result_holding_account_code,
+                  retained_accumulated_account_code,
+                  closed_at
+              ) values (
+                  1,
+                  '2026-01-01',
+                  '2026-12-31',
+                  '1000',
+                  '3200',
+                  '3300',
+                  '2026-12-31T23:59:59Z'
               )
               """);
         });
@@ -581,7 +753,9 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
             correlation_id,
             reason,
             source_channel,
-            prior_posting_id
+            prior_posting_id,
+            request_fingerprint_version,
+            request_fingerprint_sha256
         ) values (
             '%s',
             '%s',
@@ -596,7 +770,9 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
             %s,
             %s,
             '%s',
-            %s
+            %s,
+            %d,
+            '%s'
         )
         """
             .formatted(
@@ -613,16 +789,20 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                 sqlLiterals.correlationIdSqlLiteral(),
                 sqlLiterals.reasonSqlLiteral(),
                 sqlLiterals.sourceChannel(),
-                sqlLiterals.priorPostingIdSqlLiteral()));
+                sqlLiterals.priorPostingIdSqlLiteral(),
+                RequestFingerprint.CURRENT_VERSION,
+                "0".repeat(64)));
   }
 
   private static String defaultPostingOriginKind(String postingKind) {
     return switch (postingKind) {
       case "OPENING_BALANCE" ->
-          dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION.wireValue();
-      case "PERIOD_RESULT_TRANSFER" ->
-          dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER.wireValue();
-      default -> dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue();
+          dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION.wireValue();
+      case "INTERIM_RESULT_SWEEP" ->
+          dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP.wireValue();
+      case "FISCAL_YEAR_CLOSE" ->
+          dev.erst.fingrind.core.PostingOriginKind.FISCAL_YEAR_CLOSE.wireValue();
+      default -> dev.erst.fingrind.core.PostingOriginKind.REVERSAL.wireValue();
     };
   }
 

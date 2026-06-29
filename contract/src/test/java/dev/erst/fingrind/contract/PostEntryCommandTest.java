@@ -24,12 +24,13 @@ import org.junit.jupiter.api.Test;
 class PostEntryCommandTest {
   @Test
   void constructor_acceptsValidCommand() {
-    BookkeepingEntry.ReversalAdjustment adjustment =
-        new BookkeepingEntry.ReversalAdjustment(
+    BookkeepingEntry.Reversal adjustment =
+        new BookkeepingEntry.Reversal(
             journalEntry(),
             new PostingLineage.Reversal(
                 new ReversalReference(new PostingId("posting-1")),
-                new ReversalReason("operator reversal")));
+                new ReversalReason("operator reversal")),
+            null);
     PostEntryCommand command =
         new PostEntryCommand(
             adjustment,
@@ -37,7 +38,7 @@ class PostEntryCommandTest {
             ContractFixtures.requestProvenance("idem-1"),
             SourceChannel.CLI);
     assertEquals(LocalDate.parse("2026-04-07"), command.entry().effectiveDate());
-    assertEquals(BookkeepingEntry.ReversalAdjustment.class, command.entry().getClass());
+    assertEquals(BookkeepingEntry.Reversal.class, command.entry().getClass());
     assertEquals(1, adjustment.reversal().reversalReference().stream().count());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
@@ -60,14 +61,14 @@ class PostEntryCommandTest {
         NullPointerException.class,
         () ->
             new PostEntryCommand(
-                new BookkeepingEntry.OpenAccountingPosition(
+                new BookkeepingEntry.OpeningPosition(
                     LocalDate.parse("2026-04-07"),
                     List.of(
-                        new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("1000"),
                             JournalLine.EntrySide.DEBIT,
                             new MonetaryAmount("EUR", "1000")),
-                        new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                        new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("3000"),
                             JournalLine.EntrySide.CREDIT,
                             new MonetaryAmount("EUR", "1000")))),

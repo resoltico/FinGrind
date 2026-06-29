@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
-  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, transfer-period-result, financial-position, income-statement, changes-in-equity]
-  questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is transfer-period-result documented", "where are the primary statement models documented"]
+  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, interim-result-sweep, fiscal-year-close, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
+  questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is interim-result-sweep documented", "where is fiscal-year-close documented", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
 ---
 
 # Administration, Query, And Report Reference
@@ -41,7 +41,7 @@ public final class BookTemplateAccounts
   across CLI scaffolds, setup guides, or storage fixtures
 - Surface: `declarations(BookTemplateId)` returns the typed `AccountDeclaration` list for one
   built-in template
-- Current template line: `OWNER_MANAGED_SERVICE_CASH` seeds `cash`, `owner-capital`,
+- Current template line: `OWNER_MANAGED_SERVICE` seeds `cash`, `owner-capital`,
   `owner-draws`, `result-holding`, `service-revenue`, and `operating-expense`
 
 ## `BookReadService`
@@ -56,7 +56,8 @@ public final class BookReadService
 - Constructor: requires `BookkeepingReadStore`
 - Surface: `inspectBook()`, `listAccounts(...)`, `getPosting(...)`, `listPostings(...)`,
   `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`, `periodSummary(...)`,
-  `financialPosition(...)`, `incomeStatement(...)`, and `changesInEquity(...)`
+  `financialPosition(...)`, `incomeStatement(...)`, `cashFlowStatement(...)`, and
+  `changesInEquity(...)`
 - Boundary: this is the anti-corruption layer between public read/report DTOs and the local
   bookkeeping inspection/query/report model served by one selected `BookkeepingReadStore`
 - Translators: the exported `BookInspectionPublishedLanguageTranslator` in the `executor` package
@@ -82,12 +83,13 @@ public sealed interface BookkeepingLookupOutcome<T>
 - Surface: `inspectBook()`, `findAccount(...)`, `findPosting(...)`, `listAccounts(...)`,
   `getPosting(...)`, `listPostings(...)`, `accountBalance(...)`, `trialBalance(...)`,
   `accountLedger(...)`, `periodSummary(...)`, `financialPosition(...)`,
-  `incomeStatement(...)`, and `changesInEquity(...)`
+  `incomeStatement(...)`, `cashFlowStatement(...)`, and `changesInEquity(...)`
 - Lookup variants: `Found`, `Missing`, `Rejected`
 - Statement computation owners: `BookkeepingReportingService` now coordinates
-  `FinancialPositionStatementCalculator`, `IncomeStatementCalculator`, and
-  `ChangesInEquityStatementCalculator` inside `executor.bookkeeping.reporting` instead of
-  carrying all statement doctrine inside the read-service collaborator
+  `FinancialPositionStatementCalculator`, `IncomeStatementCalculator`,
+  `CashFlowStatementCalculator`, and `ChangesInEquityStatementCalculator` inside
+  `executor.bookkeeping.reporting` instead of carrying all statement doctrine inside the
+  read-service collaborator
 - Boundary: this service stays inside the bookkeeping context and returns only local lifecycle,
   lookup, query-rejection, and report-view outcomes
 
@@ -100,12 +102,11 @@ public record DeclareAccountCommand(
     AccountCode accountCode,
     AccountName accountName,
     AccountType accountType,
-    AccountRole accountRole,
     AccountTaxonomy accountTaxonomy)
 ```
 
 - Purpose: keep account-registry writes typed at the contract boundary, including explicit chart
-  classification, doctrinal role, declared chart hierarchy, and statement-line taxonomy
+  classification, declared chart hierarchy, and statement-line taxonomy
 
 ## `DeclaredAccount`
 
@@ -117,36 +118,38 @@ public record DeclaredAccount(
     AccountCode accountCode,
     AccountName accountName,
     AccountType accountType,
-    AccountRole accountRole,
     AccountTaxonomy accountTaxonomy,
     boolean active,
     Instant declaredAt)
 ```
 
 - Purpose: represent one declared account independently of CLI or SQLite concerns, including its
-  immutable account classification, doctrinal role, and taxonomy
+  immutable account classification and taxonomy
 - Derived fact: `normalBalance()` remains part of the public response surface, but it is derived
-  from `accountType` plus `accountRole` through `AccountSemantics`
+  from `accountType` plus declared classification through `AccountTaxonomyDoctrine`
 
-## `PeriodResultTransferCommand`, `PeriodResultTransferResult`, And `TransferredPeriodResult`
+## `InterimResultSweepCommand`, `InterimResultSweepResult`, `FiscalYearCloseCommand`, `FiscalYearCloseResult`, `SweptInterimResult`, And `ClosedFiscalYear`
 
-These types own the public period-result-transfer administration surface.
+These types own the public close-command administration surface.
 
 ```java
-public record PeriodResultTransferCommand(
-    ReportingPeriod reportingPeriod,
-    AccountCode resultHoldingAccountCode)
-public sealed interface PeriodResultTransferResult
-public record TransferredPeriodResult(...)
+public record InterimResultSweepCommand(ReportingPeriod reportingPeriod)
+public sealed interface InterimResultSweepResult
+public record SweptInterimResult(...)
+public record FiscalYearCloseCommand(ReportingPeriod reportingPeriod)
+public sealed interface FiscalYearCloseResult
+public record ClosedFiscalYear(...)
 ```
 
-- Purpose: request and describe one contiguous period-result transfer that writes generated
-  transfer postings into one selected active equity account whose declared financial-position
-  classification matches the built-in result-holding destination
-- Result variants: `Transferred`, `Rejected`
-- Durable fact: `TransferredPeriodResult` carries `transferOrder`, the inclusive `ReportingPeriod`, the
-  selected result-holding account code used for the transfer, the per-currency transferred totals moved into
-  equity, the transfer timestamp, and every generated transfer posting id
+- Purpose: request and describe the two explicit generated close operations: one contiguous
+  interim-result sweep into the built-in `RESULT_HOLDING` target, and one fiscal-year close that
+  finalizes the year into `RETAINED_ACCUMULATED`
+- Result variants: each command publishes `...`/`Rejected`
+- Durable facts: `SweptInterimResult` carries `sweepOrder`, the inclusive `ReportingPeriod`, the
+  selected result-holding account code, the per-currency swept totals, the sweep timestamp, and
+  every generated close posting id; `ClosedFiscalYear` carries `closeOrder`, the reporting period,
+  the capital/result-holding/retained-accumulated target accounts, the close timestamp, and every
+  generated close posting id
 
 ## `OpenBookCommand`
 
@@ -179,6 +182,37 @@ public sealed interface DeclareAccountResult
 ```
 
 - Variants: `Declared`, `Rejected`
+
+## `DeclareTaxRegistrationCommand`, `DeclareTaxRegistrationResult`, `DeclaredTaxRegistration`, `TaxRegistrationId`, `TaxRegistrationName`, `TaxRegistrationNumber`, `TaxJurisdiction`, `TaxObligationFrequency`, `TaxCode`, `TaxCodeName`, `TaxCodeDefinition`, `TaxRate`, `TaxInclusionMode`, `TaxApplicationKind`, `TaxDeclarationRejection`, `TaxDefinitionViolation`, `TaxAdministrationService`, And `TaxAdministrationStore`
+
+These types own the explicit per-book tax-registration write surface.
+
+```java
+public record DeclareTaxRegistrationCommand(...)
+public sealed interface DeclareTaxRegistrationResult
+public record DeclaredTaxRegistration(...)
+public final class TaxAdministrationService
+public interface TaxAdministrationStore
+```
+
+- `DeclareTaxRegistrationCommand`: requests one owned tax registration with payable and
+  recoverable account codes, one filing frequency plus due offset, and one or more declared tax
+  codes
+- `DeclareTaxRegistrationResult`: variants `Declared`, `Updated`, `Unchanged`, `Rejected`
+- `DeclaredTaxRegistration`: durable current snapshot for one tax registration, including its
+  declaration timestamp and declared code catalog
+- `TaxRegistrationId`, `TaxRegistrationName`, `TaxRegistrationNumber`, `TaxJurisdiction`,
+  `TaxObligationFrequency`, `TaxCode`, `TaxCodeName`, `TaxRate`, `TaxInclusionMode`, and
+  `TaxApplicationKind` keep the public tax-registration vocabulary typed instead of collapsing it
+  into transport strings
+- `TaxCodeDefinition`: bundles one declared tax code's public identity, label, rate, inclusion
+  mode, and application kind
+- `TaxDeclarationRejection` and `TaxDefinitionViolation`: deterministic initialized-book and
+  definition failures for tax-registration declaration and update
+- `TaxAdministrationService`: validates initialized-book state plus referenced-account
+  compatibility before delegating persistence
+- `TaxAdministrationStore`: write-side port that persists one tax registration mutation at one
+  supplied declaration instant
 
 ## `RekeyBookResult`
 
@@ -301,6 +335,44 @@ public sealed interface ListAccountsResult
 
 - Variants: `Listed`, `Rejected`
 
+## `ListTaxRegistrationsQuery`, `TaxRegistrationPageCursor`, `TaxRegistrationPage`, `ListTaxRegistrationsResult`, `TaxObligationQuery`, `TaxObligationCodeSummary`, `TaxObligationReport`, `TaxObligationResult`, `TaxQueryRejection`, `TaxReadService`, `TaxReadStore`, `TaxRegistrationCatalogStore`, And `TaxRegistrationLookupStore`
+
+These types own tax-registration pagination and tax-obligation reporting.
+
+```java
+public record ListTaxRegistrationsQuery(int limit, Optional<TaxRegistrationPageCursor> cursor)
+public record TaxRegistrationPage(...)
+public sealed interface ListTaxRegistrationsResult
+public record TaxObligationQuery(...)
+public record TaxObligationCodeSummary(...)
+public record TaxObligationReport(...)
+public sealed interface TaxObligationResult
+public final class TaxReadService
+public interface TaxReadStore
+public interface TaxRegistrationCatalogStore
+public interface TaxRegistrationLookupStore
+```
+
+- `ListTaxRegistrationsQuery` and `TaxRegistrationPageCursor`: request one stable paginated slice
+  of the current tax-registration registry
+- `TaxRegistrationPage`: couples one selected `BookIdentity`, ordered declared registrations, the
+  requested page limit, and one optional next cursor
+- `ListTaxRegistrationsResult`: variants `Listed`, `Rejected`
+- `TaxObligationQuery`: requests one bounded filing-period view for one declared tax registration
+- `TaxObligationCodeSummary` and `TaxObligationReport`: publish per-code and full-period totals in
+  the selected book's functional currency, including output, recoverable-input,
+  nonrecoverable-input, net-payable, and net-receivable totals
+- `TaxObligationResult`: variants `Reported`, `Rejected`
+- `TaxQueryRejection`: deterministic query refusals for uninitialized books, unknown tax
+  registrations, and filing periods that do not match the registration's declared obligation
+  frequency
+- `TaxReadService`: translates ordered registry views and durable applied-tax facts into the
+  public tax query and filing-report DTOs
+- `TaxReadStore`: composite read-side port over lifecycle readiness, stable registration lookup,
+  ordered registration catalog reads, and posting-range access
+- `TaxRegistrationCatalogStore` and `TaxRegistrationLookupStore`: narrower seams for stable-id
+  lookup and paginated registry reads
+
 ## `GetPostingResult`
 
 `GetPostingResult` is the closed result family for committed-posting lookup.
@@ -387,7 +459,7 @@ public record AccountBalanceQuery(AccountCode accountCode, EffectiveDateRange ef
 ## `CurrencyBalance`
 
 `CurrencyBalance` is the shared-kernel per-currency grouped balance bucket. Its canonical owner is
-[DOC_01_Core.md](./DOC_01_Core.md).
+[DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md).
 
 ```java
 public final class CurrencyBalance
@@ -419,12 +491,32 @@ public sealed interface AccountBalanceResult
 
 - Variants: `Reported`, `Rejected`
 
+## `ComparativeRangeResolver`
+
+`ComparativeRangeResolver` is the executor-owned translator from one typed comparative selection to
+one concrete effective-date window.
+
+```java
+public final class ComparativeRangeResolver
+```
+
+- Purpose: centralize prior-period versus explicit-range expansion for both as-of and bounded
+  report surfaces
+- Entry points: `asOf(...)` resolves comparison windows for as-of reports and `period(...)`
+  resolves comparison windows for bounded-period reports
+- `ComparativeSelection.none()` resolves to `EffectiveDateRange.unbounded()`, while
+  `ComparativeSelection.priorPeriod()` delegates the concrete fiscal comparison window to the
+  selected `StatementComparativePolicy`
+
 ## `TrialBalanceQuery`, `TrialBalanceRow`, `TrialBalanceReport`, And `TrialBalanceResult`
 
 These types own the book-wide trial-balance report surface.
 
 ```java
-public record TrialBalanceQuery(Optional<LocalDate> effectiveDateAsOf)
+public record TrialBalanceQuery(
+    Optional<LocalDate> effectiveDateAsOf,
+    PostingCoverage postingCoverage,
+    ComparativeSelection comparativeSelection)
 public record TrialBalanceRow(DeclaredAccount account, CurrencyBalance balance)
 public record TrialBalanceReport(...)
 public sealed interface TrialBalanceResult
@@ -432,8 +524,8 @@ public sealed interface TrialBalanceResult
 
 - Purpose: request, carry, and result-wrap one as-of trial balance for the selected book
 - Result variants: `Reported`, `Rejected`
-- Report semantics: the report carries `BookIdentity`, `PostingCoverage`, and one
-  fiscal-year-anchored comparative row set in addition to the current rows
+- Report semantics: the report carries `BookIdentity`, `PostingCoverage`, and one optional
+  comparative row set when the caller selects `comparativeSelection` other than `none`
 
 ## `AccountLedgerQuery`, `AccountLedgerEntry`, `AccountLedgerReport`, And `AccountLedgerResult`
 
@@ -478,7 +570,9 @@ public sealed interface PeriodSummaryResult
 These types own the public statement-of-financial-position surface.
 
 ```java
-public record FinancialPositionQuery(Optional<LocalDate> effectiveDateAsOf)
+public record FinancialPositionQuery(
+    Optional<LocalDate> effectiveDateAsOf,
+    ComparativeSelection comparativeSelection)
 public record FinancialPositionRow(...)
 public record FinancialPositionSection(...)
 public record FinancialPositionReport(...)
@@ -490,15 +584,18 @@ public sealed interface FinancialPositionResult
 - Row semantics: every row publishes `lineClassification` plus `lineKind`; derived current-period
   result rows are explicit `lineKind: CURRENT_PERIOD_RESULT` records rather than implicit
   placeholders
-- Comparative semantics: the report also carries fiscal-year-anchored comparative sections for the
-  comparison as-of date
+- Comparative semantics: the report carries fiscal-year-anchored comparative sections only when
+  the caller opts into one non-`none` comparative selection
 
 ## `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult`
 
 These types own the public bounded income-statement surface.
 
 ```java
-public record IncomeStatementQuery(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+public record IncomeStatementQuery(
+    LocalDate effectiveDateFrom,
+    LocalDate effectiveDateTo,
+    ComparativeSelection comparativeSelection)
 public record IncomeStatementRow(...)
 public record IncomeStatementSection(...)
 public record IncomeStatementReport(...)
@@ -508,15 +605,45 @@ public sealed interface IncomeStatementResult
 - Purpose: request and carry one bounded income statement grouped by nominal account type
 - Result variants: `Reported`, `Rejected`
 - Totals: the report includes per-section totals plus book-wide `netIncomeTotals`
-- Comparative semantics: the report also carries fiscal-year-anchored comparative sections and
-  `comparativeNetIncomeTotals`
+- Comparative semantics: the report carries fiscal-year-anchored comparative sections and
+  `comparativeNetIncomeTotals` only when the caller opts into one non-`none` comparative
+  selection
+
+## `CashFlowStatementQuery`, `CashFlowRow`, `CashFlowSection`, `CashFlowStatementReport`, And `CashFlowStatementResult`
+
+These types own the public bounded statement of cash receipts and payments.
+
+```java
+public record CashFlowStatementQuery(
+    LocalDate effectiveDateFrom,
+    LocalDate effectiveDateTo,
+    ComparativeSelection comparativeSelection)
+public record CashFlowRow(...)
+public record CashFlowSection(...)
+public record CashFlowStatementReport(...)
+public sealed interface CashFlowStatementResult
+```
+
+- Purpose: request and carry one bounded cash-basis statement classified into operating,
+  investing, and financing sections
+- Result variants: `Reported`, `Rejected`
+- Row semantics: every row carries either one `profitAndLossLineClassification` or one
+  `financialPositionLineClassification`, so the report stays traceable back to the declared
+  account that explained the cash movement
+- Total semantics: the report carries `openingCashTotals`, section totals, `movementTotals`, and
+  `closingCashTotals`, plus comparative counterparts when the caller opts into one non-`none`
+  comparative selection
+- Articulation rule: opening cash plus movement equals closing cash per currency
 
 ## `ChangesInEquityQuery`, `ChangesInEquityRow`, `ChangesInEquityReport`, And `ChangesInEquityResult`
 
 These types own the public bounded statement-of-changes-in-equity surface.
 
 ```java
-public record ChangesInEquityQuery(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+public record ChangesInEquityQuery(
+    LocalDate effectiveDateFrom,
+    LocalDate effectiveDateTo,
+    ComparativeSelection comparativeSelection)
 public record ChangesInEquityRow(...)
 public record ChangesInEquityReport(...)
 public sealed interface ChangesInEquityResult
@@ -526,7 +653,8 @@ public sealed interface ChangesInEquityResult
 - Result variants: `Reported`, `Rejected`
 - Row semantics: every row publishes `lineClassification` plus `lineKind`; derived current-period
   result movements are explicit `lineKind: CURRENT_PERIOD_RESULT` rows
-- Comparative semantics: the report also carries one comparative prior-period rows/totals set
+- Comparative semantics: the report carries one comparative rows and totals set only when the
+  caller opts into one non-`none` comparative selection
 
 ## `FinancialPositionCriteria`, `FinancialPositionRowView`, `FinancialPositionSectionView`, And `FinancialPositionView`
 
@@ -534,7 +662,9 @@ These executor-owned local bookkeeping types carry the as-of financial-position 
 projected into public DTOs.
 
 ```java
-public record FinancialPositionCriteria(Optional<LocalDate> effectiveDateAsOf)
+public record FinancialPositionCriteria(
+    Optional<LocalDate> effectiveDateAsOf,
+    ComparativeSelection comparativeSelection)
 public record FinancialPositionRowView(...)
 public record FinancialPositionSectionView(...)
 public record FinancialPositionView(...)
@@ -549,7 +679,10 @@ These executor-owned local bookkeeping types carry the bounded income-statement 
 projected into public DTOs.
 
 ```java
-public record IncomeStatementCriteria(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+public record IncomeStatementCriteria(
+    LocalDate effectiveDateFrom,
+    LocalDate effectiveDateTo,
+    ComparativeSelection comparativeSelection)
 public record IncomeStatementRowView(...)
 public record IncomeStatementSectionView(...)
 public record IncomeStatementView(...)
@@ -558,13 +691,37 @@ public record IncomeStatementView(...)
 - Purpose: keep nominal-account movement shaping local to bookkeeping until the published-language
   translator renders it into public report DTOs
 
+## `CashFlowStatementCriteria`, `CashFlowRowView`, `CashFlowSectionView`, And `CashFlowStatementView`
+
+These executor-owned local bookkeeping types carry the bounded cash receipts/payments model before
+it is projected into public DTOs.
+
+```java
+public record CashFlowStatementCriteria(
+    LocalDate effectiveDateFrom,
+    LocalDate effectiveDateTo,
+    ComparativeSelection comparativeSelection)
+public record CashFlowRowView(...)
+public record CashFlowSectionView(...)
+public record CashFlowStatementView(...)
+```
+
+- Purpose: keep cash-basis movement classification, articulation, and comparative shaping local
+  to bookkeeping until the published-language translator renders them into public report DTOs
+- Classification rule: counterpart rows stay tied to declared-account taxonomy, while cash and
+  cash-equivalent accounts contribute only to opening/closing totals and never appear as
+  counterpart rows
+
 ## `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView`
 
 These executor-owned local bookkeeping types carry the bounded changes-in-equity model before it
 is projected into public DTOs.
 
 ```java
-public record ChangesInEquityCriteria(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+public record ChangesInEquityCriteria(
+    LocalDate effectiveDateFrom,
+    LocalDate effectiveDateTo,
+    ComparativeSelection comparativeSelection)
 public record ChangesInEquityRowView(...)
 public record ChangesInEquityView(...)
 ```
@@ -572,37 +729,73 @@ public record ChangesInEquityView(...)
 - Purpose: keep equity opening/movement/closing shaping local to bookkeeping until the
   published-language translator renders it into public report DTOs
 
-## `PeriodResultTransferDraft`, `PeriodResultTransferOutcome`, `ResultHoldingSelection`, `AcceptedResultHoldingSelection`, `RejectedResultHoldingSelection`, `PeriodResultTransferPlan`, `PeriodResultTransferPlanner`, And `PeriodResultTransferService`
+## `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService`
 
-These executor-owned local bookkeeping types own period-result-transfer generation and durable close
-semantics before the public administration surface is projected.
+These executor-owned local bookkeeping types own interim-result-sweep generation and durable
+close semantics before the public administration surface is projected.
 
 ```java
-public record PeriodResultTransferDraft(...)
-public sealed interface PeriodResultTransferOutcome
-public sealed interface ResultHoldingSelection
-public final class AcceptedResultHoldingSelection
-public final class RejectedResultHoldingSelection
-public record PeriodResultTransferPlan(...)
-public final class PeriodResultTransferPlanner
-public final class PeriodResultTransferService
+public record InterimResultSweepDraft(...)
+public sealed interface InterimResultSweepOutcome
+public record SweptInterimResult(...)
+public sealed interface InterimResultTargetSelection
+public final class AcceptedInterimResultTargetSelection
+public final class RejectedInterimResultTargetSelection
+public record InterimResultSweepPlan(...)
+public final class InterimResultSweepPlanner
+public final class InterimResultSweepService
 ```
 
-- `PeriodResultTransferDraft`: store-ready close payload containing the reporting period, the close time,
-  and every generated posting draft
-- `PeriodResultTransferOutcome`: closed family of accepted-versus-rejected local close outcomes
-- `ResultHoldingSelection`: closed result for the policy-owned result-holding account lookup
-- `AcceptedResultHoldingSelection`: accepted result-holding selection carrying the chosen account
-- `RejectedResultHoldingSelection`: rejected result-holding selection carrying the deterministic
+- `InterimResultSweepDraft`: store-ready interim-result-sweep payload containing the reporting
+  period, the sweep time, and every generated posting draft
+- `InterimResultSweepOutcome`: closed family of accepted-versus-rejected local
+  interim-result-sweep outcomes
+- `SweptInterimResult`: durably stored interim-result sweep fact carrying `sweepOrder`,
+  the transferred totals, and every generated sweep posting id
+- `InterimResultTargetSelection`: closed result for the policy-owned result-holding account lookup
+- `AcceptedInterimResultTargetSelection`: accepted result-holding selection carrying the chosen account
+- `RejectedInterimResultTargetSelection`: rejected result-holding selection carrying the deterministic
   administration rejection plus candidate account codes
-- `PeriodResultTransferPlan`: generated close posting drafts plus the transferred totals that the
-  published close result projects afterward
-- `PeriodResultTransferPlanner`: bookkeeping-domain planner that selects the policy-owned result-holding
-  account, validates close-horizon rules, and generates the `PostingKind.PERIOD_RESULT_TRANSFER` drafts plus
-  published transferred totals for one contiguous reporting period
-- `PeriodResultTransferService`: application service that coordinates lifecycle inspection, account
-  catalog/store access, planner output, and durable close persistence instead of owning the close
-  recipe itself
+- `InterimResultSweepPlan`: generated interim-result-sweep posting drafts plus the transferred
+  totals that the published sweep result projects afterward
+- `InterimResultSweepPlanner`: bookkeeping-domain planner that selects the policy-owned result-holding
+  account, validates close-horizon rules, and generates the `PostingKind.INTERIM_RESULT_SWEEP`
+  drafts plus published transferred totals for one contiguous reporting period
+- `InterimResultSweepService`: application service that coordinates lifecycle inspection, account
+  catalog/store access, planner output, and durable interim-result-sweep persistence instead of
+  owning the close recipe itself
+
+## `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService`
+
+These executor-owned local bookkeeping types own the fiscal-year close target-selection and
+durable year-end close flow before the public administration surface is projected.
+
+```java
+public sealed interface CloseTargetSelection
+public final class AcceptedCloseTargetSelection
+public final class RejectedCloseTargetSelection
+public final class CloseTargetAccountSelector
+public record FiscalYearCloseDraft(...)
+public record ClosedFiscalYearRecord(...)
+public sealed interface FiscalYearCloseOutcome
+public final class FiscalYearClosePlanner
+public final class FiscalYearCloseService
+```
+
+- `CloseTargetSelection`: closed result for resolving one required close-target classification
+- `AcceptedCloseTargetSelection`: successful selection of the only active declared close-target account
+- `RejectedCloseTargetSelection`: deterministic missing-versus-ambiguous close-target refusal plus
+  the relevant candidate account codes
+- `CloseTargetAccountSelector`: canonical classifier-based selector for close-owned equity targets
+- `FiscalYearCloseDraft`: store-ready year-end close payload containing every generated durable
+  fiscal-year-close posting
+- `ClosedFiscalYearRecord`: durably stored local close fact carrying close order, selected close
+  targets, and generated posting ids
+- `FiscalYearCloseOutcome`: closed family of accepted-versus-rejected fiscal-year close outcomes
+- `FiscalYearClosePlanner`: bookkeeping-domain planner for fiscal-year boundary validation,
+  close-target selection, and generated year-end postings
+- `FiscalYearCloseService`: application service that coordinates lifecycle inspection, planner
+  output, and durable fiscal-year close persistence
 
 ## `BookAdministrationRejection`
 
@@ -614,8 +807,13 @@ public sealed interface BookAdministrationRejection
 ```
 
 - Variants: `BookAlreadyInitialized`, `BookNotInitialized`, `BookContainsSchema`,
-  `AccountRoleConflict`, `ResultHoldingAccountCandidateMissing`,
-  `ResultHoldingAccountCandidateAmbiguous`, `PeriodResultTransferMustStartAt`
+  `AccountTypeConflict`, `AccountTaxonomyConflict`, `ParentAccountMissing`,
+  `ParentAccountInactive`, `ParentAccountTypeConflict`, `ParentAccountNotHeader`,
+  `ParentAccountTaxonomyConflict`, `AccountHierarchyCycle`,
+  `CloseTargetAccountCandidateMissing`, `CloseTargetAccountCandidateAmbiguous`,
+  `InterimResultSweepMustStartAt`, `InterimResultSweepFutureDate`,
+  `InterimResultSweepCrossesFiscalYearBoundary`, `FiscalYearCloseMustStartAt`,
+  `FiscalYearCloseMustEndAt`, `FiscalYearCloseFutureDate`
 
 ## `BookQueryRejection`
 

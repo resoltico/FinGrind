@@ -9,7 +9,8 @@ public sealed interface PostingCommitResult
     permits PostingCommitResult.Committed, PostingCommitResult.Rejected {
 
   /** Successful durable commit outcome carrying the stored posting fact. */
-  record Committed(CommittedPosting postingFact) implements PostingCommitResult {
+  record Committed(CommittedPosting postingFact, boolean idempotentReplay)
+      implements PostingCommitResult {
     /** Validates the committed posting result. */
     public Committed {
       Objects.requireNonNull(postingFact, "postingFact");

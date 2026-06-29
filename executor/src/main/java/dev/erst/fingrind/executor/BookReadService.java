@@ -4,8 +4,9 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
-import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
@@ -19,13 +20,10 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
-import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookInspection;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.bookkeeping.AcceptedResultHoldingSelection;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPagePublishedLanguageTranslator;
@@ -33,13 +31,10 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadReportPublishedLang
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadStatementPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
-import dev.erst.fingrind.executor.bookkeeping.RejectedResultHoldingSelection;
-import dev.erst.fingrind.executor.bookkeeping.ResultHoldingSelection;
+import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
-import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingResultTransferReadSupport;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
@@ -56,18 +51,7 @@ public final class BookReadService {
 
   /** Inspects the selected book file without mutating it. */
   public BookInspection inspectBook() {
-    var inspection = bookkeepingReadService.inspectBook();
-    if (inspection
-        instanceof dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized initialized) {
-      return new BookInspection.Initialized(
-          initialized.applicationId(),
-          initialized.detectedBookFormatVersion(),
-          initialized.supportedBookFormatVersion(),
-          initialized.initializedAt(),
-          initialized.bookIdentity(),
-          resultTransferReadiness(initialized.bookIdentity()));
-    }
-    return BookInspectionPublishedLanguageTranslator.toPublished(inspection);
+    return BookReadInspectionProjection.project(bookStore, bookkeepingReadService.inspectBook());
   }
 
   /** Lists one paginated slice of the current account registry for the selected book. */
@@ -77,9 +61,9 @@ public final class BookReadService {
       case BookkeepingReadOutcome.Reported<AccountRegistryPage> reported ->
           new ListAccountsResult.Listed(
               BookkeepingReadPagePublishedLanguageTranslator.toPublished(
-                  currentBookIdentity(), reported.value()));
+                  bookkeepingReadService.requireInitializedBookIdentity(), reported.value()));
       case BookkeepingReadOutcome.Rejected<AccountRegistryPage> rejected ->
-          new ListAccountsResult.Rejected(toPublished(rejected.rejection()));
+          new ListAccountsResult.Rejected(mapReadOutcomeRejection(rejected.rejection()));
     };
   }
 
@@ -88,24 +72,30 @@ public final class BookReadService {
     BookkeepingReadOutcome<CommittedPosting> outcome = bookkeepingReadService.getPosting(postingId);
     if (outcome instanceof BookkeepingReadOutcome.Reported<CommittedPosting> reported) {
       return new GetPostingResult.Found(
-          currentBookIdentity(),
-          BookkeepingPublishedLanguageTranslator.toPublished(reported.value()));
+          bookkeepingReadService.requireInitializedBookIdentity(),
+          BookkeepingPublishedLanguageTranslator.toPublished(reported.value()),
+          bookStore.findReversalFor(postingId).map(CommittedPosting::postingId));
     }
     BookkeepingReadOutcome.Rejected<CommittedPosting> rejected =
         (BookkeepingReadOutcome.Rejected<CommittedPosting>) outcome;
-    return new GetPostingResult.Rejected(toPublished(rejected.rejection()));
+    return new GetPostingResult.Rejected(mapReadOutcomeRejection(rejected.rejection()));
   }
 
   /** Returns one filtered page of committed postings. */
   public ListPostingsResult listPostings(ListPostingsQuery query) {
-    var publishedQuery = BookReadQueryTranslator.fromPublished(query);
+    PostingHistoryQuery publishedQuery = BookReadQueryTranslator.fromPublished(query);
     return switch (bookkeepingReadService.listPostings(publishedQuery)) {
       case BookkeepingReadOutcome.Reported<PostingHistoryPage> reported ->
           new ListPostingsResult.Listed(
-              BookkeepingReadPagePublishedLanguageTranslator.toPublished(
-                  currentBookIdentity(), publishedQuery, reported.value()));
+              BookReadPostingBacklinkProjection.withReversalBacklinks(
+                  bookStore,
+                  BookkeepingReadPagePublishedLanguageTranslator.toPublished(
+                      bookkeepingReadService.requireInitializedBookIdentity(),
+                      publishedQuery,
+                      reported.value()),
+                  reported.value()));
       case BookkeepingReadOutcome.Rejected<PostingHistoryPage> rejected ->
-          new ListPostingsResult.Rejected(toPublished(rejected.rejection()));
+          new ListPostingsResult.Rejected(mapReadOutcomeRejection(rejected.rejection()));
     };
   }
 
@@ -116,7 +106,7 @@ public final class BookReadService {
         value ->
             new AccountBalanceResult.Reported(
                 BookkeepingReadPagePublishedLanguageTranslator.toPublished(
-                    currentBookIdentity(), value)),
+                    bookkeepingReadService.requireInitializedBookIdentity(), value)),
         AccountBalanceResult.Rejected::new);
   }
 
@@ -137,7 +127,7 @@ public final class BookReadService {
         value ->
             new AccountLedgerResult.Reported(
                 BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                    currentBookIdentity(), value)),
+                    bookkeepingReadService.requireInitializedBookIdentity(), value)),
         AccountLedgerResult.Rejected::new);
   }
 
@@ -148,7 +138,7 @@ public final class BookReadService {
         value ->
             new PeriodSummaryResult.Reported(
                 BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                    currentBookIdentity(), value)),
+                    bookkeepingReadService.requireInitializedBookIdentity(), value)),
         PeriodSummaryResult.Rejected::new);
   }
 
@@ -172,6 +162,16 @@ public final class BookReadService {
         IncomeStatementResult.Rejected::new);
   }
 
+  /** Computes one statement of cash receipts and payments for the selected book and period. */
+  public CashFlowStatementResult cashFlowStatement(CashFlowStatementQuery query) {
+    return mapReadOutcome(
+        bookkeepingReadService.cashFlowStatement(BookReadQueryTranslator.fromPublished(query)),
+        value ->
+            new CashFlowStatementResult.Reported(
+                BookkeepingReadStatementPublishedLanguageTranslator.toPublished(value)),
+        CashFlowStatementResult.Rejected::new);
+  }
+
   /** Computes one statement of changes in equity for the selected book and reporting period. */
   public ChangesInEquityResult changesInEquity(ChangesInEquityQuery query) {
     return mapReadOutcome(
@@ -180,21 +180,6 @@ public final class BookReadService {
             new ChangesInEquityResult.Reported(
                 BookkeepingReadStatementPublishedLanguageTranslator.toPublished(value)),
         ChangesInEquityResult.Rejected::new);
-  }
-
-  private static BookQueryRejection toPublished(
-      dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection rejection) {
-    Objects.requireNonNull(rejection, "rejection");
-    return switch (rejection) {
-      case dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection.BookNotInitialized _ ->
-          new BookQueryRejection.BookNotInitialized();
-      case dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection.UnknownAccount
-              unknownAccount ->
-          new BookQueryRejection.UnknownAccount(unknownAccount.accountCode());
-      case dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection.PostingNotFound
-              postingNotFound ->
-          new BookQueryRejection.PostingNotFound(postingNotFound.postingId());
-    };
   }
 
   private static <V, R> R mapReadOutcome(
@@ -208,39 +193,21 @@ public final class BookReadService {
       return reportedMapper.apply(reported.value());
     }
     BookkeepingReadOutcome.Rejected<V> rejected = (BookkeepingReadOutcome.Rejected<V>) outcome;
-    return rejectedMapper.apply(toPublished(rejected.rejection()));
+    return rejectedMapper.apply(mapReadOutcomeRejection(rejected.rejection()));
   }
 
-  private BookIdentity currentBookIdentity() {
-    return bookkeepingReadService.requireInitializedBookIdentity();
-  }
-
-  private BookInspection.ResultTransferReadiness resultTransferReadiness(
-      BookIdentity bookIdentity) {
-    var requiredClassification =
-        BookkeepingResultTransferReadSupport.requiredResultHoldingClassification(bookIdentity);
-    ResultHoldingSelection selection =
-        BookkeepingResultTransferReadSupport.resultHoldingSelection(bookIdentity, bookStore);
-    return switch (selection) {
-      case AcceptedResultHoldingSelection accepted ->
-          new BookInspection.ResultTransferReadiness(
-              true,
-              requiredClassification,
-              accepted.account().accountCode(),
-              null,
-              null,
-              List.of());
-      case RejectedResultHoldingSelection rejected -> {
-        BookAdministrationRejection published =
-            BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection());
-        yield new BookInspection.ResultTransferReadiness(
-            false,
-            requiredClassification,
-            null,
-            BookAdministrationRejection.wireCode(published),
-            RejectionNarrative.message(published),
-            rejected.candidateAccountCodes());
-      }
+  private static BookQueryRejection mapReadOutcomeRejection(
+      dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection rejection) {
+    Objects.requireNonNull(rejection, "rejection");
+    return switch (rejection) {
+      case dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection.BookNotInitialized _ ->
+          new BookQueryRejection.BookNotInitialized();
+      case dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection.UnknownAccount
+              unknownAccount ->
+          new BookQueryRejection.UnknownAccount(unknownAccount.accountCode());
+      case dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection.PostingNotFound
+              postingNotFound ->
+          new BookQueryRejection.PostingNotFound(postingNotFound.postingId());
     };
   }
 }

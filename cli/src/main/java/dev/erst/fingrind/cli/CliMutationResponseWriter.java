@@ -1,14 +1,16 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -98,7 +100,16 @@ final class CliMutationResponseWriter {
     administrativeWriter.writeDeclareAccountResult(result, outputMode);
   }
 
-  void writePeriodResultTransferResult(PeriodResultTransferResult result, OutputMode outputMode) {
-    administrativeWriter.writePeriodResultTransferResult(result, outputMode);
+  void writeDeclareTaxRegistrationResult(
+      DeclareTaxRegistrationResult result, OutputMode outputMode) {
+    administrativeWriter.writeDeclareTaxRegistrationResult(result, outputMode);
+  }
+
+  void writeInterimResultSweepResult(InterimResultSweepResult result, OutputMode outputMode) {
+    administrativeWriter.writeInterimResultSweepResult(result, outputMode);
+  }
+
+  void writeFiscalYearCloseResult(FiscalYearCloseResult result, OutputMode outputMode) {
+    administrativeWriter.writeFiscalYearCloseResult(result, outputMode);
   }
 }

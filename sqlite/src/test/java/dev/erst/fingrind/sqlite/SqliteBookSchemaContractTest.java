@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.MachineContract;
@@ -112,7 +111,6 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     assertTrue(schema.contains("effective_date text not null check"));
     assertTrue(schema.contains("recorded_at text not null check"));
     assertTrue(schema.contains("document_date text not null check"));
-    assertTrue(schema.contains("captured_at text not null check"));
     assertTrue(schema.contains("approved_at text not null check"));
     assertTrue(schema.contains("closed_at text not null check"));
     assertTrue(schema.contains("meta_key = 'initialized_at'"));
@@ -205,7 +203,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                   Instant.parse("2026-04-08T12:00:01Z"),
                   List.of(
                       line("9000", dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT, "1.00"),
-                      line("2000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "1.00")))),
+                      line("2000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "1.00"))),
+              false),
           commitPosting(
               postingFactStore,
               postingFact(
@@ -311,57 +310,51 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   }
 
   private static List<String> publishedPostingKinds() {
-    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape =
         publishedPostEntryShape();
     Set<String> publishedValues = new LinkedHashSet<>();
     for (ContractRequestShapes.EntryKindSemanticsDescriptor semantics :
         postEntryShape.entryKindSemantics()) {
       switch (semantics.entryKind()) {
-        case JOURNAL, REVERSAL_ADJUSTMENT -> publishedValues.add(PostingKind.STANDARD.wireValue());
-        case OPEN_ACCOUNTING_POSITION ->
-            publishedValues.add(PostingKind.OPENING_BALANCE.wireValue());
+        case DIRECT_JOURNAL, SALE, EXPENSE, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, REVERSAL ->
+            publishedValues.add(PostingKind.STANDARD.wireValue());
+        case OPENING_POSITION -> publishedValues.add(PostingKind.OPENING_BALANCE.wireValue());
       }
     }
-    publishedValues.add(PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
+    publishedValues.add(PostingKind.INTERIM_RESULT_SWEEP.wireValue());
+    publishedValues.add(PostingKind.FISCAL_YEAR_CLOSE.wireValue());
     return PostingKind.wireValues().stream().filter(publishedValues::contains).toList();
   }
 
   private static List<String> publishedPostingOriginKinds() {
-    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape =
         publishedPostEntryShape();
     Set<String> publishedValues = new LinkedHashSet<>();
     for (ContractRequestShapes.EntryKindSemanticsDescriptor semantics :
         postEntryShape.entryKindSemantics()) {
       publishedValues.add(postingOriginKindFor(semantics.entryKind()).wireValue());
     }
-    for (ContractRequestShapes.JournalRecipeSemanticsDescriptor semantics :
-        postEntryShape.journalRecipeSemantics()) {
-      publishedValues.add(postingOriginKindFor(semantics.recipeKind()).wireValue());
-    }
-    publishedValues.add(PostingOriginKind.PERIOD_RESULT_TRANSFER.wireValue());
+    publishedValues.add(PostingOriginKind.INTERIM_RESULT_SWEEP.wireValue());
+    publishedValues.add(PostingOriginKind.FISCAL_YEAR_CLOSE.wireValue());
     return PostingOriginKind.wireValues().stream().filter(publishedValues::contains).toList();
   }
 
-  private static ContractRequestShapes.PostEntryRequestShapeDescriptor publishedPostEntryShape() {
+  private static ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor
+      publishedPostEntryShape() {
     return java.util.Objects.requireNonNull(
-        MachineContract.capabilities(TEST_IDENTITY).requestShapes().postEntry(),
-        "Published machine contract must expose the post-entry request shape.");
+        MachineContract.capabilities(TEST_IDENTITY).requestShapes().bookkeepingEntry(),
+        "Published machine contract must expose the bookkeeping-entry request shape.");
   }
 
   private static PostingOriginKind postingOriginKindFor(BookkeepingEntryKind entryKind) {
     return switch (entryKind) {
-      case JOURNAL -> PostingOriginKind.JOURNAL;
-      case OPEN_ACCOUNTING_POSITION -> PostingOriginKind.OPEN_ACCOUNTING_POSITION;
-      case REVERSAL_ADJUSTMENT -> PostingOriginKind.REVERSAL_ADJUSTMENT;
-    };
-  }
-
-  private static PostingOriginKind postingOriginKindFor(JournalRecipeKind recipeKind) {
-    return switch (recipeKind) {
-      case CASH_REVENUE -> PostingOriginKind.CASH_REVENUE;
-      case CASH_EXPENSE -> PostingOriginKind.CASH_EXPENSE;
-      case EQUITY_CONTRIBUTION -> PostingOriginKind.EQUITY_CONTRIBUTION;
-      case EQUITY_WITHDRAWAL -> PostingOriginKind.EQUITY_WITHDRAWAL;
+      case DIRECT_JOURNAL -> PostingOriginKind.DIRECT_JOURNAL;
+      case SALE -> PostingOriginKind.SALE;
+      case EXPENSE -> PostingOriginKind.EXPENSE;
+      case OWNER_CONTRIBUTION -> PostingOriginKind.OWNER_CONTRIBUTION;
+      case OWNER_WITHDRAWAL -> PostingOriginKind.OWNER_WITHDRAWAL;
+      case OPENING_POSITION -> PostingOriginKind.OPENING_POSITION;
+      case REVERSAL -> PostingOriginKind.REVERSAL;
     };
   }
 
@@ -588,9 +581,11 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                 SqliteBookContract.ACCOUNT_TABLE,
                 SqliteBookContract.POSTING_FACT_TABLE,
                 SqliteBookContract.JOURNAL_LINE_TABLE,
-                SqliteBookContract.PERIOD_RESULT_TRANSFER_TABLE,
-                SqliteBookContract.PERIOD_RESULT_TRANSFER_TOTAL_TABLE,
-                SqliteBookContract.PERIOD_RESULT_TRANSFER_POSTING_TABLE,
+                SqliteBookContract.INTERIM_RESULT_SWEEP_TABLE,
+                SqliteBookContract.INTERIM_RESULT_SWEEP_TOTAL_TABLE,
+                SqliteBookContract.INTERIM_RESULT_SWEEP_POSTING_TABLE,
+                SqliteBookContract.FISCAL_YEAR_CLOSE_TABLE,
+                SqliteBookContract.FISCAL_YEAR_CLOSE_POSTING_TABLE,
                 SqliteBookContract.AUDIT_EVENT_TABLE));
     Path noMetaPath = tempDirectory.resolve("fgrd-no-meta.sqlite");
     createPartialFinGrindBook(noMetaPath, false, SqliteBookContract.BOOK_META_TABLE);

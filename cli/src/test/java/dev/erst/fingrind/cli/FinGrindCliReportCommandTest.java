@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
@@ -54,20 +55,20 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
             });
 
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Trial Balance"));
+    String rendered = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("Artifact"));
+    assertTrue(rendered.contains("Format"));
+    assertTrue(rendered.contains("pdf"));
+    assertTrue(rendered.contains(CliPublicPaths.redactedValue(pdfOutputPath)));
+    assertFalse(rendered.contains("Trial Balance"));
     assertTrue(Files.exists(pdfOutputPath));
     assertEquals(
         "%PDF-", new String(Files.readAllBytes(pdfOutputPath), 0, 5, StandardCharsets.ISO_8859_1));
-    assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("pdf-exported"));
-    assertTrue(
-        diagnosticsStream
-            .toString(StandardCharsets.UTF_8)
-            .contains(CliPublicPaths.redactedValue(pdfOutputPath)));
+    assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
   }
 
   @Test
-  void run_jsonReportWithPdfOut_publishesNormalizedArtifactPathOnStdoutAndDiagnostics()
-      throws IOException {
+  void run_jsonReportWithPdfOut_publishesNormalizedArtifactPathOnStdout() throws IOException {
     Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
     Path pdfOutputPath = tempDirectory.resolve("reports").resolve("trial-balance.json.pdf");
@@ -320,6 +321,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
     Path positionPdf = tempDirectory.resolve("reports").resolve("financial-position.pdf");
     Path incomePdf = tempDirectory.resolve("reports").resolve("income-statement.pdf");
+    Path cashFlowPdf = tempDirectory.resolve("reports").resolve("cash-flow-statement.pdf");
     Path equityPdf = tempDirectory.resolve("reports").resolve("changes-in-equity.pdf");
     CliBookWorkflow workflow =
         reportingWorkflow(
@@ -329,6 +331,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
             new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             new FinancialPositionResult.Reported(sampleFinancialPositionReport()),
             new IncomeStatementResult.Reported(sampleIncomeStatementReport()),
+            new CashFlowStatementResult.Reported(sampleCashFlowStatementReport()),
             new ChangesInEquityResult.Reported(sampleChangesInEquityReport()));
 
     int positionExitCode =
@@ -369,6 +372,26 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                   "--pdf-out",
                   incomePdf.toString()
                 });
+    int cashFlowExitCode =
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                workflow)
+            .run(
+                new String[] {
+                  "cash-flow-statement",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--period-start",
+                  "2026-04-01",
+                  "--period-end",
+                  "2026-04-30",
+                  "--pdf-out",
+                  cashFlowPdf.toString()
+                });
     int equityExitCode =
         cli(
                 new ByteArrayInputStream(new byte[0]),
@@ -392,9 +415,11 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
 
     assertEquals(0, positionExitCode);
     assertEquals(0, incomeExitCode);
+    assertEquals(0, cashFlowExitCode);
     assertEquals(0, equityExitCode);
     assertTrue(Files.exists(positionPdf));
     assertTrue(Files.exists(incomePdf));
+    assertTrue(Files.exists(cashFlowPdf));
     assertTrue(Files.exists(equityPdf));
   }
 
@@ -404,6 +429,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
     Path positionPdf = tempDirectory.resolve("reports").resolve("financial-position.pdf");
     Path incomePdf = tempDirectory.resolve("reports").resolve("income-statement.pdf");
+    Path cashFlowPdf = tempDirectory.resolve("reports").resolve("cash-flow-statement.pdf");
     Path equityPdf = tempDirectory.resolve("reports").resolve("changes-in-equity.pdf");
     CliBookWorkflow rejectedWorkflow =
         reportingWorkflow(
@@ -413,6 +439,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
             new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             new FinancialPositionResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             new IncomeStatementResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            new CashFlowStatementResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             new ChangesInEquityResult.Rejected(new BookQueryRejection.BookNotInitialized()));
 
     int positionExitCode =
@@ -451,6 +478,26 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                   "--pdf-out",
                   incomePdf.toString()
                 });
+    int cashFlowExitCode =
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock(),
+                rejectedWorkflow)
+            .run(
+                new String[] {
+                  "cash-flow-statement",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--period-start",
+                  "2026-04-01",
+                  "--period-end",
+                  "2026-04-30",
+                  "--pdf-out",
+                  cashFlowPdf.toString()
+                });
     int equityExitCode =
         cli(
                 new ByteArrayInputStream(new byte[0]),
@@ -474,9 +521,11 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
 
     assertEquals(2, positionExitCode);
     assertEquals(2, incomeExitCode);
+    assertEquals(2, cashFlowExitCode);
     assertEquals(2, equityExitCode);
     assertFalse(Files.exists(positionPdf));
     assertFalse(Files.exists(incomePdf));
+    assertFalse(Files.exists(cashFlowPdf));
     assertFalse(Files.exists(equityPdf));
   }
 

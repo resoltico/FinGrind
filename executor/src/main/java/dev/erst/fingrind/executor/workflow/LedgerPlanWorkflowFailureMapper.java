@@ -1,10 +1,8 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
@@ -20,48 +18,16 @@ final class LedgerPlanWorkflowFailureMapper {
 
   static BookWorkflowFailure administrationFailure(BookkeepingAdministrationRejection rejection) {
     Objects.requireNonNull(rejection, "rejection");
-    if (rejection instanceof BookkeepingAdministrationRejection.BookAlreadyInitialized) {
-      return new BookWorkflowFailure(
-          "book-already-initialized", "The selected book is already initialized.", List.of());
-    }
-    if (rejection instanceof BookkeepingAdministrationRejection.BookNotInitialized) {
-      return new BookWorkflowFailure(
-          "administration-book-not-initialized", missingBookMessage(), List.of());
-    }
-    if (rejection instanceof BookkeepingAdministrationRejection.BookContainsSchema) {
-      return new BookWorkflowFailure(
-          "book-contains-schema",
-          "The selected SQLite file already contains schema objects and cannot be initialized as a new book.",
-          List.of());
-    }
-    if (rejection instanceof BookkeepingAdministrationRejection.AccountTypeConflict conflict) {
-      return new BookWorkflowFailure(
-          "account-type-conflict",
-          accountTypeConflictMessage(
-              conflict.accountCode(),
-              conflict.existingAccountType(),
-              conflict.requestedAccountType()),
-          List.of(
-              BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
-              BookWorkflowFact.text(
-                  "existingAccountType", conflict.existingAccountType().wireValue()),
-              BookWorkflowFact.text(
-                  "requestedAccountType", conflict.requestedAccountType().wireValue())));
-    }
-    BookkeepingAdministrationRejection.AccountRoleConflict conflict =
-        (BookkeepingAdministrationRejection.AccountRoleConflict) rejection;
+    BookAdministrationRejection published =
+        LedgerPlanAdministrationFailureSupport.toPublished(rejection);
+    String message =
+        published instanceof BookAdministrationRejection.BookNotInitialized
+            ? missingBookMessage()
+            : RejectionNarrative.message(published);
     return new BookWorkflowFailure(
-        "account-role-conflict",
-        accountRoleConflictMessage(
-            conflict.accountCode(),
-            conflict.existingAccountRole(),
-            conflict.requestedAccountRole()),
-        List.of(
-            BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
-            BookWorkflowFact.text(
-                "existingAccountRole", conflict.existingAccountRole().wireValue()),
-            BookWorkflowFact.text(
-                "requestedAccountRole", conflict.requestedAccountRole().wireValue())));
+        BookAdministrationRejection.wireCode(published),
+        message,
+        LedgerPlanAdministrationFailureSupport.facts(published));
   }
 
   static BookWorkflowFailure queryFailure(BookkeepingQueryRejection rejection) {
@@ -133,20 +99,20 @@ final class LedgerPlanWorkflowFailureMapper {
       case PostingRejection.BookNotInitialized _ -> List.of();
       case PostingRejection.AccountStateViolations violations -> accountStateFacts(violations);
       case PostingRejection.EntrySemanticsViolations violations -> entrySemanticsFacts(violations);
-      case PostingRejection.DuplicateIdempotencyKey _ -> List.of();
+      case PostingRejection.IdempotencyKeyConflict _ -> List.of();
       case PostingRejection.BookFunctionalCurrencyMismatch mismatch ->
           List.of(
               BookWorkflowFact.text("functionalCurrency", mismatch.functionalCurrency().code()),
               BookWorkflowFact.text("attemptedCurrency", mismatch.attemptedCurrency().code()));
-      case PostingRejection.TransferredPeriodResultViolation transferredPeriodResultViolation ->
+      case PostingRejection.SweptInterimResultViolation sweptInterimResultViolation ->
           List.of(
               BookWorkflowFact.text(
                   "transferredThroughEffectiveDate",
-                  transferredPeriodResultViolation.transferredThroughEffectiveDate().toString()),
+                  sweptInterimResultViolation.transferredThroughEffectiveDate().toString()),
               BookWorkflowFact.text(
                   "attemptedEffectiveDate",
-                  transferredPeriodResultViolation.attemptedEffectiveDate().toString()));
-      case PostingRejection.OpenAccountingPositionWindowClosed openingBalanceWindowClosed ->
+                  sweptInterimResultViolation.attemptedEffectiveDate().toString()));
+      case PostingRejection.OpeningPositionWindowClosed openingBalanceWindowClosed ->
           List.of(
               BookWorkflowFact.text(
                   "firstBlockingPostingKind",
@@ -154,14 +120,17 @@ final class LedgerPlanWorkflowFailureMapper {
               BookWorkflowFact.text(
                   "firstBlockingEffectiveDate",
                   openingBalanceWindowClosed.firstBlockingEffectiveDate().toString()));
-      case PostingRejection.OpenAccountingPositionTouchesNominalAccount openingBalanceNominal ->
+      case PostingRejection.OpeningPositionTouchesNominalAccount openingBalanceNominal ->
           List.of(
               BookWorkflowFact.text("accountCode", openingBalanceNominal.accountCode().value()),
               BookWorkflowFact.text(
                   "accountType", openingBalanceNominal.accountType().wireValue()));
-      case PostingRejection.ResultHoldingAccountReserved resultHoldingReserved ->
+      case PostingRejection.ReservedResultClassification reservedClassification ->
           List.of(
-              BookWorkflowFact.text("accountCode", resultHoldingReserved.accountCode().value()));
+              BookWorkflowFact.text("accountCode", reservedClassification.accountCode().value()),
+              BookWorkflowFact.text(
+                  "financialPositionLineClassification",
+                  reservedClassification.financialPositionLineClassification().wireValue()));
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           priorPostingFacts(reversalTargetNotFound.priorPostingId());
       case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
@@ -235,19 +204,5 @@ final class LedgerPlanWorkflowFailureMapper {
 
   private static String missingBookMessage() {
     return "The selected book does not exist or has not been initialized with an ensure-book step.";
-  }
-
-  private static String accountRoleConflictMessage(
-      AccountCode accountCode, AccountRole existingAccountRole, AccountRole requestedAccountRole) {
-    return "Account '%s' already exists with account role '%s'; FinGrind will not amend it to '%s'."
-        .formatted(
-            accountCode.value(), existingAccountRole.wireValue(), requestedAccountRole.wireValue());
-  }
-
-  private static String accountTypeConflictMessage(
-      AccountCode accountCode, AccountType existingAccountType, AccountType requestedAccountType) {
-    return "Account '%s' already exists with account type '%s'; FinGrind will not amend it to '%s'."
-        .formatted(
-            accountCode.value(), existingAccountType.wireValue(), requestedAccountType.wireValue());
   }
 }

@@ -85,7 +85,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
       Path requestFile =
           writeNamedRequest(
               "same-account-%s.json".formatted(scenario.slug()), scenario.requestJson());
-      for (String commandName : List.of("preflight-entry", "post-entry")) {
+      for (String commandName : List.of("preflight-entry", scenario.commitCommandName())) {
         for (String outputMode : List.of("json", "text")) {
           assertSameAccountRejection(
               bookFilePath, bookKeyFilePath, requestFile, scenario, commandName, outputMode);
@@ -107,7 +107,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
     declareAccount(bookFilePath, bookKeyFilePath, declareCashFile);
 
     String expectedMessage = null;
-    for (String commandName : List.of("preflight-entry", "post-entry")) {
+    for (String commandName : List.of("preflight-entry", "record-sale")) {
       JsonNode rejectionEnvelope =
           runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
       String message = rejectionEnvelope.path("message").stringValue();
@@ -142,7 +142,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
     declareAccount(bookFilePath, bookKeyFilePath, declareCashFile);
 
     String expectedMessage = null;
-    for (String commandName : List.of("preflight-entry", "post-entry")) {
+    for (String commandName : List.of("preflight-entry", "record-sale")) {
       JsonNode rejectionEnvelope =
           runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
       String message = rejectionEnvelope.path("message").stringValue();
@@ -161,6 +161,47 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
       } else {
         assertEquals(expectedMessage, message);
       }
+    }
+  }
+
+  @Test
+  void run_rejectsDirectJournalsThatNeverTouchCashAcrossPreflightAndCommit() throws IOException {
+    Path bookFilePath =
+        tempDirectory.resolve("non-cash-direct-journal-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path declareExpenseFile =
+        writeNamedRequest(
+            "declare-expense.json",
+            declareAccountJson("3000", "Operating Expense", "EXPENSE", null, "OPERATING_EXPENSE"));
+    Path declareEquityFile =
+        writeNamedRequest(
+            "declare-equity.json",
+            declareAccountJson("3200", "Owner Capital", "EQUITY", "OTHER_EQUITY", null));
+    Path requestFile =
+        writeNamedRequest("non-cash-direct-journal.json", nonCashDirectJournalRequestJson());
+
+    openBook(bookFilePath, bookKeyFilePath);
+    declareAccount(bookFilePath, bookKeyFilePath, declareExpenseFile);
+    declareAccount(bookFilePath, bookKeyFilePath, declareEquityFile);
+
+    for (String commandName : List.of("preflight-entry", "post-entry")) {
+      JsonNode rejectionEnvelope =
+          runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
+      String message = rejectionEnvelope.path("message").stringValue();
+
+      assertTrue(
+          hasViolation(rejectionEnvelope, "cash-basis-account-required"),
+          rejectionEnvelope.toPrettyString());
+      assertEquals("Posting rejected with 1 entry-semantics issue.", message);
+      assertTrue(
+          rejectionEnvelope
+              .path("details")
+              .path("violations")
+              .get(0)
+              .path("message")
+              .stringValue()
+              .contains("lines[].accountCode"),
+          rejectionEnvelope.toPrettyString());
     }
   }
 
@@ -298,7 +339,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
   private static String economicNullJournalRequestJson() {
     return """
         {
-          "entryKind": "JOURNAL",
+          "entryKind": "DIRECT_JOURNAL",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -323,10 +364,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
               {
                 "sourceDocumentId": "document-economic-null",
                 "sourceDocumentType": "working-note",
-                "documentDate": "2026-04-07",
-                "capturedAt": "2026-04-07T10:15:30Z",
-                "storageLocator": "vault://fixtures/document-economic-null",
-                "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                "documentDate": "2026-04-07"
               }
             ],
             "approvals": []
@@ -345,8 +383,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
   private static String multiViolationTypedEntryRequestJson() {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "1000",
@@ -359,10 +396,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
               {
                 "sourceDocumentId": "document-multi-violation",
                 "sourceDocumentType": "invoice",
-                "documentDate": "2026-04-07",
-                "capturedAt": "2026-04-07T10:15:30Z",
-                "storageLocator": "vault://fixtures/document-multi-violation",
-                "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                "documentDate": "2026-04-07"
               }
             ],
             "approvals": []
@@ -378,11 +412,54 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
         """;
   }
 
+  private static String nonCashDirectJournalRequestJson() {
+    return """
+        {
+          "entryKind": "DIRECT_JOURNAL",
+          "effectiveDate": "2026-04-07",
+          "lines": [
+            {
+              "accountCode": "3000",
+              "side": "DEBIT",
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
+            },
+            {
+              "accountCode": "3200",
+              "side": "CREDIT",
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
+            }
+          ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-non-cash-direct-journal",
+                "sourceDocumentType": "working-note",
+                "documentDate": "2026-04-07"
+              }
+            ],
+            "approvals": []
+          },
+          "provenance": {
+            "actorId": "actor-non-cash-direct-journal",
+            "actorType": "AGENT",
+            "commandId": "command-non-cash-direct-journal",
+            "idempotencyKey": "idem-non-cash-direct-journal",
+            "causationId": "cause-non-cash-direct-journal"
+          }
+        }
+        """;
+  }
+
   private static String distinctRoleCollisionRequestJson() {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "1000",
@@ -395,10 +472,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
               {
                 "sourceDocumentId": "document-distinct-role",
                 "sourceDocumentType": "cash-receipt",
-                "documentDate": "2026-04-07",
-                "capturedAt": "2026-04-07T10:15:30Z",
-                "storageLocator": "vault://fixtures/document-distinct-role",
-                "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                "documentDate": "2026-04-07"
               }
             ],
             "approvals": []
@@ -417,42 +491,43 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
   private static List<SameAccountCase> sameAccountCases() {
     return List.of(
         new SameAccountCase(
-            "cash-revenue",
-            "CASH_REVENUE",
-            "cashAccountCode",
-            "revenueAccountCode",
-            "cash-receipt"),
+            "cash-revenue", "SALE", "cashAccountCode", "revenueAccountCode", "cash-receipt"),
         new SameAccountCase(
-            "cash-expense",
-            "CASH_EXPENSE",
-            "expenseAccountCode",
-            "cashAccountCode",
-            "expense-receipt"),
+            "cash-expense", "EXPENSE", "expenseAccountCode", "cashAccountCode", "expense-receipt"),
         new SameAccountCase(
-            "equity-contribution",
-            "EQUITY_CONTRIBUTION",
+            "owner-contribution",
+            "OWNER_CONTRIBUTION",
             "cashAccountCode",
             "equityAccountCode",
-            "equity-contribution"),
+            "owner-contribution"),
         new SameAccountCase(
-            "equity-withdrawal",
-            "EQUITY_WITHDRAWAL",
+            "owner-withdrawal",
+            "OWNER_WITHDRAWAL",
             "equityAccountCode",
             "cashAccountCode",
-            "equity-withdrawal"));
+            "owner-withdrawal"));
   }
 
   private record SameAccountCase(
       String slug,
-      String recipeKind,
+      String entryKind,
       String firstField,
       String secondField,
       String sourceDocumentType) {
+    private String commitCommandName() {
+      return switch (entryKind) {
+        case "SALE" -> "record-sale";
+        case "EXPENSE" -> "record-expense";
+        case "OWNER_CONTRIBUTION" -> "record-owner-contribution";
+        case "OWNER_WITHDRAWAL" -> "record-owner-withdrawal";
+        default -> throw new IllegalStateException("Unsupported entry kind: " + entryKind);
+      };
+    }
+
     private String requestJson() {
       return """
           {
-            "entryKind": "JOURNAL",
-            "recipeKind": "%s",
+            "entryKind": "%s",
             "effectiveDate": "2026-04-07",
             "%s": "1000",
             "%s": "1000",
@@ -465,10 +540,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                 {
                   "sourceDocumentId": "document-%s",
                   "sourceDocumentType": "%s",
-                  "documentDate": "2026-04-07",
-                  "capturedAt": "2026-04-07T10:15:30Z",
-                  "storageLocator": "vault://fixtures/document-%s",
-                  "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                  "documentDate": "2026-04-07"
                 }
               ],
               "approvals": []
@@ -483,16 +555,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
           }
           """
           .formatted(
-              recipeKind,
-              firstField,
-              secondField,
-              slug,
-              sourceDocumentType,
-              slug,
-              slug,
-              slug,
-              slug,
-              slug);
+              entryKind, firstField, secondField, slug, sourceDocumentType, slug, slug, slug, slug);
     }
   }
 }

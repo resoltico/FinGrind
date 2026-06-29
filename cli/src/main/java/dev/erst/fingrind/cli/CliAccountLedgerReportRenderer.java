@@ -63,10 +63,6 @@ final class CliAccountLedgerReportRenderer {
                         CliAccountStatementLabels.displayLineTypeLabel(
                             report.account().accountType())),
                     List.of(
-                        "Account role",
-                        CliAccountStatementLabels.displayAccountRoleLabel(
-                            report.account().accountRole())),
-                    List.of(
                         "Normal balance",
                         CliAccountStatementLabels.displayNormalBalanceLabel(
                             report.account().normalBalance())),

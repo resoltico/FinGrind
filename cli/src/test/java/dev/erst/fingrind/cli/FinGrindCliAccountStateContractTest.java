@@ -151,7 +151,7 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
   private static String unknownAccountRequestJson() {
     return """
         {
-          "entryKind": "JOURNAL",
+          "entryKind": "DIRECT_JOURNAL",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -176,10 +176,7 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
               {
                 "sourceDocumentId": "document-unknown-account",
                 "sourceDocumentType": "working-note",
-                "documentDate": "2026-04-07",
-                "capturedAt": "2026-04-07T10:15:30Z",
-                "storageLocator": "vault://fixtures/document-unknown-account",
-                "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                "documentDate": "2026-04-07"
               }
             ],
             "approvals": []

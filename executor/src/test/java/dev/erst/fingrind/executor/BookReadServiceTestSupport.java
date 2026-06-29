@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
@@ -10,7 +9,6 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registere
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
@@ -41,8 +39,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -57,6 +55,7 @@ import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -140,15 +139,13 @@ final class BookReadServiceTestSupport {
         CASH_ACCOUNT.accountCode(),
         CASH_ACCOUNT.accountName(),
         CASH_ACCOUNT.accountType(),
-        accountRole(CASH_ACCOUNT.accountType(), CASH_ACCOUNT.normalBalance()),
-        accountTaxonomy(CASH_ACCOUNT.accountType()),
+        accountTaxonomy(CASH_ACCOUNT.accountType(), CASH_ACCOUNT.normalBalance()),
         FIXED_INSTANT);
     bookSession.declareAccount(
         REVENUE_ACCOUNT.accountCode(),
         REVENUE_ACCOUNT.accountName(),
         REVENUE_ACCOUNT.accountType(),
-        accountRole(REVENUE_ACCOUNT.accountType(), REVENUE_ACCOUNT.normalBalance()),
-        accountTaxonomy(REVENUE_ACCOUNT.accountType()),
+        accountTaxonomy(REVENUE_ACCOUNT.accountType(), REVENUE_ACCOUNT.normalBalance()),
         FIXED_INSTANT);
   }
 
@@ -163,7 +160,7 @@ final class BookReadServiceTestSupport {
                     REVENUE_ACCOUNT.accountCode().value(), JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -211,11 +208,10 @@ final class BookReadServiceTestSupport {
         AccountCode accountCode,
         AccountName accountName,
         AccountType accountType,
-        AccountRole accountRole,
         AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       return delegate.declareAccount(
-          accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
+          accountCode, accountName, accountType, accountTaxonomy, declaredAt);
     }
 
     PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
@@ -264,7 +260,7 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
-    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       return delegate.findExistingPosting(idempotencyKey);
     }
 
@@ -283,7 +279,9 @@ final class BookReadServiceTestSupport {
       return delegate.allAccounts();
     }
 
-    List<CommittedPosting> postings(dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+    @Override
+    public List<CommittedPosting> postings(
+        dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
       return delegate.postings(effectiveDateRange);
     }
 
@@ -323,10 +321,9 @@ final class BookReadServiceTestSupport {
       return delegate.periodSummary(query);
     }
 
-    PeriodResultTransferOutcome transferPeriodResult(
-        PeriodResultTransferDraft periodResultTransferDraft,
-        PostingIdGenerator postingIdGenerator) {
-      return delegate.transferPeriodResult(periodResultTransferDraft, postingIdGenerator);
+    InterimResultSweepOutcome interimResultSweep(
+        InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
+      return delegate.interimResultSweep(interimResultSweepDraft, postingIdGenerator);
     }
 
     int findAccountCalls() {

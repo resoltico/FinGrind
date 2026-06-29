@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor.spi;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
@@ -23,7 +22,6 @@ public interface BookAdministrationStore {
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       Instant declaredAt);
 }

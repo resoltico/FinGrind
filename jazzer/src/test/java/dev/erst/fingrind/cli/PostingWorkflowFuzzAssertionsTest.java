@@ -60,7 +60,7 @@ class PostingWorkflowFuzzAssertionsTest {
   }
 
   @Test
-  void unknownAccountLifecyclePhaseClassifier_acceptsOnlyPureUnknownAccountViolations() {
+  void unknownAccountPreDeclarationClassifier_acceptsOnlyPureUnknownAccountViolations() {
     PostingRejection.AccountStateViolations unknownOnlyViolation =
         new PostingRejection.AccountStateViolations(
             List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))));
@@ -77,11 +77,13 @@ class PostingWorkflowFuzzAssertionsTest {
                     "cashAccountCode",
                     "role accounts must differ")));
 
-    assertTrue(PostingWorkflowFuzzAssertions.isUnknownAccountLifecyclePhase(unknownOnlyViolation));
+    assertTrue(
+        PostingWorkflowFuzzAssertions.isUnknownAccountPreDeclarationState(unknownOnlyViolation));
     assertFalse(
-        PostingWorkflowFuzzAssertions.isUnknownAccountLifecyclePhase(mixedAccountStateViolation));
+        PostingWorkflowFuzzAssertions.isUnknownAccountPreDeclarationState(
+            mixedAccountStateViolation));
     assertFalse(
-        PostingWorkflowFuzzAssertions.isUnknownAccountLifecyclePhase(entrySemanticsViolation));
+        PostingWorkflowFuzzAssertions.isUnknownAccountPreDeclarationState(entrySemanticsViolation));
   }
 
   @Test

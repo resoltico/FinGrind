@@ -19,13 +19,13 @@ class FiscalYearAnchoredStatementComparativePolicyTest {
   private static final BookIdentity FEBRUARY_YEAR_BOOK =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Leap Shop")),
-          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("02-29"));
   private static final BookIdentity CALENDAR_YEAR_BOOK =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Calendar Shop")),
-          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"));
 

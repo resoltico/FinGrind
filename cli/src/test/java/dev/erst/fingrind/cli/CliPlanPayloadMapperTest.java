@@ -10,7 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
@@ -74,7 +74,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                             accountBalanceFacts()),
                         new LedgerJournalEntry.Succeeded(
                             stepId("@plan-boundary:rollback"),
-                            LedgerJournalStep.boundary(LedgerBoundaryPhase.ROLLBACK),
+                            LedgerJournalStep.boundary(LedgerBoundaryCheckpoint.ROLLBACK),
                             startedAt,
                             finishedAt,
                             List.of()),
@@ -164,8 +164,8 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
 
     CliPlanJsonModels.PlanBoundaryStepDataPayload boundary =
         assertInstanceOf(CliPlanJsonModels.PlanBoundaryStepDataPayload.class, steps.get(6).data());
-    assertEquals("rollback", boundary.phase());
-    assertEquals(LedgerBoundaryPhase.ROLLBACK, steps.get(6).boundaryPhase());
+    assertEquals("rollback", boundary.checkpoint());
+    assertEquals(LedgerBoundaryCheckpoint.ROLLBACK, steps.get(6).boundaryCheckpoint());
 
     assertNull(steps.get(7).data());
     assertNull(steps.get(8).data());
@@ -242,7 +242,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
             CliPlanJsonModels.PostingPageStepDataPayload.class,
             Objects.requireNonNull(payload.journal(), "journal").steps().getFirst().data());
     assertEquals(1, postingPage.postings().size());
-    assertNull(postingPage.postings().getFirst().reversalTarget());
+    assertNull(postingPage.postings().getFirst().reversesPostingId());
     assertEquals(List.of("approval-idem-1"), postingPage.postings().getFirst().approvalIds());
   }
 
@@ -270,7 +270,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         assertInstanceOf(
             CliPlanJsonModels.PostingPageStepDataPayload.class,
             Objects.requireNonNull(payload.journal(), "journal").steps().getFirst().data());
-    assertEquals("prior-posting-1", postingPage.postings().getFirst().reversalTarget());
+    assertEquals("prior-posting-1", postingPage.postings().getFirst().reversesPostingId());
   }
 
   @Test
@@ -318,7 +318,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     return List.of(
         LedgerFact.text("postingId", "posting-1"),
         LedgerFact.text("postingKind", "STANDARD"),
-        LedgerFact.text("postingOriginKind", "REVERSAL_ADJUSTMENT"),
+        LedgerFact.text("postingOriginKind", "REVERSAL"),
         LedgerFact.text("reversalState", "reversal"),
         LedgerFact.text("effectiveDate", "2026-05-14"),
         LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
@@ -340,12 +340,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                     List.of(
                         LedgerFact.text("sourceDocumentId", "document-idem-1"),
                         LedgerFact.text("sourceDocumentType", "cash-receipt"),
-                        LedgerFact.text("documentDate", "2026-05-14"),
-                        LedgerFact.text("capturedAt", "2026-05-14T10:00:00Z"),
-                        LedgerFact.text("storageLocator", "vault://docs/document-idem-1"),
-                        LedgerFact.text(
-                            "contentSha256",
-                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+                        LedgerFact.text("documentDate", "2026-05-14"))),
                 LedgerFact.group(
                     "approval",
                     List.of(
@@ -372,7 +367,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     return List.of(
         LedgerFact.text("postingId", "posting-1"),
         LedgerFact.text("postingKind", "STANDARD"),
-        LedgerFact.text("postingOriginKind", "REVERSAL_ADJUSTMENT"),
+        LedgerFact.text("postingOriginKind", "REVERSAL"),
         LedgerFact.text("reversalState", "direct"),
         LedgerFact.text("effectiveDate", "2026-05-14"),
         LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
@@ -394,12 +389,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                     List.of(
                         LedgerFact.text("sourceDocumentId", "document-idem-1"),
                         LedgerFact.text("sourceDocumentType", "cash-receipt"),
-                        LedgerFact.text("documentDate", "2026-05-14"),
-                        LedgerFact.text("capturedAt", "2026-05-14T10:00:00Z"),
-                        LedgerFact.text("storageLocator", "vault://docs/document-idem-1"),
-                        LedgerFact.text(
-                            "contentSha256",
-                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+                        LedgerFact.text("documentDate", "2026-05-14"))),
                 LedgerFact.group(
                     "approval",
                     List.of(
@@ -425,12 +415,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                 List.of(
                     LedgerFact.text("sourceDocumentId", "document-idem-1"),
                     LedgerFact.text("sourceDocumentType", "cash-receipt"),
-                    LedgerFact.text("documentDate", "2026-05-14"),
-                    LedgerFact.text("capturedAt", "2026-05-14T10:00:00Z"),
-                    LedgerFact.text("storageLocator", "vault://docs/document-idem-1"),
-                    LedgerFact.text(
-                        "contentSha256",
-                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+                    LedgerFact.text("documentDate", "2026-05-14"))),
             LedgerFact.group(
                 "approval",
                 List.of(
@@ -444,7 +429,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         List.of(
             LedgerFact.text("postingId", "posting-1"),
             LedgerFact.text("postingKind", "STANDARD"),
-            LedgerFact.text("postingOriginKind", "REVERSAL_ADJUSTMENT"),
+            LedgerFact.text("postingOriginKind", "REVERSAL"),
             LedgerFact.text("reversalState", "direct"),
             LedgerFact.text("effectiveDate", "2026-05-14"),
             LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
@@ -468,12 +453,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                 List.of(
                     LedgerFact.text("sourceDocumentId", "document-idem-1"),
                     LedgerFact.text("sourceDocumentType", "cash-receipt"),
-                    LedgerFact.text("documentDate", "2026-05-14"),
-                    LedgerFact.text("capturedAt", "2026-05-14T10:00:00Z"),
-                    LedgerFact.text("storageLocator", "vault://docs/document-idem-1"),
-                    LedgerFact.text(
-                        "contentSha256",
-                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+                    LedgerFact.text("documentDate", "2026-05-14"))),
             LedgerFact.group(
                 "approval",
                 List.of(
@@ -487,7 +467,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         List.of(
             LedgerFact.text("postingId", "posting-1"),
             LedgerFact.text("postingKind", "STANDARD"),
-            LedgerFact.text("postingOriginKind", "REVERSAL_ADJUSTMENT"),
+            LedgerFact.text("postingOriginKind", "REVERSAL"),
             LedgerFact.text("reversalState", "reversal"),
             LedgerFact.text("priorPostingId", "prior-posting-1"),
             LedgerFact.text("effectiveDate", "2026-05-14"),
@@ -527,7 +507,6 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         LedgerFact.text("accountCode", "1110"),
         LedgerFact.text("accountName", "Operating Cash"),
         LedgerFact.text("accountType", "ASSET"),
-        LedgerFact.text("accountRole", "ORDINARY"),
         LedgerFact.text("accountNodeKind", "POSTABLE"),
         LedgerFact.text("parentAccountCode", "1100"),
         LedgerFact.text("financialPositionLineClassification", "CURRENT_ASSET"),

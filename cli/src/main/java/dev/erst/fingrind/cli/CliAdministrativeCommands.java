@@ -175,11 +175,29 @@ final class DeclareAccount extends CliBookRequestOutputModeCommand {
   }
 }
 
+/** Administrative CLI commands that declare or update owned tax registrations. */
+final class DeclareTaxRegistration extends CliBookRequestOutputModeCommand {
+  DeclareTaxRegistration(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
+        .administrative()
+        .runDeclareTaxRegistrationCommand(bookAccess, requestFile, outputMode);
+  }
+}
+
 /** Administrative CLI command that closes one contiguous reporting period. */
-record TransferPeriodResult(
+record InterimResultSweep(
     BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
-  TransferPeriodResult {
+  InterimResultSweep {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     Objects.requireNonNull(outputMode, "outputMode");
@@ -189,6 +207,24 @@ record TransferPeriodResult(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runPeriodResultTransferCommand(bookAccess, reportingPeriod, outputMode);
+        .runInterimResultSweepCommand(bookAccess, reportingPeriod, outputMode);
+  }
+}
+
+/** Administrative CLI command that closes one fiscal year. */
+record FiscalYearClose(
+    BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
+    implements CliCommand.OutputModeCommand {
+  FiscalYearClose {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(reportingPeriod, "reportingPeriod");
+    Objects.requireNonNull(outputMode, "outputMode");
+  }
+
+  @Override
+  public int execute(CliExecutionContext executionContext) {
+    return Objects.requireNonNull(executionContext, "executionContext")
+        .administrative()
+        .runFiscalYearCloseCommand(bookAccess, reportingPeriod, outputMode);
   }
 }

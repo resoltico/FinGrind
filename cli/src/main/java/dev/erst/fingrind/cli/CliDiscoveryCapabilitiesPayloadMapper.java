@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
@@ -42,7 +42,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryCapabilitiesJsonModels.CapabilitiesStorageSlicePayload(
+              new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesStorageSlicePayload(
                   capabilitiesDescriptor.storage()),
               storageHints());
       case REQUEST_INPUT ->
@@ -62,7 +62,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCurrencySlicePayload(
+              new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesCurrencySlicePayload(
                   capabilitiesDescriptor.currencyModel()),
               focusHints(detail));
       case BOOKKEEPING_KERNEL ->
@@ -71,7 +71,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryCapabilitiesJsonModels.CapabilitiesKernelSlicePayload(
+              new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesKernelSlicePayload(
                   capabilitiesDescriptor.bookkeepingKernel()),
               focusHints(detail));
       case RESPONSE_CONTRACT ->
@@ -97,16 +97,18 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
     };
   }
 
-  private static CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload focusedSlicePayload(
-      CapabilitiesDescriptor capabilitiesDescriptor,
-      DiscoveryDetail detail,
-      DiscoveryFocus focus,
-      @Nullable OperationCategory category,
-      ProtocolSuccessPayload data,
-      List<String> nextHints) {
-    return new CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload(
+  private static CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesSlicePayload
+      focusedSlicePayload(
+          CapabilitiesDescriptor capabilitiesDescriptor,
+          DiscoveryDetail detail,
+          DiscoveryFocus focus,
+          @Nullable OperationCategory category,
+          ProtocolSuccessPayload data,
+          List<String> nextHints) {
+    return new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesSlicePayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
+        capabilitiesDescriptor.protocolVersion(),
         detail,
         focus,
         category == null ? null : category.wireValue(),
@@ -201,7 +203,8 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
   private static List<String> commandHints() {
     return List.of(
         "Use --category <discovery|administration|query|write> to narrow command families.",
-        "Rerun with --detail compact for options and outputs, or --detail full for full command descriptors.");
+        "Rerun with --detail compact for options and outputs, or --detail full for full command"
+            + " descriptors.");
   }
 
   private static List<String> storageHints() {
@@ -222,7 +225,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
       CapabilitiesDescriptor capabilitiesDescriptor, DiscoveryDetail detail) {
     return switch (detail) {
       case MINIMAL ->
-          new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSummaryPayload(
+          new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
               List.of(
                   capabilitiesDescriptor.responseModel().successStatus().wireValue(),
                   capabilitiesDescriptor.responseModel().rejectionStatus().wireValue(),
@@ -233,7 +236,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               capabilitiesDescriptor.audit().requestProvenanceFields().size(),
               capabilitiesDescriptor.audit().committedFields().size());
       case COMPACT ->
-          new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload(
+          new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
               capabilitiesDescriptor.responseModel(),
               capabilitiesDescriptor.preflight().semantics(),
               capabilitiesDescriptor.planExecution().journal(),
@@ -241,7 +244,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               capabilitiesDescriptor.audit().requestProvenanceFields().size(),
               capabilitiesDescriptor.audit().committedFields().size());
       case FULL ->
-          new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSlicePayload(
+          new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSlicePayload(
               capabilitiesDescriptor.responseModel(),
               capabilitiesDescriptor.planExecution(),
               capabilitiesDescriptor.audit(),

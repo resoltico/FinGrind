@@ -3,7 +3,9 @@ package dev.erst.fingrind.executor;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.applicationService;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.command;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.conflictingPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareDefaultAccounts;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareNonCashDirectJournalAccounts;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.existingPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.mismatchedReversalJournalEntry;
@@ -14,13 +16,13 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.re
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
@@ -98,11 +100,14 @@ class PostingApplicationServicePreflightTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryCommand command =
           new PostEntryCommand(
-              BookkeepingEntry.cashRevenue(
+              new BookkeepingEntry.Sale(
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("2000"),
                   new AccountCode("1000"),
-                  MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
+                  null,
+                  null),
               generatedEvidence("idem-semantics", "invoice"),
               requestProvenance("idem-semantics"),
               SourceChannel.CLI);
@@ -115,19 +120,30 @@ class PostingApplicationServicePreflightTest {
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
                       PostingRejectionSemantics.accountTypeMismatch(
-                          JournalRecipeKind.CASH_REVENUE.wireValue(),
+                          "entryKind",
+                          BookkeepingEntryKind.SALE.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           dev.erst.fingrind.core.AccountType.ASSET,
                           dev.erst.fingrind.core.AccountType.REVENUE),
+                      PostingRejectionSemantics.cashFlowAssetClassificationMismatch(
+                          "entryKind",
+                          BookkeepingEntryKind.SALE.wireValue(),
+                          "cashAccountCode",
+                          new AccountCode("2000"),
+                          dev.erst.fingrind.core.CashFlowAssetClassification
+                              .CASH_AND_CASH_EQUIVALENT,
+                          null),
                       PostingRejectionSemantics.accountTypeMismatch(
-                          JournalRecipeKind.CASH_REVENUE.wireValue(),
+                          "entryKind",
+                          BookkeepingEntryKind.SALE.wireValue(),
                           "revenueAccountCode",
                           new AccountCode("1000"),
                           dev.erst.fingrind.core.AccountType.REVENUE,
                           dev.erst.fingrind.core.AccountType.ASSET),
                       PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-                          JournalRecipeKind.CASH_REVENUE.wireValue(),
+                          "entryKind",
+                          BookkeepingEntryKind.SALE.wireValue(),
                           new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                           List.of("cash-receipt", "bank-deposit", "card-settlement"))))),
           result);
@@ -141,7 +157,7 @@ class PostingApplicationServicePreflightTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryCommand command =
           new PostEntryCommand(
-              new BookkeepingEntry.Journal(
+              new BookkeepingEntry.DirectJournal(
                   new dev.erst.fingrind.core.JournalEntry(
                       LocalDate.parse("2026-04-07"),
                       List.of(
@@ -172,23 +188,63 @@ class PostingApplicationServicePreflightTest {
           preflightRejected(
               new IdempotencyKey("idem-economic-null"),
               new PostingRejection.EntrySemanticsViolations(
-                  List.of(PostingRejectionSemantics.economicNullJournal("JOURNAL")))),
+                  List.of(
+                      PostingRejectionSemantics.economicNullJournal(
+                          BookkeepingEntryKind.DIRECT_JOURNAL.wireValue())))),
           result);
     }
   }
 
   @Test
-  void preflight_rejectsDuplicateIdempotencyKey() {
+  void preflight_rejectsDirectJournalsThatNeverTouchDeclaredCashAccounts() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareNonCashDirectJournalAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.DirectJournal(
+                  new dev.erst.fingrind.core.JournalEntry(
+                      LocalDate.parse("2026-04-07"),
+                      List.of(
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("3000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("3200"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              Money.parse("EUR", "10.00")))),
+                  null),
+              generatedEvidence("idem-non-cash-direct-journal", "operator-note"),
+              requestProvenance("idem-non-cash-direct-journal"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.preflight(command);
+
+      assertEquals(
+          preflightRejected(
+              new IdempotencyKey("idem-non-cash-direct-journal"),
+              new PostingRejection.EntrySemanticsViolations(
+                  List.of(
+                      PostingRejectionSemantics.cashBasisAccountRequired(
+                          BookkeepingEntryKind.DIRECT_JOURNAL.wireValue(),
+                          List.of(new AccountCode("3000"), new AccountCode("3200")))))),
+          result);
+    }
+  }
+
+  @Test
+  void preflight_rejectsIdempotencyKeyConflict() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
-      bookSession.commit(existingPosting("posting-existing", "idem-1"));
+      bookSession.commit(conflictingPosting("posting-existing", "idem-1"));
       PostingApplicationService applicationService = applicationService(bookSession);
 
       PostEntryResult result = applicationService.preflight(command("idem-1"));
 
       assertEquals(
           preflightRejected(
-              new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey()),
+              new IdempotencyKey("idem-1"), new PostingRejection.IdempotencyKeyConflict()),
           result);
     }
   }

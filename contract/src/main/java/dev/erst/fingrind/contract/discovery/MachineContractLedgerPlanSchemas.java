@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.runtime.ContractResponse.PlanExecutionDescriptor;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -16,6 +17,12 @@ final class MachineContractLedgerPlanSchemas {
   }
 
   static ContractRequestShapes.LedgerPlanRequestShapeDescriptor descriptor() {
+    return descriptor(
+        MachineContractTemplatesCatalog.planTemplate().canonicalPostingTemplate().entryKind());
+  }
+
+  static ContractRequestShapes.LedgerPlanRequestShapeDescriptor descriptor(
+      BookkeepingEntryKind postingEntryKind) {
     PlanExecutionDescriptor execution = MachineContractDomainDescriptors.planExecution();
     return new ContractRequestShapes.LedgerPlanRequestShapeDescriptor(
         MachineContractSchemaSupport.requestFieldDescriptors(
@@ -26,7 +33,7 @@ final class MachineContractLedgerPlanSchemas {
             MachineContractLedgerPlanFieldSets.queryFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractLedgerPlanFieldSets.assertionFields()),
-        MachineContractPostEntrySchemas.descriptor(),
+        MachineContractPostEntrySchemas.descriptor(postingEntryKind),
         MachineContractLedgerPlanRoles.administrationStepKinds(),
         MachineContractLedgerPlanRoles.queryStepKinds(),
         MachineContractLedgerPlanRoles.writeStepKinds(),

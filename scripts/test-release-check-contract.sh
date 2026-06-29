@@ -45,10 +45,15 @@ readonly required_ci_job_names_json="$(fingrind_required_ci_job_names_json)"
 
 grep -Fq "\"contexts\": ${expected_contexts_json}" "${bootstrap_protocol}" || die \
     "bootstrap protocol no longer configures branch protection with the canonical Gate context"
+grep -Fq '"enforce_admins": false' "${bootstrap_protocol}" || die \
+    "bootstrap protocol no longer leaves administrator bypass available for the protected release path"
 grep -Fq "required checks remain exactly \`${expected_check_name}\`" "${bootstrap_protocol}" || die \
     "bootstrap protocol no longer documents Gate as the sole required check"
-grep -Fq "required status checks are exactly \`${expected_check_name}\`" "${release_protocol}" || die \
+grep -Fq "\`main\` protection requires exactly the aggregate \`${expected_check_name}\` check" \
+    "${release_protocol}" || die \
     "release protocol no longer documents Gate as the sole required status check"
+grep -Fq './scripts/verify-release-repo-settings.sh' "${release_protocol}" || die \
+    "release protocol no longer requires the repository-settings verifier"
 grep -Fq './scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer requires the PR Gate verifier"
 grep -Fq 'The aggregate `Gate` check run appears only after `Check`, the published bundle-smoke matrix, and' "${release_protocol}" || die \
@@ -69,6 +74,9 @@ if grep -Fq 'Check`, `Windows bundle smoke`, and `Docker smoke`' "${bootstrap_pr
 fi
 if grep -Fq 'Check`, `Windows bundle smoke`, and `Docker smoke`' "${release_protocol}"; then
     die "release protocol reintroduced the obsolete Windows-and-Docker release-blocking contract"
+fi
+if grep -Fq 'admin enforcement' "${release_protocol}"; then
+    die "release protocol still documents the obsolete admin-enforcement merge deadlock"
 fi
 if grep -Fq 'Contributor devcontainer' "${release_candidate_verifier}"; then
     die "release-candidate verifier reintroduced the obsolete contributor-devcontainer check"

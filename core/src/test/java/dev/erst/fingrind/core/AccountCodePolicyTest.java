@@ -25,43 +25,17 @@ class AccountCodePolicyTest {
         NullPointerException.class,
         () ->
             AccountCodePolicy.validate(
-                nullOf(AccountCode.class),
-                AccountType.ASSET,
-                AccountRole.ORDINARY,
-                AccountTaxonomy.empty()));
+                nullOf(AccountCode.class), AccountType.ASSET, AccountTaxonomy.empty()));
     assertThrows(
         NullPointerException.class,
         () ->
             AccountCodePolicy.validate(
-                accountCode,
-                nullOf(AccountType.class),
-                AccountRole.ORDINARY,
-                AccountTaxonomy.empty()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            AccountCodePolicy.validate(
-                accountCode,
-                AccountType.ASSET,
-                nullOf(AccountRole.class),
-                AccountTaxonomy.empty()));
+                accountCode, nullOf(AccountType.class), AccountTaxonomy.empty()));
     assertDoesNotThrow(
         () ->
             AccountCodePolicy.validate(
                 accountCode,
                 AccountType.ASSET,
-                AccountRole.ORDINARY,
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    java.util.Optional.empty(),
-                    java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    java.util.Optional.empty())));
-    assertDoesNotThrow(
-        () ->
-            AccountCodePolicy.validate(
-                accountCode,
-                AccountType.ASSET,
-                AccountRole.POLARITY_INVERTED,
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
@@ -72,7 +46,6 @@ class AccountCodePolicyTest {
             AccountCodePolicy.validate(
                 accountCode,
                 AccountType.EQUITY,
-                AccountRole.ORDINARY,
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),

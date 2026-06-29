@@ -7,6 +7,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -24,6 +25,9 @@ public interface BookkeepingReportStore {
   /** Aggregates exact debit and credit totals by account and currency for one read-time window. */
   List<AccountCurrencyTotals> accountTotals(
       EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage);
+
+  /** Returns every committed posting inside one reporting window in posting order. */
+  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange);
 
   /** Returns the latest committed posting effective date in one initialized book when present. */
   Optional<LocalDate> latestPostingEffectiveDate();

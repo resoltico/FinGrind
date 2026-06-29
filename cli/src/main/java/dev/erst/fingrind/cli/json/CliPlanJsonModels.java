@@ -7,7 +7,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
@@ -46,9 +46,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
       int stepCount,
       int succeededStepCount,
       int failedStepCount,
-      @Nullable String failedStepId,
-      @Nullable String failureCode,
-      @Nullable String failureMessage) {
+      @Nullable String failedStepId) {
     public LedgerPlanSummaryPayload {
       startedAt = requireText(startedAt, "startedAt");
       finishedAt = requireText(finishedAt, "finishedAt");
@@ -72,17 +70,12 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
             "succeededStepCount and failedStepCount must add up to stepCount.");
       }
       failedStepId = requireOptionalText(failedStepId, "failedStepId");
-      failureCode = requireOptionalText(failureCode, "failureCode");
-      failureMessage = requireOptionalText(failureMessage, "failureMessage");
-      if (failedStepCount == 0
-          && (failedStepId != null || failureCode != null || failureMessage != null)) {
+      if (failedStepCount == 0 && failedStepId != null) {
         throw new IllegalArgumentException(
-            "Failure details must be absent when failedStepCount is zero.");
+            "failedStepId must be absent when failedStepCount is zero.");
       }
-      if (failedStepCount == 1
-          && (failedStepId == null || failureCode == null || failureMessage == null)) {
-        throw new IllegalArgumentException(
-            "Failure details are required when failedStepCount is one.");
+      if (failedStepCount == 1 && failedStepId == null) {
+        throw new IllegalArgumentException("failedStepId is required when failedStepCount is one.");
       }
     }
   }
@@ -103,7 +96,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
       String stepId,
       LedgerJournalKind kind,
       @Nullable LedgerAssertionKind detailKind,
-      @Nullable LedgerBoundaryPhase boundaryPhase,
+      @Nullable LedgerBoundaryCheckpoint boundaryCheckpoint,
       LedgerStepStatus status,
       String startedAt,
       String finishedAt,
@@ -121,10 +114,10 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
         throw new IllegalArgumentException("detailKind must be absent unless kind is ASSERT.");
       }
       if (kind == LedgerJournalKind.PLAN_BOUNDARY) {
-        Objects.requireNonNull(boundaryPhase, "boundaryPhase");
-      } else if (boundaryPhase != null) {
+        Objects.requireNonNull(boundaryCheckpoint, "boundaryCheckpoint");
+      } else if (boundaryCheckpoint != null) {
         throw new IllegalArgumentException(
-            "boundaryPhase must be absent unless kind is PLAN_BOUNDARY.");
+            "boundaryCheckpoint must be absent unless kind is PLAN_BOUNDARY.");
       }
       if (status == LedgerStepStatus.SUCCEEDED) {
         if (failure != null) {
@@ -153,7 +146,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
   /** Tagged union for typed execute-plan journal step payloads. */
   sealed interface LedgerStepDataPayload
       permits EnsureBookStepDataPayload,
-          DeclaredAccountStepDataPayload,
+          AccountDeclarationStepDataPayload,
           PreflightEntryStepDataPayload,
           CommittedEntryStepDataPayload,
           BookInspectionStepDataPayload,
@@ -176,9 +169,10 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
     }
   }
 
-  record DeclaredAccountStepDataPayload(DeclaredAccountPayload account)
+  record AccountDeclarationStepDataPayload(String outcome, DeclaredAccountPayload account)
       implements LedgerStepDataPayload {
-    public DeclaredAccountStepDataPayload {
+    public AccountDeclarationStepDataPayload {
+      outcome = requireText(outcome, "outcome");
       account = requireValue(account, "account");
     }
   }
@@ -305,9 +299,9 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
     }
   }
 
-  record PlanBoundaryStepDataPayload(String phase) implements LedgerStepDataPayload {
+  record PlanBoundaryStepDataPayload(String checkpoint) implements LedgerStepDataPayload {
     public PlanBoundaryStepDataPayload {
-      phase = requireText(phase, "phase");
+      checkpoint = requireText(checkpoint, "checkpoint");
     }
   }
 }

@@ -7,7 +7,7 @@ stage_progress_summary_quality_gates() {
     local latest_pulse
 
     completed_test_classes="$(
-        grep -c '^\[GRADLE-TEST-PULSE\].* phase=class-complete ' "${log_path}" 2>/dev/null || true
+        grep -c '^\[GRADLE-TEST-PULSE\].* event=class-complete ' "${log_path}" 2>/dev/null || true
     )"
     latest_pulse="$(latest_gradle_test_pulse_line "${log_path}")"
     if [[ -z "${latest_pulse}" ]]; then
@@ -27,10 +27,10 @@ stage_progress_summary_jazzer() {
     local latest_pulse
 
     completed_deterministic_classes="$(
-        grep -c '^\[JAZZER-PULSE\] deterministic-tests phase=class-complete ' "${log_path}" 2>/dev/null || true
+        grep -c '^\[JAZZER-PULSE\] deterministic-tests event=class-complete ' "${log_path}" 2>/dev/null || true
     )"
     finished_regression_targets="$(
-        grep -c '^\[JAZZER-PULSE\] regression-target phase=finish target=.* status=' "${log_path}" 2>/dev/null || true
+        grep -c '^\[JAZZER-PULSE\] regression-target event=finish target=.* status=' "${log_path}" 2>/dev/null || true
     )"
     latest_pulse="$(grep '^\[JAZZER-PULSE\]' "${log_path}" | tail -1 2>/dev/null || true)"
     if [[ -z "${latest_pulse}" ]]; then

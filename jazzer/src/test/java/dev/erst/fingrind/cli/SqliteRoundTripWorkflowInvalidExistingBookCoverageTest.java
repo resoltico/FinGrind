@@ -140,13 +140,16 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                 tempDirectory.resolve("invalid-existing-book")));
   }
 
-  private static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
-    return new BookInspection.ResultTransferReadiness(
-        true,
-        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
-        new AccountCode("3200"),
-        null,
-        null,
-        List.of());
+  private static BookInspection.CloseReadiness resultTransferReadyInspection() {
+    return new BookInspection.CloseReadiness(
+        readyTarget(FinancialPositionLineClassification.RESULT_HOLDING, new AccountCode("3200")),
+        readyTarget(
+            FinancialPositionLineClassification.RETAINED_ACCUMULATED, new AccountCode("3300")));
+  }
+
+  private static BookInspection.CloseTargetReadiness readyTarget(
+      FinancialPositionLineClassification classification, AccountCode accountCode) {
+    return new BookInspection.CloseTargetReadiness(
+        true, classification, accountCode, null, null, List.of());
   }
 }

@@ -1,9 +1,11 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -12,10 +14,10 @@ public final class PostingAcceptancePolicy {
   private static final PostingAcceptancePolicy CURRENT_KERNEL = new PostingAcceptancePolicy();
   private final PostingCurrencyAcceptancePolicy postingCurrencyAcceptancePolicy =
       new PostingCurrencyAcceptancePolicy();
-  private final PostingTransferredPeriodResultPolicy postingTransferredPeriodResultPolicy =
-      new PostingTransferredPeriodResultPolicy();
-  private final OpenAccountingPositionAcceptancePolicy openAccountingPositionAcceptancePolicy =
-      new OpenAccountingPositionAcceptancePolicy();
+  private final PostingSweptInterimResultPolicy postingSweptInterimResultPolicy =
+      new PostingSweptInterimResultPolicy();
+  private final OpeningPositionAcceptancePolicy openingPositionAcceptancePolicy =
+      new OpeningPositionAcceptancePolicy();
   private final PostingAccountStatePolicy postingAccountStatePolicy =
       new PostingAccountStatePolicy();
 
@@ -24,51 +26,96 @@ public final class PostingAcceptancePolicy {
     return CURRENT_KERNEL;
   }
 
+  /** Acceptance decision distinguishing fresh acceptance, idempotent replay, and rejection. */
+  public sealed interface Decision permits Decision.Accepted, Decision.Replay, Decision.Rejected {
+    /** Accepted request with its computed semantic fingerprint. */
+    record Accepted(RequestFingerprint requestFingerprint) implements Decision {
+      public Accepted {
+        Objects.requireNonNull(requestFingerprint, "requestFingerprint");
+      }
+    }
+
+    /** Idempotent replay of one already committed posting. */
+    record Replay(CommittedPosting postingFact) implements Decision {
+      public Replay {
+        Objects.requireNonNull(postingFact, "postingFact");
+      }
+    }
+
+    /** Rejected request carrying the first deterministic refusal. */
+    record Rejected(BookkeepingPostingRejection rejection) implements Decision {
+      public Rejected {
+        Objects.requireNonNull(rejection, "rejection");
+      }
+    }
+  }
+
   /** Returns the first deterministic rejection for the supplied posting attempt, if any. */
   public Optional<BookkeepingPostingRejection> rejectionFor(
       PostingRequestModel postingRequest, PostingValidationStore book) {
+    Decision decision = decisionFor(postingRequest, book);
+    if (decision instanceof Decision.Rejected rejected) {
+      return Optional.of(rejected.rejection());
+    }
+    return Optional.empty();
+  }
+
+  /** Returns the full acceptance decision for the supplied posting attempt. */
+  public Decision decisionFor(PostingRequestModel postingRequest, PostingValidationStore book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
     if (!book.allowsInitializedWorkflow()) {
-      return Optional.of(new BookkeepingPostingRejection.BookNotInitialized());
+      return new Decision.Rejected(new BookkeepingPostingRejection.BookNotInitialized());
     }
-    if (book.findExistingPosting(postingRequest.requestProvenance().idempotencyKey()).isPresent()) {
-      return Optional.of(new BookkeepingPostingRejection.DuplicateIdempotencyKey());
+    RequestFingerprint requestFingerprint = RequestFingerprintOwner.fingerprint(postingRequest);
+    Optional<StoredRequestPosting> existingPosting =
+        book.findExistingPosting(postingRequest.requestProvenance().idempotencyKey());
+    if (existingPosting.isPresent()) {
+      StoredRequestPosting storedRequestPosting = existingPosting.orElseThrow();
+      if (storedRequestPosting.requestFingerprint().equals(requestFingerprint)) {
+        return new Decision.Replay(storedRequestPosting.postingFact());
+      }
+      return new Decision.Rejected(new BookkeepingPostingRejection.IdempotencyKeyConflict());
     }
     BookIdentity bookIdentity = initializedBookIdentity(book);
     Optional<BookkeepingPostingRejection> currencyRejection =
         postingCurrencyAcceptancePolicy.rejectionFor(postingRequest, bookIdentity);
     if (currencyRejection.isPresent()) {
-      return currencyRejection;
+      return new Decision.Rejected(currencyRejection.orElseThrow());
     }
-    Optional<BookkeepingPostingRejection> transferredPeriodResultRejection =
-        postingTransferredPeriodResultPolicy.rejectionFor(postingRequest, book);
-    if (transferredPeriodResultRejection.isPresent()) {
-      return transferredPeriodResultRejection;
+    Optional<BookkeepingPostingRejection> sweptInterimResultRejection =
+        postingSweptInterimResultPolicy.rejectionFor(postingRequest, book);
+    if (sweptInterimResultRejection.isPresent()) {
+      return new Decision.Rejected(sweptInterimResultRejection.orElseThrow());
     }
-    Optional<BookkeepingPostingRejection> openAccountingPositionWindowRejection =
-        openAccountingPositionAcceptancePolicy.windowRejection(postingRequest, book);
-    if (openAccountingPositionWindowRejection.isPresent()) {
-      return openAccountingPositionWindowRejection;
+    Optional<BookkeepingPostingRejection> openingPositionWindowRejection =
+        openingPositionAcceptancePolicy.windowRejection(postingRequest, book);
+    if (openingPositionWindowRejection.isPresent()) {
+      return new Decision.Rejected(openingPositionWindowRejection.orElseThrow());
     }
     Optional<BookkeepingPostingRejection> accountRejection =
         postingAccountStatePolicy.rejectionFor(postingRequest, book);
     if (accountRejection.isPresent()) {
-      return accountRejection;
+      return new Decision.Rejected(accountRejection.orElseThrow());
     }
-    Optional<BookkeepingPostingRejection> openAccountingPositionNominalRejection =
-        openAccountingPositionAcceptancePolicy.nominalAccountRejection(postingRequest, book);
-    if (openAccountingPositionNominalRejection.isPresent()) {
-      return openAccountingPositionNominalRejection;
+    Optional<BookkeepingPostingRejection> openingPositionNominalRejection =
+        openingPositionAcceptancePolicy.nominalAccountRejection(postingRequest, book);
+    if (openingPositionNominalRejection.isPresent()) {
+      return new Decision.Rejected(openingPositionNominalRejection.orElseThrow());
     }
     Optional<BookkeepingPostingRejection> resultHoldingReservationRejection =
-        new ResultHoldingReservationPolicy(
-                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).resultTransferPolicy())
+        new ReservedResultClassificationPolicy(
+                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy())
             .rejectionFor(postingRequest, bookIdentity, book);
     if (resultHoldingReservationRejection.isPresent()) {
-      return resultHoldingReservationRejection;
+      return new Decision.Rejected(resultHoldingReservationRejection.orElseThrow());
     }
-    return ReversalAcceptancePolicy.rejectionFor(postingRequest, book);
+    Optional<BookkeepingPostingRejection> reversalRejection =
+        ReversalAcceptancePolicy.rejectionFor(postingRequest, book);
+    if (reversalRejection.isPresent()) {
+      return new Decision.Rejected(reversalRejection.orElseThrow());
+    }
+    return new Decision.Accepted(requestFingerprint);
   }
 
   static BookIdentity initializedBookIdentity(PostingValidationStore book) {

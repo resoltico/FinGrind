@@ -2,6 +2,8 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
@@ -13,11 +15,14 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -59,6 +64,30 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                 }));
 
     assertEquals(new ListAccountsQuery(25, Optional.of(cursor)), command.query());
+  }
+
+  @Test
+  void parse_rejectsInvalidTaxRegistrationCursor() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "list-tax-registrations",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--cursor",
+                      "not-a-valid-cursor"
+                    }));
+
+    assertEquals("--cursor", exception.argument());
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("Unsupported tax registration page cursor"));
+    assertEquals(CliOperationText.listTaxRegistrationsCursorRepairHint(), exception.hint());
   }
 
   @Test
@@ -247,7 +276,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--pdf-out",
                   "reports/trial-balance.pdf",
                   "--output",
-                  "csv"
+                  "json"
                 }));
     AccountLedger accountLedger =
         assertInstanceOf(
@@ -287,14 +316,17 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--pdf-out",
                   "reports/april-summary.pdf",
                   "--output",
-                  "csv"
+                  "json"
                 }));
 
     assertEquals(OutputMode.TEXT, inspectBook.outputMode());
     assertEquals(
-        new TrialBalanceQuery(Optional.of(LocalDate.parse("2026-04-30")), allPostingKinds()),
+        new TrialBalanceQuery(
+            Optional.of(LocalDate.parse("2026-04-30")),
+            allPostingKinds(),
+            ComparativeSelection.none()),
         trialBalance.query());
-    assertEquals(OutputMode.CSV, trialBalance.output().outputMode());
+    assertEquals(OutputMode.JSON, trialBalance.output().outputMode());
     assertEquals(Path.of("reports/trial-balance.pdf"), trialBalance.output().pdfOutPath());
     assertEquals(
         new AccountLedgerQuery(
@@ -305,8 +337,139 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals(
         new PeriodSummaryQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         periodSummary.query());
-    assertEquals(OutputMode.CSV, periodSummary.output().outputMode());
+    assertEquals(OutputMode.JSON, periodSummary.output().outputMode());
     assertEquals(Path.of("reports/april-summary.pdf"), periodSummary.output().pdfOutPath());
+  }
+
+  @Test
+  void parse_taxObligationRequiresAllRequiredArguments() {
+    CliArgumentsException missingTaxRegistrationId =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "tax-obligation",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--period-start",
+                      "2026-04-01",
+                      "--period-end",
+                      "2026-04-30"
+                    }));
+    CliArgumentsException missingPeriodStart =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "tax-obligation",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--tax-registration-id",
+                      "vat-lv",
+                      "--period-end",
+                      "2026-04-30"
+                    }));
+    CliArgumentsException missingPeriodEnd =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "tax-obligation",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--tax-registration-id",
+                      "vat-lv",
+                      "--period-start",
+                      "2026-04-01"
+                    }));
+
+    assertEquals("--tax-registration-id", missingTaxRegistrationId.argument());
+    assertTrue(
+        Objects.requireNonNull(missingTaxRegistrationId.getMessage())
+            .contains("A --tax-registration-id argument is required."));
+    assertEquals("--period-start", missingPeriodStart.argument());
+    assertTrue(
+        Objects.requireNonNull(missingPeriodStart.getMessage())
+            .contains("A --period-start argument is required."));
+    assertEquals("--period-end", missingPeriodEnd.argument());
+    assertTrue(
+        Objects.requireNonNull(missingPeriodEnd.getMessage())
+            .contains("A --period-end argument is required."));
+  }
+
+  @Test
+  void parse_rejectsCsvStdoutWhenPdfArtifactRequestedForReadQueryReports() {
+    for (String[] arguments :
+        List.of(
+            new String[] {
+              "account-balance",
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--account-code",
+              "1000",
+              "--output",
+              "csv",
+              "--pdf-out",
+              "reports/account-balance.pdf"
+            },
+            new String[] {
+              "trial-balance",
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--output",
+              "csv",
+              "--pdf-out",
+              "reports/trial-balance.pdf"
+            },
+            new String[] {
+              "account-ledger",
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--account-code",
+              "1000",
+              "--effective-date-from",
+              "2026-04-01",
+              "--effective-date-to",
+              "2026-04-30",
+              "--output",
+              "csv",
+              "--pdf-out",
+              "reports/account-ledger.pdf"
+            },
+            new String[] {
+              "period-summary",
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--period-start",
+              "2026-04-01",
+              "--period-end",
+              "2026-04-30",
+              "--output",
+              "csv",
+              "--pdf-out",
+              "reports/period-summary.pdf"
+            })) {
+      CliArgumentsException unsupported =
+          assertThrows(CliArgumentsException.class, () -> CliArguments.parse(arguments));
+      assertEquals("--output", unsupported.argument());
+    }
   }
 
   @Test
@@ -329,7 +492,9 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
     assertEquals(
         new TrialBalanceQuery(
-            Optional.of(LocalDate.parse("2026-04-30")), PostingCoverage.NON_CLOSING_POSTINGS),
+            Optional.of(LocalDate.parse("2026-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            ComparativeSelection.none()),
         command.query());
   }
 

@@ -2,8 +2,8 @@ package dev.erst.fingrind.cli;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import org.jspecify.annotations.Nullable;
@@ -47,7 +47,7 @@ public final class CliFuzzLedgerPlanFixtureSupport {
             %s,
             {
               "stepId": "post-jpy",
-              "kind": "post-entry",
+              "kind": "record-sale",
               "posting": %s
             },
             {
@@ -112,7 +112,7 @@ public final class CliFuzzLedgerPlanFixtureSupport {
             %s,
             {
               "stepId": "post-bhd",
-              "kind": "post-entry",
+              "kind": "record-sale",
               "posting": %s
             },
             {
@@ -178,16 +178,11 @@ public final class CliFuzzLedgerPlanFixtureSupport {
 
   public static String declareOrdinaryAccountStepJson(
       String stepId, String accountCode, String accountName, AccountType accountType) {
-    return declareAccountStepJson(
-        stepId, accountCode, accountName, accountType, AccountRole.ORDINARY);
+    return declareAccountStepJson(stepId, accountCode, accountName, accountType);
   }
 
   public static String declareAccountStepJson(
-      String stepId,
-      String accountCode,
-      String accountName,
-      AccountType accountType,
-      AccountRole accountRole) {
+      String stepId, String accountCode, String accountName, AccountType accountType) {
     return """
         {
           "stepId": "%s",
@@ -197,31 +192,29 @@ public final class CliFuzzLedgerPlanFixtureSupport {
         """
         .formatted(
             stepId,
-            declareAccountJson(accountCode, accountName, accountType, accountRole)
-                .indent(4)
-                .stripLeading());
+            declareAccountJson(accountCode, accountName, accountType).indent(4).stripLeading());
   }
 
   public static String declareAccountJson(
-      String accountCode, String accountName, AccountType accountType, AccountRole accountRole) {
+      String accountCode, String accountName, AccountType accountType) {
     return """
         {
           "accountCode": "%s",
           "accountName": "%s",
           "accountType": "%s",
-          "accountRole": "%s",
           "accountNodeKind": "POSTABLE",
           "financialPositionLineClassification": %s,
-          "profitAndLossLineClassification": %s
+          "profitAndLossLineClassification": %s,
+          "cashFlowAssetClassification": %s
         }
         """
         .formatted(
             accountCode,
             accountName,
             accountType.name(),
-            accountRole.name(),
             quotedOrNull(financialPositionLineClassificationWireValue(accountType)),
-            quotedOrNull(profitAndLossLineClassificationWireValue(accountType)));
+            quotedOrNull(profitAndLossLineClassificationWireValue(accountType)),
+            quotedOrNull(cashFlowAssetClassificationWireValue(accountType)));
   }
 
   static byte[] rejectedMissingBookListPostingsLedgerPlanBytes() {
@@ -276,5 +269,11 @@ public final class CliFuzzLedgerPlanFixtureSupport {
       case EXPENSE -> ProfitAndLossLineClassification.OPERATING_EXPENSE.name();
       case ASSET, LIABILITY, EQUITY -> null;
     };
+  }
+
+  private static @Nullable String cashFlowAssetClassificationWireValue(AccountType accountType) {
+    return accountType == AccountType.ASSET
+        ? CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT.name()
+        : null;
   }
 }

@@ -20,7 +20,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
@@ -28,15 +27,14 @@ import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
-import dev.erst.fingrind.core.StorageLocator;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -239,8 +237,8 @@ class JazzerReplayInternalsTest {
                         "evidence.sourceDocuments[].sourceDocumentType",
                         "Cash revenue does not accept invoice evidence.")))));
     assertEquals(
-        PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        JazzerReplayOutcomeSupport.rejectionStatus(new PostingRejection.DuplicateIdempotencyKey()));
+        PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
+        JazzerReplayOutcomeSupport.rejectionStatus(new PostingRejection.IdempotencyKeyConflict()));
     assertEquals(
         PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
         JazzerReplayOutcomeSupport.rejectionStatus(
@@ -250,22 +248,23 @@ class JazzerReplayInternalsTest {
     assertEquals(
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.TransferredPeriodResultViolation(
+            new PostingRejection.SweptInterimResultViolation(
                 java.time.LocalDate.parse("2026-04-07"), java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
         PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.OpenAccountingPositionWindowClosed(
+            new PostingRejection.OpeningPositionWindowClosed(
                 PostingKind.STANDARD, java.time.LocalDate.parse("2026-04-08"))));
     assertEquals(
         PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
+            new PostingRejection.OpeningPositionTouchesNominalAccount(
                 accountCode, dev.erst.fingrind.core.AccountType.REVENUE)));
     assertEquals(
-        PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
+        PostingLifecycleStatus.RESERVED_RESULT_CLASSIFICATION,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ResultHoldingAccountReserved(accountCode)));
+            new PostingRejection.ReservedResultClassification(
+                accountCode, FinancialPositionLineClassification.RESULT_HOLDING)));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         JazzerReplayOutcomeSupport.rejectionStatus(
@@ -310,7 +309,8 @@ class JazzerReplayInternalsTest {
                     new PostingId("posting-1"),
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
-                    CliFuzzFixtures.fixedClock().instant())));
+                    CliFuzzFixtures.fixedClock().instant(),
+                    false)));
   }
 
   @Test
@@ -332,10 +332,11 @@ class JazzerReplayInternalsTest {
     PostEntryCommand command = parsedCommand();
     PostingFact postingFact = postingFact(command, "posting-1");
     PostEntryCommand reversalCommand = reversalCommand();
+    Committed replayedCommit = committed(command, "posting-1", true);
     CommitRejected duplicateRejected =
         new CommitRejected(
             command.requestProvenance().idempotencyKey(),
-            new PostingRejection.DuplicateIdempotencyKey());
+            new PostingRejection.IdempotencyKeyConflict());
 
     SqliteRoundTripWorkflowPersistenceAssertions.verifyDeclaredAccountListing(
         java.util.List.of(
@@ -352,10 +353,11 @@ class JazzerReplayInternalsTest {
     SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
         postingFact, committed(command, "posting-1"), command);
     assertEquals(
-        PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        SqliteRoundTripWorkflowPersistenceAssertions.requireDuplicateRejection(duplicateRejected));
+        PostingLifecycleStatus.IDEMPOTENT_REPLAY,
+        SqliteRoundTripWorkflowPersistenceAssertions.requireIdempotentReplay(
+            replayedCommit, committed(command, "posting-1")));
     assertEquals(
-        PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
+        PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
         SqliteRoundTripWorkflowPersistenceAssertions.verifyRejectedCommitConsistency(
             duplicateRejected, duplicateRejected));
 
@@ -381,7 +383,7 @@ class JazzerReplayInternalsTest {
                     CliFuzzFixtures.journalEntry(command),
                     PostingLineage.direct(),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                     command.evidence(),
                     new CommittedProvenance(
                         command.requestProvenance(),
@@ -448,15 +450,16 @@ class JazzerReplayInternalsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowPersistenceAssertions.requireDuplicateRejection(
-                committed(command, "posting-1")));
+            SqliteRoundTripWorkflowPersistenceAssertions.requireIdempotentReplay(
+                committed(command, "posting-1"), committed(command, "posting-1")));
     assertThrows(
         IllegalStateException.class,
         () ->
-            SqliteRoundTripWorkflowPersistenceAssertions.requireDuplicateRejection(
+            SqliteRoundTripWorkflowPersistenceAssertions.requireIdempotentReplay(
                 new CommitRejected(
                     command.requestProvenance().idempotencyKey(),
-                    new PostingRejection.BookNotInitialized())));
+                    new PostingRejection.BookNotInitialized()),
+                committed(command, "posting-1")));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -508,15 +511,19 @@ class JazzerReplayInternalsTest {
         java.util.List.of("success", "expected-invalid", "unexpected-failure"),
         ReplayOutcomeKind.wireValues());
     assertEquals(ReplayOutcomeKind.SUCCESS, ReplayOutcomeKind.fromWireValue("success"));
-    assertTrue(PostingLifecycleStatus.wireValues().contains("duplicate-idempotency-key"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("idempotency-key-conflict"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("idempotent-replay"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("entry-semantics-violations"));
     assertTrue(
         PostingLifecycleStatus.wireValues().contains("open-accounting-position-window-closed"));
-    assertTrue(PostingLifecycleStatus.wireValues().contains("result-holding-account-reserved"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("reserved-result-classification"));
     assertEquals(
-        PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
-        PostingLifecycleStatus.fromWireValue("duplicate-idempotency-key"));
+        PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
+        PostingLifecycleStatus.fromWireValue("idempotency-key-conflict"));
+    assertEquals(
+        PostingLifecycleStatus.IDEMPOTENT_REPLAY,
+        PostingLifecycleStatus.fromWireValue("idempotent-replay"));
     assertEquals(
         PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION,
         PostingLifecycleStatus.fromWireValue("closed-period-violation"));
@@ -527,8 +534,8 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
         PostingLifecycleStatus.fromWireValue("open-accounting-position-window-closed"));
     assertEquals(
-        PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED,
-        PostingLifecycleStatus.fromWireValue("result-holding-account-reserved"));
+        PostingLifecycleStatus.RESERVED_RESULT_CLASSIFICATION,
+        PostingLifecycleStatus.fromWireValue("reserved-result-classification"));
     assertEquals(
         Path.of("/tmp/project/src/fuzz/resources/example.json"),
         metadata.inputPath(Path.of("/tmp/project")));
@@ -596,17 +603,25 @@ class JazzerReplayInternalsTest {
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        postingLineage.reversalReference().isPresent()
+            ? dev.erst.fingrind.core.PostingOriginKind.REVERSAL
+            : dev.erst.fingrind.core.PostingOriginKind.SALE,
         evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }
 
   private static Committed committed(PostEntryCommand command, String postingId) {
+    return committed(command, postingId, false);
+  }
+
+  private static Committed committed(
+      PostEntryCommand command, String postingId, boolean idempotentReplay) {
     return new Committed(
         new PostingId(postingId),
         command.requestProvenance().idempotencyKey(),
         CliFuzzFixtures.journalEntry(command).effectiveDate(),
-        CliFuzzFixtures.fixedClock().instant());
+        CliFuzzFixtures.fixedClock().instant(),
+        idempotentReplay);
   }
 
   private static AccountingEvidence mismatchedEvidence(PostEntryCommand command) {
@@ -615,11 +630,7 @@ class JazzerReplayInternalsTest {
             new SourceDocumentReference(
                 new SourceDocumentId("document-evidence-mismatch"),
                 new SourceDocumentType("cash-receipt"),
-                LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T12:00:00Z"),
-                new StorageLocator("s3://evidence/document-evidence-mismatch.pdf"),
-                new ContentSha256(
-                    "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"))),
+                LocalDate.parse("2026-04-07"))),
         List.of(
             new ApprovalReference(
                 new ApprovalId("approval-evidence-mismatch"),
@@ -635,12 +646,12 @@ class JazzerReplayInternalsTest {
         accountCode,
         new AccountName("Synthetic " + accountCode.value()),
         AccountType.ASSET,
-        AccountRole.ORDINARY,
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-            Optional.empty()),
+            Optional.empty(),
+            Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
         active,
         CliFuzzFixtures.fixedClock().instant());
   }

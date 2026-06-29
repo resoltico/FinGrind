@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -107,6 +109,9 @@ class MachineContractRequestSchemasTest {
         MachineContractPostEntryComponentSchemas.openingBalanceSchema(),
         MachineContractPostEntryVariantSchemas.openingBalanceSchema());
     assertEquals(
+        MachineContractPostEntryComponentSchemas.evidenceSchema(),
+        MachineContractPostEntryVariantSchemas.evidenceSchema());
+    assertEquals(
         MachineContractPostEntryComponentSchemas.sourceDocumentSchema(),
         MachineContractPostEntryVariantSchemas.sourceDocumentSchema());
     assertEquals(
@@ -114,6 +119,21 @@ class MachineContractRequestSchemasTest {
         MachineContractPostEntryVariantSchemas.approvalSchema());
     assertEquals(
         MachineContractPostEntryComponentSchemas.reversalSchema(),
-        MachineContractPostEntryVariantSchemas.reversalSchema());
+        MachineContractPostEntryVariantSchemas.reversalTargetSchema());
+  }
+
+  @Test
+  void postEntryVariantSchemas_publishOneSchemaPerEntryKindAndRejectNullKinds() {
+    for (BookkeepingEntryKind entryKind : BookkeepingEntryKind.values()) {
+      assertEquals("object", MachineContractPostEntryVariantSchemas.schema(entryKind).get("type"));
+      assertEquals(
+          MachineContractPostEntryComponentSchemas.sourceDocumentSchema(
+              ProtocolCatalog.domain().requestSurface().bookkeepingEntryKind(entryKind)),
+          MachineContractPostEntryVariantSchemas.sourceDocumentSchema(
+              ProtocolCatalog.domain().requestSurface().bookkeepingEntryKind(entryKind)));
+    }
+
+    assertThrows(
+        NullPointerException.class, () -> MachineContractPostEntryVariantSchemas.schema(nullOf()));
   }
 }

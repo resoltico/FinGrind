@@ -244,7 +244,7 @@ TEXT
                     exit 1
                 fi
                 ;;
-            post-entry)
+            record-sale|post-entry)
                 request_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
@@ -262,19 +262,17 @@ TEXT
                     esac
                 done
                 [[ -n "${request_file}" ]] || exit 1
-                grep -Fq '"entryKind": "JOURNAL"' "${request_file}" || exit 1
-                if grep -Fq '"recipeKind": "CASH_REVENUE"' "${request_file}"; then
+                if [[ "${subcommand}" == 'record-sale' ]]; then
+                    grep -Fq '"entryKind": "SALE"' "${request_file}" || exit 1
                     grep -Fq '"cashAccountCode": "cash"' "${request_file}" || exit 1
                     grep -Fq '"revenueAccountCode": "service-revenue"' "${request_file}" || exit 1
                     grep -Fq '"sourceDocumentId": "release-protocol-cash-receipt-1"' "${request_file}" || exit 1
                     grep -Fq '"sourceDocumentType": "cash-receipt"' "${request_file}" || exit 1
                     grep -Fq '"documentDate": "2026-04-08"' "${request_file}" || exit 1
-                    grep -Fq '"capturedAt": "2026-04-08T10:15:30Z"' "${request_file}" || exit 1
-                    grep -Fq '"storageLocator": "vault://release-protocol/cash-receipt-1"' "${request_file}" || exit 1
-                    grep -Fq '"contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"' "${request_file}" || exit 1
                     grep -Fq '"approvals": []' "${request_file}" || exit 1
                     printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
-                elif grep -Fq '"sourceDocumentType": "bank-deposit"' "${request_file}"; then
+                elif grep -Fq '"entryKind": "DIRECT_JOURNAL"' "${request_file}" \
+                    && grep -Fq '"sourceDocumentType": "bank-deposit"' "${request_file}"; then
                     grep -Fq '"accountCode": "operating-bank"' "${request_file}" || exit 1
                     grep -Fq '"accountCode": "cash"' "${request_file}" || exit 1
                     grep -Fq '"side": "DEBIT"' "${request_file}" || exit 1
@@ -305,7 +303,7 @@ TEXT
                 done
                 [[ "${posting_id}" == '01963c70-8d65-7b56-8a64-3c92745d8f73' ]] || exit 1
                 cat <<JSON
-{"status":"ok","payload":{"posting":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f73","postingKind":"STANDARD","postingOriginKind":"JOURNAL","reversalState":"direct","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z","actorId":"release-protocol","actorType":"AGENT","commandId":"release-protocol-transfer","idempotencyKey":"release-protocol-idem-transfer","causationId":"release-protocol-cause-transfer","sourceChannel":"CLI","evidence":{"sourceDocuments":[{"sourceDocumentId":"release-protocol-bank-deposit-1","sourceDocumentType":"bank-deposit","documentDate":"2026-04-08","capturedAt":"2026-04-08T10:15:30Z","storageLocator":"vault://release-protocol/bank-deposit-1","contentSha256":"fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}],"approvals":[]},"lines":[{"accountCode":"operating-bank","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"250"}},{"accountCode":"cash","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"250"}}]}}}
+{"status":"ok","payload":{"posting":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f73","postingKind":"STANDARD","postingOriginKind":"DIRECT_JOURNAL","reversalState":"direct","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z","actorId":"release-protocol","actorType":"AGENT","commandId":"release-protocol-transfer","idempotencyKey":"release-protocol-idem-transfer","causationId":"release-protocol-cause-transfer","sourceChannel":"CLI","evidence":{"sourceDocuments":[{"sourceDocumentId":"release-protocol-bank-deposit-1","sourceDocumentType":"bank-deposit","documentDate":"2026-04-08"}],"approvals":[]},"lines":[{"accountCode":"operating-bank","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"250"}},{"accountCode":"cash","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"250"}}]}}}
 JSON
                 ;;
             trial-balance)
@@ -331,9 +329,24 @@ JSON
                     if [[ "${mode}" == 'unreadable-pdf' ]]; then
                         chmod 000 "${pdf_out}"
                     fi
-                fi
+                    if [[ "${mode}" == 'bad-pdf-stdout' ]]; then
+                        cat <<TEXT
+Trial Balance
+=============
 
-                if [[ "${mode}" == 'bad-report' ]]; then
+As of         : 2026-04-08
+Balance state : Balanced
+TEXT
+                    else
+                        cat <<TEXT
+Artifact
+========
+
+Format : pdf
+Path   : /work/trial-balance.pdf
+TEXT
+                    fi
+                elif [[ "${mode}" == 'bad-report' ]]; then
                     cat <<TEXT
 Trial Balance
 =============
@@ -498,5 +511,23 @@ fi
 printf '%s\n' "${head_failure_output}" | grep -Fq \
     'published container wrote trial-balance.pdf without owner-readable mounted permissions' || die \
     "public container surface verifier misclassified one mounted PDF read failure"
+
+set +e
+pdf_stdout_failure_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
+        FAKE_DOCKER_MODE='bad-pdf-stdout' \
+        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
+)"
+pdf_stdout_failure_exit=$?
+set -e
+
+if [[ ${pdf_stdout_failure_exit} -eq 0 ]]; then
+    die "public container surface verifier accepted a text PDF export without the artifact confirmation block"
+fi
+printf '%s\n' "${pdf_stdout_failure_output}" | grep -Fq \
+    'published text PDF export did not emit one artifact confirmation block' || die \
+    "public container surface verifier did not report the missing text PDF artifact confirmation block"
 
 printf 'public container surface verifier regression: success\n'

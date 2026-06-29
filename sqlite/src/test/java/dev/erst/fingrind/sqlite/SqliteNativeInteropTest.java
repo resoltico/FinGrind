@@ -203,22 +203,12 @@ class SqliteNativeInteropTest {
     try (SqliteNativeDatabase database =
         openNativeDatabase(bookAccess(tempDirectory.resolve("mapper.sqlite")))) {
       try (SqliteNativeStatement missingPrior =
-          SqliteNativeStatements.prepare(
-              database,
-              """
-              select
-                  null, null, null, null, null, null, null, null, null, null, null, null, null, null
-              """)) {
+          SqliteNativeStatements.prepare(database, postingFactProjectionSql("null", "null"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), missingPrior.step());
         assertEquals(PostingLineage.direct(), SqlitePostingMapper.readPostingLineage(missingPrior));
       }
       try (SqliteNativeStatement missingPriorForWrapper =
-          SqliteNativeStatements.prepare(
-              database,
-              """
-              select
-                  null, null, null, null, null, null, null, null, null, null, null, null, null, null
-              """)) {
+          SqliteNativeStatements.prepare(database, postingFactProjectionSql("null", "null"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), missingPriorForWrapper.step());
         assertEquals(
             java.util.Optional.empty(),
@@ -226,11 +216,7 @@ class SqliteNativeInteropTest {
       }
       try (SqliteNativeStatement presentPriorPostingId =
           SqliteNativeStatements.prepare(
-              database,
-              """
-              select
-                  null, null, null, null, null, null, null, null, null, null, null, 'operator reversal', null, 'posting-1'
-              """)) {
+              database, postingFactProjectionSql("'operator reversal'", "'posting-1'"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), presentPriorPostingId.step());
         assertEquals(
             PostingLineage.reversal(
@@ -241,11 +227,7 @@ class SqliteNativeInteropTest {
       }
       try (SqliteNativeStatement missingReason =
           SqliteNativeStatements.prepare(
-              database,
-              """
-              select
-                  null, null, null, null, null, null, null, null, null, null, null, null, null, 'posting-1'
-              """)) {
+              database, postingFactProjectionSql("null", "'posting-1'"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), missingReason.step());
         IllegalStateException exception =
             assertThrows(
@@ -257,11 +239,7 @@ class SqliteNativeInteropTest {
       }
       try (SqliteNativeStatement missingPriorPostingId =
           SqliteNativeStatements.prepare(
-              database,
-              """
-              select
-                  null, null, null, null, null, null, null, null, null, null, null, 'operator reversal', null, null
-              """)) {
+              database, postingFactProjectionSql("'operator reversal'", "null"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), missingPriorPostingId.step());
         IllegalStateException exception =
             assertThrows(
@@ -285,7 +263,13 @@ class SqliteNativeInteropTest {
               select
                   'posting-1',
                   'STANDARD',
-                  'CASH_REVENUE',
+                  'SALE',
+                  '1000',
+                  '2000',
+                  null,
+                  null,
+                  'EUR',
+                  1000,
                   '2026-05-05',
                   '2026-05-05T09:15:30Z',
                   'actor-1',
@@ -296,6 +280,8 @@ class SqliteNativeInteropTest {
                   'corr-1',
                   null,
                   'CLI',
+                  null,
+                  null,
                   null
               """)) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
@@ -315,13 +301,78 @@ class SqliteNativeInteropTest {
                     SqlitePostingMapper.committedPosting(
                         postingRow,
                         lines,
-                        SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"))),
+                        SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
+                        null,
+                        null)),
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
                 .toPublished(
                     SqlitePostingMapper.committedPosting(
                         postingRow,
                         lines,
-                        SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"))));
+                        SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
+                        null,
+                        null)));
+      }
+    }
+  }
+
+  @Test
+  void committedPosting_rejectsReversalOriginWithoutReversalLineageDetails() throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(
+            bookAccess(tempDirectory.resolve("posting-fact-reversal-lineage.sqlite")))) {
+      try (SqliteNativeStatement postingRow =
+          SqliteNativeStatements.prepare(
+              database,
+              """
+              select
+                  'posting-1',
+                  'STANDARD',
+                  'REVERSAL',
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  '2026-05-05',
+                  '2026-05-05T09:15:30Z',
+                  'actor-1',
+                  'AGENT',
+                  'command-1',
+                  'idem-1',
+                  'cause-1',
+                  'corr-1',
+                  null,
+                  'CLI',
+                  null,
+                  null,
+                  null
+              """)) {
+        assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
+        List<JournalLine> lines =
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "10.00")));
+        IllegalStateException exception =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    SqlitePostingMapper.committedPosting(
+                        postingRow,
+                        lines,
+                        SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
+                        null,
+                        null));
+        assertEquals(
+            "Persisted reversal posting is missing reversal lineage details.",
+            exception.getMessage());
       }
     }
   }
@@ -499,6 +550,36 @@ class SqliteNativeInteropTest {
             SqliteNativeInteropTest.class,
             "strlen",
             java.lang.invoke.MethodType.methodType(long.class, MemorySegment.class));
+  }
+
+  private static String postingFactProjectionSql(
+      String reasonSqlLiteral, String priorPostingIdSqlLiteral) {
+    return """
+        select
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            %s,
+            null,
+            %s,
+            null,
+            null
+        """
+        .formatted(reasonSqlLiteral, priorPostingIdSqlLiteral);
   }
 
   private static long strlen(MemorySegment pointer) {

@@ -93,48 +93,14 @@ final class CliBookQueryArguments {
   static CliCommand parseListAccountsCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, LIST_ACCOUNTS_ARGUMENTS);
-    Integer limit = null;
-    @Nullable String cursor = null;
-    @Nullable OutputMode outputMode = null;
-    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
-    while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      if (ProtocolOptions.LIMIT.equals(argument)) {
-        if (limit != null) {
-          throw CliArgumentValueParser.invalid(
-              ProtocolOptions.LIMIT, "Duplicate argument: " + ProtocolOptions.LIMIT);
-        }
-        limit =
-            CliOptionValues.parseIntegerOption(
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.LIMIT),
-                ProtocolOptions.LIMIT);
-        continue;
-      }
-      if (ProtocolOptions.CURSOR.equals(argument)) {
-        if (cursor != null) {
-          throw CliArgumentValueParser.invalid(
-              ProtocolOptions.CURSOR, "Duplicate argument: " + ProtocolOptions.CURSOR);
-        }
-        cursor = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.CURSOR);
-        continue;
-      }
-      outputMode =
-          CliOptionModes.requireOutputMode(
-              outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliOptionModes.supportedOutputModes(
-                  OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
-    }
-    int resolvedLimit =
-        CliArgumentValueParser.requirePageLimit(
-            limit == null ? ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT : limit,
-            ProtocolOptions.LIMIT);
+    CliPagedListWindowArguments.ParsedListWindow parsedWindow =
+        CliPagedListWindowArguments.parse(parsedArguments.commandArguments().listIterator());
     Optional<AccountPageCursor> resolvedCursor =
-        Optional.ofNullable(cursor).map(CliOptionModes::accountPageCursor);
+        Optional.ofNullable(parsedWindow.cursor()).map(CliOptionModes::accountPageCursor);
     return new ListAccounts(
         parsedArguments.bookAccess(),
-        new ListAccountsQuery(resolvedLimit, resolvedCursor),
-        CliOptionModes.resolvedOutputMode(outputMode));
+        new ListAccountsQuery(parsedWindow.limit(), resolvedCursor),
+        parsedWindow.outputMode());
   }
 
   static CliCommand parseListPostingsCommand(List<String> arguments) {
@@ -184,13 +150,13 @@ final class CliBookQueryArguments {
       ListIterator<String> argumentIterator) {
     if (ProtocolOptions.ACCOUNT_CODE.equals(argument)) {
       argumentValues.accountCodeValue =
-          requireSingleTextOption(
+          CliSingleValueOptionRequirements.requireSingleTextOption(
               argumentValues.accountCodeValue, ProtocolOptions.ACCOUNT_CODE, argumentIterator);
       return;
     }
     if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
       argumentValues.effectiveDateFrom =
-          requireSingleDateOption(
+          CliSingleValueOptionRequirements.requireSingleDateOption(
               argumentValues.effectiveDateFrom,
               ProtocolOptions.EFFECTIVE_DATE_FROM,
               argumentIterator);
@@ -198,18 +164,20 @@ final class CliBookQueryArguments {
     }
     if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
       argumentValues.effectiveDateTo =
-          requireSingleDateOption(
+          CliSingleValueOptionRequirements.requireSingleDateOption(
               argumentValues.effectiveDateTo, ProtocolOptions.EFFECTIVE_DATE_TO, argumentIterator);
       return;
     }
     if (ProtocolOptions.LIMIT.equals(argument)) {
       argumentValues.limit =
-          requireSingleIntegerOption(argumentValues.limit, ProtocolOptions.LIMIT, argumentIterator);
+          CliSingleValueOptionRequirements.requireSingleIntegerOption(
+              argumentValues.limit, ProtocolOptions.LIMIT, argumentIterator);
       return;
     }
     if (ProtocolOptions.CURSOR.equals(argument)) {
       argumentValues.cursor =
-          requireSingleTextOption(argumentValues.cursor, ProtocolOptions.CURSOR, argumentIterator);
+          CliSingleValueOptionRequirements.requireSingleTextOption(
+              argumentValues.cursor, ProtocolOptions.CURSOR, argumentIterator);
       return;
     }
     argumentValues.outputMode =
@@ -217,32 +185,6 @@ final class CliBookQueryArguments {
             argumentValues.outputMode,
             CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
             CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
-  }
-
-  private static String requireSingleTextOption(
-      @Nullable String currentValue, String optionName, ListIterator<String> argumentIterator) {
-    if (currentValue != null) {
-      throw CliArgumentValueParser.invalid(optionName, "Duplicate argument: " + optionName);
-    }
-    return CliOptionValues.requireValue(argumentIterator, optionName);
-  }
-
-  private static LocalDate requireSingleDateOption(
-      @Nullable LocalDate currentValue, String optionName, ListIterator<String> argumentIterator) {
-    if (currentValue != null) {
-      throw CliArgumentValueParser.invalid(optionName, "Duplicate argument: " + optionName);
-    }
-    return CliOptionValues.parseLocalDateOption(
-        CliOptionValues.requireValue(argumentIterator, optionName), optionName);
-  }
-
-  private static Integer requireSingleIntegerOption(
-      @Nullable Integer currentValue, String optionName, ListIterator<String> argumentIterator) {
-    if (currentValue != null) {
-      throw CliArgumentValueParser.invalid(optionName, "Duplicate argument: " + optionName);
-    }
-    return CliOptionValues.parseIntegerOption(
-        CliOptionValues.requireValue(argumentIterator, optionName), optionName);
   }
 
   /** Mutable parse accumulator for list-postings command options before query resolution. */

@@ -40,7 +40,6 @@ final class PdfChangesInEquityTableSupport {
     return List.of(
         PdfValueFormatter.displayStatementLineCode(row.lineCode(), row.lineKind()),
         row.lineName(),
-        PdfValueFormatter.displayLineRole(row.lineRole()),
         PdfValueFormatter.displayFinancialPositionLineClassification(row.lineClassification()),
         PdfValueFormatter.displayRowKind(row.lineKind()),
         row.closingBalance().netAmount().currencyUnit().code(),

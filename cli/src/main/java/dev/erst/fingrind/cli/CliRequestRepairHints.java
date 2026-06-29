@@ -8,6 +8,10 @@ import org.jspecify.annotations.Nullable;
 
 /** Builds action-first repair hints for request-shape failures before scaffold fallback. */
 final class CliRequestRepairHints {
+  private static final java.util.regex.Pattern REQUIRED_REQUEST_FIELD_PATTERN =
+      java.util.regex.Pattern.compile(
+          "^Command '.*' requires request field (?<field>[^ ]+) to be '(?<required>[^']+)', but the request carries '(?<actual>[^']+)'\\.$");
+
   private CliRequestRepairHints() {}
 
   static String refine(
@@ -25,10 +29,7 @@ final class CliRequestRepairHints {
     return directHint
         + " If you need a starter file, run '"
         + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-        + (templateOperation == OperationId.POST_ENTRY
-                || templateOperation == OperationId.PREFLIGHT_ENTRY
-            ? ""
-            : " " + templateOperation.wireName())
+        + templateTopicSuffix(templateOperation)
         + "'.";
   }
 
@@ -81,10 +82,27 @@ final class CliRequestRepairHints {
       String fieldName = message.substring("Field must be an integer when present: ".length());
       return "Replace " + fieldName + " with one JSON integer value, then rerun.";
     }
+    java.util.regex.Matcher requestFieldMismatch = REQUIRED_REQUEST_FIELD_PATTERN.matcher(message);
+    if (requestFieldMismatch.matches()) {
+      return "Replace "
+          + requestFieldMismatch.group("field")
+          + " with "
+          + requestFieldMismatch.group("required")
+          + " instead of "
+          + requestFieldMismatch.group("actual")
+          + ", then rerun.";
+    }
     return "";
   }
 
   private static String trimTerminalPeriod(String value) {
     return value.endsWith(".") ? value.substring(0, value.length() - 1) : value;
+  }
+
+  private static String templateTopicSuffix(OperationId templateOperation) {
+    if (templateOperation == OperationId.PREFLIGHT_ENTRY) {
+      return "";
+    }
+    return " " + templateOperation.wireName();
   }
 }

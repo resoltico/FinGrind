@@ -19,7 +19,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL_ADJUSTMENT",
+                  "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -50,8 +50,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -98,7 +97,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL_ADJUSTMENT",
+                  "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "reversal": {
@@ -132,8 +131,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -166,8 +164,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -200,8 +197,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -234,8 +230,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -268,8 +263,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "posting": {
-                    "entryKind": "JOURNAL",
-                    "recipeKind": "CASH_REVENUE",
+                    "entryKind": "SALE",
                     "effectiveDate": "2026-04-07",
                     "cashAccountCode": "1000",
                     "revenueAccountCode": "2000",
@@ -304,8 +298,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -318,8 +311,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                     "causationId": "cause-1"
                   },
                   "posting": {
-                    "entryKind": "JOURNAL",
-                    "recipeKind": "CASH_REVENUE",
+                    "entryKind": "SALE",
                     "effectiveDate": "2026-04-07",
                     "cashAccountCode": "1000",
                     "revenueAccountCode": "2000",
@@ -390,8 +382,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "posting": {
-                    "entryKind": "JOURNAL",
-                    "recipeKind": "CASH_REVENUE",
+                    "entryKind": "SALE",
                     "effectiveDate": "2026-04-07",
                     "cashAccountCode": "1000",
                     "revenueAccountCode": "2000",

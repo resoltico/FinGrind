@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
+import dev.erst.fingrind.executor.bookkeeping.ComparativeRangeResolver;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionRowView;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionSectionView;
@@ -36,15 +37,16 @@ final class FinancialPositionStatementCalculator {
     PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
     var resolvedEffectiveDateAsOf = context.resolvedEffectiveDateAsOf(criteria.effectiveDateAsOf());
     EffectiveDateRange comparativeRange =
-        context
-            .accountingRules()
-            .statementComparativePolicy()
-            .comparativeAsOf(bookIdentity, resolvedEffectiveDateAsOf);
+        ComparativeRangeResolver.asOf(
+            bookIdentity,
+            resolvedEffectiveDateAsOf,
+            criteria.comparativeSelection(),
+            context.accountingRules().statementComparativePolicy());
     List<FinancialPositionSectionView> sections =
         sections(
             bookIdentity,
             context
-                .reportStore()
+                .bookStore()
                 .accountTotals(
                     criteria
                         .effectiveDateAsOf()
@@ -56,7 +58,7 @@ final class FinancialPositionStatementCalculator {
             ? sections(
                 bookIdentity,
                 context
-                    .reportStore()
+                    .bookStore()
                     .accountTotals(
                         EffectiveDateRange.to(comparativeRange.effectiveDateTo().orElseThrow()),
                         postingCoverage))
@@ -86,7 +88,7 @@ final class FinancialPositionStatementCalculator {
       }
       rows.add(
           accountTotal.account().accountType(),
-          ReportingViewSupport.financialPositionRow(accountTotal));
+          ReportingRowViewFactory.financialPositionRow(accountTotal));
     }
     profitAndLossContributionCalculator
         .contributionMap(accountTotals)
@@ -94,10 +96,10 @@ final class FinancialPositionStatementCalculator {
             (currencyUnit, signedMinorUnits) ->
                 rows.add(
                     AccountType.EQUITY,
-                    ReportingViewSupport.currentEarningsFinancialPositionRow(
+                    ReportingRowViewFactory.currentEarningsFinancialPositionRow(
                         currentPeriodResultLine, currencyUnit, signedMinorUnits)));
     List<FinancialPositionSectionView> sections = rows.sections();
-    ReportingViewSupport.assertAccountingEquation(sections);
+    FinancialPositionEquationSupport.assertAccountingEquation(sections);
     return sections;
   }
 
@@ -121,7 +123,7 @@ final class FinancialPositionStatementCalculator {
       return SECTION_ORDER.stream()
           .map(
               accountType ->
-                  ReportingViewSupport.toFinancialPositionSection(
+                  ReportingRowViewFactory.toFinancialPositionSection(
                       accountType, rowsByType.getOrDefault(accountType, List.of())))
           .toList();
     }

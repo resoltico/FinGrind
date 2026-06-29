@@ -1,17 +1,12 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorType;
-import dev.erst.fingrind.core.ApprovalDecision;
-import dev.erst.fingrind.core.ApprovalId;
-import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.SourceDocumentId;
-import dev.erst.fingrind.core.SourceDocumentType;
 import java.util.List;
 import java.util.Map;
 
@@ -23,15 +18,9 @@ final class MachineContractPostEntryFieldSpecs {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-            "Caller-authored bookkeeping entry kind. FinGrind accepts direct journals, explicit opening positions, and explicit reversal adjustments.",
+            "Caller-authored bookkeeping entry kind. FinGrind accepts direct journals and typed business entries for sale, expense, owner contribution, owner withdrawal, opening position, and reversal.",
             MachineContractScalarSchemas.enumStringSchema(
                 "Caller-authored bookkeeping entry kind.", BookkeepingEntryKind.wireValues())),
-        MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
-            "Optional higher-level journal recipe applied only when entryKind is JOURNAL.",
-            MachineContractScalarSchemas.enumStringSchema(
-                "Optional higher-level journal recipe applied only when entryKind is JOURNAL.",
-                JournalRecipeKind.wireValues())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
             "ISO-8601 local date that makes the bookkeeping entry effective.",
@@ -39,37 +28,47 @@ final class MachineContractPostEntryFieldSpecs {
                 "ISO-8601 local date that makes the bookkeeping entry effective.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-            "Declared cash account used by one recipe-backed journal.",
-            accountCodeSchema("Declared cash account used by one recipe-backed journal.")),
+            "Declared cash account used by one sale, expense, owner contribution, or owner withdrawal entry.",
+            accountCodeSchema(
+                "Declared cash account used by one sale, expense, owner contribution, or owner withdrawal entry.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
-            "Declared revenue account credited by the CASH_REVENUE recipe.",
-            accountCodeSchema("Declared revenue account credited by the CASH_REVENUE recipe.")),
+            "Declared revenue account credited by one sale entry.",
+            accountCodeSchema("Declared revenue account credited by one sale entry.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
-            "Declared expense account debited by the CASH_EXPENSE recipe.",
-            accountCodeSchema("Declared expense account debited by the CASH_EXPENSE recipe.")),
+            "Declared expense account debited by one expense entry.",
+            accountCodeSchema("Declared expense account debited by one expense entry.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-            "Declared equity account used by one equity recipe.",
-            accountCodeSchema("Declared equity account used by one equity recipe.")),
+            "Declared equity account used by one owner contribution or owner withdrawal entry.",
+            accountCodeSchema(
+                "Declared equity account used by one owner contribution or owner withdrawal entry.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.AMOUNT,
-            "Exact positive money object carried by one recipe-backed journal.",
+            "Exact positive money object carried by one typed business entry.",
             MachineContractScalarSchemas.moneyObjectSchema(
-                "Exact positive money object carried by one recipe-backed journal.", true)),
+                "Exact positive money object carried by one typed business entry.", true)),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+            "Optional owned foreign-exchange facts for one transaction-currency event translated into book functional currency.",
+            MachineContractPostEntryComponentSchemas.foreignExchangeSchema()),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.TAX,
+            "Optional declared tax selector used by sale and expense entries when this request must resolve through one owned tax registration.",
+            MachineContractPostEntryComponentSchemas.taxSchema()),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.LINES,
-            "Balanced non-empty array of journal lines used by direct JOURNAL requests and REVERSAL_ADJUSTMENT requests.",
+            "Balanced non-empty array of journal lines used by direct-journal and reversal entries.",
             MachineContractSchemaSupport.arraySchema(
-                "Balanced non-empty array of journal lines used by direct JOURNAL requests and REVERSAL_ADJUSTMENT requests.",
+                "Balanced non-empty array of journal lines used by direct-journal and reversal entries.",
                 MachineContractPostEntryComponentSchemas.lineSchema(),
                 2)),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
-            "Balanced non-empty array of opening balances used only by open-accounting-position entries.",
+            "Balanced non-empty array of opening balances used only by opening-position entries.",
             MachineContractSchemaSupport.arraySchema(
-                "Balanced non-empty array of opening balances used only by open-accounting-position entries.",
+                "Balanced non-empty array of opening balances used only by opening-position entries.",
                 MachineContractPostEntryComponentSchemas.openingBalanceSchema(),
                 2)),
         MachineContractFieldSpec.required(
@@ -82,7 +81,7 @@ final class MachineContractPostEntryFieldSpecs {
             MachineContractPostEntryComponentSchemas.provenanceSchema()),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.REVERSAL,
-            "Required reversal target descriptor for REVERSAL_ADJUSTMENT and absent otherwise.",
+            "Required reversal target descriptor for REVERSAL entries and absent otherwise.",
             MachineContractPostEntryComponentSchemas.reversalSchema()));
   }
 
@@ -126,102 +125,35 @@ final class MachineContractPostEntryFieldSpecs {
                 "Exact positive money object for this opening balance.", true)));
   }
 
-  static List<MachineContractFieldSpec> evidenceFields() {
+  static List<MachineContractFieldSpec> taxFields() {
     return List.of(
         MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Evidence.SOURCE_DOCUMENTS,
-            "Non-empty ordered source-document references linked to this posting. Every posting request must retain at least one source document.",
-            MachineContractSchemaSupport.arraySchema(
-                "Non-empty ordered source-document references linked to this posting. Every posting request must retain at least one source document.",
-                MachineContractPostEntryComponentSchemas.sourceDocumentSchema(),
-                1)),
+            ProtocolPostEntryFields.Tax.TAX_REGISTRATION_ID,
+            "Declared tax-registration identifier selected for this entry.",
+            MachineContractScalarSchemas.nonBlankStringSchema(
+                "Declared tax-registration identifier selected for this entry.")),
         MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Evidence.APPROVALS,
-            "Ordered approval references linked to this posting. The list may be empty when no approval exists for the posting.",
-            MachineContractSchemaSupport.arraySchema(
-                "Ordered approval references linked to this posting.",
-                MachineContractPostEntryComponentSchemas.approvalSchema(),
-                0)));
+            ProtocolPostEntryFields.Tax.TAX_CODE,
+            "Declared tax code selected inside the named tax registration.",
+            MachineContractScalarSchemas.nonBlankStringSchema(
+                "Declared tax code selected inside the named tax registration.")));
+  }
+
+  static List<MachineContractFieldSpec> evidenceFields() {
+    return MachineContractPostEntryEvidenceFieldSpecs.evidenceFields();
   }
 
   static List<MachineContractFieldSpec> sourceDocumentFields() {
-    return List.of(
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_ID,
-            "Stable identifier of one retained source document.",
-            MachineContractScalarSchemas.tokenStringSchema(
-                "Stable identifier of one retained source document.",
-                SourceDocumentId.pattern(),
-                SourceDocumentId.maxLength())),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_TYPE,
-            "Caller-authored source-document classification token. Inspect postEntry.evidenceProfiles[] for the live per-profile policy and any enumerated accepted values.",
-            MachineContractScalarSchemas.tokenStringSchema(
-                "Caller-authored source-document classification token. Inspect postEntry.evidenceProfiles[] for the live per-profile policy and any enumerated accepted values.",
-                SourceDocumentType.pattern(),
-                SourceDocumentType.maxLength())),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.SourceDocument.DOCUMENT_DATE,
-            "Economic or issuance date carried by the retained source document.",
-            MachineContractScalarSchemas.dateStringSchema(
-                "Economic or issuance date carried by the retained source document.")),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.SourceDocument.CAPTURED_AT,
-            "UTC timestamp when the retained source document was captured into evidence custody.",
-            MachineContractScalarSchemas.instantStringSchema(
-                "UTC timestamp when the retained source document was captured into evidence custody.")),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.SourceDocument.STORAGE_LOCATOR,
-            "Stable retained locator for the stored evidence artifact.",
-            MachineContractScalarSchemas.nonBlankStringSchema(
-                "Stable retained locator for the stored evidence artifact.")),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.SourceDocument.CONTENT_SHA256,
-            "Lowercase SHA-256 hex digest of the retained evidence artifact content.",
-            MachineContractScalarSchemas.tokenStringSchema(
-                "Lowercase SHA-256 hex digest of the retained evidence artifact content.",
-                "^[0-9a-f]{64}$",
-                64)));
+    return MachineContractPostEntryEvidenceFieldSpecs.sourceDocumentFields();
+  }
+
+  static List<MachineContractFieldSpec> sourceDocumentFields(
+      RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts) {
+    return MachineContractPostEntryEvidenceFieldSpecs.sourceDocumentFields(entryKindFacts);
   }
 
   static List<MachineContractFieldSpec> approvalFields() {
-    return List.of(
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Approval.APPROVAL_ID,
-            "Stable identifier of one retained approval fact.",
-            MachineContractScalarSchemas.tokenStringSchema(
-                "Stable identifier of one retained approval fact.",
-                ApprovalId.pattern(),
-                ApprovalId.maxLength())),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Approval.APPROVAL_TYPE,
-            "Caller-authored approval classification token.",
-            MachineContractScalarSchemas.tokenStringSchema(
-                "Caller-authored approval classification token.",
-                ApprovalType.pattern(),
-                ApprovalType.maxLength())),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Approval.APPROVER_ID,
-            "Stable identifier of the approving actor retained with this approval fact.",
-            MachineContractScalarSchemas.nonBlankStringSchema(
-                "Stable identifier of the approving actor retained with this approval fact.")),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Approval.APPROVER_TYPE,
-            "Approver classification from the live actorType enum vocabulary.",
-            MachineContractScalarSchemas.enumStringSchema(
-                "Approver classification from the live actorType enum vocabulary.",
-                ActorType.wireValues())),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Approval.DECISION,
-            "Retained approval decision for this approval fact.",
-            MachineContractScalarSchemas.enumStringSchema(
-                "Retained approval decision for this approval fact.",
-                ApprovalDecision.wireValues())),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Approval.APPROVED_AT,
-            "UTC timestamp when the approval decision was recorded.",
-            MachineContractScalarSchemas.instantStringSchema(
-                "UTC timestamp when the approval decision was recorded.")));
+    return MachineContractPostEntryEvidenceFieldSpecs.approvalFields();
   }
 
   static List<MachineContractFieldSpec> provenanceFields() {
@@ -295,16 +227,17 @@ final class MachineContractPostEntryFieldSpecs {
   static MachineContractFieldSpec requiredAmountField() {
     return MachineContractFieldSpec.required(
         ProtocolPostEntryFields.TopLevel.AMOUNT,
-        "Exact positive money object carried by this recipe-backed journal.",
+        "Exact positive money object carried by this typed business entry.",
         MachineContractScalarSchemas.moneyObjectSchema(
-            "Exact positive money object carried by this recipe-backed journal.", true));
+            "Exact positive money object carried by this typed business entry.", true));
   }
 
-  static MachineContractFieldSpec requiredEvidenceField() {
+  static MachineContractFieldSpec requiredEvidenceField(
+      RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts) {
     return MachineContractFieldSpec.required(
         ProtocolPostEntryFields.TopLevel.EVIDENCE,
         "First-class retained source-document and approval evidence linked to this bookkeeping entry.",
-        MachineContractPostEntryVariantSchemas.evidenceSchema());
+        MachineContractPostEntryVariantSchemas.evidenceSchema(entryKindFacts));
   }
 
   static MachineContractFieldSpec requiredProvenanceField() {

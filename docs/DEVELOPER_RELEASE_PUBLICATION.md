@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows publication lane, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did the windows publication lane expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -119,7 +119,8 @@ guesswork.
 When the defect is in workflow publication logic rather than in the released code payload, the
 safe repair path is:
 1. fix the workflow or verifier on `main`
-2. merge that repair normally through branch protection
+2. merge that repair through the protected PR path, using GitHub's administrator bypass when the
+   single-owner review requirement would otherwise deadlock the repair
 3. rerun the release workflow with `workflow_dispatch` against the existing tag
 4. verify the public GitHub Release and public container surfaces directly
 
@@ -150,6 +151,7 @@ The main executable evidence owners for this surface are:
 - `./scripts/verify-public-container-surface.sh`
 - `./scripts/test-verify-github-release.sh`
 - `./scripts/test-verify-public-container-surface.sh`
+- `./scripts/reconcile-release-primary-checkout.sh`
 - `./scripts/verify-release-primary-checkout.sh`
 
 The minimum operator proof after a public release is:
@@ -171,6 +173,9 @@ object-store defect. The same rule applies when repo hygiene reports Git coordin
 inspect ownership with `lsof`, remove only orphaned lock files, and treat any live owner as proof
 that the checkout is unavailable for publication. If repo hygiene reports a persisted `gc.log`,
 run manual Git housekeeping first and remove that log only after a successful cleanup pass.
+After publication, collapse that clean clone back onto the canonical primary-checkout path with
+`./scripts/reconcile-release-primary-checkout.sh`; a corrupt original checkout is not an
+acceptable second source of truth to leave behind.
 
 `verify-public-container-surface.sh` also owns part of the public bookkeeping contract. It proves
 that the published image can initialize one mounted book with the current lifecycle grammar,

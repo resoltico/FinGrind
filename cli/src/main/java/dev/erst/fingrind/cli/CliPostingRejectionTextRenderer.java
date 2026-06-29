@@ -51,15 +51,15 @@ final class CliPostingRejectionTextRenderer {
         rows.add(List.of("Functional currency", details.functionalCurrency()));
         rows.add(List.of("Attempted currency", details.attemptedCurrency()));
       }
-      case CliRejectionJsonModels.OpenAccountingPositionWindowClosedDetails details -> {
+      case CliRejectionJsonModels.OpeningPositionWindowClosedDetails details -> {
         rows.add(List.of("First blocking posting kind", details.firstBlockingPostingKind()));
         rows.add(List.of("First blocking effective date", details.firstBlockingEffectiveDate()));
       }
-      case CliRejectionJsonModels.OpenAccountingPositionNominalAccountDetails details -> {
+      case CliRejectionJsonModels.OpeningPositionNominalAccountDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Account type", details.accountType()));
       }
-      case CliRejectionJsonModels.TransferredPeriodResultViolationDetails details -> {
+      case CliRejectionJsonModels.SweptInterimResultViolationDetails details -> {
         rows.add(List.of("Transferred through", details.transferredThroughEffectiveDate()));
         rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
       }

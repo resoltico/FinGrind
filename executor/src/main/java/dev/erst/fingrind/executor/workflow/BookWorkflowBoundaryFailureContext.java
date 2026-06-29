@@ -10,38 +10,44 @@ record BookWorkflowBoundaryFailureContext(
     BookWorkflowPlanId planId,
     Instant planStartedAt,
     List<BookWorkflowJournalEntry> entries,
-    BookWorkflowBoundaryPhase phase,
-    Instant phaseStartedAt,
+    BookWorkflowBoundaryCheckpoint checkpoint,
+    Instant checkpointStartedAt,
     @Nullable BookWorkflowStepId triggerStepId,
     @Nullable BookWorkflowJournalDescriptor triggerDescriptor) {
   BookWorkflowBoundaryFailureContext {
     Objects.requireNonNull(planId, "planId");
     Objects.requireNonNull(planStartedAt, "planStartedAt");
     Objects.requireNonNull(entries, "entries");
-    Objects.requireNonNull(phase, "phase");
-    Objects.requireNonNull(phaseStartedAt, "phaseStartedAt");
+    Objects.requireNonNull(checkpoint, "checkpoint");
+    Objects.requireNonNull(checkpointStartedAt, "checkpointStartedAt");
   }
 
   static BookWorkflowBoundaryFailureContext begin(
       BookWorkflowPlanId planId, Instant planStartedAt, List<BookWorkflowJournalEntry> entries) {
     return new BookWorkflowBoundaryFailureContext(
-        planId, planStartedAt, entries, BookWorkflowBoundaryPhase.BEGIN, planStartedAt, null, null);
+        planId,
+        planStartedAt,
+        entries,
+        BookWorkflowBoundaryCheckpoint.BEGIN,
+        planStartedAt,
+        null,
+        null);
   }
 
   static BookWorkflowBoundaryFailureContext beforeStep(
       BookWorkflowPlanId planId,
       Instant planStartedAt,
       List<BookWorkflowJournalEntry> entries,
-      BookWorkflowBoundaryPhase phase,
+      BookWorkflowBoundaryCheckpoint checkpoint,
       BookWorkflowStep step,
-      Instant phaseStartedAt) {
+      Instant checkpointStartedAt) {
     Objects.requireNonNull(step, "step");
     return new BookWorkflowBoundaryFailureContext(
         planId,
         planStartedAt,
         entries,
-        phase,
-        phaseStartedAt,
+        checkpoint,
+        checkpointStartedAt,
         step.stepId(),
         new BookWorkflowJournalDescriptor.Step(step));
   }
@@ -50,11 +56,17 @@ record BookWorkflowBoundaryFailureContext(
       BookWorkflowPlanId planId,
       Instant planStartedAt,
       List<BookWorkflowJournalEntry> entries,
-      BookWorkflowBoundaryPhase phase,
+      BookWorkflowBoundaryCheckpoint checkpoint,
       BookWorkflowJournalEntry entry,
-      Instant phaseStartedAt) {
+      Instant checkpointStartedAt) {
     Objects.requireNonNull(entry, "entry");
     return new BookWorkflowBoundaryFailureContext(
-        planId, planStartedAt, entries, phase, phaseStartedAt, entry.stepId(), entry.descriptor());
+        planId,
+        planStartedAt,
+        entries,
+        checkpoint,
+        checkpointStartedAt,
+        entry.stepId(),
+        entry.descriptor());
   }
 }

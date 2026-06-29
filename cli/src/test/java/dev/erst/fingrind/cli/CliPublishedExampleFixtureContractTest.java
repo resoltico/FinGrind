@@ -60,7 +60,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
       Map<String, String> recordedFixtures, PublishedFixtureScenario scenario) throws IOException {
     JsonNode committed =
         runJsonCommand(
-            "post-entry",
+            "record-sale",
             "--book-file",
             scenario.bookFile().toString(),
             "--book-key-file",

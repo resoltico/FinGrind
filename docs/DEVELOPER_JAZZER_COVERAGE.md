@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what remains uncovered by the jazzer suite"]
@@ -70,7 +70,7 @@ What it asserts:
 - opened books with undeclared accounts replay as `unknown-account`
 - declared accounts that are later deactivated replay as `inactive-account`
 - a first commit persists one `PostingFact`
-- a duplicate commit returns `duplicate-idempotency-key`
+- an exact-request duplicate commit replays successfully with `idempotentReplay=true`
 - missing reversal reason is rejected at request parsing, and missing reversal target rejects deterministically on both preflight and commit
 - stored fact shape matches the parsed command when commit succeeds
 
@@ -97,8 +97,8 @@ What it asserts:
 - deactivated accounts replay as `inactive-account`
 - one valid request commits durably into one selected initialized book file
 - the durable book file is opened through SQLite3 Multiple Ciphers rather than plain SQLite
-- reloading by idempotency returns the same fact shape
-- duplicate commit attempts are rejected in the same book
+- reloading by idempotency returns the same fact shape with `idempotentReplay=true`
+- same-key near-miss duplicate commits are rejected in the same book with `idempotency-key-conflict`
 - parent-directory creation works for nested arbitrary paths
 - read/report surfaces render non-blank machine/text/CSV documents from the real workflow path
 - unknown posting and unknown-account read/report rejections render through the same owned

@@ -2,13 +2,15 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import java.util.Objects;
 import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 
 /** Closed result family for account-balance queries. */
 public sealed interface AccountBalanceResult
     permits AccountBalanceResult.Reported, AccountBalanceResult.Rejected {
 
   /** Folds the closed result family without transport-layer pattern switching. */
-  <T> T fold(Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper);
+  <T extends @Nullable Object> T fold(
+      Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper);
 
   /** Success result carrying one computed account-balance snapshot. */
   record Reported(AccountBalanceSnapshot snapshot) implements AccountBalanceResult {
@@ -18,7 +20,8 @@ public sealed interface AccountBalanceResult
     }
 
     @Override
-    public <T> T fold(Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper) {
+    public <T extends @Nullable Object> T fold(
+        Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper) {
       return Objects.requireNonNull(reportedMapper, "reportedMapper").apply(this);
     }
   }
@@ -31,7 +34,8 @@ public sealed interface AccountBalanceResult
     }
 
     @Override
-    public <T> T fold(Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper) {
+    public <T extends @Nullable Object> T fold(
+        Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper) {
       return Objects.requireNonNull(rejectedMapper, "rejectedMapper").apply(this);
     }
   }

@@ -430,14 +430,51 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
         assertInstanceOf(
             PrintRequestTemplate.class,
             CliArguments.parse(new String[] {"print-request-template", "declare-account"}));
+    PrintRequestTemplate declareTaxRegistration =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(
+                new String[] {"print-request-template", "declare-tax-registration"}));
     PrintRequestTemplate preflight =
         assertInstanceOf(
             PrintRequestTemplate.class,
             CliArguments.parse(new String[] {"print-request-template", "preflight-entry"}));
+    PrintRequestTemplate recordSale =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "record-sale"}));
+    PrintRequestTemplate recordExpense =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "record-expense"}));
+    PrintRequestTemplate recordOwnerContribution =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(
+                new String[] {"print-request-template", "record-owner-contribution"}));
+    PrintRequestTemplate recordOwnerWithdrawal =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "record-owner-withdrawal"}));
+    PrintRequestTemplate recordOpeningPosition =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "record-opening-position"}));
+    PrintRequestTemplate recordReversal =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "record-reversal"}));
 
     assertEquals(OperationId.POST_ENTRY, postEntry.commandTopic());
     assertEquals(OperationId.DECLARE_ACCOUNT, declareAccount.commandTopic());
+    assertEquals(OperationId.DECLARE_TAX_REGISTRATION, declareTaxRegistration.commandTopic());
     assertEquals(OperationId.PREFLIGHT_ENTRY, preflight.commandTopic());
+    assertEquals(OperationId.RECORD_SALE, recordSale.commandTopic());
+    assertEquals(OperationId.RECORD_EXPENSE, recordExpense.commandTopic());
+    assertEquals(OperationId.RECORD_OWNER_CONTRIBUTION, recordOwnerContribution.commandTopic());
+    assertEquals(OperationId.RECORD_OWNER_WITHDRAWAL, recordOwnerWithdrawal.commandTopic());
+    assertEquals(OperationId.RECORD_OPENING_POSITION, recordOpeningPosition.commandTopic());
+    assertEquals(OperationId.RECORD_REVERSAL, recordReversal.commandTopic());
   }
 
   @Test
@@ -472,7 +509,9 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertTrue(exception.failure().message().contains("Unsupported request-template topic"));
     assertTrue(exception.failure().message().contains("post-entry"));
     assertTrue(exception.failure().message().contains("preflight-entry"));
+    assertTrue(exception.failure().message().contains("record-sale"));
     assertTrue(exception.failure().message().contains("declare-account"));
+    assertTrue(exception.failure().message().contains("declare-tax-registration"));
   }
 
   @Test

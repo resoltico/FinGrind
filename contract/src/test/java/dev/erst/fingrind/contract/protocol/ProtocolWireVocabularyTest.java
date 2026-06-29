@@ -14,8 +14,6 @@ class ProtocolWireVocabularyTest {
     assertEquals("ok", ProtocolEnvelopeStatus.OK.toString());
     assertEquals("rejected", ProtocolEnvelopeStatus.REJECTED.toString());
     assertEquals("error", ProtocolEnvelopeStatus.ERROR.toString());
-    assertEquals(List.of("pdf-exported"), ProtocolDiagnosticCode.wireValues());
-    assertEquals("pdf-exported", ProtocolDiagnosticCode.PDF_EXPORTED.toString());
     assertEquals(
         List.of("discovery", "administration", "query", "write"), OperationCategory.wireValues());
     assertEquals("discovery", OperationCategory.DISCOVERY.toString());
@@ -75,8 +73,6 @@ class ProtocolWireVocabularyTest {
     assertEquals(ProtocolEnvelopeStatus.OK, ProtocolEnvelopeStatus.fromWireValue("ok"));
     assertEquals(ProtocolEnvelopeStatus.REJECTED, ProtocolEnvelopeStatus.fromWireValue("rejected"));
     assertEquals(ProtocolEnvelopeStatus.ERROR, ProtocolEnvelopeStatus.fromWireValue("error"));
-    assertEquals(
-        ProtocolDiagnosticCode.PDF_EXPORTED, ProtocolDiagnosticCode.fromWireValue("pdf-exported"));
     assertEquals(OperationCategory.DISCOVERY, OperationCategory.fromWireValue("discovery"));
     assertEquals(
         OperationCategory.ADMINISTRATION, OperationCategory.fromWireValue("administration"));
@@ -117,9 +113,6 @@ class ProtocolWireVocabularyTest {
 
     assertThrows(
         IllegalArgumentException.class, () -> ProtocolEnvelopeStatus.fromWireValue("partial-ok"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> ProtocolDiagnosticCode.fromWireValue("pdf-export-pending"));
     assertThrows(
         IllegalArgumentException.class, () -> OperationCategory.fromWireValue("inspection"));
     assertThrows(

@@ -448,10 +448,9 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("writeBundleManifest"));
     assertFalse(distributionPlugin.contains("src/bundle/root/bundle-manifest.json"));
     assertTrue(bundleReadme.contains("quick-start-request.json"));
-    assertTrue(quickStartRequest.contains("\"entryKind\": \"JOURNAL\""));
-    assertTrue(quickStartRequest.contains("\"lines\": ["));
-    assertTrue(quickStartRequest.contains("\"accountCode\": \"cash\""));
-    assertTrue(quickStartRequest.contains("\"accountCode\": \"service-revenue\""));
+    assertTrue(quickStartRequest.contains("\"entryKind\": \"SALE\""));
+    assertTrue(quickStartRequest.contains("\"cashAccountCode\": \"cash\""));
+    assertTrue(quickStartRequest.contains("\"revenueAccountCode\": \"service-revenue\""));
     assertFalse(quickStartRequest.contains("\"recipeKind\": \"CASH_REVENUE\""));
   }
 

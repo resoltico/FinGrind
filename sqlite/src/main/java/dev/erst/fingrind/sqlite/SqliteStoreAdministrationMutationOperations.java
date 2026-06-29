@@ -1,8 +1,12 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
+import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
@@ -14,6 +18,7 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -86,7 +91,6 @@ final class SqliteStoreAdministrationMutationOperations {
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     lifecycle.ensureOpenSession();
@@ -106,28 +110,26 @@ final class SqliteStoreAdministrationMutationOperations {
 
             transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
             Optional<RegisteredAccount> existingAccount =
-                SqliteStatementQueries.findOneAccount(activeDatabase, accountCode);
+                SqliteAccountStatementQueries.findOneAccount(activeDatabase, accountCode);
             AccountDeclarationOutcome declarationOutcome =
                 RegisteredAccount.declare(
                     existingAccount.orElse(null),
-                    new AccountDeclaration(
-                        accountCode, accountName, accountType, accountRole, accountTaxonomy),
+                    new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy),
                     declaredAt);
             if (declarationOutcome instanceof AccountDeclarationOutcome.Rejected rejected) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
               return rejected;
             }
-            RegisteredAccount declaredAccount =
-                ((AccountDeclarationOutcome.Declared) declarationOutcome).account();
+            if (declarationOutcome instanceof AccountDeclarationOutcome.Unchanged unchanged) {
+              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+              return unchanged;
+            }
+            RegisteredAccount declaredAccount = declaredAccount(declarationOutcome);
             SqliteMutationWriter.upsertAccount(activeDatabase, declaredAccount);
             SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase,
-                BookAuditEvent.accountDeclared(
-                    declaredAt,
-                    declaredAccount.accountCode(),
-                    existingAccount.isPresent() && !existingAccount.orElseThrow().active()));
+                activeDatabase, accountAuditEvent(declaredAt, declarationOutcome));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return new AccountDeclarationOutcome.Declared(declaredAccount);
+            return declarationOutcome;
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
@@ -137,6 +139,114 @@ final class SqliteStoreAdministrationMutationOperations {
             throw exception;
           }
         });
+  }
+
+  DeclareTaxRegistrationResult declareTaxRegistration(
+      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+    lifecycle.ensureOpenSession();
+    context.accessMode().requireWritableMutation();
+    Objects.requireNonNull(command, "command");
+    Objects.requireNonNull(declaredAt, "declaredAt");
+    if (Files.notExists(context.bookPath())) {
+      return new DeclareTaxRegistrationResult.Rejected(
+          new TaxDeclarationRejection.BookNotInitialized());
+    }
+    return withBorrowedDatabase(
+        activeDatabase -> {
+          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
+          try {
+            if (!lifecycle.isInitializedBook(activeDatabase)) {
+              return new DeclareTaxRegistrationResult.Rejected(
+                  new TaxDeclarationRejection.BookNotInitialized());
+            }
+
+            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
+            Optional<DeclaredTaxRegistration> existingRegistration =
+                SqliteTaxStatementQueries.findOneTaxRegistration(
+                    activeDatabase, command.taxRegistrationId());
+            DeclaredTaxRegistration candidate =
+                declaredTaxRegistrationSnapshot(
+                    command,
+                    existingRegistration
+                        .map(DeclaredTaxRegistration::declaredAt)
+                        .orElse(declaredAt));
+            if (existingRegistration.filter(candidate::equals).isPresent()) {
+              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+              return new DeclareTaxRegistrationResult.Unchanged(existingRegistration.orElseThrow());
+            }
+            SqliteMutationWriter.upsertTaxRegistration(activeDatabase, candidate);
+            DeclaredTaxRegistration persistedRegistration =
+                SqliteTaxStatementQueries.findOneTaxRegistration(
+                        activeDatabase, command.taxRegistrationId())
+                    .orElseThrow(
+                        () ->
+                            new IllegalStateException(
+                                "Persisted SQLite tax registration disappeared after write: "
+                                    + command.taxRegistrationId().value()));
+            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
+            return existingRegistration.isPresent()
+                ? new DeclareTaxRegistrationResult.Updated(persistedRegistration)
+                : new DeclareTaxRegistrationResult.Declared(persistedRegistration);
+          } catch (SqliteNativeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            throw SqliteStoreOperations.sqliteFailure(
+                "Failed to declare SQLite tax registration.", exception);
+          } catch (RuntimeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            throw exception;
+          }
+        });
+  }
+
+  static RegisteredAccount declaredAccount(AccountDeclarationOutcome declarationOutcome) {
+    return switch (Objects.requireNonNull(declarationOutcome, "declarationOutcome")) {
+      case AccountDeclarationOutcome.Declared declared -> declared.account();
+      case AccountDeclarationOutcome.Reactivated reactivated -> reactivated.account();
+      case AccountDeclarationOutcome.Renamed renamed -> renamed.account();
+      case AccountDeclarationOutcome.Unchanged unchanged -> unchanged.account();
+      case AccountDeclarationOutcome.Rejected rejected ->
+          throw new IllegalArgumentException(
+              "Rejected account declarations do not carry a durable account snapshot: "
+                  + rejected.rejection());
+    };
+  }
+
+  static BookAuditEvent accountAuditEvent(
+      Instant recordedAt, AccountDeclarationOutcome declarationOutcome) {
+    return switch (Objects.requireNonNull(declarationOutcome, "declarationOutcome")) {
+      case AccountDeclarationOutcome.Declared declared ->
+          BookAuditEvent.accountDeclared(recordedAt, declared.account().accountCode());
+      case AccountDeclarationOutcome.Reactivated reactivated ->
+          BookAuditEvent.accountReactivated(recordedAt, reactivated.account().accountCode());
+      case AccountDeclarationOutcome.Renamed renamed ->
+          BookAuditEvent.accountRenamed(recordedAt, renamed.account().accountCode());
+      case AccountDeclarationOutcome.Unchanged _ ->
+          throw new IllegalArgumentException("Unchanged account declarations do not append audit.");
+      case AccountDeclarationOutcome.Rejected rejected ->
+          throw new IllegalArgumentException(
+              "Rejected account declarations do not append audit: " + rejected.rejection());
+    };
+  }
+
+  private static DeclaredTaxRegistration declaredTaxRegistrationSnapshot(
+      DeclareTaxRegistrationCommand command, Instant snapshotDeclaredAt) {
+    return new DeclaredTaxRegistration(
+        command.taxRegistrationId(),
+        command.taxRegistrationName(),
+        command.jurisdiction(),
+        command.registrationNumber(),
+        command.payableAccountCode(),
+        command.recoverableAccountCode(),
+        command.obligationFrequency(),
+        command.dueDaysAfterPeriodEnd(),
+        command.taxCodes().stream()
+            .sorted(Comparator.comparing(SqliteStoreAdministrationMutationOperations::taxCodeKey))
+            .toList(),
+        snapshotDeclaredAt);
+  }
+
+  private static String taxCodeKey(TaxCodeDefinition taxCodeDefinition) {
+    return taxCodeDefinition.taxCode().value();
   }
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {

@@ -23,7 +23,7 @@ final class SqlitePostingBalanceReader {
   Optional<AccountBalanceView> accountBalance(
       SqliteNativeDatabase activeDatabase, AccountBalanceCriteria query) {
     Optional<RegisteredAccount> account =
-        SqliteStatementQueries.findOneAccount(activeDatabase, query.accountCode());
+        SqliteAccountStatementQueries.findOneAccount(activeDatabase, query.accountCode());
     if (account.isEmpty()) {
       return Optional.empty();
     }
@@ -67,9 +67,9 @@ final class SqlitePostingBalanceReader {
             new AccountCurrencyTotals(
                 SqlitePostingMapper.registeredAccount(statement),
                 SqlitePersistedMoneyCodec.readCurrencyUnit(
-                    statement, SqlitePostingSql.COL_TOTAL_CURRENCY_CODE),
-                statement.columnLong(SqlitePostingSql.COL_TOTAL_DEBIT_MINOR),
-                statement.columnLong(SqlitePostingSql.COL_TOTAL_CREDIT_MINOR)));
+                    statement, SqlitePostingColumnIndexes.COL_TOTAL_CURRENCY_CODE),
+                statement.columnLong(SqlitePostingColumnIndexes.COL_TOTAL_DEBIT_MINOR),
+                statement.columnLong(SqlitePostingColumnIndexes.COL_TOTAL_CREDIT_MINOR)));
       }
     }
     return List.copyOf(totals);
@@ -128,11 +128,6 @@ final class SqlitePostingBalanceReader {
     int bindIndex = 1;
     statement.bindText(bindIndex, query.accountCode().value());
     bindIndex++;
-    if (query.postingCoverage().isNonClosingOnly()) {
-      statement.bindText(
-          bindIndex, dev.erst.fingrind.core.PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
-      bindIndex++;
-    }
     if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
       statement.bindText(
           bindIndex,

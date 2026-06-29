@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,12 +44,12 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `24`, owned by `BookFormatContract`
+- the current supported book format is `33`, owned by `BookFormatContract`
 - accepted posting facts persist first-class accounting evidence through
   `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
-- FinGrind is in an alpha hard-break phase, so schema evolution replaces the current model
+- FinGrind is in an alpha hard-break line, so schema evolution replaces the current model
   directly and older formats are rejected instead of being migrated in place
 - `backup-book` exports one verified encrypted backup pair; `restore-book` verifies that backup
   pair before replacing the live book path and the restored live book then reuses that backup key
@@ -67,7 +67,7 @@ through [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/
 [`SqliteAdministrationSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteAdministrationSession.java),
 [`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
 [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
-[`SqlitePeriodResultTransferSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePeriodResultTransferSession.java),
+[`SqliteReportingPeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReportingPeriodCloseSession.java),
 [`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
 and [`SqliteRekeySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRekeySession.java).
 The package-private backing implementation remains
@@ -100,7 +100,7 @@ Why this is the current design:
 
 Observed implementation note:
 - we also reproduced a local `sqlite-jdbc` native-library load failure on this Java 26 macOS
-  environment during the Phase 1 rewrite, but that was an environment-specific observation rather
+  environment during the earlier rewrite, but that was an environment-specific observation rather
   than the primary architecture reason for choosing FFM
 
 ## Source Provenance And License
@@ -173,7 +173,7 @@ The SQLite adapter is split into focused collaborators:
 - [`SqliteAdministrationSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteAdministrationSession.java),
   [`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
   [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
-  [`SqlitePeriodResultTransferSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePeriodResultTransferSession.java),
+  [`SqliteReportingPeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReportingPeriodCloseSession.java),
   [`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
   [`SqliteRekeySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRekeySession.java),
   [`SqliteBookSessionMode`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessionMode.java),

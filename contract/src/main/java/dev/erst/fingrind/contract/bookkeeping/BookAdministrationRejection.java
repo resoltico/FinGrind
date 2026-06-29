@@ -3,7 +3,6 @@ package dev.erst.fingrind.contract.bookkeeping;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -18,20 +17,21 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.BookNotInitialized,
         BookAdministrationRejection.BookContainsSchema,
         BookAdministrationRejection.AccountTypeConflict,
-        BookAdministrationRejection.AccountRoleConflict,
         BookAdministrationRejection.AccountTaxonomyConflict,
         BookAdministrationRejection.ParentAccountMissing,
         BookAdministrationRejection.ParentAccountInactive,
         BookAdministrationRejection.ParentAccountTypeConflict,
-        BookAdministrationRejection.ParentAccountRoleConflict,
         BookAdministrationRejection.ParentAccountNotHeader,
         BookAdministrationRejection.ParentAccountTaxonomyConflict,
         BookAdministrationRejection.AccountHierarchyCycle,
-        BookAdministrationRejection.ResultHoldingAccountCandidateMissing,
-        BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous,
-        BookAdministrationRejection.PeriodResultTransferMustStartAt,
-        BookAdministrationRejection.PeriodResultTransferFutureDate,
-        BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary {
+        BookAdministrationRejection.CloseTargetAccountCandidateMissing,
+        CloseTargetAccountCandidateAmbiguous,
+        BookAdministrationRejection.InterimResultSweepMustStartAt,
+        BookAdministrationRejection.InterimResultSweepFutureDate,
+        BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary,
+        BookAdministrationRejection.FiscalYearCloseMustStartAt,
+        BookAdministrationRejection.FiscalYearCloseMustEndAt,
+        BookAdministrationRejection.FiscalYearCloseFutureDate {
 
   /** Returns the stable wire code for one book-administration rejection instance. */
   static String wireCode(BookAdministrationRejection rejection) {
@@ -66,18 +66,6 @@ public sealed interface BookAdministrationRejection
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(existingAccountType, "existingAccountType");
       Objects.requireNonNull(requestedAccountType, "requestedAccountType");
-    }
-  }
-
-  /** Rejection for redeclaring an account with a different immutable account role. */
-  record AccountRoleConflict(
-      AccountCode accountCode, AccountRole existingAccountRole, AccountRole requestedAccountRole)
-      implements BookAdministrationRejection {
-    /** Validates the conflicting account doctrinal role. */
-    public AccountRoleConflict {
-      Objects.requireNonNull(accountCode, "accountCode");
-      Objects.requireNonNull(existingAccountRole, "existingAccountRole");
-      Objects.requireNonNull(requestedAccountRole, "requestedAccountRole");
     }
   }
 
@@ -127,21 +115,6 @@ public sealed interface BookAdministrationRejection
     }
   }
 
-  /** Rejection for one child account whose parent account role conflicts with the request. */
-  record ParentAccountRoleConflict(
-      AccountCode accountCode,
-      AccountRole requestedAccountRole,
-      AccountCode parentAccountCode,
-      AccountRole parentAccountRole)
-      implements BookAdministrationRejection {
-    public ParentAccountRoleConflict {
-      Objects.requireNonNull(accountCode, "accountCode");
-      Objects.requireNonNull(requestedAccountRole, "requestedAccountRole");
-      Objects.requireNonNull(parentAccountCode, "parentAccountCode");
-      Objects.requireNonNull(parentAccountRole, "parentAccountRole");
-    }
-  }
-
   /** Rejection for one child account whose parent is not declared as a header node. */
   record ParentAccountNotHeader(
       AccountCode accountCode, AccountCode parentAccountCode, AccountNodeKind parentAccountNodeKind)
@@ -177,12 +150,12 @@ public sealed interface BookAdministrationRejection
     }
   }
 
-  /* Rejection for period-result transfer when policy finds no active declared result-holding target. */
-  record ResultHoldingAccountCandidateMissing(
+  /* Rejection for one close command when policy finds no active declared target for the required classification. */
+  record CloseTargetAccountCandidateMissing(
       FinancialPositionLineClassification requiredFinancialPositionLineClassification,
       List<AccountCode> inactiveCandidateAccountCodes)
       implements BookAdministrationRejection {
-    public ResultHoldingAccountCandidateMissing {
+    public CloseTargetAccountCandidateMissing {
       Objects.requireNonNull(
           requiredFinancialPositionLineClassification,
           "requiredFinancialPositionLineClassification");
@@ -190,45 +163,56 @@ public sealed interface BookAdministrationRejection
     }
   }
 
-  /* Rejection for period-result transfer when policy finds more than one active declared result-holding target. */
-  record ResultHoldingAccountCandidateAmbiguous(
-      FinancialPositionLineClassification requiredFinancialPositionLineClassification,
-      List<AccountCode> candidateAccountCodes)
+  /* Rejection for interim-result sweep when the requested period start is not the live sweep horizon. */
+  record InterimResultSweepMustStartAt(LocalDate requiredEffectiveDateFrom)
       implements BookAdministrationRejection {
-    public ResultHoldingAccountCandidateAmbiguous {
-      Objects.requireNonNull(
-          requiredFinancialPositionLineClassification,
-          "requiredFinancialPositionLineClassification");
-      candidateAccountCodes = List.copyOf(candidateAccountCodes);
-    }
-  }
-
-  /* Rejection for period-result transfer when the requested period start is not the live transfer horizon. */
-  record PeriodResultTransferMustStartAt(LocalDate requiredEffectiveDateFrom)
-      implements BookAdministrationRejection {
-    public PeriodResultTransferMustStartAt {
+    public InterimResultSweepMustStartAt {
       Objects.requireNonNull(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
     }
   }
 
-  /* Rejection for period-result transfer when the requested period end lies in the future. */
-  record PeriodResultTransferFutureDate(LocalDate attemptedEffectiveDateTo)
+  /* Rejection for interim-result sweep when the requested period end lies in the future. */
+  record InterimResultSweepFutureDate(LocalDate attemptedEffectiveDateTo)
       implements BookAdministrationRejection {
-    public PeriodResultTransferFutureDate {
+    public InterimResultSweepFutureDate {
       Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
     }
   }
 
-  /* Rejection for period-result transfer when the requested range spans more than one fiscal year. */
-  record PeriodResultTransferCrossesFiscalYearBoundary(
+  /* Rejection for interim-result sweep when the requested range spans more than one fiscal year. */
+  record InterimResultSweepCrossesFiscalYearBoundary(
       LocalDate attemptedEffectiveDateFrom,
       LocalDate attemptedEffectiveDateTo,
       FiscalYearStart fiscalYearStart)
       implements BookAdministrationRejection {
-    public PeriodResultTransferCrossesFiscalYearBoundary {
+    public InterimResultSweepCrossesFiscalYearBoundary {
       Objects.requireNonNull(attemptedEffectiveDateFrom, "attemptedEffectiveDateFrom");
       Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
       Objects.requireNonNull(fiscalYearStart, "fiscalYearStart");
+    }
+  }
+
+  /* Rejection for fiscal-year close when the requested period start misses the year boundary. */
+  record FiscalYearCloseMustStartAt(LocalDate requiredEffectiveDateFrom)
+      implements BookAdministrationRejection {
+    public FiscalYearCloseMustStartAt {
+      Objects.requireNonNull(requiredEffectiveDateFrom, "requiredEffectiveDateFrom");
+    }
+  }
+
+  /* Rejection for fiscal-year close when the requested period end misses the year boundary. */
+  record FiscalYearCloseMustEndAt(LocalDate requiredEffectiveDateTo)
+      implements BookAdministrationRejection {
+    public FiscalYearCloseMustEndAt {
+      Objects.requireNonNull(requiredEffectiveDateTo, "requiredEffectiveDateTo");
+    }
+  }
+
+  /* Rejection for fiscal-year close when the requested period end lies in the future. */
+  record FiscalYearCloseFutureDate(LocalDate attemptedEffectiveDateTo)
+      implements BookAdministrationRejection {
+    public FiscalYearCloseFutureDate {
+      Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
     }
   }
 }

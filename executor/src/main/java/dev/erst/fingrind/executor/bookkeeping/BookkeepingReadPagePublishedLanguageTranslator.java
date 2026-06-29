@@ -35,7 +35,8 @@ public final class BookkeepingReadPagePublishedLanguageTranslator {
         query.effectiveDateRange(),
         page.postings().stream().map(BookkeepingPublishedLanguageTranslator::toPublished).toList(),
         page.limit(),
-        page.nextCursor().map(BookkeepingReadPagePublishedLanguageTranslator::toPublished));
+        page.nextCursor().map(BookkeepingReadPagePublishedLanguageTranslator::toPublished),
+        java.util.Map.of());
   }
 
   /** Projects one local account-balance view back into the public published language. */

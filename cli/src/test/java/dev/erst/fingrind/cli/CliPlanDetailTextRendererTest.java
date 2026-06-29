@@ -31,9 +31,12 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
         "Fiscal year start");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.DeclaredAccountStepDataPayload(
+            new CliPlanJsonModels.AccountDeclarationStepDataPayload(
+                "reactivated",
                 CliBookPayloadMapper.accountPayload(
                     declaredAccount("1000", "Cash", NormalBalance.DEBIT)))),
+        "Outcome",
+        "reactivated",
         "Account code",
         "1000",
         "Cash",
@@ -70,7 +73,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
             new CliPlanJsonModels.PlanBoundaryStepDataPayload("commit")),
-        "Phase",
+        "Checkpoint",
         "commit");
   }
 
@@ -156,9 +159,11 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
     CliBookQueryJsonModels.PostingPayload posting =
         new CliBookQueryJsonModels.PostingPayload(
             "posting-empty-evidence",
-            "JOURNAL",
-            "JOURNAL",
+            "STANDARD",
+            "DIRECT_JOURNAL",
             "ORIGINAL",
+            null,
+            null,
             "2026-04-17",
             "2026-04-17T10:15:32Z",
             "actor-1",
@@ -169,6 +174,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
             null,
             "CLI",
             new CliBookQueryJsonModels.AccountingEvidencePayload(List.of(), List.of()),
+            null,
             null,
             List.of(
                 new CliBookQueryJsonModels.JournalLinePayload(
@@ -220,7 +226,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
   @Test
   void displayLabel_normalizesMixedIdentifierStyles() {
     assertEquals("Camel Case Label", CliPlanDetailTextRenderer.displayLabel("camelCase_label"));
-    assertEquals("Phase Name", CliPlanDetailTextRenderer.displayLabel("  phase-name  "));
+    assertEquals("Checkpoint Name", CliPlanDetailTextRenderer.displayLabel("  checkpoint-name  "));
     assertEquals("", CliPlanDetailTextRenderer.displayLabel("___"));
   }
 

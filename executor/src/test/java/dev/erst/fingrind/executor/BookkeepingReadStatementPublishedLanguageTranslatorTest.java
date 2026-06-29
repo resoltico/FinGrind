@@ -13,7 +13,6 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -54,7 +53,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
@@ -67,7 +65,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
@@ -87,7 +84,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                             "4000",
                             "Revenue",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -101,7 +97,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                             "4000",
                             "Revenue",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -120,7 +115,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                     "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
@@ -132,7 +126,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                 new ChangesInEquityRowView(
                     "current-period-result",
                     "Current Period Result",
-                    Optional.empty(),
                     Optional.empty(),
                     Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
@@ -159,7 +152,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
@@ -172,7 +164,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
@@ -193,7 +184,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                             "4000",
                             "Revenue",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -207,7 +197,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                             "4000",
                             "Revenue",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -227,7 +216,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                     "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
@@ -239,7 +227,6 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                 new ChangesInEquityRow(
                     "current-period-result",
                     "Current Period Result",
-                    Optional.empty(),
                     Optional.empty(),
                     Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,

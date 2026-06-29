@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -44,7 +45,12 @@ final class CliMutationCommandExecutor {
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
-    LedgerPlan plan = requestReader.readLedgerPlan(requestFile);
+    LedgerPlan plan;
+    try {
+      plan = requestReader.readLedgerPlan(requestFile);
+    } catch (CliRequestException exception) {
+      return writeCliFailure(exception);
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.executePlan(bookAccess, plan),
         result -> planResponseWriter.writeLedgerPlanResult(result, outputMode, resultDetail),
@@ -61,7 +67,12 @@ final class CliMutationCommandExecutor {
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
-    PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
+    PostEntryCommand command;
+    try {
+      command = requestReader.readPostEntryCommand(requestFile, OperationId.PREFLIGHT_ENTRY);
+    } catch (CliRequestException exception) {
+      return writeCliFailure(exception);
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.preflight(bookAccess, command),
         result -> mutationResponseWriter.writePostEntryResult(result, outputMode),
@@ -78,11 +89,45 @@ final class CliMutationCommandExecutor {
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
-    PostEntryCommand command = requestReader.readPostEntryCommand(requestFile);
+    PostEntryCommand command;
+    try {
+      command = requestReader.readPostEntryCommand(requestFile, OperationId.POST_ENTRY);
+    } catch (CliRequestException exception) {
+      return writeCliFailure(exception);
+    }
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.commit(bookAccess, command),
         result -> mutationResponseWriter.writePostEntryResult(result, outputMode),
         CliPostingExitCodes::exitCodeFor,
         failureWriter);
+  }
+
+  int runRecordEntryCommand(
+      BookAccess bookAccess, Path requestFile, OutputMode outputMode, OperationId operationId) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
+    PostEntryCommand command;
+    try {
+      command = requestReader.readPostEntryCommand(requestFile, operationId);
+    } catch (CliRequestException exception) {
+      return writeCliFailure(exception);
+    }
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        mutationWorkflow.commit(bookAccess, command),
+        result -> mutationResponseWriter.writePostEntryResult(result, outputMode),
+        CliPostingExitCodes::exitCodeFor,
+        failureWriter);
+  }
+
+  private int writeCliFailure(CliCommandException exception) {
+    CliFailure failure = CliFailureMapper.cliFailure(exception);
+    failureWriter.writeFailure(failure);
+    return CliExecutionPolicy.failureExitCode(failure);
   }
 }

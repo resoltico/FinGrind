@@ -3,25 +3,32 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.executor.FiscalYearCloseService;
+import dev.erst.fingrind.executor.InterimResultSweepService;
 import dev.erst.fingrind.executor.LedgerPlanService;
-import dev.erst.fingrind.executor.PeriodResultTransferService;
+import dev.erst.fingrind.executor.TaxAdministrationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.sqlite.SqliteAdministrationSessions;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
-import dev.erst.fingrind.sqlite.SqlitePeriodResultTransferSessions;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSessions;
 import dev.erst.fingrind.sqlite.SqlitePostingSessions;
+import dev.erst.fingrind.sqlite.SqliteReportingPeriodCloseSessions;
 import java.time.Clock;
 import java.util.Objects;
 
@@ -48,21 +55,49 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
             BookkeepingPublishedLanguageTranslator.toPublished(
                 new BookAdministrationService(bookSession, bookSession, bookSession, clock)
                     .declareAccount(
-                        BookkeepingPublishedLanguageTranslator.fromPublished(command))));
+                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
   }
 
   @Override
-  public ContractDecision<PeriodResultTransferResult> transferPeriodResult(
-      BookAccess bookAccess, PeriodResultTransferCommand command) {
-    return SqliteCliWorkflowSessions.withPeriodResultTransferSession(
-        SqlitePeriodResultTransferSessions.openResolved(
+  public ContractDecision<DeclareTaxRegistrationResult> declareTaxRegistration(
+      BookAccess bookAccess, DeclareTaxRegistrationCommand command) {
+    return SqliteCliWorkflowSessions.withAdministrationSession(
+        SqliteAdministrationSessions.openResolved(
+            bookAccess,
+            SqliteBookSessionMode.READ_WRITE_EXISTING,
+            passphraseResolver,
+            SqlitePassphraseIntent.EXISTING_SECRET),
+        bookSession ->
+            new TaxAdministrationService(bookSession, bookSession, bookSession, clock)
+                .declareTaxRegistration(command));
+  }
+
+  @Override
+  public ContractDecision<InterimResultSweepResult> interimResultSweep(
+      BookAccess bookAccess, InterimResultSweepCommand command) {
+    return SqliteCliWorkflowSessions.withReportingPeriodCloseSession(
+        SqliteReportingPeriodCloseSessions.openResolved(
             bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
-                new PeriodResultTransferService(
+                new InterimResultSweepService(
                         bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
-                    .transferPeriodResult(
-                        BookkeepingPublishedLanguageTranslator.fromPublished(command))));
+                    .interimResultSweep(
+                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
+  }
+
+  @Override
+  public ContractDecision<FiscalYearCloseResult> fiscalYearClose(
+      BookAccess bookAccess, FiscalYearCloseCommand command) {
+    return SqliteCliWorkflowSessions.withReportingPeriodCloseSession(
+        SqliteReportingPeriodCloseSessions.openResolved(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
+        bookSession ->
+            BookkeepingPublishedLanguageTranslator.toPublished(
+                new FiscalYearCloseService(
+                        bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
+                    .fiscalYearClose(
+                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
   }
 
   @Override

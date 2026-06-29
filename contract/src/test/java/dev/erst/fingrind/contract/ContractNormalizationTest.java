@@ -17,7 +17,6 @@ import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -26,6 +25,7 @@ import dev.erst.fingrind.core.PostingCoverage;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -33,12 +33,7 @@ import org.junit.jupiter.api.Test;
 class ContractNormalizationTest {
   private static final DeclaredAccount CASH_ACCOUNT =
       ContractFixtures.declaredAccount(
-          "1000",
-          "Cash",
-          AccountType.ASSET,
-          AccountRole.ORDINARY,
-          true,
-          Instant.parse("2026-04-07T10:15:30Z"));
+          "1000", "Cash", AccountType.ASSET, true, Instant.parse("2026-04-07T10:15:30Z"));
 
   @Test
   void collectionBearingRecords_rejectNullListsWithFieldContext() {
@@ -148,7 +143,8 @@ class ContractNormalizationTest {
                         EffectiveDateRange.unbounded(),
                         nullOf(),
                         10,
-                        Optional.empty()))
+                        Optional.empty(),
+                        Map.of()))
             .getMessage());
     assertEquals(
         "facts must not be null.",

@@ -174,13 +174,13 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
       assertTrue(session.inspectBook().initialized());
     }
 
-    try (SqlitePeriodResultTransferSession session =
-        SqlitePeriodResultTransferSessions.open(
+    try (SqliteReportingPeriodCloseSession session =
+        SqliteReportingPeriodCloseSessions.open(
             bookAccess, resolver, SqlitePassphraseIntent.EXISTING_SECRET)) {
       assertTrue(session.inspectBook().initialized());
     }
-    try (SqlitePeriodResultTransferSession session =
-        SqlitePeriodResultTransferSessions.openResolved(
+    try (SqliteReportingPeriodCloseSession session =
+        SqliteReportingPeriodCloseSessions.openResolved(
                 bookAccess, resolver, SqlitePassphraseIntent.EXISTING_SECRET)
             .requireAccepted()) {
       assertTrue(session.inspectBook().initialized());

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -100,5 +101,17 @@ class CliDiscoveryHelpTextLayoutTest extends CliDiscoveryHelpTextTestSupport {
                     "Non-empty ordered source-document references linked"),
                 rendered),
         () -> assertEquals(32, planIdLine.indexOf(" : ")));
+  }
+
+  @Test
+  void keyFilePathGuidanceSection_elidesBlankGuidanceAndWrapsPresentGuidance() {
+    assertEquals("", CliDiscoveryHelpTextRenderer.keyFilePathGuidanceSection("   "));
+
+    String rendered =
+        CliDiscoveryHelpTextRenderer.keyFilePathGuidanceSection(
+            "Store the key file in one owner-only directory.");
+
+    assertTrue(rendered.contains("Key-File Path"));
+    assertTrue(rendered.contains("Store the key file in one owner-only directory."));
   }
 }

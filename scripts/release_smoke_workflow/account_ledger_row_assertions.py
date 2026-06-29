@@ -15,13 +15,12 @@ def assert_summary_row(config: ReleaseSmokeConfig, row: dict[str, str]) -> None:
         f"{config.label} account-ledger CSV summary row did not stay anchored to the requested account",
     )
     require(
-        row["exportFamily"] == "posting-relationships"
+        row["exportFamily"] == "account-ledger"
         and row["rowId"] == "ledger-summary:" + config.starter_cash_account_code + ":EUR"
         and row["parentRowId"] == ""
         and row["relationKind"] == "ledger-summary"
         and row["accountName"] == config.starter_cash_account_name
         and row["accountType"] == "ASSET"
-        and row["accountRole"] == "ORDINARY"
         and row["normalBalance"] == "DEBIT"
         and row["active"] == "true"
         and row["effectiveDateFrom"] == "2026-04-07"
@@ -57,14 +56,13 @@ def assert_entry_row(
     row_name: str,
 ) -> None:
     require(
-        row["exportFamily"] == "posting-relationships"
+        row["exportFamily"] == "account-ledger"
         and row["rowId"] == "ledger-entry:" + row["postingId"]
         and row["parentRowId"] == ""
         and row["relationKind"] == "entry"
         and row["accountCode"] == config.starter_cash_account_code
         and row["accountName"] == config.starter_cash_account_name
         and row["accountType"] == "ASSET"
-        and row["accountRole"] == "ORDINARY"
         and row["normalBalance"] == "DEBIT"
         and row["active"] == "true"
         and row["effectiveDateFrom"] == "2026-04-07"
@@ -111,7 +109,7 @@ def assert_counterpart_rows(
         row for row in counterpart_rows if row["postingId"] == expense_entry["postingId"]
     )
     require(
-        opening_counterpart["exportFamily"] == "posting-relationships"
+        opening_counterpart["exportFamily"] == "account-ledger"
         and opening_counterpart["rowId"]
         == "ledger-counterpart:"
         + opening_entry["postingId"]
@@ -121,7 +119,7 @@ def assert_counterpart_rows(
         and opening_counterpart["relationKind"] == "counterpart-account"
         and opening_counterpart["counterpartAccountCode"] == config.starter_revenue_account_code
         and opening_counterpart["effectiveDate"] == "2026-04-07"
-        and expense_counterpart["exportFamily"] == "posting-relationships"
+        and expense_counterpart["exportFamily"] == "account-ledger"
         and expense_counterpart["rowId"]
         == "ledger-counterpart:"
         + expense_entry["postingId"]
@@ -150,7 +148,7 @@ def assert_source_document_rows(
         row for row in source_document_rows if row["postingId"] == expense_entry["postingId"]
     )
     require(
-        opening_source_document["exportFamily"] == "posting-relationships"
+        opening_source_document["exportFamily"] == "account-ledger"
         and opening_source_document["rowId"]
         == "ledger-source-document:"
         + opening_entry["postingId"]
@@ -160,7 +158,7 @@ def assert_source_document_rows(
         and opening_source_document["relationKind"] == "source-document"
         and opening_source_document["sourceDocumentId"] == sale_document["sourceDocumentId"]
         and opening_source_document["sourceDocumentType"] == sale_document["sourceDocumentType"]
-        and expense_source_document["exportFamily"] == "posting-relationships"
+        and expense_source_document["exportFamily"] == "account-ledger"
         and expense_source_document["rowId"]
         == "ledger-source-document:"
         + expense_entry["postingId"]

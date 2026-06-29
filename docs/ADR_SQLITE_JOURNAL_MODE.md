@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: ADR_SQLITE_JOURNAL_MODE
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, adr, sqlite, journal mode, delete, wal, protected book, sidecar, concurrency]
   questions: ["why does fingrind use journal_mode=DELETE", "does fingrind support wal mode", "what is the sqlite concurrency posture in fingrind"]

@@ -1,12 +1,14 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import java.nio.file.Path;
@@ -172,7 +174,26 @@ final class CliAdministrativeCommandExecutor {
         failureWriter);
   }
 
-  int runPeriodResultTransferCommand(
+  int runDeclareTaxRegistrationCommand(
+      BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
+    DeclareTaxRegistrationCommand command =
+        requestReader.readDeclareTaxRegistrationCommand(requestFile);
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        mutationWorkflow.declareTaxRegistration(bookAccess, command),
+        result -> responseWriter.writeDeclareTaxRegistrationResult(result, outputMode),
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
+  }
+
+  int runInterimResultSweepCommand(
       BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
@@ -183,9 +204,26 @@ final class CliAdministrativeCommandExecutor {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        mutationWorkflow.transferPeriodResult(
-            bookAccess, new PeriodResultTransferCommand(reportingPeriod)),
-        result -> responseWriter.writePeriodResultTransferResult(result, outputMode),
+        mutationWorkflow.interimResultSweep(
+            bookAccess, new InterimResultSweepCommand(reportingPeriod)),
+        result -> responseWriter.writeInterimResultSweepResult(result, outputMode),
+        CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter);
+  }
+
+  int runFiscalYearCloseCommand(
+      BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        mutationWorkflow.fiscalYearClose(bookAccess, new FiscalYearCloseCommand(reportingPeriod)),
+        result -> responseWriter.writeFiscalYearCloseResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter);
   }

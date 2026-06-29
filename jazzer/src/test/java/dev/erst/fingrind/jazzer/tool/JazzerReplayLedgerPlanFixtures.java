@@ -23,7 +23,7 @@ final class JazzerReplayLedgerPlanFixtures {
             %s,
             {
               "stepId": "post-sale",
-              "kind": "post-entry",
+              "kind": "record-sale",
               "posting": %s
             },
             {
@@ -86,7 +86,7 @@ final class JazzerReplayLedgerPlanFixtures {
             %s,
             {
               "stepId": "post-sale",
-              "kind": "post-entry",
+              "kind": "record-sale",
               "posting": %s
             },
             {

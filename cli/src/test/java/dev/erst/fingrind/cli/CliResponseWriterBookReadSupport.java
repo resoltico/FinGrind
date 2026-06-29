@@ -5,6 +5,8 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import java.io.PrintStream;
 import java.nio.file.Path;
 
@@ -48,5 +50,13 @@ class CliResponseWriterBookReadSupport extends CliResponseWriterMutationSupport 
 
   void writeListPostingsResult(ListPostingsResult result, OutputMode outputMode) {
     bookReadWriter.writeListPostingsResult(result, outputMode);
+  }
+
+  void writeListTaxRegistrationsResult(ListTaxRegistrationsResult result, OutputMode outputMode) {
+    bookReadWriter.writeListTaxRegistrationsResult(result, outputMode);
+  }
+
+  void writeTaxObligationResult(TaxObligationResult result, OutputMode outputMode) {
+    bookReadWriter.writeTaxObligationResult(result, outputMode);
   }
 }

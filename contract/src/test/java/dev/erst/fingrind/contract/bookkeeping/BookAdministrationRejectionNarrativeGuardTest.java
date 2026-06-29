@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import java.time.LocalDate;
 import java.util.Objects;
@@ -24,22 +23,21 @@ class BookAdministrationRejectionNarrativeGuardTest {
   @Test
   void accountCatalogMessage_rejectsNonCatalogRejections() {
     assertUnsupportedRoute(
-        new BookAdministrationRejection.PeriodResultTransferFutureDate(
-            LocalDate.parse("2026-12-31")),
+        new BookAdministrationRejection.InterimResultSweepFutureDate(LocalDate.parse("2026-12-31")),
         "Unsupported account-catalog rejection",
         BookAdministrationRejectionNarrative::accountCatalogMessage);
   }
 
   @Test
-  void transferHorizonMessage_rejectsNonTransferRejections() {
+  void closeWindowMessage_rejectsNonCloseRejections() {
     assertUnsupportedRoute(
-        new BookAdministrationRejection.ParentAccountRoleConflict(
+        new BookAdministrationRejection.ParentAccountTypeConflict(
             new AccountCode("1010"),
-            AccountRole.ORDINARY,
+            AccountType.ASSET,
             new AccountCode("1000"),
-            AccountRole.POLARITY_INVERTED),
-        "Unsupported transfer-horizon rejection",
-        BookAdministrationRejectionNarrative::transferHorizonMessage);
+            AccountType.LIABILITY),
+        "Unsupported close-window rejection",
+        BookAdministrationRejectionNarrative::closeWindowMessage);
   }
 
   private static void assertUnsupportedRoute(

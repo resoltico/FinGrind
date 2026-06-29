@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
@@ -58,7 +58,7 @@ The correct response is to package the required runtime, not to relax the depend
 
 ## Why Bundles, Not `jpackage`
 
-`jpackage` is intentionally out of scope for the current FinGrind phase.
+`jpackage` is intentionally out of scope for the current FinGrind line.
 
 Why:
 - FinGrind is an agent-first CLI, not a desktop application

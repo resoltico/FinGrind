@@ -251,7 +251,7 @@ public final class SqliteProtectedBookFixtureGenerator {
               Optional.<ReversalReason>empty());
       PostingCommitResult commitResult =
           SqlitePostingFactStoreTestSupport.commitPosting(postingFactStore, posting);
-      if (!new PostingCommitResult.Committed(posting).equals(commitResult)) {
+      if (!new PostingCommitResult.Committed(posting, false).equals(commitResult)) {
         throw new IllegalStateException(
             "Protected-book fixture commit drifted: " + commitResult + ".");
       }
@@ -270,8 +270,7 @@ public final class SqliteProtectedBookFixtureGenerator {
             accountCode,
             accountName,
             accountType,
-            SqlitePostingFactFixtureSupport.accountRole(accountType, normalBalance),
-            SqlitePostingFactFixtureSupport.accountTaxonomy(accountType),
+            SqlitePostingFactFixtureSupport.accountTaxonomy(accountType, normalBalance),
             INITIALIZED_AT);
     AccountDeclarationOutcome expected = new AccountDeclarationOutcome.Declared(expectedAccount);
     if (!expected.equals(outcome)) {
@@ -315,6 +314,14 @@ public final class SqliteProtectedBookFixtureGenerator {
                   "1000",
                   "accountName",
                   "Cash",
+                  "accountType",
+                  dev.erst.fingrind.core.AccountType.ASSET.wireValue(),
+                  "financialPositionLineClassification",
+                  dev.erst.fingrind.core.FinancialPositionLineClassification.CURRENT_ASSET
+                      .wireValue(),
+                  "cashFlowAssetClassification",
+                  dev.erst.fingrind.core.CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT
+                      .wireValue(),
                   "normalBalance",
                   NormalBalance.DEBIT.wireValue()),
               orderedMap(
@@ -322,6 +329,11 @@ public final class SqliteProtectedBookFixtureGenerator {
                   "2000",
                   "accountName",
                   "Revenue",
+                  "accountType",
+                  dev.erst.fingrind.core.AccountType.REVENUE.wireValue(),
+                  "profitAndLossLineClassification",
+                  dev.erst.fingrind.core.ProfitAndLossLineClassification.OPERATING_REVENUE
+                      .wireValue(),
                   "normalBalance",
                   NormalBalance.CREDIT.wireValue())));
       metadata.put(

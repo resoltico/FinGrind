@@ -1,29 +1,17 @@
 {
-  "entryKind" : "JOURNAL",
+  "entryKind" : "SALE",
   "effectiveDate" : "2026-01-15",
-  "lines" : [ {
-    "accountCode" : "cash",
-    "side" : "DEBIT",
-    "amount" : {
-      "currencyCode" : "EUR",
-      "minorUnits" : "1000"
-    }
-  }, {
-    "accountCode" : "service-revenue",
-    "side" : "CREDIT",
-    "amount" : {
-      "currencyCode" : "EUR",
-      "minorUnits" : "1000"
-    }
-  } ],
+  "cashAccountCode" : "cash",
+  "revenueAccountCode" : "service-revenue",
+  "amount" : {
+    "currencyCode" : "EUR",
+    "minorUnits" : "1000"
+  },
   "evidence" : {
     "sourceDocuments" : [ {
       "sourceDocumentId" : "replace-before-commit-source-document-id",
       "sourceDocumentType" : "cash-receipt",
-      "documentDate" : "2026-01-15",
-      "capturedAt" : "2026-01-15T09:00:00Z",
-      "storageLocator" : "replace-before-commit-storage-locator",
-      "contentSha256" : "replace-before-commit-content-sha256"
+      "documentDate" : "2026-01-15"
     } ],
     "approvals" : [ ]
   },

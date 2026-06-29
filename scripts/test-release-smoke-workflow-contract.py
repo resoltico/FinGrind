@@ -33,7 +33,7 @@ def main(argv: list[str]) -> int:
         write_acceptance_fixtures,
     )
     from release_smoke_workflow.path_support import (
-        extract_pdf_exported_path,
+        extract_pdf_artifact_path,
         normalize_reported_path,
     )
     from release_smoke_workflow.report_text_samples import (
@@ -41,7 +41,7 @@ def main(argv: list[str]) -> int:
         STANDARD_LIST_POSTINGS_TEXT,
         STANDARD_PERIOD_SUMMARY_TEXT,
         STANDARD_TRIAL_BALANCE_TEXT,
-        pdf_export_stderr,
+        pdf_export_stdout,
     )
     from release_smoke_workflow.scenario import (
         ARGUMENT_PATH_MODE_ABSOLUTE,
@@ -71,7 +71,7 @@ def main(argv: list[str]) -> int:
         run_cli_with_split_streams,
         assert_operator_queries_and_reports,
         normalize_reported_path,
-        extract_pdf_exported_path,
+        extract_pdf_artifact_path,
         base_bridge_config,
         smoke_path,
         write_bridge_script,
@@ -79,7 +79,7 @@ def main(argv: list[str]) -> int:
         STANDARD_ACCOUNT_BALANCE_TEXT,
         STANDARD_TRIAL_BALANCE_TEXT,
         STANDARD_PERIOD_SUMMARY_TEXT,
-        pdf_export_stderr,
+        pdf_export_stdout,
         structured_account_ledger_csv,
     )
     return 0

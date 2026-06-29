@@ -8,6 +8,8 @@ import java.util.List;
 
 /** Assembles complete account-ledger CSV rows from reusable column groups. */
 final class CliAccountLedgerCsvRowFactory {
+  private static final String RECORD_KIND = CliCsvExportFamilies.ACCOUNT_LEDGER;
+
   private CliAccountLedgerCsvRowFactory() {}
 
   static List<String> summaryRow(
@@ -16,11 +18,11 @@ final class CliAccountLedgerCsvRowFactory {
       CurrencyBalance opening,
       CurrencyBalance closing) {
     return ledgerCsvRow(
-        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        CliCsvExportFamilies.ACCOUNT_LEDGER,
         "ledger-summary:" + report.account().accountCode().value() + ":" + currencyCode,
         "",
         "ledger-summary",
-        "summary",
+        RECORD_KIND,
         new LedgerCsvRowParts(
             CliAccountLedgerCsvColumns.reportColumns(report, currencyCode),
             CliAccountLedgerCsvColumns.summaryBalanceColumns(opening, closing),
@@ -33,7 +35,11 @@ final class CliAccountLedgerCsvRowFactory {
   static List<String> entryRow(AccountLedgerReport report, AccountLedgerEntry entry) {
     return entryRelatedRow(
         new LedgerCsvRowIdentity(
-            "ledger-entry:" + entry.postingFact().postingId().value(), "", "entry", "entry", ""),
+            "ledger-entry:" + entry.postingFact().postingId().value(),
+            "",
+            "entry",
+            RECORD_KIND,
+            ""),
         report,
         entry,
         entry.movement().netAmount().currencyUnit().code(),
@@ -55,7 +61,7 @@ final class CliAccountLedgerCsvRowFactory {
                 + counterpartAccountCode,
             "ledger-entry:" + entry.postingFact().postingId().value(),
             "counterpart-account",
-            "counterpart-account",
+            RECORD_KIND,
             ""),
         report,
         entry,
@@ -77,7 +83,7 @@ final class CliAccountLedgerCsvRowFactory {
                 + sourceDocumentId,
             "ledger-entry:" + entry.postingFact().postingId().value(),
             "source-document",
-            "source-document",
+            RECORD_KIND,
             ""),
         report,
         entry,
@@ -97,7 +103,7 @@ final class CliAccountLedgerCsvRowFactory {
             "ledger-approval:" + entry.postingFact().postingId().value() + ":" + approvalId,
             "ledger-entry:" + entry.postingFact().postingId().value(),
             "approval",
-            "approval",
+            RECORD_KIND,
             ""),
         report,
         entry,
@@ -108,11 +114,11 @@ final class CliAccountLedgerCsvRowFactory {
 
   static List<String> emptyRow(AccountLedgerReport report) {
     return ledgerCsvRow(
-        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        CliCsvExportFamilies.ACCOUNT_LEDGER,
         "ledger-scope-empty:" + report.account().accountCode().value(),
         "",
         "scope-empty",
-        CliCsvEmptyKinds.SCOPE_EMPTY,
+        RECORD_KIND,
         new LedgerCsvRowParts(
             CliAccountLedgerCsvColumns.reportColumns(
                 report, report.bookIdentity().functionalCurrency().code()),
@@ -131,7 +137,7 @@ final class CliAccountLedgerCsvRowFactory {
       List<String> movementColumns,
       List<String> evidenceColumns) {
     return ledgerCsvRow(
-        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        CliCsvExportFamilies.ACCOUNT_LEDGER,
         rowIdentity.rowId(),
         rowIdentity.parentRowId(),
         rowIdentity.relationKind(),

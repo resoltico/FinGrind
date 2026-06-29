@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,8 +25,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -56,8 +56,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -89,8 +88,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": 20260407,
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -122,8 +120,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-02-30",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -149,6 +146,23 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
   }
 
   @Test
+  void readPostEntryCommand_rejectsMismatchedScopedEntryKind() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(validRequestJson(false).getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class,
+            () -> requestReader.readPostEntryCommand(Path.of("-"), OperationId.RECORD_EXPENSE));
+
+    assertEquals(
+        "Command 'record-expense' requires request field entryKind to be 'EXPENSE', but the request carries 'SALE'.",
+        exception.getMessage());
+    assertEquals("entryKind", exception.failure().argument());
+  }
+
+  @Test
   void readPostEntryCommand_rejectsExponentNotationAmounts() {
     CliRequestReader requestReader =
         new CliRequestReader(
@@ -156,8 +170,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -191,8 +204,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -226,8 +238,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -261,7 +272,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL_ADJUSTMENT",
+                  "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -294,7 +305,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL_ADJUSTMENT",
+                  "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -328,8 +339,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "JOURNAL",
-                  "recipeKind": "CASH_REVENUE",
+                  "entryKind": "SALE",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -410,7 +420,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL_ADJUSTMENT",
+                  "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {

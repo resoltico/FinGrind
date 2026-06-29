@@ -28,7 +28,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -362,7 +361,9 @@ class BookQueryModelTest {
     assertThrows(NullPointerException.class, () -> new ListAccountsResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
-        () -> new GetPostingResult.Found(ContractFixtures.bookIdentity(), nullOf()));
+        () ->
+            new GetPostingResult.Found(
+                ContractFixtures.bookIdentity(), nullOf(), Optional.empty()));
     assertThrows(NullPointerException.class, () -> new GetPostingResult.Rejected(nullOf()));
     assertThrows(NullPointerException.class, () -> new ListPostingsResult.Listed(nullOf()));
     assertThrows(NullPointerException.class, () -> new ListPostingsResult.Rejected(nullOf()));
@@ -402,23 +403,26 @@ class BookQueryModelTest {
         NullPointerException.class,
         () ->
             new BookInspection.Initialized(
-                1,
-                1,
-                1,
-                nullOf(),
-                ContractFixtures.bookIdentity(),
-                resultTransferReadyInspection()));
+                1, 1, 1, nullOf(), ContractFixtures.bookIdentity(), closeReadiness()));
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
   }
 
-  private static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
-    return new BookInspection.ResultTransferReadiness(
-        true,
-        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
-        new AccountCode("3200"),
-        null,
-        null,
-        List.of());
+  private static BookInspection.CloseReadiness closeReadiness() {
+    return new BookInspection.CloseReadiness(
+        new BookInspection.CloseTargetReadiness(
+            true,
+            FinancialPositionLineClassification.RESULT_HOLDING,
+            new AccountCode("3200"),
+            null,
+            null,
+            List.of()),
+        new BookInspection.CloseTargetReadiness(
+            true,
+            FinancialPositionLineClassification.RETAINED_ACCUMULATED,
+            new AccountCode("3300"),
+            null,
+            null,
+            List.of()));
   }
 
   @Test
@@ -457,12 +461,7 @@ class BookQueryModelTest {
 
   private static DeclaredAccount declaredAccount(String accountCode) {
     return ContractFixtures.declaredAccount(
-        accountCode,
-        "Cash",
-        AccountType.ASSET,
-        AccountRole.ORDINARY,
-        true,
-        Instant.parse("2026-04-07T10:15:30Z"));
+        accountCode, "Cash", AccountType.ASSET, true, Instant.parse("2026-04-07T10:15:30Z"));
   }
 
   private static PostingFact postingFact(String postingId, String idempotencyKey) {
@@ -471,7 +470,7 @@ class BookQueryModelTest {
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         ContractFixtures.accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }

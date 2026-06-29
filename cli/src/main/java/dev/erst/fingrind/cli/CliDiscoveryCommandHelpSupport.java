@@ -77,7 +77,7 @@ final class CliDiscoveryCommandHelpSupport {
       rows.add(
           List.of(
               "CSV contract",
-              "The exportFamily column identifies which CSV row grammar the command produced."));
+              "The exportFamily column identifies the command-owned CSV grammar. Where relationKind is present, it carries the row role inside that single record family."));
     }
     if (!command.artifactOutputs().isEmpty()) {
       rows.add(

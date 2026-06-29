@@ -7,9 +7,9 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates.LedgerPlanTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestInputDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareTaxRegistrationTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
@@ -93,6 +93,7 @@ public interface CliDiscoveryCommonJsonModels {
       DiscoveryDetail detail,
       @Nullable PostingRequestTemplateDescriptor postingTemplate,
       @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate,
+      @Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistrationTemplate,
       @Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplate,
       @Nullable RequestShapesDescriptor requestShapes,
       @Nullable String shortcutCommand)
@@ -103,6 +104,7 @@ public interface CliDiscoveryCommonJsonModels {
       shortcutCommand = requireOptionalText(shortcutCommand, "shortcutCommand");
       if (postingTemplate == null
           && declareAccountTemplate == null
+          && declareTaxRegistrationTemplate == null
           && ledgerPlanTemplate == null
           && requestShapes == null
           && shortcutCommand == null) {
@@ -113,7 +115,9 @@ public interface CliDiscoveryCommonJsonModels {
   }
 
   record CapabilitiesRequestInputSlicePayload(
-      RequestInputCompactPayload requestInput, @Nullable RequestInputDescriptor fullRequestInput)
+      RequestInputCompactPayload requestInput,
+      dev.erst.fingrind.contract.discovery.ContractRequestShapes.@Nullable RequestInputDescriptor
+          fullRequestInput)
       implements ProtocolSuccessPayload {
     public CapabilitiesRequestInputSlicePayload {
       requestInput = requireValue(requestInput, "requestInput");

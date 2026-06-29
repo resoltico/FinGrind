@@ -6,10 +6,12 @@ import dev.erst.fingrind.cli.json.CliMutationJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
+import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
+import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
-import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.nio.file.Path;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -18,64 +20,105 @@ import org.jspecify.annotations.Nullable;
 final class CliEnvelopeMapper {
   private CliEnvelopeMapper() {}
 
-  static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> successEnvelope(
+  static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> successEnvelope(
       ProtocolSuccessPayload payload) {
-    return successEnvelope(payload, null);
+    return successEnvelope(payload, (List<CliEnvelopeJsonModels.SuccessArtifact>) null);
   }
 
-  static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> successEnvelope(
+  static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> successEnvelope(
       ProtocolSuccessPayload payload, @Nullable Path exportedArtifactPath) {
-    List<CliEnvelopeJsonModels.SuccessArtifact> artifacts =
+    return successEnvelope(
+        payload,
         exportedArtifactPath == null
             ? null
-            : List.of(
-                new CliEnvelopeJsonModels.SuccessArtifact(
-                    "pdf", CliPublicPaths.redactedValue(exportedArtifactPath)));
-    return new CliEnvelopeJsonModels.SuccessEnvelope<>(
-        ProtocolEnvelopeStatus.OK, payload, artifacts);
+            : List.of(successArtifact(ProtocolArtifactOutput.pdfFormat(), exportedArtifactPath)));
   }
 
-  static CliEnvelopeJsonModels.PlanEnvelope<CliPlanJsonModels.LedgerPlanPayload> ledgerPlanEnvelope(
+  static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> successEnvelope(
+      ProtocolSuccessPayload payload,
+      @Nullable List<CliEnvelopeJsonModels.SuccessArtifact> artifacts) {
+    return new CliEnvelopeJsonModels.Envelope<>(
+        ProtocolEnvelopeStatus.OK,
+        payload,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        artifacts == null || artifacts.isEmpty() ? null : List.copyOf(artifacts));
+  }
+
+  static CliEnvelopeJsonModels.Envelope<CliPlanJsonModels.LedgerPlanPayload> ledgerPlanEnvelope(
       LedgerPlanResult result, PlanResultDetail resultDetail) {
-    return new CliEnvelopeJsonModels.PlanEnvelope<>(
-        planEnvelopeStatus(result.status()),
-        CliLedgerPlanPayloadMapper.ledgerPlanPayload(result, resultDetail),
-        null);
+    CliPlanJsonModels.LedgerPlanPayload payload =
+        CliLedgerPlanPayloadMapper.ledgerPlanPayload(result, resultDetail);
+    return switch (result) {
+      case LedgerPlanResult.Succeeded _ ->
+          new CliEnvelopeJsonModels.Envelope<>(
+              ProtocolEnvelopeStatus.OK, payload, null, null, null, null, null, null, null);
+      case LedgerPlanResult.Rejected _ ->
+          nonSuccessPlanEnvelope(ProtocolEnvelopeStatus.REJECTED, payload, result);
+      case LedgerPlanResult.AssertionFailed _ ->
+          nonSuccessPlanEnvelope(ProtocolEnvelopeStatus.ERROR, payload, result);
+    };
   }
 
-  static CliEnvelopeJsonModels.FailureEnvelope failureEnvelope(CliFailure failure) {
+  static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> failureEnvelope(
+      CliFailure failure) {
     CliErrorJsonModels.@Nullable ErrorDetails details = failure.details();
-    return new CliEnvelopeJsonModels.FailureEnvelope(
+    return new CliEnvelopeJsonModels.Envelope<>(
         ProtocolEnvelopeStatus.ERROR,
+        null,
         failure.code(),
         failure.message(),
         failure.hint(),
         failure.argument(),
-        details);
+        null,
+        details,
+        null);
   }
 
-  static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> preflightEnvelope(
+  static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> preflightEnvelope(
       PostEntryResult.PreflightAccepted accepted) {
     return successEnvelope(
         new CliMutationJsonModels.PreflightAcceptedPayload(
             accepted.idempotencyKey().value(), accepted.effectiveDate().toString()));
   }
 
-  static CliEnvelopeJsonModels.SuccessEnvelope<ProtocolSuccessPayload> committedEnvelope(
+  static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> committedEnvelope(
       PostEntryResult.Committed committed) {
     return successEnvelope(
         new CliMutationJsonModels.CommittedPostingPayload(
             committed.postingId().value(),
             committed.idempotencyKey().value(),
             committed.effectiveDate().toString(),
-            committed.recordedAt().toString()));
+            committed.recordedAt().toString(),
+            committed.idempotentReplay()));
   }
 
-  private static ProtocolEnvelopeStatus planEnvelopeStatus(LedgerPlanStatus status) {
-    return switch (status) {
-      case SUCCEEDED -> ProtocolEnvelopeStatus.OK;
-      case REJECTED -> ProtocolEnvelopeStatus.REJECTED;
-      case ASSERTION_FAILED -> ProtocolEnvelopeStatus.ERROR;
-    };
+  static CliEnvelopeJsonModels.SuccessArtifact successArtifact(String format, Path path) {
+    return new CliEnvelopeJsonModels.SuccessArtifact(format, CliPublicPaths.redactedValue(path));
+  }
+
+  static CliEnvelopeJsonModels.SuccessArtifact successArtifact(
+      String format, PublicPathHint pathHint) {
+    return new CliEnvelopeJsonModels.SuccessArtifact(
+        format, CliPublicPaths.redactedValue(pathHint));
+  }
+
+  static List<CliEnvelopeJsonModels.SuccessArtifact> successArtifacts(
+      CliEnvelopeJsonModels.SuccessArtifact... artifacts) {
+    return List.of(artifacts);
+  }
+
+  private static CliEnvelopeJsonModels.Envelope<CliPlanJsonModels.LedgerPlanPayload>
+      nonSuccessPlanEnvelope(
+          ProtocolEnvelopeStatus envelopeStatus,
+          CliPlanJsonModels.LedgerPlanPayload payload,
+          LedgerPlanResult result) {
+    LedgerStepFailure failure = result.journal().requiredFailedStep().requiredFailure();
+    return new CliEnvelopeJsonModels.Envelope<>(
+        envelopeStatus, payload, failure.code(), failure.message(), null, null, null, null, null);
   }
 }

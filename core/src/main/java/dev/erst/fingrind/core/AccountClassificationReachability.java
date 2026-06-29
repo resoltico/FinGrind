@@ -79,17 +79,27 @@ public final class AccountClassificationReachability {
 
   private static ReachabilityCell financialPositionCell(
       FinancialPositionLineClassification classification) {
-    boolean reservedForPeriodResultTransfer =
-        Objects.requireNonNull(classification, "classification")
-            == FinancialPositionLineClassification.RESULT_HOLDING;
+    boolean reservedForCloseOperations =
+        switch (Objects.requireNonNull(classification, "classification")) {
+          case RESULT_HOLDING, RETAINED_ACCUMULATED -> true;
+          case CURRENT_ASSET,
+              NONCURRENT_ASSET,
+              CURRENT_LIABILITY,
+              NONCURRENT_LIABILITY,
+              EQUITY_CONTRIBUTION,
+              EQUITY_WITHDRAWAL,
+              RESERVE,
+              OTHER_EQUITY ->
+              false;
+        };
     return new ReachabilityCell(
         ClassificationFamily.FINANCIAL_POSITION.wireValue(),
         classification.accountType(),
         classification.wireValue(),
         true,
         true,
-        !reservedForPeriodResultTransfer,
-        !reservedForPeriodResultTransfer);
+        !reservedForCloseOperations,
+        !reservedForCloseOperations);
   }
 
   private static ReachabilityCell profitAndLossCell(

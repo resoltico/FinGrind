@@ -10,8 +10,8 @@ public final class BookDoctrineDisplay {
   public static String accountingKernel(AccountingKernelProfileId accountingKernelProfileId) {
     String wireValue =
         Objects.requireNonNull(accountingKernelProfileId, "accountingKernelProfileId").value();
-    if ("internal-management-cash-bookkeeping-kernel".equals(wireValue)) {
-      return "Internal management cash bookkeeping";
+    if ("internal-management-bookkeeping-kernel".equals(wireValue)) {
+      return "Internal management bookkeeping";
     }
     return wireValue;
   }
@@ -42,7 +42,7 @@ public final class BookDoctrineDisplay {
   /** Returns one human-facing label for the selected book template. */
   public static String bookTemplate(BookTemplateId bookTemplateId) {
     return switch (Objects.requireNonNull(bookTemplateId, "bookTemplateId")) {
-      case OWNER_MANAGED_SERVICE_CASH -> "Owner-managed service starter chart";
+      case OWNER_MANAGED_SERVICE -> "Owner-managed service starter chart";
     };
   }
 }

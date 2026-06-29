@@ -30,7 +30,6 @@ final class CliPostingFactFormatter {
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().accountType().wireValue(),
-        row.account().accountRole().wireValue(),
         row.account().normalBalance().wireValue(),
         Boolean.toString(row.account().active()),
         row.balance().netAmount().currencyUnit().code(),
@@ -58,7 +57,6 @@ final class CliPostingFactFormatter {
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().accountType().wireValue(),
-        row.account().accountRole().wireValue(),
         row.account().normalBalance().wireValue(),
         row.movement().netAmount().currencyUnit().code(),
         CliQueryScopeText.displayMoney(row.movement().debitTotal()),
@@ -112,9 +110,7 @@ final class CliPostingFactFormatter {
         + " "
         + sourceDocument.sourceDocumentId().value()
         + " on "
-        + sourceDocument.documentDate()
-        + " at "
-        + sourceDocument.storageLocator().value();
+        + sourceDocument.documentDate();
   }
 
   private static String approvalLabel(ApprovalReference approval) {

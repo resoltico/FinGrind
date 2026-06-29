@@ -11,13 +11,13 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -180,12 +180,12 @@ class PdfReportCoverageTest {
             new AccountCode("1000"),
             new AccountName("Cash"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                Optional.empty()),
+                Optional.empty(),
+                Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
             true,
             Instant.parse("2026-04-01T08:00:00Z"));
     return trialBalanceReport(
@@ -202,7 +202,7 @@ class PdfReportCoverageTest {
   private static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

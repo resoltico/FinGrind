@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -29,16 +30,18 @@ class PostEntryResultTest {
             new PostingId("posting-1"),
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),
-            Instant.parse("2026-04-07T10:15:30Z"));
+            Instant.parse("2026-04-07T10:15:30Z"),
+            false);
     assertEquals("posting-1", result.postingId().value());
+    assertFalse(result.idempotentReplay());
   }
 
   @Test
   void preflightRejected_holdsTypedRejection() {
     PostEntryResult.PreflightRejected result =
         new PostEntryResult.PreflightRejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey());
-    assertEquals(new PostingRejection.DuplicateIdempotencyKey(), result.rejection());
+            new IdempotencyKey("idem-1"), new PostingRejection.IdempotencyKeyConflict());
+    assertEquals(new PostingRejection.IdempotencyKeyConflict(), result.rejection());
   }
 
   @Test

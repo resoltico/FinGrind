@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.protocol;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.core.AccountClassificationReachability;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
@@ -8,132 +7,138 @@ import java.util.Set;
 
 /** Current request-surface contract owner for posting semantics and temporal lexicon facts. */
 final class RequestSurfaceContracts {
-  private static final String GENERAL_JOURNAL_EVIDENCE_PROFILE = "general-journal-support";
-  private static final String CASH_REVENUE_EVIDENCE_PROFILE = "cash-revenue-support";
-  private static final String CASH_EXPENSE_EVIDENCE_PROFILE = "cash-expense-support";
-  private static final String EQUITY_CONTRIBUTION_EVIDENCE_PROFILE = "equity-contribution-support";
-  private static final String EQUITY_WITHDRAWAL_EVIDENCE_PROFILE = "equity-withdrawal-support";
-  private static final String OPENING_POSITION_EVIDENCE_PROFILE = "opening-position-support";
-  private static final String REVERSAL_EVIDENCE_PROFILE = "reversal-support";
-
   private RequestSurfaceContracts() {}
 
   static RequestSurfaceFacts current() {
     return new RequestSurfaceFacts(
-        postEntryKinds(),
-        journalRecipes(),
-        evidenceProfiles(),
+        bookkeepingEntryKinds(),
         reachabilityMatrix(),
-        postEntryEvidence(),
+        bookkeepingEntryEvidence(),
         temporalScopes(),
         commandTemporalScopes());
   }
 
-  private static List<RequestSurfaceFacts.PostEntryKindFacts> postEntryKinds() {
+  private static List<RequestSurfaceFacts.BookkeepingEntryKindFacts> bookkeepingEntryKinds() {
     return List.of(
         entryKindFacts(
-            BookkeepingEntryKind.JOURNAL,
+            BookkeepingEntryKind.DIRECT_JOURNAL,
             Set.of(
                 ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
                 ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.LINES,
                 ProtocolPostEntryFields.TopLevel.EVIDENCE,
                 ProtocolPostEntryFields.TopLevel.PROVENANCE),
-            GENERAL_JOURNAL_EVIDENCE_PROFILE,
-            "Operational journal writes accept either direct balanced lines or one named journal recipe; direct caller-authored journals are rejected when debit-credit netting reduces every referenced account to zero; the reachability matrix publishes the exact account-classification cells that remain writable through this path after kernel reservations are applied."),
-        entryKindFacts(
-            BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
-            ProtocolPostingRequestFieldSets.openAccountingPositionFields(),
-            OPENING_POSITION_EVIDENCE_PROFILE,
-            "Opening-position writes are reserved for the one-time adoption window before the first committed posting and may touch only asset, liability, or equity accounts."),
-        entryKindFacts(
-            BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
-            ProtocolPostingRequestFieldSets.reversalAdjustmentFields(),
-            REVERSAL_EVIDENCE_PROFILE,
-            "Reversal writes are contingent cleanup paths that must negate one existing posting exactly and therefore are not substitutes for forward-originating operational journals."));
-  }
-
-  private static List<RequestSurfaceFacts.JournalRecipeFacts> journalRecipes() {
-    return List.of(
-        recipeFacts(
-            JournalRecipeKind.CASH_REVENUE,
-            ProtocolPostingRequestFieldSets.cashRevenueRecipeFields(),
-            CASH_REVENUE_EVIDENCE_PROFILE,
-            "Recipe-backed journal that debits one asset cash account and credits one revenue account."),
-        recipeFacts(
-            JournalRecipeKind.CASH_EXPENSE,
-            ProtocolPostingRequestFieldSets.cashExpenseRecipeFields(),
-            CASH_EXPENSE_EVIDENCE_PROFILE,
-            "Recipe-backed journal that debits one expense account and credits one asset cash account."),
-        recipeFacts(
-            JournalRecipeKind.EQUITY_CONTRIBUTION,
-            ProtocolPostingRequestFieldSets.equityContributionRecipeFields(),
-            EQUITY_CONTRIBUTION_EVIDENCE_PROFILE,
-            "Recipe-backed journal that debits one asset cash account and credits one equity contribution account."),
-        recipeFacts(
-            JournalRecipeKind.EQUITY_WITHDRAWAL,
-            ProtocolPostingRequestFieldSets.equityWithdrawalRecipeFields(),
-            EQUITY_WITHDRAWAL_EVIDENCE_PROFILE,
-            "Recipe-backed journal that debits one equity withdrawal account and credits one asset cash account."));
-  }
-
-  private static List<RequestSurfaceFacts.EvidenceProfileFacts> evidenceProfiles() {
-    return List.of(
-        evidenceProfile(
-            GENERAL_JOURNAL_EVIDENCE_PROFILE,
-            new RequestSurfaceFacts.SourceDocumentTypeFacts(
+            Set.of(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
+            sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.PATTERN_ONLY,
                 List.of(),
-                "Source-document types remain caller-authored tokens constrained by the published token pattern for direct operational journals."),
-            "Default evidence profile for direct operational journals, including transfers and dated adjustments."),
-        evidenceProfile(
-            CASH_REVENUE_EVIDENCE_PROFILE,
-            new RequestSurfaceFacts.SourceDocumentTypeFacts(
+                "Source-document types remain caller-authored tokens constrained by the published token pattern for direct journals.",
+                "cash-receipt"),
+            "Direct journal writes accept caller-authored balanced lines when no typed business-event surface fits exactly. They are rejected when debit-credit netting reduces every referenced account to zero, they must move at least one declared cash-and-cash-equivalent asset account, and the reachability matrix publishes the exact writable account-classification cells after kernel reservations are applied."),
+        entryKindFacts(
+            BookkeepingEntryKind.SALE,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.TAX,
+                ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
+            sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.ENUMERATED,
                 List.of("cash-receipt", "bank-deposit", "card-settlement"),
-                "Accepted source-document types for the cash-revenue recipe."),
-            "Evidence profile for the cash-revenue recipe."),
-        evidenceProfile(
-            CASH_EXPENSE_EVIDENCE_PROFILE,
-            new RequestSurfaceFacts.SourceDocumentTypeFacts(
+                "Accepted source-document types for sale requests.",
+                "cash-receipt"),
+            "Sale writes debit one cash-and-cash-equivalent asset account and credit one revenue account."),
+        entryKindFacts(
+            BookkeepingEntryKind.EXPENSE,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.TAX,
+                ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
+            sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.ENUMERATED,
                 List.of("expense-receipt", "cash-disbursement", "bank-payment-confirmation"),
-                "Accepted source-document types for the cash-expense recipe."),
-            "Evidence profile for the cash-expense recipe."),
-        evidenceProfile(
-            EQUITY_CONTRIBUTION_EVIDENCE_PROFILE,
-            new RequestSurfaceFacts.SourceDocumentTypeFacts(
+                "Accepted source-document types for expense requests.",
+                "expense-receipt"),
+            "Expense writes debit one expense account and credit one cash-and-cash-equivalent asset account."),
+        entryKindFacts(
+            BookkeepingEntryKind.OWNER_CONTRIBUTION,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
+            sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.ENUMERATED,
-                List.of("equity-contribution", "capital-deposit", "bank-deposit"),
-                "Accepted source-document types for the equity-contribution recipe."),
-            "Evidence profile for the equity-contribution recipe."),
-        evidenceProfile(
-            EQUITY_WITHDRAWAL_EVIDENCE_PROFILE,
-            new RequestSurfaceFacts.SourceDocumentTypeFacts(
+                List.of("owner-contribution", "capital-deposit", "bank-deposit"),
+                "Accepted source-document types for owner-contribution requests.",
+                "owner-contribution"),
+            "Owner-contribution writes debit one cash-and-cash-equivalent asset account and credit one equity contribution account."),
+        entryKindFacts(
+            BookkeepingEntryKind.OWNER_WITHDRAWAL,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
+            sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.ENUMERATED,
-                List.of("equity-withdrawal", "distribution-payment", "bank-payment-confirmation"),
-                "Accepted source-document types for the equity-withdrawal recipe."),
-            "Evidence profile for the equity-withdrawal recipe."),
-        evidenceProfile(
-            OPENING_POSITION_EVIDENCE_PROFILE,
-            new RequestSurfaceFacts.SourceDocumentTypeFacts(
+                List.of("owner-withdrawal", "distribution-payment", "bank-payment-confirmation"),
+                "Accepted source-document types for owner-withdrawal requests.",
+                "owner-withdrawal"),
+            "Owner-withdrawal writes debit one equity withdrawal account and credit one cash-and-cash-equivalent asset account."),
+        entryKindFacts(
+            BookkeepingEntryKind.OPENING_POSITION,
+            ProtocolPostingRequestFieldSets.openingPositionFields(),
+            Set.of(),
+            sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.PATTERN_ONLY,
                 List.of(),
-                "Source-document types remain caller-authored tokens constrained by the published token pattern for opening-position entries."),
-            "Evidence profile for one opening-position request."),
-        evidenceProfile(
-            REVERSAL_EVIDENCE_PROFILE,
-            new RequestSurfaceFacts.SourceDocumentTypeFacts(
+                "Source-document types remain caller-authored tokens constrained by the published token pattern for opening-position requests.",
+                "opening-balance-support"),
+            "Opening-position writes are reserved for the one-time adoption window before the first committed posting and may touch only asset, liability, or equity accounts."),
+        entryKindFacts(
+            BookkeepingEntryKind.REVERSAL,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.LINES,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE,
+                ProtocolPostEntryFields.TopLevel.REVERSAL),
+            Set.of(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
+            sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.PATTERN_ONLY,
                 List.of(),
-                "Source-document types remain caller-authored tokens constrained by the published token pattern for reversal entries."),
-            "Evidence profile for one reversal request."));
+                "Source-document types remain caller-authored tokens constrained by the published token pattern for reversal requests.",
+                "reversal-support"),
+            "Reversal writes are contingent cleanup paths that must negate one existing posting exactly and therefore are not substitutes for forward-originating operational entries."));
   }
 
-  private static RequestSurfaceFacts.EvidenceRequirementFacts postEntryEvidence() {
+  private static RequestSurfaceFacts.EvidenceRequirementFacts bookkeepingEntryEvidence() {
     return new RequestSurfaceFacts.EvidenceRequirementFacts(
-        "Every posting request must retain at least one source document with the full six-field evidence payload.",
-        1,
-        ProtocolPostEntryFields.sourceDocumentFields());
+        "Every posting request must retain at least one source document. Inspect the selected entry kind for the required source-document fields and source-document-type policy.",
+        1);
   }
 
   private static List<RequestSurfaceFacts.TemporalScopeFacts> temporalScopes() {
@@ -185,58 +190,56 @@ final class RequestSurfaceContracts {
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
             OperationId.ACCOUNT_BALANCE, TemporalScopeArchetype.RANGED_FILTER),
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.TRANSFER_PERIOD_RESULT, TemporalScopeArchetype.BOUNDED_PERIOD),
+            OperationId.INTERIM_RESULT_SWEEP, TemporalScopeArchetype.BOUNDED_PERIOD),
+        new RequestSurfaceFacts.CommandTemporalScopeFacts(
+            OperationId.FISCAL_YEAR_CLOSE, TemporalScopeArchetype.BOUNDED_PERIOD),
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
             OperationId.PERIOD_SUMMARY, TemporalScopeArchetype.BOUNDED_PERIOD),
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
             OperationId.INCOME_STATEMENT, TemporalScopeArchetype.BOUNDED_PERIOD),
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
+            OperationId.CASH_FLOW_STATEMENT, TemporalScopeArchetype.BOUNDED_PERIOD),
+        new RequestSurfaceFacts.CommandTemporalScopeFacts(
             OperationId.CHANGES_IN_EQUITY, TemporalScopeArchetype.BOUNDED_PERIOD),
+        new RequestSurfaceFacts.CommandTemporalScopeFacts(
+            OperationId.TAX_OBLIGATION, TemporalScopeArchetype.BOUNDED_PERIOD),
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
             OperationId.TRIAL_BALANCE, TemporalScopeArchetype.AS_OF_DATE),
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
             OperationId.FINANCIAL_POSITION, TemporalScopeArchetype.AS_OF_DATE));
   }
 
-  private static RequestSurfaceFacts.PostEntryKindFacts entryKindFacts(
+  private static RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts(
       BookkeepingEntryKind entryKind,
       Set<String> requiredTopLevelFields,
-      String evidenceProfileId,
+      Set<String> optionalTopLevelFields,
+      RequestSurfaceFacts.SourceDocumentTypeFacts sourceDocumentTypes,
       String semantics) {
-    return new RequestSurfaceFacts.PostEntryKindFacts(
+    Set<String> acceptedTopLevelFields = new java.util.LinkedHashSet<>(requiredTopLevelFields);
+    acceptedTopLevelFields.addAll(optionalTopLevelFields);
+    return new RequestSurfaceFacts.BookkeepingEntryKindFacts(
         entryKind,
         ProtocolPostEntryFields.topLevelFields().stream()
             .filter(requiredTopLevelFields::contains)
             .toList(),
         ProtocolPostEntryFields.topLevelFields().stream()
-            .filter(fieldName -> !requiredTopLevelFields.contains(fieldName))
+            .filter(optionalTopLevelFields::contains)
             .toList(),
-        evidenceProfileId,
+        ProtocolPostEntryFields.topLevelFields().stream()
+            .filter(fieldName -> !acceptedTopLevelFields.contains(fieldName))
+            .toList(),
+        ProtocolPostEntryFields.sourceDocumentFields(),
+        sourceDocumentTypes,
         semantics);
   }
 
-  private static RequestSurfaceFacts.JournalRecipeFacts recipeFacts(
-      JournalRecipeKind recipeKind,
-      Set<String> requiredTopLevelFields,
-      String evidenceProfileId,
-      String semantics) {
-    return new RequestSurfaceFacts.JournalRecipeFacts(
-        recipeKind,
-        ProtocolPostEntryFields.topLevelFields().stream()
-            .filter(requiredTopLevelFields::contains)
-            .toList(),
-        ProtocolPostEntryFields.topLevelFields().stream()
-            .filter(fieldName -> !requiredTopLevelFields.contains(fieldName))
-            .toList(),
-        evidenceProfileId,
-        semantics);
-  }
-
-  private static RequestSurfaceFacts.EvidenceProfileFacts evidenceProfile(
-      String profileId,
-      RequestSurfaceFacts.SourceDocumentTypeFacts sourceDocumentTypes,
-      String semantics) {
-    return new RequestSurfaceFacts.EvidenceProfileFacts(profileId, sourceDocumentTypes, semantics);
+  private static RequestSurfaceFacts.SourceDocumentTypeFacts sourceDocumentTypes(
+      SourceDocumentTypePolicyMode mode,
+      List<String> acceptedValues,
+      String semantics,
+      String scaffoldValue) {
+    return new RequestSurfaceFacts.SourceDocumentTypeFacts(
+        mode, acceptedValues, semantics, scaffoldValue);
   }
 
   private static List<RequestSurfaceFacts.ReachabilityCellFacts> reachabilityMatrix() {

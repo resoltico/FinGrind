@@ -37,12 +37,15 @@ final class MachineContractLedgerPlanRoles {
   }
 
   private static StepRole stepRole(LedgerStepKind kind) {
-    return switch (kind) {
-      case ENSURE_BOOK, DECLARE_ACCOUNT -> StepRole.ADMINISTRATION;
-      case INSPECT_BOOK, LIST_ACCOUNTS, GET_POSTING, LIST_POSTINGS, ACCOUNT_BALANCE ->
-          StepRole.QUERY;
-      case PREFLIGHT_ENTRY, POST_ENTRY -> StepRole.WRITE;
-      case ASSERT -> StepRole.ASSERT;
-    };
+    if (kind.carriesPostingPayload()) {
+      return StepRole.WRITE;
+    }
+    if (kind == LedgerStepKind.ASSERT) {
+      return StepRole.ASSERT;
+    }
+    if (kind == LedgerStepKind.ENSURE_BOOK || kind == LedgerStepKind.DECLARE_ACCOUNT) {
+      return StepRole.ADMINISTRATION;
+    }
+    return StepRole.QUERY;
   }
 }

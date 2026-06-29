@@ -62,6 +62,9 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized())
             .rejection());
     assertEquals(declaredAccount, new DeclareAccountResult.Declared(declaredAccount).account());
+    assertEquals(declaredAccount, new DeclareAccountResult.Reactivated(declaredAccount).account());
+    assertEquals(declaredAccount, new DeclareAccountResult.Renamed(declaredAccount).account());
+    assertEquals(declaredAccount, new DeclareAccountResult.Unchanged(declaredAccount).account());
     assertEquals(
         new BookAdministrationRejection.BookNotInitialized(),
         new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized())
@@ -97,7 +100,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             BookFormatContract.FORMAT_VERSION,
             Instant.parse("2026-04-07T10:15:30Z"),
             bookIdentity(),
-            resultTransferReadyInspection());
+            closeReadiness());
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             bookIdentity(),
@@ -159,7 +162,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 BookFormatContract.FORMAT_VERSION,
                 Instant.parse("2026-04-07T10:15:30Z"),
                 bookIdentity(),
-                resultTransferReadyInspection()),
+                closeReadiness()),
             new BookInspection.Existing(
                 BookInspection.Status.FOREIGN_SQLITE,
                 0x12345678,
@@ -240,27 +243,27 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 1,
                 nullOf(),
                 bookIdentity(),
-                resultTransferReadyInspection()));
+                closeReadiness()));
   }
 
   @Test
-  void resultTransferReadiness_readyStateRejectsBlockingMetadata() {
+  void closeTargetReadiness_readyStateRejectsBlockingMetadata() {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.ResultTransferReadiness(
+            new BookInspection.CloseTargetReadiness(
                 true,
-                FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 new AccountCode("3200"),
-                "result-holding-account-candidate-missing",
+                "close-target-account-candidate-missing",
                 "Blocked",
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.ResultTransferReadiness(
+            new BookInspection.CloseTargetReadiness(
                 true,
-                FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
+                FinancialPositionLineClassification.RESULT_HOLDING,
                 new AccountCode("3200"),
                 null,
                 "Blocked",
@@ -268,25 +271,25 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
   }
 
   @Test
-  void resultTransferReadiness_blockedStateRejectsResultHoldingAccountCode() {
+  void closeTargetReadiness_blockedStateRejectsAccountCode() {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.ResultTransferReadiness(
+            new BookInspection.CloseTargetReadiness(
                 false,
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 new AccountCode("3200"),
-                "result-holding-account-candidate-missing",
+                "close-target-account-candidate-missing",
                 "Missing result-holding account.",
                 List.of()));
   }
 
   @Test
-  void resultTransferReadiness_blockedStateRequiresBlockingMetadata() {
+  void closeTargetReadiness_blockedStateRequiresBlockingMetadata() {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.ResultTransferReadiness(
+            new BookInspection.CloseTargetReadiness(
                 false,
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 null,
@@ -296,17 +299,17 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.ResultTransferReadiness(
+            new BookInspection.CloseTargetReadiness(
                 false,
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 null,
-                "result-holding-account-candidate-missing",
+                "close-target-account-candidate-missing",
                 " ",
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.ResultTransferReadiness(
+            new BookInspection.CloseTargetReadiness(
                 false,
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 null,
@@ -316,37 +319,41 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookInspection.ResultTransferReadiness(
+            new BookInspection.CloseTargetReadiness(
                 false,
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 null,
-                "result-holding-account-candidate-missing",
+                "close-target-account-candidate-missing",
                 null,
                 List.of()));
   }
 
   @Test
-  void resultTransferReadiness_copiesCandidateAccountCodes() {
+  void closeTargetReadiness_copiesCandidateAccountCodes() {
     List<AccountCode> candidates = new ArrayList<>(List.of(new AccountCode("3200")));
-    BookInspection.ResultTransferReadiness readiness =
-        new BookInspection.ResultTransferReadiness(
+    BookInspection.CloseTargetReadiness readiness =
+        new BookInspection.CloseTargetReadiness(
             false,
             FinancialPositionLineClassification.RESULT_HOLDING,
             null,
-            "result-holding-account-candidate-ambiguous",
+            "close-target-account-candidate-ambiguous",
             "Multiple result-holding candidates are active.",
             candidates);
     candidates.clear();
     assertEquals(List.of(new AccountCode("3200")), readiness.candidateAccountCodes());
   }
 
-  private static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
-    return new BookInspection.ResultTransferReadiness(
-        true,
-        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
-        new AccountCode("3200"),
-        null,
-        null,
-        List.of());
+  private static BookInspection.CloseReadiness closeReadiness() {
+    return new BookInspection.CloseReadiness(
+        readyCloseTarget(
+            FinancialPositionLineClassification.RESULT_HOLDING, new AccountCode("3200")),
+        readyCloseTarget(
+            FinancialPositionLineClassification.RETAINED_ACCUMULATED, new AccountCode("3300")));
+  }
+
+  private static BookInspection.CloseTargetReadiness readyCloseTarget(
+      FinancialPositionLineClassification classification, AccountCode accountCode) {
+    return new BookInspection.CloseTargetReadiness(
+        true, classification, accountCode, null, null, List.of());
   }
 }

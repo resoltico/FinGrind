@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
@@ -96,6 +97,18 @@ final class CliReportResponseWriter {
         CliReportOutputRenderer::renderIncomeStatementCsv);
   }
 
+  void writeCashFlowStatementResult(
+      CashFlowStatementResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    writeResult(
+        CliReportResultAccess.cashFlowStatementReport(result),
+        CliReportResultAccess.cashFlowStatementRejection(result),
+        outputMode,
+        exportedArtifactPath,
+        CliReportPayloadMapper::cashFlowStatementPayload,
+        CliReportOutputRenderer::renderCashFlowStatementText,
+        CliReportOutputRenderer::renderCashFlowStatementCsv);
+  }
+
   void writeChangesInEquityResult(
       ChangesInEquityResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
@@ -138,8 +151,18 @@ final class CliReportResponseWriter {
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(payloadSupplier.get(), exportedArtifactPath)),
-        () -> outputChannel.writeText(textSupplier.get()),
-        () -> outputChannel.writeText(csvSupplier.get()));
+        () ->
+            outputChannel.writeText(
+                exportedArtifactPath == null
+                    ? textSupplier.get()
+                    : CliArtifactOutputRenderer.renderPdfArtifact(exportedArtifactPath)),
+        () -> {
+          if (exportedArtifactPath != null) {
+            throw new IllegalStateException(
+                "CSV stdout cannot be combined with --pdf-out after argument validation.");
+          }
+          outputChannel.writeText(csvSupplier.get());
+        });
   }
 
   private void writeRejectedResult(BookQueryRejection rejection, OutputMode outputMode) {

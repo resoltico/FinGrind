@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.erst.fingrind.contract.tax.TaxJurisdiction;
 import dev.erst.fingrind.core.WireValue;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -58,7 +59,9 @@ final class CliWireJson {
   }
 
   private static SimpleModule finGrindEnumModule() {
-    return new SimpleModule("finGrindEnumWireValues").addSerializer(new FinGrindEnumSerializer());
+    return new SimpleModule("finGrindWireValues")
+        .addSerializer(new FinGrindEnumSerializer())
+        .addSerializer(new TaxJurisdictionSerializer());
   }
 
   private static RuntimeException unwrapWireValueFailure(RuntimeException exception) {
@@ -115,6 +118,22 @@ final class CliWireJson {
           "FinGrind enum " + enumType.getName() + " must implement WireValue for CLI JSON.");
     }
     return value.name();
+  }
+
+  /** Serializer that preserves scalar tax-jurisdiction wire values in CLI JSON. */
+  private static final class TaxJurisdictionSerializer extends ValueSerializer<TaxJurisdiction> {
+    @Override
+    public void serialize(
+        TaxJurisdiction value,
+        JsonGenerator jsonGenerator,
+        SerializationContext serializationContext) {
+      jsonGenerator.writeString(Objects.requireNonNull(value, "value").value());
+    }
+
+    @Override
+    public Class<?> handledType() {
+      return TaxJurisdiction.class;
+    }
   }
 
   /** Dedicated failure type for invalid FinGrind enum wire-value serialization contracts. */

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: USER_CONTAINER
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]
@@ -61,13 +61,15 @@ Create the request scaffold locally:
 fingrind print-request-template > ./request.json
 ```
 
-The scaffold emits one direct balanced journal with placeholder evidence and provenance. Recipe
-helpers remain supported, but the default mounted workflow teaches the raw journal boundary.
+The scaffold emits one minimal sale request with placeholder evidence and provenance. The raw
+direct-journal boundary remains available through `print-request-template post-entry`, but that
+raw surface still has to move at least one declared cash-and-cash-equivalent asset account and the
+default mounted workflow teaches the primary business-event path first.
 Replace the placeholder values in `./request.json`, then validate and commit:
 
 ```bash
 fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
-fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
+fingrind record-sale --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
 ```
 
 Read a report and export a PDF back into the mounted host directory:
@@ -77,7 +79,8 @@ fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets
 ```
 
 `./trial-balance.pdf` is written into the mounted host working directory, not into a hidden
-container filesystem.
+container filesystem. When `--output text` is paired with `--pdf-out`, stdout prints one artifact
+confirmation block instead of the full text report body.
 
 ## Secret Handling
 

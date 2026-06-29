@@ -16,7 +16,6 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
@@ -26,6 +25,7 @@ import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.PostingLookupStore;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -42,7 +42,7 @@ public final class CliFuzzWorkflowFixtures {
   public static BookIdentity bookIdentity(CurrencyUnit functionalCurrency) {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
         FiscalYearStart.parse("01-01"));
   }
@@ -146,9 +146,11 @@ public final class CliFuzzWorkflowFixtures {
    * Translates an optional stored posting from the bookkeeping model into the public fact shape.
    */
   public static Optional<PostingFact> publishedStoredPosting(
-      Optional<CommittedPosting> storedPosting) {
+      Optional<StoredRequestPosting> storedPosting) {
     Objects.requireNonNull(storedPosting, "storedPosting must not be null");
-    return storedPosting.map(BookkeepingPublishedLanguageTranslator::toPublished);
+    return storedPosting
+        .map(StoredRequestPosting::postingFact)
+        .map(BookkeepingPublishedLanguageTranslator::toPublished);
   }
 
   /** Loads one stored posting and translates it into the public fact shape. */

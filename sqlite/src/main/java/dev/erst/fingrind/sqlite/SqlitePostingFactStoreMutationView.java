@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
@@ -13,9 +12,11 @@ import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -48,13 +49,11 @@ interface SqlitePostingFactStoreMutationView {
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
-        .declareAccount(
-            accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
+        .declareAccount(accountCode, accountName, accountType, accountTaxonomy, declaredAt);
   }
 
   /** Commits one posting draft into the protected book. */
@@ -64,31 +63,40 @@ interface SqlitePostingFactStoreMutationView {
     return storeMutationOperations().commit(postingDraft, postingIdGenerator);
   }
 
-  /** Commits a generated period-result transfer into the protected book. */
-  default PeriodResultTransferOutcome transferPeriodResult(
+  /** Commits a generated interim-result sweep into the protected book. */
+  default InterimResultSweepOutcome interimResultSweep(
       ReportingPeriod reportingPeriod,
       BookIdentity bookIdentity,
-      PeriodResultTransferPlanner planner,
+      InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
-      Instant transferredAt,
+      Instant sweptAt,
       PostingIdGenerator postingIdGenerator) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
-        .transferPeriodResult(
-            reportingPeriod,
-            bookIdentity,
-            planner,
-            currentUtcDate,
-            transferredAt,
-            postingIdGenerator);
+        .interimResultSweep(
+            reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
   }
 
-  /** Commits a preplanned period-result transfer into the protected book. */
-  default PeriodResultTransferOutcome transferPeriodResult(
-      PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
+  /** Commits a preplanned interim-result sweep into the protected book. */
+  default InterimResultSweepOutcome interimResultSweep(
+      InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
-        .transferPeriodResult(periodResultTransferDraft, postingIdGenerator);
+        .interimResultSweep(interimResultSweepDraft, postingIdGenerator);
+  }
+
+  /** Commits one fiscal-year close into the protected book. */
+  default FiscalYearCloseOutcome fiscalYearClose(
+      ReportingPeriod reportingPeriod,
+      BookIdentity bookIdentity,
+      FiscalYearClosePlanner planner,
+      LocalDate currentUtcDate,
+      Instant closedAt,
+      PostingIdGenerator postingIdGenerator) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations()
+        .fiscalYearClose(
+            reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
   }
 
   /** Rekeys the protected book with a replacement passphrase. */

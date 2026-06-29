@@ -6,7 +6,6 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
 
 /** Local bookkeeping income-statement view. */
 public record IncomeStatementView(
@@ -20,20 +19,20 @@ public record IncomeStatementView(
     List<IncomeStatementSectionView> comparativeSections,
     List<CurrencyBalance> comparativeNetIncomeTotals) {
   public IncomeStatementView {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
-    if (effectiveDateFrom.isAfter(effectiveDateTo)) {
-      throw new IllegalArgumentException("effectiveDateFrom must be on or before effectiveDateTo.");
-    }
-    Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
-    Objects.requireNonNull(postingCoverage, "postingCoverage");
-    sections = List.copyOf(Objects.requireNonNull(sections, "sections"));
-    netIncomeTotals = List.copyOf(Objects.requireNonNull(netIncomeTotals, "netIncomeTotals"));
+    BookkeepingStatementViewValidation.requireComparativeStatementHeader(
+        bookIdentity,
+        effectiveDateFrom,
+        effectiveDateTo,
+        comparativeEffectiveDateRange,
+        postingCoverage);
+    sections = BookkeepingStatementViewValidation.immutableList("sections", sections);
+    netIncomeTotals =
+        BookkeepingStatementViewValidation.immutableList("netIncomeTotals", netIncomeTotals);
     comparativeSections =
-        List.copyOf(Objects.requireNonNull(comparativeSections, "comparativeSections"));
+        BookkeepingStatementViewValidation.immutableList(
+            "comparativeSections", comparativeSections);
     comparativeNetIncomeTotals =
-        List.copyOf(
-            Objects.requireNonNull(comparativeNetIncomeTotals, "comparativeNetIncomeTotals"));
+        BookkeepingStatementViewValidation.immutableList(
+            "comparativeNetIncomeTotals", comparativeNetIncomeTotals);
   }
 }

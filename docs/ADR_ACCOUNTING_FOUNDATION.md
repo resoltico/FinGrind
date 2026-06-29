@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: ADR_ACCOUNTING_FOUNDATION
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, accounting foundation, roadmap, doctrine, evidence, business events, tax, fx, cash flow, disclosures]
   questions: ["what exactly must fingrind implement to reach a best in class accounting foundation", "what is fingrind's exact roadmap from the current bookkeeping kernel to best in class", "which bounded contexts are missing from fingrind today"]
@@ -26,9 +26,10 @@ Current exact posture:
 - the protected-book storage and truth-ownership split are strong enough for one durable
   single-entity bookkeeping kernel
 - the current built-in bookkeeping/reporting kernel is materially narrower than the product line's
-  long-term ambition
-- the current public write surface is too raw because caller-authored postings remain the primary
-  mutation language
+  long-term ambition even after the evidence, business-event, cash-flow/basis, tax, and
+  foreign-exchange contexts became executable owners
+- the current public write surface is now business-event-first, while the raw direct-journal path
+  remains available as a narrower expert route
 
 The repository may claim a best-in-class accounting foundation only after the missing bounded
 contexts
@@ -39,10 +40,15 @@ below exist as executable, durable, and tested system owners.
 The current hard-break line is:
 - one protected book for one accounting entity
 - one functional currency per book
+- owned foreign-exchange facts for eligible business events and direct journals while
+  mixed-currency journal lines remain rejected
 - exact-money append-only postings
+- durable source-document and approval evidence on accepted business events and postings
+- typed business-event commands as the primary public write surface above raw direct journals
 - explicit chart and statement taxonomy
 - one neutral accumulated-result result-holding target inside the current bookkeeping kernel
-- built-in financial position, income statement, and changes-in-equity reports
+- built-in financial position, income statement, cash receipts/payments, and changes-in-equity reports
+- owned tax registrations plus tax-bearing posting semantics and reporting facts
 - deterministic maintenance, runtime, bundle, and release discipline
 
 The current hard-break line is not:
@@ -50,7 +56,7 @@ The current hard-break line is not:
 - one full IFRS or local-GAAP engine
 - one finished SME operating-accounting system
 - one evidence-rich bookkeeping platform
-- one multi-currency, tax-aware, disclosure-capable accounting foundation
+- one disclosure-capable, operational-subledger, open mixed-currency accounting foundation
 
 ## Target Meaning
 
@@ -65,68 +71,24 @@ For FinGrind, a best-in-class accounting foundation means:
 6. The public protocol, CLI, examples, and docs tell the exact truth about that implemented
    system.
 
-## Missing Bounded Contexts
+## Implemented Adjacent Contexts
 
-### 1. Evidence Context
+- Evidence context: source-document references, approvals, and durable evidence-link invariants
+  are part of the published contract and persisted posting facts.
+- Business-event context: typed `record-*` commands, admissibility rules, event-to-posting
+  translation, and event-level rejection language own the normal write surface above raw direct
+  journals.
+- Cash-flow / basis context: cash-flow classification doctrine, cash receipts-and-payments
+  reporting, and articulation checks now belong to the executable kernel.
+- Tax foundation context: registrations, tax-bearing semantics, and tax reporting facts are owned
+  executable doctrine instead of operator convention.
+- Foreign-exchange context: transaction-currency facts, rate evidence, and settlement or
+  remeasurement treatment vocabulary are owned executable doctrine while mixed-currency journal
+  lines remain rejected.
 
-Must own:
-- source-document references and durable evidence bundles
-- approval references and approval evidence
-- evidence-link invariants between accepted business/accounting events and durable postings
+## Remaining Missing Bounded Contexts
 
-Completion gate:
-- no caller-authored posting or business event commits without first-class evidence payloads under
-  the published contract
-- persisted posting and event facts retain their evidence links
-- query/output surfaces expose the same evidence facts deterministically
-
-### 2. Business-Event Context
-
-Must own:
-- typed business-event commands
-- business-event admissibility rules
-- business-event-to-posting recipe translation
-- event-level lifecycle and rejection language
-
-Completion gate:
-- raw `post-entry` is no longer the primary public write surface
-- one business event, not one manual journal, becomes the normal public command language
-- posting recipes are owned, tested, and traceable back to event facts plus evidence
-
-### 3. Cash-Flow Reporting Context
-
-Must own:
-- cash-flow classification doctrine
-- cash and cash-equivalent movement semantics
-- a first-class statement-of-cash-flows report
-
-Completion gate:
-- built-in reporting includes a statement of cash flows with deterministic classification rules and
-  articulation tests against other built-in statements
-
-### 4. Tax Foundation Context
-
-Must own:
-- registrations, tax codes, rates, inclusivity, recoverability, and period obligations
-- tax-bearing business-event and posting semantics
-- tax liability/receivable reporting facts
-
-Completion gate:
-- tax is no longer manual posting folklore
-- tax determination and reporting are executable owned facts, not external operator convention
-
-### 5. Foreign-Exchange Context
-
-Must own:
-- transaction currency facts
-- rate evidence
-- settlement, remeasurement, and realized/unrealized FX doctrine
-
-Completion gate:
-- mixed-currency business events and resulting accounting treatment are owned by one explicit
-  context instead of being rejected outright
-
-### 6. Disclosure Context
+### 1. Disclosure Context
 
 Must own:
 - disclosure-note payloads
@@ -136,7 +98,7 @@ Must own:
 Completion gate:
 - built-in reporting is not limited to statement bodies alone
 
-### 7. Operational Subledger Contexts
+### 2. Operational Subledger Contexts
 
 Must own:
 - receivables
@@ -168,7 +130,10 @@ This order is deliberate:
 - business events must arrive before tax, FX, and subledgers can publish owned semantics cleanly
 - reporting overlays must not outrun the facts they need
 
-## Rules For Every Phase
+Today, steps 1 through 5 are implemented. Disclosure, operational subledgers, and any standards
+overlay remain future work.
+
+## Rules For Every Revision
 
 1. No fake extension seams. A context is not published until it owns commands, state, storage, and
    tests.

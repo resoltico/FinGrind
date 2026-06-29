@@ -45,12 +45,20 @@ final class CliLedgerFactAccess {
   }
 
   static MonetaryAmount requiredMoneyFact(List<LedgerFact> facts, String name) {
+    @Nullable MonetaryAmount value = optionalMoneyFact(facts, name);
+    if (value == null) {
+      throw missingFact(name);
+    }
+    return value;
+  }
+
+  static @Nullable MonetaryAmount optionalMoneyFact(List<LedgerFact> facts, String name) {
     for (LedgerFact fact : facts) {
       if (fact instanceof LedgerFact.Money money && money.name().equals(name)) {
         return money.value();
       }
     }
-    throw missingFact(name);
+    return null;
   }
 
   static List<List<LedgerFact>> groupedFacts(List<LedgerFact> facts, String name) {

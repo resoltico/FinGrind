@@ -45,11 +45,15 @@ class BookAuditEventTest {
     assertEquals(
         new BookAuditEvent(
             FIXED_INSTANT, BookAuditEventKind.ACCOUNT_DECLARED, accountCode, null, null),
-        BookAuditEvent.accountDeclared(FIXED_INSTANT, accountCode, false));
+        BookAuditEvent.accountDeclared(FIXED_INSTANT, accountCode));
     assertEquals(
         new BookAuditEvent(
             FIXED_INSTANT, BookAuditEventKind.ACCOUNT_REACTIVATED, accountCode, null, null),
-        BookAuditEvent.accountDeclared(FIXED_INSTANT, accountCode, true));
+        BookAuditEvent.accountReactivated(FIXED_INSTANT, accountCode));
+    assertEquals(
+        new BookAuditEvent(
+            FIXED_INSTANT, BookAuditEventKind.ACCOUNT_RENAMED, accountCode, null, null),
+        BookAuditEvent.accountRenamed(FIXED_INSTANT, accountCode));
     assertEquals(
         new BookAuditEvent(
             FIXED_INSTANT,
@@ -92,9 +96,11 @@ class BookAuditEventTest {
             FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED, null, null, null),
         BookAuditEvent.rekeyRollbackDeletedCompensated(FIXED_INSTANT));
     assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.PERIOD_RESULT_TRANSFERRED, null, null, 7),
-        BookAuditEvent.periodResultTransferred(FIXED_INSTANT, 7));
+        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.INTERIM_RESULT_SWEPT, null, null, 7),
+        BookAuditEvent.interimResultSwept(FIXED_INSTANT, 7));
+    assertEquals(
+        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.FISCAL_YEAR_CLOSED, null, null, 8),
+        BookAuditEvent.fiscalYearClosed(FIXED_INSTANT, 8));
   }
 
   @Test
@@ -109,7 +115,7 @@ class BookAuditEventTest {
                 new BookAuditEvent(
                     FIXED_INSTANT, BookAuditEventKind.BOOK_OPENED, accountCode, null, null));
     assertEquals(
-        "BOOK_OPENED audit events must not carry accountCode, postingId, or periodResultTransferOrder.",
+        "BOOK_OPENED audit events must not carry accountCode, postingId, or closeOperationOrder.",
         bookOpenedFailure.getMessage());
 
     IllegalArgumentException bookOpenedCloseOrderFailure =
@@ -117,7 +123,7 @@ class BookAuditEventTest {
             IllegalArgumentException.class,
             () -> new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BOOK_OPENED, null, null, 1));
     assertEquals(
-        "BOOK_OPENED audit events must not carry accountCode, postingId, or periodResultTransferOrder.",
+        "BOOK_OPENED audit events must not carry accountCode, postingId, or closeOperationOrder.",
         bookOpenedCloseOrderFailure.getMessage());
 
     IllegalArgumentException accountDeclaredFailure =
@@ -131,7 +137,7 @@ class BookAuditEventTest {
                     postingId,
                     null));
     assertEquals(
-        "ACCOUNT_DECLARED audit events must not carry postingId or periodResultTransferOrder.",
+        "ACCOUNT_DECLARED audit events must not carry postingId or closeOperationOrder.",
         accountDeclaredFailure.getMessage());
 
     IllegalArgumentException postingFailure =
@@ -145,36 +151,38 @@ class BookAuditEventTest {
                     postingId,
                     null));
     assertEquals(
-        "POSTING_COMMITTED audit events must not carry accountCode or periodResultTransferOrder.",
+        "POSTING_COMMITTED audit events must not carry accountCode or closeOperationOrder.",
         postingFailure.getMessage());
 
-    IllegalArgumentException periodResultTransferFailure =
+    IllegalArgumentException interimResultSweepFailure =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new BookAuditEvent(
-                    FIXED_INSTANT,
-                    BookAuditEventKind.PERIOD_RESULT_TRANSFERRED,
-                    accountCode,
-                    null,
-                    1));
+                    FIXED_INSTANT, BookAuditEventKind.INTERIM_RESULT_SWEPT, accountCode, null, 1));
     assertEquals(
-        "PERIOD_RESULT_TRANSFERRED audit events must not carry accountCode or postingId.",
-        periodResultTransferFailure.getMessage());
+        "INTERIM_RESULT_SWEPT audit events must not carry accountCode or postingId.",
+        interimResultSweepFailure.getMessage());
 
-    IllegalArgumentException periodResultTransferPostingFailure =
+    IllegalArgumentException interimResultSweepPostingFailure =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new BookAuditEvent(
-                    FIXED_INSTANT,
-                    BookAuditEventKind.PERIOD_RESULT_TRANSFERRED,
-                    null,
-                    postingId,
-                    1));
+                    FIXED_INSTANT, BookAuditEventKind.INTERIM_RESULT_SWEPT, null, postingId, 1));
     assertEquals(
-        "PERIOD_RESULT_TRANSFERRED audit events must not carry accountCode or postingId.",
-        periodResultTransferPostingFailure.getMessage());
+        "INTERIM_RESULT_SWEPT audit events must not carry accountCode or postingId.",
+        interimResultSweepPostingFailure.getMessage());
+
+    IllegalArgumentException fiscalYearCloseFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.FISCAL_YEAR_CLOSED, accountCode, null, 1));
+    assertEquals(
+        "FISCAL_YEAR_CLOSED audit events must not carry accountCode or postingId.",
+        fiscalYearCloseFailure.getMessage());
 
     IllegalArgumentException bookRekeyedFailure =
         assertThrows(
@@ -183,7 +191,7 @@ class BookAuditEventTest {
                 new BookAuditEvent(
                     FIXED_INSTANT, BookAuditEventKind.BOOK_REKEYED, null, postingId, null));
     assertEquals(
-        "BOOK_REKEYED audit events must not carry accountCode, postingId, or periodResultTransferOrder.",
+        "BOOK_REKEYED audit events must not carry accountCode, postingId, or closeOperationOrder.",
         bookRekeyedFailure.getMessage());
 
     IllegalArgumentException accountReactivatedFailure =
@@ -193,8 +201,18 @@ class BookAuditEventTest {
                 new BookAuditEvent(
                     FIXED_INSTANT, BookAuditEventKind.ACCOUNT_REACTIVATED, accountCode, null, 1));
     assertEquals(
-        "ACCOUNT_REACTIVATED audit events must not carry postingId or periodResultTransferOrder.",
+        "ACCOUNT_REACTIVATED audit events must not carry postingId or closeOperationOrder.",
         accountReactivatedFailure.getMessage());
+
+    IllegalArgumentException accountRenamedFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.ACCOUNT_RENAMED, accountCode, null, 1));
+    assertEquals(
+        "ACCOUNT_RENAMED audit events must not carry postingId or closeOperationOrder.",
+        accountRenamedFailure.getMessage());
 
     IllegalArgumentException postingReversedFailure =
         assertThrows(
@@ -203,7 +221,7 @@ class BookAuditEventTest {
                 new BookAuditEvent(
                     FIXED_INSTANT, BookAuditEventKind.POSTING_REVERSED, null, postingId, 1));
     assertEquals(
-        "POSTING_REVERSED audit events must not carry accountCode or periodResultTransferOrder.",
+        "POSTING_REVERSED audit events must not carry accountCode or closeOperationOrder.",
         postingReversedFailure.getMessage());
   }
 
@@ -216,6 +234,14 @@ class BookAuditEventTest {
                 new BookAuditEvent(
                     FIXED_INSTANT, BookAuditEventKind.ACCOUNT_REACTIVATED, null, null, null));
     assertEquals("accountCode", accountCodeFailure.getMessage());
+
+    NullPointerException renamedAccountCodeFailure =
+        assertThrows(
+            NullPointerException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.ACCOUNT_RENAMED, null, null, null));
+    assertEquals("accountCode", renamedAccountCodeFailure.getMessage());
 
     NullPointerException postingIdFailure =
         assertThrows(
@@ -230,8 +256,16 @@ class BookAuditEventTest {
             NullPointerException.class,
             () ->
                 new BookAuditEvent(
-                    FIXED_INSTANT, BookAuditEventKind.PERIOD_RESULT_TRANSFERRED, null, null, null));
-    assertEquals("periodResultTransferOrder", transferOrderFailure.getMessage());
+                    FIXED_INSTANT, BookAuditEventKind.INTERIM_RESULT_SWEPT, null, null, null));
+    assertEquals("closeOperationOrder", transferOrderFailure.getMessage());
+
+    NullPointerException fiscalYearCloseOrderFailure =
+        assertThrows(
+            NullPointerException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.FISCAL_YEAR_CLOSED, null, null, null));
+    assertEquals("closeOperationOrder", fiscalYearCloseOrderFailure.getMessage());
   }
 
   @Test
@@ -242,6 +276,7 @@ class BookAuditEventTest {
             "BOOK_OPENED",
             "ACCOUNT_DECLARED",
             "ACCOUNT_REACTIVATED",
+            "ACCOUNT_RENAMED",
             "POSTING_COMMITTED",
             "POSTING_REVERSED",
             "BOOK_REKEYED",
@@ -251,7 +286,8 @@ class BookAuditEventTest {
             "REKEY_ROLLBACK_DELETED",
             "BACKUP_CREATED_COMPENSATED",
             "REKEY_ROLLBACK_DELETED_COMPENSATED",
-            "PERIOD_RESULT_TRANSFERRED"),
+            "INTERIM_RESULT_SWEPT",
+            "FISCAL_YEAR_CLOSED"),
         BookAuditEventKind.wireValues());
   }
 
@@ -272,7 +308,7 @@ class BookAuditEventTest {
                     Money.parse("EUR", "1.00")))),
         postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(

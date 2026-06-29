@@ -1,9 +1,9 @@
 package dev.erst.fingrind.executor.bookkeeping.reporting;
 
-import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.ProfitAndLossAccountDoctrine;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRules;
@@ -31,7 +31,7 @@ final class ProfitAndLossContributionCalculator {
             .filter(
                 accountTotal ->
                     accountingRules
-                        .resultTransferPolicy()
+                        .closePostingPolicy()
                         .closesAccountType(accountTotal.account().accountType()))
             .filter(accountTotal -> accountTotal.balance().balanceSide() != BalanceSide.ZERO)
             .collect(
@@ -44,9 +44,9 @@ final class ProfitAndLossContributionCalculator {
   private static long contributionMinorUnits(AccountCurrencyTotals accountTotal) {
     RegisteredAccount account = accountTotal.account();
     CurrencyBalance balance = accountTotal.balance();
-    return AccountSemantics.profitAndLossContributionMinorUnits(
+    return ProfitAndLossAccountDoctrine.profitAndLossContributionMinorUnits(
         account.accountType(),
-        account.accountRole(),
+        account.accountTaxonomy(),
         balance.balanceSide(),
         balance.netAmount().minorUnits());
   }

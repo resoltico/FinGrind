@@ -15,7 +15,6 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -49,9 +48,9 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             List.of());
 
     String csv = CliAccountBalanceOutputRenderer.renderCsv(snapshot);
-    assertEquals(CliCsvExportFamilies.FLAT_REGISTER, csvValue(csv, 1, "exportFamily"));
+    assertEquals(CliCsvExportFamilies.ACCOUNT_BALANCE, csvValue(csv, 1, "exportFamily"));
     assertEquals("scope-empty", csvValue(csv, 1, "relationKind"));
-    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, csvValue(csv, 1, "recordKind"));
+    assertEquals(CliCsvExportFamilies.ACCOUNT_BALANCE, csvValue(csv, 1, "recordKind"));
     assertEquals("1000", csvValue(csv, 1, "accountCode"));
     assertEquals("Cash", csvValue(csv, 1, "accountName"));
     assertEquals("ASSET", csvValue(csv, 1, "accountType"));
@@ -63,9 +62,9 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     String csv =
         CliAccountPageOutputRenderer.renderCsv(accountPage(List.of(), 50, Optional.empty()));
 
-    assertEquals(CliCsvExportFamilies.FLAT_REGISTER, csvValue(csv, 1, "exportFamily"));
+    assertEquals(CliCsvExportFamilies.ACCOUNTS, csvValue(csv, 1, "exportFamily"));
     assertEquals("scope-empty", csvValue(csv, 1, "relationKind"));
-    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, csvValue(csv, 1, "recordKind"));
+    assertEquals(CliCsvExportFamilies.ACCOUNTS, csvValue(csv, 1, "recordKind"));
     assertEquals("No accounts matched the selected scope.", csvValue(csv, 1, "message"));
   }
 
@@ -75,9 +74,9 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
 
     String csv = CliPostingOutputRenderer.renderPostingRegisterCsv(page);
 
-    assertEquals(CliCsvExportFamilies.POSTING_RELATIONSHIPS, csvValue(csv, 1, "exportFamily"));
-    assertEquals("scope-empty", csvValue(csv, 1, "relationKind"));
-    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, csvValue(csv, 1, "recordKind"));
+    assertEquals(CliCsvExportFamilies.POSTINGS, csvValue(csv, 1, "exportFamily"));
+    assertEquals(CliCsvExportFamilies.POSTINGS, csvValue(csv, 1, "recordKind"));
+    assertEquals("posting-page:scope-empty", csvValue(csv, 1, "rowId"));
     assertEquals("No postings matched the selected scope.", csvValue(csv, 1, "message"));
   }
 
@@ -100,12 +99,14 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
 
     assertTrue(text.contains("No currency totals matched the selected scope."));
     assertTrue(text.contains("No account activity matched the selected scope."));
-    assertTrue(
-        csv.contains(
-            "section-empty,currency,,,,,,,No currency totals matched the selected scope."));
-    assertTrue(
-        csv.contains(
-            "section-empty,account,,,,,,,No account activity matched the selected scope."));
+    assertEquals("section-empty", csvValue(csv, 4, "relationKind"));
+    assertEquals(CliCsvExportFamilies.PERIOD_SUMMARY, csvValue(csv, 4, "recordKind"));
+    assertEquals("currency", csvValue(csv, 4, "subjectKind"));
+    assertEquals("No currency totals matched the selected scope.", csvValue(csv, 4, "message"));
+    assertEquals("section-empty", csvValue(csv, 5, "relationKind"));
+    assertEquals(CliCsvExportFamilies.PERIOD_SUMMARY, csvValue(csv, 5, "recordKind"));
+    assertEquals("account", csvValue(csv, 5, "subjectKind"));
+    assertEquals("No account activity matched the selected scope.", csvValue(csv, 5, "message"));
   }
 
   @Test
@@ -130,9 +131,9 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     assertTrue(text.contains("Outcome"));
     assertTrue(text.contains("No account balances matched the selected scope."));
     assertTrue(text.contains("Comparative Trial Balance"));
-    assertTrue(csv.contains("current,report-empty,2026-04-30"));
-    assertTrue(csv.contains("comparative,total,2025-04-30,true"));
-    assertFalse(csv.contains("comparative,report-empty,2025-04-30"));
+    assertTrue(csv.contains("current,trial-balance,2026-04-30"));
+    assertTrue(csv.contains("comparative,trial-balance,2025-04-30,true"));
+    assertFalse(csv.contains("comparative,report-empty,trial-balance,2025-04-30"));
   }
 
   @Test
@@ -217,8 +218,8 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             List.of(),
             true);
 
-    assertFalse(CliReportSurfacePolicy.hasCurrent(report));
-    assertFalse(CliReportSurfacePolicy.hasComparative(report));
+    assertFalse(CliTrialBalanceSurfacePolicy.hasCurrent(report));
+    assertFalse(CliTrialBalanceSurfacePolicy.hasComparative(report));
   }
 
   @Test
@@ -237,7 +238,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             List.of(),
             true);
 
-    assertTrue(CliReportSurfacePolicy.hasCurrent(report));
+    assertTrue(CliTrialBalanceSurfacePolicy.hasCurrent(report));
   }
 
   @Test
@@ -252,7 +253,6 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
                     "1000",
                     "Cash",
                     AccountType.ASSET,
-                    Optional.of(AccountRole.ORDINARY),
                     Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     StatementLineKind.DECLARED_ACCOUNT,
                     assetBalance)),
@@ -293,17 +293,17 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             List.of());
 
     String csv = CliFinancialPositionReportRenderer.renderCsv(report);
-    assertEquals(CliCsvExportFamilies.STATEMENT, csvValue(csv, 1, "exportFamily"));
+    assertEquals(CliCsvExportFamilies.FINANCIAL_POSITION, csvValue(csv, 1, "exportFamily"));
     assertEquals("report-empty", csvValue(csv, 1, "relationKind"));
     assertEquals("current", csvValue(csv, 1, "reportBasis"));
-    assertEquals(CliCsvEmptyKinds.REPORT_EMPTY, csvValue(csv, 1, "recordKind"));
+    assertEquals(CliCsvExportFamilies.FINANCIAL_POSITION, csvValue(csv, 1, "recordKind"));
     assertEquals("2026-04-30", csvValue(csv, 1, "effectiveDateAsOf"));
     assertEquals(
         "No financial position lines matched the selected scope.", csvValue(csv, 1, "message"));
-    assertEquals(CliCsvExportFamilies.STATEMENT, csvValue(csv, 2, "exportFamily"));
+    assertEquals(CliCsvExportFamilies.FINANCIAL_POSITION, csvValue(csv, 2, "exportFamily"));
     assertEquals("report-empty", csvValue(csv, 2, "relationKind"));
     assertEquals("comparative", csvValue(csv, 2, "reportBasis"));
-    assertEquals(CliCsvEmptyKinds.REPORT_EMPTY, csvValue(csv, 2, "recordKind"));
+    assertEquals(CliCsvExportFamilies.FINANCIAL_POSITION, csvValue(csv, 2, "recordKind"));
     assertEquals("2025-04-30", csvValue(csv, 2, "effectiveDateAsOf"));
     assertEquals(
         "No financial position lines matched the selected scope.", csvValue(csv, 2, "message"));
@@ -329,7 +329,6 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             assetBalance)),
@@ -358,12 +357,24 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
 
     String csv = CliIncomeStatementReportRenderer.renderCsv(report);
 
-    assertTrue(
-        csv.contains(
-            "current,report-empty,2026-04-01,2026-04-30,,,,,,,,EUR,,,,,No income statement lines matched the selected scope."));
-    assertTrue(
-        csv.contains(
-            "comparative,report-empty,2025-04-01,2025-04-30,,,,,,,,EUR,,,,,No income statement lines matched the selected scope."));
+    assertEquals(CliCsvExportFamilies.INCOME_STATEMENT, csvValue(csv, 1, "exportFamily"));
+    assertEquals("current", csvValue(csv, 1, "reportBasis"));
+    assertEquals("report-empty", csvValue(csv, 1, "relationKind"));
+    assertEquals(CliCsvExportFamilies.INCOME_STATEMENT, csvValue(csv, 1, "recordKind"));
+    assertEquals("2026-04-01", csvValue(csv, 1, "effectiveDateFrom"));
+    assertEquals("2026-04-30", csvValue(csv, 1, "effectiveDateTo"));
+    assertEquals("EUR", csvValue(csv, 1, "currencyCode"));
+    assertEquals(
+        "No income statement lines matched the selected scope.", csvValue(csv, 1, "message"));
+    assertEquals(CliCsvExportFamilies.INCOME_STATEMENT, csvValue(csv, 2, "exportFamily"));
+    assertEquals("comparative", csvValue(csv, 2, "reportBasis"));
+    assertEquals("report-empty", csvValue(csv, 2, "relationKind"));
+    assertEquals(CliCsvExportFamilies.INCOME_STATEMENT, csvValue(csv, 2, "recordKind"));
+    assertEquals("2025-04-01", csvValue(csv, 2, "effectiveDateFrom"));
+    assertEquals("2025-04-30", csvValue(csv, 2, "effectiveDateTo"));
+    assertEquals("EUR", csvValue(csv, 2, "currencyCode"));
+    assertEquals(
+        "No income statement lines matched the selected scope.", csvValue(csv, 2, "message"));
   }
 
   @Test
@@ -376,7 +387,6 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
                     "5100",
                     "Software",
                     AccountType.EXPENSE,
-                    Optional.of(AccountRole.ORDINARY),
                     ProfitAndLossLineClassification.OPERATING_EXPENSE,
                     StatementLineKind.DECLARED_ACCOUNT,
                     CurrencyBalance.ofTotals(money("EUR", "12.00"), money("EUR", "0.00")))),
@@ -396,7 +406,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     String text = CliIncomeStatementReportRenderer.renderText(report);
     String csv = CliIncomeStatementReportRenderer.renderCsv(report);
 
-    assertFalse(CliReportSurfacePolicy.hasComparative(report));
+    assertFalse(CliStatementReportSurfacePolicy.hasComparative(report));
     assertFalse(text.contains("Comparative Income Statement"));
     assertTrue(csv.contains("current"));
     assertFalse(csv.contains("comparative"));

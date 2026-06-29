@@ -8,10 +8,10 @@
   "budgetVarianceReason": "The rejection JSON aggregate exceeds the default CLI JSON budget until the remaining rejection families move into separate owners.",
   "duplicationExemptionReason": "The rejection JSON aggregate intentionally repeats machine-contract record structure until the remaining rejection payload families move into separate owners.",
   "approval": {
-    "physicalLines": 396,
-    "logicalLines": 345,
+    "physicalLines": 400,
+    "logicalLines": 348,
     "importLikeLines": 6,
-    "nestedTypes": 41,
+    "nestedTypes": 42,
     "functions": 0,
     "fieldsPerTopLevelType": 0,
     "switchArmsPerMethod": 0,

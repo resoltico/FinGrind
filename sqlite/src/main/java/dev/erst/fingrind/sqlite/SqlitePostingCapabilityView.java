@@ -1,8 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
@@ -36,13 +37,18 @@ interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCa
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
-        .declareAccount(
-            accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
+        .declareAccount(accountCode, accountName, accountType, accountTaxonomy, declaredAt);
+  }
+
+  @Override
+  default DeclareTaxRegistrationResult declareTaxRegistration(
+      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations().declareTaxRegistration(command, declaredAt);
   }
 
   @Override

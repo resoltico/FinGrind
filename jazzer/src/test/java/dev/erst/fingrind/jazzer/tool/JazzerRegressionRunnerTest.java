@@ -117,7 +117,7 @@ class JazzerRegressionRunnerTest {
           output
               .toString()
               .contains(
-                  "[JAZZER-PULSE] regression-target phase=plan target=cli-request total-inputs=1"));
+                  "[JAZZER-PULSE] regression-target event=plan target=cli-request total-inputs=1"));
       assertTrue(
           output
               .toString()
@@ -127,7 +127,7 @@ class JazzerRegressionRunnerTest {
           output
               .toString()
               .contains(
-                  "[JAZZER-PULSE] regression-target phase=finish target=cli-request status=SUCCESS"));
+                  "[JAZZER-PULSE] regression-target event=finish target=cli-request status=SUCCESS"));
       assertTrue(errors.toString().isBlank());
     }
 
@@ -321,7 +321,7 @@ class JazzerRegressionRunnerTest {
           .run(new String[] {"--target", "cli-request"});
 
       assertEquals(-1, exitCode.get());
-      assertTrue(output.toString(UTF_8).contains("phase=finish target=cli-request status=SUCCESS"));
+      assertTrue(output.toString(UTF_8).contains("event=finish target=cli-request status=SUCCESS"));
       assertTrue(errors.toString(UTF_8).isBlank());
     }
 
@@ -361,7 +361,7 @@ class JazzerRegressionRunnerTest {
                 errors,
                 exitCode::set));
 
-    assertTrue(output.toString(UTF_8).contains("phase=finish target=cli-request status=SUCCESS"));
+    assertTrue(output.toString(UTF_8).contains("event=finish target=cli-request status=SUCCESS"));
     assertNoRegressionErrors(errors.toString(UTF_8));
     assertEquals(-1, exitCode.get());
   }
@@ -375,7 +375,7 @@ class JazzerRegressionRunnerTest {
                 "--project-root", PROJECT_DIRECTORY.toString(), "--target", "cli-request"));
 
     assertEquals(0, result.exitCode());
-    assertTrue(result.output().contains("phase=finish target=cli-request status=SUCCESS"));
+    assertTrue(result.output().contains("event=finish target=cli-request status=SUCCESS"));
     assertNoRegressionErrors(result.output());
   }
 

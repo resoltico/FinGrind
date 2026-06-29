@@ -25,7 +25,8 @@ public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntr
       PostingId postingId,
       IdempotencyKey idempotencyKey,
       LocalDate effectiveDate,
-      Instant recordedAt)
+      Instant recordedAt,
+      boolean idempotentReplay)
       implements CommitEntryResult {
 
     /** Validates the committed success shape. */

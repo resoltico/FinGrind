@@ -12,8 +12,8 @@ import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.util.EnumSet;
@@ -168,7 +168,7 @@ final class MachineContractDomainDescriptors {
   static ContractResponse.AccountRegistryDescriptor accountRegistry() {
     return new ContractResponse.AccountRegistryDescriptor(
         ContractResponse.InitializationRequirement.REQUIRES_OPEN_BOOK,
-        "redeclaration may update the display name and reactivate an inactive account, but will not amend accountType, accountRole, or account taxonomy",
+        "redeclaration may update the display name and reactivate an inactive account, but will not amend accountType or account taxonomy",
         List.of(
             new ContractResponse.FieldDescriptor(
                 ProtocolDeclareAccountFields.ACCOUNT_CODE, "Book-local account code to declare."),
@@ -179,9 +179,6 @@ final class MachineContractDomainDescriptors {
                 ProtocolDeclareAccountFields.ACCOUNT_TYPE,
                 "Account classification that determines normal-balance doctrine and which statement taxonomy family the account must join."),
             new ContractResponse.FieldDescriptor(
-                ProtocolDeclareAccountFields.ACCOUNT_ROLE,
-                "Doctrinal account role that determines whether the account is ordinary or contra."),
-            new ContractResponse.FieldDescriptor(
                 ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND,
                 "Chart node kind that determines whether the account is a hierarchy header or a direct posting target."),
             new ContractResponse.FieldDescriptor(
@@ -191,6 +188,9 @@ final class MachineContractDomainDescriptors {
                 ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
                 "Required for ASSET, LIABILITY, and EQUITY accounts. Declares the account's financial position taxonomy."),
             new ContractResponse.FieldDescriptor(
+                ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION,
+                "Required for ASSET accounts and forbidden for every non-ASSET account. Declares whether the asset is cash and cash equivalents or one non-cash asset."),
+            new ContractResponse.FieldDescriptor(
                 ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
                 "Required for REVENUE and EXPENSE accounts. Declares the account's profit-and-loss taxonomy.")),
         List.of(
@@ -199,13 +199,15 @@ final class MachineContractDomainDescriptors {
             new ContractResponse.FieldDescriptor(
                 "accountName", "Current display name of the account."),
             new ContractResponse.FieldDescriptor("accountType", "Declared account classification."),
-            new ContractResponse.FieldDescriptor("accountRole", "Declared account doctrinal role."),
             new ContractResponse.FieldDescriptor("accountNodeKind", "Declared chart node kind."),
             new ContractResponse.FieldDescriptor(
                 "parentAccountCode", "Declared optional chart parent account code."),
             new ContractResponse.FieldDescriptor(
                 "financialPositionLineClassification",
                 "Declared financial position taxonomy classification when the account belongs to the balance sheet."),
+            new ContractResponse.FieldDescriptor(
+                "cashFlowAssetClassification",
+                "Declared cash-flow asset classification when the account belongs to ASSET accounts."),
             new ContractResponse.FieldDescriptor(
                 "profitAndLossLineClassification",
                 "Declared profit-and-loss taxonomy classification when the account belongs to the income statement."),
@@ -218,14 +220,14 @@ final class MachineContractDomainDescriptors {
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "accountType", AccountType.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
-                "accountRole", AccountRole.wireValues()),
-            new ContractRequestShapes.EnumVocabularyDescriptor(
                 "accountNodeKind", AccountNodeKind.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 "financialPositionLineClassification",
                 FinancialPositionLineClassification.declaredAccountWireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
-                "profitAndLossLineClassification", ProfitAndLossLineClassification.wireValues())));
+                "profitAndLossLineClassification", ProfitAndLossLineClassification.wireValues()),
+            new ContractRequestShapes.EnumVocabularyDescriptor(
+                "cashFlowAssetClassification", CashFlowAssetClassification.wireValues())));
   }
 
   static ContractResponse.ReversalDescriptor reversals() {

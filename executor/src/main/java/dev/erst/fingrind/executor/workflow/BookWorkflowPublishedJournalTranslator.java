@@ -2,7 +2,7 @@ package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
@@ -20,7 +20,7 @@ final class BookWorkflowPublishedJournalTranslator {
       case BookWorkflowJournalDescriptor.Step stepDescriptor ->
           toPublishedJournalStep(stepDescriptor.step());
       case BookWorkflowJournalDescriptor.Boundary boundary ->
-          LedgerJournalStep.boundary(toPublishedBoundaryPhase(boundary.phase()));
+          LedgerJournalStep.boundary(toPublishedBoundaryCheckpoint(boundary.checkpoint()));
     };
   }
 
@@ -104,13 +104,14 @@ final class BookWorkflowPublishedJournalTranslator {
     };
   }
 
-  private static LedgerBoundaryPhase toPublishedBoundaryPhase(BookWorkflowBoundaryPhase phase) {
-    Objects.requireNonNull(phase, "phase");
-    return switch (phase) {
-      case BEGIN -> LedgerBoundaryPhase.BEGIN;
-      case INITIALIZATION_CHECK -> LedgerBoundaryPhase.INITIALIZATION_CHECK;
-      case COMMIT -> LedgerBoundaryPhase.COMMIT;
-      case ROLLBACK -> LedgerBoundaryPhase.ROLLBACK;
+  private static LedgerBoundaryCheckpoint toPublishedBoundaryCheckpoint(
+      BookWorkflowBoundaryCheckpoint checkpoint) {
+    Objects.requireNonNull(checkpoint, "checkpoint");
+    return switch (checkpoint) {
+      case BEGIN -> LedgerBoundaryCheckpoint.BEGIN;
+      case INITIALIZATION_CHECK -> LedgerBoundaryCheckpoint.INITIALIZATION_CHECK;
+      case COMMIT -> LedgerBoundaryCheckpoint.COMMIT;
+      case ROLLBACK -> LedgerBoundaryCheckpoint.ROLLBACK;
     };
   }
 
@@ -122,7 +123,9 @@ final class BookWorkflowPublishedJournalTranslator {
           LedgerJournalStep.standard(LedgerStepKind.DECLARE_ACCOUNT);
       case BookWorkflowStep.PreflightEntry _ ->
           LedgerJournalStep.standard(LedgerStepKind.PREFLIGHT_ENTRY);
-      case BookWorkflowStep.PostEntry _ -> LedgerJournalStep.standard(LedgerStepKind.POST_ENTRY);
+      case BookWorkflowStep.PostEntry postEntry ->
+          LedgerJournalStep.standard(
+              LedgerStepKind.forCommittedEntryKind(postEntry.command().entry().entryKind()));
       case BookWorkflowStep.InspectBook _ ->
           LedgerJournalStep.standard(LedgerStepKind.INSPECT_BOOK);
       case BookWorkflowStep.ListAccounts _ ->

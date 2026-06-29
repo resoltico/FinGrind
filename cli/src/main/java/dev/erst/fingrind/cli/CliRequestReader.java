@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.JournalEntryValidationException;
 import java.io.IOException;
@@ -31,11 +32,16 @@ final class CliRequestReader {
 
   /** Reads one posting request from a JSON file or standard input. */
   PostEntryCommand readPostEntryCommand(Path requestFile) {
+    return readPostEntryCommand(requestFile, OperationId.PREFLIGHT_ENTRY);
+  }
+
+  /** Reads one posting request from a JSON file or standard input for one selected topic. */
+  PostEntryCommand readPostEntryCommand(Path requestFile, OperationId templateOperation) {
     return parseRequest(
         requestFile,
         CliJsonRequestHints.postEntryRequestHint(),
-        OperationId.POST_ENTRY,
-        CliPostingRequestParser::readPostEntryCommand);
+        templateOperation,
+        rootNode -> CliPostingRequestParser.readPostEntryCommand(rootNode, templateOperation));
   }
 
   /** Reads one account-declaration request from a JSON file or standard input. */
@@ -45,6 +51,15 @@ final class CliRequestReader {
         CliJsonRequestHints.declareAccountRequestHint(),
         OperationId.DECLARE_ACCOUNT,
         CliPostingRequestParser::readDeclareAccountCommand);
+  }
+
+  /** Reads one tax-registration declaration request from a JSON file or standard input. */
+  DeclareTaxRegistrationCommand readDeclareTaxRegistrationCommand(Path requestFile) {
+    return parseRequest(
+        requestFile,
+        CliJsonRequestHints.declareTaxRegistrationRequestHint(),
+        OperationId.DECLARE_TAX_REGISTRATION,
+        CliPostingRequestParser::readDeclareTaxRegistrationCommand);
   }
 
   /** Reads one AI-agent ledger plan from a JSON file or standard input. */
@@ -80,6 +95,7 @@ final class CliRequestReader {
     CliErrorJsonModels.InvalidRequestDetails details =
         new CliErrorJsonModels.InvalidRequestDetails(exception.violations());
     String message = CliJsonRequestFailures.normalizedMessage(exception);
+    String argument = CliRequestFailureArguments.extract(message);
     return new CliRequestException(
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
         message,
@@ -87,6 +103,7 @@ final class CliRequestReader {
             ? CliRequestRepairHints.refineLedgerPlan(message, requestHint)
             : CliRequestRepairHints.refine(message, requestHint, details, templateOperation),
         exception,
+        argument,
         details);
   }
 
@@ -95,13 +112,15 @@ final class CliRequestReader {
       String requestHint,
       @org.jspecify.annotations.Nullable OperationId templateOperation) {
     String message = CliJsonRequestFailures.normalizedMessage(exception);
+    String argument = CliRequestFailureArguments.extract(message);
     return new CliRequestException(
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
         message,
         templateOperation == null
             ? CliRequestRepairHints.refineLedgerPlan(message, requestHint)
             : CliRequestRepairHints.refine(message, requestHint, null, templateOperation),
-        exception);
+        exception,
+        argument);
   }
 
   private JsonNode readRootNode(Path requestFile, String readFailureHint) {

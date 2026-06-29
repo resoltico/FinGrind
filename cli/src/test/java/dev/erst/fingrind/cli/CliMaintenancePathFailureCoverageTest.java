@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport {
   @Test
   void maintenanceRejectionPayloadMapper_rendersArtifactPathFailureHintAndDetails() {
-    CliEnvelopeJsonModels.RejectedEnvelope envelope =
+    CliEnvelopeJsonModels.Envelope<?> envelope =
         CliRejectionPayloadMapper.maintenanceRejectedEnvelope(
             new BookMaintenanceRejection.ArtifactPathInvalid(
                 dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.BACKUP_TARGET,
@@ -82,7 +82,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
 
   private static void assertMaintenanceHint(
       BookMaintenancePathFailure pathFailure, String expectedHintFragment) {
-    CliEnvelopeJsonModels.RejectedEnvelope envelope =
+    CliEnvelopeJsonModels.Envelope<?> envelope =
         CliRejectionPayloadMapper.maintenanceRejectedEnvelope(
             new BookMaintenanceRejection.ArtifactPathInvalid(
                 dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.BACKUP_TARGET,

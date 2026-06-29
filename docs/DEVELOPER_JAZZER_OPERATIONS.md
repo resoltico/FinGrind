@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, docker, devcontainer, repo-lock]
   questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do i clean local jazzer state in fingrind", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]
@@ -243,12 +243,12 @@ Run these commands in order.
 
    A healthy active run is not silent. Expect lines such as:
 
-   - `[JAZZER-PULSE] ... phase=plan ...`
+   - `[JAZZER-PULSE] ... event=plan ...`
    - `INFO: using inputs from: ...`
    - `#16384 pulse ...`
    - `#32768 pulse ...`
    - `#156789 DONE ...`
-   - `[JAZZER-PULSE] ... phase=finish status=SUCCESS ...`
+   - `[JAZZER-PULSE] ... event=finish status=SUCCESS ...`
    - `BUILD SUCCESSFUL`
 
    If the command returns immediately with no `JAZZER-PULSE`, no `INFO:`, and no libFuzzer
@@ -455,15 +455,15 @@ active fuzzing. Treat them as the canonical semantic progress markers.
 
 Interpretation:
 
-- active fuzzing emits `phase=plan total-tests=1 fuzz-test=...` and
-  `phase=finish status=... fuzz-test=... exit-code=...`, because the standalone harness runner
+- active fuzzing emits `event=plan total-tests=1 fuzz-test=...` and
+  `event=finish status=... fuzz-test=... exit-code=...`, because the standalone harness runner
   resolves one concrete `@FuzzTest` method before delegating to Jazzer's official JUnit runner
-- deterministic tests emit `deterministic-tests phase=class-start`, `phase=test-complete`,
-  `phase=class-complete`, and throttled `phase=test-progress` heartbeats so `./check.sh` can
+- deterministic tests emit `deterministic-tests event=class-start`, `event=test-complete`,
+  `event=class-complete`, and throttled `event=test-progress` heartbeats so `./check.sh` can
   observe long-running deterministic tests without false stalls
-- regression replay emits `regression-target phase=plan total-inputs=...`, one
+- regression replay emits `regression-target event=plan total-inputs=...`, one
   `regression-input ... completed=...` pulse per committed seed, and a final
-  `regression-target phase=finish ...` pulse per harness
+  `regression-target event=finish ...` pulse per harness
 - active fuzzing does not need per-seed launcher pulses; libFuzzer coverage and corpus-growth
   lines remain the fuzz-session body
 

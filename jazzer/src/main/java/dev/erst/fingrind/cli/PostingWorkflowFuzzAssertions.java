@@ -50,8 +50,8 @@ final class PostingWorkflowFuzzAssertions {
                   CliFuzzWorkflowFixtures.publishedStoredPosting(
                       bookSession, command.requestProvenance().idempotencyKey()));
           PostingWorkflowInvariantAssertions.verifyStoredPosting(postingFact, committed, command);
-          PostingWorkflowInvariantAssertions.requireDuplicateRejection(
-              CliFuzzWorkflowFixtures.commit(applicationService, command));
+          PostingWorkflowInvariantAssertions.requireIdempotentReplay(
+              CliFuzzWorkflowFixtures.commit(applicationService, command), committed);
         }
         case PreflightRejected preflightRejected -> {
           PostingWorkflowInvariantAssertions.verifyRejectedPreflightAndCommit(
@@ -86,7 +86,7 @@ final class PostingWorkflowFuzzAssertions {
         CliFuzzWorkflowFixtures.commit(applicationService, command);
     PostingWorkflowInvariantAssertions.verifyRejectedPreflightAndCommit(
         postOpenPreflightRejected, committedPostOpenResult);
-    if (!isUnknownAccountLifecyclePhase(postOpenPreflightRejected.rejection())) {
+    if (!isUnknownAccountPreDeclarationState(postOpenPreflightRejected.rejection())) {
       return;
     }
 
@@ -110,7 +110,7 @@ final class PostingWorkflowFuzzAssertions {
         CliFuzzAccountFixtures.listAccounts(bookSession), primaryAccount);
   }
 
-  static boolean isUnknownAccountLifecyclePhase(PostingRejection rejection) {
+  static boolean isUnknownAccountPreDeclarationState(PostingRejection rejection) {
     return rejection instanceof PostingRejection.AccountStateViolations violations
         && violations.violations().stream()
             .allMatch(PostingRejection.UnknownAccount.class::isInstance);

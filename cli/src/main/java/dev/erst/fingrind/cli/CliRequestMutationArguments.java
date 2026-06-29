@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
@@ -40,6 +41,25 @@ final class CliRequestMutationArguments {
         CliOptionModes.resolvedOutputMode(outputMode));
   }
 
+  static CliCommand parseDeclareTaxRegistrationCommand(List<String> arguments) {
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments, OUTPUT_ONLY_ARGUMENTS);
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
+    while (argumentIterator.hasNext()) {
+      argumentIterator.next();
+      outputMode =
+          CliOptionModes.requireOutputMode(
+              outputMode,
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
+    }
+    return new DeclareTaxRegistration(
+        parsedArguments.bookAccess(),
+        parsedArguments.optionalRequestFile().orElseThrow(),
+        CliOptionModes.resolvedOutputMode(outputMode));
+  }
+
   static CliCommand parseExecutePlanCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseRequestBoundCommandArguments(arguments, EXECUTE_PLAN_ARGUMENTS);
@@ -73,6 +93,30 @@ final class CliRequestMutationArguments {
     return parseRequestBoundOutputCommand(arguments, PostEntry::new);
   }
 
+  static CliCommand parseRecordSaleCommand(List<String> arguments) {
+    return parseRecordEntryCommand(arguments, OperationId.RECORD_SALE);
+  }
+
+  static CliCommand parseRecordExpenseCommand(List<String> arguments) {
+    return parseRecordEntryCommand(arguments, OperationId.RECORD_EXPENSE);
+  }
+
+  static CliCommand parseRecordOwnerContributionCommand(List<String> arguments) {
+    return parseRecordEntryCommand(arguments, OperationId.RECORD_OWNER_CONTRIBUTION);
+  }
+
+  static CliCommand parseRecordOwnerWithdrawalCommand(List<String> arguments) {
+    return parseRecordEntryCommand(arguments, OperationId.RECORD_OWNER_WITHDRAWAL);
+  }
+
+  static CliCommand parseRecordOpeningPositionCommand(List<String> arguments) {
+    return parseRecordEntryCommand(arguments, OperationId.RECORD_OPENING_POSITION);
+  }
+
+  static CliCommand parseRecordReversalCommand(List<String> arguments) {
+    return parseRecordEntryCommand(arguments, OperationId.RECORD_REVERSAL);
+  }
+
   private static CliCommand parseRequestBoundOutputCommand(
       List<String> arguments, RequestBoundOutputCommandFactory commandFactory) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
@@ -91,6 +135,14 @@ final class CliRequestMutationArguments {
         parsedArguments.bookAccess(),
         parsedArguments.optionalRequestFile().orElseThrow(),
         CliOptionModes.resolvedOutputMode(outputMode));
+  }
+
+  private static CliCommand parseRecordEntryCommand(
+      List<String> arguments, OperationId operationId) {
+    return parseRequestBoundOutputCommand(
+        arguments,
+        (bookAccess, requestFile, outputMode) ->
+            new RecordEntry(bookAccess, requestFile, outputMode, operationId));
   }
 
   /** Factory for one request-bound write command that also carries an output mode. */

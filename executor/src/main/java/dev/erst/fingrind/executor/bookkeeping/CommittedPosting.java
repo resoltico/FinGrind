@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.JournalEntry;
@@ -10,6 +11,7 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Internal bookkeeping fact for one committed posting. */
 public record CommittedPosting(
@@ -19,7 +21,8 @@ public record CommittedPosting(
     PostingKind postingKind,
     PostingOriginKind postingOriginKind,
     AccountingEvidence evidence,
-    CommittedProvenance provenance) {
+    CommittedProvenance provenance,
+    @Nullable BookkeepingEntry originatingEntry) {
   /** Validates one committed posting fact. */
   public CommittedPosting {
     Objects.requireNonNull(postingId, "postingId");
@@ -29,6 +32,33 @@ public record CommittedPosting(
     Objects.requireNonNull(postingOriginKind, "postingOriginKind");
     Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(provenance, "provenance");
+    PostingOriginatingEntryValidator.requireMatches(
+        originatingEntry,
+        postingKind,
+        postingOriginKind,
+        journalEntry,
+        postingLineage,
+        "committed posting");
+  }
+
+  /** Builds one committed posting without retained caller-authored entry facts. */
+  public CommittedPosting(
+      PostingId postingId,
+      JournalEntry journalEntry,
+      PostingLineageModel postingLineage,
+      PostingKind postingKind,
+      PostingOriginKind postingOriginKind,
+      AccountingEvidence evidence,
+      CommittedProvenance provenance) {
+    this(
+        postingId,
+        journalEntry,
+        postingLineage,
+        postingKind,
+        postingOriginKind,
+        evidence,
+        provenance,
+        null);
   }
 
   /** Returns the optional reversal target. */
@@ -39,5 +69,10 @@ public record CommittedPosting(
   /** Returns the optional reversal reason. */
   public Optional<ReversalReason> reversalReason() {
     return postingLineage.reversalReason();
+  }
+
+  /** Returns the optional caller-authored entry facts retained with this committed posting. */
+  public Optional<BookkeepingEntry> callerAuthoredEntry() {
+    return Optional.ofNullable(originatingEntry);
   }
 }

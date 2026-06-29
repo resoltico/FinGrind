@@ -60,9 +60,9 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             new CausationId("cause-1"),
             Optional.empty());
     dev.erst.fingrind.core.JournalEntry requestJournalEntry = journalEntry();
-    BookkeepingEntry.ReversalAdjustment reversalAdjustment =
-        new BookkeepingEntry.ReversalAdjustment(
-            requestJournalEntry, (PostingLineage.Reversal) reversal);
+    BookkeepingEntry.Reversal reversalAdjustment =
+        new BookkeepingEntry.Reversal(
+            requestJournalEntry, (PostingLineage.Reversal) reversal, null);
     PostEntryCommand command =
         new PostEntryCommand(
             reversalAdjustment,
@@ -75,7 +75,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             requestJournalEntry,
             reversal,
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             ContractFixtures.accountingEvidence("idem-1"),
             new CommittedProvenance(
                 requestProvenance, Instant.parse("2026-04-07T10:15:30Z"), SourceChannel.CLI));
@@ -84,7 +84,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             new AccountCode("1000"), bounded, money("10.00"), BalanceSide.DEBIT);
     PostEntryResult.CommitRejected commitRejected =
         new PostEntryResult.CommitRejected(
-            new IdempotencyKey("idem-1"), new PostingRejection.DuplicateIdempotencyKey());
+            new IdempotencyKey("idem-1"), new PostingRejection.IdempotencyKeyConflict());
     Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
     Instant finishedAt = Instant.parse("2026-04-17T10:15:31Z");
     LedgerPlanResult succeededResult =
@@ -147,9 +147,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
     assertTrue(reversal.isReversal());
     assertEquals(Optional.of(reversalReference), reversal.reversalReference());
     assertEquals(Optional.of(reversalReason), reversal.reversalReason());
-    assertEquals(
-        dev.erst.fingrind.core.BookkeepingEntryKind.REVERSAL_ADJUSTMENT,
-        command.entry().entryKind());
+    assertEquals(dev.erst.fingrind.core.BookkeepingEntryKind.REVERSAL, command.entry().entryKind());
     assertEquals(LocalDate.parse("2026-04-07"), command.entry().effectiveDate());
     assertEquals(Optional.of(reversalReference), reversalAdjustment.reversal().reversalReference());
     assertEquals(Optional.of(reversalReason), reversalAdjustment.reversal().reversalReason());

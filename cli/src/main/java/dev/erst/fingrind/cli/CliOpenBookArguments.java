@@ -36,7 +36,7 @@ final class CliOpenBookArguments {
         new OpenBookCommand(
             new BookIdentity(
                 new EntityProfile(requireEntityName(argumentValues.entityName)),
-                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                 requireFunctionalCurrency(argumentValues.functionalCurrency),
                 requireFiscalYearStart(argumentValues.fiscalYearStart))),
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -145,12 +145,11 @@ Current accounting-standards scope:
   or local-GAAP compliance/reporting package
 - FinGrind does not yet claim IFRS for SMEs parity; the current kernel sits below one full
   small-entity reporting package
-- the current built-in reporting surface is financial position, income statement, and changes in
-  equity
+- the current built-in reporting surface is financial position, income statement, cash receipts
+  and payments, and changes in equity
 - comparative windows and comparative payload data for those built-in statements are derived from
   one book's declared fiscal-year anchor through the built-in bookkeeping kernel
-- statement of cash flows, OCI, note/disclosure packages, and multi-currency translation remain
-  separate future domains
+- OCI, note/disclosure packages, and multi-currency translation remain separate future domains
 - tax, invoicing / receivables / payables, inventory, payroll, and group reporting remain adjacent
   future contexts above the current kernel
 

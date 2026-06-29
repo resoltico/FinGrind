@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.CashFlowSection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
@@ -14,9 +16,9 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -221,7 +223,6 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
                     "equity-rollforward",
                     "Equity rollforward",
                     Optional.of(AccountType.EQUITY),
-                    Optional.empty(),
                     Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
                     StatementLineKind.DECLARED_ACCOUNT,
                     zeroBalance,
@@ -345,9 +346,9 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
             List.of(),
             List.of());
 
-    assertFalse(CliReportSurfacePolicy.hasComparative(nonComparativeTrialBalance));
+    assertFalse(CliTrialBalanceSurfacePolicy.hasComparative(nonComparativeTrialBalance));
     assertTrue(
-        CliReportSurfacePolicy.hasComparative(
+        CliTrialBalanceSurfacePolicy.hasComparative(
             trialBalanceReport(
                 nonComparativeTrialBalance.bookIdentity(),
                 Optional.of(LocalDate.parse("2026-04-30")),
@@ -356,7 +357,7 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
                 nonComparativeTrialBalance.rows(),
                 List.of(new TrialBalanceRow(cashAccount, eurDebitBalance())))));
     assertTrue(
-        CliReportSurfacePolicy.hasComparative(
+        CliTrialBalanceSurfacePolicy.hasComparative(
             new TrialBalanceReport(
                 bookIdentity(),
                 Optional.of(LocalDate.parse("2026-04-30")),
@@ -369,10 +370,10 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
                 List.of(),
                 List.of(),
                 true)));
-    assertFalse(CliReportSurfacePolicy.hasCurrent(nonCurrentEquityReport));
-    assertTrue(CliReportSurfacePolicy.hasCurrent(openingOnlyEquityReport));
-    assertTrue(CliReportSurfacePolicy.hasCurrent(movementOnlyEquityReport));
-    assertTrue(CliReportSurfacePolicy.hasCurrent(closingOnlyEquityReport));
+    assertFalse(CliStatementReportSurfacePolicy.hasCurrent(nonCurrentEquityReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasCurrent(openingOnlyEquityReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasCurrent(movementOnlyEquityReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasCurrent(closingOnlyEquityReport));
   }
 
   @Test
@@ -380,10 +381,10 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
     CurrencyBalance balance = eurDebitBalance();
 
     assertFalse(
-        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
+        CliStatementSectionSurfacePolicy.hasRenderableFinancialPositionSection(
             new FinancialPositionSection(AccountType.ASSET, List.of(), List.of())));
     assertTrue(
-        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
+        CliStatementSectionSurfacePolicy.hasRenderableFinancialPositionSection(
             new FinancialPositionSection(
                 AccountType.ASSET,
                 List.of(
@@ -391,20 +392,19 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
                         "1000",
                         "Cash",
                         AccountType.ASSET,
-                        Optional.of(AccountRole.ORDINARY),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                         StatementLineKind.DECLARED_ACCOUNT,
                         balance)),
                 List.of())));
     assertTrue(
-        CliReportSurfacePolicy.hasRenderableFinancialPositionSection(
+        CliStatementSectionSurfacePolicy.hasRenderableFinancialPositionSection(
             new FinancialPositionSection(AccountType.ASSET, List.of(), List.of(balance))));
 
     assertFalse(
-        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
+        CliStatementSectionSurfacePolicy.hasRenderableIncomeStatementSection(
             new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of())));
     assertTrue(
-        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
+        CliStatementSectionSurfacePolicy.hasRenderableIncomeStatementSection(
             new IncomeStatementSection(
                 AccountType.EXPENSE,
                 List.of(
@@ -412,14 +412,25 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
                         "5100",
                         "Software",
                         AccountType.EXPENSE,
-                        Optional.of(AccountRole.ORDINARY),
                         ProfitAndLossLineClassification.OPERATING_EXPENSE,
                         StatementLineKind.DECLARED_ACCOUNT,
                         balance)),
                 List.of())));
     assertTrue(
-        CliReportSurfacePolicy.hasRenderableIncomeStatementSection(
+        CliStatementSectionSurfacePolicy.hasRenderableIncomeStatementSection(
             new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of(balance))));
+    assertFalse(
+        CliStatementSectionSurfacePolicy.hasRenderableCashFlowSection(
+            new CashFlowSection(CashFlowSectionKind.OPERATING, List.of(), List.of())));
+    assertTrue(
+        CliStatementSectionSurfacePolicy.hasRenderableCashFlowSection(
+            new CashFlowSection(
+                CashFlowSectionKind.OPERATING,
+                List.of(sampleCashFlowStatementReport().sections().getFirst().rows().getFirst()),
+                List.of())));
+    assertTrue(
+        CliStatementSectionSurfacePolicy.hasRenderableCashFlowSection(
+            new CashFlowSection(CashFlowSectionKind.OPERATING, List.of(), List.of(balance))));
   }
 
   @Test
@@ -430,7 +441,6 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
             "equity-1000",
             "Equity",
             Optional.of(AccountType.EQUITY),
-            Optional.of(AccountRole.ORDINARY),
             Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
             StatementLineKind.DECLARED_ACCOUNT,
             balance,
@@ -513,11 +523,11 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
             List.of(),
             List.of(balance));
 
-    assertTrue(CliReportSurfacePolicy.hasCurrent(currentRowsOnlyReport));
-    assertTrue(CliReportSurfacePolicy.hasComparative(comparativeRowsOnlyReport));
-    assertTrue(CliReportSurfacePolicy.hasComparative(comparativeOpeningOnlyReport));
-    assertTrue(CliReportSurfacePolicy.hasComparative(comparativeMovementOnlyReport));
-    assertTrue(CliReportSurfacePolicy.hasComparative(comparativeClosingOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasCurrent(currentRowsOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparative(comparativeRowsOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparative(comparativeOpeningOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparative(comparativeMovementOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparative(comparativeClosingOnlyReport));
   }
 
   @Test
@@ -531,7 +541,6 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
                     "1000",
                     "Cash",
                     AccountType.ASSET,
-                    Optional.of(AccountRole.ORDINARY),
                     Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     StatementLineKind.DECLARED_ACCOUNT,
                     balance)),
@@ -573,9 +582,9 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
             List.of(),
             List.of());
 
-    assertTrue(CliReportSurfacePolicy.hasComparative(financialPositionReport));
-    assertTrue(CliReportSurfacePolicy.hasComparative(incomeStatementReport));
-    assertTrue(CliReportSurfacePolicy.hasComparative(changesInEquityReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparative(financialPositionReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparative(incomeStatementReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparative(changesInEquityReport));
   }
 
   @Test
@@ -603,8 +612,8 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
             List.of(new IncomeStatementSection(AccountType.EXPENSE, List.of(), List.of())),
             List.of(eurDebitBalance()));
 
-    assertFalse(CliReportSurfacePolicy.hasComparativeData(emptyComparativeSectionsReport));
-    assertTrue(CliReportSurfacePolicy.hasComparativeData(totalsBackedComparativeReport));
+    assertFalse(CliStatementReportSurfacePolicy.hasComparativeData(emptyComparativeSectionsReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparativeData(totalsBackedComparativeReport));
   }
 
   @Test
@@ -626,13 +635,232 @@ class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
                             "5100",
                             "Software",
                             AccountType.EXPENSE,
-                            Optional.of(AccountRole.ORDINARY),
                             ProfitAndLossLineClassification.OPERATING_EXPENSE,
                             StatementLineKind.DECLARED_ACCOUNT,
                             eurDebitBalance())),
                     List.of())),
             List.of());
 
-    assertTrue(CliReportSurfacePolicy.hasComparativeData(sectionBackedComparativeReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparativeData(sectionBackedComparativeReport));
+  }
+
+  @Test
+  void cashFlowSurfacePolicy_distinguishesCurrentAndComparativeDataAcrossSectionsAndTotals() {
+    CurrencyBalance balance = eurDebitBalance();
+    CashFlowStatementReport sampleReport = sampleCashFlowStatementReport();
+    CashFlowSection currentSection =
+        new CashFlowSection(
+            CashFlowSectionKind.FINANCING,
+            List.of(sampleReport.sections().get(2).rows().getFirst()),
+            List.of());
+    CashFlowSection comparativeSection =
+        new CashFlowSection(
+            CashFlowSectionKind.OPERATING,
+            List.of(sampleReport.comparativeSections().getFirst().rows().getFirst()),
+            List.of());
+    CashFlowStatementReport emptyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport currentSectionReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(currentSection),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport currentOpeningOnlyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(balance),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport currentMovementOnlyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(balance),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport currentClosingOnlyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(balance),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport comparativeSectionReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(comparativeSection),
+            List.of(),
+            List.of());
+    CashFlowStatementReport comparativeOpeningOnlyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(balance),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport comparativeMovementOnlyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(balance),
+            List.of());
+    CashFlowStatementReport comparativeClosingOnlyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(balance));
+
+    assertFalse(CliStatementReportSurfacePolicy.hasCurrent(emptyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasCurrent(currentSectionReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasCurrent(currentOpeningOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasCurrent(currentMovementOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasCurrent(currentClosingOnlyReport));
+    assertFalse(CliStatementReportSurfacePolicy.hasComparativeData(emptyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparativeData(comparativeSectionReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparativeData(comparativeOpeningOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparativeData(comparativeMovementOnlyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparativeData(comparativeClosingOnlyReport));
+    assertFalse(CliStatementReportSurfacePolicy.hasComparative(emptyReport));
+    assertTrue(CliStatementReportSurfacePolicy.hasComparative(comparativeClosingOnlyReport));
+  }
+
+  @Test
+  void cashFlowTextRenderer_omitsOutcomeWhenTotalsExistWithoutRenderableSections() {
+    CurrencyBalance balance = eurDebitBalance();
+    CashFlowStatementReport totalsOnlyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(balance),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(balance),
+            List.of());
+
+    String rendered = CliReportOutputRenderer.renderCashFlowStatementText(totalsOnlyReport);
+
+    assertTrue(rendered.contains("Cash Receipts And Payments"));
+    assertTrue(rendered.contains("Comparative Cash Receipts And Payments"));
+    assertFalse(rendered.contains("Outcome"));
+    assertFalse(rendered.contains("Sections with data"));
+    assertFalse(rendered.contains("Empty sections"));
+  }
+
+  @Test
+  void cashFlowTextRenderer_reportsComparativeNoMatchesWhenOnlyReferenceExists() {
+    CashFlowStatementReport comparativeReferenceOnlyReport =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+
+    String rendered =
+        CliReportOutputRenderer.renderCashFlowStatementText(comparativeReferenceOnlyReport);
+
+    assertTrue(rendered.contains("Comparative reference"));
+    assertTrue(rendered.contains("2025-04-01"));
+    assertTrue(rendered.contains("2025-04-30"));
+    assertTrue(rendered.contains("Outcome"));
+    assertTrue(rendered.contains("No cash-flow lines matched the selected scope."));
   }
 }

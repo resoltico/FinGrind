@@ -199,9 +199,7 @@ final class CliDiscoveryArguments {
       throw CliArgumentValueParser.invalid(token, "Unsupported request-template topic: " + token);
     }
     OperationId topic = operation.orElseThrow().id();
-    if (topic == OperationId.POST_ENTRY
-        || topic == OperationId.PREFLIGHT_ENTRY
-        || topic == OperationId.DECLARE_ACCOUNT) {
+    if (isSupportedRequestTemplateTopic(topic)) {
       return topic;
     }
     throw CliArgumentValueParser.invalid(
@@ -213,12 +211,36 @@ final class CliDiscoveryArguments {
             + ".");
   }
 
+  private static boolean isSupportedRequestTemplateTopic(OperationId topic) {
+    return switch (topic) {
+      case POST_ENTRY,
+          PREFLIGHT_ENTRY,
+          RECORD_SALE,
+          RECORD_EXPENSE,
+          RECORD_OWNER_CONTRIBUTION,
+          RECORD_OWNER_WITHDRAWAL,
+          RECORD_OPENING_POSITION,
+          RECORD_REVERSAL,
+          DECLARE_ACCOUNT,
+          DECLARE_TAX_REGISTRATION ->
+          true;
+      default -> false;
+    };
+  }
+
   private static String supportedRequestTemplateTopics() {
     return String.join(
         ", ",
         ProtocolCatalog.operationName(OperationId.POST_ENTRY),
         ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY),
-        ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT));
+        ProtocolCatalog.operationName(OperationId.RECORD_SALE),
+        ProtocolCatalog.operationName(OperationId.RECORD_EXPENSE),
+        ProtocolCatalog.operationName(OperationId.RECORD_OWNER_CONTRIBUTION),
+        ProtocolCatalog.operationName(OperationId.RECORD_OWNER_WITHDRAWAL),
+        ProtocolCatalog.operationName(OperationId.RECORD_OPENING_POSITION),
+        ProtocolCatalog.operationName(OperationId.RECORD_REVERSAL),
+        ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT),
+        ProtocolCatalog.operationName(OperationId.DECLARE_TAX_REGISTRATION));
   }
 
   private static CapabilitiesOptionState parseCapabilitiesOptions(List<String> arguments) {

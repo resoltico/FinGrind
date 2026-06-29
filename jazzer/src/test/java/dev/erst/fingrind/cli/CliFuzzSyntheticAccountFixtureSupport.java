@@ -3,9 +3,9 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.util.List;
@@ -49,15 +49,11 @@ final class CliFuzzSyntheticAccountFixtureSupport {
   }
 
   static DeclareAccountCommand declaredAccountCommand(
-      String accountCode,
-      AccountType accountType,
-      AccountRole accountRole,
-      AccountTaxonomy accountTaxonomy) {
+      String accountCode, AccountType accountType, AccountTaxonomy accountTaxonomy) {
     return new DeclareAccountCommand(
         new AccountCode(accountCode),
         new AccountName("Synthetic " + accountCode),
         accountType,
-        accountRole,
         accountTaxonomy);
   }
 
@@ -67,7 +63,10 @@ final class CliFuzzSyntheticAccountFixtureSupport {
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
         Optional.of(classification),
-        Optional.empty());
+        Optional.empty(),
+        classification.accountType() == AccountType.ASSET
+            ? Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)
+            : Optional.empty());
   }
 
   static AccountTaxonomy profitAndLossTaxonomy(ProfitAndLossLineClassification classification) {

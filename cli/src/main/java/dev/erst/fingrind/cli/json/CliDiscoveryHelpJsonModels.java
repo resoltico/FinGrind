@@ -19,6 +19,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
   record HelpOverviewMinimalPayload(
       String application,
       String version,
+      String protocolVersion,
       String description,
       DiscoveryDetail detail,
       @Nullable String category,
@@ -29,6 +30,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
     public HelpOverviewMinimalPayload {
       application = requireText(application, "application");
       version = requireText(version, "version");
+      protocolVersion = requireText(protocolVersion, "protocolVersion");
       description = requireText(description, "description");
       detail = requireValue(detail, "detail");
       category = requireOptionalText(category, "category");
@@ -44,6 +46,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
   record HelpOverviewPayload(
       String application,
       String version,
+      String protocolVersion,
       String description,
       DiscoveryDetail detail,
       @Nullable String category,
@@ -56,6 +59,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
     public HelpOverviewPayload {
       application = requireText(application, "application");
       version = requireText(version, "version");
+      protocolVersion = requireText(protocolVersion, "protocolVersion");
       description = requireText(description, "description");
       detail = requireValue(detail, "detail");
       category = requireOptionalText(category, "category");
@@ -75,6 +79,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
   record HelpOverviewCompactPayload(
       String application,
       String version,
+      String protocolVersion,
       String description,
       DiscoveryDetail detail,
       @Nullable String category,
@@ -86,6 +91,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
     public HelpOverviewCompactPayload {
       application = requireText(application, "application");
       version = requireText(version, "version");
+      protocolVersion = requireText(protocolVersion, "protocolVersion");
       description = requireText(description, "description");
       detail = requireValue(detail, "detail");
       category = requireOptionalText(category, "category");
@@ -102,6 +108,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
   record CommandHelpPayload(
       String application,
       String version,
+      String protocolVersion,
       String description,
       DiscoveryDetail detail,
       CommandDescriptor command,
@@ -116,6 +123,7 @@ public interface CliDiscoveryHelpJsonModels extends CliDiscoveryCommonJsonModels
     public CommandHelpPayload {
       application = requireText(application, "application");
       version = requireText(version, "version");
+      protocolVersion = requireText(protocolVersion, "protocolVersion");
       description = requireText(description, "description");
       detail = requireValue(detail, "detail");
       command = requireValue(command, "command");

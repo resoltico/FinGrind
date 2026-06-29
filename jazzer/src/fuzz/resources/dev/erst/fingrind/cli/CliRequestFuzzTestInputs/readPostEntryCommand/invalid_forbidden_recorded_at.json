@@ -1,6 +1,5 @@
 {
-  "entryKind": "JOURNAL",
-  "recipeKind": "CASH_REVENUE",
+  "entryKind": "SALE",
   "effectiveDate": "2026-04-07",
   "cashAccountCode": "1000",
   "revenueAccountCode": "2000",
@@ -13,13 +12,12 @@
       {
         "sourceDocumentId": "document-idem-4",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-07",
-        "capturedAt": "2026-04-07T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-idem-4",
-        "contentSha256": "96756e687e0a3f2aca21955ca8c6e31416d17b04775a9e59bef13b28fc7a9196"
+        "documentDate": "2026-04-07"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "actor-4",

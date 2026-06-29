@@ -35,11 +35,5 @@ STANDARD_TRIAL_BALANCE_TEXT = "Trial Balance\nAs of : 2026-04-08\ncash | 6.00\n"
 STANDARD_PERIOD_SUMMARY_TEXT = "Period Summary\nPosting count : 2\n"
 
 
-def pdf_export_stderr(reported_path: str) -> str:
-    return (
-        "Info\n"
-        "====\n\n"
-        "Code     : pdf-exported\n"
-        f"Message  : Wrote the requested PDF report artifact to {reported_path}\n"
-        "Argument : --pdf-out\n"
-    )
+def pdf_export_stdout(reported_path: str) -> str:
+    return f"Artifact\n========\n\nFormat : pdf\nPath   : {reported_path}\n"

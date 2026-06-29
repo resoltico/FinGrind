@@ -23,6 +23,10 @@ final class PdfStatementMetadataRows {
         List.of(
             "Starter chart",
             BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())));
+    statementRows.add(
+        List.of(
+            "Accounting basis",
+            BookDoctrineDisplay.accountingBasis(bookIdentity.bookDoctrine().accountingBasis())));
     statementRows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     statementRows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
     statementRows.add(

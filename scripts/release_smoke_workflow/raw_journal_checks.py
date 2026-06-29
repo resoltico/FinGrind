@@ -55,8 +55,8 @@ def verify_raw_journal_commit_and_readback(
         f"{config.label} raw journal read-back did not expose payload.posting",
     )
     require(
-        posting.get("postingOriginKind") == "JOURNAL",
-        f"{config.label} raw journal read-back did not preserve postingOriginKind JOURNAL",
+        posting.get("postingOriginKind") == "DIRECT_JOURNAL",
+        f"{config.label} raw journal read-back did not preserve postingOriginKind DIRECT_JOURNAL",
     )
     require(
         posting.get("postingKind") == "STANDARD",

@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Properties;
 import org.jspecify.annotations.Nullable;
 
-/** Reads the packaged CLI metadata that is expanded during the Gradle resource phase. */
+/** Reads the packaged CLI metadata that is expanded during the Gradle resource step. */
 final class CliMetadata {
   private static final String UNKNOWN_VERSION = "unknown";
 

@@ -58,7 +58,6 @@ public final class BookAdministrationService {
         command.accountCode(),
         command.accountName(),
         command.accountType(),
-        command.accountRole(),
         command.accountTaxonomy(),
         clock.instant());
   }

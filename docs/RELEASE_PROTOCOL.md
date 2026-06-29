@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -52,6 +52,7 @@ git status --short
 git fetch origin --prune --tags
 git rev-list --left-right --count HEAD...origin/main
 ./scripts/verify-repo-hygiene.sh
+./scripts/verify-release-repo-settings.sh
 ```
 
 Requirements before continuing:
@@ -154,11 +155,14 @@ be true before any release commit or tag:
 
 - `README.md` does not reference any prior version's container tags.
 - All example JSON files use the current wire names and field shapes for this version.
-- GitHub repository settings are still aligned with this procedure:
+- `./scripts/verify-release-repo-settings.sh` succeeds. That verifier owns the release-critical
+  GitHub settings contract:
   - default branch is `main`
   - `delete_branch_on_merge` is enabled
-  - `main` is protected with admin enforcement
-  - required status checks are exactly `Gate` (the single aggregate check that subsumes all CI jobs)
+  - `main` protection requires exactly the aggregate `Gate` check
+  - code-owner review remains required on the protected surfaces
+  - administrator bypass remains available for the repository owner, so the solo-owner release
+    and publication path is not deadlocked by a self-review requirement
 
 Before cutting the release branch, enumerate open PRs so dependency-automation work is never
 surprise-discovered after publication:
@@ -328,11 +332,12 @@ git switch --detach origin/main
 gh pr view <N> --repo "$REPO" --json number,state,mergedAt,headRefName,baseRefName,url
 ```
 
-The `--admin` flag uses administrator privileges to bypass branch-protection requirements,
-specifically the review-approval rule that GitHub prevents the PR author from satisfying.
-This is the GitHub-intended escape hatch for single-owner repositories where an agent drives
-the release end-to-end. CI status checks remain the authoritative quality gate; the review
-requirement adds no signal in a solo-owner workflow.
+The `--admin` flag uses GitHub's administrator-bypass path to cross the protected review gate that
+the PR author cannot satisfy in a single-owner repository. FinGrind's supported repository
+settings therefore keep `main` review-protected while leaving administrator bypass available to
+the repository owner; `./scripts/verify-release-repo-settings.sh` is the executable owner of that
+precondition. CI status checks remain the authoritative quality gate; the review requirement adds
+no signal in the solo-owner release workflow once `Gate` is green.
 
 Requirements before continuing:
 
@@ -659,9 +664,11 @@ can still perform one end-to-end bookkeeping/reporting loop, not just print disc
 `trial-balance --output text` must render the posted Cash and Revenue rows for the seeded EUR
 10.00 entry rather than failing in book initialization, key handling, or reporting. The same
 anonymous verification must also prove that `--pdf-out` writes one valid PDF artifact to the
-mounted workspace. The mounted-workspace commands in that verifier must run the container as the
-caller's numeric `UID:GID`, matching the repo-owned `docker-smoke` contract, so bind-mounted key,
-book, and PDF artifacts remain owned and readable by the invoking operator on Linux hosts.
+mounted workspace and that `--output text --pdf-out ...` replaces the full report body with one
+artifact confirmation block on stdout. The mounted-workspace commands in that verifier must run the
+container as the caller's numeric `UID:GID`, matching the repo-owned `docker-smoke` contract, so
+bind-mounted key, book, and PDF artifacts remain owned and readable by the invoking operator on
+Linux hosts.
 
 Because this verifier asserts text statement output and drives a real mounted-book initialization
 and posting path, it is part of the published bookkeeping contract, not just the
@@ -804,6 +811,19 @@ git -C "$PRIMARY_CHECKOUT" merge --ff-only origin/main
 ./scripts/verify-release-primary-checkout.sh "$PRIMARY_CHECKOUT" "X.Y.Z"
 ```
 
+If Step 1 had to move the release into a clean clone because the original primary checkout's Git
+metadata was corrupt or unreadable, do not try to repair that broken checkout in place during
+closeout. Replace it with the verified release checkout instead:
+
+```bash
+./scripts/reconcile-release-primary-checkout.sh "$PRIMARY_CHECKOUT" "$RELEASE_CLONE" "X.Y.Z"
+```
+
+That helper switches the replacement checkout onto `main`, fast-forwards it to `origin/main`,
+proves it satisfies `./scripts/verify-release-primary-checkout.sh`, installs it at the canonical
+primary-checkout path, reruns the verifier at that canonical path, and removes the displaced
+broken tree only after the replacement is proven truthful.
+
 The verifier is authoritative. It fetches `origin`, requires the primary checkout to be on `main`,
 requires `HEAD` to equal `origin/main`, checks that `gradle.properties` and `CHANGELOG.md` reflect
 the released version, rejects tracked overlays, and rejects unexpected untracked debris outside the
@@ -817,6 +837,9 @@ Requirements before declaring the release session complete:
   a named branch based on current `main`; do not leave it only in a stash or mixed into `main`
 - if that unpublished local work is stale, superseded, or regresses the shipped release state,
   delete it instead of preserving misleading debris
+- if a clean-clone replacement path was required, `scripts/reconcile-release-primary-checkout.sh`
+  is the canonical closeout path; do not leave both the broken original tree and the replacement
+  clone behind
 
 If a disposable release worktree was created and is no longer needed:
 

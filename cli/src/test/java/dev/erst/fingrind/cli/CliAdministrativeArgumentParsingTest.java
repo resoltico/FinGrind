@@ -112,12 +112,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals(OutputMode.TEXT, declareAccount.outputMode());
     assertEquals(OutputMode.TEXT, rekeyBook.outputMode());
     assertEquals(OutputMode.TEXT, postEntry.outputMode());
-    TransferPeriodResult transferPeriod =
+    InterimResultSweep transferPeriod =
         assertInstanceOf(
-            TransferPeriodResult.class,
+            InterimResultSweep.class,
             CliArguments.parse(
                 new String[] {
-                  "transfer-period-result",
+                  "interim-result-sweep",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -345,7 +345,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                 }));
 
     assertEquals(
-        dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         command.command().bookIdentity().bookDoctrine());
   }
 
@@ -413,13 +413,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_returnsTransferPeriodResultForValidAdministrativeCommand() {
-    TransferPeriodResult command =
+  void parse_returnsInterimResultSweepForValidAdministrativeCommand() {
+    InterimResultSweep command =
         assertInstanceOf(
-            TransferPeriodResult.class,
+            InterimResultSweep.class,
             CliArguments.parse(
                 new String[] {
-                  "transfer-period-result",
+                  "interim-result-sweep",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -438,13 +438,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parse_rejectsInvalidTransferPeriodResultArguments() {
+  void parse_rejectsInvalidInterimResultSweepArguments() {
     assertThrows(
         CliArgumentsException.class,
         () ->
             CliArguments.parse(
                 new String[] {
-                  "transfer-period-result",
+                  "interim-result-sweep",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -457,7 +457,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
         () ->
             CliArguments.parse(
                 new String[] {
-                  "transfer-period-result",
+                  "interim-result-sweep",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -470,7 +470,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
         () ->
             CliArguments.parse(
                 new String[] {
-                  "transfer-period-result",
+                  "interim-result-sweep",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -487,7 +487,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
         () ->
             CliArguments.parse(
                 new String[] {
-                  "transfer-period-result",
+                  "interim-result-sweep",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -503,7 +503,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "transfer-period-result",
+                      "interim-result-sweep",
                       "--book-file",
                       "book.sqlite",
                       "--book-key-file",
@@ -544,13 +544,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
-  void parseTransferPeriodResult_acceptsTextOutputAndRejectsUnsupportedArguments() {
-    TransferPeriodResult transferPeriod =
+  void parseInterimResultSweep_acceptsTextOutputAndRejectsUnsupportedArguments() {
+    InterimResultSweep transferPeriod =
         assertInstanceOf(
-            TransferPeriodResult.class,
+            InterimResultSweep.class,
             CliArguments.parse(
                 new String[] {
-                  "transfer-period-result",
+                  "interim-result-sweep",
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
@@ -562,14 +562,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--output",
                   "text"
                 }));
-    CliPeriodResultTransferArguments.ParsedTransferPeriodResultArguments parsedArguments =
-        CliPeriodResultTransferArguments.parseTransferPeriodResultArguments(
+    CliReportingPeriodCommandArguments.ParsedReportingPeriodCommandArguments parsedArguments =
+        CliInterimResultSweepArguments.parseInterimResultSweepArguments(
             List.of("--period-start", "2026-04-01", "--period-end", "2026-04-30"));
     CliArgumentsException unsupportedArgument =
         assertThrows(
             CliArgumentsException.class,
             () ->
-                CliPeriodResultTransferArguments.parseTransferPeriodResultArguments(
+                CliInterimResultSweepArguments.parseInterimResultSweepArguments(
                     List.of("--unexpected", "value")));
 
     assertEquals(OutputMode.TEXT, transferPeriod.outputMode());

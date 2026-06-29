@@ -102,13 +102,17 @@ final class PdfPageWriter implements AutoCloseable {
     for (List<String> row : rows) {
       float rowHeight =
           PdfTableTextSupport.tableRowHeight(row, columnWidths, fonts.regular(), this);
-      if (!hasSpace(rowHeight)) {
+      if (cursorY - rowHeight < PdfReportTheme.spacing().pageMargin()) {
         startNewPage();
         drawTableHeader(columns, columnWidths);
       }
       drawTableRow(row, columns, columnWidths, rowHeight, false);
     }
     cursorY -= PdfReportTheme.spacing().sectionAfterTableSpacing();
+  }
+
+  void writeHeading(String heading) throws IOException {
+    writeSectionHeading(heading);
   }
 
   @Override
@@ -239,13 +243,9 @@ final class PdfPageWriter implements AutoCloseable {
   }
 
   private void ensureSpace(float height) throws IOException {
-    if (!hasSpace(height)) {
+    if (cursorY - height < PdfReportTheme.spacing().pageMargin()) {
       startNewPage();
     }
-  }
-
-  private boolean hasSpace(float height) {
-    return cursorY - height >= PdfReportTheme.spacing().pageMargin();
   }
 
   float contentWidth() {

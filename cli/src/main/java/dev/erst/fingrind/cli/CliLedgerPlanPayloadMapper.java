@@ -41,9 +41,7 @@ final class CliLedgerPlanPayloadMapper {
                 .filter(step -> step.status() == LedgerStepStatus.SUCCEEDED)
                 .count(),
         failure == null ? 0 : 1,
-        failure == null ? null : terminalStep.stepId().value(),
-        failure == null ? null : failure.code(),
-        failure == null ? null : failure.message());
+        failure == null ? null : terminalStep.stepId().value());
   }
 
   private static CliPlanJsonModels.LedgerExecutionJournalPayload ledgerExecutionJournalPayload(
@@ -68,7 +66,7 @@ final class CliLedgerPlanPayloadMapper {
         entry.stepId().value(),
         entry.kind(),
         entry.journalStep().detailKind(),
-        entry.journalStep().boundaryPhase(),
+        entry.journalStep().boundaryCheckpoint(),
         entry.status(),
         entry.startedAt().toString(),
         entry.finishedAt().toString(),

@@ -8,77 +8,131 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /** Registry that maps each public operation id onto the corresponding typed CLI parser. */
 final class CliCommandParsingRegistry {
-  private static final Map<OperationId, Function<List<String>, CliCommand>> PARSERS =
-      validatedParsers(
-          Map.ofEntries(
-              Map.entry(OperationId.HELP, CliDiscoveryArguments::parseHelp),
-              Map.entry(OperationId.VERSION, CliDiscoveryArguments::parseVersion),
-              Map.entry(OperationId.CAPABILITIES, CliDiscoveryArguments::parseCapabilities),
-              Map.entry(OperationId.ENVIRONMENT, CliDiscoveryArguments::parseEnvironment),
-              Map.entry(
-                  OperationId.PRINT_REQUEST_TEMPLATE,
-                  CliDiscoveryArguments::parsePrintRequestTemplate),
-              Map.entry(
-                  OperationId.PRINT_PLAN_TEMPLATE, CliDiscoveryArguments::parsePrintPlanTemplate),
-              Map.entry(
-                  OperationId.GENERATE_BOOK_KEY_FILE,
-                  CliLifecycleMutationArguments::parseGenerateBookKeyFileCommand),
-              Map.entry(OperationId.OPEN_BOOK, CliLifecycleMutationArguments::parseOpenBookCommand),
-              Map.entry(
-                  OperationId.REKEY_BOOK, CliLifecycleMutationArguments::parseRekeyBookCommand),
-              Map.entry(
-                  OperationId.BACKUP_BOOK, CliLifecycleMutationArguments::parseBackupBookCommand),
-              Map.entry(
-                  OperationId.RESTORE_BOOK, CliLifecycleMutationArguments::parseRestoreBookCommand),
-              Map.entry(
-                  OperationId.INSPECT_REKEY_ROLLBACK,
-                  CliLifecycleMutationArguments::parseInspectRekeyRollbackCommand),
-              Map.entry(
-                  OperationId.DELETE_REKEY_ROLLBACK,
-                  CliLifecycleMutationArguments::parseDeleteRekeyRollbackCommand),
-              Map.entry(
-                  OperationId.RESTORE_REKEY_ROLLBACK,
-                  CliLifecycleMutationArguments::parseRestoreRekeyRollbackCommand),
-              Map.entry(
-                  OperationId.DECLARE_ACCOUNT,
-                  CliRequestMutationArguments::parseDeclareAccountCommand),
-              Map.entry(
-                  OperationId.TRANSFER_PERIOD_RESULT,
-                  CliLifecycleMutationArguments::parsePeriodResultTransferCommand),
-              Map.entry(OperationId.INSPECT_BOOK, CliBookQueryArguments::parseInspectBookCommand),
-              Map.entry(OperationId.LIST_ACCOUNTS, CliBookQueryArguments::parseListAccountsCommand),
-              Map.entry(OperationId.GET_POSTING, CliBookQueryArguments::parseGetPostingCommand),
-              Map.entry(OperationId.LIST_POSTINGS, CliBookQueryArguments::parseListPostingsCommand),
-              Map.entry(
-                  OperationId.ACCOUNT_BALANCE, CliReportArguments::parseAccountBalanceCommand),
-              Map.entry(OperationId.TRIAL_BALANCE, CliReportArguments::parseTrialBalanceCommand),
-              Map.entry(OperationId.ACCOUNT_LEDGER, CliReportArguments::parseAccountLedgerCommand),
-              Map.entry(OperationId.PERIOD_SUMMARY, CliReportArguments::parsePeriodSummaryCommand),
-              Map.entry(
-                  OperationId.FINANCIAL_POSITION,
-                  CliReportArguments::parseFinancialPositionCommand),
-              Map.entry(
-                  OperationId.INCOME_STATEMENT, CliReportArguments::parseIncomeStatementCommand),
-              Map.entry(
-                  OperationId.CHANGES_IN_EQUITY, CliReportArguments::parseChangesInEquityCommand),
-              Map.entry(
-                  OperationId.EXECUTE_PLAN, CliRequestMutationArguments::parseExecutePlanCommand),
-              Map.entry(
-                  OperationId.PREFLIGHT_ENTRY,
-                  CliRequestMutationArguments::parsePreflightEntryCommand),
-              Map.entry(
-                  OperationId.POST_ENTRY, CliRequestMutationArguments::parsePostEntryCommand)));
+  private static final ParserCatalog PARSERS = new ParserCatalog(validatedParsers(parserMap()));
 
   private CliCommandParsingRegistry() {}
+
+  private static Map<OperationId, Function<List<String>, CliCommand>> parserMap() {
+    return ParserCatalog.bindingsAsMap(
+        discoveryBindings(),
+        lifecycleBindings(),
+        queryBindings(),
+        reportBindings(),
+        writeBindings());
+  }
+
+  @SafeVarargs
+  static Map<OperationId, Function<List<String>, CliCommand>> parserMapForEntries(
+      Map.Entry<OperationId, Function<List<String>, CliCommand>>... entries) {
+    ParserBinding[] bindings = new ParserBinding[entries.length];
+    for (int index = 0; index < entries.length; index++) {
+      Map.Entry<OperationId, Function<List<String>, CliCommand>> entry = entries[index];
+      bindings[index] = binding(entry.getKey(), entry.getValue());
+    }
+    return ParserCatalog.bindingsAsMap(bindings);
+  }
+
+  private static ParserBinding[] discoveryBindings() {
+    return new ParserBinding[] {
+      binding(OperationId.HELP, CliDiscoveryArguments::parseHelp),
+      binding(OperationId.VERSION, CliDiscoveryArguments::parseVersion),
+      binding(OperationId.CAPABILITIES, CliDiscoveryArguments::parseCapabilities),
+      binding(OperationId.ENVIRONMENT, CliDiscoveryArguments::parseEnvironment),
+      binding(OperationId.PRINT_REQUEST_TEMPLATE, CliDiscoveryArguments::parsePrintRequestTemplate),
+      binding(OperationId.PRINT_PLAN_TEMPLATE, CliDiscoveryArguments::parsePrintPlanTemplate)
+    };
+  }
+
+  private static ParserBinding[] lifecycleBindings() {
+    return new ParserBinding[] {
+      binding(
+          OperationId.GENERATE_BOOK_KEY_FILE,
+          CliLifecycleMutationArguments::parseGenerateBookKeyFileCommand),
+      binding(OperationId.OPEN_BOOK, CliLifecycleMutationArguments::parseOpenBookCommand),
+      binding(OperationId.REKEY_BOOK, CliLifecycleMutationArguments::parseRekeyBookCommand),
+      binding(OperationId.BACKUP_BOOK, CliLifecycleMutationArguments::parseBackupBookCommand),
+      binding(OperationId.RESTORE_BOOK, CliLifecycleMutationArguments::parseRestoreBookCommand),
+      binding(
+          OperationId.INSPECT_REKEY_ROLLBACK,
+          CliLifecycleMutationArguments::parseInspectRekeyRollbackCommand),
+      binding(
+          OperationId.DELETE_REKEY_ROLLBACK,
+          CliLifecycleMutationArguments::parseDeleteRekeyRollbackCommand),
+      binding(
+          OperationId.RESTORE_REKEY_ROLLBACK,
+          CliLifecycleMutationArguments::parseRestoreRekeyRollbackCommand),
+      binding(
+          OperationId.INTERIM_RESULT_SWEEP,
+          CliLifecycleMutationArguments::parseInterimResultSweepCommand),
+      binding(
+          OperationId.FISCAL_YEAR_CLOSE, CliLifecycleMutationArguments::parseFiscalYearCloseCommand)
+    };
+  }
+
+  private static ParserBinding[] queryBindings() {
+    return new ParserBinding[] {
+      binding(OperationId.INSPECT_BOOK, CliBookQueryArguments::parseInspectBookCommand),
+      binding(OperationId.LIST_ACCOUNTS, CliBookQueryArguments::parseListAccountsCommand),
+      binding(
+          OperationId.LIST_TAX_REGISTRATIONS,
+          CliTaxQueryArguments::parseListTaxRegistrationsCommand),
+      binding(OperationId.GET_POSTING, CliBookQueryArguments::parseGetPostingCommand),
+      binding(OperationId.LIST_POSTINGS, CliBookQueryArguments::parseListPostingsCommand),
+      binding(OperationId.TAX_OBLIGATION, CliTaxQueryArguments::parseTaxObligationCommand)
+    };
+  }
+
+  private static ParserBinding[] reportBindings() {
+    return new ParserBinding[] {
+      binding(OperationId.ACCOUNT_BALANCE, CliReportArguments::parseAccountBalanceCommand),
+      binding(OperationId.TRIAL_BALANCE, CliReportArguments::parseTrialBalanceCommand),
+      binding(OperationId.ACCOUNT_LEDGER, CliReportArguments::parseAccountLedgerCommand),
+      binding(OperationId.PERIOD_SUMMARY, CliReportArguments::parsePeriodSummaryCommand),
+      binding(OperationId.FINANCIAL_POSITION, CliReportArguments::parseFinancialPositionCommand),
+      binding(OperationId.INCOME_STATEMENT, CliReportArguments::parseIncomeStatementCommand),
+      binding(OperationId.CASH_FLOW_STATEMENT, CliReportArguments::parseCashFlowStatementCommand),
+      binding(OperationId.CHANGES_IN_EQUITY, CliReportArguments::parseChangesInEquityCommand)
+    };
+  }
+
+  private static ParserBinding[] writeBindings() {
+    return new ParserBinding[] {
+      binding(OperationId.DECLARE_ACCOUNT, CliRequestMutationArguments::parseDeclareAccountCommand),
+      binding(
+          OperationId.DECLARE_TAX_REGISTRATION,
+          CliRequestMutationArguments::parseDeclareTaxRegistrationCommand),
+      binding(OperationId.EXECUTE_PLAN, CliRequestMutationArguments::parseExecutePlanCommand),
+      binding(OperationId.PREFLIGHT_ENTRY, CliRequestMutationArguments::parsePreflightEntryCommand),
+      binding(OperationId.RECORD_SALE, CliRequestMutationArguments::parseRecordSaleCommand),
+      binding(OperationId.RECORD_EXPENSE, CliRequestMutationArguments::parseRecordExpenseCommand),
+      binding(
+          OperationId.RECORD_OWNER_CONTRIBUTION,
+          CliRequestMutationArguments::parseRecordOwnerContributionCommand),
+      binding(
+          OperationId.RECORD_OWNER_WITHDRAWAL,
+          CliRequestMutationArguments::parseRecordOwnerWithdrawalCommand),
+      binding(
+          OperationId.RECORD_OPENING_POSITION,
+          CliRequestMutationArguments::parseRecordOpeningPositionCommand),
+      binding(OperationId.RECORD_REVERSAL, CliRequestMutationArguments::parseRecordReversalCommand),
+      binding(OperationId.POST_ENTRY, CliRequestMutationArguments::parsePostEntryCommand)
+    };
+  }
+
+  private static ParserBinding binding(
+      OperationId operationId, Function<List<String>, CliCommand> parser) {
+    return new ParserBinding(operationId, parser);
+  }
 
   static CliCommand parse(OperationId operationId, List<String> arguments) {
     Objects.requireNonNull(operationId, "operationId");
     Objects.requireNonNull(arguments, "arguments");
-    return requiredParser(operationId, PARSERS).apply(arguments);
+    return PARSERS.requiredParser(operationId).apply(arguments);
   }
 
   static Function<List<String>, CliCommand> requiredParser(
@@ -91,7 +145,7 @@ final class CliCommandParsingRegistry {
   }
 
   static Set<OperationId> registeredOperationIds() {
-    return PARSERS.keySet();
+    return PARSERS.registeredOperationIds();
   }
 
   static Map<OperationId, Function<List<String>, CliCommand>> validatedParsers(
@@ -113,5 +167,42 @@ final class CliCommandParsingRegistry {
               + unexpectedOperationIds);
     }
     return parsers;
+  }
+
+  private record ParserCatalog(Map<OperationId, Function<List<String>, CliCommand>> parsers) {
+    private ParserCatalog {
+      parsers = Map.copyOf(parsers);
+    }
+
+    private static Map<OperationId, Function<List<String>, CliCommand>> bindingsAsMap(
+        ParserBinding[]... bindingGroups) {
+      Map<OperationId, Function<List<String>, CliCommand>> parsers = new ConcurrentHashMap<>();
+      for (ParserBinding[] bindingGroup : bindingGroups) {
+        for (ParserBinding binding : bindingGroup) {
+          Function<List<String>, CliCommand> previous =
+              parsers.put(binding.operationId(), binding.parser());
+          if (previous != null) {
+            throw new IllegalStateException(
+                "Duplicate CLI parser registered for " + binding.operationId().wireName());
+          }
+        }
+      }
+      return Map.copyOf(parsers);
+    }
+
+    private Function<List<String>, CliCommand> requiredParser(OperationId operationId) {
+      return CliCommandParsingRegistry.requiredParser(operationId, parsers);
+    }
+
+    private Set<OperationId> registeredOperationIds() {
+      return parsers.keySet();
+    }
+  }
+
+  private record ParserBinding(OperationId operationId, Function<List<String>, CliCommand> parser) {
+    private ParserBinding {
+      Objects.requireNonNull(operationId, "operationId");
+      Objects.requireNonNull(parser, "parser");
+    }
   }
 }

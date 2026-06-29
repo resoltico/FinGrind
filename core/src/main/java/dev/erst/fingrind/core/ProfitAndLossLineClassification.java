@@ -26,6 +26,19 @@ public enum ProfitAndLossLineClassification implements WireValue {
     };
   }
 
+  /** Returns the normal balance implied by this declared profit-and-loss classification. */
+  public NormalBalance normalBalance() {
+    return switch (this) {
+      case OPERATING_REVENUE, OTHER_REVENUE, FINANCE_INCOME -> NormalBalance.CREDIT;
+      case COST_OF_SALES,
+          OPERATING_EXPENSE,
+          DEPRECIATION_AND_AMORTIZATION,
+          FINANCE_EXPENSE,
+          OTHER_EXPENSE ->
+          NormalBalance.DEBIT;
+    };
+  }
+
   /** Returns the stable public wire value for this classification. */
   @Override
   public String wireValue() {

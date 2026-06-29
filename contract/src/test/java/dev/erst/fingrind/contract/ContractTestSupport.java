@@ -14,12 +14,12 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -53,12 +53,12 @@ class ContractTestSupport {
         new AccountCode(accountCode),
         new AccountName("Cash"),
         AccountType.ASSET,
-        AccountRole.ORDINARY,
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
             Optional.empty(),
             Optional.of(dev.erst.fingrind.core.FinancialPositionLineClassification.CURRENT_ASSET),
-            Optional.empty()),
+            Optional.empty(),
+            Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
         true,
         Instant.parse("2026-04-07T10:15:30Z"));
   }
@@ -69,7 +69,7 @@ class ContractTestSupport {
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -134,6 +134,6 @@ class ContractTestSupport {
   }
 
   protected GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact);
+    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
   }
 }

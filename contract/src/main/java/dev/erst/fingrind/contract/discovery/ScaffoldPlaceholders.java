@@ -13,8 +13,6 @@ public final class ScaffoldPlaceholders {
   public static final String CAUSATION_ID = "replace-before-commit-causation-id";
   public static final String SOURCE_DOCUMENT_ID = "replace-before-commit-source-document-id";
   public static final String SOURCE_DOCUMENT_TYPE = "replace-before-commit-source-document-type";
-  public static final String STORAGE_LOCATOR = "replace-before-commit-storage-locator";
-  public static final String CONTENT_SHA256 = "replace-before-commit-content-sha256";
   public static final String APPROVAL_ID = "replace-before-commit-approval-id";
   public static final String APPROVAL_TYPE = "replace-before-commit-approval-type";
   public static final String APPROVER_ID = "replace-before-commit-approver-id";
@@ -29,8 +27,6 @@ public final class ScaffoldPlaceholders {
           CAUSATION_ID,
           SOURCE_DOCUMENT_ID,
           SOURCE_DOCUMENT_TYPE,
-          STORAGE_LOCATOR,
-          CONTENT_SHA256,
           APPROVAL_ID,
           APPROVAL_TYPE,
           APPROVER_ID);

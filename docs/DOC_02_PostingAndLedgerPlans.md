@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
-  keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7]
-  questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented"]
+  keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax]
+  questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented"]
 ---
 
 # Posting And Ledger Plan Reference
@@ -28,23 +28,22 @@ public sealed interface PostingLineage
 
 ## `BookkeepingEntry` And `BookkeepingEntryKind`
 
-`BookkeepingEntry` is the public bookkeeping write model that makes the balanced journal the
-canonical write surface, and `BookkeepingEntryKind` is the closed caller-authored vocabulary that
-selects those entry families.
+`BookkeepingEntry` is the public bookkeeping write model that makes typed business events the
+primary caller-authored surface while preserving one explicit raw direct-journal path, and
+`BookkeepingEntryKind` is the closed caller-authored vocabulary that selects those entry families.
 
 ```java
 public sealed interface BookkeepingEntry
 public enum BookkeepingEntryKind
 ```
 
-- Direct journal: `Journal` carries one caller-authored `JournalEntry` and can optionally retain
-  one matching `JournalRecipe` as higher-level metadata
-- Opening positions: `OpenAccountingPosition` carries the typed book-seeding balances used before
-  operating activity begins
-- Reversals: `ReversalAdjustment` preserves one explicit reversal lineage over caller-authored
-  journal lines
-- Purpose: keep the canonical journal write boundary explicit while preserving optional recipe
-  intent and bounded non-routine write profiles
+- Direct journal: `DirectJournal` carries one caller-authored `JournalEntry` for the raw escape
+  hatch
+- Typed business events: `Sale`, `Expense`, `OwnerContribution`, `OwnerWithdrawal`,
+  `OpeningPosition`, and `Reversal` preserve the caller-authored event facts that FinGrind
+  translates into one canonical journal entry
+- Purpose: keep the business-event-first write language explicit without introducing a second write
+  kernel
 
 ## `PostEntryCommand`
 
@@ -60,12 +59,32 @@ public record PostEntryCommand(
 ```
 
 - Purpose: carry the write-boundary payload after CLI parsing and request validation, including the
-  caller-authored journal or bounded write profile plus first-class retained evidence and
+  caller-authored business event or raw direct journal plus first-class retained evidence and
   provenance
-- Boundary: direct balanced journal lines are first-class; recipes are optional metadata that must
-  derive the exact same journal entry
+- Boundary: typed business-event commands are the normal public write language, while direct
+  balanced journal lines remain the explicit fallback for cases that do not fit those event
+  families
 - Money policy: public money amounts arrive as exact positive `MonetaryAmount` values, while the
   direct journal and reversal variants carry one already-validated `JournalEntry`
+
+## `TaxSelection` And `AppliedTax`
+
+`TaxSelection` is the caller-authored request-side selector for tax-aware posting families, while
+`AppliedTax` is the resolved durable fact retained after FinGrind validates and translates that
+selection.
+
+```java
+public record TaxSelection(TaxRegistrationId taxRegistrationId, TaxCode taxCode)
+public record AppliedTax(...)
+```
+
+- `TaxSelection`: lets one sale or expense request point at one declared tax registration and one
+  declared tax code; there is no neutral free-form tax payload outside those typed selectors
+- `AppliedTax`: preserves the resolved registration, code name, rate, inclusion mode, application
+  kind, taxable amount, tax amount, gross amount, and optional tax account code as one committed
+  posting fact
+- Boundary: request-side selectors stay on the published write DTOs, while `AppliedTax` travels on
+  committed posting and reporting surfaces after translation and validation
 
 ## `PostEntryCommandTranslator`
 
@@ -76,10 +95,11 @@ required by the built-in bookkeeping kernel.
 public final class PostEntryCommandTranslator
 ```
 
-- Purpose: keep optional recipe expansion owned at the application boundary instead of leaking it
-  into the CLI, request loaders, or posting service
-- Current scope: direct journals pass through unchanged, while `CashRevenue`, `CashExpense`,
-  `EquityContribution`, and `EquityWithdrawal` expand into the exact canonical journal they claim
+- Purpose: keep business-event-to-posting translation owned at the application boundary instead of
+  leaking it into the CLI, request loaders, or posting service
+- Current scope: direct journals pass through unchanged, while `Sale`, `Expense`,
+  `OwnerContribution`, `OwnerWithdrawal`, `OpeningPosition`, and `Reversal` translate into the
+  exact canonical journal and durable posting origin they claim
 
 ## `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult`
 
@@ -115,7 +135,7 @@ public record PostingDraft(
 - Surface: `materialize(PostingId)` creates the final internal committed posting fact
 - Boundary: this is an executor bookkeeping model, not the public published language
 
-## `PostingCommand`, `PostingLineageModel`, And `PostingRequestModel`
+## `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel`
 
 These records and sealed interfaces are the local bookkeeping write model used after published
 requests cross the translator boundary.
@@ -123,6 +143,7 @@ requests cross the translator boundary.
 ```java
 public record PostingCommand(...)
 public sealed interface PostingLineageModel
+public final class PostingOriginatingEntryValidator
 public interface PostingRequestModel
 ```
 
@@ -130,35 +151,69 @@ public interface PostingRequestModel
   accounting evidence, provenance, and source channel
 - `PostingLineageModel`: the local direct-versus-reversal lineage family used by bookkeeping
   policies and stores
+- `PostingOriginatingEntryValidator`: the executor-side guard that keeps retained caller-authored
+  entry facts aligned with the posting kind, origin kind, journal entry, and lineage they
+  annotate
 - `PostingRequestModel`: the shared local shape consumed by bookkeeping validation and materialized
   posting facts, including first-class evidence
 
-## `PostingAcceptancePolicy`, `BookkeepingAdministrationRejection`, `BookkeepingPostingRejection`, And `BookkeepingPublishedLanguageTranslator`
+## `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator`
 
 `PostingAcceptancePolicy` owns bookkeeping-side admission rules, while
-`BookkeepingAdministrationRejection`, `BookkeepingPostingRejection`, and
+`BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`,
+`BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, and
 `BookkeepingPublishedLanguageTranslator` keep local bookkeeping refusals and boundary translation
 out of the published protocol surface.
 
 ```java
 public final class PostingAcceptancePolicy
+public sealed interface PostingAcceptancePolicy.Decision
 public sealed interface BookkeepingAdministrationRejection
+public final class BookkeepingAdministrationRejectionPublishedMapper
 public sealed interface BookkeepingPostingRejection
+public final class BookkeepingRequestPublishedLanguageTranslator
 public final class BookkeepingPublishedLanguageTranslator
 ```
 
 - `PostingAcceptancePolicy`: composes the bookkeeping-side admission rules for initialization,
   duplicate idempotency, caller-authored posting family, functional-currency alignment,
-  closed-period checks, OPEN_ACCOUNTING_POSITION admission rules, account state,
-  result-holding reservation,
+  closed-period checks, opening-position admission rules, account state,
+  close-reserved classification checks,
   and reversal admissibility against one `PostingValidationStore`
+- `PostingAcceptancePolicy.Decision`: distinguishes fresh acceptance, idempotent replay, and
+  deterministic rejection while carrying the computed `RequestFingerprint` only once
 - `BookkeepingAdministrationRejection`: local refusal family for bookkeeping initialization and
   account-declaration rules before translation into public `BookAdministrationRejection`
+- `BookkeepingAdministrationRejectionPublishedMapper`: maps bookkeeping-administration refusals
+  into the public administration rejection surface without reintroducing transport concerns into
+  bookkeeping policy code
 - `BookkeepingPostingRejection`: local refusal family for posting validation and reversal
   admissibility before translation into public `PostingRejection`
-- `BookkeepingPublishedLanguageTranslator`: translates `DeclareAccountCommand`,
-  `PostEntryCommand`, `CommittedPosting`, and bookkeeping outcomes at the host boundary instead of
-  letting transport DTOs become the local working model
+- `BookkeepingRequestPublishedLanguageTranslator`: translates `OpenBookCommand`,
+  `DeclareAccountCommand`, and explicit close commands into the local working model before any
+  bookkeeping rule evaluates them
+- `BookkeepingPublishedLanguageTranslator`: translates committed postings, bookkeeping outcomes,
+  and local rejection families back into the published protocol surface instead of letting
+  transport DTOs become the local working model
+
+## `BookkeepingEntrySemanticsViolationFactory`
+
+`BookkeepingEntrySemanticsViolationFactory` centralizes the bookkeeping-owned construction of
+entry-semantics violations so selector field names, selector values, stable codes, and operator
+repair text stay aligned across every bounded write profile.
+
+```java
+public final class BookkeepingEntrySemanticsViolationFactory
+```
+
+- Purpose: keep request-truthful violation prose and stable codes compiler-owned instead of
+  scattering string assembly across posting validators
+- Surface: `accountTypeMismatch(...)`, `financialPositionClassificationMismatch(...)`,
+  `sourceDocumentTypeNotAccepted(...)`, `distinctRoleAccountsRequired(...)`,
+  `economicNullJournal(...)`, and `referencedAccountSet(...)`
+- Boundary: the factory stays inside local bookkeeping validation and emits local
+  `BookkeepingPostingRejection.EntrySemanticsViolation` records before the published
+  `PostingRejection` surface is assembled
 
 ## `LedgerPlanId` And `LedgerStepId`
 
@@ -196,6 +251,9 @@ public sealed interface LedgerStep
 - Families: `EnsureBook`, `DeclareAccount`, `PreflightEntry`, `PostEntry`, `InspectBook`,
   `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`, `Assert`
 - Purpose: keep plan execution exhaustively typed instead of routing through maps
+- Surface: committed posting steps publish the typed `record-*` workflow kinds when the nested
+  `PostEntryCommand` carries one business entry, while raw direct-journal fallback stays on the
+  `post-entry` kind
 - Scope: current ledger plans intentionally stop at book inspection, listings, posting lookup, and
   account-balance queries; office-worker report commands stay on the standalone CLI surface
 - Boundary: these step DTOs are published-language workflow inputs, not bookkeeping aggregates
@@ -233,13 +291,13 @@ public sealed interface BookWorkflowAssertion
 - `BookWorkflowAssertion`: local assertion family evaluated against bookkeeping/read outcomes and
   local balance criteria
 
-## `BookWorkflowBoundaryPhase`, `BookWorkflowFact`, `BookWorkflowFailure`, `BookWorkflowJournalDescriptor`, `BookWorkflowJournalEntry`, And `BookWorkflowExecutionJournal`
+## `BookWorkflowBoundaryCheckpoint`, `BookWorkflowFact`, `BookWorkflowFailure`, `BookWorkflowJournalDescriptor`, `BookWorkflowJournalEntry`, And `BookWorkflowExecutionJournal`
 
 These types are the internal workflow execution record used while
 `BookWorkflowExecutionService` is running and deciding whether to commit or roll back.
 
 ```java
-public enum BookWorkflowBoundaryPhase
+public enum BookWorkflowBoundaryCheckpoint
 public sealed interface BookWorkflowFact
 public record BookWorkflowFailure(...)
 public sealed interface BookWorkflowJournalDescriptor
@@ -248,7 +306,7 @@ public enum BookWorkflowExecutionStatus
 public record BookWorkflowExecutionJournal(...)
 ```
 
-- `BookWorkflowBoundaryPhase`: local begin/initialization-check/commit/rollback failure phases
+- `BookWorkflowBoundaryCheckpoint`: local begin/initialization-check/commit/rollback failure checkpoints
 - `BookWorkflowFact`: workflow-owned machine-readable per-step observation family used while the
   internal journal is being built
 - `BookWorkflowFailure`: local failure payload with stable code, message, and workflow-owned
@@ -313,7 +371,7 @@ public enum LedgerFactKind implements WireValue
 - Purpose: keep fact-kind wire tokens canonical across contract DTOs, CLI JSON payloads, and any
   future machine readers instead of retyping raw discriminator strings
 
-## `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryPhase`, `LedgerStepStatus`, And `LedgerPlanStatus`
+## `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryCheckpoint`, `LedgerStepStatus`, And `LedgerPlanStatus`
 
 These enums own the stable ledger-plan wire vocabulary.
 
@@ -321,7 +379,7 @@ These enums own the stable ledger-plan wire vocabulary.
 public enum LedgerStepKind
 public enum LedgerJournalKind
 public enum LedgerAssertionKind
-public enum LedgerBoundaryPhase
+public enum LedgerBoundaryCheckpoint
 public enum LedgerStepStatus
 public enum LedgerPlanStatus
 ```
@@ -344,8 +402,10 @@ public sealed interface LedgerPlanResult
 
 - Purpose: return one plan-level result plus one per-step journal that agents can inspect safely
 - Structure: `LedgerJournalStep` owns the canonical journal kind; assertion entries may attach
-  `detailKind`, while unexpected begin, initialization-check, commit, or rollback failures use the
-  dedicated `plan-boundary` kind plus a `boundaryPhase`
+  `detailKind`, committed business-entry journal steps publish the corresponding `record-*` kind,
+  raw direct-journal fallback stays `post-entry`, and unexpected begin, initialization-check,
+  commit, or rollback failures use the dedicated `plan-boundary` kind plus a
+  `boundaryCheckpoint`
 - Bound: `LedgerPlan` accepts at most 100 steps, which bounds full journal responses
 - Boundary: these are published workflow protocol outputs; executor keeps a separate local
   workflow journal model while the plan is actually executing
@@ -441,10 +501,12 @@ public final class PostingRejectionSemantics
 ```
 
 - Variants: `BookNotInitialized`, `AccountStateViolations`, `EntrySemanticsViolations`,
-  `DuplicateIdempotencyKey`, `BookFunctionalCurrencyMismatch`,
-  `TransferredPeriodResultViolation`, `OpenAccountingPositionWindowClosed`,
-  `OpenAccountingPositionTouchesNominalAccount`, `ResultHoldingAccountReserved`,
+  `IdempotencyKeyConflict`, `BookFunctionalCurrencyMismatch`,
+  `SweptInterimResultViolation`, `OpeningPositionWindowClosed`,
+  `OpeningPositionTouchesNominalAccount`, `ReservedResultClassification`,
   `ReversalTargetNotFound`, `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
 - `PostingRejection`: keep validly parsed but inadmissible postings machine-distinguishable
-- `PostingRejectionSemantics`: build canonical account-type, classification, evidence, role, and
+- `ReservedResultClassification`: names both the blocked account code and the close-reserved
+  classification, covering both `RESULT_HOLDING` and `RETAINED_ACCUMULATED`
+- `PostingRejectionSemantics`: build canonical account-type, classification, evidence, and
   economic-nullity violations plus the referenced-account set used to evaluate them

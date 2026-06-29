@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import java.time.LocalDate;
@@ -18,12 +19,12 @@ public sealed interface PostingRejection
     permits PostingRejection.BookNotInitialized,
         PostingRejection.AccountStateViolations,
         PostingRejection.EntrySemanticsViolations,
-        PostingRejection.DuplicateIdempotencyKey,
+        PostingRejection.IdempotencyKeyConflict,
         PostingRejection.BookFunctionalCurrencyMismatch,
-        PostingRejection.TransferredPeriodResultViolation,
-        PostingRejection.OpenAccountingPositionWindowClosed,
-        PostingRejection.OpenAccountingPositionTouchesNominalAccount,
-        PostingRejection.ResultHoldingAccountReserved,
+        PostingRejection.SweptInterimResultViolation,
+        PostingRejection.OpeningPositionWindowClosed,
+        PostingRejection.OpeningPositionTouchesNominalAccount,
+        PostingRejection.ReservedResultClassification,
         PostingRejection.ReversalTargetNotFound,
         PostingRejection.ReversalAlreadyExists,
         PostingRejection.ReversalDoesNotNegateTarget {
@@ -165,8 +166,8 @@ public sealed interface PostingRejection
     }
   }
 
-  /** Duplicate idempotency rejection for a book-local request identity that already exists. */
-  record DuplicateIdempotencyKey() implements PostingRejection {}
+  /** Rejection for one reused idempotency key whose semantic request differs. */
+  record IdempotencyKeyConflict() implements PostingRejection {}
 
   /** Rejection for a posting whose entry currency diverges from the book functional currency. */
   record BookFunctionalCurrencyMismatch(
@@ -178,41 +179,43 @@ public sealed interface PostingRejection
   }
 
   /** Rejection for a posting attempt whose effective date falls inside one transferred period. */
-  record TransferredPeriodResultViolation(
+  record SweptInterimResultViolation(
       LocalDate transferredThroughEffectiveDate, LocalDate attemptedEffectiveDate)
       implements PostingRejection {
-    public TransferredPeriodResultViolation {
+    public SweptInterimResultViolation {
       Objects.requireNonNull(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
       Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
     }
   }
 
-  /** Rejection for an OPEN_ACCOUNTING_POSITION request after ordinary book activity has begun. */
-  record OpenAccountingPositionWindowClosed(
+  /** Rejection for an OPENING_POSITION request after ordinary book activity has begun. */
+  record OpeningPositionWindowClosed(
       PostingKind firstBlockingPostingKind, LocalDate firstBlockingEffectiveDate)
       implements PostingRejection {
-    public OpenAccountingPositionWindowClosed {
+    public OpeningPositionWindowClosed {
       Objects.requireNonNull(firstBlockingPostingKind, "firstBlockingPostingKind");
       Objects.requireNonNull(firstBlockingEffectiveDate, "firstBlockingEffectiveDate");
     }
   }
 
-  /**
-   * Rejection for an OPEN_ACCOUNTING_POSITION request that touches nominal income-statement
-   * accounts.
-   */
-  record OpenAccountingPositionTouchesNominalAccount(
-      AccountCode accountCode, AccountType accountType) implements PostingRejection {
-    public OpenAccountingPositionTouchesNominalAccount {
+  /** Rejection for an OPENING_POSITION request that touches nominal income-statement accounts. */
+  record OpeningPositionTouchesNominalAccount(AccountCode accountCode, AccountType accountType)
+      implements PostingRejection {
+    public OpeningPositionTouchesNominalAccount {
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(accountType, "accountType");
     }
   }
 
-  /** Rejection for one direct posting that attempts to use the active result-holding account. */
-  record ResultHoldingAccountReserved(AccountCode accountCode) implements PostingRejection {
-    public ResultHoldingAccountReserved {
+  /** Rejection for one direct posting that attempts to use a close-reserved classification. */
+  record ReservedResultClassification(
+      AccountCode accountCode,
+      FinancialPositionLineClassification financialPositionLineClassification)
+      implements PostingRejection {
+    public ReservedResultClassification {
       Objects.requireNonNull(accountCode, "accountCode");
+      Objects.requireNonNull(
+          financialPositionLineClassification, "financialPositionLineClassification");
     }
   }
 

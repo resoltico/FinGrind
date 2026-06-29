@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract;
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
@@ -13,7 +14,6 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -25,32 +25,24 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for Phase 2 book-administration model records. */
+/** Unit tests for the current book-administration model records. */
 class BookAdministrationModelTest {
   @Test
   void declaredAccount_holdsItsPayload() {
     DeclaredAccount account =
         ContractFixtures.declaredAccount(
-            "1000",
-            "Cash",
-            AccountType.ASSET,
-            AccountRole.ORDINARY,
-            true,
-            Instant.parse("2026-04-07T10:15:30Z"));
+            "1000", "Cash", AccountType.ASSET, true, Instant.parse("2026-04-07T10:15:30Z"));
     assertEquals("1000", account.accountCode().value());
+    assertTrue(account.cashAndCashEquivalent());
   }
 
   @Test
-  void declareAccountCommand_rejectsNullAccountRole() {
+  void declareAccountCommand_rejectsNullAccountTaxonomy() {
     assertThrows(
         NullPointerException.class,
         () ->
             new DeclareAccountCommand(
-                new AccountCode("1000"),
-                new AccountName("Cash"),
-                AccountType.ASSET,
-                nullOf(),
-                ContractFixtures.accountTaxonomy(AccountType.ASSET)));
+                new AccountCode("1000"), new AccountName("Cash"), AccountType.ASSET, nullOf()));
   }
 
   @Test
@@ -66,8 +58,11 @@ class BookAdministrationModelTest {
   }
 
   @Test
-  void declareAccountResultDeclared_rejectsNullAccount() {
+  void declareAccountResultFamilies_rejectNullAccount() {
     assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Declared(nullOf()));
+    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Reactivated(nullOf()));
+    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Renamed(nullOf()));
+    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Unchanged(nullOf()));
   }
 
   @Test
@@ -79,7 +74,6 @@ class BookAdministrationModelTest {
                     "1000",
                     "Cash",
                     AccountType.ASSET,
-                    AccountRole.ORDINARY,
                     true,
                     Instant.parse("2026-04-07T10:15:30Z"))));
     ListAccountsResult.Listed listed =
@@ -87,15 +81,6 @@ class BookAdministrationModelTest {
             ContractFixtures.accountPage(source, 50, java.util.Optional.empty()));
     source.clear();
     assertEquals(1, listed.page().accounts().size());
-  }
-
-  @Test
-  void accountRoleConflict_rejectsNullRequestedRole() {
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new BookAdministrationRejection.AccountRoleConflict(
-                new AccountCode("1000"), AccountRole.ORDINARY, nullOf()));
   }
 
   @Test
@@ -112,7 +97,7 @@ class BookAdministrationModelTest {
   private static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }

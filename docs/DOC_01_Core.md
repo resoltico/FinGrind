@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: CORE
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
-  keywords: [fingrind, core, money, positive-money, journal, balance-side, provenance, reversal, account-code, account-name, normal-balance, currency-unit, idempotency, minor-units]
-  questions: ["what core value types does fingrind expose", "how does a journal entry work in fingrind", "where do the core accounting invariants live", "what bookkeeping primitives are in the fingrind core module"]
+  keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, idempotency, temporal-text, fiscal-year-start, reachability]
+  questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module"]
 ---
 
 # Core API Reference
@@ -39,8 +39,8 @@ public final class AccountCodePolicy
   parent-child hierarchy, or type semantics from string prefixes
 - Current contract: `meaning() == OPAQUE_BOOK_LOCAL_IDENTIFIER` and
   `chartStructure() == PARENT_CHILD_HIERARCHY`
-- Validation: `validate(AccountCode, AccountType, AccountRole, AccountTaxonomy)` confirms one
-  declared account against the current hierarchical-chart, opaque-identifier policy
+- Validation: `validate(AccountCode, AccountType, AccountTaxonomy)` confirms one declared account
+  against the current hierarchical-chart, opaque-identifier policy
 
 ## `AccountCodePolicy.Meaning`
 
@@ -83,14 +83,14 @@ public record BookEntityName(String value)
 
 ## `AccountingBasis`
 
-`AccountingBasis` is the canonical accounting-basis posture carried by one protected book.
+`AccountingBasis` is the canonical basis-of-accounting posture carried by one protected book.
 
 ```java
 public enum AccountingBasis implements WireValue
 ```
 
-- Purpose: state whether the initialized book follows one cash-basis or other future basis policy
-  instead of leaving that premise implicit
+- Purpose: keep the current cash-basis doctrine explicit instead of implying accrual or mixed
+  basis support
 - Current contract: `CASH_BASIS`
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
@@ -133,7 +133,7 @@ public enum BookTemplateId implements WireValue
 
 - Purpose: make the seeded starter-chart family explicit instead of hiding it in executor setup
   code
-- Current contract: `OWNER_MANAGED_SERVICE_CASH`
+- Current contract: `OWNER_MANAGED_SERVICE`
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
@@ -164,7 +164,8 @@ public final class BookDoctrines
 
 - Purpose: centralize the current built-in doctrine so open-book, discovery, SQLite, CLI, and
   tests all speak one doctrine bundle
-- Current built-in doctrine: `INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE`
+- Current built-in doctrine: `INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE`, which is cash-basis,
+  non-statutory internal management, owner-managed single entity, and owner-managed service
 
 ## `BookDoctrineDisplay`
 
@@ -193,9 +194,10 @@ public record AccountingEvidence(
 ```
 
 - Purpose: make evidence a durable accounting fact instead of external operator folklore
-- Validation: rejects `null` collections, rejects empty `sourceDocuments`, and rejects duplicate
-  source documents or approvals by identifier
+- Validation: rejects `null` collections and rejects empty `sourceDocuments`
 - Surface: `sourceDocuments()` and `approvals()` preserve caller order after validation
+- Durable boundary: duplicate source-document ids or approval ids remain representable in memory
+  and are rejected only by the protected-book posting uniqueness constraints
 
 ## `ApprovalId`
 
@@ -306,7 +308,7 @@ public final class AccountingKernelProfiles
 
 - Purpose: keep built-in profile ids centralized so CLI, executor, SQLite, discovery, and tests
   all speak one canonical vocabulary
-- Current built-in profile: "internal-management-cash-bookkeeping-kernel"
+- Current built-in profile: "internal-management-bookkeeping-kernel"
 
 ## `AccountType`
 
@@ -327,22 +329,11 @@ public enum AccountType implements WireValue {
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
-## `AccountRole`
+## Polarity Ownership
 
-`AccountRole` is the doctrinal role that determines whether one account behaves ordinarily or as a
-contra account.
-
-```java
-public enum AccountRole implements WireValue {
-  ORDINARY,
-  POLARITY_INVERTED
-}
-```
-
-- Purpose: separate account polarity from account classification so FinGrind can model contra
-  behavior without overloading statement-line taxonomy
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
+There is no standalone polarity-side field in the current kernel. Declared classification owns
+polarity through `AccountTaxonomyDoctrine`, so the stored account contract carries `accountType` plus
+taxonomy and derives `normalBalance()` from that combination.
 
 ## `AccountNodeKind`
 
@@ -367,13 +358,15 @@ public record AccountTaxonomy(
     AccountNodeKind nodeKind,
     Optional<AccountCode> parentAccountCode,
     Optional<FinancialPositionLineClassification> financialPositionLineClassification,
-    Optional<ProfitAndLossLineClassification> profitAndLossLineClassification)
+    Optional<ProfitAndLossLineClassification> profitAndLossLineClassification,
+    Optional<CashFlowAssetClassification> cashFlowAssetClassification)
 ```
 
 - Purpose: keep node role, hierarchy, and report taxonomy on the declared account instead of
   inferring them from account codes, names, or renderer-local rules
-- Validation role: `AccountSemantics.validate(...)` enforces which taxonomy branch must be present
-  for each `AccountType`
+- Validation role: `AccountTaxonomyDoctrine.validate(...)` enforces which taxonomy branch must be present
+  for each `AccountType`, including the required cash-versus-non-cash classification for asset
+  accounts
 - Factory: `empty()` returns the neutral postable taxonomy before account-type-specific validation
   applies
 
@@ -386,9 +379,9 @@ declared accounts and derived equity lines.
 public enum FinancialPositionLineClassification implements WireValue
 ```
 
-- Scope: classifies ASSET, LIABILITY, and EQUITY lines, including current/noncurrent buckets and
-  entity-form-sensitive equity classes such as `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`,
-  `RESULT_HOLDING`, and derived `CURRENT_PERIOD_RESULT` statement rows
+- Scope: classifies ASSET, LIABILITY, and EQUITY declared accounts, including current/noncurrent
+  buckets and equity classes such as `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`,
+  `RESULT_HOLDING`, and `RETAINED_ACCUMULATED`
 - Surface: `accountType()` maps each classification back to its owning `AccountType`
 - Wire contract: `wireValue()`, `wireValues()`, `declaredAccountWireValues()`, and
   `fromWireValue(...)` own the stable public vocabulary
@@ -402,11 +395,23 @@ accounts.
 public enum ProfitAndLossLineClassification implements WireValue
 ```
 
-- Scope: classifies REVENUE and EXPENSE lines such as `OPERATING_REVENUE`, `COST_OF_SALES`, and
-  `OTHER_EXPENSE`
+- Scope: classifies REVENUE and EXPENSE lines such as `OPERATING_REVENUE`, `COST_OF_SALES`, and `OTHER_EXPENSE`
 - Surface: `accountType()` maps each classification back to REVENUE or EXPENSE ownership
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
+
+## `CashFlowAssetClassification` And `CashFlowSectionKind`
+
+`CashFlowAssetClassification` is the declared-account cash doctrine for asset accounts, and `CashFlowSectionKind` is the public statement-section vocabulary for cash receipts and payments.
+
+```java
+public enum CashFlowAssetClassification implements WireValue
+public enum CashFlowSectionKind implements WireValue
+```
+
+- `CashFlowAssetClassification`: distinguishes `CASH_AND_CASH_EQUIVALENT` asset accounts from `NON_CASH` assets so request validation, posting semantics, and cash-basis reporting all reuse one canonical asset classification
+- `CashFlowSectionKind`: owns the stable `OPERATING`, `INVESTING`, and `FINANCING` vocabulary used by the cash receipts/payments statement across JSON, text, CSV, and PDF surfaces
+- Wire contract: both enums own `wireValue()`, `wireValues()`, and `fromWireValue(...)`
 
 ## `AccountClassificationReachability`
 
@@ -419,12 +424,8 @@ public final class AccountClassificationReachability
 
 - Purpose: keep per-classification write-route truth out of discovery prose, CLI help fragments,
   and validator-local literals
-- Surface: `currentKernel()` publishes the full classification matrix, while `reachabilityFor(...)`,
-  `openingReachable(...)`, `operationalJournalReachable(...)`, and `reversalReachable(...)` project
-  the same doctrine onto one validated `AccountTaxonomy`
-- Doctrine: `RESULT_HOLDING` remains declarable and opening-reachable but is not
-  caller-operationally writable or reversal-reachable because period-result transfer reserves that
-  classification for generated close postings
+- Surface: `currentKernel()` publishes the full classification matrix, while `reachabilityFor(...)`, `openingReachable(...)`, `operationalJournalReachable(...)`, and `reversalReachable(...)` project the same doctrine onto one validated `AccountTaxonomy`
+- Doctrine: `RESULT_HOLDING` and `RETAINED_ACCUMULATED` remain declarable and opening-reachable but are not caller-operationally writable or reversal-reachable because the close commands reserve those classifications for generated close postings
 
 ## `AccountClassificationReachability.ReachabilityCell`
 
@@ -462,22 +463,52 @@ public enum StatementLineKind implements WireValue
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
-## `AccountSemantics`
+## `AccountTaxonomyDoctrine`
 
-`AccountSemantics` is the canonical doctrinal owner for account polarity, taxonomy compatibility,
-closing eligibility, and profit-or-loss close behavior.
+`AccountTaxonomyDoctrine` is the canonical doctrinal owner for declared-account taxonomy
+compatibility, normal-balance derivation, and cash-account participation.
 
 ```java
-public final class AccountSemantics
+public final class AccountTaxonomyDoctrine
 ```
 
-- Purpose: keep normal-balance derivation, contra inversion, taxonomy validation, and
-  nominal-account close semantics out of CLI, SQLite, and reporting adapters
-- Surface: `validate(...)`, `normalBalance(...)`, `closesTemporaryProfitAndLossAccountType(...)`, and
+- Purpose: keep declared-account taxonomy validation and polarity derivation out of CLI, SQLite,
+  and reporting adapters
+- Surface: `validate(...)`, `normalBalance(...)`, and `cashAndCashEquivalent(...)`
+- Doctrine: balance-sheet accounts require one `FinancialPositionLineClassification`; asset
+  accounts additionally require one `CashFlowAssetClassification`; nominal accounts require one
+  `ProfitAndLossLineClassification` and forbid balance-sheet taxonomy fields
+
+## `AccountStructureDoctrine`
+
+`AccountStructureDoctrine` is the canonical doctrinal owner for account-node posting structure and
+parent-child hierarchy compatibility.
+
+```java
+public final class AccountStructureDoctrine
+```
+
+- Purpose: keep chart hierarchy meaning out of account-registry and posting-policy adapters
+- Surface: `allowsPosting(...)`, `allowsChildren(...)`, and `parentChildHierarchyCompatible(...)`
+- Doctrine: one balance-sheet parent-child edge must preserve the same financial-position and
+  asset cash-flow classifications, while one nominal parent-child edge must preserve the same
+  profit-and-loss classification
+
+## `ProfitAndLossAccountDoctrine`
+
+`ProfitAndLossAccountDoctrine` is the canonical doctrinal owner for temporary-account close
+participation and current-period profit-or-loss contribution.
+
+```java
+public final class ProfitAndLossAccountDoctrine
+```
+
+- Purpose: keep nominal-account close behavior and profit contribution arithmetic out of
+  bookkeeping adapters and report renderers
+- Surface: `closesTemporaryProfitAndLossAccountType(...)` and
   `profitAndLossContributionMinorUnits(...)`
-- Doctrine: ordinary balance polarity is derived from `AccountType`, `POLARITY_INVERTED` reverses that
-  polarity deliberately, and built-in close destinations are selected through
-  `FinancialPositionLineClassification.RESULT_HOLDING` inside `AccountTaxonomy`
+- Doctrine: only `REVENUE` and `EXPENSE` accounts close into current-period result, and positive
+  contribution values increase profit while negative values reduce profit
 
 ## `ActorId`
 
@@ -611,8 +642,9 @@ public record FiscalYearStart(MonthDay value)
 ```
 
 - Purpose: make fiscal-year configuration explicit in book identity and enforce that one
-  `transfer-period-result` range stays inside one fiscal year while comparative statement windows can be
-  derived from the same declared anchor
+  `interim-result-sweep` range stays inside one fiscal year while `fiscal-year-close` starts at
+  that anchor and ends at the fiscal year end, with comparative statement windows derived from the
+  same declared anchor
 - Validation: rejects invalid month-day values; `toString()` renders the canonical `MM-dd` form
   used on public command surfaces
 
@@ -629,6 +661,21 @@ public sealed interface EffectiveDateRange
   contract-owned DTO shape
 - Variants: `unbounded`, `from`, `to`, and `bounded`
 - Validation: bounded ranges reject a lower bound after the upper bound
+
+## `ReportingPeriod`
+
+`ReportingPeriod` is the inclusive bounded period used by `interim-result-sweep`,
+`fiscal-year-close`, income statements, statements of cash receipts and payments, and statements
+of changes in equity.
+
+```java
+public record ReportingPeriod(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
+```
+
+- Purpose: keep bounded reporting, interim-result-sweep, and fiscal-year-close semantics
+  structural instead of treating them as parallel pairs of raw dates
+- Validation: rejects `null` bounds and rejects `effectiveDateFrom` after `effectiveDateTo`
+- Surface: `effectiveDateRange()`, `contains(...)`, and `dayAfter()`
 
 ## `CanonicalTemporalText`
 
@@ -657,279 +704,22 @@ public record IdempotencyKey(String value)
 - Purpose: scope duplicate detection inside one selected book
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
 
-## `JournalEntry`
+## `RequestFingerprint`
 
-`JournalEntry` is the balanced journal grammar that crosses the write boundary.
-
-```java
-public record JournalEntry(LocalDate effectiveDate, List<JournalLine> lines)
-```
-
-- Purpose: carry one complete accounting event with its effective date and lines
-- Normalization: defensively copies `lines`
-- Validation: rejects `null` effective date, empty lines, entries that do not contain both a debit
-  and a credit side, mixed currencies, and unbalanced totals; validation now reports every detected
-  journal-entry violation in one deterministic pass
-
-## `JournalEntryValidationException`
-
-`JournalEntryValidationException` is the aggregated request-validation failure raised when one
-journal entry violates multiple grammar rules at once.
+`RequestFingerprint` is the versioned semantic fingerprint for one normalized posting request.
 
 ```java
-public final class JournalEntryValidationException extends IllegalArgumentException
+public record RequestFingerprint(int version, String sha256Hex)
 ```
 
-- Purpose: carry every detected journal-entry violation in one ordered failure object so callers can
-  repair the whole entry before retrying
-- Surface: `violations()` returns the full deterministic violation list, and `getMessage()` joins
-  that list into one caller-facing summary
+- Purpose: keep idempotent replay tied to one canonical request-model owner instead of raw input
+  bytes
+- Current contract: `CURRENT_VERSION` names the active semantic-fingerprint version
+- Validation: rejects non-positive versions and any digest that is not one lowercase 64-character
+  SHA-256 hex value
 
-## `JournalLine`
-
-`JournalLine` is one debit or credit line inside a journal entry.
-
-```java
-public record JournalLine(AccountCode accountCode, EntrySide side, PositiveMoney amount)
-```
-
-- Purpose: keep account, side, and strictly positive amount explicit on every line
-- Compatibility: accepts a general `Money` through a convenience constructor, then upgrades it to
-  `PositiveMoney`
-- Validation: rejects `null` fields
-
-## `JournalLine.EntrySide`
-
-`EntrySide` is the closed set of journal-equation sides.
-
-```java
-public enum EntrySide implements WireValue {
-  DEBIT,
-  CREDIT
-}
-```
-
-- Purpose: make line polarity explicit in the type system and wire vocabulary
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
-## `Money`
-
-`Money` is the canonical exact non-negative posted-money value encoded in one currency unit's
-minor units.
-
-```java
-public final class Money implements Comparable<Money>
-```
-
-- Purpose: close the money invariant inside the shared kernel instead of exposing `BigDecimal`
-  state through the public API
-- Construction: `ofMinorUnits(...)`, `zero(...)`, and `parse(...)` are the only public creation
-  seams
-- Grammar: parsing accepts only canonical unsigned plain-decimal text, rejects exponent notation,
-  rejects redundant leading zeroes, and enforces the selected currency unit's exact fractional
-  scale
-- Representation: the authoritative stored state is `minorUnits()` plus `currencyUnit()`, while
-  `canonicalDecimal()` projects the stable operator/machine decimal form at the currency unit's scale
-- Bounds: parsing and arithmetic reject values outside FinGrind's supported exact minor-unit range
-- Usage: reused by balances and reports that legitimately need zero-valued totals
-- Boundary: `Money` is only for posted monetary facts; future tax rates, percentages, exchange
-  rates, and allocation ratios must enter as separate exact types instead of reusing this model.
-  See [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md).
-
-## `CurrencyBalance`
-
-`CurrencyBalance` is one shared per-currency grouped balance bucket derived from debit and credit
-totals.
-
-```java
-public final class CurrencyBalance
-```
-
-- Purpose: keep grouped per-currency balance math in the shared kernel instead of embedding that
-  shape in one protocol context
-- Construction: `CurrencyBalance.ofTotals(...)` is the canonical factory; callers do not supply
-  `netAmount` or `balanceSide` directly
-- Invariant: the balance side and absolute net amount are derived from the debit and credit totals,
-  so mathematically false grouped balances cannot be forged
-
-## `PositiveMoney`
-
-`PositiveMoney` is the journal-line-specific exact strictly positive money value.
-
-```java
-public final class PositiveMoney
-```
-
-- Purpose: make journal-line positivity structural instead of duplicating that rule across
-  posting, persistence, and workflow surfaces
-- Construction: `PositiveMoney.of(Money)` lifts an exact money value after `Money` has already
-  closed currency and scale semantics; `parse(...)` is available for direct positive parsing
-- Surface: `money()`, `currencyUnit()`, `minorUnits()`, and `canonicalDecimal()` expose the exact
-  posted amount without reopening the invariant
-- Validation: rejects zero-valued amounts with the canonical journal-line error
-
-## `NormalBalance`
-
-`NormalBalance` is the side that increases a declared account.
-
-```java
-public enum NormalBalance implements WireValue {
-  DEBIT,
-  CREDIT
-}
-```
-
-- Purpose: keep account-behavior metadata explicit for validation and reporting
-- Scope: bookkeeping-native and legislation-agnostic
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
-## `JournalRecipeKind`
-
-`JournalRecipeKind` is the stable convenience-layer vocabulary for recipe-backed journal requests on
-the public write surface.
-
-```java
-public enum JournalRecipeKind implements WireValue {
-  CASH_REVENUE,
-  CASH_EXPENSE,
-  EQUITY_CONTRIBUTION,
-  EQUITY_WITHDRAWAL
-}
-```
-
-- Purpose: keep the supported recipe helpers explicit while making the balanced journal the
-  canonical write boundary
-- Surface: `recipeKind` appears only on `JOURNAL` requests that ask FinGrind to derive journal
-  lines from one higher-level helper
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
-## `JournalRecipe`
-
-`JournalRecipe` is the optional metadata carried by one recipe-backed `JOURNAL` request before
-FinGrind materializes the canonical balanced journal entry.
-
-```java
-public sealed interface JournalRecipe
-```
-
-- Purpose: expose higher-level operator helpers without creating a second write kernel beside the
-  balanced journal
-- Current variants: `CashRevenue`, `CashExpense`, `EquityContribution`, and `EquityWithdrawal`
-- Surface: `recipeKind()` preserves the public helper identity and `journalEntry(LocalDate)`
-  derives the exact `JournalEntry` that the write kernel validates and commits
-- Boundary: callers may omit recipes entirely and submit journal lines directly; recipes are
-  convenience projections, not separate durable posting families
-
-## `PostingKind`
-
-`PostingKind` is the durable posting-family discriminator for one committed posting.
-
-```java
-public enum PostingKind implements WireValue {
-  STANDARD,
-  OPENING_BALANCE,
-  PERIOD_RESULT_TRANSFER
-}
-```
-
-- Purpose: distinguish ordinary business postings, opening adoption balances, and generated
-  period-result-transfer postings without leaking implementation-specific marker strings
-- Adoption boundary: caller-authored `OPEN_ACCOUNTING_POSITION` requests project into durable
-  `OPENING_BALANCE` postings, and that durable posting family is admitted only before the first
-  committed posting enters the book
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-- Surface: committed postings publish one durable `PostingKind`, while caller-authored
-  `BookkeepingEntryKind` inputs determine whether FinGrind derives `STANDARD`,
-  `OPENING_BALANCE`, or internal `PERIOD_RESULT_TRANSFER` postings
-
-## `PostingOriginKind`
-
-`PostingOriginKind` is the durable origin vocabulary preserved for one committed posting after
-FinGrind has projected a published bookkeeping entry into canonical journal lines.
-
-```java
-public enum PostingOriginKind implements WireValue {
-  JOURNAL,
-  CASH_REVENUE,
-  CASH_EXPENSE,
-  EQUITY_CONTRIBUTION,
-  EQUITY_WITHDRAWAL,
-  OPEN_ACCOUNTING_POSITION,
-  REVERSAL_ADJUSTMENT,
-  PERIOD_RESULT_TRANSFER
-}
-```
-
-- Purpose: preserve the originating published entry family after direct journals and recipe-backed
-  helpers have converged into `PostingKind.STANDARD`
-- Surface: committed postings and adapter projections expose `postingOriginKind` as a durable fact
-  for auditing, analytics, and future adjacent-context integration
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
-## `PostingCoverage`
-
-`PostingCoverage` is the canonical vocabulary for whether one read path includes all posting kinds
-or excludes generated transfer postings.
-
-```java
-public enum PostingCoverage implements WireValue {
-  ALL_POSTING_KINDS,
-  NON_CLOSING_POSTINGS
-}
-```
-
-- Purpose: make report and query coverage explicit instead of burying close-entry inclusion rules
-  inside adapter-local filters
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
-## `PostingId`
-
-`PostingId` is the stable identifier for one committed posting.
-
-```java
-public record PostingId(String value)
-```
-
-- Purpose: identify durable postings independently of request idempotency
-- Validation: rejects `null` and blank text after stripping surrounding whitespace
-
-## `ReportingPeriod`
-
-`ReportingPeriod` is the inclusive bounded period used by transfer-period-result administration, income
-statements, and statements of changes in equity.
-
-```java
-public record ReportingPeriod(LocalDate effectiveDateFrom, LocalDate effectiveDateTo)
-```
-
-- Purpose: keep period-result-transfer and bounded-report semantics structural instead of treating them as
-  parallel pairs of raw dates
-- Validation: rejects `null` bounds and rejects `effectiveDateFrom` after `effectiveDateTo`
-- Surface: `effectiveDateRange()`, `contains(...)`, and `dayAfter()`
-
-## `RequestProvenance`
-
-`RequestProvenance` is the caller-supplied provenance accepted at the posting boundary.
-
-```java
-public record RequestProvenance(
-    ActorId actorId,
-    ActorType actorType,
-    CommandId commandId,
-    IdempotencyKey idempotencyKey,
-    CausationId causationId,
-    Optional<CorrelationId> correlationId)
-```
-
-- Purpose: carry caller identity and lineage without commit-time audit fields
-- Validation: rejects `null` required fields and `null` optionals
-- Optionality: callers pass `Optional.empty()` explicitly for absent `correlationId`
+Journal, posting, and request-provenance primitives continue in
+[DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md).
 
 Source-document evidence identifiers, reversal lineage primitives, committed source-channel
 vocabulary, and the shared `WireValue` contract continue in

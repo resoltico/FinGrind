@@ -23,29 +23,38 @@ final class ProtocolCatalogFacts {
   static final CurrencyFacts CURRENCY =
       new CurrencyFacts(
           BOOK_MODEL.currencyScope(),
-          "not-supported",
-          "Every posting request and every persisted journal line must match the selected book functional currency. Mixed-currency entries are rejected and no foreign-currency translation model exists yet.");
+          "owned-foreign-exchange-only",
+          "Every posting request and every persisted journal line must still use the selected book functional currency. Foreign transaction facts are supported only through foreignExchange, which retains transaction amount, translated functional amount, quoted rate evidence, and treatment kind per posting. Mixed-currency journal lines remain rejected.");
   static final BookkeepingKernelFacts BOOKKEEPING_KERNEL =
       new BookkeepingKernelFacts(
-          AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL.value(),
+          AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL.value(),
           List.of(
               OperationId.FINANCIAL_POSITION.wireName(),
               OperationId.INCOME_STATEMENT.wireName(),
+              OperationId.CASH_FLOW_STATEMENT.wireName(),
               OperationId.CHANGES_IN_EQUITY.wireName()),
           List.of(
               new ReportCapabilityFacts(
                   OperationId.FINANCIAL_POSITION.wireName(),
-                  true,
+                  ProtocolOptions.comparativeModes(),
+                  "none",
                   "Built into the current kernel as one internal management statement."),
               new ReportCapabilityFacts(
                   OperationId.INCOME_STATEMENT.wireName(),
-                  true,
+                  ProtocolOptions.comparativeModes(),
+                  "none",
                   "Built into the current kernel as one internal management statement."),
               new ReportCapabilityFacts(
+                  OperationId.CASH_FLOW_STATEMENT.wireName(),
+                  ProtocolOptions.comparativeModes(),
+                  "none",
+                  "Built into the current kernel as one internal management cash receipts and payments statement."),
+              new ReportCapabilityFacts(
                   OperationId.CHANGES_IN_EQUITY.wireName(),
-                  true,
+                  ProtocolOptions.comparativeModes(),
+                  "none",
                   "Built into the current kernel as one internal management statement.")),
-          "Current built-in cash-oriented bookkeeping kernel facts for one single-entity, single-functional-currency internal-management book with three built-in statements.");
+          "Current built-in bookkeeping kernel facts for one single-entity, single-functional-currency internal-management book with four built-in statements.");
   static final PreflightFacts PREFLIGHT =
       new PreflightFacts(
           "advisory",

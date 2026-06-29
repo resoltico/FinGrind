@@ -10,7 +10,15 @@ import java.util.Set;
 /** Renders operator-facing example blocks for one command-help surface. */
 final class CliDiscoveryCommandExamples {
   private static final Set<OperationId> ENTRY_REQUEST_OPERATIONS =
-      Set.of(OperationId.POST_ENTRY, OperationId.PREFLIGHT_ENTRY);
+      Set.of(
+          OperationId.POST_ENTRY,
+          OperationId.PREFLIGHT_ENTRY,
+          OperationId.RECORD_SALE,
+          OperationId.RECORD_EXPENSE,
+          OperationId.RECORD_OWNER_CONTRIBUTION,
+          OperationId.RECORD_OWNER_WITHDRAWAL,
+          OperationId.RECORD_OPENING_POSITION,
+          OperationId.RECORD_REVERSAL);
 
   private CliDiscoveryCommandExamples() {}
 
@@ -27,12 +35,24 @@ final class CliDiscoveryCommandExamples {
   }
 
   static String primaryStarterRequestCommand(OperationId operationId) {
-    return FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION.equals(FinGrindCli.runtimeDistribution())
-        ? "cp ./quick-start-request.json ./request.json"
-        : CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-            + " "
-            + operationId.wireName()
-            + " > request.json";
+    if (FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION.equals(FinGrindCli.runtimeDistribution())
+        && operationId == OperationId.RECORD_SALE) {
+      return "cp ./quick-start-request.json ./request.json";
+    }
+    return switch (operationId) {
+      case POST_ENTRY ->
+          CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+              + " "
+              + OperationId.POST_ENTRY.wireName()
+              + " > request.json";
+      case PREFLIGHT_ENTRY ->
+          CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE) + " > request.json";
+      default ->
+          CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+              + " "
+              + operationId.wireName()
+              + " > request.json";
+    };
   }
 
   static String renderCommandExamples(ProtocolOperation operation) {

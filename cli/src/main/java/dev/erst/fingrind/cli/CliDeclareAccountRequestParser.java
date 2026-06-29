@@ -12,9 +12,9 @@ import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import tools.jackson.databind.node.ObjectNode;
@@ -38,11 +38,6 @@ final class CliDeclareAccountRequestParser {
             ProtocolDeclareAccountFields.ACCOUNT_TYPE,
             AccountType.wireValues(),
             AccountType::fromWireValue),
-        parseWireValue(
-            requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_ROLE),
-            ProtocolDeclareAccountFields.ACCOUNT_ROLE,
-            AccountRole.wireValues(),
-            AccountRole::fromWireValue),
         new AccountTaxonomy(
             parseWireValue(
                 requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND),
@@ -67,6 +62,14 @@ final class CliDeclareAccountRequestParser {
                             value,
                             ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
                             ProfitAndLossLineClassification.wireValues(),
-                            ProfitAndLossLineClassification::fromWireValue))));
+                            ProfitAndLossLineClassification::fromWireValue)),
+            optionalText(rootNode, ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION)
+                .map(
+                    value ->
+                        parseWireValue(
+                            value,
+                            ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION,
+                            CashFlowAssetClassification.wireValues(),
+                            CashFlowAssetClassification::fromWireValue))));
   }
 }

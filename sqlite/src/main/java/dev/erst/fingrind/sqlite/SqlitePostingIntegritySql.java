@@ -78,14 +78,14 @@ final class SqlitePostingIntegritySql {
       """
       select posting_fact.posting_id
       from posting_fact
-      inner join period_result_transfer
-        on posting_fact.effective_date <= period_result_transfer.effective_date_to
-      inner join period_result_transfer_posting
-        on period_result_transfer_posting.period_result_transfer_order = period_result_transfer.period_result_transfer_order
+      inner join interim_result_sweep
+        on posting_fact.effective_date <= interim_result_sweep.effective_date_to
+      inner join interim_result_sweep_posting
+        on interim_result_sweep_posting.interim_result_sweep_order = interim_result_sweep.interim_result_sweep_order
       inner join posting_fact as close_posting
-        on close_posting.posting_id = period_result_transfer_posting.posting_id
+        on close_posting.posting_id = interim_result_sweep_posting.posting_id
       where
-          posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'
+          posting_fact.posting_kind not in ('INTERIM_RESULT_SWEEP', 'FISCAL_YEAR_CLOSE')
           and posting_fact.posting_order > close_posting.posting_order
       limit 1
       """;
@@ -94,37 +94,86 @@ final class SqlitePostingIntegritySql {
       """
       select posting_fact.posting_id
       from posting_fact
-      left join period_result_transfer_posting on period_result_transfer_posting.posting_id = posting_fact.posting_id
+      left join interim_result_sweep_posting
+        on interim_result_sweep_posting.posting_id = posting_fact.posting_id
+      left join fiscal_year_close_posting
+        on fiscal_year_close_posting.posting_id = posting_fact.posting_id
       where
-          posting_fact.posting_kind = 'PERIOD_RESULT_TRANSFER'
-          and period_result_transfer_posting.posting_id is null
+          (
+              posting_fact.posting_kind = 'INTERIM_RESULT_SWEEP'
+              and interim_result_sweep_posting.posting_id is null
+          )
+          or (
+              posting_fact.posting_kind = 'FISCAL_YEAR_CLOSE'
+              and fiscal_year_close_posting.posting_id is null
+          )
       limit 1
       """;
 
   static final String FIND_INVALID_PERIOD_RESULT_TRANSFER_LINK =
       """
-      select period_result_transfer_posting.posting_id
-      from period_result_transfer_posting
-      inner join period_result_transfer
-        on period_result_transfer.period_result_transfer_order = period_result_transfer_posting.period_result_transfer_order
+      select interim_result_sweep_posting.posting_id
+      from interim_result_sweep_posting
+      inner join interim_result_sweep
+        on interim_result_sweep.interim_result_sweep_order = interim_result_sweep_posting.interim_result_sweep_order
       inner join posting_fact
-        on posting_fact.posting_id = period_result_transfer_posting.posting_id
+        on posting_fact.posting_id = interim_result_sweep_posting.posting_id
       where
-          posting_fact.posting_kind <> 'PERIOD_RESULT_TRANSFER'
+          posting_fact.posting_kind <> 'INTERIM_RESULT_SWEEP'
           or posting_fact.actor_type <> 'SYSTEM'
           or posting_fact.source_channel <> 'SYSTEM'
-          or posting_fact.effective_date <> period_result_transfer.effective_date_to
+          or posting_fact.effective_date <> interim_result_sweep.effective_date_to
       limit 1
       """;
 
   static final String FIND_INVALID_PERIOD_RESULT_TRANSFER_TARGET_ACCOUNT =
       """
-      select period_result_transfer.period_result_transfer_order
-      from period_result_transfer
-      inner join account on account.account_code = period_result_transfer.closing_equity_account_code
+      select interim_result_sweep.interim_result_sweep_order
+      from interim_result_sweep
+      inner join account on account.account_code = interim_result_sweep.result_holding_account_code
       where
           account.account_type <> 'EQUITY'
           or account.active = 0
+          or account.financial_position_line_classification <> 'RESULT_HOLDING'
+      limit 1
+      """;
+
+  static final String FIND_INVALID_FISCAL_YEAR_CLOSE_LINK =
+      """
+      select fiscal_year_close_posting.posting_id
+      from fiscal_year_close_posting
+      inner join fiscal_year_close
+        on fiscal_year_close.fiscal_year_close_order = fiscal_year_close_posting.fiscal_year_close_order
+      inner join posting_fact
+        on posting_fact.posting_id = fiscal_year_close_posting.posting_id
+      where
+          posting_fact.posting_kind <> 'FISCAL_YEAR_CLOSE'
+          or posting_fact.actor_type <> 'SYSTEM'
+          or posting_fact.source_channel <> 'SYSTEM'
+          or posting_fact.effective_date <> fiscal_year_close.effective_date_to
+      limit 1
+      """;
+
+  static final String FIND_INVALID_FISCAL_YEAR_CLOSE_TARGET_ACCOUNT =
+      """
+      select fiscal_year_close.fiscal_year_close_order
+      from fiscal_year_close
+      inner join account as capital
+        on capital.account_code = fiscal_year_close.capital_account_code
+      inner join account as result_holding
+        on result_holding.account_code = fiscal_year_close.result_holding_account_code
+      inner join account as retained_accumulated
+        on retained_accumulated.account_code = fiscal_year_close.retained_accumulated_account_code
+      where
+          capital.account_type <> 'EQUITY'
+          or capital.active = 0
+          or capital.financial_position_line_classification <> 'EQUITY_CONTRIBUTION'
+          or result_holding.account_type <> 'EQUITY'
+          or result_holding.active = 0
+          or result_holding.financial_position_line_classification <> 'RESULT_HOLDING'
+          or retained_accumulated.account_type <> 'EQUITY'
+          or retained_accumulated.active = 0
+          or retained_accumulated.financial_position_line_classification <> 'RETAINED_ACCUMULATED'
       limit 1
       """;
 

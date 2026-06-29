@@ -15,7 +15,6 @@ final class CliAccountLedgerCsvColumns {
         report.account().accountCode().value(),
         report.account().accountName().value(),
         report.account().accountType().wireValue(),
-        report.account().accountRole().wireValue(),
         report.account().normalBalance().wireValue(),
         Boolean.toString(report.account().active()),
         report.effectiveDateRange().effectiveDateFrom().map(LocalDate::toString).orElse(""),

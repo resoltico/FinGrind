@@ -4,26 +4,28 @@ import java.util.List;
 
 /** Canonical durable origin kinds preserved for committed postings in one protected book. */
 public enum PostingOriginKind implements WireValue {
-  JOURNAL,
-  CASH_REVENUE,
-  CASH_EXPENSE,
-  EQUITY_CONTRIBUTION,
-  EQUITY_WITHDRAWAL,
-  OPEN_ACCOUNTING_POSITION,
-  REVERSAL_ADJUSTMENT,
-  PERIOD_RESULT_TRANSFER;
+  DIRECT_JOURNAL,
+  SALE,
+  EXPENSE,
+  OWNER_CONTRIBUTION,
+  OWNER_WITHDRAWAL,
+  OPENING_POSITION,
+  REVERSAL,
+  INTERIM_RESULT_SWEEP,
+  FISCAL_YEAR_CLOSE;
 
   @Override
   public String wireValue() {
     return switch (this) {
-      case JOURNAL -> "JOURNAL";
-      case CASH_REVENUE -> "CASH_REVENUE";
-      case CASH_EXPENSE -> "CASH_EXPENSE";
-      case EQUITY_CONTRIBUTION -> "EQUITY_CONTRIBUTION";
-      case EQUITY_WITHDRAWAL -> "EQUITY_WITHDRAWAL";
-      case OPEN_ACCOUNTING_POSITION -> "OPEN_ACCOUNTING_POSITION";
-      case REVERSAL_ADJUSTMENT -> "REVERSAL_ADJUSTMENT";
-      case PERIOD_RESULT_TRANSFER -> "PERIOD_RESULT_TRANSFER";
+      case DIRECT_JOURNAL -> "DIRECT_JOURNAL";
+      case SALE -> "SALE";
+      case EXPENSE -> "EXPENSE";
+      case OWNER_CONTRIBUTION -> "OWNER_CONTRIBUTION";
+      case OWNER_WITHDRAWAL -> "OWNER_WITHDRAWAL";
+      case OPENING_POSITION -> "OPENING_POSITION";
+      case REVERSAL -> "REVERSAL";
+      case INTERIM_RESULT_SWEEP -> "INTERIM_RESULT_SWEEP";
+      case FISCAL_YEAR_CLOSE -> "FISCAL_YEAR_CLOSE";
     };
   }
 

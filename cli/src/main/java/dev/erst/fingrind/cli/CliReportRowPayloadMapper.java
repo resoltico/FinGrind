@@ -3,6 +3,8 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.cli.json.CliStatementJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowSection;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
@@ -22,7 +24,6 @@ final class CliReportRowPayloadMapper {
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().accountType().wireValue(),
-        row.account().accountRole().wireValue(),
         row.account().normalBalance().wireValue(),
         row.account().active(),
         row.account().declaredAt().toString(),
@@ -60,7 +61,6 @@ final class CliReportRowPayloadMapper {
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().accountType().wireValue(),
-        row.account().accountRole().wireValue(),
         row.account().normalBalance().wireValue(),
         row.account().active(),
         row.account().declaredAt().toString(),
@@ -86,7 +86,6 @@ final class CliReportRowPayloadMapper {
         row.lineCode(),
         row.lineName(),
         row.lineType().wireValue(),
-        row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
         row.lineClassification()
             .map(dev.erst.fingrind.core.FinancialPositionLineClassification::wireValue)
             .orElse(null),
@@ -108,8 +107,30 @@ final class CliReportRowPayloadMapper {
         row.lineCode(),
         row.lineName(),
         row.lineType().wireValue(),
-        row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
         row.lineClassification().wireValue(),
+        row.lineKind().wireValue(),
+        CliPayloadAssembler.balancePayload(row.movement()));
+  }
+
+  static CliStatementJsonModels.CashFlowSectionPayload cashFlowSectionPayload(
+      CashFlowSection section) {
+    return new CliStatementJsonModels.CashFlowSectionPayload(
+        section.sectionKind().wireValue(),
+        section.rows().stream().map(CliReportRowPayloadMapper::cashFlowRowPayload).toList(),
+        section.totals().stream().map(CliPayloadAssembler::balancePayload).toList());
+  }
+
+  static CliStatementJsonModels.CashFlowRowPayload cashFlowRowPayload(CashFlowRow row) {
+    return new CliStatementJsonModels.CashFlowRowPayload(
+        row.lineCode(),
+        row.lineName(),
+        row.lineType().wireValue(),
+        row.financialPositionLineClassification()
+            .map(dev.erst.fingrind.core.FinancialPositionLineClassification::wireValue)
+            .orElse(null),
+        row.profitAndLossLineClassification()
+            .map(dev.erst.fingrind.core.ProfitAndLossLineClassification::wireValue)
+            .orElse(null),
         row.lineKind().wireValue(),
         CliPayloadAssembler.balancePayload(row.movement()));
   }
@@ -120,7 +141,6 @@ final class CliReportRowPayloadMapper {
         row.lineCode(),
         row.lineName(),
         row.lineType().map(dev.erst.fingrind.core.AccountType::wireValue).orElse(null),
-        row.lineRole().map(dev.erst.fingrind.core.AccountRole::wireValue).orElse(null),
         row.lineClassification()
             .map(dev.erst.fingrind.core.FinancialPositionLineClassification::wireValue)
             .orElse(null),

@@ -17,10 +17,10 @@
         "accountCode": "7110",
         "accountName": "Cash JPY Seed",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": "CURRENT_ASSET",
-        "profitAndLossLineClassification": null
+        "profitAndLossLineClassification": null,
+        "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
       }
     },
     {
@@ -30,7 +30,6 @@
         "accountCode": "8110",
         "accountName": "Sales JPY Seed",
         "accountType": "REVENUE",
-        "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": null,
         "profitAndLossLineClassification": "OPERATING_REVENUE"
@@ -38,10 +37,9 @@
     },
     {
       "stepId": "post-jpy",
-      "kind": "post-entry",
+      "kind": "record-sale",
       "posting": {
-        "entryKind": "JOURNAL",
-        "recipeKind": "CASH_REVENUE",
+        "entryKind": "SALE",
         "effectiveDate": "2026-06-16",
         "cashAccountCode": "7110",
         "revenueAccountCode": "8110",
@@ -54,13 +52,12 @@
             {
               "sourceDocumentId": "document-seed-plan-jpy-idem-1",
               "sourceDocumentType": "cash-receipt",
-              "documentDate": "2026-06-16",
-              "capturedAt": "2026-06-16T10:15:30Z",
-              "storageLocator": "vault://fixtures/document-seed-plan-jpy-idem-1",
-              "contentSha256": "ebabeecbc8541f2d4a5cac9f78063deb6532547014b243b2c3d93a3a55476c1a"
+              "documentDate": "2026-06-16"
             }
           ],
-          "approvals": []
+          "approvals": [
+
+          ]
         },
         "provenance": {
           "actorId": "seed-plan-jpy-actor-1",

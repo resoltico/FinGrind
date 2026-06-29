@@ -5,12 +5,13 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.util.Optional;
 
 /** Posting-lookup surface over one SQLite posting-fact store. */
 interface SqlitePostingFactStorePostingLookupView extends SqlitePostingFactStoreReadOperationsView {
   /** Finds an existing committed posting by idempotency key. */
-  default Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+  default Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     storeThreadOwner().requireOwnerThread();
     return storeReadOperations().findExistingPosting(idempotencyKey);
   }

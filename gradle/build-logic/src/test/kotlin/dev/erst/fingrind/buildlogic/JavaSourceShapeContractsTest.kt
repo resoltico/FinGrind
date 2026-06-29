@@ -56,7 +56,7 @@ class JavaSourceShapeContractsTest {
                 projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.EXECUTOR,
                 relativePath =
-                    "src/main/java/dev/erst/fingrind/executor/bookkeeping/PeriodResultTransferPlanner.java",
+                    "src/main/java/dev/erst/fingrind/executor/bookkeeping/InterimResultSweepPlanner.java",
                 packageName = "dev.erst.fingrind.executor.bookkeeping",
                 exportedPackages = emptySet(),
             )

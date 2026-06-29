@@ -12,12 +12,12 @@ public record BookAuditEvent(
     BookAuditEventKind kind,
     @Nullable AccountCode accountCode,
     @Nullable PostingId postingId,
-    @Nullable Integer periodResultTransferOrder) {
+    @Nullable Integer closeOperationOrder) {
   /** Validates one append-only bookkeeping audit event before durable persistence. */
   public BookAuditEvent {
     Objects.requireNonNull(recordedAt, "recordedAt");
     Objects.requireNonNull(kind, "kind");
-    kind.validatePayload(accountCode, postingId, periodResultTransferOrder);
+    kind.validatePayload(accountCode, postingId, closeOperationOrder);
   }
 
   /** Returns one audit event recording that a book session opened successfully. */
@@ -25,15 +25,22 @@ public record BookAuditEvent(
     return new BookAuditEvent(recordedAt, BookAuditEventKind.BOOK_OPENED, null, null, null);
   }
 
-  /** Returns one audit event recording an account declaration or account reactivation. */
-  public static BookAuditEvent accountDeclared(
-      Instant recordedAt, AccountCode accountCode, boolean reactivated) {
+  /** Returns one audit event recording an account declaration. */
+  public static BookAuditEvent accountDeclared(Instant recordedAt, AccountCode accountCode) {
     return new BookAuditEvent(
-        recordedAt,
-        reactivated ? BookAuditEventKind.ACCOUNT_REACTIVATED : BookAuditEventKind.ACCOUNT_DECLARED,
-        accountCode,
-        null,
-        null);
+        recordedAt, BookAuditEventKind.ACCOUNT_DECLARED, accountCode, null, null);
+  }
+
+  /** Returns one audit event recording an account reactivation. */
+  public static BookAuditEvent accountReactivated(Instant recordedAt, AccountCode accountCode) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.ACCOUNT_REACTIVATED, accountCode, null, null);
+  }
+
+  /** Returns one audit event recording an account rename. */
+  public static BookAuditEvent accountRenamed(Instant recordedAt, AccountCode accountCode) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.ACCOUNT_RENAMED, accountCode, null, null);
   }
 
   /** Returns one audit event derived from a committed posting or reversal posting. */
@@ -88,14 +95,15 @@ public record BookAuditEvent(
         recordedAt, BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED, null, null, null);
   }
 
-  /** Returns one audit event recording that one reporting period was closed durably. */
-  public static BookAuditEvent periodResultTransferred(
-      Instant recordedAt, int periodResultTransferOrder) {
+  /** Returns one audit event recording that one interim result sweep closed durably. */
+  public static BookAuditEvent interimResultSwept(Instant recordedAt, int closeOperationOrder) {
     return new BookAuditEvent(
-        recordedAt,
-        BookAuditEventKind.PERIOD_RESULT_TRANSFERRED,
-        null,
-        null,
-        periodResultTransferOrder);
+        recordedAt, BookAuditEventKind.INTERIM_RESULT_SWEPT, null, null, closeOperationOrder);
+  }
+
+  /** Returns one audit event recording that one fiscal-year close committed durably. */
+  public static BookAuditEvent fiscalYearClosed(Instant recordedAt, int closeOperationOrder) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.FISCAL_YEAR_CLOSED, null, null, closeOperationOrder);
   }
 }

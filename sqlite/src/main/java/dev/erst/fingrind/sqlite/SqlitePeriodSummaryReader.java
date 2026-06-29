@@ -28,13 +28,10 @@ final class SqlitePeriodSummaryReader {
         activeDatabase.prepare(SqlitePostingSql.loadPeriodSummaryLines(query))) {
       statement.bindText(1, CanonicalTemporalText.formatLocalDate(query.effectiveDateFrom()));
       statement.bindText(2, CanonicalTemporalText.formatLocalDate(query.effectiveDateTo()));
-      if (query.postingCoverage().isNonClosingOnly()) {
-        statement.bindText(
-            3, dev.erst.fingrind.core.PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
-      }
       while (statement.step() == SqliteNativeResultCode.code("ROW")) {
         postingIds.add(
-            SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_REPORT_POSTING_ID));
+            SqlitePostingMapper.requiredText(
+                statement, SqlitePostingColumnIndexes.COL_REPORT_POSTING_ID));
         postingLineCount++;
         RegisteredAccount account = SqlitePostingMapper.registeredAccount(statement);
         CurrencyUnit currencyCode = SqliteReportRowValues.reportCurrencyCode(statement);
@@ -42,7 +39,7 @@ final class SqlitePeriodSummaryReader {
         JournalLine.EntrySide entrySide =
             JournalLine.EntrySide.fromWireValue(
                 SqlitePostingMapper.requiredText(
-                    statement, SqlitePostingSql.COL_REPORT_ENTRY_SIDE));
+                    statement, SqlitePostingColumnIndexes.COL_REPORT_ENTRY_SIDE));
         SqliteReportRowValues.accountTotalsFor(accountActivity, account)
             .add(currencyCode, entrySide, amountMinor);
         SqliteReportRowValues.totalsFor(currencyTotals, currencyCode).add(entrySide, amountMinor);

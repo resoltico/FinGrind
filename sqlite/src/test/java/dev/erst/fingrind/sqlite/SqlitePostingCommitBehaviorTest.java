@@ -57,10 +57,10 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
-          new PostingCommitResult.Committed(postingFact),
+          new PostingCommitResult.Committed(postingFact, false),
           commitPosting(postingFactStore, postingFact));
       assertEquals(
-          Optional.of(postingFact),
+          Optional.of(storedRequestPosting(postingFact)),
           postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")));
       assertEquals(
           Optional.of(postingFact), postingFactStore.findPosting(new PostingId("posting-1")));
@@ -81,10 +81,10 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertEquals(
-          new PostingCommitResult.Committed(postingFact),
+          new PostingCommitResult.Committed(postingFact, false),
           commitPosting(postingFactStore, postingFact));
       assertEquals(
-          Optional.of(postingFact),
+          Optional.of(storedRequestPosting(postingFact)),
           postingFactStore.findExistingPosting(new IdempotencyKey("idem-approval-1")));
       assertEquals(
           Optional.of(postingFact),
@@ -108,7 +108,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
       commitPosting(postingFactStore, originalFact);
       commitPosting(postingFactStore, reversalFact);
       assertEquals(
-          Optional.of(reversalFact),
+          Optional.of(storedRequestPosting(reversalFact)),
           postingFactStore.findExistingPosting(new IdempotencyKey("idem-2")));
     }
   }
@@ -122,7 +122,7 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, postingFact);
       assertEquals(
-          rejected(new BookkeepingPostingRejection.DuplicateIdempotencyKey()),
+          rejected(new BookkeepingPostingRejection.IdempotencyKeyConflict()),
           commitPosting(
               postingFactStore,
               postingFact("posting-2", "idem-1", Optional.empty(), Optional.empty())));

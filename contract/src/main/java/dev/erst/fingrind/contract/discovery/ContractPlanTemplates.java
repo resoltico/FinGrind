@@ -32,18 +32,19 @@ public interface ContractPlanTemplates {
     public LedgerPlanStepTemplateDescriptor canonicalPostingScaffoldStep() {
       LedgerPlanStepTemplateDescriptor step =
           steps.stream()
-              .filter(stepTemplate -> stepTemplate.kind() == LedgerStepKind.POST_ENTRY)
+              .filter(stepTemplate -> stepTemplate.kind().commitsPosting())
               .reduce(
                   (first, second) -> {
                     throw new IllegalStateException(
-                        "Expected exactly one canonical POST_ENTRY scaffold step with a posting payload.");
+                        "Expected exactly one canonical committed-posting scaffold step with a posting payload.");
                   })
               .orElseThrow(
                   () ->
                       new IllegalStateException(
-                          "Expected exactly one canonical POST_ENTRY scaffold step with a posting payload."));
+                          "Expected exactly one canonical committed-posting scaffold step with a posting payload."));
       Objects.requireNonNull(
-          step.posting(), "Canonical POST_ENTRY scaffold step must publish a posting template.");
+          step.posting(),
+          "Canonical committed-posting scaffold step must publish a posting template.");
       return step;
     }
 
@@ -51,7 +52,7 @@ public interface ContractPlanTemplates {
     public ContractTemplates.PostingRequestTemplateDescriptor canonicalPostingTemplate() {
       return Objects.requireNonNull(
           canonicalPostingScaffoldStep().posting(),
-          "Canonical POST_ENTRY scaffold step must publish a posting template.");
+          "Canonical committed-posting scaffold step must publish a posting template.");
     }
   }
 

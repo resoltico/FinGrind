@@ -1,7 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
@@ -9,6 +12,7 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -20,11 +24,20 @@ import java.util.Set;
 final class SqliteTransactionValidationBook implements PostingValidationStore {
   private final SqliteNativeDatabase activeDatabase;
   private final SqlitePostingReader postingReader;
+  private final boolean operationalInitializedWorkflowGate;
 
   SqliteTransactionValidationBook(
       SqliteNativeDatabase activeDatabase, SqlitePostingReader postingReader) {
+    this(activeDatabase, postingReader, false);
+  }
+
+  SqliteTransactionValidationBook(
+      SqliteNativeDatabase activeDatabase,
+      SqlitePostingReader postingReader,
+      boolean operationalInitializedWorkflowGate) {
     this.activeDatabase = Objects.requireNonNull(activeDatabase, "activeDatabase");
     this.postingReader = Objects.requireNonNull(postingReader, "postingReader");
+    this.operationalInitializedWorkflowGate = operationalInitializedWorkflowGate;
   }
 
   @Override
@@ -43,7 +56,10 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     try {
       SqliteBookStateSnapshot snapshot =
           SqliteStoreOperations.retryTransientLockFailures(
-              () -> SqliteBookContract.BOOK_STATE_READER.snapshot(activeDatabase));
+              () ->
+                  operationalInitializedWorkflowGate
+                      ? SqliteBookContract.BOOK_STATE_READER.operationalSnapshot(activeDatabase)
+                      : SqliteBookContract.BOOK_STATE_READER.snapshot(activeDatabase));
       if (snapshot.state() == SqliteBookState.BLANK_SQLITE) {
         return false;
       }
@@ -82,17 +98,32 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
   @Override
   public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     try {
-      return SqliteStatementQueries.findAccounts(activeDatabase, accountCodes);
+      return SqliteAccountStatementQueries.findAccounts(activeDatabase, accountCodes);
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 
   @Override
-  public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
-    return findPostingWithBinder(
-        SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,
-        statement -> statement.bindText(1, idempotencyKey.value()));
+  public Optional<DeclaredTaxRegistration> findTaxRegistration(
+      TaxRegistrationId taxRegistrationId) {
+    try {
+      return SqliteTaxStatementQueries.findOneTaxRegistration(activeDatabase, taxRegistrationId);
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
+  @Override
+  public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+    try {
+      return postingReader.findOneStoredRequestPosting(
+          activeDatabase,
+          SqlitePostingSql.FIND_POSTING_BY_IDEMPOTENCY,
+          statement -> statement.bindText(1, idempotencyKey.value()));
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
+    }
   }
 
   @Override
@@ -135,9 +166,9 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     try {
       return SqliteStatementQueries.loadOptionalText(
               activeDatabase,
-              SqlitePostingSql.FIND_EARLIEST_POSTING_EFFECTIVE_DATE,
+              SqliteReportingPeriodCloseSql.FIND_EARLIEST_POSTING_EFFECTIVE_DATE,
               statement -> {})
-          .map(LocalDate::parse);
+          .map(text -> CanonicalTemporalText.parseLocalDate(text, "postingFact.effectiveDate"));
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
@@ -147,15 +178,19 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
   public Optional<LocalDate> transferredThroughEffectiveDate() {
     try {
       return SqliteStatementQueries.loadOptionalText(
-              activeDatabase, SqlitePostingSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE, statement -> {})
-          .map(LocalDate::parse);
+              activeDatabase,
+              SqliteReportingPeriodCloseSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE,
+              statement -> {})
+          .map(
+              text ->
+                  CanonicalTemporalText.parseLocalDate(text, "interimResultSweep.effectiveDateTo"));
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
   }
 
   private Optional<CommittedPosting> findPostingWithBinder(
-      String sql, SqliteStatementQueries.Binder binder) {
+      String sql, SqliteStatementBinder binder) {
     try {
       return postingReader.findOneCommittedPosting(activeDatabase, sql, binder);
     } catch (SqliteNativeException exception) {

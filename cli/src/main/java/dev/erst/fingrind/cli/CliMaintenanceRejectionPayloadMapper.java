@@ -26,15 +26,17 @@ final class CliMaintenanceRejectionPayloadMapper {
 
   private CliMaintenanceRejectionPayloadMapper() {}
 
-  static CliEnvelopeJsonModels.RejectedEnvelope rejectedEnvelope(
-      BookMaintenanceRejection rejection) {
-    return new CliEnvelopeJsonModels.RejectedEnvelope(
+  static CliEnvelopeJsonModels.Envelope<?> rejectedEnvelope(BookMaintenanceRejection rejection) {
+    return new CliEnvelopeJsonModels.Envelope<>(
         ProtocolEnvelopeStatus.REJECTED,
+        null,
         BookMaintenanceRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         rejectionHint(rejection),
         null,
-        rejectionDetails(rejection));
+        null,
+        rejectionDetails(rejection),
+        null);
   }
 
   private static String rejectionHint(BookMaintenanceRejection rejection) {

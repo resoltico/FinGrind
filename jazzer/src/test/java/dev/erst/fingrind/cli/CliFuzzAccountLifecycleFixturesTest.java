@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
@@ -70,7 +69,7 @@ class CliFuzzAccountLifecycleFixturesTest {
               CliFuzzFixtureCommandSupport.basicValidRequest().getBytes(UTF_8));
       DeclaredAccount account =
           CliFuzzFixtureStoreSupport.declaredAccount(
-              new AccountCode("1000"), AccountType.ASSET, AccountRole.ORDINARY, false);
+              new AccountCode("1000"), AccountType.ASSET, false);
 
       assertThrows(
           IllegalStateException.class,
@@ -87,7 +86,7 @@ class CliFuzzAccountLifecycleFixturesTest {
   void lifecycle_helpers_reject_drifted_open_book_and_reactivate_account_shapes() {
     DeclaredAccount account =
         CliFuzzFixtureStoreSupport.declaredAccount(
-            new AccountCode("1000"), AccountType.ASSET, AccountRole.ORDINARY, false);
+            new AccountCode("1000"), AccountType.ASSET, false);
 
     BookAdministrationService driftedOpenBookService =
         new BookAdministrationService(
@@ -118,18 +117,11 @@ class CliFuzzAccountLifecycleFixturesTest {
                   AccountCode accountCode,
                   AccountName accountName,
                   AccountType accountType,
-                  AccountRole accountRole,
                   AccountTaxonomy accountTaxonomy,
                   Instant declaredAt) {
                 return new AccountDeclarationOutcome.Declared(
                     new RegisteredAccount(
-                        accountCode,
-                        accountName,
-                        accountType,
-                        accountRole,
-                        accountTaxonomy,
-                        false,
-                        declaredAt));
+                        accountCode, accountName, accountType, accountTaxonomy, false, declaredAt));
               }
             },
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {},
@@ -149,7 +141,6 @@ class CliFuzzAccountLifecycleFixturesTest {
                   AccountCode accountCode,
                   AccountName accountName,
                   AccountType accountType,
-                  AccountRole accountRole,
                   AccountTaxonomy accountTaxonomy,
                   Instant declaredAt) {
                 return new AccountDeclarationOutcome.Declared(
@@ -157,7 +148,6 @@ class CliFuzzAccountLifecycleFixturesTest {
                         accountCode,
                         accountName,
                         accountType,
-                        accountRole,
                         accountTaxonomy,
                         true,
                         declaredAt.plusSeconds(1)));
@@ -178,13 +168,57 @@ class CliFuzzAccountLifecycleFixturesTest {
   }
 
   @Test
+  void declare_posting_accounts_accepts_renamed_and_unchanged_success_shapes() {
+    AtomicInteger declareCalls = new AtomicInteger();
+    BookAdministrationService administrationService =
+        new BookAdministrationService(
+            () ->
+                new BookLifecycleInspection.Initialized(
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.APPLICATION_ID,
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
+                    dev.erst.fingrind.contract.runtime.BookFormatContract.FORMAT_VERSION,
+                    CliFuzzFixtures.fixedClock().instant(),
+                    CliFuzzWorkflowFixtures.bookIdentity()),
+            new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {
+              @Override
+              public AccountDeclarationOutcome declareAccount(
+                  AccountCode accountCode,
+                  AccountName accountName,
+                  AccountType accountType,
+                  AccountTaxonomy accountTaxonomy,
+                  Instant declaredAt) {
+                RegisteredAccount account =
+                    new RegisteredAccount(
+                        accountCode, accountName, accountType, accountTaxonomy, true, declaredAt);
+                return switch (declareCalls.getAndIncrement()) {
+                  case 0 -> new AccountDeclarationOutcome.Renamed(account);
+                  case 1 -> new AccountDeclarationOutcome.Unchanged(account);
+                  default -> throw new AssertionError("Unexpected extra account declaration call.");
+                };
+              }
+            },
+            new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {},
+            CliFuzzFixtures.fixedClock());
+    var command =
+        CliFuzzFixtures.readPostEntryCommand(
+            CliFuzzFixtureCommandSupport.basicValidRequest().getBytes(UTF_8));
+
+    List<DeclaredAccount> declaredAccounts =
+        CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
+
+    assertEquals(2, declaredAccounts.size());
+    assertEquals(2, declareCalls.get());
+    assertTrue(declaredAccounts.stream().allMatch(DeclaredAccount::active));
+  }
+
+  @Test
   void list_accounts_follows_pagination_until_cursor_is_exhausted() {
     DeclaredAccount firstAccount =
         CliFuzzFixtureStoreSupport.declaredAccount(
-            new AccountCode("1000"), AccountType.ASSET, AccountRole.ORDINARY, true);
+            new AccountCode("1000"), AccountType.ASSET, true);
     DeclaredAccount secondAccount =
         CliFuzzFixtureStoreSupport.declaredAccount(
-            new AccountCode("2000"), AccountType.REVENUE, AccountRole.ORDINARY, true);
+            new AccountCode("2000"), AccountType.REVENUE, true);
     AccountRegistryCursor nextCursor = new AccountRegistryCursor(firstAccount.accountCode());
     AtomicInteger pageCalls = new AtomicInteger();
     List<Optional<AccountRegistryCursor>> cursors = new ArrayList<>();

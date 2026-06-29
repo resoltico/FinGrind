@@ -17,10 +17,10 @@
         "accountCode": "7120",
         "accountName": "Cash BHD Seed",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": "CURRENT_ASSET",
-        "profitAndLossLineClassification": null
+        "profitAndLossLineClassification": null,
+        "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
       }
     },
     {
@@ -30,7 +30,6 @@
         "accountCode": "8120",
         "accountName": "Sales BHD Seed",
         "accountType": "REVENUE",
-        "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": null,
         "profitAndLossLineClassification": "OPERATING_REVENUE"
@@ -38,10 +37,9 @@
     },
     {
       "stepId": "post-bhd",
-      "kind": "post-entry",
+      "kind": "record-sale",
       "posting": {
-        "entryKind": "JOURNAL",
-        "recipeKind": "CASH_REVENUE",
+        "entryKind": "SALE",
         "effectiveDate": "2026-06-17",
         "cashAccountCode": "7120",
         "revenueAccountCode": "8120",
@@ -54,13 +52,12 @@
             {
               "sourceDocumentId": "document-seed-plan-bhd-idem-1",
               "sourceDocumentType": "cash-receipt",
-              "documentDate": "2026-06-17",
-              "capturedAt": "2026-06-17T10:15:30Z",
-              "storageLocator": "vault://fixtures/document-seed-plan-bhd-idem-1",
-              "contentSha256": "a23becd1e5006cc7cd69ac3e914a55346e5e6c669bc4bff5939a5f5c2d8ece5c"
+              "documentDate": "2026-06-17"
             }
           ],
-          "approvals": []
+          "approvals": [
+
+          ]
         },
         "provenance": {
           "actorId": "seed-plan-bhd-actor-1",

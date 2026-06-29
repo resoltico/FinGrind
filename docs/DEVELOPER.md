@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -154,9 +154,9 @@ Repo-owned JSON contract snapshots back that typed public surface:
 
 Build logic, runtime loaders, shell verifiers, and distribution assembly must consume those shared
 JSON contract resources instead of carrying private parsers or duplicated literals. In particular,
-the shell-side operation-id map must come from the explicit semantic-key registry in
-`contract-schema-keys.json` plus `operation-id-contract.json`, not from enum-name-to-camel-case
-guesswork.
+the shell-side operation-id map must come straight from `operation-id-contract.json`, with its
+lower-camel lookup keys derived from the canonical enum inventory there rather than copied into a
+second full registry.
 
 The AI-agent-first workflow is now first-class:
 - `print-plan-template` emits the accepted `execute-plan` request shape
@@ -177,14 +177,14 @@ FinGrind's current public model is:
 - books are initialized explicitly before any posting
 - preflight is advisory and not a durable commit guarantee
 - one journal entry is exactly one currency
-- declared accounts have immutable `accountType`, immutable `accountRole`, and immutable declared
-  taxonomy once first stored, while `normalBalance` is derived from those role and polarity facts
+- declared accounts have immutable `accountType` and immutable declared taxonomy once first
+  stored, while `normalBalance` is derived from `accountType` plus classification doctrine
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `24`, owned by `BookFormatContract`
+- the current supported on-disk format is `25`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
-- FinGrind is in an alpha hard-break phase, so schema evolution advances by replacing the current
+- FinGrind is in an alpha hard-break line, so schema evolution advances by replacing the current
   model and rejecting non-matching book formats instead of carrying compatibility shims
 - maintenance workflows are explicit: `backup-book` exports one verified encrypted backup pair,
   `restore-book` verifies that pair before replacing a live book path and the restored live book
@@ -215,8 +215,9 @@ Canonical commands:
   report with `--report-local-state`; the report now classifies each local-state root as generated
   state, tool state, or scratch state and tells you which cleanup flag removes it; the verifier
   also fails when Git coordination lock files are present, because release or staging work cannot
-  trust a checkout with an active or orphaned Git owner, and when a persisted `.git/gc.log`
-  shows that Git housekeeping is suspended pending manual cleanup
+  trust a checkout with an active or orphaned Git owner, and when a persisted `.git/gc.log` shows
+  that Git housekeeping is suspended pending manual cleanup; it verifies repo-owned Git refs before running
+  `git fsck --no-references` when the local Git supports that switch so tool-private ref namespaces do not masquerade as repository corruption
 - `./scripts/clean-repo-hygiene.sh` removes empty unexpected root entries and Finder droppings; use
   `--purge-generated-state` to prune repo-owned generated caches, `--purge-tool-state` to discard
   ignored tool/editor state such as `.claude/` or `.vscode/`, and `--purge-tmp` when you want to
@@ -235,16 +236,16 @@ Generated-state stance:
 | Component | Version |
 |:----------|:--------|
 | Java | 26 |
-| Python helper toolchain | Python 3.12 in CI, `uv` 0.11.15 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
-| Gradle Wrapper | 9.5.1 |
+| Python helper toolchain | Python 3.12 in CI, `uv` 0.11.25 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
+| Gradle Wrapper | 9.6.1 |
 | Kotlin build logic | 2.4.0 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
-| Jackson Databind | 3.1.4 |
-| JUnit Jupiter | 6.1.0 |
+| Jackson Databind | 3.2.0 |
+| JUnit Jupiter | 6.1.1 |
 | Jazzer | 0.30.0 |
 | JaCoCo | stable `0.8.15`, pinned in the shared version catalog and verified against the published Maven Central GA jars before Gradle quality gates run |
-| PMD | 7.24.0 |
+| PMD | 7.25.0 |
 
 The build-logic Kotlin pin is now the stable `2.4.0` line.
 
@@ -283,7 +284,7 @@ Root verification and packaging:
 
 ```bash
 java --version
-python3 -m pip install --user uv==0.11.15
+python3 -m pip install --user uv==0.11.25
 ./gradlew verifyManagedSqliteSource
 ./gradlew ruff sqlfluff
 ./gradlew prepareManagedSqlite
@@ -430,7 +431,7 @@ the repository's verification plugins as first-class code.
 
 During Stage 2, `./check.sh` tracks nested Jazzer deterministic tests and regression replay
 through `[JAZZER-PULSE]` lines, including deterministic-tests heartbeats plus
-regression-target `phase=plan`, `regression-input`, and `phase=finish` markers.
+regression-target `event=plan`, `regression-input`, and `event=finish` markers.
 
 The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
 source, compiles its own managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 shared library
@@ -514,12 +515,11 @@ The repository ships four workflow files and one release-blocking CI graph:
    relevant file changed; skipped otherwise. No longer depends on `check` — the devcontainer
    environment is orthogonal to code correctness and should be proven whenever its files change
    regardless of whether the application gate passes.
-6. `gate` — aggregate required-status job using `if: always()` with explicit
-   `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate
-   does not prevent `Gate` from being reported or block merge; only a failed or cancelled job
-   prevents success. It aggregates `check`, `prepare-published-bundle-smoke-matrix`, the published
-   bundle-smoke matrix, and the devcontainer gate pair. Configure branch protection to require `Gate`
-   as the single required check, and code-owner review on the protected surfaces routed through `.github/CODEOWNERS`.
+6. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate does not prevent `Gate` from being reported or block merge; only a failed or cancelled job prevents success.
+   It aggregates `check`, `prepare-published-bundle-smoke-matrix`, the published bundle-smoke matrix, and the devcontainer gate pair.
+   Configure branch protection to require `Gate` as the single required check, code-owner review on the protected surfaces routed through `.github/CODEOWNERS`,
+   and administrator bypass availability for the repository owner so the protected release/publication workflow is not deadlocked
+   by a self-review requirement.
 
 **Path-based devcontainer gate theory.** The devcontainer gate validates the contributor
 *environment*, not application code. Application code changes are already proven by `check` and
@@ -589,6 +589,7 @@ FinGrind deliberately keeps several boundaries sharp:
 Public API reference lives in:
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
+- [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
@@ -597,6 +598,4 @@ Public API reference lives in:
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
 
 That reference spine tracks main-source public surfaces plus the public CLI launcher entrypoint.
-`DOC_02_Application.md` is now the routing overview for the split contract/executor reference set,
-and `DOC_00_Index.md` routes every exported symbol to the narrower file that actually owns it.
-The spine does not route test fixtures.
+`DOC_02_Application.md` is now the routing overview for the split contract/executor reference set, and `DOC_00_Index.md` routes every exported symbol to the narrower file that actually owns it. The spine does not route test fixtures.

@@ -138,12 +138,16 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
             "delete-rekey-rollback",
             "restore-rekey-rollback",
             "declare-account",
-            "transfer-period-result"),
+            "declare-tax-registration",
+            "interim-result-sweep",
+            "fiscal-year-close"),
         commandNames(payload.path("commands").path("administration")));
     assertEquals(
         List.of(
             "inspect-book",
             "list-accounts",
+            "list-tax-registrations",
+            "tax-obligation",
             "get-posting",
             "list-postings",
             "account-balance",
@@ -152,6 +156,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
             "period-summary",
             "financial-position",
             "income-statement",
+            "cash-flow-statement",
             "changes-in-equity"),
         commandNames(payload.path("commands").path("query")));
     assertEquals(
@@ -173,28 +178,40 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
     JsonNode requestShapes = fullContract.path("requestShapes");
     JsonNode preflight = fullContract.path("preflight");
     JsonNode currencyModel = fullContract.path("currencyModel");
-    assertTrue(requestShapes.has("postEntry"));
+    assertTrue(requestShapes.has("bookkeepingEntry"));
     assertTrue(requestShapes.has("declareAccount"));
+    assertTrue(
+        requestShapes
+            .path("declareAccount")
+            .path("schema")
+            .path("properties")
+            .has("cashFlowAssetClassification"));
     assertEquals(
         "https://json-schema.org/draft/2020-12/schema",
         requestShapes.path("schemaDialect").stringValue());
     assertEquals("advisory", preflight.path("semantics").stringValue());
     assertEquals("not-guaranteed", preflight.path("commitGuarantee").stringValue());
     assertEquals("single-functional-currency-per-book", currencyModel.path("scope").stringValue());
-    assertEquals("not-supported", currencyModel.path("multiCurrencyStatus").stringValue());
-    assertTrue(requestShapes.path("postEntry").path("topLevelFields").isArray());
+    assertEquals(
+        "owned-foreign-exchange-only", currencyModel.path("multiCurrencyStatus").stringValue());
+    assertTrue(requestShapes.path("bookkeepingEntry").path("topLevelFields").isArray());
     assertEquals(
         "entryKind",
-        requestShapes.path("postEntry").path("topLevelFields").get(0).path("name").stringValue());
+        requestShapes
+            .path("bookkeepingEntry")
+            .path("topLevelFields")
+            .get(0)
+            .path("name")
+            .stringValue());
     assertEquals(
         RequestFieldPresence.REQUIRED.wireValue(),
         requestShapes
-            .path("postEntry")
+            .path("bookkeepingEntry")
             .path("topLevelFields")
             .get(0)
             .path("presence")
             .stringValue());
-    assertTrue(requestShapes.path("postEntry").path("schema").path("oneOf").isArray());
+    assertTrue(requestShapes.path("bookkeepingEntry").path("schema").path("oneOf").isArray());
     assertEquals(
         "array",
         requestShapes
@@ -214,34 +231,24 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
         descriptorField(requestShapes.path("ledgerPlan").path("queryFields"), "accountCode")
             .path("presence")
             .stringValue());
-    JsonNode journalSemantics = requestShapes.path("postEntry").path("entryKindSemantics").get(0);
-    assertEquals("JOURNAL", journalSemantics.path("entryKind").stringValue());
-    JsonNode cashRevenueSemantics =
-        requestShapes.path("postEntry").path("journalRecipeSemantics").get(0);
-    assertEquals("CASH_REVENUE", cashRevenueSemantics.path("recipeKind").stringValue());
-    JsonNode cashRevenueEvidenceProfile =
-        descriptorByFieldValue(
-            requestShapes.path("postEntry").path("evidenceProfiles"),
-            "profileId",
-            cashRevenueSemantics.path("evidenceProfileId").stringValue());
-    assertEquals(
-        "enumerated", cashRevenueEvidenceProfile.path("sourceDocumentTypeMode").stringValue());
-    assertTrue(cashRevenueEvidenceProfile.path("acceptedSourceDocumentTypes").isArray());
+    JsonNode journalSemantics =
+        requestShapes.path("bookkeepingEntry").path("entryKindSemantics").get(0);
+    assertEquals("DIRECT_JOURNAL", journalSemantics.path("entryKind").stringValue());
+    JsonNode saleSemantics =
+        requestShapes.path("bookkeepingEntry").path("entryKindSemantics").get(1);
+    assertEquals("SALE", saleSemantics.path("entryKind").stringValue());
+    assertEquals("enumerated", saleSemantics.path("sourceDocumentTypeMode").stringValue());
+    assertTrue(saleSemantics.path("acceptedSourceDocumentTypes").isArray());
     assertEquals(
         1,
         requestShapes
-            .path("postEntry")
+            .path("bookkeepingEntry")
             .path("evidenceRequirement")
             .path("minimumSourceDocuments")
             .intValue());
     assertEquals(
         "sourceDocumentId",
-        requestShapes
-            .path("postEntry")
-            .path("evidenceRequirement")
-            .path("requiredSourceDocumentFields")
-            .get(0)
-            .stringValue());
+        saleSemantics.path("requiredSourceDocumentFields").get(0).stringValue());
   }
 
   protected static void assertEnvironmentRuntimeContract(JsonNode payload) {

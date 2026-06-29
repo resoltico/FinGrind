@@ -14,28 +14,30 @@ final class CliPostingLabels {
   static String displayPostingCoverage(PostingCoverage postingCoverage) {
     return switch (postingCoverage) {
       case ALL_POSTING_KINDS -> "All posting kinds";
-      case NON_CLOSING_POSTINGS -> "Non-transfer postings";
+      case NON_CLOSING_POSTINGS -> "Non-closing postings";
     };
   }
 
   static String displayPostingKind(PostingKind postingKind) {
     return switch (postingKind) {
       case STANDARD -> "Standard";
-      case PERIOD_RESULT_TRANSFER -> "Period result transfer";
       case OPENING_BALANCE -> "Opening accounting position";
+      case INTERIM_RESULT_SWEEP -> "Interim result sweep";
+      case FISCAL_YEAR_CLOSE -> "Fiscal-year close";
     };
   }
 
   static String displayPostingOriginKind(PostingOriginKind postingOriginKind) {
     return switch (postingOriginKind) {
-      case JOURNAL -> "Journal";
-      case CASH_REVENUE -> "Cash revenue";
-      case CASH_EXPENSE -> "Cash expense";
-      case EQUITY_CONTRIBUTION -> "Equity contribution";
-      case EQUITY_WITHDRAWAL -> "Equity withdrawal";
-      case OPEN_ACCOUNTING_POSITION -> "Opening accounting position";
-      case REVERSAL_ADJUSTMENT -> "Reversal adjustment";
-      case PERIOD_RESULT_TRANSFER -> "Result transfer";
+      case DIRECT_JOURNAL -> "Direct journal";
+      case SALE -> "Sale";
+      case EXPENSE -> "Expense";
+      case OWNER_CONTRIBUTION -> "Owner contribution";
+      case OWNER_WITHDRAWAL -> "Owner withdrawal";
+      case OPENING_POSITION -> "Opening position";
+      case REVERSAL -> "Reversal";
+      case INTERIM_RESULT_SWEEP -> "Interim result sweep";
+      case FISCAL_YEAR_CLOSE -> "Fiscal-year close";
     };
   }
 

@@ -67,7 +67,7 @@ final class MachineContractQuickStarts {
                 "%s %s --book-file %s --book-key-file %s --request-file %s"
                     .formatted(
                         launcherCommand(surface),
-                        ProtocolCatalog.operationName(OperationId.POST_ENTRY),
+                        ProtocolCatalog.operationName(OperationId.RECORD_SALE),
                         paths.bookFile(),
                         paths.bookKeyFile(),
                         paths.requestFile())),
@@ -122,7 +122,7 @@ final class MachineContractQuickStarts {
     return switch (surface) {
       case BUNDLE_POSIX_SHELL ->
           WorkflowStepDescriptor.note(
-              "The bundled quick-start request is a concrete sample document. Replace the sample evidence and provenance values in "
+              "The bundled quick-start request is a concrete sample document for one first sale. Replace the sample evidence and provenance values in "
                   + paths.requestFile()
                   + " before using it for real-world bookkeeping.");
       case SOURCE_CHECKOUT_POSIX_SHELL,
@@ -131,9 +131,13 @@ final class MachineContractQuickStarts {
           DIRECT_JAVA_WINDOWS_POWERSHELL,
           CONTAINER_DOCKER ->
           WorkflowStepDescriptor.note(
-              "The emitted request document is a placeholder-first scaffold. Replace the evidence and provenance placeholders in "
+              "The emitted request document is a placeholder-first scaffold for one sale entry. Replace the evidence and provenance placeholders in "
                   + paths.requestFile()
-                  + " before using it for real-world bookkeeping.");
+                  + " before using it for real-world bookkeeping. Run "
+                  + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)
+                  + " "
+                  + ProtocolCatalog.operationName(OperationId.POST_ENTRY)
+                  + " when you explicitly need the raw direct-journal scaffold.");
     };
   }
 

@@ -1,29 +1,33 @@
 # FinGrind — command-line double-entry bookkeeping with one protected book per accounting entity
 
 FinGrind is a command-line bookkeeping tool for one accounting entity per protected SQLite book.
-The current public kernel is one narrow internal-management bookkeeping profile with one seeded
+The current public kernel is one narrow cash-basis internal-management profile with one seeded
 owner-managed service starter chart. You initialize the book explicitly, extend that chart when
-needed, seed first balances through one structured opening-position flow, commit one balanced
-journal directly or through one optional recipe-backed cash or equity helper, run one ordered
+needed, seed first balances through one structured opening-position flow, commit typed business
+events such as sales, expenses, owner contributions, owner withdrawals, reversals, and explicit
+opening positions with retained evidence plus optional tax and foreign-exchange facts, drop to one
+direct balanced journal only when you intentionally need the lower-level path, run one ordered
 AI-agent ledger plan, manage the same protected book through explicit rekey and backup-recovery
-commands, and query that file for balances, ledgers, and built-in statements. Humans use the task
+commands plus reporting-period close commands, and query that file for balances, ledgers, tax
+obligations, and built-in statements including cash receipts and payments. Humans use the task
 guide in `help`; automation uses `capabilities --output json`. Invalid writes and invalid
 maintenance mutations are rejected before they change the selected book.
 
 - Open one encrypted book per accounting entity, protected by a generated key file
 - Start from one seeded owner-managed service starter chart, then declare supplemental accounts
   and chart nodes when the built-in template is not enough
-- Post direct balanced journals or recipe-backed cash and equity helpers with retained evidence,
-  provenance, and idempotency keys, or run one ordered AI-agent ledger plan; use the structured
-  opening-position flow for first balances and reserve administrative entries for explicit
-  reversals
+- Post typed business-event commands with retained evidence, provenance, idempotency keys, typed
+  tax selection, and optional foreign-exchange facts, or run one ordered AI-agent ledger plan; use
+  direct balanced journals only when you intentionally need the lower-level path
 - Rekey protected books, export verified encrypted backup pairs, and inspect, restore, or delete
   interrupted rekey rollback artifacts through explicit maintenance commands
+- Declare and query per-book tax registrations, compute bounded tax obligations, and sweep or close
+  reporting periods with explicit commands
 - Scaffold placeholder-first request and plan documents with `print-request-template` and
   `print-plan-template`
 - Read back account balances, trial balances with totals and balanced verdicts, account ledgers,
-  period summaries, and the built-in financial position, income statement, and changes in equity
-  reports
+  period summaries, tax obligations, and the built-in financial position, income statement,
+  cash-flow, and changes in equity reports
 - Export any report as operator-readable text tables, JSON, CSV, or PDF
 
 **Project status: Alpha.** FinGrind is under active development and is not yet production-ready.
@@ -60,13 +64,13 @@ fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets
 # Copy the concrete first-post sample that ships with public bundles when you want a runnable
 # starting point.
 cp ./quick-start-request.json ./request.json
-# Or emit the canonical placeholder-first request scaffold when you want the live contract shape:
+# Or emit the canonical placeholder-first minimal sale scaffold when you want the live contract shape:
 fingrind print-request-template > ./request.json
 
 # The bundled sample is concrete; the generated scaffold is placeholder-first. Both follow the
-# same journal-first request contract. In either case, replace every replace-before-commit token
-# with real evidence and provenance values, then post one balanced entry
-fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
+# same minimal sale request contract. In either case, replace every replace-before-commit token
+# with real evidence and provenance values, then commit the first sale
+fingrind record-sale --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --request-file ./request.json
 
 # Read the trial balance back
@@ -85,7 +89,7 @@ by default, set `FINGRIND_DEFAULT_OUTPUT=json`; an explicit per-command `--outpu
 wins when you need a one-off text or CSV result.
 
 ```bash
-fingrind help post-entry
+fingrind help record-sale
 fingrind print-request-template > request.json
 fingrind print-plan-template > plan.json
 fingrind capabilities --output json
@@ -111,17 +115,11 @@ Account         | Name            | Currency | Debit total | Credit total | Net 
 cash            | Cash            | EUR      |       10.00 |         0.00 |      10.00 | Debit
 service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
 
-Comparative Trial Balance
--------------------------
-book start to 2025-04-08
-
-As of   : 2025-04-08
-Outcome : No account balances matched the selected scope.
-
 Context
 -------
 Entity              : Acme Studio
 Starter chart       : Owner-managed service starter chart
+Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds

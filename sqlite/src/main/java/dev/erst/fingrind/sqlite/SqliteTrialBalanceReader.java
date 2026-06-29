@@ -35,7 +35,7 @@ final class SqliteTrialBalanceReader {
         JournalLine.EntrySide entrySide =
             JournalLine.EntrySide.fromWireValue(
                 SqlitePostingMapper.requiredText(
-                    statement, SqlitePostingSql.COL_REPORT_ENTRY_SIDE));
+                    statement, SqlitePostingColumnIndexes.COL_REPORT_ENTRY_SIDE));
         SqliteReportRowValues.accountTotalsFor(totalsByAccount, account)
             .add(currencyCode, entrySide, amountMinor);
       }
@@ -63,6 +63,6 @@ final class SqliteTrialBalanceReader {
       SqliteNativeDatabase activeDatabase) {
     return SqliteStatementQueries.loadOptionalText(
             activeDatabase, SqlitePostingSql.FIND_LATEST_POSTING_EFFECTIVE_DATE, statement -> {})
-        .map(java.time.LocalDate::parse);
+        .map(text -> CanonicalTemporalText.parseLocalDate(text, "postingFact.effectiveDate"));
   }
 }

@@ -11,14 +11,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.tax.TaxApplicationKind;
+import dev.erst.fingrind.contract.tax.TaxCode;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceDocumentType;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,18 +41,28 @@ class PostingRejectionTest {
   private static final List<String> ENTRY_SEMANTICS_FACTORY_NAMES =
       List.of(
           "accountTypeMismatch",
+          "cashBasisAccountRequired",
+          "cashFlowAssetClassificationMismatch",
           "distinctRoleAccountsRequired",
           "economicNullJournal",
           "financialPositionClassificationMismatch",
           "sourceDocumentTypeNotAccepted");
 
+  private static final List<String> TAX_ENTRY_SEMANTICS_FACTORY_NAMES =
+      List.of("taxApplicationKindMismatch", "unknownTaxCode", "unknownTaxRegistration");
+
   private static final List<String> ENTRY_SEMANTICS_CANONICAL_CODES =
       List.of(
           "economic-null-journal",
+          "cash-basis-account-required",
           "distinct-role-accounts-required",
           "account-type-mismatch",
+          "cash-flow-asset-classification-mismatch",
           "financial-position-classification-mismatch",
-          "source-document-type-not-accepted");
+          "source-document-type-not-accepted",
+          "unknown-tax-registration",
+          "unknown-tax-code",
+          "tax-application-kind-mismatch");
   private static final List<String> ACCOUNT_STATE_CANONICAL_CODES =
       List.of("unknown-account", "inactive-account", "non-postable-account");
 
@@ -59,12 +76,12 @@ class PostingRejectionTest {
             "posting-book-not-initialized",
             "entry-semantics-violations",
             "account-state-violations",
-            "duplicate-idempotency-key",
+            "idempotency-key-conflict",
             "book-functional-currency-mismatch",
             "closed-period-violation",
-            "open-accounting-position-window-closed",
-            "open-accounting-position-touches-nominal-account",
-            "result-holding-account-reserved",
+            "opening-position-window-closed",
+            "opening-position-touches-nominal-account",
+            "reserved-result-classification",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
@@ -74,7 +91,7 @@ class PostingRejectionTest {
                 new PostingRejection.EntrySemanticsViolations(
                     List.of(
                         PostingRejectionSemantics.accountTypeMismatch(
-                            "CASH_REVENUE",
+                            "SALE",
                             "cashAccountCode",
                             new AccountCode("1000"),
                             AccountType.ASSET,
@@ -82,22 +99,23 @@ class PostingRejectionTest {
             PostingRejection.wireCode(
                 new PostingRejection.AccountStateViolations(
                     List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
-            PostingRejection.wireCode(new PostingRejection.DuplicateIdempotencyKey()),
+            PostingRejection.wireCode(new PostingRejection.IdempotencyKeyConflict()),
             PostingRejection.wireCode(
                 new PostingRejection.BookFunctionalCurrencyMismatch(
                     CurrencyUnit.of("EUR"), CurrencyUnit.of("USD"))),
             PostingRejection.wireCode(
-                new PostingRejection.TransferredPeriodResultViolation(
+                new PostingRejection.SweptInterimResultViolation(
                     java.time.LocalDate.parse("2026-04-30"),
                     java.time.LocalDate.parse("2026-05-01"))),
             PostingRejection.wireCode(
-                new PostingRejection.OpenAccountingPositionWindowClosed(
+                new PostingRejection.OpeningPositionWindowClosed(
                     PostingKind.STANDARD, java.time.LocalDate.parse("2026-05-02"))),
             PostingRejection.wireCode(
-                new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
+                new PostingRejection.OpeningPositionTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE)),
             PostingRejection.wireCode(
-                new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3000"))),
+                new PostingRejection.ReservedResultClassification(
+                    new AccountCode("3000"), FinancialPositionLineClassification.RESULT_HOLDING)),
             PostingRejection.wireCode(
                 new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))),
             PostingRejection.wireCode(
@@ -126,12 +144,12 @@ class PostingRejectionTest {
             "posting-book-not-initialized",
             "entry-semantics-violations",
             "account-state-violations",
-            "duplicate-idempotency-key",
+            "idempotency-key-conflict",
             "book-functional-currency-mismatch",
             "closed-period-violation",
-            "open-accounting-position-window-closed",
-            "open-accounting-position-touches-nominal-account",
-            "result-holding-account-reserved",
+            "opening-position-window-closed",
+            "opening-position-touches-nominal-account",
+            "reserved-result-classification",
             "reversal-target-not-found",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
@@ -157,6 +175,18 @@ class PostingRejectionTest {
                     Modifier.isStatic(method.getModifiers())
                         && method.getReturnType() == PostingRejection.EntrySemanticsViolation.class)
             .map(Method::getName)
+            .distinct()
+            .sorted()
+            .toList());
+    assertEquals(
+        TAX_ENTRY_SEMANTICS_FACTORY_NAMES,
+        Arrays.stream(postingRejectionTaxSemanticsType().getDeclaredMethods())
+            .filter(
+                method ->
+                    Modifier.isStatic(method.getModifiers())
+                        && method.getReturnType() == PostingRejection.EntrySemanticsViolation.class)
+            .map(Method::getName)
+            .distinct()
             .sorted()
             .toList());
 
@@ -218,7 +248,7 @@ class PostingRejectionTest {
   void singletonPostingRejectionFamiliesRemainSingleIssueEnvelopes() {
     ContractResponse.RejectionDescriptor duplicateIdempotencyKey =
         PostingRejection.descriptors().stream()
-            .filter(rejection -> "duplicate-idempotency-key".equals(rejection.code()))
+            .filter(rejection -> "idempotency-key-conflict".equals(rejection.code()))
             .findFirst()
             .orElseThrow();
     ContractResponse.RejectionDescriptor functionalCurrencyMismatch =
@@ -241,7 +271,7 @@ class PostingRejectionTest {
   void rejectionFactories_exposeStableEntrySemanticsDetails() {
     PostingRejection.EntrySemanticsViolation accountTypeViolation =
         PostingRejectionSemantics.accountTypeMismatch(
-            "CASH_REVENUE",
+            "SALE",
             "cashAccountCode",
             new AccountCode("1000"),
             AccountType.ASSET,
@@ -251,7 +281,7 @@ class PostingRejectionTest {
 
     PostingRejection.EntrySemanticsViolation classificationViolation =
         PostingRejectionSemantics.financialPositionClassificationMismatch(
-            "EQUITY_CONTRIBUTION",
+            "OWNER_CONTRIBUTION",
             "equityAccountCode",
             new AccountCode("3000"),
             FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
@@ -262,27 +292,90 @@ class PostingRejectionTest {
 
     PostingRejection.EntrySemanticsViolation classifiedMismatch =
         PostingRejectionSemantics.financialPositionClassificationMismatch(
-            "EQUITY_WITHDRAWAL",
+            "OWNER_WITHDRAWAL",
             "equityAccountCode",
             new AccountCode("3100"),
             FinancialPositionLineClassification.EQUITY_WITHDRAWAL,
             FinancialPositionLineClassification.RESULT_HOLDING);
     assertTrue(classifiedMismatch.message().contains("RESULT_HOLDING"));
 
+    PostingRejection.EntrySemanticsViolation absentCashFlowClassification =
+        PostingRejectionSemantics.cashFlowAssetClassificationMismatch(
+            "SALE",
+            "cashAccountCode",
+            new AccountCode("1000"),
+            CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT,
+            null);
+    PostingRejection.EntrySemanticsViolation presentCashFlowClassification =
+        PostingRejectionSemantics.cashFlowAssetClassificationMismatch(
+            "requestType",
+            "record-sale",
+            "cashAccountCode",
+            new AccountCode("1000"),
+            CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT,
+            CashFlowAssetClassification.NON_CASH);
+    assertEquals("cash-flow-asset-classification-mismatch", absentCashFlowClassification.code());
+    assertEquals("cashAccountCode", absentCashFlowClassification.field());
+    assertTrue(absentCashFlowClassification.message().contains("<absent>"));
+    assertTrue(
+        presentCashFlowClassification
+            .message()
+            .contains(CashFlowAssetClassification.NON_CASH.wireValue()));
+    assertTrue(presentCashFlowClassification.message().contains("requestType 'record-sale'"));
+
     PostingRejection.EntrySemanticsViolation evidenceViolation =
         PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-            "CASH_EXPENSE",
+            "EXPENSE",
             new SourceDocumentType("invoice"),
             List.of("expense-receipt", "cash-disbursement"));
+    PostingRejection.EntrySemanticsViolation unknownTaxRegistration =
+        invokeTaxEntrySemantics(
+            "unknownTaxRegistration",
+            new Class<?>[] {String.class, TaxRegistrationId.class},
+            "SALE",
+            new TaxRegistrationId("tax-reg-1"));
+    PostingRejection.EntrySemanticsViolation unknownTaxCode =
+        invokeTaxEntrySemantics(
+            "unknownTaxCode",
+            new Class<?>[] {String.class, TaxRegistrationId.class, TaxCode.class},
+            "SALE",
+            new TaxRegistrationId("tax-reg-1"),
+            new TaxCode("output-std"));
+    PostingRejection.EntrySemanticsViolation taxApplicationKindMismatch =
+        invokeTaxEntrySemantics(
+            "taxApplicationKindMismatch",
+            new Class<?>[] {
+              String.class, TaxCode.class, TaxApplicationKind.class, TaxApplicationKind.class
+            },
+            "SALE",
+            new TaxCode("output-std"),
+            TaxApplicationKind.OUTPUT_SALE,
+            TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE);
     assertEquals("source-document-type-not-accepted", evidenceViolation.code());
     assertEquals("evidence.sourceDocuments[].sourceDocumentType", evidenceViolation.field());
     assertTrue(evidenceViolation.message().contains("expense-receipt, cash-disbursement"));
+    assertEquals("unknown-tax-registration", unknownTaxRegistration.code());
+    assertEquals("tax.taxRegistrationId", unknownTaxRegistration.field());
+    assertTrue(unknownTaxRegistration.message().contains("tax-reg-1"));
+    assertEquals("unknown-tax-code", unknownTaxCode.code());
+    assertEquals("tax.taxCode", unknownTaxCode.field());
+    assertTrue(unknownTaxCode.message().contains("output-std"));
+    assertEquals("tax-application-kind-mismatch", taxApplicationKindMismatch.code());
+    assertEquals("tax.taxCode", taxApplicationKindMismatch.field());
+    assertTrue(taxApplicationKindMismatch.message().contains("OUTPUT_SALE"));
+    assertTrue(
+        taxApplicationKindMismatch
+            .message()
+            .contains(TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE.wireValue()));
 
     PostingRejection.EntrySemanticsViolation distinctRoleAccountsViolation =
         PostingRejectionSemantics.distinctRoleAccountsRequired(
-            "CASH_REVENUE", "cashAccountCode", "revenueAccountCode", new AccountCode("1000"));
+            "SALE", "cashAccountCode", "revenueAccountCode", new AccountCode("1000"));
     PostingRejection.EntrySemanticsViolation economicNullJournal =
-        PostingRejectionSemantics.economicNullJournal("JOURNAL");
+        PostingRejectionSemantics.economicNullJournal("DIRECT_JOURNAL");
+    PostingRejection.EntrySemanticsViolation cashBasisAccountRequired =
+        PostingRejectionSemantics.cashBasisAccountRequired(
+            "DIRECT_JOURNAL", List.of(new AccountCode("3000"), new AccountCode("3200")));
     assertEquals("distinct-role-accounts-required", distinctRoleAccountsViolation.code());
     assertEquals(null, distinctRoleAccountsViolation.field());
     assertTrue(distinctRoleAccountsViolation.message().contains("cashAccountCode"));
@@ -291,7 +384,14 @@ class PostingRejectionTest {
     assertEquals("economic-null-journal", economicNullJournal.code());
     assertEquals("lines", economicNullJournal.field());
     assertTrue(economicNullJournal.message().contains("reduces every referenced account to zero"));
-    assertTrue(economicNullJournal.message().contains("JOURNAL"));
+    assertTrue(economicNullJournal.message().contains("DIRECT_JOURNAL"));
+    assertEquals("cash-basis-account-required", cashBasisAccountRequired.code());
+    assertEquals("lines[].accountCode", cashBasisAccountRequired.field());
+    assertTrue(
+        cashBasisAccountRequired.message().contains("at least one lines[].accountCode"),
+        cashBasisAccountRequired.message());
+    assertTrue(cashBasisAccountRequired.message().contains("'3000'"));
+    assertTrue(cashBasisAccountRequired.message().contains("'3200'"));
 
     assertIterableEquals(
         List.of(new AccountCode("1000"), new AccountCode("2000")),
@@ -309,6 +409,16 @@ class PostingRejectionTest {
   }
 
   @Test
+  void cashBasisAccountRequired_rejectsEmptyReferencedAccountLists() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PostingRejectionSemantics.cashBasisAccountRequired("DIRECT_JOURNAL", List.of()));
+
+    assertEquals("referencedAccountCodes must contain at least one item.", exception.getMessage());
+  }
+
+  @Test
   void violationFamilies_copyInputsAndRejectEmptyCollections() {
     List<PostingRejection.AccountStateViolation> accountViolations = new ArrayList<>();
     accountViolations.add(
@@ -322,7 +432,7 @@ class PostingRejectionTest {
         () -> new PostingRejection.AccountStateViolations(List.of()));
 
     List<PostingRejection.EntrySemanticsViolation> entryViolations = new ArrayList<>();
-    entryViolations.add(PostingRejectionSemantics.economicNullJournal("JOURNAL"));
+    entryViolations.add(PostingRejectionSemantics.economicNullJournal("DIRECT_JOURNAL"));
     PostingRejection.EntrySemanticsViolations copiedEntryViolations =
         new PostingRejection.EntrySemanticsViolations(entryViolations);
     entryViolations.clear();
@@ -405,6 +515,29 @@ class PostingRejectionTest {
     return List.of(recordType.getRecordComponents()).stream()
         .map(RecordComponent::getName)
         .toList();
+  }
+
+  private static Class<?> postingRejectionTaxSemanticsType() {
+    return assertDoesNotThrow(
+        () -> Class.forName("dev.erst.fingrind.contract.bookkeeping.PostingRejectionTaxSemantics"));
+  }
+
+  private static PostingRejection.EntrySemanticsViolation invokeTaxEntrySemantics(
+      String methodName, Class<?>[] parameterTypes, Object... arguments) {
+    MethodType methodType =
+        assertDoesNotThrow(
+            () ->
+                MethodType.methodType(
+                    PostingRejection.EntrySemanticsViolation.class, parameterTypes));
+    MethodHandle methodHandle =
+        assertDoesNotThrow(
+            () ->
+                MethodHandles.privateLookupIn(
+                        postingRejectionTaxSemanticsType(), MethodHandles.lookup())
+                    .findStatic(postingRejectionTaxSemanticsType(), methodName, methodType));
+    return assertDoesNotThrow(
+        () ->
+            (PostingRejection.EntrySemanticsViolation) methodHandle.invokeWithArguments(arguments));
   }
 
   private static IllegalArgumentException assertEntrySemanticsViolationValidationFailure(

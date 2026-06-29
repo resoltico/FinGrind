@@ -1,5 +1,6 @@
 package dev.erst.fingrind.report.pdf;
 
+import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import java.util.List;
@@ -12,7 +13,6 @@ final class PdfStatementRowRenderers {
     return List.of(
         PdfValueFormatter.displayStatementLineCode(row.lineCode(), row.lineKind()),
         row.lineName(),
-        PdfValueFormatter.displayLineRole(row.lineRole()),
         PdfValueFormatter.displayFinancialPositionLineClassification(row.lineClassification()),
         PdfValueFormatter.displayRowKind(row.lineKind()),
         row.balance().netAmount().currencyUnit().code(),
@@ -26,8 +26,26 @@ final class PdfStatementRowRenderers {
     return List.of(
         PdfValueFormatter.displayStatementLineCode(row.lineCode(), row.lineKind()),
         row.lineName(),
-        PdfValueFormatter.displayLineRole(row.lineRole()),
         PdfValueFormatter.displayProfitAndLossLineClassification(row.lineClassification()),
+        PdfValueFormatter.displayRowKind(row.lineKind()),
+        row.movement().netAmount().currencyUnit().code(),
+        PdfValueFormatter.displayMoney(row.movement().debitTotal()),
+        PdfValueFormatter.displayMoney(row.movement().creditTotal()),
+        PdfValueFormatter.displayMoney(row.movement().netAmount()),
+        PdfValueFormatter.displayBalanceSide(row.movement().balanceSide()));
+  }
+
+  static List<String> cashFlowRow(CashFlowRow row) {
+    return List.of(
+        PdfValueFormatter.displayStatementLineCode(row.lineCode(), row.lineKind()),
+        row.lineName(),
+        row.financialPositionLineClassification()
+            .map(PdfValueFormatter::displayFinancialPositionLineClassification)
+            .or(
+                () ->
+                    row.profitAndLossLineClassification()
+                        .map(PdfValueFormatter::displayProfitAndLossLineClassification))
+            .orElse("Calculated line"),
         PdfValueFormatter.displayRowKind(row.lineKind()),
         row.movement().netAmount().currencyUnit().code(),
         PdfValueFormatter.displayMoney(row.movement().debitTotal()),

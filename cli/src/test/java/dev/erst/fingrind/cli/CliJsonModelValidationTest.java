@@ -22,13 +22,14 @@ import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerFactKind;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
@@ -42,13 +43,16 @@ import org.junit.jupiter.api.Test;
 class CliJsonModelValidationTest {
   @Test
   void responseModels_trimTextAndRejectBlankValues() {
-    CliEnvelopeJsonModels.RejectedEnvelope envelope =
-        new CliEnvelopeJsonModels.RejectedEnvelope(
+    CliEnvelopeJsonModels.Envelope<?> envelope =
+        new CliEnvelopeJsonModels.Envelope<>(
             ProtocolEnvelopeStatus.REJECTED,
+            null,
             " query-book-not-initialized ",
             " The book is not initialized. ",
             " Repair hint. ",
+            null,
             " idem-1 ",
+            null,
             null);
     assertEquals(ProtocolEnvelopeStatus.REJECTED, envelope.status());
     assertEquals("query-book-not-initialized", envelope.code());
@@ -58,8 +62,204 @@ class CliJsonModelValidationTest {
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliEnvelopeJsonModels.RejectedEnvelope(
-                nullOf(), "code", "message", null, null, null));
+            new CliEnvelopeJsonModels.Envelope<>(
+                nullOf(), null, "code", "message", null, null, null, null, null));
+  }
+
+  @Test
+  void envelopeModels_enforceStatusSpecificDetailFamiliesAndForbiddenFields() {
+    String planOperation = ProtocolCatalog.operationName(OperationId.EXECUTE_PLAN);
+    CliEnvelopeJsonModels.Envelope<?> rejectedEnvelope =
+        new CliEnvelopeJsonModels.Envelope<>(
+            ProtocolEnvelopeStatus.REJECTED,
+            null,
+            "unknown-account",
+            "Unknown account.",
+            "Declare the account and retry.",
+            null,
+            null,
+            new CliRejectionJsonModels.UnknownAccountDetails("9999"),
+            null);
+    assertInstanceOf(
+        CliRejectionJsonModels.UnknownAccountDetails.class, rejectedEnvelope.details());
+
+    CliEnvelopeJsonModels.Envelope<?> errorEnvelope =
+        new CliEnvelopeJsonModels.Envelope<>(
+            ProtocolEnvelopeStatus.ERROR,
+            null,
+            "invalid-request",
+            "Request violates the schema.",
+            "Fix the listed fields and retry.",
+            "--request-file",
+            null,
+            new CliErrorJsonModels.InvalidRequestDetails(List.of("accountCode is required")),
+            null);
+    assertInstanceOf(CliErrorJsonModels.InvalidRequestDetails.class, errorEnvelope.details());
+
+    IllegalArgumentException okForbiddenField =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.OK,
+                    new CliDiscoveryCommonJsonModels.CommandCountPayload("query", 1),
+                    "query-count",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null));
+    assertEquals("code must be absent for this envelope status.", okForbiddenField.getMessage());
+
+    IllegalArgumentException rejectedMismatch =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.REJECTED,
+                    null,
+                    "unknown-account",
+                    "Unknown account.",
+                    null,
+                    null,
+                    null,
+                    new CliErrorJsonModels.InvalidRequestDetails(
+                        List.of("accountCode is required")),
+                    null));
+    assertEquals("Rejected envelopes only admit rejection details.", rejectedMismatch.getMessage());
+
+    IllegalArgumentException errorMismatch =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.ERROR,
+                    null,
+                    "invalid-request",
+                    "Request violates the schema.",
+                    null,
+                    null,
+                    null,
+                    new CliRejectionJsonModels.UnknownAccountDetails("9999"),
+                    null));
+    assertEquals("Error envelopes only admit error details.", errorMismatch.getMessage());
+
+    IllegalArgumentException nonPlanPayloadMismatch =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.REJECTED,
+                    new CliDiscoveryCommonJsonModels.CommandCountPayload("query", 1),
+                    "unknown-account",
+                    "Unknown account.",
+                    null,
+                    null,
+                    null,
+                    new CliRejectionJsonModels.UnknownAccountDetails("9999"),
+                    null));
+    assertEquals(
+        "payload must be absent unless this non-success envelope carries a "
+            + planOperation
+            + " result.",
+        nonPlanPayloadMismatch.getMessage());
+
+    IllegalArgumentException rejectedPlanStatusMismatch =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.REJECTED,
+                    samplePlanPayload(LedgerPlanStatus.ASSERTION_FAILED),
+                    "assertion-failed",
+                    "Plan assertion failed.",
+                    null,
+                    null,
+                    null,
+                    new CliRejectionJsonModels.UnknownAccountDetails("9999"),
+                    null));
+    assertEquals(
+        "Rejected " + planOperation + " envelopes must carry a rejected plan payload.",
+        rejectedPlanStatusMismatch.getMessage());
+
+    IllegalArgumentException errorPlanStatusMismatch =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.ERROR,
+                    samplePlanPayload(LedgerPlanStatus.REJECTED),
+                    "plan-rejected",
+                    "Plan rejected.",
+                    null,
+                    null,
+                    null,
+                    new CliErrorJsonModels.InvalidRequestDetails(List.of("request failed")),
+                    null));
+    assertEquals(
+        "Error " + planOperation + " envelopes must carry an assertion-failed plan payload.",
+        errorPlanStatusMismatch.getMessage());
+
+    CliEnvelopeJsonModels.Envelope<?> rejectedPlanEnvelope =
+        new CliEnvelopeJsonModels.Envelope<>(
+            ProtocolEnvelopeStatus.REJECTED,
+            samplePlanPayload(LedgerPlanStatus.REJECTED),
+            "plan-rejected",
+            "Plan rejected.",
+            null,
+            null,
+            null,
+            new CliRejectionJsonModels.UnknownAccountDetails("9999"),
+            null);
+    assertInstanceOf(CliPlanJsonModels.LedgerPlanPayload.class, rejectedPlanEnvelope.payload());
+
+    CliEnvelopeJsonModels.Envelope<?> errorPlanEnvelope =
+        new CliEnvelopeJsonModels.Envelope<>(
+            ProtocolEnvelopeStatus.ERROR,
+            samplePlanPayload(LedgerPlanStatus.ASSERTION_FAILED),
+            "assertion-failed",
+            "Plan assertion failed.",
+            null,
+            null,
+            null,
+            new CliErrorJsonModels.InvalidRequestDetails(List.of("assertion failed")),
+            null);
+    assertInstanceOf(CliPlanJsonModels.LedgerPlanPayload.class, errorPlanEnvelope.payload());
+
+    IllegalArgumentException emptyArtifacts =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.OK,
+                    new CliDiscoveryCommonJsonModels.CommandCountPayload("query", 1),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of()));
+    assertEquals("artifacts must not be empty when present.", emptyArtifacts.getMessage());
+
+    IllegalArgumentException duplicateArtifacts =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.OK,
+                    new CliDiscoveryCommonJsonModels.CommandCountPayload("query", 1),
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    List.of(
+                        new CliEnvelopeJsonModels.SuccessArtifact("pdf", "/tmp/report.pdf"),
+                        new CliEnvelopeJsonModels.SuccessArtifact("pdf", "/tmp/report.pdf"))));
+    assertEquals("artifacts must not contain duplicate entries.", duplicateArtifacts.getMessage());
   }
 
   @Test
@@ -90,6 +290,7 @@ class CliJsonModelValidationTest {
             new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 "Discovery overview",
                 DiscoveryDetail.FULL,
                 null,
@@ -104,6 +305,7 @@ class CliJsonModelValidationTest {
             new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 null,
@@ -118,6 +320,7 @@ class CliJsonModelValidationTest {
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
@@ -131,6 +334,7 @@ class CliJsonModelValidationTest {
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 DiscoveryDetail.COMPACT,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage(),
@@ -144,6 +348,7 @@ class CliJsonModelValidationTest {
             new CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 "Discovery overview",
                 DiscoveryDetail.COMPACT,
                 null,
@@ -156,6 +361,7 @@ class CliJsonModelValidationTest {
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.bookkeepingKernel().scope(),
@@ -174,13 +380,14 @@ class CliJsonModelValidationTest {
                 "Run fingrind capabilities --output json --detail compact.",
                 "Run fingrind capabilities --output json --detail full."));
 
-    CliEnvelopeJsonModels.PlanEnvelope<CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload>
+    CliEnvelopeJsonModels.Envelope<CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload>
         envelope =
-            new CliEnvelopeJsonModels.PlanEnvelope<>(
+            new CliEnvelopeJsonModels.Envelope<>(
                 ProtocolEnvelopeStatus.OK,
                 new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                     "FinGrind",
                     "0.57.0",
+                    MachineContract.protocolVersion(),
                     DiscoveryDetail.FULL,
                     DiscoveryFocus.OVERVIEW,
                     capabilitiesDescriptor.storage(),
@@ -188,6 +395,12 @@ class CliJsonModelValidationTest {
                     capabilitiesDescriptor.requestInput(),
                     List.of("Prefer --output json for agents."),
                     capabilitiesDescriptor),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 new ArrayList<>(
                     List.of(new CliEnvelopeJsonModels.SuccessArtifact("pdf", "/tmp/report.pdf"))));
     List<CliEnvelopeJsonModels.SuccessArtifact> artifacts = envelope.artifacts();
@@ -205,9 +418,6 @@ class CliJsonModelValidationTest {
     CliRejectionJsonModels.ParentAccountTypeConflictDetails parentAccountTypeConflictDetails =
         new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
             "4100", "EXPENSE", "4000", "REVENUE");
-    CliRejectionJsonModels.ParentAccountRoleConflictDetails parentAccountRoleConflictDetails =
-        new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
-            "4100", "ORDINARY", "4000", "POLARITY_INVERTED");
     CliRejectionJsonModels.ParentAccountNodeKindDetails parentAccountNodeKindDetails =
         new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", "POSTABLE");
     CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails
@@ -224,8 +434,6 @@ class CliJsonModelValidationTest {
     assertEquals("4000", parentAccountDetails.parentAccountCode());
     assertEquals("EXPENSE", parentAccountTypeConflictDetails.requestedAccountType());
     assertEquals("REVENUE", parentAccountTypeConflictDetails.parentAccountType());
-    assertEquals("ORDINARY", parentAccountRoleConflictDetails.requestedAccountRole());
-    assertEquals("POLARITY_INVERTED", parentAccountRoleConflictDetails.parentAccountRole());
     assertEquals("POSTABLE", parentAccountNodeKindDetails.parentAccountNodeKind());
     assertEquals(
         "4050",
@@ -246,11 +454,6 @@ class CliJsonModelValidationTest {
                 "4100", " ", "4000", "REVENUE"));
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
-                "4100", " ", "4000", "POLARITY_INVERTED"));
-    assertThrows(
-        IllegalArgumentException.class,
         () -> new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", " "));
     assertThrows(
         NullPointerException.class,
@@ -263,7 +466,7 @@ class CliJsonModelValidationTest {
   void ledgerPlanPayloads_rejectInvalidResultDetailAndSummaryInvariants() {
     CliPlanJsonModels.LedgerPlanSummaryPayload summary =
         new CliPlanJsonModels.LedgerPlanSummaryPayload(
-            "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, null, null, null);
+            "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, null);
     CliPlanJsonModels.LedgerExecutionJournalPayload journal =
         new CliPlanJsonModels.LedgerExecutionJournalPayload(
             "2026-05-14T10:00:00Z",
@@ -295,102 +498,47 @@ class CliJsonModelValidationTest {
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 0, 0, 0, null, null, null));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 0, 0, 0, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, -1, 0, null, null, null));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, -1, 0, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, -1, null, null, null));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, -1, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z",
-                "2026-05-14T10:00:01Z",
-                2,
-                1,
-                0,
-                "step-1",
-                "failure",
-                "message"));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 2, 1, 0, "step-1"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z",
-                "2026-05-14T10:00:01Z",
-                2,
-                1,
-                1,
-                null,
-                "failure",
-                "message"));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 2, 1, 1, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, 2, null, null, null));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, 2, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 2, 0, null, null, null));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 2, 0, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, "step-1", null, null));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, "step-1"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, null, "failure", null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 1, 0, null, null, "message"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z",
-                "2026-05-14T10:00:01Z",
-                1,
-                0,
-                1,
-                null,
-                "failure",
-                "message"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z",
-                "2026-05-14T10:00:01Z",
-                1,
-                0,
-                1,
-                "step-1",
-                null,
-                "message"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliPlanJsonModels.LedgerPlanSummaryPayload(
-                "2026-05-14T10:00:00Z",
-                "2026-05-14T10:00:01Z",
-                1,
-                0,
-                1,
-                "step-1",
-                "failure",
-                null));
+                "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, 1, null));
   }
 
   @Test
@@ -508,7 +656,7 @@ class CliJsonModelValidationTest {
                 "step-1",
                 LedgerJournalKind.ENSURE_BOOK,
                 null,
-                LedgerBoundaryPhase.BEGIN,
+                LedgerBoundaryCheckpoint.BEGIN,
                 LedgerStepStatus.SUCCEEDED,
                 "2026-05-14T10:00:00Z",
                 "2026-05-14T10:00:01Z",
@@ -660,14 +808,29 @@ class CliJsonModelValidationTest {
         accountCode,
         accountName,
         "ASSET",
-        "ORDINARY",
         "POSTABLE",
         null,
         "CURRENT_ASSET",
         null,
+        null,
         "DEBIT",
         true,
         "2026-05-14T10:00:00Z");
+  }
+
+  private static CliPlanJsonModels.LedgerPlanPayload samplePlanPayload(LedgerPlanStatus status) {
+    return new CliPlanJsonModels.LedgerPlanPayload(
+        "plan-1",
+        status,
+        PlanResultDetail.SUMMARY,
+        new CliPlanJsonModels.LedgerPlanSummaryPayload(
+            "2026-05-14T10:00:00Z",
+            "2026-05-14T10:00:01Z",
+            1,
+            status == LedgerPlanStatus.SUCCEEDED ? 1 : 0,
+            status == LedgerPlanStatus.SUCCEEDED ? 0 : 1,
+            status == LedgerPlanStatus.SUCCEEDED ? null : "step-1"),
+        null);
   }
 
   private static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
@@ -675,8 +838,9 @@ class CliJsonModelValidationTest {
     return new CliBookQueryJsonModels.PostingSummaryPayload(
         postingId,
         "STANDARD",
-        "CASH_REVENUE",
+        "SALE",
         "ACTIVE",
+        null,
         null,
         "2026-05-14",
         "2026-05-14T10:00:00Z",

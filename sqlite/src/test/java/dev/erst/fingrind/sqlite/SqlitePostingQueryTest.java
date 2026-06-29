@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -91,13 +92,13 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       assertEquals(
-          new PostingCommitResult.Committed(postingOne),
+          new PostingCommitResult.Committed(postingOne, false),
           commitPosting(postingFactStore, postingOne));
       assertEquals(
-          new PostingCommitResult.Committed(postingTwo),
+          new PostingCommitResult.Committed(postingTwo, false),
           commitPosting(postingFactStore, postingTwo));
       assertEquals(
-          new PostingCommitResult.Committed(postingThree),
+          new PostingCommitResult.Committed(postingThree, false),
           commitPosting(postingFactStore, postingThree));
       PostingHistoryQuery firstPageQuery =
           new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty());
@@ -108,7 +109,8 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               EffectiveDateRange.unbounded(),
               List.of(publishedPostingFact(postingThree), publishedPostingFact(postingTwo)),
               2,
-              Optional.of(PostingPageCursor.fromPosting(publishedPostingFact(postingTwo)))),
+              Optional.of(PostingPageCursor.fromPosting(publishedPostingFact(postingTwo))),
+              Map.of()),
           published(firstPageQuery, postingFactStore.listPostings(firstPageQuery)));
       PostingHistoryQuery secondPageQuery =
           new PostingHistoryQuery(
@@ -124,7 +126,8 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               EffectiveDateRange.unbounded(),
               List.of(publishedPostingFact(postingOne)),
               2,
-              Optional.empty()),
+              Optional.empty(),
+              Map.of()),
           published(secondPageQuery, postingFactStore.listPostings(secondPageQuery)));
       PostingHistoryQuery filteredQuery =
           new PostingHistoryQuery(
@@ -141,7 +144,8 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
                   LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-08")),
               List.of(publishedPostingFact(postingOne)),
               50,
-              Optional.empty()),
+              Optional.empty(),
+              Map.of()),
           published(filteredQuery, postingFactStore.listPostings(filteredQuery)));
     }
   }
@@ -189,10 +193,11 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
                               "select null as posting_id",
                               statement -> {},
                               postingId ->
-                                  new SqliteStatementQueries.PostingAttachments(
+                                  new SqlitePostingAttachments(
                                       List.of(),
-                                      SqlitePostingFactFixtureSupport.accountingEvidence(
-                                          "idem-1"))));
+                                      SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
+                                      null,
+                                      null)));
                 }));
   }
 }

@@ -5,6 +5,8 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
@@ -12,17 +14,19 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -36,6 +40,12 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
+import dev.erst.fingrind.contract.tax.TaxObligationQuery;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.PostingId;
@@ -93,15 +103,33 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   }
 
   @Override
-  public ContractDecision<PeriodResultTransferResult> transferPeriodResult(
-      BookAccess bookAccess, PeriodResultTransferCommand command) {
-    throw unexpectedInvocation("transferPeriodResult");
+  public ContractDecision<DeclareTaxRegistrationResult> declareTaxRegistration(
+      BookAccess bookAccess, DeclareTaxRegistrationCommand command) {
+    throw unexpectedInvocation("declareTaxRegistration");
+  }
+
+  @Override
+  public ContractDecision<InterimResultSweepResult> interimResultSweep(
+      BookAccess bookAccess, InterimResultSweepCommand command) {
+    throw unexpectedInvocation("interimResultSweep");
+  }
+
+  @Override
+  public ContractDecision<FiscalYearCloseResult> fiscalYearClose(
+      BookAccess bookAccess, FiscalYearCloseCommand command) {
+    throw unexpectedInvocation("fiscalYearClose");
   }
 
   @Override
   public ContractDecision<ListAccountsResult> listAccounts(
       BookAccess bookAccess, ListAccountsQuery query) {
     throw unexpectedInvocation("listAccounts");
+  }
+
+  @Override
+  public ContractDecision<ListTaxRegistrationsResult> listTaxRegistrations(
+      BookAccess bookAccess, ListTaxRegistrationsQuery query) {
+    throw unexpectedInvocation("listTaxRegistrations");
   }
 
   @Override
@@ -118,6 +146,12 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   public ContractDecision<ListPostingsResult> listPostings(
       BookAccess bookAccess, ListPostingsQuery query) {
     throw unexpectedInvocation("listPostings");
+  }
+
+  @Override
+  public ContractDecision<TaxObligationResult> taxObligation(
+      BookAccess bookAccess, TaxObligationQuery query) {
+    throw unexpectedInvocation("taxObligation");
   }
 
   @Override
@@ -154,6 +188,12 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   public ContractDecision<IncomeStatementResult> incomeStatement(
       BookAccess bookAccess, IncomeStatementQuery query) {
     throw unexpectedInvocation("incomeStatement");
+  }
+
+  @Override
+  public ContractDecision<CashFlowStatementResult> cashFlowStatement(
+      BookAccess bookAccess, CashFlowStatementQuery query) {
+    throw unexpectedInvocation("cashFlowStatement");
   }
 
   @Override

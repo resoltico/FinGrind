@@ -13,7 +13,7 @@ def assert_bridge_and_report_contracts(
     run_cli_with_split_streams,
     assert_operator_queries_and_reports,
     normalize_reported_path,
-    extract_pdf_exported_path,
+    extract_pdf_artifact_path,
     base_bridge_config,
     smoke_path,
     write_bridge_script,
@@ -21,7 +21,7 @@ def assert_bridge_and_report_contracts(
     standard_account_balance_text: str,
     standard_trial_balance_text: str,
     standard_period_summary_text: str,
-    pdf_export_stderr,
+    pdf_export_stdout,
     structured_account_ledger_csv,
 ) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -45,14 +45,14 @@ def assert_bridge_and_report_contracts(
             dummy,
             assert_operator_queries_and_reports,
             normalize_reported_path,
-            extract_pdf_exported_path,
+            extract_pdf_artifact_path,
             base_bridge_config,
             smoke_path,
             standard_list_postings_text,
             standard_account_balance_text,
             standard_trial_balance_text,
             standard_period_summary_text,
-            pdf_export_stderr,
+            pdf_export_stdout,
             structured_account_ledger_csv,
         )
 
@@ -110,14 +110,14 @@ def assert_pdf_report_contracts(
     dummy,
     assert_operator_queries_and_reports,
     normalize_reported_path,
-    extract_pdf_exported_path,
+    extract_pdf_artifact_path,
     base_bridge_config,
     smoke_path,
     standard_list_postings_text: str,
     standard_account_balance_text: str,
     standard_trial_balance_text: str,
     standard_period_summary_text: str,
-    pdf_export_stderr,
+    pdf_export_stdout,
     structured_account_ledger_csv,
 ) -> None:
     pdf_local_path = temp_path / "reports odd" / "trial balance [bridge].pdf"
@@ -143,16 +143,16 @@ def assert_pdf_report_contracts(
         list_postings_text_output=standard_list_postings_text,
         account_balance_text_output=standard_account_balance_text,
         trial_balance_text_output=standard_trial_balance_text,
-        pdf_stdout=standard_trial_balance_text,
-        pdf_stderr=pdf_export_stderr(str(pdf_local_path)),
+        pdf_stdout=pdf_export_stdout(str(pdf_local_path)),
+        pdf_stderr="",
         account_ledger_csv_output=structured_account_ledger_csv("bridge"),
         period_summary_text_output=standard_period_summary_text,
     )
 
-    windows_report_stderr = pdf_export_stderr(
+    windows_report_stdout = pdf_export_stdout(
         r"D:\a\FinGrind\workspace odd\Rīga büro\reports odd\trial balance [bundle-acceptance].pdf"
     )
-    assert normalize_reported_path(extract_pdf_exported_path(windows_report_stderr)) == (
+    assert normalize_reported_path(extract_pdf_artifact_path(windows_report_stdout)) == (
         normalize_reported_path(
             "d:/a/FinGrind/workspace odd/Rīga büro/reports odd/trial balance [bundle-acceptance].pdf"
         )
@@ -178,8 +178,8 @@ def assert_pdf_report_contracts(
         list_postings_text_output=standard_list_postings_text,
         account_balance_text_output=standard_account_balance_text,
         trial_balance_text_output=standard_trial_balance_text,
-        pdf_stdout=standard_trial_balance_text,
-        pdf_stderr=pdf_export_stderr("/workdir/reports odd/trial balance [bridge].pdf"),
+        pdf_stdout=pdf_export_stdout("/workdir/reports odd/trial balance [bridge].pdf"),
+        pdf_stderr="",
         account_ledger_csv_output=structured_account_ledger_csv("bridge"),
         period_summary_text_output=standard_period_summary_text,
     )

@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
@@ -22,12 +23,16 @@ final class CliBookQueryPayloadMapper {
         account.accountCode().value(),
         account.accountName().value(),
         account.accountType().wireValue(),
-        account.accountRole().wireValue(),
         account.accountTaxonomy().nodeKind().wireValue(),
         account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null),
         account
             .accountTaxonomy()
             .financialPositionLineClassification()
+            .map(value -> value.wireValue())
+            .orElse(null),
+        account
+            .accountTaxonomy()
+            .cashFlowAssetClassification()
             .map(value -> value.wireValue())
             .orElse(null),
         account
@@ -65,6 +70,15 @@ final class CliBookQueryPayloadMapper {
         bookContextPayload(bookIdentity), CliBookPostingPayloadMapper.postingPayload(postingFact));
   }
 
+  static CliBookQueryJsonModels.PostingDetailsPayload postingDetailsPayload(
+      GetPostingResult.Found found) {
+    return new CliBookQueryJsonModels.PostingDetailsPayload(
+        bookContextPayload(found.bookIdentity()),
+        CliBookPostingPayloadMapper.postingPayload(
+            found.postingFact(),
+            found.reversedByPostingId().map(dev.erst.fingrind.core.PostingId::value).orElse(null)));
+  }
+
   static CliBookQueryJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
     return new CliBookQueryJsonModels.PostingListPayload(
         postingQueryContextPayload(
@@ -74,7 +88,16 @@ final class CliBookQueryPayloadMapper {
             page.effectiveDateRange().effectiveDateTo().orElse(null)),
         page.limit(),
         page.nextCursor().map(PostingPageCursor::wireValue).orElse(null),
-        page.postings().stream().map(CliBookPostingPayloadMapper::postingSummaryPayload).toList());
+        page.postings().stream()
+            .map(
+                posting ->
+                    CliBookPostingPayloadMapper.postingSummaryPayload(
+                        posting,
+                        java.util.Optional.ofNullable(
+                                page.reversedByPostingIds().get(posting.postingId()))
+                            .map(dev.erst.fingrind.core.PostingId::value)
+                            .orElse(null)))
+            .toList());
   }
 
   static CliBookQueryJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
@@ -93,7 +116,6 @@ final class CliBookQueryPayloadMapper {
         snapshot.account().accountCode().value(),
         snapshot.account().accountName().value(),
         snapshot.account().accountType().wireValue(),
-        snapshot.account().accountRole().wireValue(),
         snapshot.account().normalBalance().wireValue(),
         snapshot.account().active(),
         snapshot.account().declaredAt().toString(),

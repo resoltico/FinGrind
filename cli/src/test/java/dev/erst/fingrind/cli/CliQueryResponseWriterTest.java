@@ -26,11 +26,31 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
+import dev.erst.fingrind.contract.tax.TaxApplicationKind;
+import dev.erst.fingrind.contract.tax.TaxCode;
+import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
+import dev.erst.fingrind.contract.tax.TaxCodeName;
+import dev.erst.fingrind.contract.tax.TaxInclusionMode;
+import dev.erst.fingrind.contract.tax.TaxJurisdiction;
+import dev.erst.fingrind.contract.tax.TaxObligationCodeSummary;
+import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
+import dev.erst.fingrind.contract.tax.TaxObligationReport;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
+import dev.erst.fingrind.contract.tax.TaxQueryRejection;
+import dev.erst.fingrind.contract.tax.TaxRate;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
+import dev.erst.fingrind.contract.tax.TaxRegistrationName;
+import dev.erst.fingrind.contract.tax.TaxRegistrationNumber;
+import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
+import dev.erst.fingrind.contract.tax.TaxRegistrationPageCursor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReportingPeriod;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -39,6 +59,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
@@ -72,11 +93,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   void queryRejectionWriter_emitsOneJsonEnvelopeAcrossTextJsonAndCsvModes() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliOutputChannel outputChannel = new CliOutputChannel(utf8PrintStream(outputStream));
-    CliEnvelopeJsonModels.RejectedEnvelope envelope =
-        new CliEnvelopeJsonModels.RejectedEnvelope(
+    CliEnvelopeJsonModels.Envelope<?> envelope =
+        new CliEnvelopeJsonModels.Envelope<>(
             ProtocolEnvelopeStatus.REJECTED,
+            null,
             "query-book-not-initialized",
             "The book is not initialized.",
+            null,
+            null,
             null,
             null,
             null);
@@ -102,11 +126,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     CliOutputChannel outputChannel = outputChannel(outputStream, diagnosticsStream);
-    CliEnvelopeJsonModels.RejectedEnvelope envelope =
-        new CliEnvelopeJsonModels.RejectedEnvelope(
+    CliEnvelopeJsonModels.Envelope<?> envelope =
+        new CliEnvelopeJsonModels.Envelope<>(
             ProtocolEnvelopeStatus.REJECTED,
+            null,
             "query-book-not-initialized",
             "The book is not initialized.",
+            null,
+            null,
             null,
             null,
             null);
@@ -218,7 +245,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             OutputMode.TEXT);
     String postingRegisterText = postingRegisterTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(postingRegisterText.contains("Accounts"));
-    assertTrue(postingRegisterText.contains("Reversal adjustment"));
+    assertTrue(postingRegisterText.contains("Reversal"));
     assertTrue(postingRegisterText.contains("Reversal"));
     assertTrue(postingRegisterText.contains("1000, 2000"));
     assertTrue(postingRegisterText.contains("10.00"));
@@ -231,13 +258,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         postingRegisterCsv.startsWith(
-            "exportFamily,rowId,parentRowId,relationKind,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,currencyCode,debitTotal,creditTotal,accountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
+            "exportFamily,rowId,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversesPostingId,reversedByPostingId,currencyCode,debitTotal,creditTotal,accountCodes,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions,message"));
     assertTrue(
         postingRegisterCsv.contains(
-            "posting-relationships,posting:posting-1,,posting,posting,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,REVERSAL_ADJUSTMENT,reversal,posting-0,EUR,10.00,10.00"));
-    assertTrue(
-        postingRegisterCsv.contains(
-            "posting-relationships,posting-account:posting-1:1000,posting:posting-1,counterpart-account,account,2026-04-07,2026-04-07T10:15:30Z,posting-1"));
+            "postings,posting:posting-1,postings,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,REVERSAL,reversal,posting-0,,EUR,10.00,10.00,1000|2000,document-idem-1,cash-receipt,,,"));
     assertTrue(postingRegisterCsv.contains("document-idem-1"));
     assertTrue(postingRegisterCsv.contains("cash-receipt"));
     assertTrue(postingRegisterCsv.contains("approval-idem-1") || postingRegisterCsv.contains(",,"));
@@ -260,10 +284,108 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String balanceCsv = balanceCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         balanceCsv.startsWith(
-            "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+            "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,accountType,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
     assertTrue(
         balanceCsv.contains(
-            "flat-register,account-balance:1000:EUR,,balance,row,1000,Cash,ASSET,ORDINARY,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT,"));
+            "account-balance,account-balance:1000:EUR,,balance,account-balance,1000,Cash,ASSET,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT,"));
+  }
+
+  @Test
+  void writeTaxQueryResults_supportSuccessAndRejectionOutputModes() throws IOException {
+    DeclaredTaxRegistration registrationWithoutNumber = declaredTaxRegistration(null);
+    DeclaredTaxRegistration registrationWithNumber = declaredTaxRegistration("LV40001234567");
+    TaxRegistrationPageCursor emptyCursor =
+        new TaxRegistrationPageCursor(new TaxRegistrationId("vat-empty-next"));
+    TaxRegistrationPageCursor listedCursor =
+        new TaxRegistrationPageCursor(new TaxRegistrationId("vat-listed-next"));
+    TaxRegistrationPage emptyPage =
+        new TaxRegistrationPage(bookIdentity(), List.of(), 1, Optional.of(emptyCursor));
+    TaxRegistrationPage listedPage =
+        new TaxRegistrationPage(
+            bookIdentity(), List.of(registrationWithNumber), 1, Optional.of(listedCursor));
+
+    ByteArrayOutputStream emptyTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(emptyTextOutput))
+        .writeListTaxRegistrationsResult(
+            new ListTaxRegistrationsResult.Listed(emptyPage), OutputMode.TEXT);
+    String emptyText = emptyTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(emptyText.contains("No tax registrations matched the selected scope."), emptyText);
+    assertTrue(emptyText.contains(emptyCursor.wireValue()), emptyText);
+
+    ByteArrayOutputStream listedTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(listedTextOutput))
+        .writeListTaxRegistrationsResult(
+            new ListTaxRegistrationsResult.Listed(listedPage), OutputMode.TEXT);
+    String listedText = listedTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(listedText.contains("Tax Registrations"), listedText);
+    assertTrue(listedText.contains("vat-lv"), listedText);
+    assertTrue(listedText.contains(listedCursor.wireValue()), listedText);
+
+    ByteArrayOutputStream listedJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(listedJsonOutput))
+        .writeListTaxRegistrationsResult(
+            new ListTaxRegistrationsResult.Listed(
+                new TaxRegistrationPage(
+                    bookIdentity(), List.of(registrationWithoutNumber), 10, Optional.empty())),
+            OutputMode.JSON);
+    JsonNode listedJson = readJson(listedJsonOutput);
+    assertEquals("ok", listedJson.path("status").stringValue());
+    assertTrue(
+        listedJson
+                .path("payload")
+                .path("registrations")
+                .get(0)
+                .path("registrationNumber")
+                .isMissingNode()
+            || listedJson
+                .path("payload")
+                .path("registrations")
+                .get(0)
+                .path("registrationNumber")
+                .isNull());
+
+    ByteArrayOutputStream listRejectionTextOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(listRejectionTextOutput))
+        .writeListTaxRegistrationsResult(
+            new ListTaxRegistrationsResult.Rejected(new TaxQueryRejection.BookNotInitialized()),
+            OutputMode.TEXT);
+    String listRejectionText = listRejectionTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(listRejectionText.contains("tax-query-book-not-initialized"), listRejectionText);
+
+    TaxObligationReport emptyObligation = taxObligationReport(registrationWithNumber, List.of());
+    ByteArrayOutputStream obligationCsvOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(obligationCsvOutput))
+        .writeTaxObligationResult(
+            new TaxObligationResult.Reported(emptyObligation), OutputMode.CSV);
+    String obligationCsv = obligationCsvOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(
+        obligationCsv.contains("No tax obligation code summaries matched the selected scope."),
+        obligationCsv);
+
+    ByteArrayOutputStream obligationRejectionJsonOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(obligationRejectionJsonOutput))
+        .writeTaxObligationResult(
+            new TaxObligationResult.Rejected(
+                new TaxQueryRejection.UnknownTaxRegistration(new TaxRegistrationId("vat-missing"))),
+            OutputMode.JSON);
+    JsonNode obligationRejection = readJson(obligationRejectionJsonOutput);
+    assertEquals("rejected", obligationRejection.path("status").stringValue());
+    assertEquals("unknown-tax-registration", obligationRejection.path("code").stringValue());
+    assertEquals(
+        "vat-missing", obligationRejection.path("details").path("taxRegistrationId").stringValue());
+
+    assertEquals(
+        2,
+        CliBookQueryExitCodes.exitCodeFor(
+            new ListTaxRegistrationsResult.Rejected(new TaxQueryRejection.BookNotInitialized())));
+    assertEquals(
+        2,
+        CliBookQueryExitCodes.exitCodeFor(
+            new TaxObligationResult.Rejected(
+                new TaxQueryRejection.ObligationPeriodMismatch(
+                    TaxObligationFrequency.MONTHLY,
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-15")))));
   }
 
   @Test
@@ -401,20 +523,20 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         accountLedgerCsv.startsWith(
-            "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
+            "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,accountType,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
     assertTrue(
         accountLedgerCsv.contains(
-            "posting-relationships,ledger-summary:1000:EUR,,ledger-summary,summary,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+            "account-ledger,ledger-summary:1000:EUR,,ledger-summary,account-ledger,1000,Cash,ASSET,DEBIT,true"));
     assertTrue(
         accountLedgerCsv.contains(
-            "posting-relationships,ledger-entry:posting-1,,entry,entry,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+            "account-ledger,ledger-entry:posting-1,,entry,account-ledger,1000,Cash,ASSET,DEBIT,true"));
     assertTrue(
         accountLedgerCsv.contains(
-            "posting-relationships,ledger-counterpart:posting-1:2000,ledger-entry:posting-1,counterpart-account,counterpart-account,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+            "account-ledger,ledger-counterpart:posting-1:2000,ledger-entry:posting-1,counterpart-account,account-ledger,1000,Cash,ASSET,DEBIT,true"));
     assertTrue(accountLedgerCsv.contains("document-idem-1"));
     assertTrue(
         accountLedgerCsv.contains(
-            "posting-relationships,ledger-source-document:posting-1:document-idem-1,ledger-entry:posting-1,source-document,source-document,1000,Cash,ASSET,ORDINARY,DEBIT,true"));
+            "account-ledger,ledger-source-document:posting-1:document-idem-1,ledger-entry:posting-1,source-document,account-ledger,1000,Cash,ASSET,DEBIT,true"));
   }
 
   @Test
@@ -462,7 +584,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             "exportFamily,rowId,parentRowId,relationKind,recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit,message"));
     assertTrue(
         periodSummaryCsv.contains(
-            "metrics,period-summary:account:1000:debit,period-summary:account:1000,metric,account-activity,account,1000,Cash,debitTotal,10.00,EUR,money,"));
+            "period-summary,period-summary:account:1000:debit,period-summary:account:1000,metric,period-summary,account,1000,Cash,debitTotal,10.00,EUR,money,"));
   }
 
   @Test
@@ -543,7 +665,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         financialPositionCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateAsOf,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateAsOf,accountType,lineCode,lineName,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
 
     ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
@@ -582,7 +704,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         incomeStatementCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,accountType,lineCode,lineName,lineRole,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,accountType,lineCode,lineName,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
 
     ByteArrayOutputStream changesInEquityJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityJsonOutput))
@@ -614,7 +736,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         changesInEquityCsvOutput
             .toString(StandardCharsets.UTF_8)
             .startsWith(
-                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,lineCode,lineName,lineRole,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,message"));
+                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,lineCode,lineName,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,message"));
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -729,6 +851,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertFalse(payload.path("migrationPolicy").path("inPlaceUpgradeSupported").asBoolean());
     assertEquals("2026-04-07T10:15:30Z", payload.path("initializedAt").stringValue());
     assertEquals("Acme Studio", payload.path("bookIdentity").path("entityName").stringValue());
+    assertEquals("CASH_BASIS", payload.path("bookIdentity").path("accountingBasis").stringValue());
     assertEquals("EUR", payload.path("bookIdentity").path("functionalCurrency").stringValue());
     assertEquals("01-01", payload.path("bookIdentity").path("fiscalYearStart").stringValue());
   }
@@ -758,5 +881,41 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
       assertFalse(payload.path("migrationPolicy").path("newerFormatsAccepted").asBoolean());
       assertFalse(payload.has("initializedAt"));
     }
+  }
+
+  private static DeclaredTaxRegistration declaredTaxRegistration(
+      @Nullable String registrationNumber) {
+    return new DeclaredTaxRegistration(
+        new TaxRegistrationId("vat-lv"),
+        new TaxRegistrationName("Latvia VAT"),
+        new TaxJurisdiction("LV"),
+        registrationNumber == null ? null : new TaxRegistrationNumber(registrationNumber),
+        new AccountCode("2100"),
+        new AccountCode("1300"),
+        TaxObligationFrequency.MONTHLY,
+        20,
+        List.of(
+            new TaxCodeDefinition(
+                new TaxCode("vat-standard-sale"),
+                new TaxCodeName("VAT Standard Sale"),
+                new TaxRate(210_000),
+                TaxInclusionMode.EXCLUSIVE,
+                TaxApplicationKind.OUTPUT_SALE)),
+        Instant.parse("2026-04-17T10:20:30Z"));
+  }
+
+  private static TaxObligationReport taxObligationReport(
+      DeclaredTaxRegistration registration, List<TaxObligationCodeSummary> codeSummaries) {
+    return new TaxObligationReport(
+        bookIdentity(),
+        registration,
+        new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+        LocalDate.parse("2026-05-20"),
+        codeSummaries,
+        new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "3150"),
+        new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "2100"),
+        new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "1200"),
+        new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "1050"),
+        new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0"));
   }
 }

@@ -173,7 +173,7 @@ class CliReportArgumentParsingTest {
                   "--period-end",
                   "2026-04-30",
                   "--output",
-                  "csv",
+                  "json",
                   "--pdf-out",
                   "reports/income.pdf"
                 }));
@@ -209,7 +209,7 @@ class CliReportArgumentParsingTest {
     assertEquals(OutputMode.TEXT, defaultFinancialPosition.output().outputMode());
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-30")), financialPosition.query().effectiveDateAsOf());
-    assertEquals(OutputMode.CSV, incomeStatement.output().outputMode());
+    assertEquals(OutputMode.JSON, incomeStatement.output().outputMode());
     assertEquals(LocalDate.parse("2026-04-01"), incomeStatement.query().effectiveDateFrom());
     assertEquals(OutputMode.TEXT, changesInEquity.output().outputMode());
     assertEquals(LocalDate.parse("2026-04-30"), changesInEquity.query().effectiveDateTo());

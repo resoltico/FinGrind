@@ -1,5 +1,5 @@
 {
-  "entryKind": "REVERSAL_ADJUSTMENT",
+  "entryKind": "REVERSAL",
   "effectiveDate": "2026-04-08",
   "lines": [
     {
@@ -28,13 +28,12 @@
       {
         "sourceDocumentId": "document-idem-2",
         "sourceDocumentType": "credit-note",
-        "documentDate": "2026-04-08",
-        "capturedAt": "2026-04-08T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-idem-2",
-        "contentSha256": "d2cf532fe563ccbb2303ca000dbff9244b173b65e4035f54de987f72ffb15f0e"
+        "documentDate": "2026-04-08"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "actor-2",

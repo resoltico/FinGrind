@@ -9,6 +9,8 @@ import java.util.List;
 
 /** Renders trial-balance CSV exports under the shared comparative-surface policy. */
 final class CliTrialBalanceCsvRenderer {
+  private static final String RECORD_KIND = CliCsvExportFamilies.TRIAL_BALANCE;
+
   private CliTrialBalanceCsvRenderer() {}
 
   static String render(TrialBalanceReport report) {
@@ -25,7 +27,6 @@ final class CliTrialBalanceCsvRenderer {
             "accountCode",
             "accountName",
             "accountType",
-            "accountRole",
             "normalBalance",
             "active",
             "currencyCode",
@@ -49,7 +50,7 @@ final class CliTrialBalanceCsvRenderer {
   }
 
   private static java.util.stream.Stream<List<String>> comparativeRows(TrialBalanceReport report) {
-    if (!CliReportSurfacePolicy.hasComparative(report)) {
+    if (!CliTrialBalanceSurfacePolicy.hasComparative(report)) {
       return java.util.stream.Stream.empty();
     }
     String effectiveDateAsOf =
@@ -73,7 +74,7 @@ final class CliTrialBalanceCsvRenderer {
   private static java.util.stream.Stream<List<String>> emptyCurrentRows(
       TrialBalanceReport report, String effectiveDateAsOf) {
     List<List<String>> rows = new ArrayList<>();
-    if (!CliReportSurfacePolicy.hasCurrent(report)) {
+    if (!CliTrialBalanceSurfacePolicy.hasCurrent(report)) {
       rows.add(
           emptyRow(
               "current",
@@ -87,7 +88,7 @@ final class CliTrialBalanceCsvRenderer {
   private static java.util.stream.Stream<List<String>> emptyComparativeRows(
       TrialBalanceReport report, String effectiveDateAsOf) {
     List<List<String>> rows = new ArrayList<>();
-    if (!CliReportSurfacePolicy.hasComparativeData(report)) {
+    if (!CliTrialBalanceSurfacePolicy.hasComparativeData(report)) {
       rows.add(
           emptyRow(
               "comparative",
@@ -101,12 +102,12 @@ final class CliTrialBalanceCsvRenderer {
   private static List<String> emptyRow(
       String reportBasis, String effectiveDateAsOf, String currencyCode, String message) {
     return List.of(
-        CliCsvExportFamilies.STATEMENT,
+        CliCsvExportFamilies.TRIAL_BALANCE,
         "trial-balance-empty:" + reportBasis + ":" + effectiveDateAsOf,
         "",
         "report-empty",
         reportBasis,
-        CliCsvEmptyKinds.REPORT_EMPTY,
+        RECORD_KIND,
         effectiveDateAsOf,
         "",
         "",
@@ -126,18 +127,17 @@ final class CliTrialBalanceCsvRenderer {
   private static List<String> detailRow(
       String reportBasis, String effectiveDateAsOf, TrialBalanceRow row) {
     return List.of(
-        CliCsvExportFamilies.STATEMENT,
+        CliCsvExportFamilies.TRIAL_BALANCE,
         "trial-balance-row:" + reportBasis + ":" + row.account().accountCode().value(),
         "",
         "line",
         reportBasis,
-        "row",
+        RECORD_KIND,
         effectiveDateAsOf,
         "",
         row.account().accountCode().value(),
         row.account().accountName().value(),
         row.account().accountType().wireValue(),
-        row.account().accountRole().wireValue(),
         row.account().normalBalance().wireValue(),
         Boolean.toString(row.account().active()),
         row.balance().netAmount().currencyUnit().code(),
@@ -151,12 +151,12 @@ final class CliTrialBalanceCsvRenderer {
   private static List<String> totalRow(
       String reportBasis, String effectiveDateAsOf, boolean balanced, CurrencyBalance total) {
     return List.of(
-        CliCsvExportFamilies.STATEMENT,
+        CliCsvExportFamilies.TRIAL_BALANCE,
         "trial-balance-total:" + reportBasis + ":" + total.netAmount().currencyUnit().code(),
         "",
         "report-total",
         reportBasis,
-        "total",
+        RECORD_KIND,
         effectiveDateAsOf,
         Boolean.toString(balanced),
         "",

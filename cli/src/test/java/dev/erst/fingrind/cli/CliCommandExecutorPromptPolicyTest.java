@@ -12,10 +12,15 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
+import dev.erst.fingrind.contract.tax.TaxObligationQuery;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.report.pdf.PdfReportService;
@@ -83,9 +88,21 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runPeriodResultTransferCommand(
+            executor.runDeclareTaxRegistrationCommand(
+                PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON));
+    assertPromptFailure(
+        outputStream,
+        () ->
+            executor.runInterimResultSweepCommand(
                 PROMPT_BOOK_ACCESS,
                 new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+                OutputMode.JSON));
+    assertPromptFailure(
+        outputStream,
+        () ->
+            executor.runFiscalYearCloseCommand(
+                PROMPT_BOOK_ACCESS,
+                new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")),
                 OutputMode.JSON));
   }
 
@@ -118,6 +135,23 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
                 PROMPT_BOOK_ACCESS,
                 new ListPostingsQuery(Optional.empty(), null, null, 10, Optional.empty()),
                 OutputMode.JSON));
+    assertPromptFailure(
+        outputStream,
+        () ->
+            executor.runListTaxRegistrationsCommand(
+                PROMPT_BOOK_ACCESS,
+                new ListTaxRegistrationsQuery(10, Optional.empty()),
+                OutputMode.JSON));
+    assertPromptFailure(
+        outputStream,
+        () ->
+            executor.runTaxObligationCommand(
+                PROMPT_BOOK_ACCESS,
+                new TaxObligationQuery(
+                    new TaxRegistrationId("vat-lv"),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30")),
+                OutputMode.JSON));
   }
 
   @Test
@@ -145,6 +179,11 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         () ->
             executor.runExecutePlanCommand(
                 PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON, PlanResultDetail.FULL));
+    assertPromptFailure(
+        outputStream,
+        () ->
+            executor.runRecordEntryCommand(
+                PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON, OperationId.RECORD_SALE));
   }
 
   @Test
@@ -158,7 +197,6 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         new CliReportCommandExecutor(
             reportWriter(outputStream),
             failureWriter(outputStream),
-            new CliDiagnosticsWriter(utf8PrintStream(diagnosticsStream)),
             workflow,
             new CliPdfReportExporter(new PdfReportService("FinGrind", "0.57.0", fixedClock())));
     CliCommand.ReportOutput jsonOutput = new CliCommand.ReportOutput(OutputMode.JSON, null);
@@ -177,7 +215,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
                 PROMPT_BOOK_ACCESS,
                 new TrialBalanceQuery(
                     Optional.of(LocalDate.parse("2026-04-30")),
-                    dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS),
+                    dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+                    ComparativeSelection.none()),
                 jsonOutput));
     assertPromptFailure(
         outputStream,
@@ -199,7 +238,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         () ->
             executor.runFinancialPositionCommand(
                 PROMPT_BOOK_ACCESS,
-                new FinancialPositionQuery(Optional.of(LocalDate.parse("2026-04-30"))),
+                new FinancialPositionQuery(
+                    Optional.of(LocalDate.parse("2026-04-30")), ComparativeSelection.none()),
                 jsonOutput));
     assertPromptFailure(
         outputStream,
@@ -207,7 +247,9 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
             executor.runIncomeStatementCommand(
                 PROMPT_BOOK_ACCESS,
                 new IncomeStatementQuery(
-                    LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30"),
+                    ComparativeSelection.none()),
                 jsonOutput));
     assertPromptFailure(
         outputStream,
@@ -215,7 +257,9 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
             executor.runChangesInEquityCommand(
                 PROMPT_BOOK_ACCESS,
                 new ChangesInEquityQuery(
-                    LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30"),
+                    ComparativeSelection.none()),
                 jsonOutput));
     assertEquals("", diagnosticsStream.toString(java.nio.charset.StandardCharsets.UTF_8));
   }

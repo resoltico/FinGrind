@@ -9,6 +9,8 @@ import java.util.List;
 
 /** Renders posting detail and posting-page payloads for text and CSV output modes. */
 final class CliPostingOutputRenderer {
+  private static final String RECORD_KIND = CliCsvExportFamilies.POSTINGS;
+
   private CliPostingOutputRenderer() {}
 
   static String renderPostingText(BookIdentity bookIdentity, PostingFact postingFact) {
@@ -70,12 +72,19 @@ final class CliPostingOutputRenderer {
                             CliTextFormat.displayMoney(line.amount().money())))
                 .toList(),
             3);
+    List<String> sections = new ArrayList<>();
+    sections.add(CliTextFormat.renderKeyValueBlock(header));
+    postingFact
+        .callerAuthoredEntry()
+        .map(CliPostingEntryPayloadSupport::entryPayload)
+        .ifPresent(
+            entry ->
+                sections.add(
+                    CliReportRenderSupport.section(
+                        "Entry facts", CliPostingEntryPayloadSupport.renderEntryFacts(entry))));
+    sections.add(CliReportRenderSupport.section("Journal lines", journalLines));
     return CliTextFormat.renderTitledBlock(
-        "Posting",
-        CliTextFormat.renderKeyValueBlock(header)
-            + System.lineSeparator()
-            + System.lineSeparator()
-            + journalLines);
+        "Posting", CliReportRenderSupport.joinSections(sections.toArray(String[]::new)));
   }
 
   static String renderPostingRegisterText(PostingPage page) {
@@ -136,8 +145,6 @@ final class CliPostingOutputRenderer {
         List.of(
             "exportFamily",
             "rowId",
-            "parentRowId",
-            "relationKind",
             "recordKind",
             "effectiveDate",
             "recordedAt",
@@ -145,24 +152,24 @@ final class CliPostingOutputRenderer {
             "postingKind",
             "postingOriginKind",
             "reversalState",
-            "reversalTarget",
+            "reversesPostingId",
+            "reversedByPostingId",
             "currencyCode",
             "debitTotal",
             "creditTotal",
-            "accountCode",
-            "sourceDocumentId",
-            "sourceDocumentType",
-            "approvalId",
-            "approvalDecision",
+            "accountCodes",
+            "sourceDocumentIds",
+            "sourceDocumentTypes",
+            "approvalIds",
+            "approvalDecisions",
             "message"),
         page.postings().isEmpty()
             ? List.of(
                 List.of(
-                    CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+                    CliCsvExportFamilies.POSTINGS,
                     "posting-page:scope-empty",
+                    RECORD_KIND,
                     "",
-                    "scope-empty",
-                    CliCsvEmptyKinds.SCOPE_EMPTY,
                     "",
                     "",
                     "",
@@ -180,42 +187,15 @@ final class CliPostingOutputRenderer {
                     "",
                     CliQueryScopeText.noMatchesLabel("postings")))
             : page.postings().stream()
-                .flatMap(posting -> postingRegisterCsvRows(posting).stream())
+                .map(posting -> postingRegisterCsvRow(page, posting))
                 .toList());
   }
 
-  private static List<List<String>> postingRegisterCsvRows(PostingFact postingFact) {
-    List<List<String>> rows = new ArrayList<>();
-    rows.add(postingRegisterPostingCsvRow(postingFact));
-    postingFact.journalEntry().lines().stream()
-        .map(line -> line.accountCode().value())
-        .distinct()
-        .map(accountCode -> postingRegisterAccountCsvRow(postingFact, accountCode))
-        .forEach(rows::add);
-    postingFact.evidence().sourceDocuments().stream()
-        .map(
-            sourceDocument ->
-                postingRegisterSourceDocumentCsvRow(
-                    postingFact,
-                    sourceDocument.sourceDocumentId().value(),
-                    sourceDocument.sourceDocumentType().value()))
-        .forEach(rows::add);
-    postingFact.evidence().approvals().stream()
-        .map(
-            approval ->
-                postingRegisterApprovalCsvRow(
-                    postingFact, approval.approvalId().value(), approval.decision().wireValue()))
-        .forEach(rows::add);
-    return List.copyOf(rows);
-  }
-
-  private static List<String> postingRegisterPostingCsvRow(PostingFact postingFact) {
+  private static List<String> postingRegisterCsvRow(PostingPage page, PostingFact postingFact) {
     return List.of(
-        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
+        CliCsvExportFamilies.POSTINGS,
         "posting:" + postingFact.postingId().value(),
-        "",
-        "posting",
-        "posting",
+        RECORD_KIND,
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
         postingFact.postingId().value(),
@@ -223,92 +203,33 @@ final class CliPostingOutputRenderer {
         postingFact.postingOriginKind().wireValue(),
         CliPostingLabels.reversalStateWireValue(postingFact),
         CliPostingLabels.reversalTargetCsv(postingFact),
+        java.util.Optional.ofNullable(page.reversedByPostingIds().get(postingFact.postingId()))
+            .map(dev.erst.fingrind.core.PostingId::value)
+            .orElse(""),
         CliPostingLabels.postingCurrency(postingFact),
         CliPostingLabels.postingDebitTotal(postingFact),
         CliPostingLabels.postingCreditTotal(postingFact),
-        "",
-        "",
-        "",
-        "",
-        "",
-        "");
-  }
-
-  private static List<String> postingRegisterAccountCsvRow(
-      PostingFact postingFact, String accountCode) {
-    return List.of(
-        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
-        "posting-account:" + postingFact.postingId().value() + ":" + accountCode,
-        "posting:" + postingFact.postingId().value(),
-        "counterpart-account",
-        "account",
-        postingFact.journalEntry().effectiveDate().toString(),
-        postingFact.provenance().recordedAt().toString(),
-        postingFact.postingId().value(),
-        postingFact.postingKind().wireValue(),
-        postingFact.postingOriginKind().wireValue(),
-        CliPostingLabels.reversalStateWireValue(postingFact),
-        CliPostingLabels.reversalTargetCsv(postingFact),
-        "",
-        "",
-        "",
-        accountCode,
-        "",
-        "",
-        "",
-        "",
-        "");
-  }
-
-  private static List<String> postingRegisterSourceDocumentCsvRow(
-      PostingFact postingFact, String sourceDocumentId, String sourceDocumentType) {
-    return List.of(
-        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
-        "posting-source-document:" + postingFact.postingId().value() + ":" + sourceDocumentId,
-        "posting:" + postingFact.postingId().value(),
-        "source-document",
-        "source-document",
-        postingFact.journalEntry().effectiveDate().toString(),
-        postingFact.provenance().recordedAt().toString(),
-        postingFact.postingId().value(),
-        postingFact.postingKind().wireValue(),
-        postingFact.postingOriginKind().wireValue(),
-        CliPostingLabels.reversalStateWireValue(postingFact),
-        CliPostingLabels.reversalTargetCsv(postingFact),
-        "",
-        "",
-        "",
-        "",
-        sourceDocumentId,
-        sourceDocumentType,
-        "",
-        "",
-        "");
-  }
-
-  private static List<String> postingRegisterApprovalCsvRow(
-      PostingFact postingFact, String approvalId, String approvalDecision) {
-    return List.of(
-        CliCsvExportFamilies.POSTING_RELATIONSHIPS,
-        "posting-approval:" + postingFact.postingId().value() + ":" + approvalId,
-        "posting:" + postingFact.postingId().value(),
-        "approval",
-        "approval",
-        postingFact.journalEntry().effectiveDate().toString(),
-        postingFact.provenance().recordedAt().toString(),
-        postingFact.postingId().value(),
-        postingFact.postingKind().wireValue(),
-        postingFact.postingOriginKind().wireValue(),
-        CliPostingLabels.reversalStateWireValue(postingFact),
-        CliPostingLabels.reversalTargetCsv(postingFact),
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        approvalId,
-        approvalDecision,
+        pipeJoined(
+            postingFact.journalEntry().lines().stream()
+                .map(line -> line.accountCode().value())
+                .distinct()
+                .toList()),
+        pipeJoined(
+            postingFact.evidence().sourceDocuments().stream()
+                .map(sourceDocument -> sourceDocument.sourceDocumentId().value())
+                .toList()),
+        pipeJoined(
+            postingFact.evidence().sourceDocuments().stream()
+                .map(sourceDocument -> sourceDocument.sourceDocumentType().value())
+                .toList()),
+        pipeJoined(
+            postingFact.evidence().approvals().stream()
+                .map(approval -> approval.approvalId().value())
+                .toList()),
+        pipeJoined(
+            postingFact.evidence().approvals().stream()
+                .map(approval -> approval.decision().wireValue())
+                .toList()),
         "");
   }
 
@@ -330,5 +251,9 @@ final class CliPostingOutputRenderer {
     List<List<String>> rows = new ArrayList<>(firstRows);
     rows.addAll(secondRows);
     return List.copyOf(rows);
+  }
+
+  private static String pipeJoined(List<String> values) {
+    return values.stream().collect(java.util.stream.Collectors.joining("|"));
   }
 }

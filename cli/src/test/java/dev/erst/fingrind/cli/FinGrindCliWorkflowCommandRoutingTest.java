@@ -6,17 +6,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.ReportingPeriod;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -32,7 +39,9 @@ import org.junit.jupiter.api.Test;
 class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
   @Test
   void run_routesCommandsThroughSelectedBookWorkflow() throws IOException {
-    Path requestFile = writeRequest(validRequestJson());
+    Path preflightRequestFile = writeRequest(validRequestJson());
+    Path postEntryRequestFile =
+        writeNamedRequest("post-entry-direct-journal.json", validRawJournalRequestJson());
     Path planFile = writeNamedRequest("plan.json", validPlanJson());
     Path declareAccountFile =
         writeNamedRequest("declare.json", declareAccountJson("1000", "Cash", "DEBIT"));
@@ -69,7 +78,8 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -114,7 +124,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString(),
               "--request-file",
-              requestFile.toString()
+              preflightRequestFile.toString()
             }));
     assertEquals(
         0,
@@ -126,7 +136,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
               "--book-key-file",
               bookKeyFilePath.toString(),
               "--request-file",
-              requestFile.toString()
+              postEntryRequestFile.toString()
             }));
     assertEquals(
         0,
@@ -178,7 +188,8 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(
@@ -204,7 +215,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
         workflow.rekeyReplacementPassphraseSources());
     String output = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(output.contains("\"replacementPassphraseSource\""));
-    assertTrue(output.contains("\"replacementBookKeyFile\""));
+    assertTrue(output.contains("\"artifacts\""));
+    assertTrue(
+        output.contains("\"format\":\"" + ProtocolArtifactOutput.bookKeyFileFormat() + "\""));
   }
 
   @Test
@@ -234,7 +247,8 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     workflow.setBackupBookResult(
         new BackupBookResult.BackedUp(
             hint(bookFilePath), hint(backupFilePath), hint(backupBookKeyFilePath)));
@@ -301,9 +315,116 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
         List.of(new BookAccess.PassphraseSource.KeyFile(currentBookKeyFilePath)),
         workflow.restoreRekeyRollbackExpectedPassphraseSources());
     String output = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(output.contains("\"backupFile\""));
-    assertTrue(output.contains("\"backupBookKeyFile\""));
-    assertTrue(output.contains("\"rollbackArtifact\""));
+    assertTrue(output.contains("\"artifacts\""));
+    assertTrue(
+        output.contains("\"format\":\"" + ProtocolArtifactOutput.backupBookFileFormat() + "\""));
+    assertTrue(
+        output.contains("\"format\":\"" + ProtocolArtifactOutput.backupBookKeyFileFormat() + "\""));
+    assertTrue(
+        output.contains("\"format\":\"" + ProtocolArtifactOutput.rollbackBookFileFormat() + "\""));
+  }
+
+  @Test
+  void run_routesCloseCommandsThroughSelectedBookWorkflow() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("books").resolve("close.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    CloseCommandRoutingWorkflow workflow = new CloseCommandRoutingWorkflow();
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            fixedClock(),
+            workflow);
+
+    assertEquals(
+        0,
+        cli.run(
+            jsonArguments(
+                "interim-result-sweep",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--period-start",
+                "2026-04-01",
+                "--period-end",
+                "2026-04-30")));
+    assertEquals(
+        0,
+        cli.run(
+            jsonArguments(
+                "fiscal-year-close",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--period-start",
+                "2026-01-01",
+                "--period-end",
+                "2026-12-31")));
+
+    assertEquals(
+        List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.interimResultSweepAccesses());
+    assertEquals(
+        List.of(
+            new InterimResultSweepCommand(
+                new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")))),
+        workflow.interimResultSweepCommands());
+    assertEquals(
+        List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.fiscalYearCloseAccesses());
+    assertEquals(
+        List.of(
+            new FiscalYearCloseCommand(
+                new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")))),
+        workflow.fiscalYearCloseCommands());
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(output.contains("\"closeOrder\":1"));
+    assertTrue(output.contains("\"retainedAccumulatedAccountCode\":\"3300\""));
+  }
+
+  /** Minimal workflow stub that records only close-command routing. */
+  private static final class CloseCommandRoutingWorkflow extends CliBookWorkflowAdapter {
+    private final List<BookAccess> interimResultSweepAccesses = new java.util.ArrayList<>();
+    private final List<InterimResultSweepCommand> interimResultSweepCommands =
+        new java.util.ArrayList<>();
+    private final List<BookAccess> fiscalYearCloseAccesses = new java.util.ArrayList<>();
+    private final List<FiscalYearCloseCommand> fiscalYearCloseCommands =
+        new java.util.ArrayList<>();
+
+    @Override
+    public ContractDecision<InterimResultSweepResult> interimResultSweep(
+        BookAccess bookAccess, InterimResultSweepCommand command) {
+      interimResultSweepAccesses.add(bookAccess);
+      interimResultSweepCommands.add(command);
+      return accepted(
+          new InterimResultSweepResult.Swept(CliFixtureSupport.sampleSweptInterimResult()));
+    }
+
+    @Override
+    public ContractDecision<FiscalYearCloseResult> fiscalYearClose(
+        BookAccess bookAccess, FiscalYearCloseCommand command) {
+      fiscalYearCloseAccesses.add(bookAccess);
+      fiscalYearCloseCommands.add(command);
+      return accepted(new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear()));
+    }
+
+    List<BookAccess> interimResultSweepAccesses() {
+      return interimResultSweepAccesses;
+    }
+
+    List<InterimResultSweepCommand> interimResultSweepCommands() {
+      return interimResultSweepCommands;
+    }
+
+    List<BookAccess> fiscalYearCloseAccesses() {
+      return fiscalYearCloseAccesses;
+    }
+
+    List<FiscalYearCloseCommand> fiscalYearCloseCommands() {
+      return fiscalYearCloseCommands;
+    }
   }
 
   @Test
@@ -331,7 +452,8 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     workflow.setRekeyRollbackResult(
         new RekeyRollbackResult.Inspected(hint(bookFilePath), List.of(hint(rollbackArtifactPath))));
 

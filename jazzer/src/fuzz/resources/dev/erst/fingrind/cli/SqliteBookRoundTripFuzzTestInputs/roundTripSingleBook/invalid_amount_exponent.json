@@ -1,6 +1,5 @@
 {
-  "entryKind": "JOURNAL",
-  "recipeKind": "CASH_REVENUE",
+  "entryKind": "SALE",
   "effectiveDate": "2026-04-13",
   "cashAccountCode": "7100",
   "revenueAccountCode": "8100",
@@ -13,13 +12,12 @@
       {
         "sourceDocumentId": "document-idem-sqlite-invalid-2",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-13",
-        "capturedAt": "2026-04-13T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-idem-sqlite-invalid-2",
-        "contentSha256": "d51efa9f66e867bb5bd3ebd6beaab50a0530b675ea6f6bddd666f784791d2fbf"
+        "documentDate": "2026-04-13"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "actor-sqlite-invalid-2",

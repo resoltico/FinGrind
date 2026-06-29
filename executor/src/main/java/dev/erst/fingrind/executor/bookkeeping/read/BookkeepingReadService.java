@@ -10,6 +10,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
+import dev.erst.fingrind.executor.bookkeeping.CashFlowStatementCriteria;
+import dev.erst.fingrind.executor.bookkeeping.CashFlowStatementView;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityCriteria;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityView;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -38,7 +40,7 @@ public final class BookkeepingReadService {
   /** Creates the local bookkeeping read service over one selected-book store seam. */
   public BookkeepingReadService(BookkeepingReadStore bookStore) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
-    this.reportingService = new BookkeepingReportingService(this.bookStore, this.bookStore);
+    this.reportingService = new BookkeepingReportingService(this.bookStore);
   }
 
   /** Returns the local lifecycle snapshot before public contract projection. */
@@ -171,6 +173,15 @@ public final class BookkeepingReadService {
     return BookkeepingReadLifecycleGate.ifInitialized(
         bookStore,
         () -> new BookkeepingReadOutcome.Reported<>(reportingService.incomeStatement(query)));
+  }
+
+  /** Computes one statement of cash receipts and payments for a bounded reporting period. */
+  public BookkeepingReadOutcome<CashFlowStatementView> cashFlowStatement(
+      CashFlowStatementCriteria query) {
+    Objects.requireNonNull(query, "query");
+    return BookkeepingReadLifecycleGate.ifInitialized(
+        bookStore,
+        () -> new BookkeepingReadOutcome.Reported<>(reportingService.cashFlowStatement(query)));
   }
 
   /** Computes one statement of changes in equity for a bounded reporting period. */

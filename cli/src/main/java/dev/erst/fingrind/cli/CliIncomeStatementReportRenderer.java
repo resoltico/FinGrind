@@ -15,11 +15,12 @@ final class CliIncomeStatementReportRenderer {
   static String renderText(IncomeStatementReport report) {
     List<IncomeStatementSection> currentSections =
         CliReportRenderSupport.renderableSections(
-            report.sections(), CliReportSurfacePolicy::hasRenderableIncomeStatementSection);
+            report.sections(),
+            CliStatementSectionSurfacePolicy::hasRenderableIncomeStatementSection);
     List<String> currentEmptySections =
         CliReportRenderSupport.emptyAccountTypeSectionLabels(
             report.sections(),
-            CliReportSurfacePolicy::hasRenderableIncomeStatementSection,
+            CliStatementSectionSurfacePolicy::hasRenderableIncomeStatementSection,
             IncomeStatementSection::accountType);
     String summary =
         CliTextFormat.renderKeyValueBlock(
@@ -32,7 +33,7 @@ final class CliIncomeStatementReportRenderer {
                 "Net income totals"));
     String sections = currentSections.isEmpty() ? "" : renderSections(currentSections);
     String comparative =
-        !CliReportSurfacePolicy.hasComparative(report)
+        !CliStatementReportSurfacePolicy.hasComparative(report)
             ? ""
             : CliReportRenderSupport.section(
                 "Comparative Income Statement", renderComparative(report));
@@ -60,7 +61,6 @@ final class CliIncomeStatementReportRenderer {
             "accountType",
             "lineCode",
             "lineName",
-            "lineRole",
             "lineType",
             "lineClassification",
             "lineKind",
@@ -70,7 +70,7 @@ final class CliIncomeStatementReportRenderer {
             "netAmount",
             "balanceSide",
             "message"),
-        (CliReportSurfacePolicy.hasComparative(report)
+        (CliStatementReportSurfacePolicy.hasComparative(report)
                 ? java.util.stream.Stream.concat(
                     CliIncomeStatementCsvRows.rows(
                         report, "current", report.sections(), report.netIncomeTotals()),
@@ -124,11 +124,11 @@ final class CliIncomeStatementReportRenderer {
     List<IncomeStatementSection> comparativeSections =
         CliReportRenderSupport.renderableSections(
             report.comparativeSections(),
-            CliReportSurfacePolicy::hasRenderableIncomeStatementSection);
+            CliStatementSectionSurfacePolicy::hasRenderableIncomeStatementSection);
     List<String> emptySections =
         CliReportRenderSupport.emptyAccountTypeSectionLabels(
             report.comparativeSections(),
-            CliReportSurfacePolicy::hasRenderableIncomeStatementSection,
+            CliStatementSectionSurfacePolicy::hasRenderableIncomeStatementSection,
             IncomeStatementSection::accountType);
     return CliReportRenderSupport.joinSections(
         CliTextFormat.renderKeyValueBlock(

@@ -45,7 +45,6 @@ class ReleaseSmokeConfig:
     open_book_mode: str
     entity_name: str
     accounting_kernel_profile: str
-    accounting_basis: str
     accounting_framework_position: str
     entity_form: str
     book_template_id: str
@@ -82,7 +81,6 @@ class ReleaseSmokeScenario:
     actor_prefix: str
     entity_name: str
     accounting_kernel_profile: str
-    accounting_basis: str
     accounting_framework_position: str
     entity_form: str
     book_template_id: str

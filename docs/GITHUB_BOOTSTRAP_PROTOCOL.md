@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, github, bootstrap, gh, repo-create, branch-protection, actions, ghcr]
   questions: ["how do I bootstrap the fingrind github repo", "how do I create the fingrind github repository", "how should github actions and branch protection be configured for fingrind"]
@@ -108,7 +108,7 @@ gh api \
     "strict": true,
     "contexts": ["Gate"]
   },
-  "enforce_admins": true,
+  "enforce_admins": false,
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": false,
     "require_code_owner_reviews": true,
@@ -120,7 +120,11 @@ gh api \
 EOF
 ```
 
-From this point forward, changes to `main` should go through pull requests.
+From this point forward, changes to `main` should go through pull requests. FinGrind keeps
+code-owner review on the protected surfaces, but leaves GitHub's administrator bypass available
+for the repository owner so release and publication repairs are not deadlocked by a self-review
+requirement. `./scripts/verify-release-repo-settings.sh` is the executable owner of that release
+preflight contract.
 
 ## Step 6
 
@@ -128,7 +132,7 @@ Recommended repository settings alignment:
 - default branch is `main`
 - branch auto-delete on merge is enabled
 - Actions workflow permissions default to write
-- `main` protection enforces admins
+- `main` protection keeps administrator bypass available for the repository owner
 - required checks remain exactly `Gate`
 - code-owner review is required on the paths owned by `.github/CODEOWNERS`
 - the separate `Contributor devcontainer` CI job remains visible under that aggregate Gate contract

@@ -67,12 +67,35 @@ final class ProtocolQueryOperationExamples {
             ProtocolOptions.OUTPUT);
   }
 
+  static String cashFlowStatementExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s text"
+        .formatted(
+            OperationId.CASH_FLOW_STATEMENT.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.PERIOD_START,
+            ProtocolOptions.PERIOD_END,
+            ProtocolOptions.OUTPUT);
+  }
+
   static String changesInEquityExample() {
     return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s text"
         .formatted(
             OperationId.CHANGES_IN_EQUITY.wireName(),
             ProtocolOptions.BOOK_FILE,
             ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.PERIOD_START,
+            ProtocolOptions.PERIOD_END,
+            ProtocolOptions.OUTPUT);
+  }
+
+  static String taxObligationExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s vat-lv %s 2026-04-01 %s 2026-04-30 %s text"
+        .formatted(
+            OperationId.TAX_OBLIGATION.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.TAX_REGISTRATION_ID,
             ProtocolOptions.PERIOD_START,
             ProtocolOptions.PERIOD_END,
             ProtocolOptions.OUTPUT);

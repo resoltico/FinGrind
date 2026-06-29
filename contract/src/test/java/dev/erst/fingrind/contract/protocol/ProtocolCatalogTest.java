@@ -100,12 +100,16 @@ class ProtocolCatalogTest {
             "delete-rekey-rollback",
             "restore-rekey-rollback",
             "declare-account",
-            "transfer-period-result"),
+            "declare-tax-registration",
+            "interim-result-sweep",
+            "fiscal-year-close"),
         ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION));
     assertEquals(
         List.of(
             "inspect-book",
             "list-accounts",
+            "list-tax-registrations",
+            "tax-obligation",
             "get-posting",
             "list-postings",
             "account-balance",
@@ -114,10 +118,20 @@ class ProtocolCatalogTest {
             "period-summary",
             "financial-position",
             "income-statement",
+            "cash-flow-statement",
             "changes-in-equity"),
         ProtocolCatalog.operationNames(OperationCategory.QUERY));
     assertEquals(
-        List.of("execute-plan", "preflight-entry", "post-entry"),
+        List.of(
+            "execute-plan",
+            "preflight-entry",
+            "record-sale",
+            "record-expense",
+            "record-owner-contribution",
+            "record-owner-withdrawal",
+            "record-opening-position",
+            "record-reversal",
+            "post-entry"),
         ProtocolCatalog.operationNames(OperationCategory.WRITE));
   }
 
@@ -219,6 +233,26 @@ class ProtocolCatalogTest {
   }
 
   @Test
+  void artifactOutputCatalog_publishesStableFormatsAndOptions() {
+    assertEquals("pdf", ProtocolArtifactOutput.pdfFormat());
+    assertEquals("book-key-file", ProtocolArtifactOutput.bookKeyFileFormat());
+    assertEquals("backup-book-file", ProtocolArtifactOutput.backupBookFileFormat());
+    assertEquals("backup-book-key-file", ProtocolArtifactOutput.backupBookKeyFileFormat());
+    assertEquals("rollback-book-file", ProtocolArtifactOutput.rollbackBookFileFormat());
+    assertEquals(
+        "--new-book-key-file <existing-path>",
+        ProtocolArtifactOutput.replacementBookKeyFile().option());
+    assertEquals(
+        "--backup-book-file <path>", ProtocolArtifactOutput.selectedBackupBookFile().option());
+    assertEquals(
+        "--backup-book-key-file <path>",
+        ProtocolArtifactOutput.selectedBackupBookKeyFile().option());
+    assertEquals("--rollback-book-file <path>", ProtocolArtifactOutput.rollbackBookFile().option());
+    assertEquals(
+        "--book-file <path>", ProtocolArtifactOutput.discoveredRollbackBookFile().option());
+  }
+
+  @Test
   void bookkeepingKernelFacts_requireBuiltInStatementsToMatchImplementedCapabilities() {
     BookkeepingKernelFacts kernel = ProtocolCatalog.domain().bookkeepingKernel();
 
@@ -236,19 +270,53 @@ class ProtocolCatalogTest {
   void bookkeepingKernelFacts_publishCurrentExecutableKernelInventory() {
     BookkeepingKernelFacts kernel = ProtocolCatalog.domain().bookkeepingKernel();
     assertEquals(
-        dev.erst.fingrind.core.AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL
+        dev.erst.fingrind.core.AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL
             .value(),
         kernel.scope());
     assertEquals(
-        List.of("financial-position", "income-statement", "changes-in-equity"),
+        List.of(
+            "financial-position", "income-statement", "cash-flow-statement", "changes-in-equity"),
         kernel.builtInStatements());
     assertEquals(
-        List.of("financial-position", "income-statement", "changes-in-equity"),
+        List.of(
+            "financial-position", "income-statement", "cash-flow-statement", "changes-in-equity"),
         kernel.reportCapabilities().stream().map(ReportCapabilityFacts::statementId).toList());
     assertTrue(
         kernel.reportCapabilities().stream()
-            .allMatch(reportCapability -> reportCapability.comparativeSupported()));
-    assertTrue(kernel.description().contains("cash-oriented"));
+            .allMatch(
+                reportCapability ->
+                    reportCapability
+                        .comparativeModes()
+                        .equals(List.of("none", "prior-period", "range"))));
+    assertTrue(
+        kernel.reportCapabilities().stream()
+            .allMatch(reportCapability -> "none".equals(reportCapability.comparativeDefault())));
+    assertTrue(kernel.description().contains("internal-management"));
+  }
+
+  @Test
+  void reportCapabilityFacts_rejectEmptyComparativeModesAndMissingDefaults() {
+    IllegalArgumentException emptyModesFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ReportCapabilityFacts(
+                    "financial-position", List.of(), "none", "Statement of financial position."));
+    IllegalArgumentException missingDefaultFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new ReportCapabilityFacts(
+                    "financial-position",
+                    List.of("none", "prior-period"),
+                    "range",
+                    "Statement of financial position."));
+
+    assertEquals(
+        "comparativeModes must contain at least one mode.", emptyModesFailure.getMessage());
+    assertEquals(
+        "comparativeDefault must be present in comparativeModes.",
+        missingDefaultFailure.getMessage());
   }
 
   @Test
@@ -390,13 +458,18 @@ class ProtocolCatalogTest {
                     + operation.options());
       }
       if (!operation.artifactOutputs().isEmpty()) {
-        assertTrue(
-            operation.options().contains(ProtocolOptions.optionalPdfOutSyntax()),
-            () ->
-                "Missing canonical --pdf-out syntax for "
-                    + operation.id().wireName()
-                    + ": "
-                    + operation.options());
+        for (ProtocolArtifactOutput artifactOutput : operation.artifactOutputs()) {
+          assertTrue(
+              operation.options().stream()
+                  .anyMatch(option -> option.contains(artifactOutput.option())),
+              () ->
+                  "Missing canonical artifact option syntax for "
+                      + operation.id().wireName()
+                      + " artifact "
+                      + artifactOutput.format()
+                      + ": "
+                      + operation.options());
+        }
       }
     }
   }
@@ -459,7 +532,8 @@ class ProtocolCatalogTest {
     assertEquals(
         "single-functional-currency-per-book",
         ProtocolCatalog.domain().bookModel().currencyScope());
-    assertEquals("not-supported", ProtocolCatalog.domain().currency().multiCurrencyStatus());
+    assertEquals(
+        "owned-foreign-exchange-only", ProtocolCatalog.domain().currency().multiCurrencyStatus());
     assertEquals("advisory", ProtocolCatalog.domain().preflight().semantics());
     assertFalse(ProtocolCatalog.domain().preflight().commitGuarantee());
     assertEquals(
@@ -560,12 +634,13 @@ class ProtocolCatalogTest {
         List.of(
             "entryKind",
             "effectiveDate",
-            "recipeKind",
             "cashAccountCode",
             "revenueAccountCode",
             "expenseAccountCode",
             "equityAccountCode",
             "amount",
+            "foreignExchange",
+            "tax",
             "lines",
             "openingBalances",
             "evidence",
@@ -576,15 +651,15 @@ class ProtocolCatalogTest {
         List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.journalLineFields());
     assertEquals(
         List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.openingBalanceFields());
+    assertEquals(
+        List.of("transactionAmount", "functionalAmount", "quotedRate", "treatmentKind"),
+        ProtocolPostEntryFields.foreignExchangeFields());
+    assertEquals(
+        List.of("transactionCurrencyAmount", "functionalCurrencyAmount", "quotedOn", "quoteSource"),
+        ProtocolPostEntryFields.quotedRateFields());
     assertEquals(List.of("sourceDocuments", "approvals"), ProtocolPostEntryFields.evidenceFields());
     assertEquals(
-        List.of(
-            "sourceDocumentId",
-            "sourceDocumentType",
-            "documentDate",
-            "capturedAt",
-            "storageLocator",
-            "contentSha256"),
+        List.of("sourceDocumentId", "sourceDocumentType", "documentDate"),
         ProtocolPostEntryFields.sourceDocumentFields());
     assertEquals(
         List.of(
@@ -595,6 +670,12 @@ class ProtocolCatalogTest {
             "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),
         ProtocolPostEntryFields.provenanceFields());
     assertEquals(List.of("priorPostingId", "reason"), ProtocolPostEntryFields.reversalFields());
+    assertEquals("transactionAmount", ProtocolPostEntryFields.ForeignExchange.TRANSACTION_AMOUNT);
+    assertEquals("quotedRate", ProtocolPostEntryFields.ForeignExchange.QUOTED_RATE);
+    assertEquals(
+        "transactionCurrencyAmount",
+        ProtocolPostEntryFields.QuotedRate.TRANSACTION_CURRENCY_AMOUNT);
+    assertEquals("quoteSource", ProtocolPostEntryFields.QuotedRate.QUOTE_SOURCE);
     assertEquals("accountCode", ProtocolSharedRequestFields.ACCOUNT_CODE);
     assertEquals("currencyCode", ProtocolSharedRequestFields.CURRENCY_CODE);
     assertEquals("effectiveDateFrom", ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM);
@@ -647,12 +728,24 @@ class ProtocolCatalogTest {
             "accountCode",
             "accountName",
             "accountType",
-            "accountRole",
             "accountNodeKind",
             "parentAccountCode",
             "financialPositionLineClassification",
-            "profitAndLossLineClassification"),
+            "profitAndLossLineClassification",
+            "cashFlowAssetClassification"),
         ProtocolBookRequestFieldSets.declareAccountFields());
+    assertEquals(
+        Set.of(
+            "taxRegistrationId",
+            "taxRegistrationName",
+            "jurisdiction",
+            "registrationNumber",
+            "payableAccountCode",
+            "recoverableAccountCode",
+            "obligationFrequency",
+            "dueDaysAfterPeriodEnd",
+            "taxCodes"),
+        ProtocolBookRequestFieldSets.declareTaxRegistrationFields());
     assertEquals(
         Set.of("entityName", "functionalCurrency", "fiscalYearStart"),
         ProtocolBookRequestFieldSets.openBookFields());
@@ -660,79 +753,97 @@ class ProtocolCatalogTest {
         Set.copyOf(ProtocolPostEntryFields.topLevelFields()),
         ProtocolPostingRequestFieldSets.postEntryTopLevelFields());
     assertEquals(
-        Set.of("entryKind", "effectiveDate", "lines", "evidence", "provenance"),
+        Set.of("entryKind", "effectiveDate", "lines", "foreignExchange", "evidence", "provenance"),
         ProtocolPostingRequestFieldSets.journalDirectFields());
     assertEquals(
         Set.of(
             "entryKind",
             "effectiveDate",
-            "recipeKind",
             "cashAccountCode",
             "revenueAccountCode",
             "amount",
+            "foreignExchange",
+            "tax",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.cashRevenueRecipeFields());
+        ProtocolPostingRequestFieldSets.saleFields());
     assertEquals(
         Set.of(
             "entryKind",
             "effectiveDate",
-            "recipeKind",
             "expenseAccountCode",
             "cashAccountCode",
             "amount",
+            "foreignExchange",
+            "tax",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.cashExpenseRecipeFields());
+        ProtocolPostingRequestFieldSets.expenseFields());
     assertEquals(
         Set.of(
             "entryKind",
             "effectiveDate",
-            "recipeKind",
             "cashAccountCode",
             "equityAccountCode",
             "amount",
+            "foreignExchange",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.equityContributionRecipeFields());
+        ProtocolPostingRequestFieldSets.ownerContributionFields());
     assertEquals(
         Set.of(
             "entryKind",
             "effectiveDate",
-            "recipeKind",
             "equityAccountCode",
             "cashAccountCode",
             "amount",
+            "foreignExchange",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.equityWithdrawalRecipeFields());
+        ProtocolPostingRequestFieldSets.ownerWithdrawalFields());
     assertEquals(
         Set.of("entryKind", "effectiveDate", "openingBalances", "evidence", "provenance"),
-        ProtocolPostingRequestFieldSets.openAccountingPositionFields());
+        ProtocolPostingRequestFieldSets.openingPositionFields());
     assertEquals(
-        Set.of("entryKind", "effectiveDate", "lines", "evidence", "provenance", "reversal"),
-        ProtocolPostingRequestFieldSets.reversalAdjustmentFields());
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "lines",
+            "foreignExchange",
+            "evidence",
+            "provenance",
+            "reversal"),
+        ProtocolPostingRequestFieldSets.reversalEntryFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.evidenceFields()),
-        ProtocolPostingRequestFieldSets.evidenceFields());
+        ProtocolPostingNestedFieldSets.evidenceFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.sourceDocumentFields()),
-        ProtocolPostingRequestFieldSets.sourceDocumentFields());
+        ProtocolPostingNestedFieldSets.sourceDocumentFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.approvalFields()),
-        ProtocolPostingRequestFieldSets.approvalFields());
+        ProtocolPostingNestedFieldSets.approvalFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.provenanceFields()),
-        ProtocolPostingRequestFieldSets.provenanceFields());
+        ProtocolPostingNestedFieldSets.provenanceFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.journalLineFields()),
-        ProtocolPostingRequestFieldSets.journalLineFields());
+        ProtocolPostingNestedFieldSets.journalLineFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.openingBalanceFields()),
-        ProtocolPostingRequestFieldSets.openingBalanceFields());
+        ProtocolPostingNestedFieldSets.openingBalanceFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.reversalFields()),
-        ProtocolPostingRequestFieldSets.reversalFields());
+        ProtocolPostingNestedFieldSets.reversalFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.taxFields()),
+        ProtocolPostingNestedFieldSets.taxFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.foreignExchangeFields()),
+        ProtocolPostingNestedFieldSets.foreignExchangeFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.quotedRateFields()),
+        ProtocolPostingNestedFieldSets.quotedRateFields());
     assertEquals(
         Set.copyOf(ProtocolLedgerPlanFields.planFields()),
         ProtocolLedgerPlanRequestFieldSets.ledgerPlanFields());

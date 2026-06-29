@@ -11,7 +11,7 @@ public final class KernelAccountingRulesResolver {
   /** Returns the executable built-in policy pack selected by one initialized book identity. */
   public static KernelAccountingRules forBookIdentity(BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    if (AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL.equals(
+    if (AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL.equals(
         bookIdentity.bookDoctrine().accountingKernelProfileId())) {
       return InternalManagementKernelAccountingRules.current();
     }

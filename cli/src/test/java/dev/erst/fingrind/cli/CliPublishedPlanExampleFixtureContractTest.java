@@ -115,7 +115,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
 
     JsonNode committed =
         runJsonCommand(
-            "post-entry",
+            "record-sale",
             "--book-file",
             bookFile.toString(),
             "--book-key-file",
@@ -128,7 +128,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =
         runJsonCommand(
-            "post-entry",
+            "record-reversal",
             "--book-file",
             bookFile.toString(),
             "--book-key-file",

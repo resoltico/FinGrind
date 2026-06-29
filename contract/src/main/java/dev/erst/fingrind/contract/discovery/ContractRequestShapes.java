@@ -1,9 +1,9 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.protocol.SourceDocumentTypePolicyMode;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -24,12 +24,11 @@ public final class ContractRequestShapes {
   public sealed interface RequestShapeDescriptorType
       permits RequestInputDescriptor,
           RequestShapesDescriptor,
-          PostEntryRequestShapeDescriptor,
+          BookkeepingEntryRequestShapeDescriptor,
           DeclareAccountRequestShapeDescriptor,
+          DeclareTaxRegistrationRequestShapeDescriptor,
           LedgerPlanRequestShapeDescriptor,
           EntryKindSemanticsDescriptor,
-          JournalRecipeSemanticsDescriptor,
-          EvidenceProfileDescriptor,
           ReachabilityCellDescriptor,
           EvidenceRequirementDescriptor,
           RequestFieldDescriptor,
@@ -84,8 +83,9 @@ public final class ContractRequestShapes {
   /** Descriptor grouping the current request shapes. */
   public record RequestShapesDescriptor(
       String schemaDialect,
-      @Nullable PostEntryRequestShapeDescriptor postEntry,
+      @Nullable BookkeepingEntryRequestShapeDescriptor bookkeepingEntry,
       @Nullable DeclareAccountRequestShapeDescriptor declareAccount,
+      @Nullable DeclareTaxRegistrationRequestShapeDescriptor declareTaxRegistration,
       @Nullable LedgerPlanRequestShapeDescriptor ledgerPlan)
       implements RequestShapeDescriptorType {
     /** Validates one grouped request-shape descriptor payload. */
@@ -94,30 +94,38 @@ public final class ContractRequestShapes {
     }
   }
 
-  /** Descriptor for the posting request shape shared by single-step and plan execution. */
-  public record PostEntryRequestShapeDescriptor(
+  /**
+   * Descriptor for the bookkeeping-entry request shape shared by single-step and plan execution.
+   */
+  public record BookkeepingEntryRequestShapeDescriptor(
       List<RequestFieldDescriptor> topLevelFields,
       List<RequestFieldDescriptor> lineFields,
       List<RequestFieldDescriptor> openingBalanceFields,
+      List<RequestFieldDescriptor> foreignExchangeFields,
+      List<RequestFieldDescriptor> quotedRateFields,
+      List<RequestFieldDescriptor> taxFields,
       List<RequestFieldDescriptor> evidenceFields,
       List<RequestFieldDescriptor> sourceDocumentFields,
       List<RequestFieldDescriptor> approvalFields,
       List<RequestFieldDescriptor> provenanceFields,
       List<RequestFieldDescriptor> reversalFields,
       List<EntryKindSemanticsDescriptor> entryKindSemantics,
-      List<JournalRecipeSemanticsDescriptor> journalRecipeSemantics,
-      List<EvidenceProfileDescriptor> evidenceProfiles,
       List<ReachabilityCellDescriptor> reachabilityMatrix,
       EvidenceRequirementDescriptor evidenceRequirement,
       List<EnumVocabularyDescriptor> enumVocabularies,
       Map<String, Object> schema)
       implements RequestShapeDescriptorType {
-    /** Validates one post-entry request-shape descriptor payload. */
-    public PostEntryRequestShapeDescriptor {
+    /** Validates one bookkeeping-entry request-shape descriptor payload. */
+    public BookkeepingEntryRequestShapeDescriptor {
       topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
       lineFields = ContractDescriptorValidation.copyList(lineFields, "lineFields");
       openingBalanceFields =
           ContractDescriptorValidation.copyList(openingBalanceFields, "openingBalanceFields");
+      foreignExchangeFields =
+          ContractDescriptorValidation.copyList(foreignExchangeFields, "foreignExchangeFields");
+      quotedRateFields =
+          ContractDescriptorValidation.copyList(quotedRateFields, "quotedRateFields");
+      taxFields = ContractDescriptorValidation.copyList(taxFields, "taxFields");
       evidenceFields = ContractDescriptorValidation.copyList(evidenceFields, "evidenceFields");
       sourceDocumentFields =
           ContractDescriptorValidation.copyList(sourceDocumentFields, "sourceDocumentFields");
@@ -127,10 +135,6 @@ public final class ContractRequestShapes {
       reversalFields = ContractDescriptorValidation.copyList(reversalFields, "reversalFields");
       entryKindSemantics =
           ContractDescriptorValidation.copyList(entryKindSemantics, "entryKindSemantics");
-      journalRecipeSemantics =
-          ContractDescriptorValidation.copyList(journalRecipeSemantics, "journalRecipeSemantics");
-      evidenceProfiles =
-          ContractDescriptorValidation.copyList(evidenceProfiles, "evidenceProfiles");
       reachabilityMatrix =
           ContractDescriptorValidation.copyList(reachabilityMatrix, "reachabilityMatrix");
       evidenceRequirement =
@@ -156,13 +160,30 @@ public final class ContractRequestShapes {
     }
   }
 
+  /** Descriptor for the declare-tax-registration request shape. */
+  public record DeclareTaxRegistrationRequestShapeDescriptor(
+      List<RequestFieldDescriptor> topLevelFields,
+      List<RequestFieldDescriptor> taxCodeFields,
+      List<EnumVocabularyDescriptor> enumVocabularies,
+      Map<String, Object> schema)
+      implements RequestShapeDescriptorType {
+    /** Validates one declare-tax-registration request-shape descriptor payload. */
+    public DeclareTaxRegistrationRequestShapeDescriptor {
+      topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
+      taxCodeFields = ContractDescriptorValidation.copyList(taxCodeFields, "taxCodeFields");
+      enumVocabularies =
+          ContractDescriptorValidation.copyList(enumVocabularies, "enumVocabularies");
+      schema = ContractDescriptorValidation.copySchemaMap(schema, "schema");
+    }
+  }
+
   /** Descriptor for the ledger-plan request shape. */
   public record LedgerPlanRequestShapeDescriptor(
       List<RequestFieldDescriptor> topLevelFields,
       List<RequestFieldDescriptor> stepFields,
       List<RequestFieldDescriptor> queryFields,
       List<RequestFieldDescriptor> assertionFields,
-      PostEntryRequestShapeDescriptor postingModel,
+      BookkeepingEntryRequestShapeDescriptor postingModel,
       List<LedgerStepKind> administrationStepKinds,
       List<LedgerStepKind> queryStepKinds,
       List<LedgerStepKind> writeStepKinds,
@@ -189,12 +210,16 @@ public final class ContractRequestShapes {
     }
   }
 
-  /** Descriptor for one top-level posting entry kind's request semantics. */
+  /** Descriptor for one bookkeeping-entry kind's request semantics. */
   public record EntryKindSemanticsDescriptor(
       BookkeepingEntryKind entryKind,
       List<String> requiredTopLevelFields,
+      List<String> optionalTopLevelFields,
       List<String> forbiddenTopLevelFields,
-      String evidenceProfileId,
+      List<String> requiredSourceDocumentFields,
+      String sourceDocumentTypeMode,
+      List<String> acceptedSourceDocumentTypes,
+      String sourceDocumentTypeSemantics,
       String semantics)
       implements RequestShapeDescriptorType {
     /** Validates one posting-entry-kind semantics descriptor payload. */
@@ -202,49 +227,17 @@ public final class ContractRequestShapes {
       entryKind = ContractDescriptorValidation.requireValue(entryKind, "entryKind");
       requiredTopLevelFields =
           ContractDescriptorValidation.copyList(requiredTopLevelFields, "requiredTopLevelFields");
+      optionalTopLevelFields =
+          ContractDescriptorValidation.copyList(optionalTopLevelFields, "optionalTopLevelFields");
       forbiddenTopLevelFields =
           ContractDescriptorValidation.copyList(forbiddenTopLevelFields, "forbiddenTopLevelFields");
-      evidenceProfileId =
-          ContractDescriptorValidation.requireText(evidenceProfileId, "evidenceProfileId");
-      semantics = ContractDescriptorValidation.requireText(semantics, "semantics");
-    }
-  }
-
-  /** Descriptor for one optional journal recipe's request semantics. */
-  public record JournalRecipeSemanticsDescriptor(
-      JournalRecipeKind recipeKind,
-      List<String> requiredTopLevelFields,
-      List<String> forbiddenTopLevelFields,
-      String evidenceProfileId,
-      String semantics)
-      implements RequestShapeDescriptorType {
-    /** Validates one journal-recipe semantics descriptor payload. */
-    public JournalRecipeSemanticsDescriptor {
-      recipeKind = ContractDescriptorValidation.requireValue(recipeKind, "recipeKind");
-      requiredTopLevelFields =
-          ContractDescriptorValidation.copyList(requiredTopLevelFields, "requiredTopLevelFields");
-      forbiddenTopLevelFields =
-          ContractDescriptorValidation.copyList(forbiddenTopLevelFields, "forbiddenTopLevelFields");
-      evidenceProfileId =
-          ContractDescriptorValidation.requireText(evidenceProfileId, "evidenceProfileId");
-      semantics = ContractDescriptorValidation.requireText(semantics, "semantics");
-    }
-  }
-
-  /** Descriptor for one canonical evidence profile. */
-  public record EvidenceProfileDescriptor(
-      String profileId,
-      String sourceDocumentTypeMode,
-      List<String> acceptedSourceDocumentTypes,
-      String sourceDocumentTypeSemantics,
-      String semantics)
-      implements RequestShapeDescriptorType {
-    /** Validates one evidence-profile descriptor payload. */
-    public EvidenceProfileDescriptor {
-      profileId = ContractDescriptorValidation.requireText(profileId, "profileId");
+      requiredSourceDocumentFields =
+          ContractDescriptorValidation.copyList(
+              requiredSourceDocumentFields, "requiredSourceDocumentFields");
       sourceDocumentTypeMode =
           ContractDescriptorValidation.requireText(
               sourceDocumentTypeMode, "sourceDocumentTypeMode");
+      SourceDocumentTypePolicyMode.fromWireValue(sourceDocumentTypeMode);
       acceptedSourceDocumentTypes =
           ContractDescriptorValidation.copyList(
               acceptedSourceDocumentTypes, "acceptedSourceDocumentTypes");
@@ -275,8 +268,7 @@ public final class ContractRequestShapes {
   }
 
   /** Descriptor for the non-negotiable source-document evidence contract. */
-  public record EvidenceRequirementDescriptor(
-      String description, int minimumSourceDocuments, List<String> requiredSourceDocumentFields)
+  public record EvidenceRequirementDescriptor(String description, int minimumSourceDocuments)
       implements RequestShapeDescriptorType {
     /** Validates one evidence-requirement descriptor payload. */
     public EvidenceRequirementDescriptor {
@@ -284,9 +276,6 @@ public final class ContractRequestShapes {
       if (minimumSourceDocuments < 1) {
         throw new IllegalArgumentException("minimumSourceDocuments must be at least one.");
       }
-      requiredSourceDocumentFields =
-          ContractDescriptorValidation.copyList(
-              requiredSourceDocumentFields, "requiredSourceDocumentFields");
     }
   }
 

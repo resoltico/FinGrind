@@ -39,26 +39,25 @@ def _verify_quick_start_request(bundle_root: Path) -> None:
     quick_start_request = json.loads(
         (bundle_root / "quick-start-request.json").read_text(encoding="utf-8")
     )
-    lines = quick_start_request.get("lines")
     require(
-        quick_start_request.get("entryKind") == "JOURNAL",
-        "bundled quick-start request did not publish the canonical direct-journal entry kind",
+        quick_start_request.get("entryKind") == "SALE",
+        "bundled quick-start request did not publish the canonical sale entry kind",
     )
     require(
         quick_start_request.get("recipeKind") is None,
-        "bundled quick-start request leaked one recipe shortcut into the canonical first-post sample",
+        "bundled quick-start request leaked one retired recipe field into the canonical first-post sample",
     )
     require(
-        isinstance(lines, list) and len(lines) == 2,
-        "bundled quick-start request did not publish the canonical first-post journal lines",
+        quick_start_request.get("cashAccountCode") == "cash",
+        "bundled quick-start request did not seed the canonical cash account",
     )
     require(
-        lines[0].get("accountCode") == "cash" and lines[0].get("side") == "DEBIT",
-        "bundled quick-start request did not debit the seeded cash account in its first journal line",
+        quick_start_request.get("revenueAccountCode") == "service-revenue",
+        "bundled quick-start request did not seed the canonical revenue account",
     )
     require(
-        lines[1].get("accountCode") == "service-revenue" and lines[1].get("side") == "CREDIT",
-        "bundled quick-start request did not credit the seeded service-revenue account in its second journal line",
+        quick_start_request.get("amount") == {"currencyCode": "EUR", "minorUnits": "1000"},
+        "bundled quick-start request did not publish the canonical sale amount",
     )
     provenance = quick_start_request.get("provenance")
     require(

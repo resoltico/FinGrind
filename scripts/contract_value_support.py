@@ -107,42 +107,38 @@ def string_array(document: dict[str, object], key: str) -> list[str]:
     return normalized
 
 
-def load_operation_ids(document: dict[str, object], schema: dict[str, object]) -> dict[str, str]:
+def load_operation_ids(document: dict[str, object]) -> dict[str, str]:
     operation_ids: dict[str, str] = {}
-    declared_enum_names: set[str] = set()
-    for semantic_key, raw_enum_name in schema.items():
-        normalized_semantic_key = semantic_key.strip() if isinstance(semantic_key, str) else ""
-        if not normalized_semantic_key or not re.fullmatch(
-            r"[a-z][a-zA-Z0-9]*", normalized_semantic_key
-        ):
-            raise ValueError(
-                "operation-id schema keys must be non-blank lower-camel semantic names"
-            )
-        normalized_enum_name = raw_enum_name.strip() if isinstance(raw_enum_name, str) else ""
-        if not normalized_enum_name or not re.fullmatch(r"[A-Z][A-Z0-9_]*", normalized_enum_name):
-            raise ValueError("operation-id schema values must be non-blank upper-snake enum names")
-        if normalized_semantic_key in operation_ids:
-            raise ValueError(
-                f"operation-id contract semantic key must be unique: {normalized_semantic_key}"
-            )
-        if normalized_enum_name in declared_enum_names:
-            raise ValueError(
-                f"operation-id schema enum mapping must be unique: {normalized_enum_name}"
-            )
-        declared_enum_names.add(normalized_enum_name)
-        operation_ids[normalized_semantic_key] = required_value(document, normalized_enum_name)
-
     for enum_name, wire_name in document.items():
         normalized_enum_name = enum_name.strip() if isinstance(enum_name, str) else ""
         if not normalized_enum_name or not re.fullmatch(r"[A-Z][A-Z0-9_]*", normalized_enum_name):
             raise ValueError("operation-id contract keys must be non-blank upper-snake enum names")
-        if normalized_enum_name not in declared_enum_names:
+        normalized_semantic_key = operation_id_semantic_key(normalized_enum_name)
+        if normalized_semantic_key in operation_ids:
             raise ValueError(
-                f"operation-id contract declared an enum without one canonical semantic key: {normalized_enum_name}"
+                f"operation-id contract semantic key must be unique: {normalized_semantic_key}"
             )
         normalized_wire_name = wire_name.strip() if isinstance(wire_name, str) else ""
         if not normalized_wire_name:
             raise ValueError(
                 f"operation-id contract value must be one non-blank string: {normalized_enum_name}"
             )
+        operation_ids[normalized_semantic_key] = normalized_wire_name
     return operation_ids
+
+
+def operation_id_semantic_key(enum_name: str) -> str:
+    parts = enum_name.split("_")
+    if not parts or any(not part for part in parts):
+        raise ValueError(
+            f"operation-id contract key must be one non-blank upper-snake enum name: {enum_name}"
+        )
+    lower_head = parts[0].lower()
+    tail = "".join(part.lower().capitalize() for part in parts[1:])
+    semantic_key = lower_head + tail
+    if not re.fullmatch(r"[a-z][a-zA-Z0-9]*", semantic_key):
+        raise ValueError(
+            "operation-id contract semantic key must resolve to one non-blank lower-camel name: "
+            f"{enum_name}"
+        )
+    return semantic_key

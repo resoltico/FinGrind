@@ -4,10 +4,12 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import java.util.Objects;
 
 /** Maps local bookkeeping-administration rejections into the published contract. */
-final class BookkeepingAdministrationRejectionPublishedMapper {
+public final class BookkeepingAdministrationRejectionPublishedMapper {
   private BookkeepingAdministrationRejectionPublishedMapper() {}
 
-  static BookAdministrationRejection toPublished(BookkeepingAdministrationRejection rejection) {
+  /** Translates one local bookkeeping-administration rejection into the published contract. */
+  public static BookAdministrationRejection toPublished(
+      BookkeepingAdministrationRejection rejection) {
     Objects.requireNonNull(rejection, "rejection");
     if (rejection instanceof BookkeepingAdministrationRejection.BookAlreadyInitialized) {
       return new BookAdministrationRejection.BookAlreadyInitialized();
@@ -19,22 +21,36 @@ final class BookkeepingAdministrationRejectionPublishedMapper {
       return new BookAdministrationRejection.BookContainsSchema();
     }
     if (rejection
-        instanceof BookkeepingAdministrationRejection.PeriodResultTransferMustStartAt conflict) {
-      return new BookAdministrationRejection.PeriodResultTransferMustStartAt(
+        instanceof BookkeepingAdministrationRejection.InterimResultSweepMustStartAt conflict) {
+      return new BookAdministrationRejection.InterimResultSweepMustStartAt(
           conflict.requiredEffectiveDateFrom());
     }
     if (rejection
-        instanceof BookkeepingAdministrationRejection.PeriodResultTransferFutureDate conflict) {
-      return new BookAdministrationRejection.PeriodResultTransferFutureDate(
+        instanceof BookkeepingAdministrationRejection.InterimResultSweepFutureDate conflict) {
+      return new BookAdministrationRejection.InterimResultSweepFutureDate(
           conflict.attemptedEffectiveDateTo());
     }
     if (rejection
         instanceof
-        BookkeepingAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary conflict) {
-      return new BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary(
+        BookkeepingAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary conflict) {
+      return new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
           conflict.attemptedEffectiveDateFrom(),
           conflict.attemptedEffectiveDateTo(),
           conflict.fiscalYearStart());
+    }
+    if (rejection
+        instanceof BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt conflict) {
+      return new BookAdministrationRejection.FiscalYearCloseMustStartAt(
+          conflict.requiredEffectiveDateFrom());
+    }
+    if (rejection instanceof BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt conflict) {
+      return new BookAdministrationRejection.FiscalYearCloseMustEndAt(
+          conflict.requiredEffectiveDateTo());
+    }
+    if (rejection
+        instanceof BookkeepingAdministrationRejection.FiscalYearCloseFutureDate conflict) {
+      return new BookAdministrationRejection.FiscalYearCloseFutureDate(
+          conflict.attemptedEffectiveDateTo());
     }
     return toPublishedAccountStructureRejection(rejection);
   }
@@ -47,11 +63,6 @@ final class BookkeepingAdministrationRejectionPublishedMapper {
               conflict.accountCode(),
               conflict.existingAccountType(),
               conflict.requestedAccountType());
-      case BookkeepingAdministrationRejection.AccountRoleConflict conflict ->
-          new BookAdministrationRejection.AccountRoleConflict(
-              conflict.accountCode(),
-              conflict.existingAccountRole(),
-              conflict.requestedAccountRole());
       case BookkeepingAdministrationRejection.AccountTaxonomyConflict conflict ->
           new BookAdministrationRejection.AccountTaxonomyConflict(
               conflict.accountCode(),
@@ -69,12 +80,6 @@ final class BookkeepingAdministrationRejectionPublishedMapper {
               conflict.requestedAccountType(),
               conflict.parentAccountCode(),
               conflict.parentAccountType());
-      case BookkeepingAdministrationRejection.ParentAccountRoleConflict conflict ->
-          new BookAdministrationRejection.ParentAccountRoleConflict(
-              conflict.accountCode(),
-              conflict.requestedAccountRole(),
-              conflict.parentAccountCode(),
-              conflict.parentAccountRole());
       case BookkeepingAdministrationRejection.ParentAccountNotHeader conflict ->
           new BookAdministrationRejection.ParentAccountNotHeader(
               conflict.accountCode(),
@@ -89,12 +94,12 @@ final class BookkeepingAdministrationRejectionPublishedMapper {
       case BookkeepingAdministrationRejection.AccountHierarchyCycle conflict ->
           new BookAdministrationRejection.AccountHierarchyCycle(
               conflict.accountCode(), conflict.parentAccountCode());
-      case BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing conflict ->
-          new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+      case BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing conflict ->
+          new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
               conflict.requiredFinancialPositionLineClassification(),
               conflict.inactiveCandidateAccountCodes());
-      case BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous conflict ->
-          new BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
+      case CloseTargetAccountCandidateAmbiguous conflict ->
+          new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous(
               conflict.requiredFinancialPositionLineClassification(),
               conflict.candidateAccountCodes());
       default ->

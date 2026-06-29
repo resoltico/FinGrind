@@ -26,7 +26,6 @@ final class FinGrindCli {
       ProtocolCatalog.distribution().bundleRuntimeDistribution().wireValue();
 
   private final CliFailureResponseWriter failureWriter;
-  private final CliDiagnosticsWriter diagnosticsWriter;
   private final CliExecutionContext executionContext;
 
   static FinGrindCli standard(
@@ -95,7 +94,6 @@ final class FinGrindCli {
     CliRequestReader requestReader = new CliRequestReader(inputStream);
     CliOutputChannel outputChannel = new CliOutputChannel(outputStream, diagnosticsStream);
     this.failureWriter = new CliFailureResponseWriter(outputChannel);
-    this.diagnosticsWriter = new CliDiagnosticsWriter(diagnosticsStream);
     CliMetadata metadata = new CliMetadata();
     Clock resolvedClock = Objects.requireNonNull(clock, "clock");
     CliBookLifecycleWorkflow resolvedLifecycleWorkflow =
@@ -132,11 +130,7 @@ final class FinGrindCli {
         new CliQueryCommandExecutor(bookReadResponseWriter, failureWriter, resolvedReadWorkflow);
     CliReportCommandExecutor reportCommandExecutor =
         new CliReportCommandExecutor(
-            reportResponseWriter,
-            failureWriter,
-            diagnosticsWriter,
-            resolvedReadWorkflow,
-            pdfExporter);
+            reportResponseWriter, failureWriter, resolvedReadWorkflow, pdfExporter);
     this.executionContext =
         new CliExecutionContext(
             administrativeCommandExecutor,

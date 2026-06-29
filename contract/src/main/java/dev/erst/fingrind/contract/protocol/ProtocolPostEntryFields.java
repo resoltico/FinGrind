@@ -11,12 +11,13 @@ public final class ProtocolPostEntryFields {
     return List.of(
         TopLevel.ENTRY_KIND,
         TopLevel.EFFECTIVE_DATE,
-        TopLevel.RECIPE_KIND,
         TopLevel.CASH_ACCOUNT_CODE,
         TopLevel.REVENUE_ACCOUNT_CODE,
         TopLevel.EXPENSE_ACCOUNT_CODE,
         TopLevel.EQUITY_ACCOUNT_CODE,
         TopLevel.AMOUNT,
+        TopLevel.FOREIGN_EXCHANGE,
+        TopLevel.TAX,
         TopLevel.LINES,
         TopLevel.OPENING_BALANCES,
         TopLevel.EVIDENCE,
@@ -55,10 +56,7 @@ public final class ProtocolPostEntryFields {
     return List.of(
         SourceDocument.SOURCE_DOCUMENT_ID,
         SourceDocument.SOURCE_DOCUMENT_TYPE,
-        SourceDocument.DOCUMENT_DATE,
-        SourceDocument.CAPTURED_AT,
-        SourceDocument.STORAGE_LOCATOR,
-        SourceDocument.CONTENT_SHA256);
+        SourceDocument.DOCUMENT_DATE);
   }
 
   /** Returns approval evidence fields in stable wire order. */
@@ -77,16 +75,40 @@ public final class ProtocolPostEntryFields {
     return List.of(Reversal.PRIOR_POSTING_ID, Reversal.REASON);
   }
 
+  /** Returns request-side tax-selection fields in stable wire order. */
+  public static List<String> taxFields() {
+    return List.of(Tax.TAX_REGISTRATION_ID, Tax.TAX_CODE);
+  }
+
+  /** Returns request-side foreign-exchange fields in stable wire order. */
+  public static List<String> foreignExchangeFields() {
+    return List.of(
+        ForeignExchange.TRANSACTION_AMOUNT,
+        ForeignExchange.FUNCTIONAL_AMOUNT,
+        ForeignExchange.QUOTED_RATE,
+        ForeignExchange.TREATMENT_KIND);
+  }
+
+  /** Returns quoted-rate request fields in stable wire order. */
+  public static List<String> quotedRateFields() {
+    return List.of(
+        QuotedRate.TRANSACTION_CURRENCY_AMOUNT,
+        QuotedRate.FUNCTIONAL_CURRENCY_AMOUNT,
+        QuotedRate.QUOTED_ON,
+        QuotedRate.QUOTE_SOURCE);
+  }
+
   /** Top-level posting request fields. */
   public static final class TopLevel {
     public static final String ENTRY_KIND = "entryKind";
     public static final String EFFECTIVE_DATE = "effectiveDate";
-    public static final String RECIPE_KIND = "recipeKind";
     public static final String CASH_ACCOUNT_CODE = "cashAccountCode";
     public static final String REVENUE_ACCOUNT_CODE = "revenueAccountCode";
     public static final String EXPENSE_ACCOUNT_CODE = "expenseAccountCode";
     public static final String EQUITY_ACCOUNT_CODE = "equityAccountCode";
     public static final String AMOUNT = "amount";
+    public static final String FOREIGN_EXCHANGE = "foreignExchange";
+    public static final String TAX = "tax";
     public static final String LINES = "lines";
     public static final String OPENING_BALANCES = "openingBalances";
     public static final String EVIDENCE = "evidence";
@@ -142,9 +164,6 @@ public final class ProtocolPostEntryFields {
     public static final String SOURCE_DOCUMENT_ID = "sourceDocumentId";
     public static final String SOURCE_DOCUMENT_TYPE = "sourceDocumentType";
     public static final String DOCUMENT_DATE = "documentDate";
-    public static final String CAPTURED_AT = "capturedAt";
-    public static final String STORAGE_LOCATOR = "storageLocator";
-    public static final String CONTENT_SHA256 = "contentSha256";
 
     private SourceDocument() {}
   }
@@ -168,5 +187,34 @@ public final class ProtocolPostEntryFields {
     public static final String KIND = "kind";
 
     private Reversal() {}
+  }
+
+  /** Request-side tax-selection fields. */
+  public static final class Tax {
+    public static final String TAX_REGISTRATION_ID =
+        ProtocolTaxRegistrationFields.TAX_REGISTRATION_ID;
+    public static final String TAX_CODE = ProtocolTaxRegistrationFields.TaxCode.TAX_CODE;
+
+    private Tax() {}
+  }
+
+  /** Request-side foreign-exchange facts. */
+  public static final class ForeignExchange {
+    public static final String TRANSACTION_AMOUNT = "transactionAmount";
+    public static final String FUNCTIONAL_AMOUNT = "functionalAmount";
+    public static final String QUOTED_RATE = "quotedRate";
+    public static final String TREATMENT_KIND = "treatmentKind";
+
+    private ForeignExchange() {}
+  }
+
+  /** Request-side quoted exchange-rate facts. */
+  public static final class QuotedRate {
+    public static final String TRANSACTION_CURRENCY_AMOUNT = "transactionCurrencyAmount";
+    public static final String FUNCTIONAL_CURRENCY_AMOUNT = "functionalCurrencyAmount";
+    public static final String QUOTED_ON = "quotedOn";
+    public static final String QUOTE_SOURCE = "quoteSource";
+
+    private QuotedRate() {}
   }
 }

@@ -23,7 +23,6 @@ import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -117,6 +116,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(directAccountsText.contains(nextAccountCursor.wireValue()));
     assertTrue(directAccountsTextWithoutCursor.contains("(none)"));
     assertTrue(accountsCsv.contains("\"Cash, reserve\""));
+    assertTrue(
+        accountsCsv.contains("accounts,account:1000,,account,accounts,1000,\"Cash, reserve\""));
     assertTrue(postingText.contains("Correlation id"));
     assertTrue(postingText.contains("posting-0"));
     assertTrue(postingText.contains("actor-1"));
@@ -127,6 +128,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(postingRegisterText.contains("Next cursor"));
     assertTrue(postingRegisterText.contains(nextCursor.wireValue()));
     assertTrue(postingRegisterCsv.contains("posting-1"));
+    assertTrue(
+        postingRegisterCsv.contains(
+            "postings,posting:posting-1,postings,2026-04-07,2026-04-07T10:15:30Z,posting-1"));
   }
 
   @Test
@@ -134,7 +138,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     BookIdentity doctrinalIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Acme Studio")),
-            dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     String inspection =
@@ -146,13 +150,24 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 1,
                 Instant.parse("2026-04-07T10:15:30Z"),
                 doctrinalIdentity,
-                resultTransferReadyInspection()));
+                readyCloseReadiness()));
 
     assertTrue(inspection.contains("Accounting kernel"));
-    assertTrue(inspection.contains("Internal management cash bookkeeping"));
-    assertTrue(inspection.contains("Accounting basis"));
-    assertTrue(inspection.contains("Cash basis"));
+    assertTrue(inspection.contains("Internal management bookkeeping"));
+    assertTrue(inspection.contains("Accounting posture"));
+    assertTrue(inspection.contains("Non-statutory internal management"));
     assertTrue(inspection.contains("Functional currency"));
+  }
+
+  @Test
+  void renderPostingText_showsCallerAuthoredEntryFactsWhenAvailable() {
+    String postingText =
+        CliQueryOutputRenderer.renderPostingText(bookIdentity(), salePostingFact());
+
+    assertTrue(postingText.contains("Entry facts"));
+    assertTrue(postingText.contains("Cash account"));
+    assertTrue(postingText.contains("service-revenue"));
+    assertTrue(postingText.contains("10.00"));
   }
 
   @Test
@@ -160,7 +175,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     BookIdentity registeredIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Registered Studio")),
-            dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     String inspection =
@@ -172,7 +187,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 1,
                 Instant.parse("2026-04-07T10:15:30Z"),
                 registeredIdentity,
-                resultTransferReadyInspection()));
+                readyCloseReadiness()));
 
     assertFalse(inspection.contains("Policy profile"));
     assertFalse(inspection.contains("Internal Management Single Entity V1"));
@@ -189,13 +204,15 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 1,
                 Instant.parse("2026-04-07T10:15:30Z"),
                 bookIdentity(),
-                new BookInspection.ResultTransferReadiness(
-                    false,
-                    FinancialPositionLineClassification.RESULT_HOLDING,
-                    null,
-                    "result-holding-account-candidate-missing",
-                    "No active declared result-holding account satisfies required classification 'RESULT_HOLDING'.",
-                    List.of())));
+                new BookInspection.CloseReadiness(
+                    blockedCloseTarget(
+                        FinancialPositionLineClassification.RESULT_HOLDING,
+                        "close-target-account-candidate-missing",
+                        "No active declared result-holding account satisfies required classification 'RESULT_HOLDING'.",
+                        List.of()),
+                    readyCloseTarget(
+                        FinancialPositionLineClassification.RETAINED_ACCUMULATED,
+                        new AccountCode("3300")))));
 
     assertTrue(inspection.contains("Candidate accounts"));
     assertTrue(inspection.contains("(none)"));
@@ -212,13 +229,15 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 1,
                 Instant.parse("2026-04-07T10:15:30Z"),
                 bookIdentity(),
-                new BookInspection.ResultTransferReadiness(
-                    false,
-                    FinancialPositionLineClassification.RESULT_HOLDING,
-                    null,
-                    "result-holding-account-candidate-ambiguous",
-                    "More than one active declared result-holding account satisfies required classification 'RESULT_HOLDING': 3200, 3210.",
-                    List.of(new AccountCode("3200"), new AccountCode("3210")))));
+                new BookInspection.CloseReadiness(
+                    blockedCloseTarget(
+                        FinancialPositionLineClassification.RESULT_HOLDING,
+                        "close-target-account-candidate-ambiguous",
+                        "More than one active declared result-holding account satisfies required classification 'RESULT_HOLDING': 3200, 3210.",
+                        List.of(new AccountCode("3200"), new AccountCode("3210"))),
+                    readyCloseTarget(
+                        FinancialPositionLineClassification.RETAINED_ACCUMULATED,
+                        new AccountCode("3300")))));
 
     assertTrue(inspection.contains("Candidate accounts"));
     assertTrue(inspection.contains("3200, 3210"));
@@ -282,12 +301,12 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     List<String> ledgerTextRow =
         CliQueryRowFormatAccess.accountLedgerTextRow(cashAccount, ledgerEntry);
     assertEquals("2026-04-07", ledgerTextRow.get(0));
-    assertEquals("Reversal adjustment", ledgerTextRow.get(1));
+    assertEquals("Reversal", ledgerTextRow.get(1));
     assertEquals("10.00", ledgerTextRow.get(2));
     assertEquals("4.00", ledgerTextRow.get(3));
     assertEquals("6.00 Debit", ledgerTextRow.get(4));
     assertEquals("2000", ledgerTextRow.get(5));
-    assertEquals("posting-", ledgerTextRow.get(6));
+    assertEquals("posting-1", ledgerTextRow.get(6));
 
     String emptyAccountsText =
         CliAccountPageOutputRenderer.renderText(accountPage(List.of(), 50, Optional.empty()));
@@ -344,28 +363,31 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new AccountCode("1100"),
             new AccountName("Petty Cash"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1000")),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                Optional.empty()),
+                Optional.empty(),
+                Optional.of(
+                    dev.erst.fingrind.core.CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     String generatedKeyText =
-        CliMutationOutputRenderer.renderGeneratedBookKeyFileText(
+        CliBookAccessOutputRenderer.renderGeneratedBookKeyFileText(
             new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
                 Path.of("office/keys/book.key"), "base64url-no-padding", 256, "0600"));
     String openBookText =
-        CliMutationOutputRenderer.renderOpenBookText(
+        CliBookAccessOutputRenderer.renderOpenBookText(
             Path.of("office/report.sqlite"),
             openedBookResult(Instant.parse("2026-04-07T10:15:30Z")));
     String rekeyBookText =
-        CliMutationOutputRenderer.renderRekeyBookText(
+        CliBookAccessOutputRenderer.renderRekeyBookText(
             new RekeyBookResult.Rekeyed(Path.of("office/report.sqlite")),
             new BookAccess.PassphraseSource.KeyFile(Path.of("office/keys/rotated.key")));
-    String declaredAccountText = CliMutationOutputRenderer.renderDeclaredAccountText(cashAccount);
-    String childAccountText = CliMutationOutputRenderer.renderDeclaredAccountText(childAccount);
+    String declaredAccountText =
+        CliMutationOutputRenderer.renderAccountDeclarationText("declared", cashAccount);
+    String childAccountText =
+        CliMutationOutputRenderer.renderAccountDeclarationText("renamed", childAccount);
     String preflightText =
         CliMutationOutputRenderer.renderPreflightAcceptedText(
             new PostEntryResult.PreflightAccepted(
@@ -376,7 +398,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 new PostingId("posting-committed"),
                 new IdempotencyKey("coverage-idem"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     assertTrue(generatedKeyText.contains("Book Key File Generated"));
     assertTrue(openBookText.contains("Book Initialized"));
     assertTrue(openBookText.contains("Entity"));
@@ -387,8 +410,11 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(rekeyBookText.contains("Replacement secret source"));
     assertTrue(rekeyBookText.contains("Replacement key file"));
     assertTrue(declaredAccountText.contains("Account Declared"));
+    assertTrue(declaredAccountText.contains("Outcome"));
+    assertTrue(declaredAccountText.contains("declared"));
     assertTrue(declaredAccountText.contains("Parent account"));
     assertTrue(declaredAccountText.contains("(none)"));
+    assertTrue(childAccountText.contains("Account Renamed"));
     assertTrue(childAccountText.contains("Parent account"));
     assertTrue(childAccountText.contains("1000"));
     assertTrue(preflightText.contains("Entry Preflight Passed"));
@@ -408,6 +434,37 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(committedText.contains("coverage-idem"));
   }
 
+  @Test
+  void renderMutationAndReportSupportHelpers_coverRemainingOutcomeAndPluralizationBranches() {
+    DeclaredAccount account = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
+
+    String reactivatedText =
+        CliMutationOutputRenderer.renderAccountDeclarationText("reactivated", account);
+    String unchangedText =
+        CliMutationOutputRenderer.renderAccountDeclarationText("unchanged", account);
+    String fallbackText =
+        CliMutationOutputRenderer.renderAccountDeclarationText("updated", account);
+
+    assertTrue(reactivatedText.contains("Account Reactivated"));
+    assertTrue(unchangedText.contains("Account Unchanged"));
+    assertTrue(fallbackText.contains("Account Updated"));
+    assertEquals(
+        "(none)", CliReportRenderSupport.comparativeReferenceLine(EffectiveDateRange.unbounded()));
+    assertEquals(
+        CliQueryScopeText.dateRange(null, LocalDate.parse("2026-03-31")),
+        CliReportRenderSupport.comparativeReferenceLine(
+            EffectiveDateRange.to(LocalDate.parse("2026-03-31"))));
+    assertEquals(
+        CliQueryScopeText.noMatchesLabel("activity lines"),
+        CliReportRenderSupport.emptySectionLinesMessage("Activities"));
+    assertEquals(
+        CliQueryScopeText.noMatchesLabel("asset lines"),
+        CliReportRenderSupport.emptySectionLinesMessage("Assets"));
+    assertEquals(
+        CliQueryScopeText.noMatchesLabel("income lines"),
+        CliReportRenderSupport.emptySectionLinesMessage("Income"));
+  }
+
   private static void assertBalanceOutputSamples(
       String accountBalanceText,
       String accountBalanceCsv,
@@ -417,14 +474,17 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountBalanceText.contains("Effective date range"));
     assertTrue(
         accountBalanceCsv.contains(
-            "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+            "recordKind,accountCode,accountName,accountType,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+    assertTrue(
+        accountBalanceCsv.contains(
+            "account-balance,account-balance:1000:EUR,,balance,account-balance,1000"));
     assertTrue(trialBalanceText.contains("Trial Balance"));
     assertTrue(trialBalanceText.contains("As of"));
     assertTrue(trialBalanceText.contains("Balance state"));
     assertTrue(trialBalanceText.contains("Imbalanced"));
     assertTrue(
         trialBalanceCsv.contains(
-            "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,accountRole,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+            "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
   }
 
   private static void assertLedgerOutputSamples(
@@ -438,11 +498,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountLedgerText.contains("2000"));
     assertTrue(
         accountLedgerCsv.contains(
-            "recordKind,accountCode,accountName,accountType,accountRole,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
-    assertTrue(accountLedgerCsv.contains("entry,1000,\"Cash, reserve\",ASSET,ORDINARY,DEBIT,true"));
-    assertTrue(
-        accountLedgerCsv.contains(
-            "counterpart-account,1000,\"Cash, reserve\",ASSET,ORDINARY,DEBIT,true"));
+            "recordKind,accountCode,accountName,accountType,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
+    assertTrue(accountLedgerCsv.contains("account-ledger,1000,\"Cash, reserve\",ASSET,DEBIT,true"));
     List<String> accountLedgerCsvLines = accountLedgerCsv.lines().toList();
     int accountLedgerCsvColumnCount = csvFieldCount(accountLedgerCsvLines.getFirst());
     for (String line : accountLedgerCsvLines) {
@@ -462,7 +519,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void formatterHelpers_coverCsvRowsAndRemainingRoleLabels() {
+  void formatterHelpers_coverCsvRowsAndRemainingAccountLabels() {
     DeclaredAccount contraRevenueAccount =
         declaredAccount(
             "2900",
@@ -488,17 +545,13 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals(
         "(not a reversal)", CliQueryLabelFormatAccess.reversalTargetText(directPostingFact));
     assertEquals("posting-0", CliQueryLabelFormatAccess.reversalTargetText(postingFact));
-    assertEquals("Calculated line", CliQueryLabelFormatAccess.displayLineRole(Optional.empty()));
-    assertEquals(
-        "Contra",
-        CliQueryLabelFormatAccess.displayLineRole(Optional.of(AccountRole.POLARITY_INVERTED)));
     assertEquals(
         "Header", CliQueryLabelFormatAccess.displayAccountNodeKindLabel(AccountNodeKind.HEADER));
     assertEquals(
         "Postable",
         CliQueryLabelFormatAccess.displayAccountNodeKindLabel(AccountNodeKind.POSTABLE));
     assertEquals(
-        "cash-receipt document-idem-1 on 2026-04-07 at vault://fixtures/document-idem-1",
+        "cash-receipt document-idem-1 on 2026-04-07",
         CliQueryRowFormatAccess.postingSourceDocumentsText(postingFact));
     assertEquals(
         "document-idem-1", CliQueryRowFormatAccess.postingSourceDocumentIdsText(postingFact));
@@ -511,22 +564,14 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         List.of("EUR", "10.00", "4.00", "6.00", "DEBIT"),
         CliQueryRowFormatAccess.balanceCsvRow(balance));
     assertEquals(
-        List.of(
-            "2026-04-07",
-            "Reversal adjustment",
-            "Reversal",
-            "10.00",
-            "10.00",
-            "1000, 2000",
-            "posting-"),
+        List.of("2026-04-07", "Reversal", "Reversal", "10.00", "10.00", "1000, 2000", "posting-1"),
         CliQueryRowFormatAccess.postingRegisterTextRow(postingFact));
     assertEquals(
         List.of(
             "2900",
             "Sales returns",
             "REVENUE",
-            "POLARITY_INVERTED",
-            "DEBIT",
+            "CREDIT",
             "true",
             "EUR",
             "10.00",
@@ -540,58 +585,49 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         CliQueryRowFormatAccess.counterpartAccounts(contraRevenueAccount, postingFact));
     assertEquals(
         List.of(
-            "2900",
-            "Sales returns",
-            "REVENUE",
-            "POLARITY_INVERTED",
-            "DEBIT",
-            "EUR",
-            "10.00",
-            "4.00",
-            "6.00",
-            "DEBIT"),
+            "2900", "Sales returns", "REVENUE", "CREDIT", "EUR", "10.00", "4.00", "6.00", "DEBIT"),
         CliQueryRowFormatAccess.periodActivityCsvRow(
             new PeriodAccountActivityRow(contraRevenueAccount, balance)));
-    assertEquals(
-        "Contra", CliQueryLabelFormatAccess.displayAccountRoleLabel(AccountRole.POLARITY_INVERTED));
     assertEquals(
         "All posting kinds",
         CliQueryLabelFormatAccess.displayPostingCoverage(PostingCoverage.ALL_POSTING_KINDS));
     assertEquals(
-        "Non-transfer postings",
+        "Non-closing postings",
         CliQueryLabelFormatAccess.displayPostingCoverage(PostingCoverage.NON_CLOSING_POSTINGS));
     assertEquals("Standard", CliQueryLabelFormatAccess.displayPostingKind(PostingKind.STANDARD));
     assertEquals(
-        "Period result transfer",
-        CliQueryLabelFormatAccess.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
+        "Interim result sweep",
+        CliQueryLabelFormatAccess.displayPostingKind(PostingKind.INTERIM_RESULT_SWEEP));
+    assertEquals(
+        "Fiscal-year close",
+        CliQueryLabelFormatAccess.displayPostingKind(PostingKind.FISCAL_YEAR_CLOSE));
     assertEquals(
         "Opening accounting position",
         CliQueryLabelFormatAccess.displayPostingKind(PostingKind.OPENING_BALANCE));
     assertEquals(
-        "Journal", CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.JOURNAL));
+        "Direct journal",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.DIRECT_JOURNAL));
     assertEquals(
-        "Cash revenue",
-        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.CASH_REVENUE));
+        "Sale", CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.SALE));
     assertEquals(
-        "Cash expense",
-        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.CASH_EXPENSE));
+        "Expense", CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.EXPENSE));
     assertEquals(
-        "Equity contribution",
-        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.EQUITY_CONTRIBUTION));
+        "Owner contribution",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.OWNER_CONTRIBUTION));
     assertEquals(
-        "Equity withdrawal",
-        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.EQUITY_WITHDRAWAL));
+        "Owner withdrawal",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.OWNER_WITHDRAWAL));
     assertEquals(
-        "Opening accounting position",
-        CliQueryLabelFormatAccess.displayPostingOriginKind(
-            PostingOriginKind.OPEN_ACCOUNTING_POSITION));
+        "Opening position",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.OPENING_POSITION));
     assertEquals(
-        "Reversal adjustment",
-        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.REVERSAL_ADJUSTMENT));
+        "Reversal", CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.REVERSAL));
     assertEquals(
-        "Result transfer",
-        CliQueryLabelFormatAccess.displayPostingOriginKind(
-            PostingOriginKind.PERIOD_RESULT_TRANSFER));
+        "Interim result sweep",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.INTERIM_RESULT_SWEEP));
+    assertEquals(
+        "Fiscal-year close",
+        CliQueryLabelFormatAccess.displayPostingOriginKind(PostingOriginKind.FISCAL_YEAR_CLOSE));
   }
 
   @Test
@@ -601,7 +637,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new AccountCode("3200"),
             new AccountName("Contributed capital account"),
             AccountType.EQUITY,
-            AccountRole.ORDINARY,
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("3000")),
@@ -614,7 +649,6 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new AccountCode("5000"),
             new AccountName("Cost of sales"),
             AccountType.EXPENSE,
-            fixtureAccountRole(AccountType.EXPENSE, NormalBalance.DEBIT),
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("5100")),

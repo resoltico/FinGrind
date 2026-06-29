@@ -1,7 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping.posting;
 
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
@@ -11,7 +10,6 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
 import java.util.Objects;
-import java.util.Optional;
 
 /** Local bookkeeping posting service used before any public published-language projection. */
 public final class BookkeepingPostingService {
@@ -37,9 +35,10 @@ public final class BookkeepingPostingService {
   /** Validates whether one posting command is admissible for later commit. */
   public PostingPreflightOutcome preflight(PostingCommand command) {
     Objects.requireNonNull(command, "command");
-    Optional<BookkeepingPostingRejection> rejection = deterministicRejectionFor(command);
-    if (rejection.isPresent()) {
-      return new PostingPreflightOutcome.Rejected(rejection.orElseThrow());
+    PostingAcceptancePolicy.Decision decision =
+        acceptancePolicy.decisionFor(command, validationStore);
+    if (decision instanceof PostingAcceptancePolicy.Decision.Rejected rejected) {
+      return new PostingPreflightOutcome.Rejected(rejected.rejection());
     }
     return new PostingPreflightOutcome.Accepted(
         command.requestProvenance().idempotencyKey(), command.journalEntry().effectiveDate());
@@ -48,23 +47,24 @@ public final class BookkeepingPostingService {
   /** Commits one posting command into the selected book using the configured posting id source. */
   public PostingCommitResult commit(PostingCommand command) {
     Objects.requireNonNull(command, "command");
-    Optional<BookkeepingPostingRejection> rejection = deterministicRejectionFor(command);
-    if (rejection.isPresent()) {
-      return new PostingCommitResult.Rejected(rejection.orElseThrow());
-    }
-    PostingDraft postingDraft =
-        new PostingDraft(
-            command.journalEntry(),
-            command.postingLineage(),
-            command.postingKind(),
-            command.postingOriginKind(),
-            command.evidence(),
-            new CommittedProvenance(
-                command.requestProvenance(), clock.instant(), command.sourceChannel()));
-    return commitStore.commit(postingDraft, postingIdGenerator);
-  }
-
-  private Optional<BookkeepingPostingRejection> deterministicRejectionFor(PostingCommand command) {
-    return acceptancePolicy.rejectionFor(command, validationStore);
+    return switch (acceptancePolicy.decisionFor(command, validationStore)) {
+      case PostingAcceptancePolicy.Decision.Replay replay ->
+          new PostingCommitResult.Committed(replay.postingFact(), true);
+      case PostingAcceptancePolicy.Decision.Rejected rejected ->
+          new PostingCommitResult.Rejected(rejected.rejection());
+      case PostingAcceptancePolicy.Decision.Accepted accepted ->
+          commitStore.commit(
+              new PostingDraft(
+                  command.journalEntry(),
+                  command.postingLineage(),
+                  command.postingKind(),
+                  command.postingOriginKind(),
+                  command.evidence(),
+                  accepted.requestFingerprint(),
+                  new CommittedProvenance(
+                      command.requestProvenance(), clock.instant(), command.sourceChannel()),
+                  command.originatingEntry()),
+              postingIdGenerator);
+    };
   }
 }

@@ -21,14 +21,17 @@ final class CliQueryRejectionPayloadMapper {
 
   private CliQueryRejectionPayloadMapper() {}
 
-  static CliEnvelopeJsonModels.RejectedEnvelope rejectedEnvelope(BookQueryRejection rejection) {
-    return new CliEnvelopeJsonModels.RejectedEnvelope(
+  static CliEnvelopeJsonModels.Envelope<?> rejectedEnvelope(BookQueryRejection rejection) {
+    return new CliEnvelopeJsonModels.Envelope<>(
         ProtocolEnvelopeStatus.REJECTED,
+        null,
         BookQueryRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         rejectionHint(rejection),
         null,
-        rejectionDetails(rejection));
+        null,
+        rejectionDetails(rejection),
+        null);
   }
 
   private static String rejectionHint(BookQueryRejection rejection) {

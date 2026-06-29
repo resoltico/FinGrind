@@ -65,6 +65,7 @@ final class CliDiscoveryTestSupport {
     return new HelpDescriptor(
         applicationIdentity.application(),
         applicationIdentity.version(),
+        canonical.protocolVersion(),
         applicationIdentity.description(),
         usage,
         bookModel,
@@ -72,6 +73,7 @@ final class CliDiscoveryTestSupport {
         requestShapes,
         canonical.requestTemplate(),
         canonical.declareAccountTemplate(),
+        canonical.declareTaxRegistrationTemplate(),
         canonical.planTemplate(),
         commands,
         quickStart,
@@ -86,9 +88,10 @@ final class CliDiscoveryTestSupport {
         Objects.requireNonNull(requestShapes.declareAccount());
     return new ContractRequestShapes.RequestShapesDescriptor(
         requestShapes.schemaDialect(),
-        requestShapes.postEntry(),
+        requestShapes.bookkeepingEntry(),
         new ContractRequestShapes.DeclareAccountRequestShapeDescriptor(
             declareAccount.topLevelFields(), List.of(), declareAccount.schema()),
+        requestShapes.declareTaxRegistration(),
         requestShapes.ledgerPlan());
   }
 

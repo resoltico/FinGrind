@@ -5,39 +5,27 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
+import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-contract templates and scaffold examples. */
 final class MachineContractTemplatesCatalog {
-  private static final String SAMPLE_EFFECTIVE_DATE = "2026-01-15";
-  private static final String SAMPLE_SOURCE_DOCUMENT_ID = ScaffoldPlaceholders.SOURCE_DOCUMENT_ID;
-  private static final String SAMPLE_SOURCE_DOCUMENT_TYPE = "cash-receipt";
-  private static final String SAMPLE_DOCUMENT_DATE = "2026-01-15";
-  private static final String SAMPLE_CAPTURED_AT = "2026-01-15T09:00:00Z";
-  private static final String SAMPLE_STORAGE_LOCATOR = ScaffoldPlaceholders.STORAGE_LOCATOR;
-  private static final String SAMPLE_CONTENT_SHA256 = ScaffoldPlaceholders.CONTENT_SHA256;
-  private static final String SAMPLE_ACTOR_ID = ScaffoldPlaceholders.ACTOR_ID;
-  private static final String SAMPLE_COMMAND_ID = ScaffoldPlaceholders.COMMAND_ID;
-  private static final String SAMPLE_IDEMPOTENCY_KEY = ScaffoldPlaceholders.IDEMPOTENCY_KEY;
-  private static final String SAMPLE_CAUSATION_ID = ScaffoldPlaceholders.CAUSATION_ID;
   private static final String DECLARE_ACCOUNT_CASH_JSON =
       """
       {
         "accountCode": "cash-reserve",
         "accountName": "Cash Reserve",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
-        "financialPositionLineClassification": "CURRENT_ASSET"
+        "financialPositionLineClassification": "CURRENT_ASSET",
+        "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
       }
       """;
 
@@ -47,7 +35,6 @@ final class MachineContractTemplatesCatalog {
         "accountCode": "misc-revenue",
         "accountName": "Misc Revenue",
         "accountType": "REVENUE",
-        "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
         "profitAndLossLineClassification": "OTHER_REVENUE"
       }
@@ -64,43 +51,7 @@ final class MachineContractTemplatesCatalog {
   }
 
   static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
-        BookkeepingEntryKind.JOURNAL,
-        null,
-        SAMPLE_EFFECTIVE_DATE,
-        null,
-        null,
-        null,
-        null,
-        null,
-        directJournalLines(),
-        null,
-        new ContractTemplates.AccountingEvidenceTemplateDescriptor(
-            List.of(
-                new ContractTemplates.SourceDocumentTemplateDescriptor(
-                    SAMPLE_SOURCE_DOCUMENT_ID,
-                    SAMPLE_SOURCE_DOCUMENT_TYPE,
-                    SAMPLE_DOCUMENT_DATE,
-                    SAMPLE_CAPTURED_AT,
-                    SAMPLE_STORAGE_LOCATOR,
-                    SAMPLE_CONTENT_SHA256)),
-            List.of()),
-        new ContractTemplates.ProvenanceTemplateDescriptor(
-            SAMPLE_ACTOR_ID,
-            ActorType.PERSON,
-            SAMPLE_COMMAND_ID,
-            SAMPLE_IDEMPOTENCY_KEY,
-            SAMPLE_CAUSATION_ID,
-            null),
-        null);
-  }
-
-  private static List<ContractTemplates.JournalLineTemplateDescriptor> directJournalLines() {
-    return List.of(
-        new ContractTemplates.JournalLineTemplateDescriptor(
-            "cash", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
-        new ContractTemplates.JournalLineTemplateDescriptor(
-            "service-revenue", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000")));
+    return MachineContractPostEntryVariantSchemas.template(BookkeepingEntryKind.SALE);
   }
 
   static ContractTemplates.DeclareAccountTemplateDescriptor declareAccountTemplate() {
@@ -108,11 +59,37 @@ final class MachineContractTemplatesCatalog {
         "cash-reserve",
         "Cash Reserve",
         AccountType.ASSET,
-        AccountRole.ORDINARY,
         AccountNodeKind.POSTABLE,
         null,
         FinancialPositionLineClassification.CURRENT_ASSET,
-        null);
+        null,
+        CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT);
+  }
+
+  static ContractTemplates.DeclareTaxRegistrationTemplateDescriptor
+      declareTaxRegistrationTemplate() {
+    return new ContractTemplates.DeclareTaxRegistrationTemplateDescriptor(
+        "vat-lv",
+        "Latvia VAT",
+        new dev.erst.fingrind.contract.tax.TaxJurisdiction("LV"),
+        "LV40000000000",
+        "tax-payable-vat",
+        "tax-recoverable-vat",
+        dev.erst.fingrind.contract.tax.TaxObligationFrequency.MONTHLY,
+        20,
+        List.of(
+            new ContractTemplates.DeclareTaxCodeTemplateDescriptor(
+                "vat-standard-sale",
+                "VAT Standard Sale",
+                210_000,
+                dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE,
+                dev.erst.fingrind.contract.tax.TaxApplicationKind.OUTPUT_SALE),
+            new ContractTemplates.DeclareTaxCodeTemplateDescriptor(
+                "vat-standard-expense",
+                "VAT Standard Expense",
+                210_000,
+                dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE,
+                dev.erst.fingrind.contract.tax.TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE)));
   }
 
   static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate() {
@@ -130,10 +107,10 @@ final class MachineContractTemplatesCatalog {
                 null,
                 null),
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                "post-journal",
-                LedgerStepKind.POST_ENTRY,
+                OperationId.RECORD_SALE.wireName(),
+                LedgerStepKind.RECORD_SALE,
                 null,
-                requestTemplate(),
+                MachineContractPostEntryVariantSchemas.template(BookkeepingEntryKind.SALE),
                 null,
                 null,
                 null,
@@ -161,18 +138,58 @@ final class MachineContractTemplatesCatalog {
     if (selectedOperation == null) {
       return null;
     }
-    ContractRequestShapes.RequestShapesDescriptor canonical =
-        MachineContractRequestShapeDescriptors.requestShapes();
     return switch (selectedOperation.id()) {
-      case POST_ENTRY, PREFLIGHT_ENTRY ->
+      case POST_ENTRY ->
           new ContractRequestShapes.RequestShapesDescriptor(
-              canonical.schemaDialect(), canonical.postEntry(), null, null);
+              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+              MachineContractPostEntrySchemas.descriptor(
+                  ProtocolPostingRequestTopics.requiredEntryKind(selectedOperation.id())
+                      .orElseThrow()),
+              null,
+              null,
+              null);
+      case PREFLIGHT_ENTRY ->
+          new ContractRequestShapes.RequestShapesDescriptor(
+              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+              MachineContractPostEntrySchemas.descriptor(),
+              null,
+              null,
+              null);
+      case RECORD_SALE,
+          RECORD_EXPENSE,
+          RECORD_OWNER_CONTRIBUTION,
+          RECORD_OWNER_WITHDRAWAL,
+          RECORD_OPENING_POSITION,
+          RECORD_REVERSAL ->
+          new ContractRequestShapes.RequestShapesDescriptor(
+              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+              MachineContractPostEntrySchemas.descriptor(
+                  requiredPostingEntryKind(selectedOperation)),
+              null,
+              null,
+              null);
       case DECLARE_ACCOUNT ->
           new ContractRequestShapes.RequestShapesDescriptor(
-              canonical.schemaDialect(), null, canonical.declareAccount(), null);
+              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+              null,
+              MachineContractDeclareAccountSchemas.descriptor(),
+              null,
+              null);
+      case DECLARE_TAX_REGISTRATION ->
+          new ContractRequestShapes.RequestShapesDescriptor(
+              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+              null,
+              null,
+              MachineContractDeclareTaxRegistrationSchemas.descriptor(),
+              null);
       case EXECUTE_PLAN ->
           new ContractRequestShapes.RequestShapesDescriptor(
-              canonical.schemaDialect(), null, null, canonical.ledgerPlan());
+              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+              null,
+              null,
+              null,
+              MachineContractLedgerPlanSchemas.descriptor(
+                  planTemplate().canonicalPostingTemplate().entryKind()));
       default -> null;
     };
   }
@@ -183,7 +200,18 @@ final class MachineContractTemplatesCatalog {
       return null;
     }
     return switch (selectedOperation.id()) {
-      case POST_ENTRY, PREFLIGHT_ENTRY -> requestTemplate();
+      case POST_ENTRY ->
+          MachineContractPostEntryVariantSchemas.template(
+              ProtocolPostingRequestTopics.scaffoldEntryKind(selectedOperation.id()));
+      case PREFLIGHT_ENTRY -> requestTemplate();
+      case RECORD_SALE,
+          RECORD_EXPENSE,
+          RECORD_OWNER_CONTRIBUTION,
+          RECORD_OWNER_WITHDRAWAL,
+          RECORD_OPENING_POSITION,
+          RECORD_REVERSAL ->
+          MachineContractPostEntryVariantSchemas.template(
+              ProtocolPostingRequestTopics.scaffoldEntryKind(selectedOperation.id()));
       default -> null;
     };
   }
@@ -196,11 +224,31 @@ final class MachineContractTemplatesCatalog {
     return selectedOperation.id() == OperationId.DECLARE_ACCOUNT ? declareAccountTemplate() : null;
   }
 
+  static ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor
+      declareTaxRegistrationTemplateFor(@Nullable ProtocolOperation selectedOperation) {
+    if (selectedOperation == null) {
+      return null;
+    }
+    return selectedOperation.id() == OperationId.DECLARE_TAX_REGISTRATION
+        ? declareTaxRegistrationTemplate()
+        : null;
+  }
+
   static ContractPlanTemplates.@Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplateFor(
       @Nullable ProtocolOperation selectedOperation) {
     if (selectedOperation == null) {
       return null;
     }
     return selectedOperation.id() == OperationId.EXECUTE_PLAN ? planTemplate() : null;
+  }
+
+  static BookkeepingEntryKind requiredPostingEntryKind(ProtocolOperation selectedOperation) {
+    return ProtocolPostingRequestTopics.requiredEntryKind(selectedOperation.id())
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Operation "
+                        + selectedOperation.id().wireName()
+                        + " does not own one typed posting template."));
   }
 }

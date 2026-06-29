@@ -60,14 +60,14 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
         bookAccess(bookPath),
         database -> {
           assertEquals(
-              new SqliteStatementQueries.OptionalTextRow(Optional.empty(), true),
+              new SqliteOptionalTextRow(Optional.empty(), true),
               SqliteStatementQueries.loadOptionalTextRow(
                   database, "select 'x' where 0", statement -> {}));
           assertEquals(
-              new SqliteStatementQueries.OptionalTextRow(Optional.of("x"), true),
+              new SqliteOptionalTextRow(Optional.of("x"), true),
               SqliteStatementQueries.loadOptionalTextRow(database, "select 'x'", statement -> {}));
           assertEquals(
-              new SqliteStatementQueries.OptionalTextRow(Optional.of("x"), false),
+              new SqliteOptionalTextRow(Optional.of("x"), false),
               SqliteStatementQueries.loadOptionalTextRow(
                   database, "select 'x' union all select 'y'", statement -> {}));
         });
@@ -93,22 +93,20 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
                               """
                               select
                                   'Acme Studio',
-                                  'internal-management-cash-bookkeeping-kernel',
-                                  'CASH_BASIS',
+                                  'internal-management-bookkeeping-kernel',
                                   'NON_STATUTORY_INTERNAL_MANAGEMENT',
                                   'OWNER_MANAGED_SINGLE_ENTITY',
-                                  'OWNER_MANAGED_SERVICE_CASH',
+                                  'OWNER_MANAGED_SERVICE',
                                   'EUR',
                                   1,
                                   1
                               union all
                               select
                                   'Acme Studio',
-                                  'internal-management-cash-bookkeeping-kernel',
-                                  'CASH_BASIS',
+                                  'internal-management-bookkeeping-kernel',
                                   'NON_STATUTORY_INTERNAL_MANAGEMENT',
                                   'OWNER_MANAGED_SINGLE_ENTITY',
-                                  'OWNER_MANAGED_SERVICE_CASH',
+                                  'OWNER_MANAGED_SERVICE',
                                   'EUR',
                                   1,
                                   1

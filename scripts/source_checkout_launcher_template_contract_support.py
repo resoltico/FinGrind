@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-def assert_canonical_journal_lines(
+def assert_canonical_direct_journal_lines(
     document: dict[str, object],
     *,
     label: str,
@@ -27,12 +27,46 @@ def assert_canonical_journal_lines(
         raise SystemExit(f"{label} did not seed the canonical revenue amount scaffold")
 
 
-def assert_request_template(document: dict[str, object], *, label: str) -> None:
-    if document["entryKind"] != "JOURNAL":
-        raise SystemExit(f"{label} did not expose the canonical journal entry kind")
+def assert_canonical_sale_fields(
+    document: dict[str, object],
+    *,
+    label: str,
+) -> None:
+    if document.get("cashAccountCode") != "cash":
+        raise SystemExit(f"{label} did not seed the canonical cash account")
+    if document.get("revenueAccountCode") != "service-revenue":
+        raise SystemExit(f"{label} did not seed the canonical revenue account")
+    if document.get("amount") != {"currencyCode": "EUR", "minorUnits": "1000"}:
+        raise SystemExit(f"{label} did not seed the canonical sale amount scaffold")
+    if "tax" in document:
+        raise SystemExit(f"{label} leaked optional tax selection into the minimal sale scaffold")
+    if "foreignExchange" in document:
+        raise SystemExit(
+            f"{label} leaked optional foreign-exchange facts into the minimal sale scaffold"
+        )
+    if "lines" in document:
+        raise SystemExit(f"{label} leaked raw direct-journal lines into the sale scaffold")
+
+
+def assert_request_template(
+    document: dict[str, object],
+    *,
+    label: str,
+    expected_entry_kind: str,
+) -> None:
+    if document["entryKind"] != expected_entry_kind:
+        raise SystemExit(
+            f"{label} did not expose the canonical {expected_entry_kind.lower()} entry kind"
+        )
     if "postingKind" in document:
         raise SystemExit(f"{label} leaked retired postingKind")
-    assert_canonical_journal_lines(document, label=label)
+    if expected_entry_kind == "DIRECT_JOURNAL":
+        assert_canonical_direct_journal_lines(document, label=label)
+        return
+    if expected_entry_kind == "SALE":
+        assert_canonical_sale_fields(document, label=label)
+        return
+    raise SystemExit(f"{label} requested unsupported entry-kind assertion {expected_entry_kind}")
 
 
 def assert_plan_template(document: dict[str, object]) -> None:
@@ -46,16 +80,32 @@ def assert_plan_template(document: dict[str, object]) -> None:
             "source-checkout launcher plan template leaked doctrine-owned identity fields into open-book input"
         )
     post_entry = document["steps"][1]["posting"]
-    if post_entry["entryKind"] != "JOURNAL":
+    if post_entry["entryKind"] != "SALE":
         raise SystemExit(
-            "source-checkout launcher plan template did not expose the canonical journal entry kind"
+            "source-checkout launcher plan template did not expose the canonical sale entry kind"
         )
     if "postingKind" in post_entry:
         raise SystemExit("source-checkout launcher plan template leaked retired postingKind")
-    assert_canonical_journal_lines(
-        post_entry,
-        label="source-checkout launcher plan template",
-    )
+    if post_entry.get("cashAccountCode") != "cash":
+        raise SystemExit(
+            "source-checkout launcher plan template did not seed the canonical cash account"
+        )
+    if post_entry.get("revenueAccountCode") != "service-revenue":
+        raise SystemExit(
+            "source-checkout launcher plan template did not seed the canonical revenue account"
+        )
+    if post_entry.get("amount") != {"currencyCode": "EUR", "minorUnits": "1000"}:
+        raise SystemExit(
+            "source-checkout launcher plan template did not seed the canonical sale amount"
+        )
+    if "tax" in post_entry:
+        raise SystemExit(
+            "source-checkout launcher plan template leaked optional tax selection into the minimal sale scaffold"
+        )
+    if "foreignExchange" in post_entry:
+        raise SystemExit(
+            "source-checkout launcher plan template leaked optional foreign-exchange facts into the minimal sale scaffold"
+        )
     assertion = document["steps"][2]["assertion"]
     if assertion["accountCode"] != "cash":
         raise SystemExit(

@@ -2,7 +2,6 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.time.LocalDate;
@@ -10,6 +9,8 @@ import java.util.List;
 
 /** Renders changes-in-equity CSV exports apart from the human-focused text view. */
 final class CliChangesInEquityCsvRenderer {
+  private static final String RECORD_KIND = CliCsvExportFamilies.CHANGES_IN_EQUITY;
+
   private CliChangesInEquityCsvRenderer() {}
 
   static String renderCsv(ChangesInEquityReport report) {
@@ -25,7 +26,6 @@ final class CliChangesInEquityCsvRenderer {
             "effectiveDateTo",
             "lineCode",
             "lineName",
-            "lineRole",
             "lineClassification",
             "lineKind",
             "currencyCode",
@@ -42,7 +42,7 @@ final class CliChangesInEquityCsvRenderer {
             "closingNetAmount",
             "closingBalanceSide",
             "message"),
-        (CliReportSurfacePolicy.hasComparative(report)
+        (CliStatementReportSurfacePolicy.hasComparative(report)
                 ? java.util.stream.Stream.concat(
                     csvRows(
                         report,
@@ -96,17 +96,16 @@ final class CliChangesInEquityCsvRenderer {
             .map(
                 row ->
                     List.of(
-                        CliCsvExportFamilies.STATEMENT,
+                        CliCsvExportFamilies.CHANGES_IN_EQUITY,
                         "changes-in-equity-row:" + reportBasis + ":" + row.lineCode(),
                         "",
                         "line",
                         reportBasis,
-                        "row",
+                        RECORD_KIND,
                         effectiveDateFrom,
                         effectiveDateTo,
                         row.lineCode(),
                         row.lineName(),
-                        row.lineRole().map(AccountRole::wireValue).orElse(""),
                         row.lineClassification()
                             .map(FinancialPositionLineClassification::wireValue)
                             .orElse(""),
@@ -134,7 +133,7 @@ final class CliChangesInEquityCsvRenderer {
     }
     return java.util.stream.Stream.of(
         List.of(
-            CliCsvExportFamilies.STATEMENT,
+            CliCsvExportFamilies.CHANGES_IN_EQUITY,
             "changes-in-equity-report-empty:"
                 + reportBasis
                 + ":"
@@ -144,10 +143,9 @@ final class CliChangesInEquityCsvRenderer {
             "",
             "report-empty",
             reportBasis,
-            CliCsvEmptyKinds.REPORT_EMPTY,
+            RECORD_KIND,
             effectiveDateFrom,
             effectiveDateTo,
-            "",
             "",
             "",
             "",
@@ -206,7 +204,7 @@ final class CliChangesInEquityCsvRenderer {
               CurrencyBalance closing =
                   CliReportRenderSupport.balanceForCurrency(closingTotals, currencyCode);
               return List.of(
-                  CliCsvExportFamilies.STATEMENT,
+                  CliCsvExportFamilies.CHANGES_IN_EQUITY,
                   "changes-in-equity-total:"
                       + reportBasis
                       + ":"
@@ -216,12 +214,11 @@ final class CliChangesInEquityCsvRenderer {
                   "",
                   "report-total",
                   reportBasis,
-                  "report-total",
+                  RECORD_KIND,
                   effectiveDateFrom,
                   effectiveDateTo,
                   "report-total",
                   "Report total",
-                  "",
                   "",
                   "REPORT_TOTAL",
                   currencyCode,

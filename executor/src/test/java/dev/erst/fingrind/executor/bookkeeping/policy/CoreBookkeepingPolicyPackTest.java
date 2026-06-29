@@ -47,7 +47,7 @@ class InternalManagementKernelAccountingRulesTest {
                 AccountingBasis.CASH_BASIS,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                BookTemplateId.OWNER_MANAGED_SERVICE_CASH),
+                BookTemplateId.OWNER_MANAGED_SERVICE),
             bookIdentity().functionalCurrency(),
             bookIdentity().fiscalYearStart());
 
@@ -61,9 +61,9 @@ class InternalManagementKernelAccountingRulesTest {
   }
 
   @Test
-  void resultTransferPolicy_closesTemporaryAccountsOnly() {
-    ResultTransferPolicy policy =
-        InternalManagementKernelAccountingRules.current().resultTransferPolicy();
+  void closePostingPolicy_closesTemporaryAccountsOnly() {
+    ClosePostingPolicy policy =
+        InternalManagementKernelAccountingRules.current().closePostingPolicy();
 
     assertEquals(
         FinancialPositionLineClassification.RESULT_HOLDING,

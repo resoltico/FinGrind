@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -21,13 +22,14 @@ import java.util.List;
 public final class LedgerPlanFactMapper {
   private LedgerPlanFactMapper() {}
 
-  /** Expands one declared account into workflow-owned machine facts. */
-  public static List<BookWorkflowFact> declaredAccountFacts(RegisteredAccount account) {
+  /** Expands one account-declaration outcome into workflow-owned machine facts. */
+  public static List<BookWorkflowFact> accountDeclarationFacts(
+      String outcome, RegisteredAccount account) {
     List<BookWorkflowFact> facts = new ArrayList<>();
+    facts.add(BookWorkflowFact.text("outcome", outcome));
     facts.add(BookWorkflowFact.text("accountCode", account.accountCode().value()));
     facts.add(BookWorkflowFact.text("accountName", account.accountName().value()));
     facts.add(BookWorkflowFact.text("accountType", account.accountType().wireValue()));
-    facts.add(BookWorkflowFact.text("accountRole", account.accountRole().wireValue()));
     facts.add(
         BookWorkflowFact.text("accountNodeKind", account.accountTaxonomy().nodeKind().wireValue()));
     account
@@ -66,7 +68,10 @@ public final class LedgerPlanFactMapper {
     facts.add(BookWorkflowFact.flag("hasMore", page.hasMore()));
     page.accounts()
         .forEach(
-            account -> facts.add(BookWorkflowFact.group("account", declaredAccountFacts(account))));
+            account ->
+                facts.add(
+                    BookWorkflowFact.group(
+                        "account", accountDeclarationFacts("declared", account))));
     return List.copyOf(facts);
   }
 
@@ -111,6 +116,9 @@ public final class LedgerPlanFactMapper {
     facts.add(BookWorkflowFact.group("provenance", provenanceFacts(postingFact.provenance())));
     facts.add(BookWorkflowFact.group("evidence", evidenceFacts(postingFact.evidence())));
     postingFact
+        .callerAuthoredEntry()
+        .ifPresent(entry -> facts.add(BookWorkflowFact.group("entry", entryFacts(entry))));
+    postingFact
         .journalEntry()
         .lines()
         .forEach(line -> facts.add(BookWorkflowFact.group("line", journalLineFacts(line))));
@@ -152,7 +160,8 @@ public final class LedgerPlanFactMapper {
   /** Expands one local account-balance view into workflow-owned machine facts. */
   public static List<BookWorkflowFact> balanceFacts(AccountBalanceView view) {
     List<BookWorkflowFact> facts = new ArrayList<>();
-    facts.add(BookWorkflowFact.group("account", declaredAccountFacts(view.account())));
+    facts.add(
+        BookWorkflowFact.group("account", accountDeclarationFacts("declared", view.account())));
     view.effectiveDateRange()
         .effectiveDateFrom()
         .ifPresent(
@@ -223,10 +232,7 @@ public final class LedgerPlanFactMapper {
     return List.of(
         BookWorkflowFact.text("sourceDocumentId", sourceDocument.sourceDocumentId().value()),
         BookWorkflowFact.text("sourceDocumentType", sourceDocument.sourceDocumentType().value()),
-        BookWorkflowFact.text("documentDate", sourceDocument.documentDate().toString()),
-        BookWorkflowFact.text("capturedAt", sourceDocument.capturedAt().toString()),
-        BookWorkflowFact.text("storageLocator", sourceDocument.storageLocator().value()),
-        BookWorkflowFact.text("contentSha256", sourceDocument.contentSha256().value()));
+        BookWorkflowFact.text("documentDate", sourceDocument.documentDate().toString()));
   }
 
   private static List<BookWorkflowFact> approvalFacts(ApprovalReference approval) {
@@ -244,5 +250,59 @@ public final class LedgerPlanFactMapper {
         BookWorkflowFact.text("accountCode", line.accountCode().value()),
         BookWorkflowFact.text("side", line.side().wireValue()),
         BookWorkflowFact.money("amount", MonetaryAmount.of(line.amount().money())));
+  }
+
+  private static List<BookWorkflowFact> entryFacts(BookkeepingEntry entry) {
+    List<BookWorkflowFact> facts = new ArrayList<>();
+    facts.add(BookWorkflowFact.text("entryKind", entry.entryKind().wireValue()));
+    switch (entry) {
+      case BookkeepingEntry.DirectJournal _ -> {}
+      case BookkeepingEntry.Sale sale -> {
+        facts.add(BookWorkflowFact.text("cashAccountCode", sale.cashAccountCode().value()));
+        facts.add(BookWorkflowFact.text("revenueAccountCode", sale.revenueAccountCode().value()));
+        facts.add(BookWorkflowFact.money("amount", sale.amount()));
+      }
+      case BookkeepingEntry.Expense expense -> {
+        facts.add(
+            BookWorkflowFact.text("expenseAccountCode", expense.expenseAccountCode().value()));
+        facts.add(BookWorkflowFact.text("cashAccountCode", expense.cashAccountCode().value()));
+        facts.add(BookWorkflowFact.money("amount", expense.amount()));
+      }
+      case BookkeepingEntry.OwnerContribution contribution -> {
+        facts.add(BookWorkflowFact.text("cashAccountCode", contribution.cashAccountCode().value()));
+        facts.add(
+            BookWorkflowFact.text("equityAccountCode", contribution.equityAccountCode().value()));
+        facts.add(BookWorkflowFact.money("amount", contribution.amount()));
+      }
+      case BookkeepingEntry.OwnerWithdrawal withdrawal -> {
+        facts.add(
+            BookWorkflowFact.text("equityAccountCode", withdrawal.equityAccountCode().value()));
+        facts.add(BookWorkflowFact.text("cashAccountCode", withdrawal.cashAccountCode().value()));
+        facts.add(BookWorkflowFact.money("amount", withdrawal.amount()));
+      }
+      case BookkeepingEntry.OpeningPosition openingPosition ->
+          openingPosition
+              .balances()
+              .forEach(
+                  balance ->
+                      facts.add(
+                          BookWorkflowFact.group(
+                              "openingBalance",
+                              List.of(
+                                  BookWorkflowFact.text(
+                                      "accountCode", balance.accountCode().value()),
+                                  BookWorkflowFact.text("side", balance.side().wireValue()),
+                                  BookWorkflowFact.money("amount", balance.amount())))));
+      case BookkeepingEntry.Reversal reversal ->
+          facts.add(
+              BookWorkflowFact.group(
+                  "reversal",
+                  List.of(
+                      BookWorkflowFact.text(
+                          "priorPostingId",
+                          reversal.reversal().reference().priorPostingId().value()),
+                      BookWorkflowFact.text("reason", reversal.reversal().reason().value()))));
+    }
+    return List.copyOf(facts);
   }
 }

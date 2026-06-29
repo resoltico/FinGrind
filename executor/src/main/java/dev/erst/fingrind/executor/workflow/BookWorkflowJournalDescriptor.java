@@ -2,7 +2,7 @@ package dev.erst.fingrind.executor.workflow;
 
 import java.util.Objects;
 
-/** Internal journal descriptor for one executed workflow step or plan-boundary phase. */
+/** Internal journal descriptor for one executed workflow step or plan-boundary checkpoint. */
 public sealed interface BookWorkflowJournalDescriptor
     permits BookWorkflowJournalDescriptor.Step, BookWorkflowJournalDescriptor.Boundary {
   /** Journal descriptor for one normal plan step. */
@@ -12,10 +12,11 @@ public sealed interface BookWorkflowJournalDescriptor
     }
   }
 
-  /** Journal descriptor for one begin/check/commit/rollback boundary phase. */
-  record Boundary(BookWorkflowBoundaryPhase phase) implements BookWorkflowJournalDescriptor {
+  /** Journal descriptor for one begin/check/commit/rollback boundary checkpoint. */
+  record Boundary(BookWorkflowBoundaryCheckpoint checkpoint)
+      implements BookWorkflowJournalDescriptor {
     public Boundary {
-      Objects.requireNonNull(phase, "phase");
+      Objects.requireNonNull(checkpoint, "checkpoint");
     }
   }
 }

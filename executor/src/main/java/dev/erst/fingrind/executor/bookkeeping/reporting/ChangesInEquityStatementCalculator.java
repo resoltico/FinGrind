@@ -12,6 +12,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityCriteria;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityRowView;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityView;
+import dev.erst.fingrind.executor.bookkeeping.ComparativeRangeResolver;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.policy.DerivedEquityLine;
 import java.time.LocalDate;
@@ -41,11 +42,12 @@ final class ChangesInEquityStatementCalculator {
     BookIdentity bookIdentity = context.bookIdentity();
     PostingCoverage postingCoverage = PostingCoverage.ALL_POSTING_KINDS;
     EffectiveDateRange comparativeRange =
-        context
-            .accountingRules()
-            .statementComparativePolicy()
-            .comparativePeriod(
-                bookIdentity, criteria.effectiveDateFrom(), criteria.effectiveDateTo());
+        ComparativeRangeResolver.period(
+            bookIdentity,
+            criteria.effectiveDateFrom(),
+            criteria.effectiveDateTo(),
+            criteria.comparativeSelection(),
+            context.accountingRules().statementComparativePolicy());
     ChangesInEquitySnapshot currentSnapshot =
         snapshot(
             bookIdentity,
@@ -53,11 +55,7 @@ final class ChangesInEquityStatementCalculator {
             criteria.effectiveDateTo(),
             postingCoverage);
     ChangesInEquitySnapshot comparativeSnapshot =
-        snapshot(
-            bookIdentity,
-            comparativeRange.effectiveDateFrom().orElseThrow(),
-            comparativeRange.effectiveDateTo().orElseThrow(),
-            postingCoverage);
+        comparativeSnapshot(bookIdentity, comparativeRange, postingCoverage);
     return new ChangesInEquityView(
         bookIdentity,
         criteria.effectiveDateFrom(),
@@ -74,6 +72,21 @@ final class ChangesInEquityStatementCalculator {
         comparativeSnapshot.closingTotals());
   }
 
+  private ChangesInEquitySnapshot comparativeSnapshot(
+      BookIdentity bookIdentity,
+      EffectiveDateRange comparativeRange,
+      PostingCoverage postingCoverage) {
+    return PeriodComparativeRangeSupport.boundedRange(comparativeRange)
+        .map(
+            range ->
+                snapshot(
+                    bookIdentity,
+                    range.effectiveDateFrom().orElseThrow(),
+                    range.effectiveDateTo().orElseThrow(),
+                    postingCoverage))
+        .orElseGet(ChangesInEquitySnapshot::empty);
+  }
+
   private ChangesInEquitySnapshot snapshot(
       BookIdentity bookIdentity,
       LocalDate effectiveDateFrom,
@@ -81,16 +94,14 @@ final class ChangesInEquityStatementCalculator {
       PostingCoverage postingCoverage) {
     LocalDate dayBefore = effectiveDateFrom.minusDays(1);
     List<AccountCurrencyTotals> openingTotals =
-        context.reportStore().accountTotals(EffectiveDateRange.to(dayBefore), postingCoverage);
+        context.bookStore().accountTotals(EffectiveDateRange.to(dayBefore), postingCoverage);
     List<AccountCurrencyTotals> movementTotals =
         context
-            .reportStore()
+            .bookStore()
             .accountTotals(
                 EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo), postingCoverage);
     List<AccountCurrencyTotals> closingTotals =
-        context
-            .reportStore()
-            .accountTotals(EffectiveDateRange.to(effectiveDateTo), postingCoverage);
+        context.bookStore().accountTotals(EffectiveDateRange.to(effectiveDateTo), postingCoverage);
     Map<AccountCurrencyKey, AccountCurrencyTotals> openingTotalsByKey =
         indexAccountTotals(openingTotals);
     Map<AccountCurrencyKey, AccountCurrencyTotals> movementTotalsByKey =
@@ -123,19 +134,18 @@ final class ChangesInEquityStatementCalculator {
               account.accountCode().value(),
               account.accountName().value(),
               Optional.of(account.accountType()),
-              Optional.of(account.accountRole()),
               account.accountTaxonomy().financialPositionLineClassification(),
               StatementLineKind.DECLARED_ACCOUNT,
-              ReportingViewSupport.balanceOrZero(openingTotal, key.currencyUnit()),
-              ReportingViewSupport.balanceOrZero(movementTotal, key.currencyUnit()),
-              ReportingViewSupport.balanceOrZero(closingTotal, key.currencyUnit())));
+              ReportingBalanceSupport.balanceOrZero(openingTotal, key.currencyUnit()),
+              ReportingBalanceSupport.balanceOrZero(movementTotal, key.currencyUnit()),
+              ReportingBalanceSupport.balanceOrZero(closingTotal, key.currencyUnit())));
     }
 
     Map<CurrencyUnit, Long> openingCurrentEarnings =
         profitAndLossContributionCalculator.contributionMap(openingTotals);
     Map<CurrencyUnit, Long> closingCurrentEarnings =
         profitAndLossContributionCalculator.contributionMap(closingTotals);
-    ReportingViewSupport.currencyUnits(openingCurrentEarnings, closingCurrentEarnings)
+    ReportingBalanceSupport.currencyUnits(openingCurrentEarnings, closingCurrentEarnings)
         .forEach(
             currencyUnit -> {
               long opening = openingCurrentEarnings.getOrDefault(currencyUnit, 0L);
@@ -146,20 +156,19 @@ final class ChangesInEquityStatementCalculator {
                       currentPeriodResultLine.lineName(),
                       Optional.empty(),
                       Optional.empty(),
-                      Optional.empty(),
                       StatementLineKind.CURRENT_PERIOD_RESULT,
-                      ReportingViewSupport.signedBalance(currencyUnit, opening),
-                      ReportingViewSupport.signedBalance(
+                      ReportingBalanceSupport.signedBalance(currencyUnit, opening),
+                      ReportingBalanceSupport.signedBalance(
                           currencyUnit, Math.subtractExact(closing, opening)),
-                      ReportingViewSupport.signedBalance(currencyUnit, closing)));
+                      ReportingBalanceSupport.signedBalance(currencyUnit, closing)));
             });
 
-    rows.sort(ReportingViewSupport.CHANGES_IN_EQUITY_ROW_ORDER);
+    rows.sort(ReportingRowOrdering.CHANGES_IN_EQUITY_ROW_ORDER);
     return new ChangesInEquitySnapshot(
         rows,
-        ReportingViewSupport.aggregateOpeningTotals(rows),
-        ReportingViewSupport.aggregateMovementTotals(rows),
-        ReportingViewSupport.aggregateClosingTotals(rows));
+        ChangesInEquityTotals.aggregateOpeningTotals(rows),
+        ChangesInEquityTotals.aggregateMovementTotals(rows),
+        ChangesInEquityTotals.aggregateClosingTotals(rows));
   }
 
   @SafeVarargs
@@ -198,6 +207,10 @@ final class ChangesInEquityStatementCalculator {
       List<CurrencyBalance> openingTotals,
       List<CurrencyBalance> movementTotals,
       List<CurrencyBalance> closingTotals) {
+    private static ChangesInEquitySnapshot empty() {
+      return new ChangesInEquitySnapshot(List.of(), List.of(), List.of(), List.of());
+    }
+
     private ChangesInEquitySnapshot {
       rows = List.copyOf(Objects.requireNonNull(rows, "rows"));
       openingTotals = List.copyOf(Objects.requireNonNull(openingTotals, "openingTotals"));

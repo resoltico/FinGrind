@@ -13,18 +13,19 @@ final class CliFinancialPositionReportRenderer {
   static String renderText(FinancialPositionReport report) {
     List<FinancialPositionSection> currentSections =
         CliReportRenderSupport.renderableSections(
-            report.sections(), CliReportSurfacePolicy::hasRenderableFinancialPositionSection);
+            report.sections(),
+            CliStatementSectionSurfacePolicy::hasRenderableFinancialPositionSection);
     List<String> currentEmptySections =
         CliReportRenderSupport.emptyAccountTypeSectionLabels(
             report.sections(),
-            CliReportSurfacePolicy::hasRenderableFinancialPositionSection,
+            CliStatementSectionSurfacePolicy::hasRenderableFinancialPositionSection,
             FinancialPositionSection::accountType);
     String summary =
         CliTextFormat.renderKeyValueBlock(
             summaryRows(report, currentSections, currentEmptySections));
     String sections = currentSections.isEmpty() ? "" : renderSections(currentSections);
     String comparative =
-        !CliReportSurfacePolicy.hasComparative(report)
+        !CliStatementReportSurfacePolicy.hasComparative(report)
             ? ""
             : CliReportRenderSupport.section(
                 "Comparative Financial Position", renderComparative(report));
@@ -51,7 +52,6 @@ final class CliFinancialPositionReportRenderer {
             "accountType",
             "lineCode",
             "lineName",
-            "lineRole",
             "lineType",
             "lineClassification",
             "lineKind",
@@ -61,7 +61,7 @@ final class CliFinancialPositionReportRenderer {
             "netAmount",
             "balanceSide",
             "message"),
-        (CliReportSurfacePolicy.hasComparative(report)
+        (CliStatementReportSurfacePolicy.hasComparative(report)
                 ? java.util.stream.Stream.concat(
                     CliFinancialPositionCsvRows.rows(report, "current", report.sections()),
                     CliFinancialPositionCsvRows.rows(
@@ -106,11 +106,11 @@ final class CliFinancialPositionReportRenderer {
     List<FinancialPositionSection> comparativeSections =
         CliReportRenderSupport.renderableSections(
             report.comparativeSections(),
-            CliReportSurfacePolicy::hasRenderableFinancialPositionSection);
+            CliStatementSectionSurfacePolicy::hasRenderableFinancialPositionSection);
     List<String> emptySections =
         CliReportRenderSupport.emptyAccountTypeSectionLabels(
             report.comparativeSections(),
-            CliReportSurfacePolicy::hasRenderableFinancialPositionSection,
+            CliStatementSectionSurfacePolicy::hasRenderableFinancialPositionSection,
             FinancialPositionSection::accountType);
     List<List<String>> rows = new ArrayList<>();
     rows.add(
@@ -123,7 +123,7 @@ final class CliFinancialPositionReportRenderer {
             "Comparative reference",
             CliReportRenderSupport.comparativeReferenceLine(
                 report.comparativeEffectiveDateRange())));
-    if (CliReportSurfacePolicy.hasComparativeData(report)) {
+    if (CliStatementReportSurfacePolicy.hasComparativeData(report)) {
       rows.add(
           List.of(
               "Sections with data",

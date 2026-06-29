@@ -73,9 +73,10 @@ class PostingValidationStoreTest {
 
   private static PostingOriginKind postingOriginKindFor(PostingKind postingKind) {
     return switch (postingKind) {
-      case STANDARD -> PostingOriginKind.REVERSAL_ADJUSTMENT;
-      case OPENING_BALANCE -> PostingOriginKind.OPEN_ACCOUNTING_POSITION;
-      case PERIOD_RESULT_TRANSFER -> PostingOriginKind.PERIOD_RESULT_TRANSFER;
+      case STANDARD -> PostingOriginKind.REVERSAL;
+      case OPENING_BALANCE -> PostingOriginKind.OPENING_POSITION;
+      case INTERIM_RESULT_SWEEP -> PostingOriginKind.INTERIM_RESULT_SWEEP;
+      case FISCAL_YEAR_CLOSE -> PostingOriginKind.FISCAL_YEAR_CLOSE;
     };
   }
 
@@ -96,7 +97,14 @@ class PostingValidationStoreTest {
     }
 
     @Override
-    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
+        dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<dev.erst.fingrind.executor.spi.StoredRequestPosting> findExistingPosting(
+        IdempotencyKey idempotencyKey) {
       return Optional.empty();
     }
 

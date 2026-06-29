@@ -262,6 +262,34 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_acceptsRemainingTypedRecordCommands() {
+    assertRecordEntry("record-expense");
+    assertRecordEntry("record-owner-contribution");
+    assertRecordEntry("record-owner-withdrawal");
+    assertRecordEntry("record-opening-position");
+  }
+
+  private void assertRecordEntry(String commandName) {
+    RecordEntry command =
+        assertInstanceOf(
+            RecordEntry.class,
+            CliArguments.parse(
+                new String[] {
+                  commandName,
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--request-file",
+                  "request.json"
+                }));
+
+    assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+    assertEquals(Path.of("request.json"), command.requestFile());
+    assertEquals(OutputMode.TEXT, command.outputMode());
+  }
+
+  @Test
   void parse_allowsRequestJsonFromStandardInputWhenPassphraseUsesPrompt() {
     PostEntry command =
         assertInstanceOf(

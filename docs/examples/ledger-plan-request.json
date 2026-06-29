@@ -11,48 +11,43 @@
       }
     },
     {
-      "stepId": "post-journal",
-      "kind": "post-entry",
+      "stepId": "record-sale",
+      "kind": "record-sale",
       "posting": {
-        "entryKind": "JOURNAL",
+        "entryKind": "SALE",
         "effectiveDate": "2026-04-07",
-        "lines": [
-          {
-            "accountCode": "cash",
-            "side": "DEBIT",
-            "amount": {
-              "currencyCode": "EUR",
-              "minorUnits": "1000"
-            }
-          },
-          {
-            "accountCode": "service-revenue",
-            "side": "CREDIT",
-            "amount": {
-              "currencyCode": "EUR",
-              "minorUnits": "1000"
-            }
-          }
-        ],
+        "cashAccountCode": "cash",
+        "revenueAccountCode": "service-revenue",
+        "amount": {
+          "currencyCode": "EUR",
+          "minorUnits": "1000"
+        },
         "evidence": {
           "sourceDocuments": [
             {
               "sourceDocumentId": "document-plan-1",
               "sourceDocumentType": "cash-receipt",
-              "documentDate": "2026-04-07",
-              "capturedAt": "2026-04-07T10:15:30Z",
-              "storageLocator": "vault://fixtures/document-plan-1",
-              "contentSha256": "4444444444444444444444444444444444444444444444444444444444444444"
+              "documentDate": "2026-04-07"
             }
           ],
-          "approvals": []
+          "approvals": [
+            {
+              "approvalId": "approval-plan-1",
+              "approvalType": "manager-signoff",
+              "approverId": "approver-plan-1",
+              "approverType": "PERSON",
+              "decision": "APPROVED",
+              "approvedAt": "2026-04-07T10:20:30Z"
+            }
+          ]
         },
         "provenance": {
           "actorId": "agent-plan-1",
           "actorType": "AGENT",
           "commandId": "command-1",
           "idempotencyKey": "idem-demo-1",
-          "causationId": "cause-1"
+          "causationId": "cause-1",
+          "correlationId": "corr-plan-1"
         }
       }
     },

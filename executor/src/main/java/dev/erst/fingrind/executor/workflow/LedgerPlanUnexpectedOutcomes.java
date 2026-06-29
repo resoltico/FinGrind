@@ -16,7 +16,7 @@ public final class LedgerPlanUnexpectedOutcomes {
 
   /** Wraps one unexpected plan-boundary exception into the local rejected journal-entry form. */
   public static BookWorkflowJournalEntry.Rejected unexpectedPlanFailure(
-      BookWorkflowBoundaryPhase phase,
+      BookWorkflowBoundaryCheckpoint checkpoint,
       Instant startedAt,
       Instant finishedAt,
       @Nullable BookWorkflowStepId triggerStepId,
@@ -25,7 +25,7 @@ public final class LedgerPlanUnexpectedOutcomes {
       @Nullable RuntimeException cleanupFailure,
       @Nullable BookWorkflowFailure priorFailure) {
     return LedgerPlanUnexpectedFailureMapper.unexpectedPlanFailure(
-        phase,
+        checkpoint,
         startedAt,
         finishedAt,
         triggerStepId,

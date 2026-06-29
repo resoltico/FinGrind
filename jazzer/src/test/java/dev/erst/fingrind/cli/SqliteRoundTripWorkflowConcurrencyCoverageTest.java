@@ -38,23 +38,25 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
     var committedOutcome =
         new ConcurrentCommitDecision(
             ContractDecision.accepted(SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
-    var duplicateOutcome =
+    var replayOutcome =
         new ConcurrentCommitDecision(
             ContractDecision.accepted(
-                SqliteRoundTripWorkflowTestSupport.commitRejected(
-                    new PostingRejection.DuplicateIdempotencyKey())));
+                SqliteRoundTripWorkflowTestSupport.committed("posting-1", true)));
     var runtimeOutcome =
         new ConcurrentCommitRuntimeFailure(new IllegalStateException("synthetic runtime"));
 
     assertDoesNotThrow(
         () ->
             SqliteRoundTripWorkflowConcurrencyCoverage.assertConcurrentOutcomeSet(
-                List.of(committedOutcome, duplicateOutcome), true));
-    assertDoesNotThrow(
+                List.of(committedOutcome, replayOutcome), true));
+
+    assertThrows(
+        IllegalStateException.class,
         () ->
             SqliteRoundTripWorkflowConcurrencyCoverage.assertConcurrentOutcomeSet(
                 List.of(committedOutcome, runtimeOutcome), true));
-    assertDoesNotThrow(
+    assertThrows(
+        IllegalStateException.class,
         () ->
             SqliteRoundTripWorkflowConcurrencyCoverage.assertConcurrentOutcomeSet(
                 List.of(
@@ -81,14 +83,14 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
         IllegalStateException.class,
         () ->
             SqliteRoundTripWorkflowConcurrencyCoverage.assertConcurrentOutcomeSet(
-                List.of(committedOutcome, duplicateOutcome), false));
+                List.of(committedOutcome, replayOutcome), false));
     assertThrows(
         IllegalStateException.class,
         () ->
             SqliteRoundTripWorkflowConcurrencyCoverage.assertConcurrentOutcomeSet(
                 List.of(
                     committedOutcome,
-                    duplicateOutcome,
+                    replayOutcome,
                     new ConcurrentCommitDecision(
                         ContractDecision.rejected(
                             SqliteRoundTripWorkflowTestSupport.contractFailure(
@@ -99,14 +101,14 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
         () ->
             SqliteRoundTripWorkflowConcurrencyCoverage.assertConcurrentOutcomeSet(
                 List.of(committedOutcome, committedOutcome), true));
-    CommitEntryResult duplicateKeyResult =
-        SqliteRoundTripWorkflowTestSupport.commitRejected(
-            new PostingRejection.DuplicateIdempotencyKey());
-    assertTrue(
-        duplicateKeyResult
-                instanceof
-                dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected
-            && rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey);
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SqliteRoundTripWorkflowConcurrencyCoverage.assertConcurrentOutcomeSet(
+                List.of(committedOutcome, replayOutcome, replayOutcome), true));
+    CommitEntryResult replayResult =
+        SqliteRoundTripWorkflowTestSupport.committed("posting-1", true);
+    assertTrue(replayResult instanceof Committed committed && committed.idempotentReplay());
     CommitEntryResult reversalTargetResult =
         SqliteRoundTripWorkflowTestSupport.commitRejected(
             new PostingRejection.ReversalTargetNotFound(new PostingId("posting-duplicate")));
@@ -114,14 +116,10 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
         reversalTargetResult
                 instanceof
                 dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected
-            && rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey);
+            && rejected.rejection() instanceof PostingRejection.IdempotencyKeyConflict);
     CommitEntryResult committedResult =
         SqliteRoundTripWorkflowTestSupport.committed("posting-duplicate");
-    assertFalse(
-        committedResult
-                instanceof
-                dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected
-            && rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey);
+    assertFalse(committedResult instanceof Committed committed && committed.idempotentReplay());
   }
 
   @Test
@@ -131,10 +129,58 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         negativeCommittedCount, "must be non-negative");
 
-    IllegalArgumentException negativeNonWinningCount =
+    IllegalArgumentException negativeReplayCount =
         assertThrows(IllegalArgumentException.class, () -> newConcurrentOutcomeTally(0, -1));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
-        negativeNonWinningCount, "must be non-negative");
+        negativeReplayCount, "must be non-negative");
+  }
+
+  @Test
+  void private_concurrency_error_paths_are_exercised() throws Exception {
+    Object tally = newConcurrentOutcomeTally(0, 0);
+
+    IllegalStateException runtime =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                invokeConcurrencyPrivate(
+                    "tallyConcurrentOutcome",
+                    new Class<?>[] {tally.getClass(), ConcurrentCommitOutcome.class},
+                    new Object[] {
+                      tally,
+                      new ConcurrentCommitRuntimeFailure(
+                          new IllegalStateException("synthetic runtime"))
+                    }));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(runtime, "synthetic runtime");
+
+    IllegalStateException rejectedDecision =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                invokeConcurrencyPrivate(
+                    "tallyCommitDecision",
+                    new Class<?>[] {tally.getClass(), ContractDecision.class},
+                    new Object[] {
+                      tally,
+                      ContractDecision.rejected(
+                          SqliteRoundTripWorkflowTestSupport.contractFailure("synthetic failure"))
+                    }));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(rejectedDecision, "synthetic failure");
+
+    IllegalStateException acceptedRejection =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                invokeConcurrencyPrivate(
+                    "tallyAcceptedCommitResult",
+                    new Class<?>[] {tally.getClass(), CommitEntryResult.class},
+                    new Object[] {
+                      tally,
+                      SqliteRoundTripWorkflowTestSupport.commitRejected(
+                          new PostingRejection.ReversalTargetNotFound(
+                              new PostingId("posting-private")))
+                    }));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(acceptedRejection, "posting-private");
   }
 
   @Test
@@ -491,6 +537,26 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
     } catch (java.lang.reflect.InvocationTargetException exception) {
       if (exception.getCause() instanceof IllegalArgumentException illegalArgumentException) {
         throw illegalArgumentException;
+      }
+      throw exception;
+    }
+  }
+
+  private static Object invokeConcurrencyPrivate(
+      String methodName, Class<?>[] parameterTypes, Object[] arguments)
+      throws ReflectiveOperationException {
+    var method =
+        SqliteRoundTripWorkflowConcurrencyCoverage.class.getDeclaredMethod(
+            methodName, parameterTypes);
+    method.setAccessible(true);
+    try {
+      return method.invoke(null, arguments);
+    } catch (java.lang.reflect.InvocationTargetException exception) {
+      if (exception.getCause() instanceof RuntimeException runtimeException) {
+        throw runtimeException;
+      }
+      if (exception.getCause() instanceof Error error) {
+        throw error;
       }
       throw exception;
     }

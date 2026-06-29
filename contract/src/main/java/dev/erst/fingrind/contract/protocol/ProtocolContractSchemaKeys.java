@@ -128,34 +128,9 @@ final class ProtocolContractSchemaKeys {
             requireText(bundlePublicationNode, "runnerLabel")),
         new OperationIds(
             requireText(operationIdsNode, "help"),
-            requireText(operationIdsNode, "version"),
             requireText(operationIdsNode, "capabilities"),
             requireText(operationIdsNode, "printRequestTemplate"),
-            requireText(operationIdsNode, "printPlanTemplate"),
-            requireText(operationIdsNode, "generateBookKeyFile"),
-            requireText(operationIdsNode, "openBook"),
-            requireText(operationIdsNode, "rekeyBook"),
-            requireText(operationIdsNode, "backupBook"),
-            requireText(operationIdsNode, "restoreBook"),
-            requireText(operationIdsNode, "inspectRekeyRollback"),
-            requireText(operationIdsNode, "deleteRekeyRollback"),
-            requireText(operationIdsNode, "restoreRekeyRollback"),
-            requireText(operationIdsNode, "declareAccount"),
-            requireText(operationIdsNode, "transferPeriodResult"),
-            requireText(operationIdsNode, "inspectBook"),
-            requireText(operationIdsNode, "listAccounts"),
-            requireText(operationIdsNode, "getPosting"),
-            requireText(operationIdsNode, "listPostings"),
-            requireText(operationIdsNode, "accountBalance"),
-            requireText(operationIdsNode, "trialBalance"),
-            requireText(operationIdsNode, "accountLedger"),
-            requireText(operationIdsNode, "periodSummary"),
-            requireText(operationIdsNode, "financialPosition"),
-            requireText(operationIdsNode, "incomeStatement"),
-            requireText(operationIdsNode, "changesInEquity"),
-            requireText(operationIdsNode, "executePlan"),
-            requireText(operationIdsNode, "preflightEntry"),
-            requireText(operationIdsNode, "postEntry")));
+            requireText(operationIdsNode, "printPlanTemplate")));
   }
 
   private static ProtocolContractSchemaKeys loadCurrent() {
@@ -233,33 +208,5 @@ final class ProtocolContractSchemaKeys {
 
   /** Canonical external property names for the operation-id contract resource. */
   record OperationIds(
-      String help,
-      String version,
-      String capabilities,
-      String printRequestTemplate,
-      String printPlanTemplate,
-      String generateBookKeyFile,
-      String openBook,
-      String rekeyBook,
-      String backupBook,
-      String restoreBook,
-      String inspectRekeyRollback,
-      String deleteRekeyRollback,
-      String restoreRekeyRollback,
-      String declareAccount,
-      String transferPeriodResult,
-      String inspectBook,
-      String listAccounts,
-      String getPosting,
-      String listPostings,
-      String accountBalance,
-      String trialBalance,
-      String accountLedger,
-      String periodSummary,
-      String financialPosition,
-      String incomeStatement,
-      String changesInEquity,
-      String executePlan,
-      String preflightEntry,
-      String postEntry) {}
+      String help, String capabilities, String printRequestTemplate, String printPlanTemplate) {}
 }

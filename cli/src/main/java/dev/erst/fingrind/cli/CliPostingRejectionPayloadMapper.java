@@ -12,15 +12,18 @@ import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 final class CliPostingRejectionPayloadMapper {
   private CliPostingRejectionPayloadMapper() {}
 
-  static CliEnvelopeJsonModels.RejectedEnvelope rejectedEnvelope(
+  static CliEnvelopeJsonModels.Envelope<?> rejectedEnvelope(
       String requestIdempotencyKey, PostingRejection rejection) {
-    return new CliEnvelopeJsonModels.RejectedEnvelope(
+    return new CliEnvelopeJsonModels.Envelope<>(
         ProtocolEnvelopeStatus.REJECTED,
+        null,
         PostingRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
         RejectionNarrative.hint(rejection),
+        null,
         requestIdempotencyKey,
-        rejectionDetails(rejection));
+        rejectionDetails(rejection),
+        null);
   }
 
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
@@ -37,27 +40,27 @@ final class CliPostingRejectionPayloadMapper {
               violations.violations().stream()
                   .map(CliPostingRejectionPayloadMapper::entrySemanticsViolationPayload)
                   .toList());
-      case PostingRejection.DuplicateIdempotencyKey _ -> null;
+      case PostingRejection.IdempotencyKeyConflict _ -> null;
       case PostingRejection.BookFunctionalCurrencyMismatch rejectionCurrencyMismatch ->
           new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails(
               rejectionCurrencyMismatch.functionalCurrency().code(),
               rejectionCurrencyMismatch.attemptedCurrency().code());
-      case PostingRejection.TransferredPeriodResultViolation violation ->
-          new CliRejectionJsonModels.TransferredPeriodResultViolationDetails(
+      case PostingRejection.SweptInterimResultViolation violation ->
+          new CliRejectionJsonModels.SweptInterimResultViolationDetails(
               violation.transferredThroughEffectiveDate().toString(),
               violation.attemptedEffectiveDate().toString());
-      case PostingRejection.OpenAccountingPositionWindowClosed rejectionWindowClosed ->
-          new CliRejectionJsonModels.OpenAccountingPositionWindowClosedDetails(
+      case PostingRejection.OpeningPositionWindowClosed rejectionWindowClosed ->
+          new CliRejectionJsonModels.OpeningPositionWindowClosedDetails(
               rejectionWindowClosed.firstBlockingPostingKind().wireValue(),
               rejectionWindowClosed.firstBlockingEffectiveDate().toString());
-      case PostingRejection.OpenAccountingPositionTouchesNominalAccount
-              rejectionOpenAccountingPosition ->
-          new CliRejectionJsonModels.OpenAccountingPositionNominalAccountDetails(
-              rejectionOpenAccountingPosition.accountCode().value(),
-              rejectionOpenAccountingPosition.accountType().wireValue());
-      case PostingRejection.ResultHoldingAccountReserved rejectionReserved ->
-          new CliRejectionJsonModels.ResultHoldingAccountDetails(
-              rejectionReserved.accountCode().value());
+      case PostingRejection.OpeningPositionTouchesNominalAccount rejectionOpeningPosition ->
+          new CliRejectionJsonModels.OpeningPositionNominalAccountDetails(
+              rejectionOpeningPosition.accountCode().value(),
+              rejectionOpeningPosition.accountType().wireValue());
+      case PostingRejection.ReservedResultClassification rejectionReserved ->
+          new CliRejectionJsonModels.ReservedResultClassificationDetails(
+              rejectionReserved.accountCode().value(),
+              rejectionReserved.financialPositionLineClassification().wireValue());
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           new CliRejectionJsonModels.PriorPostingDetails(
               reversalTargetNotFound.priorPostingId().value());

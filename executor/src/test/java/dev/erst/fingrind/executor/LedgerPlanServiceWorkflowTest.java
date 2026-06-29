@@ -1,7 +1,7 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.account;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.groupFact;
@@ -19,10 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
@@ -31,9 +32,9 @@ import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -235,8 +236,7 @@ class LedgerPlanServiceWorkflowTest {
           new AccountCode("1000"),
           new AccountName("Cash"),
           AccountType.ASSET,
-          accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-          accountTaxonomy(AccountType.ASSET),
+          accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
           FIXED_CLOCK.instant());
 
       var redeclareResult =
@@ -247,14 +247,69 @@ class LedgerPlanServiceWorkflowTest {
                       List.of(
                           new LedgerStep.DeclareAccount(
                               stepId("cash"),
-                              account("1000", "Cash", AccountType.ASSET, NormalBalance.CREDIT)))));
+                              new DeclareAccountCommand(
+                                  new AccountCode("1000"),
+                                  new AccountName("Cash"),
+                                  AccountType.ASSET,
+                                  financialPositionTaxonomy(
+                                      FinancialPositionLineClassification.NONCURRENT_ASSET))))));
 
       assertEquals(LedgerPlanStatus.REJECTED, redeclareResult.status());
       assertEquals(
           BookAdministrationRejection.wireCode(
-              new BookAdministrationRejection.AccountRoleConflict(
-                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)),
+              new BookAdministrationRejection.AccountTaxonomyConflict(
+                  new AccountCode("1000"),
+                  accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.NONCURRENT_ASSET))),
           redeclareResult.journal().steps().getLast().requiredFailure().code());
+    }
+  }
+
+  @Test
+  void execute_records_reactivated_renamed_and_unchanged_account_outcomes() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      bookSession.declareAccount(
+          new AccountCode("1000"),
+          new AccountName("Cash"),
+          AccountType.ASSET,
+          accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
+          FIXED_CLOCK.instant());
+      InMemoryBookFixtureMutations.deactivateAccount(bookSession, new AccountCode("1000"));
+
+      var result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-declare-outcomes"),
+                      List.of(
+                          new LedgerStep.DeclareAccount(
+                              stepId("reactivate"),
+                              account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)),
+                          new LedgerStep.DeclareAccount(
+                              stepId("rename"),
+                              account(
+                                  "1000", "Cash Reserve", AccountType.ASSET, NormalBalance.DEBIT)),
+                          new LedgerStep.DeclareAccount(
+                              stepId("unchanged"),
+                              account(
+                                  "1000",
+                                  "Cash Reserve",
+                                  AccountType.ASSET,
+                                  NormalBalance.DEBIT)))));
+
+      assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
+      assertTrue(
+          result.journal().steps().get(0).facts().stream()
+              .anyMatch(fact -> textFact(fact, "outcome", "reactivated")));
+      assertTrue(
+          result.journal().steps().get(1).facts().stream()
+              .anyMatch(fact -> textFact(fact, "outcome", "renamed")));
+      assertTrue(
+          result.journal().steps().get(1).facts().stream()
+              .anyMatch(fact -> textFact(fact, "accountName", "Cash Reserve")));
+      assertTrue(
+          result.journal().steps().get(2).facts().stream()
+              .anyMatch(fact -> textFact(fact, "outcome", "unchanged")));
     }
   }
 
@@ -324,12 +379,13 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
       assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
-      assertEquals(LedgerBoundaryPhase.BEGIN, result.journal().steps().getLast().boundaryPhase());
+      assertEquals(
+          LedgerBoundaryCheckpoint.BEGIN, result.journal().steps().getLast().boundaryCheckpoint());
       assertTrue(
           result.journal().steps().getLast().requiredFailure().message().contains("during begin"));
       assertTrue(
           result.journal().steps().getLast().requiredFailure().facts().stream()
-              .anyMatch(fact -> textFact(fact, "phase", "begin")));
+              .anyMatch(fact -> textFact(fact, "checkpoint", "begin")));
     }
   }
 
@@ -353,8 +409,8 @@ class LedgerPlanServiceWorkflowTest {
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
       assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
       assertEquals(
-          LedgerBoundaryPhase.INITIALIZATION_CHECK,
-          result.journal().steps().getLast().boundaryPhase());
+          LedgerBoundaryCheckpoint.INITIALIZATION_CHECK,
+          result.journal().steps().getLast().boundaryCheckpoint());
       assertTrue(
           result
               .journal()
@@ -365,7 +421,7 @@ class LedgerPlanServiceWorkflowTest {
               .contains("during initialization-check before step 'cash': initialization boom"));
       assertTrue(
           result.journal().steps().getLast().requiredFailure().facts().stream()
-              .anyMatch(fact -> textFact(fact, "phase", "initialization-check")));
+              .anyMatch(fact -> textFact(fact, "checkpoint", "initialization-check")));
       assertTrue(bookSession.rollbackCalled());
     }
   }
@@ -382,7 +438,8 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
       assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
-      assertEquals(LedgerBoundaryPhase.COMMIT, result.journal().steps().getLast().boundaryPhase());
+      assertEquals(
+          LedgerBoundaryCheckpoint.COMMIT, result.journal().steps().getLast().boundaryCheckpoint());
       assertTrue(
           result
               .journal()
@@ -393,7 +450,7 @@ class LedgerPlanServiceWorkflowTest {
               .contains("during commit after step 'open': commit boom"));
       assertTrue(
           result.journal().steps().getLast().requiredFailure().facts().stream()
-              .anyMatch(fact -> textFact(fact, "phase", "commit")));
+              .anyMatch(fact -> textFact(fact, "checkpoint", "commit")));
       assertTrue(bookSession.rollbackCalled());
     }
   }
@@ -418,10 +475,11 @@ class LedgerPlanServiceWorkflowTest {
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
       assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
       assertEquals(
-          LedgerBoundaryPhase.ROLLBACK, result.journal().steps().getLast().boundaryPhase());
+          LedgerBoundaryCheckpoint.ROLLBACK,
+          result.journal().steps().getLast().boundaryCheckpoint());
       assertTrue(
           result.journal().steps().getLast().requiredFailure().facts().stream()
-              .anyMatch(fact -> textFact(fact, "phase", "rollback")));
+              .anyMatch(fact -> textFact(fact, "checkpoint", "rollback")));
       assertTrue(
           result.journal().steps().getLast().requiredFailure().facts().stream()
               .anyMatch(
@@ -453,7 +511,8 @@ class LedgerPlanServiceWorkflowTest {
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
       assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
       assertEquals(
-          LedgerBoundaryPhase.ROLLBACK, result.journal().steps().getLast().boundaryPhase());
+          LedgerBoundaryCheckpoint.ROLLBACK,
+          result.journal().steps().getLast().boundaryCheckpoint());
       assertTrue(
           result
               .journal()
@@ -464,7 +523,7 @@ class LedgerPlanServiceWorkflowTest {
               .contains("during rollback after step 'open': rollback boom"));
       assertTrue(
           result.journal().steps().getLast().requiredFailure().facts().stream()
-              .anyMatch(fact -> textFact(fact, "phase", "rollback")));
+              .anyMatch(fact -> textFact(fact, "checkpoint", "rollback")));
       assertTrue(
           result.journal().steps().getLast().requiredFailure().facts().stream()
               .anyMatch(

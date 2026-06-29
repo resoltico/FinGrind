@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -164,13 +165,7 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
       Optional<ReversalReason> reason) {
     CommittedPosting postingFact =
         postingFact(postingId, idempotencyKey, reversalReference, reason);
-    return new PostingDraft(
-        postingFact.journalEntry(),
-        postingFact.postingLineage(),
-        postingFact.postingKind(),
-        postingFact.postingOriginKind(),
-        postingFact.evidence(),
-        postingFact.provenance());
+    return SqlitePostingFactFixtureSupport.postingDraft(postingFact);
   }
 
   static BookkeepingPostingRejection.AccountStateViolations accountStateViolations(
@@ -199,7 +194,8 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static TrialBalanceCriteria trialBalanceCriteria(Optional<LocalDate> effectiveDateTo) {
-    return new TrialBalanceCriteria(effectiveDateTo, allPostingKinds());
+    return new TrialBalanceCriteria(
+        effectiveDateTo, allPostingKinds(), ComparativeSelection.none());
   }
 
   static AccountLedgerCriteria accountLedgerCriteria(

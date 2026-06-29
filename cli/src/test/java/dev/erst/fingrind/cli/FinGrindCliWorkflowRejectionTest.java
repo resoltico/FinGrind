@@ -19,14 +19,14 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -83,7 +83,8 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     workflow.setExecutePlanResult(assertionFailedPlanResult("plan-1"));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     int exitCode =
@@ -103,7 +104,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                     planFile.toString()));
     assertEquals(3, exitCode);
     assertJsonContains(outputStream, "\"status\":\"assertion-failed\"");
-    assertJsonContains(outputStream, "\"failureCode\":\"assertion-failed\"");
+    assertJsonContains(outputStream, "\"code\":\"assertion-failed\"");
   }
 
   @Test
@@ -122,7 +123,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()));
     Path bookFilePath = tempDirectory.resolve("reject.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
-    Path requestFile = writeRequest(validRequestJson());
+    Path requestFile = writeRequest(validRawJournalRequestJson());
     assertEquals(
         2,
         cli(
@@ -221,7 +222,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
     Path bookFilePath = tempDirectory.resolve("query-reject.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     CliBookWorkflow workflow =
-        new CliBookWorkflow() {
+        new CliBookWorkflowAdapter() {
           @Override
           public ContractDecision<OpenBookResult> openBook(
               BookAccess bookAccess, OpenBookCommand command) {
@@ -272,9 +273,9 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
           }
 
           @Override
-          public ContractDecision<PeriodResultTransferResult> transferPeriodResult(
-              BookAccess bookAccess, PeriodResultTransferCommand command) {
-            throw new AssertionError("transferPeriodResult should not be called in this test");
+          public ContractDecision<InterimResultSweepResult> interimResultSweep(
+              BookAccess bookAccess, InterimResultSweepCommand command) {
+            throw new AssertionError("interimResultSweep should not be called in this test");
           }
 
           @Override

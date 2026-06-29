@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
@@ -18,16 +17,18 @@ import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
@@ -44,7 +45,7 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
-import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryPhase;
+import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryCheckpoint;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
 import dev.erst.fingrind.executor.workflow.BookWorkflowJournalDescriptor;
@@ -113,7 +114,7 @@ class LedgerPlanOutcomeMapperTest {
   }
 
   @Test
-  void unexpectedPlanFailure_recordsPhaseCleanupAndPriorFailureFacts() {
+  void unexpectedPlanFailure_recordsCheckpointCleanupAndPriorFailureFacts() {
     BookWorkflowStep step =
         workflowStep(
             new LedgerStep.EnsureBook(
@@ -121,7 +122,7 @@ class LedgerPlanOutcomeMapperTest {
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.COMMIT,
+            BookWorkflowBoundaryCheckpoint.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
             step.stepId(),
@@ -138,15 +139,15 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals("unexpected-plan-failure", journalEntry.failure().code());
     assertEquals(LedgerJournalKind.PLAN_BOUNDARY, publishedEntry.kind());
     assertEquals(
-        dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase.COMMIT,
-        publishedEntry.boundaryPhase());
+        dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint.COMMIT,
+        publishedEntry.boundaryCheckpoint());
     assertTrue(journalEntry.failure().message().contains("during commit after step 'open'"));
     assertTrue(
         journalEntry.failure().facts().stream()
             .anyMatch(
                 fact ->
                     fact instanceof BookWorkflowFact.Text text
-                        && "phase".equals(text.name())
+                        && "checkpoint".equals(text.name())
                         && "commit".equals(text.value())));
     assertTrue(
         journalEntry.failure().facts().stream()
@@ -178,7 +179,7 @@ class LedgerPlanOutcomeMapperTest {
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.COMMIT,
+            BookWorkflowBoundaryCheckpoint.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
             step.stepId(),
@@ -201,7 +202,7 @@ class LedgerPlanOutcomeMapperTest {
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.COMMIT,
+            BookWorkflowBoundaryCheckpoint.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
             step.stepId(),
@@ -230,7 +231,7 @@ class LedgerPlanOutcomeMapperTest {
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.ROLLBACK,
+            BookWorkflowBoundaryCheckpoint.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
             step.stepId(),
@@ -254,11 +255,11 @@ class LedgerPlanOutcomeMapperTest {
   void unexpectedPlanFailure_recordsBoundaryTriggerFactsWhenDescriptorIsBoundary() {
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.ROLLBACK,
+            BookWorkflowBoundaryCheckpoint.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
             internalStepId("@plan-boundary:commit"),
-            new BookWorkflowJournalDescriptor.Boundary(BookWorkflowBoundaryPhase.COMMIT),
+            new BookWorkflowJournalDescriptor.Boundary(BookWorkflowBoundaryCheckpoint.COMMIT),
             new IllegalStateException("rollback boom"),
             null,
             null);
@@ -268,15 +269,15 @@ class LedgerPlanOutcomeMapperTest {
             .anyMatch(
                 fact ->
                     fact instanceof BookWorkflowFact.Text text
-                        && "triggerBoundaryPhase".equals(text.name())
-                        && BookWorkflowBoundaryPhase.COMMIT.wireValue().equals(text.value())));
+                        && "triggerBoundaryCheckpoint".equals(text.name())
+                        && BookWorkflowBoundaryCheckpoint.COMMIT.wireValue().equals(text.value())));
   }
 
   @Test
   void unexpectedPlanFailure_withoutTriggerStepUsesPlainBoundaryMessages() {
     var begin =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.BEGIN,
+            BookWorkflowBoundaryCheckpoint.BEGIN,
             FIXED_INSTANT,
             FIXED_INSTANT,
             null,
@@ -286,7 +287,7 @@ class LedgerPlanOutcomeMapperTest {
             null);
     var initializationCheck =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.INITIALIZATION_CHECK,
+            BookWorkflowBoundaryCheckpoint.INITIALIZATION_CHECK,
             FIXED_INSTANT,
             FIXED_INSTANT,
             null,
@@ -296,7 +297,7 @@ class LedgerPlanOutcomeMapperTest {
             null);
     var commit =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.COMMIT,
+            BookWorkflowBoundaryCheckpoint.COMMIT,
             FIXED_INSTANT,
             FIXED_INSTANT,
             null,
@@ -306,7 +307,7 @@ class LedgerPlanOutcomeMapperTest {
             null);
     var rollback =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-            BookWorkflowBoundaryPhase.ROLLBACK,
+            BookWorkflowBoundaryCheckpoint.ROLLBACK,
             FIXED_INSTANT,
             FIXED_INSTANT,
             null,
@@ -355,12 +356,26 @@ class LedgerPlanOutcomeMapperTest {
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
                     .AccountTypeConflict(
                     new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY));
-    var accountRoleConflict =
+    AccountTaxonomy existingTaxonomy =
+        new AccountTaxonomy(
+            dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+            Optional.empty(),
+            Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
+    AccountTaxonomy requestedTaxonomy =
+        new AccountTaxonomy(
+            dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
+            Optional.empty(),
+            Optional.of(CashFlowAssetClassification.NON_CASH));
+    var accountTaxonomyConflict =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.administrationRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
-                    .AccountRoleConflict(
-                    new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED));
+                    .AccountTaxonomyConflict(
+                    new AccountCode("1000"), existingTaxonomy, requestedTaxonomy));
 
     assertEquals("administration-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals(
@@ -377,13 +392,22 @@ class LedgerPlanOutcomeMapperTest {
             BookWorkflowFact.text("existingAccountType", "ASSET"),
             BookWorkflowFact.text("requestedAccountType", "LIABILITY")),
         accountTypeConflict.failure().facts());
-    assertEquals("account-role-conflict", accountRoleConflict.failure().code());
+    assertEquals("account-taxonomy-conflict", accountTaxonomyConflict.failure().code());
     assertEquals(
         List.of(
             BookWorkflowFact.text("accountCode", "1000"),
-            BookWorkflowFact.text("existingAccountRole", "ORDINARY"),
-            BookWorkflowFact.text("requestedAccountRole", "POLARITY_INVERTED")),
-        accountRoleConflict.failure().facts());
+            BookWorkflowFact.group(
+                "existingAccountTaxonomy",
+                List.of(
+                    BookWorkflowFact.text("accountNodeKind", "POSTABLE"),
+                    BookWorkflowFact.text("financialPositionLineClassification", "CURRENT_ASSET"))),
+            BookWorkflowFact.group(
+                "requestedAccountTaxonomy",
+                List.of(
+                    BookWorkflowFact.text("accountNodeKind", "POSTABLE"),
+                    BookWorkflowFact.text(
+                        "financialPositionLineClassification", "NONCURRENT_ASSET")))),
+        accountTaxonomyConflict.failure().facts());
   }
 
   @Test
@@ -397,7 +421,7 @@ class LedgerPlanOutcomeMapperTest {
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .DuplicateIdempotencyKey());
+                    .IdempotencyKeyConflict());
     var reversalTargetNotFound =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
@@ -424,39 +448,38 @@ class LedgerPlanOutcomeMapperTest {
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .TransferredPeriodResultViolation(
+                    .SweptInterimResultViolation(
                     LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-06")));
     var openingBalanceWindowClosed =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .OpenAccountingPositionWindowClosed(
+                    .OpeningPositionWindowClosed(
                     PostingKind.STANDARD, LocalDate.parse("2026-04-07")));
     var openingBalanceNominalAccount =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .OpenAccountingPositionTouchesNominalAccount(
+                    .OpeningPositionTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE));
     var resultHoldingReserved =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .ResultHoldingAccountReserved(new AccountCode("3200")));
+                    .ReservedResultClassification(
+                    new AccountCode("3200"), FinancialPositionLineClassification.RESULT_HOLDING));
 
     assertEquals("posting-book-not-initialized", bookNotInitialized.failure().code());
-    assertEquals("duplicate-idempotency-key", duplicateIdempotencyKey.failure().code());
+    assertEquals("idempotency-key-conflict", duplicateIdempotencyKey.failure().code());
     assertEquals("reversal-target-not-found", reversalTargetNotFound.failure().code());
     assertEquals("reversal-already-exists", reversalAlreadyExists.failure().code());
     assertEquals("reversal-does-not-negate-target", reversalDoesNotNegateTarget.failure().code());
     assertEquals("book-functional-currency-mismatch", functionalCurrencyMismatch.failure().code());
     assertEquals("closed-period-violation", transferredPeriodResultViolation.failure().code());
+    assertEquals("opening-position-window-closed", openingBalanceWindowClosed.failure().code());
     assertEquals(
-        "open-accounting-position-window-closed", openingBalanceWindowClosed.failure().code());
-    assertEquals(
-        "open-accounting-position-touches-nominal-account",
-        openingBalanceNominalAccount.failure().code());
-    assertEquals("result-holding-account-reserved", resultHoldingReserved.failure().code());
+        "opening-position-touches-nominal-account", openingBalanceNominalAccount.failure().code());
+    assertEquals("reserved-result-classification", resultHoldingReserved.failure().code());
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-1")),
         reversalTargetNotFound.failure().facts());
@@ -487,7 +510,9 @@ class LedgerPlanOutcomeMapperTest {
             BookWorkflowFact.text("accountType", AccountType.REVENUE.wireValue())),
         openingBalanceNominalAccount.failure().facts());
     assertEquals(
-        List.of(BookWorkflowFact.text("accountCode", "3200")),
+        List.of(
+            BookWorkflowFact.text("accountCode", "3200"),
+            BookWorkflowFact.text("financialPositionLineClassification", "RESULT_HOLDING")),
         resultHoldingReserved.failure().facts());
   }
 
@@ -651,17 +676,19 @@ class LedgerPlanOutcomeMapperTest {
         new AccountCode("1000"),
         new AccountName("Cash"),
         AccountType.ASSET,
-        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-        accountTaxonomy(AccountType.ASSET));
+        accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT));
   }
 
   private static PostEntryCommand postingCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        BookkeepingEntry.cashRevenue(
+        new BookkeepingEntry.Sale(
             LocalDate.parse("2026-05-05"),
             new AccountCode("1000"),
             new AccountCode("2000"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null,
+            null),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
             new ActorId("actor-1"),
@@ -689,7 +716,7 @@ class LedgerPlanOutcomeMapperTest {
                     Money.parse("EUR", "10.00")))),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence("idem-3"),
         new CommittedProvenance(
             new RequestProvenance(

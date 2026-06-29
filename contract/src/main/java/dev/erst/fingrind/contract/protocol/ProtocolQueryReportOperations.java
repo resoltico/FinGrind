@@ -21,11 +21,16 @@ final class ProtocolQueryReportOperations {
   static ProtocolOperation periodReportOperation(
       OperationId operationId,
       String title,
+      boolean includeComparative,
       boolean includePostingCoverage,
       String description,
       String example) {
     return pdfQueryOperation(
-        operationId, title, periodInvocationSyntax(includePostingCoverage), description, example);
+        operationId,
+        title,
+        periodInvocationSyntax(includeComparative, includePostingCoverage),
+        description,
+        example);
   }
 
   private static ProtocolOperation pdfQueryOperation(
@@ -65,11 +70,13 @@ final class ProtocolQueryReportOperations {
         ProtocolOptions.BOOK_FILE + " <path>",
         ProtocolOptions.currentPassphraseSourceSyntax(),
         "[" + ProtocolOptions.EFFECTIVE_DATE_AS_OF + " <YYYY-MM-DD>]",
+        ProtocolOptions.optionalAsOfComparativeSyntax(),
         ProtocolOptions.optionalPdfOutSyntax(),
         ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
   }
 
-  private static List<String> periodInvocationSyntax(boolean includePostingCoverage) {
+  private static List<String> periodInvocationSyntax(
+      boolean includeComparative, boolean includePostingCoverage) {
     List<String> invocationSyntax =
         new ArrayList<>(
             List.of(
@@ -77,6 +84,9 @@ final class ProtocolQueryReportOperations {
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolOptions.PERIOD_START + " <YYYY-MM-DD>",
                 ProtocolOptions.PERIOD_END + " <YYYY-MM-DD>"));
+    if (includeComparative) {
+      invocationSyntax.add(ProtocolOptions.optionalPeriodComparativeSyntax());
+    }
     if (includePostingCoverage) {
       invocationSyntax.add(ProtocolOptions.optionalPostingCoverageSyntax());
     }

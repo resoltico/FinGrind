@@ -67,6 +67,67 @@ git -C "${fixture_root}" commit -q -m 'fixture: initial state'
 progress 'clean fixture root passes verification'
 "${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should accept a clean fixture root"
+
+progress 'clean fixture root stays portable when git fsck lacks --no-references'
+readonly real_git="$(command -v git)"
+readonly shim_dir="${fixture_root}/tmp/git-shim"
+mkdir -p "${shim_dir}"
+cat > "${shim_dir}/git" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly real_git="${REAL_GIT_PATH:?}"
+
+if [[ "${1:-}" == '-C' && $# -ge 3 ]]; then
+    repo_path=$2
+    shift 2
+    if [[ "${1:-}" == 'fsck' ]]; then
+        shift
+        if [[ "${1:-}" == '-h' || "${1:-}" == '--help' ]]; then
+            cat >&2 <<'USAGE'
+usage: git fsck [--tags] [--root] [--unreachable] [--cache] [--no-reflogs]
+                [--[no-]full] [--strict] [--verbose] [--lost-found]
+                [--[no-]dangling] [--[no-]progress] [--connectivity-only]
+                [--[no-]name-objects] [<object>...]
+USAGE
+            exit 129
+        fi
+        for argument in "$@"; do
+            if [[ "${argument}" == '--no-references' ]]; then
+                printf '%s\n' "error: unknown option 'no-references'" >&2
+                exit 129
+            fi
+        done
+        exec "${real_git}" -C "${repo_path}" fsck "$@"
+    fi
+    exec "${real_git}" -C "${repo_path}" "$@"
+fi
+
+if [[ "${1:-}" == 'fsck' ]]; then
+    shift
+    if [[ "${1:-}" == '-h' || "${1:-}" == '--help' ]]; then
+        cat >&2 <<'USAGE'
+usage: git fsck [--tags] [--root] [--unreachable] [--cache] [--no-reflogs]
+                [--[no-]full] [--strict] [--verbose] [--lost-found]
+                [--[no-]dangling] [--[no-]progress] [--connectivity-only]
+                [--[no-]name-objects] [<object>...]
+USAGE
+        exit 129
+    fi
+    for argument in "$@"; do
+        if [[ "${argument}" == '--no-references' ]]; then
+            printf '%s\n' "error: unknown option 'no-references'" >&2
+            exit 129
+        fi
+    done
+    exec "${real_git}" fsck "$@"
+fi
+
+exec "${real_git}" "$@"
+EOF
+chmod +x "${shim_dir}/git"
+REAL_GIT_PATH="${real_git}" PATH="${shim_dir}:${PATH}" "${verifier}" --repo-root "${fixture_root}" || die \
+    "repo hygiene verifier should fall back when the local Git lacks git fsck --no-references"
 progress 'local-state reporting stays available'
 report_output="$("${verifier}" --repo-root "${fixture_root}" --report-local-state)"
 [[ "${report_output}" == *'SIZE   CATEGORY'* ]] || die \

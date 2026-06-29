@@ -167,7 +167,16 @@ final class LedgerPlanStepExecutor {
     return switch (bookAdministrationService.declareAccount(command)) {
       case AccountDeclarationOutcome.Declared declared ->
           LedgerPlanStepOutcomes.stepSucceeded(
-              LedgerPlanFactMapper.declaredAccountFacts(declared.account()));
+              LedgerPlanFactMapper.accountDeclarationFacts("declared", declared.account()));
+      case AccountDeclarationOutcome.Reactivated reactivated ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.accountDeclarationFacts("reactivated", reactivated.account()));
+      case AccountDeclarationOutcome.Renamed renamed ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.accountDeclarationFacts("renamed", renamed.account()));
+      case AccountDeclarationOutcome.Unchanged unchanged ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.accountDeclarationFacts("unchanged", unchanged.account()));
       case AccountDeclarationOutcome.Rejected rejected ->
           LedgerPlanRejectedOutcomes.administrationRejection(rejected.rejection());
     };

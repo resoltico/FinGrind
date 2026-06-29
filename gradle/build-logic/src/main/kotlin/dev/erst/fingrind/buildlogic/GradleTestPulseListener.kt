@@ -32,7 +32,7 @@ internal class GradleTestPulseListener(
                     return
                 }
                 rootStarted = true
-                emit("phase=start")
+                emit("event=start")
                 startPulseLoop(::emitHeartbeat)
             }
             return
@@ -40,7 +40,7 @@ internal class GradleTestPulseListener(
         if (suite.className != null && suite.parent?.className == null) {
             synchronized(lock) {
                 activeTopLevelClass = suite.className
-                emit("phase=class-start class=${pulseValue(suite.className)}")
+                emit("event=class-start class=${pulseValue(suite.className)}")
             }
         }
     }
@@ -50,7 +50,7 @@ internal class GradleTestPulseListener(
             synchronized(lock) {
                 rootFinished = true
                 emit(
-                    "phase=finish completedClasses=$completedClasses completedTests=$completedTests failedTests=$failedTests skippedTests=$skippedTests result=${result.resultType}",
+                    "event=finish completedClasses=$completedClasses completedTests=$completedTests failedTests=$failedTests skippedTests=$skippedTests result=${result.resultType}",
                 )
                 stopPulseLoop()
             }
@@ -60,7 +60,7 @@ internal class GradleTestPulseListener(
             synchronized(lock) {
                 completedClasses += 1
                 emit(
-                    "phase=class-complete completedClasses=$completedClasses completedTests=$completedTests failedTests=$failedTests skippedTests=$skippedTests class=${pulseValue(suite.className)} classTests=${result.testCount} classFailedTests=${result.failedTestCount} classSkippedTests=${result.skippedTestCount} result=${result.resultType}",
+                    "event=class-complete completedClasses=$completedClasses completedTests=$completedTests failedTests=$failedTests skippedTests=$skippedTests class=${pulseValue(suite.className)} classTests=${result.testCount} classFailedTests=${result.failedTestCount} classSkippedTests=${result.skippedTestCount} result=${result.resultType}",
                 )
                 if (activeTopLevelClass == suite.className) {
                     activeTopLevelClass = null
@@ -104,7 +104,7 @@ internal class GradleTestPulseListener(
                 }
                 val className = activeTestClass ?: activeTopLevelClass ?: return
                 buildString {
-                    append("phase=test-progress")
+                    append("event=test-progress")
                     append(" completedClasses=").append(completedClasses)
                     append(" completedTests=").append(completedTests)
                     append(" failedTests=").append(failedTests)

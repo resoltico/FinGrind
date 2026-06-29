@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -21,20 +22,21 @@ class BookAdministrationRejectionTest {
             "administration-book-not-initialized",
             "book-contains-schema",
             "account-type-conflict",
-            "account-role-conflict",
             "account-taxonomy-conflict",
             "parent-account-missing",
             "parent-account-inactive",
             "parent-account-type-conflict",
-            "parent-account-role-conflict",
             "parent-account-not-header",
             "parent-account-taxonomy-conflict",
             "account-hierarchy-cycle",
-            "result-holding-account-candidate-missing",
-            "result-holding-account-candidate-ambiguous",
-            "period-result-transfer-must-start-at",
-            "period-result-transfer-future-date",
-            "period-result-transfer-crosses-fiscal-year-boundary"),
+            "close-target-account-candidate-missing",
+            "close-target-account-candidate-ambiguous",
+            "interim-result-sweep-must-start-at",
+            "interim-result-sweep-future-date",
+            "interim-result-sweep-crosses-fiscal-year-boundary",
+            "fiscal-year-close-must-start-at",
+            "fiscal-year-close-must-end-at",
+            "fiscal-year-close-future-date"),
         List.of(
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.BookAlreadyInitialized()),
@@ -47,11 +49,6 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("1000"),
                     dev.erst.fingrind.core.AccountType.ASSET,
                     dev.erst.fingrind.core.AccountType.EXPENSE)),
-            BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.AccountRoleConflict(
-                    new dev.erst.fingrind.core.AccountCode("1000"),
-                    dev.erst.fingrind.core.AccountRole.ORDINARY,
-                    dev.erst.fingrind.core.AccountRole.POLARITY_INVERTED)),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.AccountTaxonomyConflict(
                     new dev.erst.fingrind.core.AccountCode("1000"),
@@ -80,12 +77,6 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("4000"),
                     dev.erst.fingrind.core.AccountType.REVENUE)),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.ParentAccountRoleConflict(
-                    new dev.erst.fingrind.core.AccountCode("1100"),
-                    dev.erst.fingrind.core.AccountRole.ORDINARY,
-                    new dev.erst.fingrind.core.AccountCode("1000"),
-                    dev.erst.fingrind.core.AccountRole.POLARITY_INVERTED)),
-            BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.ParentAccountNotHeader(
                     new dev.erst.fingrind.core.AccountCode("1100"),
                     new dev.erst.fingrind.core.AccountCode("1000"),
@@ -111,26 +102,35 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("1100"),
                     new dev.erst.fingrind.core.AccountCode("1100"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
                     FinancialPositionLineClassification.RESULT_HOLDING,
                     List.of(new dev.erst.fingrind.core.AccountCode("3000")))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
+                new CloseTargetAccountCandidateAmbiguous(
                     FinancialPositionLineClassification.OTHER_EQUITY,
                     List.of(
                         new dev.erst.fingrind.core.AccountCode("3000"),
                         new dev.erst.fingrind.core.AccountCode("3010")))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.PeriodResultTransferMustStartAt(
+                new BookAdministrationRejection.InterimResultSweepMustStartAt(
                     java.time.LocalDate.parse("2026-04-01"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.PeriodResultTransferFutureDate(
+                new BookAdministrationRejection.InterimResultSweepFutureDate(
                     java.time.LocalDate.parse("2026-04-02"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary(
+                new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
                     java.time.LocalDate.parse("2026-12-15"),
                     java.time.LocalDate.parse("2027-01-15"),
-                    FiscalYearStart.parse("01-01")))));
+                    FiscalYearStart.parse("01-01"))),
+            BookAdministrationRejection.wireCode(
+                new BookAdministrationRejection.FiscalYearCloseMustStartAt(
+                    java.time.LocalDate.parse("2026-01-01"))),
+            BookAdministrationRejection.wireCode(
+                new BookAdministrationRejection.FiscalYearCloseMustEndAt(
+                    java.time.LocalDate.parse("2026-12-31"))),
+            BookAdministrationRejection.wireCode(
+                new BookAdministrationRejection.FiscalYearCloseFutureDate(
+                    java.time.LocalDate.parse("2027-01-01")))));
   }
 
   @Test
@@ -141,20 +141,21 @@ class BookAdministrationRejectionTest {
             "administration-book-not-initialized",
             "book-contains-schema",
             "account-type-conflict",
-            "account-role-conflict",
             "account-taxonomy-conflict",
             "parent-account-missing",
             "parent-account-inactive",
             "parent-account-type-conflict",
-            "parent-account-role-conflict",
             "parent-account-not-header",
             "parent-account-taxonomy-conflict",
             "account-hierarchy-cycle",
-            "result-holding-account-candidate-missing",
-            "result-holding-account-candidate-ambiguous",
-            "period-result-transfer-must-start-at",
-            "period-result-transfer-future-date",
-            "period-result-transfer-crosses-fiscal-year-boundary"),
+            "close-target-account-candidate-missing",
+            "close-target-account-candidate-ambiguous",
+            "interim-result-sweep-must-start-at",
+            "interim-result-sweep-future-date",
+            "interim-result-sweep-crosses-fiscal-year-boundary",
+            "fiscal-year-close-must-start-at",
+            "fiscal-year-close-must-end-at",
+            "fiscal-year-close-future-date"),
         BookAdministrationRejection.descriptors().stream()
             .map(ContractResponse.RejectionDescriptor::code)
             .toList());

@@ -4,6 +4,8 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
@@ -25,6 +27,7 @@ class CliReportingWorkflow extends CliBookWorkflowAdapter {
   private final PeriodSummaryResult periodSummaryResult;
   private final FinancialPositionResult financialPositionResult;
   private final IncomeStatementResult incomeStatementResult;
+  private final CashFlowStatementResult cashFlowStatementResult;
   private final ChangesInEquityResult changesInEquityResult;
 
   CliReportingWorkflow(
@@ -34,6 +37,7 @@ class CliReportingWorkflow extends CliBookWorkflowAdapter {
       PeriodSummaryResult periodSummaryResult,
       FinancialPositionResult financialPositionResult,
       IncomeStatementResult incomeStatementResult,
+      CashFlowStatementResult cashFlowStatementResult,
       ChangesInEquityResult changesInEquityResult) {
     this.accountBalanceResult = accountBalanceResult;
     this.trialBalanceResult = trialBalanceResult;
@@ -41,6 +45,7 @@ class CliReportingWorkflow extends CliBookWorkflowAdapter {
     this.periodSummaryResult = periodSummaryResult;
     this.financialPositionResult = financialPositionResult;
     this.incomeStatementResult = incomeStatementResult;
+    this.cashFlowStatementResult = cashFlowStatementResult;
     this.changesInEquityResult = changesInEquityResult;
   }
 
@@ -78,6 +83,12 @@ class CliReportingWorkflow extends CliBookWorkflowAdapter {
   public ContractDecision<IncomeStatementResult> incomeStatement(
       BookAccess bookAccess, IncomeStatementQuery query) {
     return CliWorkflowDoubleSupport.accepted(incomeStatementResult);
+  }
+
+  @Override
+  public ContractDecision<CashFlowStatementResult> cashFlowStatement(
+      BookAccess bookAccess, CashFlowStatementQuery query) {
+    return CliWorkflowDoubleSupport.accepted(cashFlowStatementResult);
   }
 
   @Override

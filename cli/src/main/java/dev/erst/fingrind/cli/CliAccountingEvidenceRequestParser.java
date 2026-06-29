@@ -8,7 +8,7 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredArray;
 
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
-import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
+import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -17,11 +17,9 @@ import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CanonicalTemporalText;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
-import dev.erst.fingrind.core.StorageLocator;
 import java.util.ArrayList;
 import java.util.List;
 import tools.jackson.databind.JsonNode;
@@ -47,7 +45,7 @@ final class CliAccountingEvidenceRequestParser {
       String context = ProtocolPostEntryFields.Evidence.SOURCE_DOCUMENTS + "[" + index + "]";
       ObjectNode sourceDocumentObject = requireObjectNode(sourceDocumentNode, context);
       rejectUnexpectedFields(
-          sourceDocumentObject, context, ProtocolPostingRequestFieldSets.sourceDocumentFields());
+          sourceDocumentObject, context, ProtocolPostingNestedFieldSets.sourceDocumentFields());
       sourceDocuments.add(
           new SourceDocumentReference(
               new SourceDocumentId(
@@ -68,26 +66,7 @@ final class CliAccountingEvidenceRequestParser {
                       ProtocolPostEntryFields.SourceDocument.DOCUMENT_DATE,
                       ScaffoldPlaceholders.EFFECTIVE_DATE,
                       context + "."),
-                  context + "." + ProtocolPostEntryFields.SourceDocument.DOCUMENT_DATE),
-              CanonicalTemporalText.parseUtcInstant(
-                  CliRequestPlaceholderValues.requiredRealText(
-                      sourceDocumentObject,
-                      ProtocolPostEntryFields.SourceDocument.CAPTURED_AT,
-                      ScaffoldPlaceholders.RECORDED_AT,
-                      context + "."),
-                  context + "." + ProtocolPostEntryFields.SourceDocument.CAPTURED_AT),
-              new StorageLocator(
-                  CliRequestPlaceholderValues.requiredRealText(
-                      sourceDocumentObject,
-                      ProtocolPostEntryFields.SourceDocument.STORAGE_LOCATOR,
-                      ScaffoldPlaceholders.STORAGE_LOCATOR,
-                      context + ".")),
-              new ContentSha256(
-                  CliRequestPlaceholderValues.requiredRealText(
-                      sourceDocumentObject,
-                      ProtocolPostEntryFields.SourceDocument.CONTENT_SHA256,
-                      ScaffoldPlaceholders.CONTENT_SHA256,
-                      context + "."))));
+                  context + "." + ProtocolPostEntryFields.SourceDocument.DOCUMENT_DATE)));
       index++;
     }
     return List.copyOf(sourceDocuments);
@@ -100,7 +79,7 @@ final class CliAccountingEvidenceRequestParser {
       String context = ProtocolPostEntryFields.Evidence.APPROVALS + "[" + index + "]";
       ObjectNode approvalObject = requireObjectNode(approvalNode, context);
       rejectUnexpectedFields(
-          approvalObject, context, ProtocolPostingRequestFieldSets.approvalFields());
+          approvalObject, context, ProtocolPostingNestedFieldSets.approvalFields());
       approvals.add(
           new ApprovalReference(
               new ApprovalId(

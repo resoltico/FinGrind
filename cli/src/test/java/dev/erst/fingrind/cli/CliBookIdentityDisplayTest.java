@@ -18,7 +18,7 @@ class CliBookIdentityDisplayTest {
     BookIdentity bookIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Acme Studio")),
-            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
 
@@ -26,6 +26,7 @@ class CliBookIdentityDisplayTest {
         List.of(
             List.of("Entity", "Acme Studio"),
             List.of("Starter chart", "Owner-managed service starter chart"),
+            List.of("Accounting basis", "Cash basis"),
             List.of("Functional currency", "EUR"),
             List.of("Fiscal year start", "01-01")),
         CliBookIdentityDisplay.summaryRows(bookIdentity));
@@ -33,14 +34,18 @@ class CliBookIdentityDisplayTest {
         List.of(
             List.of("Entity", "Acme Studio"),
             List.of("Starter chart", "Owner-managed service starter chart"),
+            List.of("Accounting basis", "Cash basis"),
             List.of("Functional currency", "EUR"),
             List.of("Fiscal year start", "01-01")),
         CliBookIdentityDisplay.contextRows(bookIdentity));
     assertEquals(
-        List.of("Accounting kernel", "Internal management cash bookkeeping"),
+        List.of("Accounting kernel", "Internal management bookkeeping"),
         CliBookIdentityDisplay.detailRows(bookIdentity).get(1));
     assertEquals(
         List.of("Accounting basis", "Cash basis"),
         CliBookIdentityDisplay.detailRows(bookIdentity).get(2));
+    assertEquals(
+        List.of("Accounting posture", "Non-statutory internal management"),
+        CliBookIdentityDisplay.detailRows(bookIdentity).get(3));
   }
 }

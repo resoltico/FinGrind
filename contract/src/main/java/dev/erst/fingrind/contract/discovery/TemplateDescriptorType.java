@@ -5,6 +5,9 @@ import java.util.List;
 /** Sealed inventory root for published request and ledger-plan template descriptors. */
 public sealed interface TemplateDescriptorType
     permits ContractTemplates.PostingRequestTemplateDescriptor,
+        ContractTemplates.TaxSelectionTemplateDescriptor,
+        ForeignExchangeTemplateDescriptor,
+        QuotedExchangeRateTemplateDescriptor,
         ContractTemplates.JournalLineTemplateDescriptor,
         ContractTemplates.OpeningBalanceTemplateDescriptor,
         ContractTemplates.AccountingEvidenceTemplateDescriptor,
@@ -12,6 +15,8 @@ public sealed interface TemplateDescriptorType
         ContractTemplates.ApprovalTemplateDescriptor,
         ContractTemplates.ProvenanceTemplateDescriptor,
         ContractTemplates.ReversalTemplateDescriptor,
+        ContractTemplates.DeclareTaxRegistrationTemplateDescriptor,
+        ContractTemplates.DeclareTaxCodeTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanStepTemplateDescriptor,
         ContractPlanTemplates.EnsureBookTemplateDescriptor,

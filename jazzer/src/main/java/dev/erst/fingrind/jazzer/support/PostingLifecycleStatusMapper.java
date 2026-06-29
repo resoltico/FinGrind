@@ -16,18 +16,18 @@ public final class PostingLifecycleStatusMapper {
           accountStateViolationStatus(violations);
       case PostingRejection.EntrySemanticsViolations _ ->
           PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS;
-      case PostingRejection.DuplicateIdempotencyKey _ ->
-          PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY;
+      case PostingRejection.IdempotencyKeyConflict _ ->
+          PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT;
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
-      case PostingRejection.TransferredPeriodResultViolation _ ->
+      case PostingRejection.SweptInterimResultViolation _ ->
           PostingLifecycleStatus.CLOSED_PERIOD_VIOLATION;
-      case PostingRejection.OpenAccountingPositionWindowClosed _ ->
+      case PostingRejection.OpeningPositionWindowClosed _ ->
           PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED;
-      case PostingRejection.OpenAccountingPositionTouchesNominalAccount _ ->
+      case PostingRejection.OpeningPositionTouchesNominalAccount _ ->
           PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT;
-      case PostingRejection.ResultHoldingAccountReserved _ ->
-          PostingLifecycleStatus.RESULT_HOLDING_ACCOUNT_RESERVED;
+      case PostingRejection.ReservedResultClassification _ ->
+          PostingLifecycleStatus.RESERVED_RESULT_CLASSIFICATION;
       case PostingRejection.ReversalTargetNotFound _ ->
           PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND;
       case PostingRejection.ReversalAlreadyExists _ ->

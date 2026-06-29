@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,9 +27,9 @@ import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
@@ -77,11 +78,10 @@ class LedgerPlanContractTest {
         LedgerStepKind.DECLARE_ACCOUNT,
         new LedgerStep.DeclareAccount(
                 stepId("declare"),
-                ContractFixtures.declareAccountCommand(
-                    "1000", "Cash", AccountType.ASSET, AccountRole.ORDINARY))
+                ContractFixtures.declareAccountCommand("1000", "Cash", AccountType.ASSET))
             .kind());
     assertEquals(LedgerStepKind.PREFLIGHT_ENTRY, postingStep(true).kind());
-    assertEquals(LedgerStepKind.POST_ENTRY, postingStep(false).kind());
+    assertEquals(LedgerStepKind.RECORD_REVERSAL, postingStep(false).kind());
     assertEquals(LedgerStepKind.INSPECT_BOOK, new LedgerStep.InspectBook(stepId("inspect")).kind());
     assertEquals(
         LedgerStepKind.LIST_ACCOUNTS,
@@ -116,6 +116,40 @@ class LedgerPlanContractTest {
         () -> new LedgerStep.EnsureBook(stepId(" "), ContractFixtures.openBookCommand()));
     assertThrows(
         NullPointerException.class, () -> new LedgerStep.Assert(stepId("assert"), nullOf()));
+  }
+
+  @Test
+  void ledgerStepKinds_publishPostingFlagsAndEntryKindMappings() {
+    assertTrue(LedgerStepKind.PREFLIGHT_ENTRY.carriesPostingPayload());
+    assertTrue(LedgerStepKind.RECORD_SALE.carriesPostingPayload());
+    assertTrue(LedgerStepKind.POST_ENTRY.carriesPostingPayload());
+    assertFalse(LedgerStepKind.ENSURE_BOOK.carriesPostingPayload());
+    assertFalse(LedgerStepKind.LIST_POSTINGS.carriesPostingPayload());
+    assertFalse(LedgerStepKind.PREFLIGHT_ENTRY.commitsPosting());
+    assertTrue(LedgerStepKind.RECORD_OWNER_WITHDRAWAL.commitsPosting());
+    assertTrue(LedgerStepKind.POST_ENTRY.commitsPosting());
+    assertFalse(LedgerStepKind.ACCOUNT_BALANCE.commitsPosting());
+    assertEquals(
+        LedgerStepKind.POST_ENTRY,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.DIRECT_JOURNAL));
+    assertEquals(
+        LedgerStepKind.RECORD_SALE,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.SALE));
+    assertEquals(
+        LedgerStepKind.RECORD_EXPENSE,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.EXPENSE));
+    assertEquals(
+        LedgerStepKind.RECORD_OWNER_CONTRIBUTION,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.OWNER_CONTRIBUTION));
+    assertEquals(
+        LedgerStepKind.RECORD_OWNER_WITHDRAWAL,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.OWNER_WITHDRAWAL));
+    assertEquals(
+        LedgerStepKind.RECORD_OPENING_POSITION,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.OPENING_POSITION));
+    assertEquals(
+        LedgerStepKind.RECORD_REVERSAL,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.REVERSAL));
   }
 
   @Test
@@ -159,7 +193,7 @@ class LedgerPlanContractTest {
     LedgerJournalEntry success =
         new LedgerJournalEntry.Succeeded(
             stepId("post"),
-            LedgerJournalStep.standard(LedgerStepKind.POST_ENTRY),
+            LedgerJournalStep.standard(LedgerStepKind.RECORD_REVERSAL),
             startedAt,
             finishedAt,
             List.of(fact));
@@ -239,6 +273,12 @@ class LedgerPlanContractTest {
             LedgerStepKind.ENSURE_BOOK.wireValue(),
             LedgerStepKind.DECLARE_ACCOUNT.wireValue(),
             LedgerStepKind.PREFLIGHT_ENTRY.wireValue(),
+            LedgerStepKind.RECORD_SALE.wireValue(),
+            LedgerStepKind.RECORD_EXPENSE.wireValue(),
+            LedgerStepKind.RECORD_OWNER_CONTRIBUTION.wireValue(),
+            LedgerStepKind.RECORD_OWNER_WITHDRAWAL.wireValue(),
+            LedgerStepKind.RECORD_OPENING_POSITION.wireValue(),
+            LedgerStepKind.RECORD_REVERSAL.wireValue(),
             LedgerStepKind.POST_ENTRY.wireValue(),
             LedgerStepKind.INSPECT_BOOK.wireValue(),
             LedgerStepKind.LIST_ACCOUNTS.wireValue(),
