@@ -232,7 +232,6 @@ repo_hygiene_run_git_fsck_with_heartbeat() {
     local heartbeat_seconds=30
     local elapsed_seconds=0
     local output_file
-    local heartbeat_pid
     local -a fsck_command
     output_file="$(mktemp "${TMPDIR:-/tmp}/fingrind-git-fsck.XXXXXX")"
     printf '%s\n' 'repo hygiene verification: checking git object store'
@@ -247,20 +246,16 @@ repo_hygiene_run_git_fsck_with_heartbeat() {
         "${fsck_command[@]}"
     ) >"${output_file}" 2>&1 &
     local fsck_pid=$!
-    (
-        while repo_hygiene_process_is_live "${fsck_pid}"; do
-            sleep "${heartbeat_seconds}"
-            elapsed_seconds=$((elapsed_seconds + heartbeat_seconds))
-            if repo_hygiene_process_is_live "${fsck_pid}"; then
-                printf 'repo hygiene verification: git fsck still running (%ss elapsed)\n' "${elapsed_seconds}"
-            fi
-        done
-    ) &
-    heartbeat_pid=$!
+    while repo_hygiene_process_is_live "${fsck_pid}"; do
+        sleep 1
+        elapsed_seconds=$((elapsed_seconds + 1))
+        if (( elapsed_seconds % heartbeat_seconds == 0 )) &&
+            repo_hygiene_process_is_live "${fsck_pid}"; then
+            printf 'repo hygiene verification: git fsck still running (%ss elapsed)\n' "${elapsed_seconds}"
+        fi
+    done
     wait "${fsck_pid}"
     local fsck_status=$?
-    kill "${heartbeat_pid}" 2>/dev/null || true
-    wait "${heartbeat_pid}" 2>/dev/null || true
     object_store_output="$(cat "${output_file}")"
     rm -f "${output_file}"
     return "${fsck_status}"

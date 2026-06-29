@@ -3,12 +3,12 @@ package dev.erst.fingrind.report.pdf;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InaccessibleObjectException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Filter;
 import java.util.logging.LogRecord;
@@ -182,10 +182,15 @@ final class PdfDocumentFactory {
     void save(ByteArrayOutputStream outputStream) throws IOException;
   }
 
-  /** Suppresses one known harmless PDFBox Java 26 unmapping warning during successful exports. */
+  /** Suppresses one known harmless PDFBox direct-buffer unmapping warning family. */
   static final class PdfboxRuntimeNoiseFilter {
     private static final String PDFBOX_IOUTILS_LOGGER = "org.apache.pdfbox.io.IOUtils";
-    private static final String UNMAPPING_NOT_SUPPORTED = "Unmapping is not supported.";
+    private static final Set<String> HARMLESS_UNMAPPING_MESSAGES =
+        Set.of(
+            "Unmapping is not supported.",
+            "Unmapping is not supported because of missing permissions. Please grant at least the following permissions: RuntimePermission(\"accessClassInPackage.sun.misc\")  and ReflectPermission(\"suppressAccessChecks\")",
+            "Unable to unmap ByteBuffer.",
+            "Unable to unmap the mapped buffer");
     private static final AtomicBoolean INSTALLED = new AtomicBoolean();
 
     private PdfboxRuntimeNoiseFilter() {}
@@ -208,8 +213,7 @@ final class PdfDocumentFactory {
         return false;
       }
       return PDFBOX_IOUTILS_LOGGER.equals(record.getLoggerName())
-          && UNMAPPING_NOT_SUPPORTED.equals(record.getMessage())
-          && record.getThrown() instanceof InaccessibleObjectException;
+          && HARMLESS_UNMAPPING_MESSAGES.contains(record.getMessage());
     }
   }
 }

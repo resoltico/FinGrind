@@ -128,10 +128,13 @@ Do not move the release tag. Do not create a replacement tag for the same versio
 publication machinery and replay it against the immutable released commit.
 
 The rerun path uses a different release-candidate verification mode from the initial publication
-path. Initial publication requires the tagged commit to equal the current default-branch head.
-Workflow-dispatch reruns keep the tagged checkout on the immutable release commit and verify that
-commit through the historical-tag rule instead: the tag must remain reachable from `origin/main`,
-and the original release-blocking CI set on that tagged commit must already be green.
+path. Initial publication requires the tagged commit to equal the current default-branch head, but
+it does not require that commit to be the very first commit that introduced the target version:
+unreleased same-version repair commits may still become the first public tag as long as they are
+the current green `origin/main` head. Workflow-dispatch reruns keep the tagged checkout on the
+immutable release commit and verify that commit through the historical-tag rule instead: the tag
+must remain reachable from `origin/main`, and the original release-blocking CI set on that tagged
+commit must already be green.
 
 The rerun workflow now reads the canonical bundle-archive manifest instead of scraping Gradle
 console output, so post-tag publication repairs do not need compatibility shims for historical

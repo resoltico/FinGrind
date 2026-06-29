@@ -129,9 +129,13 @@ chmod +x "${shim_dir}/git"
 REAL_GIT_PATH="${real_git}" PATH="${shim_dir}:${PATH}" "${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should fall back when the local Git lacks git fsck --no-references"
 progress 'local-state reporting stays available'
+report_started_at=$SECONDS
 report_output="$("${verifier}" --repo-root "${fixture_root}" --report-local-state)"
+report_elapsed_seconds=$((SECONDS - report_started_at))
 [[ "${report_output}" == *'SIZE   CATEGORY'* ]] || die \
     "repo hygiene verifier should support local-state reporting"
+(( report_elapsed_seconds < 10 )) || die \
+    "repo hygiene verifier local-state reporting should return promptly for a healthy fixture"
 
 mkdir "${fixture_root}/2026-01-31"
 printf 'finder drift\n' > "${fixture_root}/.DS_Store"

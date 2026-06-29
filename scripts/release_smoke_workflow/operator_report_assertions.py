@@ -116,7 +116,9 @@ def _assert_pdf_export(
         )
     require(
         pdf_stderr == "",
-        f"{config.label} successful PDF export emitted diagnostics instead of staying silent",
+        f"{config.label} successful PDF export emitted diagnostics instead of staying silent.\n"
+        f"Captured stderr file: {config.trial_balance_pdf_stderr_path}\n"
+        f"Captured stderr:\n{pdf_stderr}",
     )
     reported_pdf_path = extract_pdf_artifact_path(pdf_stdout)
     require(

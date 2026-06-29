@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Verify that a tag-targeted publication candidate is safe to publish. Initial publication requires
-# the checked-out tag commit to be the current remote default-branch head and to introduce the
-# target release version on that default-branch line; reruns against an existing immutable tag
-# allow a historical tag commit, but only when that commit remains reachable from the default
-# branch and the release-blocking CI checks on that exact commit are already green.
+# the checked-out tag commit to be the current remote default-branch head and to stay on the active
+# unreleased target-version line; unreleased repair commits may therefore keep the same version
+# before the first public tag. Reruns against an existing immutable tag allow a historical tagged
+# commit, but only when that commit remains reachable from the default branch and the
+# release-blocking CI checks on that exact commit are already green.
 
 set -euo pipefail
 
@@ -113,31 +114,6 @@ esac
 
 [[ "${local_commit_sha}" == "${tag_commit_sha}" ]] || die \
     "checked-out commit ${local_commit_sha} does not match remote tag ${tag_name} commit ${tag_commit_sha}"
-
-version_from_gradle_properties_at_revision() {
-    local revision="$1"
-    local revision_version
-    revision_version="$(
-        git show "${revision}:gradle.properties" 2>/dev/null | awk -F= '
-            $1 == "version" {
-                print $2
-                exit
-            }
-        '
-    )"
-    [[ -n "${revision_version}" ]] || die \
-        "missing version in gradle.properties at ${revision}"
-    printf '%s\n' "${revision_version}"
-}
-
-readonly tag_commit_first_parent_sha="$(git rev-parse --verify "${tag_commit_sha}^1" 2>/dev/null || true)"
-[[ -n "${tag_commit_first_parent_sha}" ]] || die \
-    "release tag ${tag_name} commit ${tag_commit_sha} has no first parent to prove version introduction"
-readonly tag_commit_first_parent_version="$(
-    version_from_gradle_properties_at_revision "${tag_commit_sha}^1"
-)"
-[[ "${tag_commit_first_parent_version}" != "${expected_version}" ]] || die \
-    "release tag ${tag_name} commit ${tag_commit_sha} did not introduce version ${expected_version}; first-parent commit ${tag_commit_first_parent_sha} already carried that version"
 
 default_branch_ref="refs/remotes/origin/${default_branch}"
 if ! git show-ref --verify --quiet "${default_branch_ref}"; then

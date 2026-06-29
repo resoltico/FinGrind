@@ -411,11 +411,9 @@ gh api "repos/$REPO/git/ref/tags/vX.Y.Z"
 Do not proceed until the remote tag ref exists. Never infer a successful tag push from the
 absence of a local git error alone — verify the remote ref through GitHub.
 
-`./scripts/verify-release-candidate-tag.sh vX.Y.Z` is mandatory here. In its default initial
-publication mode it proves the checked-out commit matches the remote tag, the tag version matches
-`gradle.properties`, the tag commit equals the current `origin/main` head, the tag commit is the
-commit that introduces the release version on that default-branch line, and the release-blocking
-CI set is green on that exact commit before any publication workflow is trusted.
+`./scripts/verify-release-candidate-tag.sh vX.Y.Z` is mandatory here. In its default initial publication mode it proves the checked-out commit matches the remote tag, the tag version matches `gradle.properties`, the tag commit equals the current `origin/main` head, the tag commit stays on the active unreleased `X.Y.Z` version line, and the release-blocking CI set is green on that exact commit before any publication workflow is trusted.
+
+If the `X.Y.Z` version bump landed on `main` and an unreleased pre-tag repair commit is needed before the first public tag, keep the version at `X.Y.Z`, merge the repair onto `main`, rerun the gates, and tag that repaired `origin/main` head. Do not cut `X.Y.(Z+1)` merely to express an unpublished release-control or payload repair. Later unreleased repair commits may still become the first public tag for `X.Y.Z`; post-tag repairs still use the immutable rerun path below and must not move the tag.
 
 The tag push is what triggers the `Release` workflow. The PR merge alone does not. The same
 workflow now owns bundle publication, GitHub Release verification, container publication, and
