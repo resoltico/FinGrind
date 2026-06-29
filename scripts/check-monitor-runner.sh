@@ -93,7 +93,7 @@ run_monitored_command() {
     current_stage_log_path="${log_path}"
     current_stage_diagnostics_directory="${diagnostics_root}"
 
-    printf '[CHECK-PULSE] stage=%s phase=start log=%s diagnostics=%s\n' \
+    printf '[CHECK-PULSE] stage=%s event=start log=%s diagnostics=%s\n' \
         "${stage_id}" \
         "${log_path}" \
         "${diagnostics_root}"
@@ -122,7 +122,7 @@ run_monitored_command() {
         child_exit_code="${monitor_exit_code}"
     fi
 
-    printf '[CHECK-PULSE] stage=%s phase=finish exit=%d log=%s\n' \
+    printf '[CHECK-PULSE] stage=%s event=finish exit=%d log=%s\n' \
         "${stage_id}" \
         "${child_exit_code}" \
         "${log_path}"

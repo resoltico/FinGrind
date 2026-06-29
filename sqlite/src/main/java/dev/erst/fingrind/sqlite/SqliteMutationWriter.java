@@ -1,14 +1,16 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.RequestFingerprint;
+import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
+import dev.erst.fingrind.executor.bookkeeping.SweptInterimResult;
 import java.time.Instant;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -56,18 +58,25 @@ final class SqliteMutationWriter {
       statement.bindText(1, account.accountCode().value());
       statement.bindText(2, account.accountName().value());
       statement.bindText(3, account.accountType().wireValue());
-      statement.bindText(4, account.accountRole().wireValue());
-      statement.bindText(5, account.accountTaxonomy().nodeKind().wireValue());
+      statement.bindText(4, account.accountTaxonomy().nodeKind().wireValue());
+      bindOptionalText(
+          statement,
+          5,
+          account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null));
       bindOptionalText(
           statement,
           6,
-          account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null));
+          account
+              .accountTaxonomy()
+              .financialPositionLineClassification()
+              .map(value -> value.wireValue())
+              .orElse(null));
       bindOptionalText(
           statement,
           7,
           account
               .accountTaxonomy()
-              .financialPositionLineClassification()
+              .cashFlowAssetClassification()
               .map(value -> value.wireValue())
               .orElse(null));
       bindOptionalText(
@@ -84,71 +93,50 @@ final class SqliteMutationWriter {
     }
   }
 
-  static void insertPostingFact(SqliteNativeDatabase activeDatabase, CommittedPosting postingFact) {
-    RequestProvenance requestProvenance = postingFact.provenance().requestProvenance();
+  static void upsertTaxRegistration(
+      SqliteNativeDatabase activeDatabase, DeclaredTaxRegistration registration) {
     try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_FACT)) {
-      statement.bindText(1, postingFact.postingId().value());
-      statement.bindText(2, postingFact.postingKind().wireValue());
-      statement.bindText(3, postingFact.postingOriginKind().wireValue());
-      statement.bindText(
-          4, CanonicalTemporalText.formatLocalDate(postingFact.journalEntry().effectiveDate()));
-      statement.bindText(
-          5, CanonicalTemporalText.formatUtcInstant(postingFact.provenance().recordedAt()));
-      statement.bindText(6, requestProvenance.actorId().value());
-      statement.bindText(7, requestProvenance.actorType().wireValue());
-      statement.bindText(8, requestProvenance.commandId().value());
-      statement.bindText(9, requestProvenance.idempotencyKey().value());
-      statement.bindText(10, requestProvenance.causationId().value());
+        activeDatabase.prepare(SqliteTaxSql.UPSERT_TAX_REGISTRATION)) {
+      statement.bindText(1, registration.taxRegistrationId().value());
+      statement.bindText(2, registration.taxRegistrationName().value());
+      statement.bindText(3, registration.jurisdiction().value());
       bindOptionalText(
           statement,
-          11,
-          requestProvenance.correlationId().map(value -> value.value()).orElse(null));
-      bindOptionalText(
-          statement,
-          12,
-          postingFact.postingLineage().reversalReason().map(value -> value.value()).orElse(null));
-      statement.bindText(13, postingFact.provenance().sourceChannel().wireValue());
-      bindOptionalText(
-          statement,
-          14,
-          postingFact
-              .postingLineage()
-              .reversalReference()
-              .map(reference -> reference.priorPostingId().value())
-              .orElse(null));
+          4,
+          registration.registrationNumber() == null
+              ? null
+              : registration.registrationNumber().value());
+      statement.bindText(5, registration.payableAccountCode().value());
+      statement.bindText(6, registration.recoverableAccountCode().value());
+      statement.bindText(7, registration.obligationFrequency().wireValue());
+      statement.bindInt(8, registration.dueDaysAfterPeriodEnd());
+      statement.bindText(9, CanonicalTemporalText.formatUtcInstant(registration.declaredAt()));
       statement.step();
     }
-    for (int index = 0; index < postingFact.evidence().sourceDocuments().size(); index++) {
-      var sourceDocument = postingFact.evidence().sourceDocuments().get(index);
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqliteTaxSql.DELETE_TAX_CODES_FOR_REGISTRATION)) {
+      statement.bindText(1, registration.taxRegistrationId().value());
+      statement.step();
+    }
+    for (var taxCode : registration.taxCodes()) {
       try (SqliteNativeStatement statement =
-          activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_SOURCE_DOCUMENT)) {
-        statement.bindText(1, postingFact.postingId().value());
-        statement.bindInt(2, index);
-        statement.bindText(3, sourceDocument.sourceDocumentId().value());
-        statement.bindText(4, sourceDocument.sourceDocumentType().value());
-        statement.bindText(5, CanonicalTemporalText.formatLocalDate(sourceDocument.documentDate()));
-        statement.bindText(6, CanonicalTemporalText.formatUtcInstant(sourceDocument.capturedAt()));
-        statement.bindText(7, sourceDocument.storageLocator().value());
-        statement.bindText(8, sourceDocument.contentSha256().value());
+          activeDatabase.prepare(SqliteTaxSql.INSERT_TAX_REGISTRATION_CODE)) {
+        statement.bindText(1, registration.taxRegistrationId().value());
+        statement.bindText(2, taxCode.taxCode().value());
+        statement.bindText(3, taxCode.taxCodeName().value());
+        statement.bindInt(4, taxCode.rate().partsPerMillionOfWhole());
+        statement.bindText(5, taxCode.inclusionMode().wireValue());
+        statement.bindText(6, taxCode.applicationKind().wireValue());
         statement.step();
       }
     }
-    for (int index = 0; index < postingFact.evidence().approvals().size(); index++) {
-      var approval = postingFact.evidence().approvals().get(index);
-      try (SqliteNativeStatement statement =
-          activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_APPROVAL)) {
-        statement.bindText(1, postingFact.postingId().value());
-        statement.bindInt(2, index);
-        statement.bindText(3, approval.approvalId().value());
-        statement.bindText(4, approval.approvalType().value());
-        statement.bindText(5, approval.approverId().value());
-        statement.bindText(6, approval.approverType().wireValue());
-        statement.bindText(7, approval.decision().wireValue());
-        statement.bindText(8, CanonicalTemporalText.formatUtcInstant(approval.approvedAt()));
-        statement.step();
-      }
-    }
+  }
+
+  static void insertPostingFact(
+      SqliteNativeDatabase activeDatabase,
+      CommittedPosting postingFact,
+      RequestFingerprint requestFingerprint) {
+    SqlitePostingFactWriter.insertPostingFact(activeDatabase, postingFact, requestFingerprint);
   }
 
   static void insertJournalLines(
@@ -175,36 +163,37 @@ final class SqliteMutationWriter {
     clearPendingJournalLineTable(activeDatabase);
   }
 
-  static TransferredPeriodResult insertPeriodResultTransfer(
+  static SweptInterimResult insertInterimResultSweep(
       SqliteNativeDatabase activeDatabase,
       dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
       AccountCode resultHoldingAccountCode,
-      List<CurrencyBalance> transferredTotals,
-      Instant transferredAt,
+      List<CurrencyBalance> sweptTotals,
+      Instant sweptAt,
       List<CommittedPosting> closingPostings) {
-    int transferOrder;
+    int sweepOrder;
     try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER)) {
+        activeDatabase.prepare(SqliteReportingPeriodCloseSql.INSERT_PERIOD_RESULT_TRANSFER)) {
       statement.bindText(
           1, CanonicalTemporalText.formatLocalDate(reportingPeriod.effectiveDateFrom()));
       statement.bindText(
           2, CanonicalTemporalText.formatLocalDate(reportingPeriod.effectiveDateTo()));
       statement.bindText(3, resultHoldingAccountCode.value());
-      statement.bindText(4, CanonicalTemporalText.formatUtcInstant(transferredAt));
+      statement.bindText(4, CanonicalTemporalText.formatUtcInstant(sweptAt));
       if (statement.step() != SqliteNativeResultCode.code("ROW")) {
         throw new IllegalStateException(
-            "SQLite period result transfer insert returned no transfer order.");
+            "SQLite interim-result sweep insert returned no sweep order.");
       }
-      transferOrder = statement.columnInt(0);
+      sweepOrder = statement.columnInt(0);
       if (statement.step() != SqliteNativeResultCode.code("DONE")) {
         throw new IllegalStateException(
-            "SQLite period result transfer insert returned more than one transfer order.");
+            "SQLite interim-result sweep insert returned more than one sweep order.");
       }
     }
-    for (CurrencyBalance closedTotal : transferredTotals) {
+    for (CurrencyBalance closedTotal : sweptTotals) {
       try (SqliteNativeStatement statement =
-          activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER_TOTAL)) {
-        statement.bindInt(1, transferOrder);
+          activeDatabase.prepare(
+              SqliteReportingPeriodCloseSql.INSERT_PERIOD_RESULT_TRANSFER_TOTAL)) {
+        statement.bindInt(1, sweepOrder);
         statement.bindText(2, closedTotal.debitTotal().currencyUnit().code());
         statement.bindLong(3, closedTotal.debitTotal().minorUnits());
         statement.bindLong(4, closedTotal.creditTotal().minorUnits());
@@ -213,19 +202,66 @@ final class SqliteMutationWriter {
     }
     for (CommittedPosting closingPosting : closingPostings) {
       try (SqliteNativeStatement statement =
-          activeDatabase.prepare(SqlitePostingSql.INSERT_PERIOD_RESULT_TRANSFER_POSTING)) {
-        statement.bindInt(1, transferOrder);
+          activeDatabase.prepare(
+              SqliteReportingPeriodCloseSql.INSERT_PERIOD_RESULT_TRANSFER_POSTING)) {
+        statement.bindInt(1, sweepOrder);
         statement.bindText(2, closingPosting.postingId().value());
         statement.step();
       }
     }
-    return new TransferredPeriodResult(
-        transferOrder,
+    return new SweptInterimResult(
+        sweepOrder,
         reportingPeriod,
         resultHoldingAccountCode,
-        transferredTotals,
-        transferredAt,
+        sweptTotals,
+        sweptAt,
         closingPostings.stream().map(CommittedPosting::postingId).toList());
+  }
+
+  static ClosedFiscalYearRecord insertFiscalYearClose(
+      SqliteNativeDatabase activeDatabase,
+      dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
+      AccountCode capitalAccountCode,
+      AccountCode resultHoldingAccountCode,
+      AccountCode retainedAccumulatedAccountCode,
+      Instant closedAt,
+      List<CommittedPosting> closePostings) {
+    int closeOrder;
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqliteReportingPeriodCloseSql.INSERT_FISCAL_YEAR_CLOSE)) {
+      statement.bindText(
+          1, CanonicalTemporalText.formatLocalDate(reportingPeriod.effectiveDateFrom()));
+      statement.bindText(
+          2, CanonicalTemporalText.formatLocalDate(reportingPeriod.effectiveDateTo()));
+      statement.bindText(3, capitalAccountCode.value());
+      statement.bindText(4, resultHoldingAccountCode.value());
+      statement.bindText(5, retainedAccumulatedAccountCode.value());
+      statement.bindText(6, CanonicalTemporalText.formatUtcInstant(closedAt));
+      if (statement.step() != SqliteNativeResultCode.code("ROW")) {
+        throw new IllegalStateException("SQLite fiscal-year close insert returned no close order.");
+      }
+      closeOrder = statement.columnInt(0);
+      if (statement.step() != SqliteNativeResultCode.code("DONE")) {
+        throw new IllegalStateException(
+            "SQLite fiscal-year close insert returned more than one close order.");
+      }
+    }
+    for (CommittedPosting closePosting : closePostings) {
+      try (SqliteNativeStatement statement =
+          activeDatabase.prepare(SqliteReportingPeriodCloseSql.INSERT_FISCAL_YEAR_CLOSE_POSTING)) {
+        statement.bindInt(1, closeOrder);
+        statement.bindText(2, closePosting.postingId().value());
+        statement.step();
+      }
+    }
+    return new ClosedFiscalYearRecord(
+        closeOrder,
+        reportingPeriod,
+        capitalAccountCode,
+        resultHoldingAccountCode,
+        retainedAccumulatedAccountCode,
+        closedAt,
+        closePostings.stream().map(CommittedPosting::postingId).toList());
   }
 
   private static void preparePendingJournalLineTable(SqliteNativeDatabase activeDatabase) {

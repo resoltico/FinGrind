@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
+import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.io.PrintStream;
@@ -58,26 +59,28 @@ final class CliOutputChannel {
     writeEnvelope(CliEnvelopeMapper.successEnvelope(payload));
   }
 
-  void writeMutationRejection(CliEnvelopeJsonModels.RejectedEnvelope envelope) {
+  void writeMutationRejection(CliEnvelopeJsonModels.Envelope<?> envelope) {
     writeDiagnosticEnvelope(envelope);
   }
 
-  void writeQueryRejection(CliEnvelopeJsonModels.RejectedEnvelope envelope) {
+  void writeQueryRejection(CliEnvelopeJsonModels.Envelope<?> envelope) {
     writeDiagnosticEnvelope(envelope);
   }
 
   void writeRejectedEnvelope(
-      CliEnvelopeJsonModels.RejectedEnvelope envelope, OutputMode requestedOutputMode) {
+      CliEnvelopeJsonModels.Envelope<?> envelope, OutputMode requestedOutputMode) {
     if (requestedOutputMode == OutputMode.JSON) {
       writeDiagnosticEnvelope(envelope);
       return;
     }
+    String code = Objects.requireNonNull(envelope.code(), "code");
+    String message = Objects.requireNonNull(envelope.message(), "message");
     writeFailureText(
         CliFailureOutputRenderer.renderRejectedText(
-            envelope.code(),
-            envelope.message(),
+            code,
+            message,
             envelope.hint(),
             envelope.idempotencyKey(),
-            envelope.details()));
+            (CliRejectionJsonModels.RejectionDetails) envelope.details()));
   }
 }

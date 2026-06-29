@@ -5,7 +5,7 @@ from typing import Any
 from .evidence_fixtures import posting_evidence, posting_provenance
 
 
-def cash_revenue_request(
+def sale_request(
     *,
     actor_prefix: str,
     effective_date: str,
@@ -18,8 +18,7 @@ def cash_revenue_request(
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "JOURNAL",
-        "recipeKind": "CASH_REVENUE",
+        "entryKind": "SALE",
         "effectiveDate": effective_date,
         "cashAccountCode": cash_account_code,
         "revenueAccountCode": revenue_account_code,
@@ -34,7 +33,7 @@ def cash_revenue_request(
     }
 
 
-def cash_expense_request(
+def expense_request(
     *,
     actor_prefix: str,
     effective_date: str,
@@ -47,8 +46,7 @@ def cash_expense_request(
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "JOURNAL",
-        "recipeKind": "CASH_EXPENSE",
+        "entryKind": "EXPENSE",
         "effectiveDate": effective_date,
         "expenseAccountCode": expense_account_code,
         "cashAccountCode": cash_account_code,
@@ -76,7 +74,7 @@ def raw_transfer_request(
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "JOURNAL",
+        "entryKind": "DIRECT_JOURNAL",
         "effectiveDate": effective_date,
         "lines": [
             journal_line(destination_account_code, "DEBIT", minor_units),
@@ -105,9 +103,9 @@ def declare_account_request(
     account_code: str,
     account_name: str,
     account_type: str,
-    account_role: str,
     account_node_kind: str,
     financial_position_line_classification: str | None = None,
+    cash_flow_asset_classification: str | None = None,
     profit_and_loss_line_classification: str | None = None,
     nonsense_one: str | None = None,
     nonsense_two: str | None = None,
@@ -116,11 +114,12 @@ def declare_account_request(
         "accountCode": account_code,
         "accountName": account_name,
         "accountType": account_type,
-        "accountRole": account_role,
         "accountNodeKind": account_node_kind,
     }
     if financial_position_line_classification is not None:
         payload["financialPositionLineClassification"] = financial_position_line_classification
+    if cash_flow_asset_classification is not None:
+        payload["cashFlowAssetClassification"] = cash_flow_asset_classification
     if profit_and_loss_line_classification is not None:
         payload["profitAndLossLineClassification"] = profit_and_loss_line_classification
     if nonsense_one is not None:

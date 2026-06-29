@@ -28,8 +28,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidForbiddenRecordedAtRequest() {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -57,8 +56,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidMissingProvenanceRequest() {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -99,8 +97,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidDuplicateIdempotencyKeyRequest() {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -128,8 +125,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidUnexpectedTopLevelFieldRequest() {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -157,8 +153,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidForbiddenSourceChannelRequest() {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -282,8 +277,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidWrongTypeRequest() {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": 1,
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",

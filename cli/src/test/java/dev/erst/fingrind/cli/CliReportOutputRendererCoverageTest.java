@@ -13,7 +13,6 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -45,9 +44,9 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     assertEquals(3, lines.size());
     assertTrue(
         lines.getFirst().startsWith("exportFamily,rowId,parentRowId,relationKind,recordKind"));
-    assertEquals(CliCsvExportFamilies.POSTING_RELATIONSHIPS, csvValue(lines, 1, "exportFamily"));
+    assertEquals(CliCsvExportFamilies.ACCOUNT_LEDGER, csvValue(lines, 1, "exportFamily"));
     assertEquals("ledger-summary", csvValue(lines, 1, "relationKind"));
-    assertEquals("summary", csvValue(lines, 1, "recordKind"));
+    assertEquals(CliCsvExportFamilies.ACCOUNT_LEDGER, csvValue(lines, 1, "recordKind"));
     assertEquals("1000", csvValue(lines, 1, "accountCode"));
     assertEquals("Cash", csvValue(lines, 1, "accountName"));
     assertEquals("2026-04-01", csvValue(lines, 1, "effectiveDateFrom"));
@@ -55,9 +54,9 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     assertEquals("EUR", csvValue(lines, 1, "currencyCode"));
     assertEquals("10.00", csvValue(lines, 1, "closingDebitTotal"));
     assertEquals("10.00", csvValue(lines, 1, "closingNetAmount"));
-    assertEquals(CliCsvExportFamilies.POSTING_RELATIONSHIPS, csvValue(lines, 2, "exportFamily"));
+    assertEquals(CliCsvExportFamilies.ACCOUNT_LEDGER, csvValue(lines, 2, "exportFamily"));
     assertEquals("scope-empty", csvValue(lines, 2, "relationKind"));
-    assertEquals(CliCsvEmptyKinds.SCOPE_EMPTY, csvValue(lines, 2, "recordKind"));
+    assertEquals(CliCsvExportFamilies.ACCOUNT_LEDGER, csvValue(lines, 2, "recordKind"));
     assertEquals("No ledger entries matched the selected scope.", csvValue(lines, 2, "message"));
   }
 
@@ -106,7 +105,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
                         money("EUR", "10.00")))),
             PostingLineage.direct(),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CASH_REVENUE,
+            dev.erst.fingrind.core.PostingOriginKind.SALE,
             accountingEvidenceWithApproval("ledger-approval"),
             new CommittedProvenance(
                 new RequestProvenance(
@@ -141,7 +140,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             .skip(1)
             .anyMatch(
                 line ->
-                    CliCsvExportFamilies.POSTING_RELATIONSHIPS.equals(
+                    CliCsvExportFamilies.ACCOUNT_LEDGER.equals(
                             csvValue(line, lines.getFirst(), "exportFamily"))
                         && "approval".equals(csvValue(line, lines.getFirst(), "relationKind"))
                         && "approval-ledger-approval"
@@ -188,7 +187,6 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             assetBalance)),
@@ -207,7 +205,8 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
                 line ->
                     "current".equals(csvValue(line, lines.getFirst(), "reportBasis"))
                         && "line".equals(csvValue(line, lines.getFirst(), "relationKind"))
-                        && "row".equals(csvValue(line, lines.getFirst(), "recordKind"))
+                        && CliCsvExportFamilies.FINANCIAL_POSITION.equals(
+                            csvValue(line, lines.getFirst(), "recordKind"))
                         && "ASSET".equals(csvValue(line, lines.getFirst(), "accountType"))
                         && "1000".equals(csvValue(line, lines.getFirst(), "lineCode"))
                         && "Cash".equals(csvValue(line, lines.getFirst(), "lineName"))));
@@ -268,11 +267,11 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             .skip(1)
             .anyMatch(
                 line ->
-                    CliCsvExportFamilies.STATEMENT.equals(
+                    CliCsvExportFamilies.CHANGES_IN_EQUITY.equals(
                             csvValue(line, lines.getFirst(), "exportFamily"))
                         && "report-empty".equals(csvValue(line, lines.getFirst(), "relationKind"))
                         && "current".equals(csvValue(line, lines.getFirst(), "reportBasis"))
-                        && CliCsvEmptyKinds.REPORT_EMPTY.equals(
+                        && CliCsvExportFamilies.CHANGES_IN_EQUITY.equals(
                             csvValue(line, lines.getFirst(), "recordKind"))
                         && "2026-04-01"
                             .equals(csvValue(line, lines.getFirst(), "effectiveDateFrom"))
@@ -285,11 +284,11 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             .skip(1)
             .anyMatch(
                 line ->
-                    CliCsvExportFamilies.STATEMENT.equals(
+                    CliCsvExportFamilies.CHANGES_IN_EQUITY.equals(
                             csvValue(line, lines.getFirst(), "exportFamily"))
                         && "report-empty".equals(csvValue(line, lines.getFirst(), "relationKind"))
                         && "comparative".equals(csvValue(line, lines.getFirst(), "reportBasis"))
-                        && CliCsvEmptyKinds.REPORT_EMPTY.equals(
+                        && CliCsvExportFamilies.CHANGES_IN_EQUITY.equals(
                             csvValue(line, lines.getFirst(), "recordKind"))
                         && "2025-04-01"
                             .equals(csvValue(line, lines.getFirst(), "effectiveDateFrom"))

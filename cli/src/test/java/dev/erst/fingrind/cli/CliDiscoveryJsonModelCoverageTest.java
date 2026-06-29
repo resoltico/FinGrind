@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
@@ -36,6 +38,7 @@ class CliDiscoveryJsonModelCoverageTest {
         new CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload(
             "FinGrind",
             "0.57.0",
+            MachineContract.protocolVersion(),
             "Compact help overview",
             DiscoveryDetail.COMPACT,
             null,
@@ -51,6 +54,7 @@ class CliDiscoveryJsonModelCoverageTest {
         new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
             "FinGrind",
             "0.57.0",
+            MachineContract.protocolVersion(),
             DiscoveryDetail.COMPACT,
             DiscoveryFocus.OVERVIEW,
             capabilitiesDescriptor.storage().bookBoundary(),
@@ -73,6 +77,7 @@ class CliDiscoveryJsonModelCoverageTest {
         new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
             "FinGrind",
             "0.57.0",
+            MachineContract.protocolVersion(),
             DiscoveryDetail.COMPACT,
             DiscoveryFocus.OVERVIEW,
             capabilitiesDescriptor.storage(),
@@ -90,6 +95,7 @@ class CliDiscoveryJsonModelCoverageTest {
             new CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 "Compact help overview",
                 DiscoveryDetail.MINIMAL,
                 null,
@@ -103,6 +109,7 @@ class CliDiscoveryJsonModelCoverageTest {
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.OVERVIEW,
                 capabilitiesDescriptor.storage().bookBoundary(),
@@ -127,6 +134,7 @@ class CliDiscoveryJsonModelCoverageTest {
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 DiscoveryDetail.COMPACT,
                 DiscoveryFocus.COMMANDS,
                 capabilitiesDescriptor.storage().bookBoundary(),
@@ -158,15 +166,17 @@ class CliDiscoveryJsonModelCoverageTest {
             java.util.List.of("post-entry"),
             "-",
             "--output");
-    CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload slicePayload =
-        new CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload(
+    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesSlicePayload slicePayload =
+        new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesSlicePayload(
             "FinGrind",
             "0.57.0",
+            MachineContract.protocolVersion(),
             DiscoveryDetail.MINIMAL,
             DiscoveryFocus.REQUEST_INPUT,
             null,
             new CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload(
-                requestInput, null),
+                requestInput,
+                NullTestSupport.nullOf(ContractRequestShapes.RequestInputDescriptor.class)),
             java.util.List.of("next"));
     CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload commandsSlice =
         new CliDiscoveryCommonJsonModels.CapabilitiesCommandsSlicePayload(
@@ -187,22 +197,23 @@ class CliDiscoveryJsonModelCoverageTest {
                     java.util.List.of("pdf via --pdf-out"),
                     true)),
             java.util.List.of(firstCommand(capabilitiesDescriptor)));
-    CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSlicePayload responseSlice =
-        new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSlicePayload(
+    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSlicePayload responseSlice =
+        new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSlicePayload(
             capabilitiesDescriptor.responseModel(),
             capabilitiesDescriptor.planExecution(),
             capabilitiesDescriptor.audit(),
             capabilitiesDescriptor.accountRegistry(),
             capabilitiesDescriptor.reversals(),
             capabilitiesDescriptor.preflight());
-    CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload responseCompact =
-        new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload(
-            capabilitiesDescriptor.responseModel(),
-            capabilitiesDescriptor.preflight().semantics(),
-            capabilitiesDescriptor.planExecution().journal(),
-            capabilitiesDescriptor.reversals().model(),
-            capabilitiesDescriptor.audit().requestProvenanceFields().size(),
-            capabilitiesDescriptor.audit().committedFields().size());
+    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload
+        responseCompact =
+            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
+                capabilitiesDescriptor.responseModel(),
+                capabilitiesDescriptor.preflight().semantics(),
+                capabilitiesDescriptor.planExecution().journal(),
+                capabilitiesDescriptor.reversals().model(),
+                capabilitiesDescriptor.audit().requestProvenanceFields().size(),
+                capabilitiesDescriptor.audit().committedFields().size());
 
     assertEquals(DiscoveryFocus.REQUEST_INPUT, slicePayload.focus());
     assertNotNull(commandsSlice.commandSurfaces());
@@ -218,13 +229,14 @@ class CliDiscoveryJsonModelCoverageTest {
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 DiscoveryDetail.MINIMAL,
                 DiscoveryFocus.COMMANDS,
                 "scope",
                 java.util.List.of("trial-balance"),
                 "single-sqlite-file",
                 "book-functional-currency",
-                "not-supported",
+                "owned-foreign-exchange-only",
                 requestInput,
                 "compact",
                 "full"));
@@ -234,6 +246,7 @@ class CliDiscoveryJsonModelCoverageTest {
             new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 DiscoveryDetail.FULL,
                 DiscoveryFocus.COMMANDS,
                 capabilitiesDescriptor.storage(),
@@ -244,13 +257,14 @@ class CliDiscoveryJsonModelCoverageTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesJsonModels.CapabilitiesSlicePayload(
+            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesSlicePayload(
                 "FinGrind",
                 "0.57.0",
+                MachineContract.protocolVersion(),
                 DiscoveryDetail.MINIMAL,
                 DiscoveryFocus.OVERVIEW,
                 null,
-                new CliDiscoveryCapabilitiesJsonModels.CapabilitiesStorageSlicePayload(
+                new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesStorageSlicePayload(
                     capabilitiesDescriptor.storage()),
                 java.util.List.of("next")));
     assertThrows(
@@ -291,11 +305,12 @@ class CliDiscoveryJsonModelCoverageTest {
   @Test
   void discoveryJsonModels_rejectNegativeResponseContractCounts() {
     CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
-    CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload compactPayload =
-        new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload(
-            capabilitiesDescriptor.responseModel(), "advisory", "journal", "reversal", 0, 0);
-    CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSummaryPayload payload =
-        new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSummaryPayload(
+    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload
+        compactPayload =
+            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
+                capabilitiesDescriptor.responseModel(), "advisory", "journal", "reversal", 0, 0);
+    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload payload =
+        new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
             java.util.List.of("ok"), "advisory", "journal", "reversal", 0, 0);
 
     assertEquals(0, compactPayload.requestProvenanceFieldCount());
@@ -305,22 +320,22 @@ class CliDiscoveryJsonModelCoverageTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload(
+            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
                 capabilitiesDescriptor.responseModel(), "advisory", "journal", "reversal", -1, 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractCompactPayload(
+            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
                 capabilitiesDescriptor.responseModel(), "advisory", "journal", "reversal", 0, -1));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSummaryPayload(
+            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
                 java.util.List.of("ok"), "advisory", "journal", "reversal", -1, 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesJsonModels.CapabilitiesResponseContractSummaryPayload(
+            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
                 java.util.List.of("ok"), "advisory", "journal", "reversal", 0, -1));
   }
 
@@ -341,6 +356,22 @@ class CliDiscoveryJsonModelCoverageTest {
     PrintRequestTemplate command = new PrintRequestTemplate();
 
     assertEquals(null, command.commandTopic());
+  }
+
+  @Test
+  void requestFileGuidancePayload_allowsDeclareTaxRegistrationTemplateAsTheOnlyArtifact() {
+    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+            "Provide one tax-registration declaration JSON object through --request-file <path|->.",
+            DiscoveryDetail.FULL,
+            null,
+            null,
+            MachineContract.declareTaxRegistrationTemplate(),
+            null,
+            null,
+            null);
+
+    assertNotNull(payload.declareTaxRegistrationTemplate());
   }
 
   private static ApplicationIdentity identity() {

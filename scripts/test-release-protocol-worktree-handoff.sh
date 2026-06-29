@@ -40,5 +40,8 @@ grep -Fq 'git switch --detach origin/main' "${release_protocol}" || die \
     "release protocol no longer documents detached origin/main merge-handoff verification"
 grep -Fq "do not treat a non-zero \`gh pr merge\` exit as proof that the merge failed" "${release_protocol}" || die \
     "release protocol no longer documents merged-state-authoritative gh merge recovery"
+grep -Fq './scripts/reconcile-release-primary-checkout.sh "$PRIMARY_CHECKOUT" "$RELEASE_CLONE" "X.Y.Z"' \
+    "${release_protocol}" || die \
+    "release protocol no longer documents replacement-based clean-clone primary-checkout closeout"
 
 printf 'release protocol worktree handoff regression: success\n'

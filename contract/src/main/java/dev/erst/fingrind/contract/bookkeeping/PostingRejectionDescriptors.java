@@ -35,17 +35,16 @@ final class PostingRejectionDescriptors {
       case PostingRejection.BookNotInitialized _ -> Descriptor.BOOK_NOT_INITIALIZED;
       case PostingRejection.AccountStateViolations _ -> Descriptor.ACCOUNT_STATE_VIOLATIONS;
       case PostingRejection.EntrySemanticsViolations _ -> Descriptor.ENTRY_SEMANTICS_VIOLATIONS;
-      case PostingRejection.DuplicateIdempotencyKey _ -> Descriptor.DUPLICATE_IDEMPOTENCY_KEY;
+      case PostingRejection.IdempotencyKeyConflict _ -> Descriptor.IDEMPOTENCY_KEY_CONFLICT;
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           Descriptor.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
-      case PostingRejection.TransferredPeriodResultViolation _ ->
-          Descriptor.CLOSED_PERIOD_VIOLATION;
-      case PostingRejection.OpenAccountingPositionWindowClosed _ ->
-          Descriptor.OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED;
-      case PostingRejection.OpenAccountingPositionTouchesNominalAccount _ ->
-          Descriptor.OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT;
-      case PostingRejection.ResultHoldingAccountReserved _ ->
-          Descriptor.RESULT_HOLDING_ACCOUNT_RESERVED;
+      case PostingRejection.SweptInterimResultViolation _ -> Descriptor.CLOSED_PERIOD_VIOLATION;
+      case PostingRejection.OpeningPositionWindowClosed _ ->
+          Descriptor.OPENING_POSITION_WINDOW_CLOSED;
+      case PostingRejection.OpeningPositionTouchesNominalAccount _ ->
+          Descriptor.OPENING_POSITION_TOUCHES_NOMINAL_ACCOUNT;
+      case PostingRejection.ReservedResultClassification _ ->
+          Descriptor.RESERVED_RESULT_CLASSIFICATION;
       case PostingRejection.ReversalTargetNotFound _ -> Descriptor.REVERSAL_TARGET_NOT_FOUND;
       case PostingRejection.ReversalAlreadyExists _ -> Descriptor.REVERSAL_ALREADY_EXISTS;
       case PostingRejection.ReversalDoesNotNegateTarget _ ->
@@ -58,12 +57,12 @@ final class PostingRejectionDescriptors {
     BOOK_NOT_INITIALIZED,
     ACCOUNT_STATE_VIOLATIONS,
     ENTRY_SEMANTICS_VIOLATIONS,
-    DUPLICATE_IDEMPOTENCY_KEY,
+    IDEMPOTENCY_KEY_CONFLICT,
     BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
     CLOSED_PERIOD_VIOLATION,
-    OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
-    OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
-    RESULT_HOLDING_ACCOUNT_RESERVED,
+    OPENING_POSITION_WINDOW_CLOSED,
+    OPENING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
+    RESERVED_RESULT_CLASSIFICATION,
     REVERSAL_TARGET_NOT_FOUND,
     REVERSAL_ALREADY_EXISTS,
     REVERSAL_DOES_NOT_NEGATE_TARGET;
@@ -73,13 +72,12 @@ final class PostingRejectionDescriptors {
         case BOOK_NOT_INITIALIZED -> "posting-book-not-initialized";
         case ACCOUNT_STATE_VIOLATIONS -> "account-state-violations";
         case ENTRY_SEMANTICS_VIOLATIONS -> "entry-semantics-violations";
-        case DUPLICATE_IDEMPOTENCY_KEY -> "duplicate-idempotency-key";
+        case IDEMPOTENCY_KEY_CONFLICT -> "idempotency-key-conflict";
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH -> "book-functional-currency-mismatch";
         case CLOSED_PERIOD_VIOLATION -> "closed-period-violation";
-        case OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED -> "open-accounting-position-window-closed";
-        case OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT ->
-            "open-accounting-position-touches-nominal-account";
-        case RESULT_HOLDING_ACCOUNT_RESERVED -> "result-holding-account-reserved";
+        case OPENING_POSITION_WINDOW_CLOSED -> "opening-position-window-closed";
+        case OPENING_POSITION_TOUCHES_NOMINAL_ACCOUNT -> "opening-position-touches-nominal-account";
+        case RESERVED_RESULT_CLASSIFICATION -> "reserved-result-classification";
         case REVERSAL_TARGET_NOT_FOUND -> "reversal-target-not-found";
         case REVERSAL_ALREADY_EXISTS -> "reversal-already-exists";
         case REVERSAL_DOES_NOT_NEGATE_TARGET -> "reversal-does-not-negate-target";
@@ -96,18 +94,18 @@ final class PostingRejectionDescriptors {
             "Posting refused because one or more journal lines reference undeclared, inactive, or non-postable accounts.";
         case ENTRY_SEMANTICS_VIOLATIONS ->
             "Posting refused because one or more canonical entry-semantics violations were detected. details.violations[] carries ordered issue objects with stable code, field, message, category, and repair metadata.";
-        case DUPLICATE_IDEMPOTENCY_KEY ->
-            "Posting refused because the selected book already contains the same idempotency key.";
+        case IDEMPOTENCY_KEY_CONFLICT ->
+            "Posting refused because the selected book already contains this idempotency key for a different normalized request.";
         case BOOK_FUNCTIONAL_CURRENCY_MISMATCH ->
-            "Posting refused because the journal-entry currency does not match the selected book functional currency.";
+            "Posting refused because one or more journal-line currencies do not match the selected book functional currency.";
         case CLOSED_PERIOD_VIOLATION ->
             "Posting refused because its effective date falls inside one transferred reporting period.";
-        case OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED ->
-            "Posting refused because OPEN_ACCOUNTING_POSITION entries are allowed only before the first committed posting in the selected book.";
-        case OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT ->
-            "Posting refused because OPEN_ACCOUNTING_POSITION entries may seed only asset, liability, or equity accounts.";
-        case RESULT_HOLDING_ACCOUNT_RESERVED ->
-            "Posting refused because the result-holding account is reserved for generated period-result-transfer postings.";
+        case OPENING_POSITION_WINDOW_CLOSED ->
+            "Posting refused because OPENING_POSITION entries are allowed only before the first committed posting in the selected book.";
+        case OPENING_POSITION_TOUCHES_NOMINAL_ACCOUNT ->
+            "Posting refused because OPENING_POSITION entries may seed only asset, liability, or equity accounts.";
+        case RESERVED_RESULT_CLASSIFICATION ->
+            "Posting refused because the selected account uses one close-reserved financialPositionLineClassification.";
         case REVERSAL_TARGET_NOT_FOUND ->
             "Posting refused because reversal.priorPostingId does not identify a committed posting in this book.";
         case REVERSAL_ALREADY_EXISTS ->
@@ -119,7 +117,7 @@ final class PostingRejectionDescriptors {
 
     private List<ContractResponse.FieldDescriptor> detailFields() {
       return switch (this) {
-        case BOOK_NOT_INITIALIZED, DUPLICATE_IDEMPOTENCY_KEY -> List.of();
+        case BOOK_NOT_INITIALIZED, IDEMPOTENCY_KEY_CONFLICT -> List.of();
         case ACCOUNT_STATE_VIOLATIONS ->
             List.of(
                 detailField(
@@ -144,27 +142,30 @@ final class PostingRejectionDescriptors {
                     "Inclusive effective date through which postings are already closed."),
                 detailField(
                     "attemptedEffectiveDate", "Rejected effective date from the posting request."));
-        case OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED ->
+        case OPENING_POSITION_WINDOW_CLOSED ->
             List.of(
                 detailField(
                     "firstBlockingPostingKind",
-                    "Previously committed posting kind that closed the one-time OPEN_ACCOUNTING_POSITION admission window."),
+                    "Previously committed posting kind that closed the one-time OPENING_POSITION admission window."),
                 detailField(
                     "firstBlockingEffectiveDate",
                     "Effective date of the first previously committed posting after the opening-position window closed."));
-        case OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT ->
+        case OPENING_POSITION_TOUCHES_NOMINAL_ACCOUNT ->
             List.of(
                 detailField(
                     "accountCode",
-                    "Nominal accountCode that an OPEN_ACCOUNTING_POSITION request attempted to seed."),
+                    "Nominal accountCode that an OPENING_POSITION request attempted to seed."),
                 detailField(
                     "accountType",
-                    "Nominal accountType that OPEN_ACCOUNTING_POSITION requests are not allowed to touch."));
-        case RESULT_HOLDING_ACCOUNT_RESERVED ->
+                    "Nominal accountType that OPENING_POSITION requests are not allowed to touch."));
+        case RESERVED_RESULT_CLASSIFICATION ->
             List.of(
                 detailField(
                     "accountCode",
-                    "Closing-equity accountCode reserved for generated period-result-transfer postings."));
+                    "Declared accountCode that uses the reserved close classification."),
+                detailField(
+                    "financialPositionLineClassification",
+                    "Reserved financialPositionLineClassification that caller-authored postings may not touch directly."));
         case REVERSAL_TARGET_NOT_FOUND ->
             List.of(
                 detailField(
@@ -188,12 +189,12 @@ final class PostingRejectionDescriptors {
         case ACCOUNT_STATE_VIOLATIONS -> AccountStateViolationOwner.descriptors();
         case ENTRY_SEMANTICS_VIOLATIONS -> EntrySemanticsViolationOwner.descriptors();
         case BOOK_NOT_INITIALIZED,
-            DUPLICATE_IDEMPOTENCY_KEY,
+            IDEMPOTENCY_KEY_CONFLICT,
             BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
             CLOSED_PERIOD_VIOLATION,
-            OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
-            OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
-            RESULT_HOLDING_ACCOUNT_RESERVED,
+            OPENING_POSITION_WINDOW_CLOSED,
+            OPENING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
+            RESERVED_RESULT_CLASSIFICATION,
             REVERSAL_TARGET_NOT_FOUND,
             REVERSAL_ALREADY_EXISTS,
             REVERSAL_DOES_NOT_NEGATE_TARGET ->
@@ -211,12 +212,12 @@ final class PostingRejectionDescriptors {
               BOOK_NOT_INITIALIZED,
               ENTRY_SEMANTICS_VIOLATIONS,
               ACCOUNT_STATE_VIOLATIONS,
-              DUPLICATE_IDEMPOTENCY_KEY,
+              IDEMPOTENCY_KEY_CONFLICT,
               BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
               CLOSED_PERIOD_VIOLATION,
-              OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
-              OPEN_ACCOUNTING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
-              RESULT_HOLDING_ACCOUNT_RESERVED,
+              OPENING_POSITION_WINDOW_CLOSED,
+              OPENING_POSITION_TOUCHES_NOMINAL_ACCOUNT,
+              RESERVED_RESULT_CLASSIFICATION,
               REVERSAL_TARGET_NOT_FOUND,
               REVERSAL_ALREADY_EXISTS,
               REVERSAL_DOES_NOT_NEGATE_TARGET)

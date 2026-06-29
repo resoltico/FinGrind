@@ -9,10 +9,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
+import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -25,6 +28,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.StatementLineKind;
@@ -36,20 +40,17 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/**
- * Direct model-validation coverage for the accounting reporting and transfer-period-result surface.
- */
+/** Direct model-validation coverage for the accounting reporting and close surfaces. */
 class BookkeepingStatementModelTest {
   private static final Instant FIXED_INSTANT = Instant.parse("2026-05-12T13:45:00Z");
 
   @Test
-  void registeredAccountDeclare_rejectsTypeConflictAndPreservesRoleBasedNormalBalance() {
+  void registeredAccountDeclare_rejectsTypeConflictAndPreservesClassificationOwnedNormalBalance() {
     RegisteredAccount existing =
         new RegisteredAccount(
             new AccountCode("1000"),
             new AccountName("Cash"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
             accountTaxonomy(AccountType.ASSET),
             true,
             FIXED_INSTANT);
@@ -58,32 +59,35 @@ class BookkeepingStatementModelTest {
             existing.accountCode(),
             new AccountName("Cash"),
             AccountType.LIABILITY,
-            AccountRole.ORDINARY,
             accountTaxonomy(AccountType.LIABILITY));
     AccountDeclaration redeclaration =
         new AccountDeclaration(
             existing.accountCode(),
             new AccountName("Cash Reserve"),
             AccountType.ASSET,
-            AccountRole.POLARITY_INVERTED,
+            accountTaxonomy(AccountType.ASSET));
+    AccountDeclaration unchangedDeclaration =
+        new AccountDeclaration(
+            existing.accountCode(),
+            new AccountName("Cash"),
+            AccountType.ASSET,
             accountTaxonomy(AccountType.ASSET));
     AccountDeclaration taxonomyConflictDeclaration =
         new AccountDeclaration(
             existing.accountCode(),
             new AccountName("Cash"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
-            new dev.erst.fingrind.core.AccountTaxonomy(
-                dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            new AccountTaxonomy(
+                AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1099")),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                Optional.empty()));
+                Optional.empty(),
+                Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)));
     AccountDeclaration firstDeclaration =
         new AccountDeclaration(
             new AccountCode("1200"),
             new AccountName("Receivable"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
             accountTaxonomy(AccountType.ASSET));
 
     assertEquals(
@@ -92,10 +96,18 @@ class BookkeepingStatementModelTest {
                 existing.accountCode(), AccountType.ASSET, AccountType.LIABILITY)),
         RegisteredAccount.declare(existing, conflictDeclaration, FIXED_INSTANT));
     assertEquals(
-        new AccountDeclarationOutcome.Rejected(
-            new BookkeepingAdministrationRejection.AccountRoleConflict(
-                existing.accountCode(), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)),
+        new AccountDeclarationOutcome.Renamed(
+            new RegisteredAccount(
+                existing.accountCode(),
+                new AccountName("Cash Reserve"),
+                AccountType.ASSET,
+                accountTaxonomy(AccountType.ASSET),
+                true,
+                FIXED_INSTANT)),
         RegisteredAccount.declare(existing, redeclaration, FIXED_INSTANT));
+    assertEquals(
+        new AccountDeclarationOutcome.Unchanged(existing),
+        RegisteredAccount.declare(existing, unchangedDeclaration, FIXED_INSTANT));
     assertEquals(
         new AccountDeclarationOutcome.Rejected(
             new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
@@ -109,20 +121,18 @@ class BookkeepingStatementModelTest {
                 new AccountCode("1200"),
                 new AccountName("Receivable"),
                 AccountType.ASSET,
-                AccountRole.ORDINARY,
                 accountTaxonomy(AccountType.ASSET),
                 true,
                 FIXED_INSTANT)),
         RegisteredAccount.declare(null, firstDeclaration, FIXED_INSTANT));
     assertEquals(NormalBalance.DEBIT, existing.normalBalance());
     assertEquals(
-        NormalBalance.CREDIT,
+        NormalBalance.DEBIT,
         new AccountDeclaration(
-                new AccountCode("1090"),
-                new AccountName("Accumulated Depreciation"),
-                AccountType.ASSET,
-                AccountRole.POLARITY_INVERTED,
-                accountTaxonomy(AccountType.ASSET))
+                new AccountCode("3090"),
+                new AccountName("Owner Drawings"),
+                AccountType.EQUITY,
+                accountTaxonomy(AccountType.EQUITY, NormalBalance.DEBIT))
             .normalBalance());
   }
 
@@ -130,19 +140,19 @@ class BookkeepingStatementModelTest {
   void administrationRejections_requireTheirMandatoryFields() {
     assertEquals(
         FinancialPositionLineClassification.RESULT_HOLDING,
-        new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
+        new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))
             .requiredFinancialPositionLineClassification());
     assertEquals(
         List.of(new AccountCode("3200")),
-        new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
+        new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))
             .inactiveCandidateAccountCodes());
     assertEquals(
         LocalDate.parse("2026-05-13"),
-        new BookkeepingAdministrationRejection.PeriodResultTransferFutureDate(
+        new BookkeepingAdministrationRejection.InterimResultSweepFutureDate(
                 LocalDate.parse("2026-05-13"))
             .attemptedEffectiveDateTo());
     assertEquals(
@@ -154,21 +164,11 @@ class BookkeepingStatementModelTest {
                         nullOf(AccountCode.class), AccountType.ASSET, AccountType.LIABILITY))
             .getMessage());
     assertEquals(
-        "accountCode",
-        assertThrows(
-                NullPointerException.class,
-                () ->
-                    new BookkeepingAdministrationRejection.AccountRoleConflict(
-                        nullOf(AccountCode.class),
-                        AccountRole.ORDINARY,
-                        AccountRole.POLARITY_INVERTED))
-            .getMessage());
-    assertEquals(
         "requiredFinancialPositionLineClassification",
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                    new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
                         nullOf(FinancialPositionLineClassification.class), List.of()))
             .getMessage());
     assertEquals(
@@ -176,7 +176,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.PeriodResultTransferMustStartAt(
+                    new BookkeepingAdministrationRejection.InterimResultSweepMustStartAt(
                         nullOf(LocalDate.class)))
             .getMessage());
     assertEquals(
@@ -184,7 +184,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
+                    new CloseTargetAccountCandidateAmbiguous(
                         nullOf(FinancialPositionLineClassification.class),
                         List.of(new AccountCode("3200"))))
             .getMessage());
@@ -213,7 +213,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.PeriodResultTransferFutureDate(
+                    new BookkeepingAdministrationRejection.InterimResultSweepFutureDate(
                         nullOf(LocalDate.class)))
             .getMessage());
   }
@@ -225,7 +225,6 @@ class BookkeepingStatementModelTest {
             new AccountCode("1000"),
             new AccountName("Cash"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
             accountTaxonomy(AccountType.ASSET),
             true,
             FIXED_INSTANT);
@@ -236,7 +235,7 @@ class BookkeepingStatementModelTest {
     assertEquals(currencyBalance("0.10", "0.04", "0.06", BalanceSide.DEBIT), totals.balance());
     assertEquals(
         AccountType.REVENUE,
-        new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
+        new BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount(
                 new AccountCode("4000"), AccountType.REVENUE)
             .accountType());
     assertEquals(
@@ -272,7 +271,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
+                    new BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount(
                         new AccountCode("4000"), nullOf(AccountType.class)))
             .getMessage());
     assertEquals(
@@ -297,7 +296,6 @@ class BookkeepingStatementModelTest {
                             "1000",
                             "Cash",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("10.00", "0.00", "10.00", BalanceSide.DEBIT))),
@@ -312,7 +310,6 @@ class BookkeepingStatementModelTest {
                             "4000",
                             "Revenue",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,
                             currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))),
@@ -325,13 +322,12 @@ class BookkeepingStatementModelTest {
                     "Current Period Result",
                     Optional.empty(),
                     Optional.empty(),
-                    Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
                     currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))));
     List<PostingDraft> closingPostings = new ArrayList<>(List.of(postingDraft()));
-    List<PostingId> transferPostingIds = new ArrayList<>(List.of(new PostingId("posting-1")));
+    List<PostingId> sweepPostingIds = new ArrayList<>(List.of(new PostingId("posting-1")));
 
     FinancialPositionView financialPositionView =
         new FinancialPositionView(
@@ -369,44 +365,48 @@ class BookkeepingStatementModelTest {
             List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)));
-    PeriodResultTransferDraft periodResultTransferDraft =
-        new PeriodResultTransferDraft(
+    InterimResultSweepDraft interimResultSweepDraft =
+        new InterimResultSweepDraft(
             new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-12")),
             new AccountCode("3200"),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             FIXED_INSTANT,
             closingPostings);
-    TransferredPeriodResult transferredPeriodResult =
-        new TransferredPeriodResult(
+    SweptInterimResult sweptInterimResult =
+        new SweptInterimResult(
             1,
             new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-12")),
             new AccountCode("3200"),
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             FIXED_INSTANT,
-            transferPostingIds);
+            sweepPostingIds);
 
     financialPositionSections.clear();
     incomeSections.clear();
     equityRows.clear();
     closingPostings.clear();
-    transferPostingIds.clear();
+    sweepPostingIds.clear();
 
     assertEquals(1, financialPositionView.sections().size());
     assertEquals(1, incomeStatementView.sections().size());
     assertEquals(1, changesInEquityView.rows().size());
-    assertEquals(1, periodResultTransferDraft.closingPostings().size());
-    assertEquals(1, transferredPeriodResult.transferPostingIds().size());
+    assertEquals(1, interimResultSweepDraft.closingPostings().size());
+    assertEquals(1, sweptInterimResult.sweepPostingIds().size());
 
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new IncomeStatementCriteria(
-                LocalDate.parse("2026-05-12"), LocalDate.parse("2026-05-01")));
+                LocalDate.parse("2026-05-12"),
+                LocalDate.parse("2026-05-01"),
+                ComparativeSelection.none()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new ChangesInEquityCriteria(
-                LocalDate.parse("2026-05-12"), LocalDate.parse("2026-05-01")));
+                LocalDate.parse("2026-05-12"),
+                LocalDate.parse("2026-05-01"),
+                ComparativeSelection.none()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -440,7 +440,7 @@ class BookkeepingStatementModelTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new TransferredPeriodResult(
+            new SweptInterimResult(
                 0,
                 new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-12")),
                 new AccountCode("3200"),
@@ -463,9 +463,10 @@ class BookkeepingStatementModelTest {
                     JournalLine.EntrySide.CREDIT,
                     Money.parse("EUR", "1.00")))),
         PostingLineageModel.direct(),
-        PostingKind.PERIOD_RESULT_TRANSFER,
-        dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
-        generatedEvidence("period-result-transfer-eur", "period-result-transfer-plan"),
+        PostingKind.INTERIM_RESULT_SWEEP,
+        dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
+        generatedEvidence("interim-result-sweep-eur", "interim-result-sweep-plan"),
+        new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         new CommittedProvenance(
             new RequestProvenance(
                 new dev.erst.fingrind.core.ActorId("actor-1"),

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -17,6 +18,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -37,8 +39,9 @@ class PostingDraftTest {
             journalEntry(),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             accountingEvidence("idem-1"),
+            new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
             committedProvenance("idem-1"));
     CommittedPosting postingFact = postingDraft.materialize(new PostingId("posting-1"));
     assertTrue(postingDraft.reversalReference().isEmpty());
@@ -59,9 +62,39 @@ class PostingDraftTest {
                 journalEntry(),
                 null,
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                 accountingEvidence("idem-1"),
+                new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
                 committedProvenance("idem-1")));
+  }
+
+  @Test
+  void postingDraft_rejectsCallerAuthoredEntryWhenJournalEntryDrifts() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new PostingDraft(
+                    journalEntry(),
+                    PostingLineageModel.direct(),
+                    PostingKind.STANDARD,
+                    dev.erst.fingrind.core.PostingOriginKind.SALE,
+                    accountingEvidence("idem-2"),
+                    new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
+                    committedProvenance("idem-2"),
+                    new BookkeepingEntry.Sale(
+                        LocalDate.parse("2026-04-08"),
+                        new AccountCode("1000"),
+                        new AccountCode("2000"),
+                        dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(
+                            Money.parse("EUR", "10.00")),
+                        null,
+                        null,
+                        null)));
+
+    assertEquals(
+        "originatingEntry journalEntry must match the posting draft journalEntry.",
+        exception.getMessage());
   }
 
   private static JournalEntry journalEntry() {

@@ -113,7 +113,7 @@ class LedgerPlanServiceEnsureBookCoverageTest {
   }
 
   private static BookIdentity alternateBookIdentity() {
-    BookDoctrine doctrine = BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE;
+    BookDoctrine doctrine = BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE;
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Other Studio")),
         doctrine,

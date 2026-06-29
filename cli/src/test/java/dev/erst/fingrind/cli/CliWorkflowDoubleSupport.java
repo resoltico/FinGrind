@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -65,6 +66,8 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
             new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
         new dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        new CashFlowStatementResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
         new ChangesInEquityResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()));
   }
@@ -83,6 +86,8 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
             new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
         new dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        new CashFlowStatementResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
         new ChangesInEquityResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()));
   }
@@ -95,6 +100,27 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       FinancialPositionResult financialPositionResult,
       dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult incomeStatementResult,
       ChangesInEquityResult changesInEquityResult) {
+    return reportingWorkflow(
+        accountBalanceResult,
+        trialBalanceResult,
+        accountLedgerResult,
+        periodSummaryResult,
+        financialPositionResult,
+        incomeStatementResult,
+        new CashFlowStatementResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        changesInEquityResult);
+  }
+
+  protected static CliBookWorkflow reportingWorkflow(
+      AccountBalanceResult accountBalanceResult,
+      TrialBalanceResult trialBalanceResult,
+      AccountLedgerResult accountLedgerResult,
+      PeriodSummaryResult periodSummaryResult,
+      FinancialPositionResult financialPositionResult,
+      dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult incomeStatementResult,
+      CashFlowStatementResult cashFlowStatementResult,
+      ChangesInEquityResult changesInEquityResult) {
     return new CliReportingWorkflow(
         accountBalanceResult,
         trialBalanceResult,
@@ -102,6 +128,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
         periodSummaryResult,
         financialPositionResult,
         incomeStatementResult,
+        cashFlowStatementResult,
         changesInEquityResult);
   }
 

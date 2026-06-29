@@ -1,8 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingBasis;
-import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.AccountingFrameworkPosition;
 import dev.erst.fingrind.core.AccountingKernelProfileId;
 import dev.erst.fingrind.core.BookDoctrine;
@@ -14,60 +12,22 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
-/** Shared SQLite statement helpers for single-row lookups and pragma reads. */
+/** Shared SQLite statement helpers for posting lookups, book identity, and scalar reads. */
 final class SqliteStatementQueries {
-  /** Binds parameters onto a prepared SQLite statement before execution. */
-  @FunctionalInterface
-  interface Binder {
-    /** Applies all statement bindings required by one query. */
-    void bind(SqliteNativeStatement statement);
-  }
-
-  /** Loads journal lines for one posting identifier while mapping a posting row. */
-  @FunctionalInterface
-  interface PostingAttachmentLoader {
-    /** Returns the journal lines and evidence that belong to the supplied posting. */
-    PostingAttachments load(PostingId postingId);
-  }
-
-  /** Fully loaded posting attachments required to materialize one committed posting. */
-  record PostingAttachments(List<JournalLine> lines, AccountingEvidence evidence) {
-    PostingAttachments {
-      lines = List.copyOf(Objects.requireNonNull(lines, "lines"));
-      Objects.requireNonNull(evidence, "evidence");
-    }
-  }
-
   /** Runs one mapped query against a prepared statement. */
   @FunctionalInterface
   private interface StatementQuery<T> {
     /** Executes one query body against the supplied prepared statement. */
     T query(SqliteNativeStatement statement);
-  }
-
-  /** Single-column text row shape that distinguishes empty, exact-one-row, and multi-row cases. */
-  record OptionalTextRow(Optional<String> value, boolean singleRow) {
-    OptionalTextRow {
-      Objects.requireNonNull(value, "value");
-    }
   }
 
   private record BookIdentityCoreRow(
@@ -86,8 +46,8 @@ final class SqliteStatementQueries {
   static Optional<CommittedPosting> findOneCommittedPosting(
       SqliteNativeDatabase activeDatabase,
       String sql,
-      Binder binder,
-      PostingAttachmentLoader loadAttachments) {
+      SqliteStatementBinder binder,
+      SqlitePostingAttachmentLoader loadAttachments) {
     return withStatement(
         activeDatabase,
         sql,
@@ -98,96 +58,55 @@ final class SqliteStatementQueries {
           }
           PostingId postingId =
               new PostingId(
-                  SqlitePostingMapper.requiredText(statement, SqlitePostingSql.COL_POSTING_ID));
-          PostingAttachments attachments = loadAttachments.load(postingId);
+                  SqlitePostingMapper.requiredText(
+                      statement, SqlitePostingColumnIndexes.COL_POSTING_ID));
+          SqlitePostingAttachments attachments = loadAttachments.load(postingId);
           return Optional.of(
               SqlitePostingMapper.committedPosting(
-                  statement, attachments.lines(), attachments.evidence()));
+                  statement,
+                  attachments.lines(),
+                  attachments.evidence(),
+                  attachments.appliedTax(),
+                  attachments.foreignExchangeDetails()));
         });
   }
 
-  static Optional<RegisteredAccount> findOneAccount(
-      SqliteNativeDatabase activeDatabase, AccountCode accountCode) {
-    return withStatement(
-        activeDatabase,
-        SqlitePostingSql.FIND_ACCOUNT_BY_CODE,
-        statement -> {
-          statement.bindText(1, accountCode.value());
-          if (statement.step() == SqliteNativeResultCode.code("DONE")) {
-            return Optional.empty();
-          }
-          return Optional.of(SqlitePostingMapper.registeredAccount(statement));
-        });
-  }
-
-  static Map<AccountCode, RegisteredAccount> findAccounts(
-      SqliteNativeDatabase activeDatabase, Set<AccountCode> accountCodes) {
-    List<AccountCode> orderedCodes = List.copyOf(accountCodes);
-    return withStatement(
-        activeDatabase,
-        SqlitePostingSql.findAccountsByCodeCount(orderedCodes.size()),
-        statement -> {
-          int bindIndex = 1;
-          for (AccountCode accountCode : orderedCodes) {
-            statement.bindText(bindIndex, accountCode.value());
-            bindIndex++;
-          }
-          List<RegisteredAccount> accounts = new ArrayList<>();
-          while (statement.step() == SqliteNativeResultCode.code("ROW")) {
-            accounts.add(SqlitePostingMapper.registeredAccount(statement));
-          }
-          return accounts.stream()
-              .collect(
-                  Collectors.toUnmodifiableMap(
-                      RegisteredAccount::accountCode, Function.identity()));
-        });
-  }
-
-  static List<RegisteredAccount> loadAllAccounts(SqliteNativeDatabase activeDatabase, String sql) {
+  static Optional<StoredRequestPosting> findOneStoredRequestPosting(
+      SqliteNativeDatabase activeDatabase,
+      String sql,
+      SqliteStatementBinder binder,
+      SqlitePostingAttachmentLoader loadAttachments) {
     return withStatement(
         activeDatabase,
         sql,
         statement -> {
-          List<RegisteredAccount> accounts = new ArrayList<>();
-          while (statement.step() == SqliteNativeResultCode.code("ROW")) {
-            accounts.add(SqlitePostingMapper.registeredAccount(statement));
+          binder.bind(statement);
+          if (statement.step() == SqliteNativeResultCode.code("DONE")) {
+            return Optional.empty();
           }
-          return List.copyOf(accounts);
+          PostingId postingId =
+              new PostingId(
+                  SqlitePostingMapper.requiredText(
+                      statement, SqlitePostingColumnIndexes.COL_POSTING_ID));
+          SqlitePostingAttachments attachments = loadAttachments.load(postingId);
+          return Optional.of(
+              new StoredRequestPosting(
+                  SqlitePostingMapper.committedPosting(
+                      statement,
+                      attachments.lines(),
+                      attachments.evidence(),
+                      attachments.appliedTax(),
+                      attachments.foreignExchangeDetails()),
+                  new RequestFingerprint(
+                      SqlitePostingMapper.requiredInt(
+                          statement, SqlitePostingColumnIndexes.COL_REQUEST_FINGERPRINT_VERSION),
+                      SqlitePostingMapper.requiredText(
+                          statement, SqlitePostingColumnIndexes.COL_REQUEST_FINGERPRINT_SHA256))));
         });
   }
 
-  static AccountRegistryPage loadAccountPage(
-      SqliteNativeDatabase activeDatabase, AccountRegistryQuery query) {
-    List<RegisteredAccount> accounts = new ArrayList<>();
-    withStatement(
-        activeDatabase,
-        SqlitePostingSql.listAccounts(),
-        statement -> {
-          String cursorAccountCode =
-              query
-                  .cursor()
-                  .map(AccountRegistryCursor::accountCode)
-                  .map(AccountCode::value)
-                  .orElse(null);
-          statement.bindText(1, cursorAccountCode);
-          statement.bindText(2, cursorAccountCode);
-          statement.bindInt(3, query.limit() + 1);
-          while (statement.step() == SqliteNativeResultCode.code("ROW")) {
-            accounts.add(SqlitePostingMapper.registeredAccount(statement));
-          }
-          return Boolean.TRUE;
-        });
-    boolean hasMore = accounts.size() > query.limit();
-    List<RegisteredAccount> pageItems = hasMore ? accounts.subList(0, query.limit()) : accounts;
-    return new AccountRegistryPage(
-        pageItems,
-        query.limit(),
-        hasMore
-            ? Optional.of(new AccountRegistryCursor(pageItems.getLast().accountCode()))
-            : Optional.empty());
-  }
-
-  static boolean existsRow(SqliteNativeDatabase activeDatabase, String sql, Binder binder) {
+  static boolean existsRow(
+      SqliteNativeDatabase activeDatabase, String sql, SqliteStatementBinder binder) {
     return withStatement(
         activeDatabase,
         sql,
@@ -275,26 +194,26 @@ final class SqliteStatementQueries {
   }
 
   static Optional<String> loadOptionalText(
-      SqliteNativeDatabase activeDatabase, String sql, Binder binder) {
-    OptionalTextRow row = loadOptionalTextRow(activeDatabase, sql, binder);
+      SqliteNativeDatabase activeDatabase, String sql, SqliteStatementBinder binder) {
+    SqliteOptionalTextRow row = loadOptionalTextRow(activeDatabase, sql, binder);
     if (!row.singleRow()) {
       throw new IllegalStateException("SQLite text query returned more than one row: " + sql);
     }
     return row.value();
   }
 
-  static OptionalTextRow loadOptionalTextRow(
-      SqliteNativeDatabase activeDatabase, String sql, Binder binder) {
+  static SqliteOptionalTextRow loadOptionalTextRow(
+      SqliteNativeDatabase activeDatabase, String sql, SqliteStatementBinder binder) {
     return withStatement(
         activeDatabase,
         sql,
         statement -> {
           binder.bind(statement);
           if (statement.step() != SqliteNativeResultCode.code("ROW")) {
-            return new OptionalTextRow(Optional.empty(), true);
+            return new SqliteOptionalTextRow(Optional.empty(), true);
           }
           String value = statement.columnText(0);
-          return new OptionalTextRow(
+          return new SqliteOptionalTextRow(
               Optional.ofNullable(value), statement.step() == SqliteNativeResultCode.code("DONE"));
         });
   }

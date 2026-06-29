@@ -1,7 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountSemantics;
+import dev.erst.fingrind.core.AccountStructureDoctrine;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -17,7 +17,9 @@ import java.util.stream.Collectors;
 public final class ChartOfAccounts {
   private static final Set<FinancialPositionLineClassification>
       SINGULAR_ACTIVE_FINANCIAL_POSITION_CLASSIFICATIONS =
-          Set.of(FinancialPositionLineClassification.RESULT_HOLDING);
+          Set.of(
+              FinancialPositionLineClassification.RESULT_HOLDING,
+              FinancialPositionLineClassification.RETAINED_ACCUMULATED);
 
   private final Map<AccountCode, RegisteredAccount> accountsByCode;
 
@@ -81,26 +83,16 @@ public final class ChartOfAccounts {
               requiredParentAccountCode,
               parentAccount.accountType()));
     }
-    if (parentAccount.accountRole() != declaration.accountRole()) {
-      return Optional.of(
-          new BookkeepingAdministrationRejection.ParentAccountRoleConflict(
-              childAccountCode,
-              declaration.accountRole(),
-              requiredParentAccountCode,
-              parentAccount.accountRole()));
-    }
-    if (!AccountSemantics.allowsChildren(parentAccount.accountTaxonomy())) {
+    if (!AccountStructureDoctrine.allowsChildren(parentAccount.accountTaxonomy())) {
       return Optional.of(
           new BookkeepingAdministrationRejection.ParentAccountNotHeader(
               childAccountCode,
               requiredParentAccountCode,
               parentAccount.accountTaxonomy().nodeKind()));
     }
-    if (!AccountSemantics.parentChildHierarchyCompatible(
+    if (!AccountStructureDoctrine.parentChildHierarchyCompatible(
         declaration.accountType(),
-        parentAccount.accountRole(),
         parentAccount.accountTaxonomy(),
-        declaration.accountRole(),
         declaration.accountTaxonomy())) {
       return Optional.of(
           new BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict(
@@ -143,7 +135,7 @@ public final class ChartOfAccounts {
     Set<AccountCode> candidateAccountCodes = new LinkedHashSet<>(activeCandidates);
     candidateAccountCodes.add(declaration.accountCode());
     return Optional.of(
-        new BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
+        new CloseTargetAccountCandidateAmbiguous(
             requestedClassification.orElseThrow(), List.copyOf(candidateAccountCodes)));
   }
 

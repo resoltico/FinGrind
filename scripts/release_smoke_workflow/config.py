@@ -64,7 +64,6 @@ def load_config() -> ReleaseSmokeConfig:
         open_book_mode=require_env("FINGRIND_RELEASE_SMOKE_OPEN_BOOK_MODE"),
         entity_name=scenario.entity_name,
         accounting_kernel_profile=scenario.accounting_kernel_profile,
-        accounting_basis=scenario.accounting_basis,
         accounting_framework_position=scenario.accounting_framework_position,
         entity_form=scenario.entity_form,
         book_template_id=scenario.book_template_id,

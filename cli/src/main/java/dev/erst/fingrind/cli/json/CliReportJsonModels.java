@@ -39,7 +39,6 @@ public interface CliReportJsonModels extends CliReportSupportJsonModels {
       String accountCode,
       String accountName,
       String accountType,
-      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt,
@@ -51,7 +50,6 @@ public interface CliReportJsonModels extends CliReportSupportJsonModels {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
       accountType = requireText(accountType, "accountType");
-      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
       Objects.requireNonNull(debitTotal, "debitTotal");
@@ -66,7 +64,6 @@ public interface CliReportJsonModels extends CliReportSupportJsonModels {
       String accountCode,
       String accountName,
       String accountType,
-      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt,
@@ -81,7 +78,6 @@ public interface CliReportJsonModels extends CliReportSupportJsonModels {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
       accountType = requireText(accountType, "accountType");
-      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
       effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
@@ -149,7 +145,6 @@ public interface CliReportJsonModels extends CliReportSupportJsonModels {
       String accountCode,
       String accountName,
       String accountType,
-      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt,
@@ -161,7 +156,6 @@ public interface CliReportJsonModels extends CliReportSupportJsonModels {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
       accountType = requireText(accountType, "accountType");
-      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
       Objects.requireNonNull(debitTotal, "debitTotal");

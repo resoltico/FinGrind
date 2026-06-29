@@ -13,9 +13,9 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -41,6 +41,7 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
 import java.util.Objects;
 import java.util.Optional;
@@ -53,12 +54,17 @@ final class SqliteRoundTripWorkflowTestSupport {
   private SqliteRoundTripWorkflowTestSupport() {}
 
   static Committed committed(String postingId) {
+    return committed(postingId, false);
+  }
+
+  static Committed committed(String postingId, boolean idempotentReplay) {
     PostEntryCommand command = basicValidCommand();
     return new Committed(
         new PostingId(postingId),
         command.requestProvenance().idempotencyKey(),
         CliFuzzFixtures.journalEntry(command).effectiveDate(),
-        CliFuzzFixtures.fixedClock().instant());
+        CliFuzzFixtures.fixedClock().instant(),
+        idempotentReplay);
   }
 
   static CommitRejected commitRejected(PostingRejection rejection) {
@@ -113,7 +119,6 @@ final class SqliteRoundTripWorkflowTestSupport {
         accountCode,
         new AccountName("Synthetic " + accountCode.value()),
         AccountType.ASSET,
-        AccountRole.ORDINARY,
         accountTaxonomy(AccountType.ASSET),
         active,
         CliFuzzFixtures.fixedClock().instant());
@@ -251,7 +256,7 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
-    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       throw new UnsupportedOperationException();
     }
 
@@ -266,7 +271,25 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
+    public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
+        dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public java.util.List<RegisteredAccount> allAccounts() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public java.util.List<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration>
+        allTaxRegistrations() {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public dev.erst.fingrind.contract.tax.TaxRegistrationPage listTaxRegistrations(
+        dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery query) {
       throw new UnsupportedOperationException();
     }
 
@@ -279,6 +302,21 @@ final class SqliteRoundTripWorkflowTestSupport {
     public java.util.List<AccountCurrencyTotals> accountTotals(
         EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
       throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public java.util.List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Optional<java.time.LocalDate> earliestPostingEffectiveDate() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<java.time.LocalDate> transferredThroughEffectiveDate() {
+      return Optional.empty();
     }
 
     @Override
@@ -310,7 +348,6 @@ final class SqliteRoundTripWorkflowTestSupport {
         account.accountCode(),
         account.accountName(),
         account.accountType(),
-        account.accountRole(),
         account.accountTaxonomy(),
         account.active(),
         account.declaredAt());
@@ -323,7 +360,8 @@ final class SqliteRoundTripWorkflowTestSupport {
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty());
+              Optional.empty(),
+              Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
       case LIABILITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,

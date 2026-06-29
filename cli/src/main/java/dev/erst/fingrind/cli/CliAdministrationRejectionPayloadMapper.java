@@ -3,12 +3,14 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import java.util.Locale;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Maps administrative bookkeeping rejections into CLI rejected envelopes. */
@@ -17,23 +19,29 @@ final class CliAdministrationRejectionPayloadMapper {
       ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT);
   private static final String OPEN_BOOK_OPERATION =
       ProtocolCatalog.operationName(OperationId.OPEN_BOOK);
-  private static final String TRANSFER_PERIOD_RESULT_OPERATION =
-      ProtocolCatalog.operationName(OperationId.TRANSFER_PERIOD_RESULT);
+  private static final String INTERIM_RESULT_SWEEP_OPERATION =
+      ProtocolCatalog.operationName(OperationId.INTERIM_RESULT_SWEEP);
+  private static final String FISCAL_YEAR_CLOSE_OPERATION =
+      ProtocolCatalog.operationName(OperationId.FISCAL_YEAR_CLOSE);
 
   private CliAdministrationRejectionPayloadMapper() {}
 
-  static CliEnvelopeJsonModels.RejectedEnvelope rejectedEnvelope(
-      BookAdministrationRejection rejection) {
-    return new CliEnvelopeJsonModels.RejectedEnvelope(
+  static CliEnvelopeJsonModels.Envelope<?> rejectedEnvelope(
+      OperationId operationId, BookAdministrationRejection rejection) {
+    return new CliEnvelopeJsonModels.Envelope<>(
         ProtocolEnvelopeStatus.REJECTED,
+        null,
         BookAdministrationRejection.wireCode(rejection),
         RejectionNarrative.message(rejection),
-        rejectionHint(rejection),
+        rejectionHint(operationId, rejection),
         null,
-        rejectionDetails(rejection));
+        null,
+        rejectionDetails(rejection),
+        null);
   }
 
-  private static String rejectionHint(BookAdministrationRejection rejection) {
+  private static String rejectionHint(
+      OperationId operationId, BookAdministrationRejection rejection) {
     String lifecycleHint = lifecycleHint(rejection);
     if (lifecycleHint != null) {
       return lifecycleHint;
@@ -42,7 +50,7 @@ final class CliAdministrationRejectionPayloadMapper {
     if (accountHint != null) {
       return accountHint;
     }
-    return periodTransferHint(rejection);
+    return closeWindowHint(operationId, rejection);
   }
 
   private static @Nullable String lifecycleHint(BookAdministrationRejection rejection) {
@@ -67,8 +75,7 @@ final class CliAdministrationRejectionPayloadMapper {
   }
 
   private static @Nullable String accountHint(BookAdministrationRejection rejection) {
-    if (rejection instanceof BookAdministrationRejection.AccountTypeConflict
-        || rejection instanceof BookAdministrationRejection.AccountRoleConflict) {
+    if (rejection instanceof BookAdministrationRejection.AccountTypeConflict) {
       return "Keep the existing account identity as declared, or choose a different accountCode for a differently classified account.";
     }
     if (rejection instanceof BookAdministrationRejection.AccountTaxonomyConflict) {
@@ -86,11 +93,6 @@ final class CliAdministrationRejectionPayloadMapper {
     }
     if (rejection instanceof BookAdministrationRejection.ParentAccountTypeConflict) {
       return "Choose a parentAccountCode with the same accountType as the child account, or declare the child under the correct accountType before rerunning "
-          + DECLARE_ACCOUNT_OPERATION
-          + ".";
-    }
-    if (rejection instanceof BookAdministrationRejection.ParentAccountRoleConflict) {
-      return "Choose a parentAccountCode with the same accountRole as the child account, or declare the child under the correct doctrinal role before rerunning "
           + DECLARE_ACCOUNT_OPERATION
           + ".";
     }
@@ -112,49 +114,73 @@ final class CliAdministrationRejectionPayloadMapper {
     return null;
   }
 
-  private static String periodTransferHint(BookAdministrationRejection rejection) {
+  private static String closeWindowHint(
+      OperationId operationId, BookAdministrationRejection rejection) {
     if (rejection
-        instanceof BookAdministrationRejection.ResultHoldingAccountCandidateMissing missing) {
+        instanceof BookAdministrationRejection.CloseTargetAccountCandidateMissing missing) {
+      String operation = closeOperation(operationId);
       return missing.inactiveCandidateAccountCodes().isEmpty()
           ? "Declare one active equity account whose financialPositionLineClassification is "
               + missing.requiredFinancialPositionLineClassification().wireValue()
               + ", then rerun "
-              + TRANSFER_PERIOD_RESULT_OPERATION
+              + operation
               + "."
           : "Reactivate one of the matching equity accounts or declare exactly one active replacement with financialPositionLineClassification "
               + missing.requiredFinancialPositionLineClassification().wireValue()
               + ", then rerun "
-              + TRANSFER_PERIOD_RESULT_OPERATION
+              + operation
               + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous) {
-      return "Leave exactly one active equity account with the built-in closing classification for this book, then retry the declaration or rerun "
-          + TRANSFER_PERIOD_RESULT_OPERATION
+    if (rejection instanceof CloseTargetAccountCandidateAmbiguous) {
+      return "Leave exactly one active equity account with the required closing classification for this book, then retry the declaration or rerun "
+          + closeOperation(operationId)
           + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.PeriodResultTransferMustStartAt) {
+    if (rejection instanceof BookAdministrationRejection.InterimResultSweepMustStartAt) {
       return "Rerun "
-          + TRANSFER_PERIOD_RESULT_OPERATION
+          + INTERIM_RESULT_SWEEP_OPERATION
           + " with the required "
-          + CliTemporalScopeText.firstOption(OperationId.TRANSFER_PERIOD_RESULT)
+          + CliTemporalScopeText.firstOption(OperationId.INTERIM_RESULT_SWEEP)
           + " value and the next contiguous unclosed "
-          + CliTemporalScopeText.upperLabel(OperationId.TRANSFER_PERIOD_RESULT)
+          + CliTemporalScopeText.upperLabel(OperationId.INTERIM_RESULT_SWEEP)
               .toLowerCase(Locale.ROOT)
           + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.PeriodResultTransferFutureDate) {
+    if (rejection instanceof BookAdministrationRejection.InterimResultSweepFutureDate) {
       return "Choose a "
-          + CliTemporalScopeText.secondOption(OperationId.TRANSFER_PERIOD_RESULT)
+          + CliTemporalScopeText.secondOption(OperationId.INTERIM_RESULT_SWEEP)
           + " on or before the current UTC date, then rerun "
-          + TRANSFER_PERIOD_RESULT_OPERATION
+          + INTERIM_RESULT_SWEEP_OPERATION
           + ".";
     }
-    return "Choose "
-        + CliTemporalScopeText.firstOption(OperationId.TRANSFER_PERIOD_RESULT)
-        + " and "
-        + CliTemporalScopeText.secondOption(OperationId.TRANSFER_PERIOD_RESULT)
-        + " values that remain inside one fiscal year for this book, then rerun "
-        + TRANSFER_PERIOD_RESULT_OPERATION
+    if (rejection
+        instanceof BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary) {
+      return "Choose "
+          + CliTemporalScopeText.firstOption(OperationId.INTERIM_RESULT_SWEEP)
+          + " and "
+          + CliTemporalScopeText.secondOption(OperationId.INTERIM_RESULT_SWEEP)
+          + " values that remain inside one fiscal year for this book, then rerun "
+          + INTERIM_RESULT_SWEEP_OPERATION
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.FiscalYearCloseMustStartAt) {
+      return "Choose the fiscal year start for "
+          + CliTemporalScopeText.firstOption(OperationId.FISCAL_YEAR_CLOSE)
+          + ", then rerun "
+          + FISCAL_YEAR_CLOSE_OPERATION
+          + ".";
+    }
+    if (rejection instanceof BookAdministrationRejection.FiscalYearCloseMustEndAt) {
+      return "Choose the fiscal year end for "
+          + CliTemporalScopeText.secondOption(OperationId.FISCAL_YEAR_CLOSE)
+          + ", then rerun "
+          + FISCAL_YEAR_CLOSE_OPERATION
+          + ".";
+    }
+    return "Choose a "
+        + CliTemporalScopeText.secondOption(OperationId.FISCAL_YEAR_CLOSE)
+        + " on or before the current UTC date, then rerun "
+        + FISCAL_YEAR_CLOSE_OPERATION
         + ".";
   }
 
@@ -175,11 +201,6 @@ final class CliAdministrationRejectionPayloadMapper {
               conflict.accountCode().value(),
               conflict.existingAccountType().wireValue(),
               conflict.requestedAccountType().wireValue());
-      case BookAdministrationRejection.AccountRoleConflict conflict ->
-          new CliRejectionJsonModels.AccountRoleConflictDetails(
-              conflict.accountCode().value(),
-              conflict.existingAccountRole().wireValue(),
-              conflict.requestedAccountRole().wireValue());
       case BookAdministrationRejection.AccountTaxonomyConflict conflict ->
           new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
               conflict.accountCode().value(),
@@ -197,12 +218,6 @@ final class CliAdministrationRejectionPayloadMapper {
               conflict.requestedAccountType().wireValue(),
               conflict.parentAccountCode().value(),
               conflict.parentAccountType().wireValue());
-      case BookAdministrationRejection.ParentAccountRoleConflict conflict ->
-          new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
-              conflict.accountCode().value(),
-              conflict.requestedAccountRole().wireValue(),
-              conflict.parentAccountCode().value(),
-              conflict.parentAccountRole().wireValue());
       case BookAdministrationRejection.ParentAccountNotHeader conflict ->
           new CliRejectionJsonModels.ParentAccountNodeKindDetails(
               conflict.accountCode().value(),
@@ -224,26 +239,43 @@ final class CliAdministrationRejectionPayloadMapper {
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
       periodTransferDetails(BookAdministrationRejection rejection) {
     return switch (rejection) {
-      case BookAdministrationRejection.ResultHoldingAccountCandidateMissing conflict ->
-          new CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails(
+      case BookAdministrationRejection.CloseTargetAccountCandidateMissing conflict ->
+          new CliRejectionJsonModels.CloseTargetAccountCandidateMissingDetails(
               conflict.requiredFinancialPositionLineClassification().wireValue(),
               conflict.inactiveCandidateAccountCodes().stream().map(code -> code.value()).toList());
-      case BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous conflict ->
-          new CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails(
+      case CloseTargetAccountCandidateAmbiguous conflict ->
+          new CliRejectionJsonModels.CloseTargetAccountCandidateAmbiguousDetails(
               conflict.requiredFinancialPositionLineClassification().wireValue(),
               conflict.candidateAccountCodes().stream().map(code -> code.value()).toList());
-      case BookAdministrationRejection.PeriodResultTransferMustStartAt conflict ->
-          new CliRejectionJsonModels.PeriodResultTransferStartDetails(
+      case BookAdministrationRejection.InterimResultSweepMustStartAt conflict ->
+          new CliRejectionJsonModels.InterimResultSweepStartDetails(
               conflict.requiredEffectiveDateFrom().toString());
-      case BookAdministrationRejection.PeriodResultTransferFutureDate conflict ->
-          new CliRejectionJsonModels.PeriodResultTransferFutureDateDetails(
+      case BookAdministrationRejection.InterimResultSweepFutureDate conflict ->
+          new CliRejectionJsonModels.InterimResultSweepFutureDateDetails(
               conflict.attemptedEffectiveDateTo().toString());
-      case BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary conflict ->
-          new CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails(
+      case BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary conflict ->
+          new CliRejectionJsonModels.InterimResultSweepFiscalYearDetails(
               conflict.attemptedEffectiveDateFrom().toString(),
               conflict.attemptedEffectiveDateTo().toString(),
               conflict.fiscalYearStart().wireValue());
+      case BookAdministrationRejection.FiscalYearCloseMustStartAt conflict ->
+          new CliRejectionJsonModels.FiscalYearCloseStartDetails(
+              conflict.requiredEffectiveDateFrom().toString());
+      case BookAdministrationRejection.FiscalYearCloseMustEndAt conflict ->
+          new CliRejectionJsonModels.FiscalYearCloseEndDetails(
+              conflict.requiredEffectiveDateTo().toString());
+      case BookAdministrationRejection.FiscalYearCloseFutureDate conflict ->
+          new CliRejectionJsonModels.FiscalYearCloseFutureDateDetails(
+              conflict.attemptedEffectiveDateTo().toString());
       default -> null;
+    };
+  }
+
+  private static String closeOperation(OperationId operationId) {
+    return switch (Objects.requireNonNull(operationId, "operationId")) {
+      case INTERIM_RESULT_SWEEP -> INTERIM_RESULT_SWEEP_OPERATION;
+      case FISCAL_YEAR_CLOSE -> FISCAL_YEAR_CLOSE_OPERATION;
+      default -> throw new IllegalArgumentException("Unsupported close operation: " + operationId);
     };
   }
 

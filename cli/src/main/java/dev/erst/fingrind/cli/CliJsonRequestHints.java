@@ -31,6 +31,20 @@ final class CliJsonRequestHints {
         + " --output json --detail full'.";
   }
 
+  static String declareTaxRegistrationRequestHint() {
+    return "Use '"
+        + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+        + " "
+        + ProtocolCatalog.operationName(OperationId.DECLARE_TAX_REGISTRATION)
+        + "' for a starter "
+        + ProtocolCatalog.operationName(OperationId.DECLARE_TAX_REGISTRATION)
+        + " request file, then replace its sample tax registration values before real-world use. For accepted declaration fields, run '"
+        + CliInvocationText.commandExample(OperationId.HELP)
+        + " "
+        + OperationId.DECLARE_TAX_REGISTRATION.wireName()
+        + " --output json --detail full'.";
+  }
+
   static String ledgerPlanRequestHint() {
     return "Use '"
         + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)

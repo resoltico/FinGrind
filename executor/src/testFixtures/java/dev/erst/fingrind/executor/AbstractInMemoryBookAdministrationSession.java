@@ -3,7 +3,6 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookDoctrines;
@@ -48,7 +47,7 @@ abstract class AbstractInMemoryBookAdministrationSession
   protected BookIdentity bookIdentity =
       new BookIdentity(
           new EntityProfile(new BookEntityName("FinGrind Test Entity")),
-          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("USD"),
           new FiscalYearStart(1, 1));
 
@@ -91,7 +90,6 @@ abstract class AbstractInMemoryBookAdministrationSession
                               declaration.accountCode(),
                               declaration.accountName(),
                               declaration.accountType(),
-                              declaration.accountRole(),
                               declaration.accountTaxonomy(),
                               true,
                               initializedAt)));
@@ -122,7 +120,6 @@ abstract class AbstractInMemoryBookAdministrationSession
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     return InMemoryBookSessionSupport.withLock(
@@ -135,11 +132,16 @@ abstract class AbstractInMemoryBookAdministrationSession
           AccountDeclarationOutcome declarationOutcome =
               RegisteredAccount.declare(
                   accountsByCode.get(accountCode),
-                  new AccountDeclaration(
-                      accountCode, accountName, accountType, accountRole, accountTaxonomy),
+                  new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy),
                   declaredAt);
-          if (declarationOutcome instanceof AccountDeclarationOutcome.Declared declared) {
-            accountsByCode.put(accountCode, declared.account());
+          switch (declarationOutcome) {
+            case AccountDeclarationOutcome.Declared declared ->
+                accountsByCode.put(accountCode, declared.account());
+            case AccountDeclarationOutcome.Reactivated reactivated ->
+                accountsByCode.put(accountCode, reactivated.account());
+            case AccountDeclarationOutcome.Renamed renamed ->
+                accountsByCode.put(accountCode, renamed.account());
+            case AccountDeclarationOutcome.Unchanged _, AccountDeclarationOutcome.Rejected _ -> {}
           }
           return declarationOutcome;
         });
@@ -193,7 +195,6 @@ abstract class AbstractInMemoryBookAdministrationSession
                   existingAccount.accountCode(),
                   existingAccount.accountName(),
                   existingAccount.accountType(),
-                  existingAccount.accountRole(),
                   existingAccount.accountTaxonomy(),
                   false,
                   existingAccount.declaredAt()));

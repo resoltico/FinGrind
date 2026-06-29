@@ -4,6 +4,8 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
+import dev.erst.fingrind.contract.tax.TaxObligationQuery;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
 import java.util.Optional;
@@ -57,6 +59,23 @@ final class CliQueryCommandExecutor {
         failureWriter);
   }
 
+  int runListTaxRegistrationsCommand(
+      BookAccess bookAccess, ListTaxRegistrationsQuery query, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        readWorkflow.listTaxRegistrations(bookAccess, query),
+        result -> responseWriter.writeListTaxRegistrationsResult(result, outputMode),
+        CliBookQueryExitCodes::exitCodeFor,
+        failureWriter);
+  }
+
   int runGetPostingCommand(BookAccess bookAccess, PostingId postingId, OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
@@ -86,6 +105,23 @@ final class CliQueryCommandExecutor {
     return CliCommandOutcomeWriter.writeResolvedResult(
         readWorkflow.listPostings(bookAccess, query),
         result -> responseWriter.writeListPostingsResult(result, outputMode),
+        CliBookQueryExitCodes::exitCodeFor,
+        failureWriter);
+  }
+
+  int runTaxObligationCommand(
+      BookAccess bookAccess, TaxObligationQuery query, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        readWorkflow.taxObligation(bookAccess, query),
+        result -> responseWriter.writeTaxObligationResult(result, outputMode),
         CliBookQueryExitCodes::exitCodeFor,
         failureWriter);
   }

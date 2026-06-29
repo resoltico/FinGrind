@@ -11,23 +11,26 @@ import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.bookkeeping.ClosedFiscalYear;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferCommand;
-import dev.erst.fingrind.contract.bookkeeping.PeriodResultTransferResult;
-import dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
+import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
+import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -44,9 +47,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/**
- * Direct contract-model coverage for statement and transfer-period-result public bookkeeping types.
- */
+/** Direct contract-model coverage for statement and close-operation public bookkeeping types. */
 class StatementAndCloseContractTypesTest {
   @Test
   void statementAndCloseContractTypes_preserveCanonicalPayloads() {
@@ -55,7 +56,6 @@ class StatementAndCloseContractTypesTest {
             "1000",
             "Cash",
             AccountType.ASSET,
-            Optional.of(AccountRole.ORDINARY),
             FinancialPositionLineClassification.CURRENT_ASSET,
             StatementLineKind.DECLARED_ACCOUNT,
             balance("EUR", "15.00", "0.00"));
@@ -86,7 +86,6 @@ class StatementAndCloseContractTypesTest {
             "4000",
             "Revenue",
             AccountType.REVENUE,
-            Optional.of(AccountRole.ORDINARY),
             ProfitAndLossLineClassification.OPERATING_REVENUE,
             StatementLineKind.DECLARED_ACCOUNT,
             balance("EUR", "0.00", "10.00"));
@@ -118,7 +117,6 @@ class StatementAndCloseContractTypesTest {
             "3000",
             "Owner Capital",
             Optional.of(AccountType.EQUITY),
-            Optional.of(AccountRole.ORDINARY),
             FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
             StatementLineKind.DECLARED_ACCOUNT,
             balance("EUR", "0.00", "100.00"),
@@ -148,61 +146,100 @@ class StatementAndCloseContractTypesTest {
 
     ReportingPeriod reportingPeriod =
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
-    PeriodResultTransferCommand transferPeriodResultCommand =
-        new PeriodResultTransferCommand(reportingPeriod);
-    TransferredPeriodResult transferredPeriodResult =
-        new TransferredPeriodResult(
+    InterimResultSweepCommand interimResultSweepCommand =
+        new InterimResultSweepCommand(reportingPeriod);
+    SweptInterimResult sweptInterimResult =
+        new SweptInterimResult(
             1,
             reportingPeriod,
             new AccountCode("3000"),
             new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
             Instant.parse("2026-05-12T12:34:56Z"),
             new ArrayList<>(List.of(new PostingId("posting-1"))));
-    PeriodResultTransferResult.Transferred transferPeriodResultResultTransferred =
-        new PeriodResultTransferResult.Transferred(transferredPeriodResult);
-    BookAdministrationRejection.BookNotInitialized transferPeriodResultRejection =
+    InterimResultSweepResult.Swept interimResultSweepResultSwept =
+        new InterimResultSweepResult.Swept(sweptInterimResult);
+    BookAdministrationRejection.BookNotInitialized interimResultSweepRejection =
         new BookAdministrationRejection.BookNotInitialized();
-    PeriodResultTransferResult.Rejected transferPeriodResultRejected =
-        new PeriodResultTransferResult.Rejected(transferPeriodResultRejection);
+    InterimResultSweepResult.Rejected interimResultSweepRejected =
+        new InterimResultSweepResult.Rejected(interimResultSweepRejection);
+    FiscalYearCloseCommand fiscalYearCloseCommand = new FiscalYearCloseCommand(reportingPeriod);
+    ClosedFiscalYear closedFiscalYear =
+        new ClosedFiscalYear(
+            1,
+            reportingPeriod,
+            new AccountCode("3100"),
+            new AccountCode("3200"),
+            new AccountCode("3300"),
+            Instant.parse("2026-12-31T23:59:59Z"),
+            new ArrayList<>(List.of(new PostingId("posting-2"), new PostingId("posting-3"))));
+    FiscalYearCloseResult.Closed fiscalYearCloseResultClosed =
+        new FiscalYearCloseResult.Closed(closedFiscalYear);
+    BookAdministrationRejection.BookNotInitialized fiscalYearCloseRejection =
+        new BookAdministrationRejection.BookNotInitialized();
+    FiscalYearCloseResult.Rejected fiscalYearCloseRejected =
+        new FiscalYearCloseResult.Rejected(fiscalYearCloseRejection);
 
     DeclaredAccount declaredAccount =
         ContractFixtures.declaredAccount(
             "1090",
-            "Accumulated Depreciation",
-            AccountType.ASSET,
-            AccountRole.POLARITY_INVERTED,
+            "Owner Capital",
+            AccountType.EQUITY,
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
 
     FinancialPositionQuery financialPositionQuery =
-        new FinancialPositionQuery(Optional.of(LocalDate.parse("2026-04-30")));
+        new FinancialPositionQuery(
+            Optional.of(LocalDate.parse("2026-04-30")), ComparativeSelection.none());
     IncomeStatementQuery incomeStatementQuery =
-        new IncomeStatementQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
+        new IncomeStatementQuery(
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            ComparativeSelection.none());
     ChangesInEquityQuery changesInEquityQuery =
-        new ChangesInEquityQuery(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
+        new ChangesInEquityQuery(
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            ComparativeSelection.none());
 
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-30")), financialPositionQuery.effectiveDateAsOf());
+    assertEquals(ComparativeSelection.none(), financialPositionQuery.comparativeSelection());
     assertSame(financialPositionReport, reportedFinancialPosition.report());
     assertSame(financialPositionRejection, rejectedFinancialPosition.rejection());
+    assertEquals(
+        "reported", reportedFinancialPosition.fold(ignored -> "reported", ignored -> "rejected"));
+    assertEquals(
+        "rejected", rejectedFinancialPosition.fold(ignored -> "reported", ignored -> "rejected"));
     assertSame(incomeStatementReport, reportedIncomeStatement.report());
     assertSame(incomeStatementRejection, rejectedIncomeStatement.rejection());
+    assertEquals(
+        "reported", reportedIncomeStatement.fold(ignored -> "reported", ignored -> "rejected"));
+    assertEquals(
+        "rejected", rejectedIncomeStatement.fold(ignored -> "reported", ignored -> "rejected"));
     assertSame(changesReport, reportedChanges.report());
     assertSame(changesInEquityRejection, rejectedChanges.rejection());
+    assertEquals("reported", reportedChanges.fold(ignored -> "reported", ignored -> "rejected"));
+    assertEquals("rejected", rejectedChanges.fold(ignored -> "reported", ignored -> "rejected"));
     assertEquals(LocalDate.parse("2026-04-01"), incomeStatementQuery.effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), incomeStatementQuery.effectiveDateTo());
+    assertEquals(ComparativeSelection.none(), incomeStatementQuery.comparativeSelection());
     assertEquals(LocalDate.parse("2026-04-01"), changesInEquityQuery.effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), changesInEquityQuery.effectiveDateTo());
-    assertEquals(reportingPeriod, transferPeriodResultCommand.reportingPeriod());
-    assertSame(
-        transferredPeriodResult, transferPeriodResultResultTransferred.transferredPeriodResult());
-    assertSame(transferPeriodResultRejection, transferPeriodResultRejected.rejection());
+    assertEquals(ComparativeSelection.none(), changesInEquityQuery.comparativeSelection());
+    assertEquals(reportingPeriod, interimResultSweepCommand.reportingPeriod());
+    assertSame(sweptInterimResult, interimResultSweepResultSwept.sweptInterimResult());
+    assertSame(interimResultSweepRejection, interimResultSweepRejected.rejection());
+    assertEquals(reportingPeriod, fiscalYearCloseCommand.reportingPeriod());
+    assertSame(closedFiscalYear, fiscalYearCloseResultClosed.closedFiscalYear());
+    assertSame(fiscalYearCloseRejection, fiscalYearCloseRejected.rejection());
     assertEquals(dev.erst.fingrind.core.NormalBalance.CREDIT, declaredAccount.normalBalance());
   }
 
   @Test
   void statementAndCloseContractTypes_rejectInvalidInputs() {
-    assertThrows(NullPointerException.class, () -> new FinancialPositionQuery(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new FinancialPositionQuery(nullOf(), ComparativeSelection.none()));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -225,7 +262,6 @@ class StatementAndCloseContractTypesTest {
                 nullOf(),
                 "Cash",
                 AccountType.ASSET,
-                Optional.of(AccountRole.ORDINARY),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 StatementLineKind.DECLARED_ACCOUNT,
                 balance("EUR", "1.00", "0.00")));
@@ -235,7 +271,10 @@ class StatementAndCloseContractTypesTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new IncomeStatementQuery(LocalDate.parse("2026-04-30"), LocalDate.parse("2026-04-01")));
+            new IncomeStatementQuery(
+                LocalDate.parse("2026-04-30"),
+                LocalDate.parse("2026-04-01"),
+                ComparativeSelection.none()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -259,7 +298,6 @@ class StatementAndCloseContractTypesTest {
                 "4000",
                 nullOf(),
                 AccountType.REVENUE,
-                Optional.of(AccountRole.ORDINARY),
                 ProfitAndLossLineClassification.OPERATING_REVENUE,
                 StatementLineKind.DECLARED_ACCOUNT,
                 balance("EUR", "0.00", "1.00")));
@@ -269,7 +307,10 @@ class StatementAndCloseContractTypesTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ChangesInEquityQuery(LocalDate.parse("2026-04-30"), LocalDate.parse("2026-04-01")));
+            new ChangesInEquityQuery(
+                LocalDate.parse("2026-04-30"),
+                LocalDate.parse("2026-04-01"),
+                ComparativeSelection.none()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -294,7 +335,6 @@ class StatementAndCloseContractTypesTest {
                 "3000",
                 "Capital",
                 Optional.of(AccountType.EQUITY),
-                Optional.of(AccountRole.ORDINARY),
                 Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
                 StatementLineKind.DECLARED_ACCOUNT,
                 nullOf(),
@@ -303,21 +343,33 @@ class StatementAndCloseContractTypesTest {
     assertThrows(NullPointerException.class, () -> new ChangesInEquityResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new ChangesInEquityResult.Rejected(nullOf()));
 
-    assertThrows(NullPointerException.class, () -> new PeriodResultTransferCommand(nullOf()));
+    assertThrows(NullPointerException.class, () -> new InterimResultSweepCommand(nullOf()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new TransferredPeriodResult(
+            new SweptInterimResult(
                 0,
                 new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
                 new AccountCode("3000"),
                 List.of(balance("EUR", "0.00", "1.00")),
                 Instant.parse("2026-05-12T12:34:56Z"),
                 List.of()));
+    assertThrows(NullPointerException.class, () -> new InterimResultSweepResult.Swept(nullOf()));
+    assertThrows(NullPointerException.class, () -> new InterimResultSweepResult.Rejected(nullOf()));
+    assertThrows(NullPointerException.class, () -> new FiscalYearCloseCommand(nullOf()));
     assertThrows(
-        NullPointerException.class, () -> new PeriodResultTransferResult.Transferred(nullOf()));
-    assertThrows(
-        NullPointerException.class, () -> new PeriodResultTransferResult.Rejected(nullOf()));
+        IllegalArgumentException.class,
+        () ->
+            new ClosedFiscalYear(
+                0,
+                new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")),
+                new AccountCode("3100"),
+                new AccountCode("3200"),
+                new AccountCode("3300"),
+                Instant.parse("2026-12-31T23:59:59Z"),
+                List.of()));
+    assertThrows(NullPointerException.class, () -> new FiscalYearCloseResult.Closed(nullOf()));
+    assertThrows(NullPointerException.class, () -> new FiscalYearCloseResult.Rejected(nullOf()));
   }
 
   private static CurrencyBalance balance(

@@ -64,19 +64,37 @@ EOF
 
 python3 "${render_script}" --repo-root "${fixture_root}" --write
 
-python3 - <<'PY' "${fixture_root}/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql" "${fixture_root}/docs/sqlite/SCHEMA_CORE.md"
+python3 - <<'PY' "${fixture_root}/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql" "${fixture_root}/docs/sqlite"
 from pathlib import Path
+import re
 import sys
 
 schema_path = Path(sys.argv[1])
-document_path = Path(sys.argv[2])
+docs_root = Path(sys.argv[2])
 schema_text = schema_path.read_text(encoding="utf-8").strip()
-document_text = document_path.read_text(encoding="utf-8")
-if schema_text not in document_text:
-    raise SystemExit("error: generated schema doc did not embed the canonical SQL body")
+section_docs = sorted(docs_root.glob("SCHEMA_CORE_*.md"))
+if not section_docs:
+    raise SystemExit("error: schema renderer did not generate any schema section documents")
+sql_block_pattern = re.compile(r"```sql\n(.*?)\n```", re.DOTALL)
+sql_fragments = []
+for document_path in section_docs:
+    document_text = document_path.read_text(encoding="utf-8")
+    match = sql_block_pattern.search(document_text)
+    if match is None:
+        raise SystemExit(f"error: generated schema section {document_path.name} is missing one SQL block")
+    sql_fragments.append(match.group(1).strip())
+reconstructed_schema = "\n\n".join(sql_fragments)
+if reconstructed_schema != schema_text:
+    raise SystemExit("error: generated schema sections did not reconstruct the canonical SQL body")
 PY
+[[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" ]] || die \
+    "generated schema doc set is missing the foundation page"
+grep -Fq 'version: "9.9.9"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \
+    "generated schema foundation page did not inherit the overview version frontmatter"
+grep -Fq 'updated: "2026-05-09"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \
+    "generated schema foundation page did not inherit the overview updated frontmatter"
 grep -Fq '`book_meta.schema_fingerprint_sha256`' "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" || die \
-    "generated schema doc did not describe runtime integrity semantics"
+    "generated schema overview did not describe runtime integrity semantics"
 
 python3 "${render_script}" --repo-root "${fixture_root}" --check
 

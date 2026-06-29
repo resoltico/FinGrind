@@ -114,7 +114,7 @@ public final class JazzerHarnessRunner {
         PULSE_PREFIX
             + "harness-class="
             + harness.className()
-            + " phase=plan total-tests=1 fuzz-test="
+            + " event=plan total-tests=1 fuzz-test="
             + harness.methodName());
 
     int exitCode;
@@ -122,7 +122,7 @@ public final class JazzerHarnessRunner {
       exitCode = executor.execute(harness);
     } catch (RuntimeException exception) {
       outputWriter.println(
-          PULSE_PREFIX + "harness-class=" + harness.className() + " phase=finish status=FAILURE");
+          PULSE_PREFIX + "harness-class=" + harness.className() + " event=finish status=FAILURE");
       errorWriter.println(exception.getMessage());
       return 1;
     }
@@ -131,7 +131,7 @@ public final class JazzerHarnessRunner {
         PULSE_PREFIX
             + "harness-class="
             + harness.className()
-            + " phase=finish status="
+            + " event=finish status="
             + (exitCode == 0 ? "SUCCESS" : "FAILURE")
             + " fuzz-test="
             + harness.methodName()

@@ -134,8 +134,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "declare-account",
                       "accountCode": "1000",
                       "accountName": "Cash",
-                      "accountType": "ASSET",
-                      "accountRole": "ORDINARY"
+                      "accountType": "ASSET"
                     }
                   ]
                 }
@@ -146,7 +145,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
     assertEquals(
-        "Fields accountCode, accountName, accountType, accountRole must be nested under declareAccount for declare-account ledger plan steps.",
+        "Fields accountCode, accountName, accountType must be nested under declareAccount for declare-account ledger plan steps.",
         exception.getMessage());
   }
 
@@ -161,7 +160,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                   "steps": [
                     {
                       "stepId": "step-1",
-                      "kind": "post-entry",
+                      "kind": "record-sale",
                       "effectiveDate": "2026-04-07"
                     }
                   ]
@@ -173,7 +172,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
     assertEquals(
-        "Field effectiveDate must be nested under posting for post-entry ledger plan steps.",
+        "Field effectiveDate must be nested under posting for record-sale ledger plan steps.",
         exception.getMessage());
   }
 
@@ -272,8 +271,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "declareAccount": {
                         "accountCode": "1000",
                         "accountName": "Cash",
-                        "accountType": "ASSET",
-                        "accountRole": "ORDINARY"
+                        "accountType": "ASSET"
                       },
                       "accountCode": "2000"
                     }

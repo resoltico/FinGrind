@@ -198,8 +198,18 @@ public final class CliFuzzRequestSeedSupport {
   static byte[] invalidWrongTypeRequestBytes() {
     return """
         {
+          "entryKind": "SALE",
           "effectiveDate": 1,
-          "lines": [],
+          "cashAccountCode": "1000",
+          "revenueAccountCode": "2000",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": {
+            "sourceDocuments": [],
+            "approvals": []
+          },
           "provenance": {}
         }
         """

@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
@@ -13,6 +14,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.executor.bookkeeping.CashFlowStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
@@ -55,7 +57,8 @@ final class BookReadQueryTranslator {
 
   static TrialBalanceCriteria fromPublished(TrialBalanceQuery query) {
     Objects.requireNonNull(query, "query");
-    return new TrialBalanceCriteria(query.effectiveDateAsOf(), query.postingCoverage());
+    return new TrialBalanceCriteria(
+        query.effectiveDateAsOf(), query.postingCoverage(), query.comparativeSelection());
   }
 
   static AccountLedgerCriteria fromPublished(AccountLedgerQuery query) {
@@ -72,16 +75,24 @@ final class BookReadQueryTranslator {
 
   static FinancialPositionCriteria fromPublished(FinancialPositionQuery query) {
     Objects.requireNonNull(query, "query");
-    return new FinancialPositionCriteria(query.effectiveDateAsOf());
+    return new FinancialPositionCriteria(query.effectiveDateAsOf(), query.comparativeSelection());
   }
 
   static IncomeStatementCriteria fromPublished(IncomeStatementQuery query) {
     Objects.requireNonNull(query, "query");
-    return new IncomeStatementCriteria(query.effectiveDateFrom(), query.effectiveDateTo());
+    return new IncomeStatementCriteria(
+        query.effectiveDateFrom(), query.effectiveDateTo(), query.comparativeSelection());
+  }
+
+  static CashFlowStatementCriteria fromPublished(CashFlowStatementQuery query) {
+    Objects.requireNonNull(query, "query");
+    return new CashFlowStatementCriteria(
+        query.effectiveDateFrom(), query.effectiveDateTo(), query.comparativeSelection());
   }
 
   static ChangesInEquityCriteria fromPublished(ChangesInEquityQuery query) {
     Objects.requireNonNull(query, "query");
-    return new ChangesInEquityCriteria(query.effectiveDateFrom(), query.effectiveDateTo());
+    return new ChangesInEquityCriteria(
+        query.effectiveDateFrom(), query.effectiveDateTo(), query.comparativeSelection());
   }
 }

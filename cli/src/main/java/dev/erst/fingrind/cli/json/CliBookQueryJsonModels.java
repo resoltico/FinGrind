@@ -17,10 +17,10 @@ public interface CliBookQueryJsonModels {
       String accountCode,
       String accountName,
       String accountType,
-      String accountRole,
       String accountNodeKind,
       @Nullable String parentAccountCode,
       @Nullable String financialPositionLineClassification,
+      @Nullable String cashFlowAssetClassification,
       @Nullable String profitAndLossLineClassification,
       String normalBalance,
       boolean active,
@@ -30,12 +30,13 @@ public interface CliBookQueryJsonModels {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
       accountType = requireText(accountType, "accountType");
-      accountRole = requireText(accountRole, "accountRole");
       accountNodeKind = requireText(accountNodeKind, "accountNodeKind");
       parentAccountCode = requireOptionalText(parentAccountCode, "parentAccountCode");
       financialPositionLineClassification =
           requireOptionalText(
               financialPositionLineClassification, "financialPositionLineClassification");
+      cashFlowAssetClassification =
+          requireOptionalText(cashFlowAssetClassification, "cashFlowAssetClassification");
       profitAndLossLineClassification =
           requireOptionalText(profitAndLossLineClassification, "profitAndLossLineClassification");
       normalBalance = requireText(normalBalance, "normalBalance");
@@ -52,19 +53,11 @@ public interface CliBookQueryJsonModels {
   }
 
   record SourceDocumentPayload(
-      String sourceDocumentId,
-      String sourceDocumentType,
-      String documentDate,
-      String capturedAt,
-      String storageLocator,
-      String contentSha256) {
+      String sourceDocumentId, String sourceDocumentType, String documentDate) {
     public SourceDocumentPayload {
       sourceDocumentId = requireText(sourceDocumentId, "sourceDocumentId");
       sourceDocumentType = requireText(sourceDocumentType, "sourceDocumentType");
       documentDate = requireText(documentDate, "documentDate");
-      capturedAt = requireText(capturedAt, "capturedAt");
-      storageLocator = requireText(storageLocator, "storageLocator");
-      contentSha256 = requireText(contentSha256, "contentSha256");
     }
   }
 
@@ -90,6 +83,8 @@ public interface CliBookQueryJsonModels {
       String postingKind,
       String postingOriginKind,
       String reversalState,
+      @Nullable String reversesPostingId,
+      @Nullable String reversedByPostingId,
       String effectiveDate,
       String recordedAt,
       String actorId,
@@ -100,6 +95,7 @@ public interface CliBookQueryJsonModels {
       @Nullable String correlationId,
       String sourceChannel,
       AccountingEvidencePayload evidence,
+      @Nullable CliPostingEntryPayload entry,
       @Nullable ReversalPayload reversal,
       List<JournalLinePayload> lines)
       implements CliSuccessPayload {
@@ -108,6 +104,8 @@ public interface CliBookQueryJsonModels {
       postingKind = requireText(postingKind, "postingKind");
       postingOriginKind = requireText(postingOriginKind, "postingOriginKind");
       reversalState = requireText(reversalState, "reversalState");
+      reversesPostingId = requireOptionalText(reversesPostingId, "reversesPostingId");
+      reversedByPostingId = requireOptionalText(reversedByPostingId, "reversedByPostingId");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
       recordedAt = requireText(recordedAt, "recordedAt");
       actorId = requireText(actorId, "actorId");
@@ -127,7 +125,8 @@ public interface CliBookQueryJsonModels {
       String postingKind,
       String postingOriginKind,
       String reversalState,
-      @Nullable String reversalTarget,
+      @Nullable String reversesPostingId,
+      @Nullable String reversedByPostingId,
       String effectiveDate,
       String recordedAt,
       MonetaryAmount debitTotal,
@@ -140,7 +139,8 @@ public interface CliBookQueryJsonModels {
       postingKind = requireText(postingKind, "postingKind");
       postingOriginKind = requireText(postingOriginKind, "postingOriginKind");
       reversalState = requireText(reversalState, "reversalState");
-      reversalTarget = requireOptionalText(reversalTarget, "reversalTarget");
+      reversesPostingId = requireOptionalText(reversesPostingId, "reversesPostingId");
+      reversedByPostingId = requireOptionalText(reversedByPostingId, "reversedByPostingId");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
       recordedAt = requireText(recordedAt, "recordedAt");
       Objects.requireNonNull(debitTotal, "debitTotal");
@@ -232,7 +232,6 @@ public interface CliBookQueryJsonModels {
       String accountCode,
       String accountName,
       String accountType,
-      String accountRole,
       String normalBalance,
       boolean active,
       String declaredAt,
@@ -245,7 +244,6 @@ public interface CliBookQueryJsonModels {
       accountCode = requireText(accountCode, "accountCode");
       accountName = requireText(accountName, "accountName");
       accountType = requireText(accountType, "accountType");
-      accountRole = requireText(accountRole, "accountRole");
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
       effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");

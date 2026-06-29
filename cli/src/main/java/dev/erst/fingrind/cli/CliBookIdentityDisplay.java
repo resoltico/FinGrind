@@ -48,6 +48,9 @@ final class CliBookIdentityDisplay {
         List.of(
             "Starter chart",
             BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())),
+        List.of(
+            "Accounting basis",
+            BookDoctrineDisplay.accountingBasis(bookIdentity.bookDoctrine().accountingBasis())),
         List.of("Functional currency", bookIdentity.functionalCurrency().code()),
         List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
   }

@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
-import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
@@ -14,20 +13,31 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 final class SqliteRoundTripWorkflowDecisionAssertions {
   private SqliteRoundTripWorkflowDecisionAssertions() {}
 
-  static void assertDuplicateWorkflowPreflightRejected(PreflightEntryResult duplicatePreflight) {
-    if (!(duplicatePreflight instanceof PreflightRejected rejected)
-        || !(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
-      throw new IllegalStateException(
-          "Duplicate workflow preflight must reject with duplicate-idempotency-key.");
+  static PreflightAccepted requireDuplicateWorkflowPreflightAccepted(
+      PreflightEntryResult duplicatePreflight) {
+    if (duplicatePreflight instanceof PreflightAccepted accepted) {
+      return accepted;
     }
+    throw new IllegalStateException(
+        "Duplicate workflow preflight must remain accepted for semantic replay.");
   }
 
-  static void assertDuplicateWorkflowCommitRejected(CommitEntryResult duplicateCommit) {
-    if (!(duplicateCommit instanceof CommitRejected duplicateRejected)
-        || !(duplicateRejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
+  static Committed requireCommittedReplay(CommitEntryResult duplicateCommit, Committed committed) {
+    if (!(duplicateCommit instanceof Committed replayed)) {
       throw new IllegalStateException(
-          "Duplicate workflow commit must reject with duplicate-idempotency-key.");
+          "Duplicate workflow commit must replay the original success.");
     }
+    if (!replayed.idempotentReplay()) {
+      throw new IllegalStateException("Duplicate workflow commit must mark the replayed success.");
+    }
+    if (!replayed.postingId().equals(committed.postingId())
+        || !replayed.idempotencyKey().equals(committed.idempotencyKey())
+        || !replayed.effectiveDate().equals(committed.effectiveDate())
+        || !replayed.recordedAt().equals(committed.recordedAt())) {
+      throw new IllegalStateException(
+          "Duplicate workflow commit drifted from the original committed success.");
+    }
+    return replayed;
   }
 
   static void assertNearMissReversalRejected(CommitRejected nearMissRejected) {

@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates.LedgerPlanTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareTaxRegistrationTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
@@ -14,6 +15,7 @@ import org.jspecify.annotations.Nullable;
 public record HelpDescriptor(
     String application,
     String version,
+    String protocolVersion,
     String description,
     List<String> usage,
     ContractResponse.BookModelDescriptor bookModel,
@@ -21,6 +23,7 @@ public record HelpDescriptor(
     @Nullable RequestShapesDescriptor requestShapes,
     @Nullable PostingRequestTemplateDescriptor requestTemplate,
     @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate,
+    @Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistrationTemplate,
     @Nullable LedgerPlanTemplateDescriptor planTemplate,
     List<CommandDescriptor> commands,
     List<WorkflowDescriptor> quickStart,
@@ -32,6 +35,7 @@ public record HelpDescriptor(
   public HelpDescriptor {
     application = ContractDescriptorValidation.requireText(application, "application");
     version = ContractDescriptorValidation.requireText(version, "version");
+    protocolVersion = ContractDescriptorValidation.requireText(protocolVersion, "protocolVersion");
     description = ContractDescriptorValidation.requireText(description, "description");
     usage = ContractDescriptorValidation.copyList(usage, "usage");
     bookModel = ContractDescriptorValidation.requireValue(bookModel, "bookModel");

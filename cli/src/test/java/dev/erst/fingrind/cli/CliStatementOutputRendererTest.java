@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
@@ -12,9 +13,10 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
+import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -68,12 +70,29 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
             List.of(),
             List.of(),
             List.of());
+    CashFlowStatementReport emptyCashFlowStatement =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
     ChangesInEquityReport changesInEquityReport = sampleChangesInEquityReport();
 
     String financialPositionText =
         CliReportOutputRenderer.renderFinancialPositionText(emptyFinancialPosition);
     String incomeStatementText =
         CliReportOutputRenderer.renderIncomeStatementText(emptyIncomeStatement);
+    String cashFlowStatementText =
+        CliReportOutputRenderer.renderCashFlowStatementText(emptyCashFlowStatement);
     String changesInEquityText =
         CliReportOutputRenderer.renderChangesInEquityText(changesInEquityReport);
 
@@ -83,8 +102,60 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(incomeStatementText.contains("Income Statement"));
     assertTrue(
         incomeStatementText.contains("No income statement lines matched the selected scope."));
+    assertTrue(cashFlowStatementText.contains("Cash Receipts And Payments"));
+    assertTrue(cashFlowStatementText.contains("No cash-flow lines matched the selected scope."));
     assertTrue(changesInEquityText.contains("Changes In Equity"));
     assertTrue(changesInEquityText.contains("Closing totals"));
+  }
+
+  @Test
+  void renderCashFlowStatementTextAndCsv_includeComparativeAndSectionRows() {
+    CashFlowStatementReport report = sampleCashFlowStatementReport();
+
+    String renderedText = CliReportOutputRenderer.renderCashFlowStatementText(report);
+    String renderedCsv = CliReportOutputRenderer.renderCashFlowStatementCsv(report);
+
+    assertTrue(renderedText.contains("Cash Receipts And Payments"));
+    assertTrue(renderedText.contains("Comparative Cash Receipts And Payments"));
+    assertTrue(renderedText.contains("Operating"));
+    assertTrue(renderedText.contains("Financing"));
+    assertTrue(renderedText.contains("Revenue (Operating revenue)"), renderedText);
+    assertFalse(renderedText.contains("Revenue | Operating revenue"), renderedText);
+    assertTrue(
+        renderedCsv.startsWith(
+            "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,sectionKind"));
+    assertTrue(renderedCsv.contains("cash-flow-statement-row:current:OPERATING:2000"));
+    assertTrue(renderedCsv.contains("cash-flow-statement-row:current:FINANCING:3000"));
+    assertTrue(renderedCsv.contains("cash-flow-statement-report-total:current:EUR"));
+    assertTrue(renderedCsv.contains("cash-flow-statement-row:comparative:OPERATING:2000"));
+  }
+
+  @Test
+  void renderCashFlowStatementCsv_usesCurrentOnlyEmptyRowWhenNothingMatches() {
+    CashFlowStatementReport emptyCashFlowStatement =
+        new CashFlowStatementReport(
+            bookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+
+    String renderedCsv = CliReportOutputRenderer.renderCashFlowStatementCsv(emptyCashFlowStatement);
+
+    assertTrue(
+        renderedCsv.contains("cash-flow-statement-report-empty:current:2026-04-01:2026-04-30"));
+    assertTrue(
+        renderedCsv.contains(",report-empty,current,cash-flow-statement,2026-04-01,2026-04-30,"));
+    assertTrue(renderedCsv.contains(",EUR,,,,,No cash-flow lines matched the selected scope."));
+    assertFalse(renderedCsv.contains("cash-flow-statement-row:comparative:"));
   }
 
   @Test
@@ -105,7 +176,6 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
                             "1000",
                             "Cash and Cash Equivalents",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             eurDebitBalance())),
@@ -149,7 +219,6 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
                             "Current period result",
                             AccountType.EQUITY,
                             Optional.empty(),
-                            Optional.empty(),
                             StatementLineKind.CURRENT_PERIOD_RESULT,
                             creditBalance)),
                     List.of(creditBalance))),
@@ -166,7 +235,6 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
                     "current-period-result",
                     "Current period result",
                     Optional.of(AccountType.EQUITY),
-                    Optional.empty(),
                     Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
                     CliResponseWriterTestSupport.currencyBalance(
@@ -193,6 +261,27 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void displayCashFlowLabels_coverSectionAndAssetClassifications() {
+    assertEquals(
+        "Cash and cash equivalents",
+        CliAccountStatementLabels.displayCashFlowAssetClassification(
+            CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
+    assertEquals(
+        "Non-cash asset",
+        CliAccountStatementLabels.displayCashFlowAssetClassification(
+            CashFlowAssetClassification.NON_CASH));
+    assertEquals(
+        "Operating",
+        CliAccountStatementLabels.displayCashFlowSectionLabel(CashFlowSectionKind.OPERATING));
+    assertEquals(
+        "Investing",
+        CliAccountStatementLabels.displayCashFlowSectionLabel(CashFlowSectionKind.INVESTING));
+    assertEquals(
+        "Financing",
+        CliAccountStatementLabels.displayCashFlowSectionLabel(CashFlowSectionKind.FINANCING));
+  }
+
+  @Test
   void renderChangesInEquityCsv_fillsMissingCurrencyTotalsWithZeroBalances() {
     CurrencyBalance openingBalance =
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"));
@@ -212,7 +301,6 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
                     "3200",
                     "Retained Earnings",
                     Optional.of(AccountType.EQUITY),
-                    Optional.of(AccountRole.ORDINARY),
                     Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
                     StatementLineKind.DECLARED_ACCOUNT,
                     openingBalance,
@@ -230,7 +318,7 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
 
     assertTrue(
         rendered.contains(
-            "current,report-total,2026-04-01,2026-04-30,report-total,Report total,,,REPORT_TOTAL,EUR"));
+            "current,changes-in-equity,2026-04-01,2026-04-30,report-total,Report total,,REPORT_TOTAL,EUR"));
     assertTrue(
         rendered.contains(",EUR,0.00,0.00,0.00,ZERO,0.00,10.00,10.00,CREDIT,0.00,0.00,0.00,ZERO"));
   }
@@ -254,7 +342,6 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
                             "1000",
                             "Cash without Totals",
                             AccountType.ASSET,
-                            Optional.of(AccountRole.ORDINARY),
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
                             debitBalance)),
@@ -277,7 +364,6 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
                             "4000",
                             "Revenue without Totals",
                             AccountType.REVENUE,
-                            Optional.of(AccountRole.ORDINARY),
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,
                             debitBalance)),

@@ -20,7 +20,6 @@ final class CliAccountLedgerCsvRenderer {
           "accountCode",
           "accountName",
           "accountType",
-          "accountRole",
           "normalBalance",
           "active",
           "effectiveDateFrom",

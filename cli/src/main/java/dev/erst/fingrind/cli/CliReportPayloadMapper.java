@@ -4,6 +4,7 @@ import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.cli.json.CliReportSupportJsonModels;
 import dev.erst.fingrind.cli.json.CliStatementJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
@@ -28,7 +29,7 @@ final class CliReportPayloadMapper {
             report.bookIdentity(),
             report.postingCoverage(),
             comparativeRangeOrNull(
-                CliReportSurfacePolicy.hasComparative(report),
+                CliTrialBalanceSurfacePolicy.hasComparative(report),
                 report.comparativeEffectiveDateRange())),
         report.rows().stream().map(CliReportRowPayloadMapper::trialBalanceRowPayload).toList(),
         report.totals().stream().map(CliPayloadAssembler::balancePayload).toList(),
@@ -46,7 +47,6 @@ final class CliReportPayloadMapper {
         report.account().accountCode().value(),
         report.account().accountName().value(),
         report.account().accountType().wireValue(),
-        report.account().accountRole().wireValue(),
         report.account().normalBalance().wireValue(),
         report.account().active(),
         report.account().declaredAt().toString(),
@@ -88,7 +88,7 @@ final class CliReportPayloadMapper {
             report.bookIdentity(),
             report.postingCoverage(),
             comparativeRangeOrNull(
-                CliReportSurfacePolicy.hasComparative(report),
+                CliStatementReportSurfacePolicy.hasComparative(report),
                 report.comparativeEffectiveDateRange())),
         report.sections().stream()
             .map(CliReportRowPayloadMapper::financialPositionSectionPayload)
@@ -107,7 +107,7 @@ final class CliReportPayloadMapper {
             report.bookIdentity(),
             report.postingCoverage(),
             comparativeRangeOrNull(
-                CliReportSurfacePolicy.hasComparative(report),
+                CliStatementReportSurfacePolicy.hasComparative(report),
                 report.comparativeEffectiveDateRange())),
         report.sections().stream()
             .map(CliReportRowPayloadMapper::incomeStatementSectionPayload)
@@ -121,6 +121,35 @@ final class CliReportPayloadMapper {
             .toList());
   }
 
+  static CliStatementJsonModels.CashFlowStatementPayload cashFlowStatementPayload(
+      CashFlowStatementReport report) {
+    return new CliStatementJsonModels.CashFlowStatementPayload(
+        report.effectiveDateFrom().toString(),
+        report.effectiveDateTo().toString(),
+        reportContextPayload(
+            report.bookIdentity(),
+            report.postingCoverage(),
+            comparativeRangeOrNull(
+                CliStatementReportSurfacePolicy.hasComparative(report),
+                report.comparativeEffectiveDateRange())),
+        report.openingCashTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.sections().stream().map(CliReportRowPayloadMapper::cashFlowSectionPayload).toList(),
+        report.movementTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.closingCashTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),
+        report.comparativeOpeningCashTotals().stream()
+            .map(CliPayloadAssembler::balancePayload)
+            .toList(),
+        report.comparativeSections().stream()
+            .map(CliReportRowPayloadMapper::cashFlowSectionPayload)
+            .toList(),
+        report.comparativeMovementTotals().stream()
+            .map(CliPayloadAssembler::balancePayload)
+            .toList(),
+        report.comparativeClosingCashTotals().stream()
+            .map(CliPayloadAssembler::balancePayload)
+            .toList());
+  }
+
   static CliStatementJsonModels.ChangesInEquityPayload changesInEquityPayload(
       ChangesInEquityReport report) {
     return new CliStatementJsonModels.ChangesInEquityPayload(
@@ -130,7 +159,7 @@ final class CliReportPayloadMapper {
             report.bookIdentity(),
             report.postingCoverage(),
             comparativeRangeOrNull(
-                CliReportSurfacePolicy.hasComparative(report),
+                CliStatementReportSurfacePolicy.hasComparative(report),
                 report.comparativeEffectiveDateRange())),
         report.rows().stream().map(CliReportRowPayloadMapper::changesInEquityRowPayload).toList(),
         report.openingTotals().stream().map(CliPayloadAssembler::balancePayload).toList(),

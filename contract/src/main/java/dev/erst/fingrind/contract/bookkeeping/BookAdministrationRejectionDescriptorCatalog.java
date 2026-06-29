@@ -48,21 +48,6 @@ final class BookAdministrationRejectionDescriptorCatalog {
                               "requestedAccountType",
                               "Conflicting accountType that the caller attempted to declare.")))),
               Map.entry(
-                  BookAdministrationRejectionDescriptors.Descriptor.ACCOUNT_ROLE_CONFLICT,
-                  definition(
-                      "account-role-conflict",
-                      "Account declaration refused because the requested accountRole conflicts with the existing immutable value.",
-                      List.of(
-                          detailField(
-                              "accountCode",
-                              "Declared account code that already exists in the book."),
-                          detailField(
-                              "existingAccountRole",
-                              "Immutable live accountRole already stored for this account."),
-                          detailField(
-                              "requestedAccountRole",
-                              "Conflicting accountRole that the caller attempted to declare.")))),
-              Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor.ACCOUNT_TAXONOMY_CONFLICT,
                   definition(
                       "account-taxonomy-conflict",
@@ -120,24 +105,6 @@ final class BookAdministrationRejectionDescriptorCatalog {
                               "parentAccountType",
                               "Declared parent accountType that conflicts with the child request.")))),
               Map.entry(
-                  BookAdministrationRejectionDescriptors.Descriptor.PARENT_ACCOUNT_ROLE_CONFLICT,
-                  definition(
-                      "parent-account-role-conflict",
-                      "Account declaration refused because the requested parentAccountCode belongs to a different accountRole than the child declaration.",
-                      List.of(
-                          detailField(
-                              "accountCode",
-                              "Declared child account code whose requested accountRole conflicts with the parent account."),
-                          detailField(
-                              "requestedAccountRole",
-                              "Requested child accountRole that does not match the declared parent account role."),
-                          detailField(
-                              "parentAccountCode",
-                              "Requested parentAccountCode whose declared accountRole conflicts with the child."),
-                          detailField(
-                              "parentAccountRole",
-                              "Declared parent accountRole that conflicts with the child request.")))),
-              Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor.PARENT_ACCOUNT_NOT_HEADER,
                   definition(
                       "parent-account-not-header",
@@ -187,64 +154,91 @@ final class BookAdministrationRejectionDescriptorCatalog {
                   BookAdministrationRejectionDescriptors.Descriptor
                       .CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING,
                   definition(
-                      "result-holding-account-candidate-missing",
-                      "Period result transfer refused because policy could not find one active declared result-holding account for the selected book.",
+                      "close-target-account-candidate-missing",
+                      "Close command refused because policy could not find one active declared account for the required close-target classification.",
                       List.of(
                           detailField(
                               "requiredFinancialPositionLineClassification",
-                              "Required financialPositionLineClassification for the selected book's active result-transfer policy."),
+                              "Required financialPositionLineClassification for the selected close-target policy."),
                           detailField(
                               "inactiveCandidateAccountCodes",
-                              "Matching declared account codes that satisfy the required classification but are inactive.")))),
+                              "Matching declared account codes that satisfy the required close-target classification but are inactive.")))),
               Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor
                       .CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS,
                   definition(
-                      "result-holding-account-candidate-ambiguous",
-                      "Book administration refused because more than one active declared result-holding account exists for the selected book.",
+                      "close-target-account-candidate-ambiguous",
+                      "Close command refused because more than one active declared account satisfies the required close-target classification.",
                       List.of(
                           detailField(
                               "requiredFinancialPositionLineClassification",
-                              "Required financialPositionLineClassification for the selected book's active result-transfer policy."),
+                              "Required financialPositionLineClassification for the selected close-target policy."),
                           detailField(
                               "candidateAccountCodes",
-                              "Active declared account codes that all satisfy the required result-transfer policy and therefore make the result-holding target ambiguous.")))),
+                              "Active declared account codes that all satisfy the required close-target classification and therefore make the selected close target ambiguous.")))),
               Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor
-                      .PERIOD_RESULT_TRANSFER_MUST_START_AT,
+                      .INTERIM_RESULT_SWEEP_MUST_START_AT,
                   definition(
-                      "period-result-transfer-must-start-at",
-                      "Period result transfer refused because the requested effectiveDateFrom does not match the live unclosed horizon.",
+                      "interim-result-sweep-must-start-at",
+                      "Interim result sweep refused because the requested effectiveDateFrom does not match the live unswept horizon.",
                       List.of(
                           detailField(
                               "requiredEffectiveDateFrom",
-                              "Only admissible effectiveDateFrom for the next contiguous period result transfer.")))),
+                              "Only admissible effectiveDateFrom for the next contiguous interim-result sweep.")))),
               Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor
-                      .PERIOD_RESULT_TRANSFER_FUTURE_DATE,
+                      .INTERIM_RESULT_SWEEP_FUTURE_DATE,
                   definition(
-                      "period-result-transfer-future-date",
-                      "Period result transfer refused because the requested effectiveDateTo lies after the current UTC date.",
+                      "interim-result-sweep-future-date",
+                      "Interim result sweep refused because the requested effectiveDateTo lies after the current UTC date.",
                       List.of(
                           detailField(
                               "attemptedEffectiveDateTo",
                               "Requested effectiveDateTo that lies after the current UTC date.")))),
               Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor
-                      .PERIOD_RESULT_TRANSFER_CROSSES_FISCAL_YEAR_BOUNDARY,
+                      .INTERIM_RESULT_SWEEP_CROSSES_FISCAL_YEAR_BOUNDARY,
                   definition(
-                      "period-result-transfer-crosses-fiscal-year-boundary",
-                      "Period result transfer refused because the requested reporting period crosses the configured fiscal-year boundary.",
+                      "interim-result-sweep-crosses-fiscal-year-boundary",
+                      "Interim result sweep refused because the requested reporting period crosses the configured fiscal-year boundary.",
                       List.of(
                           detailField(
                               "attemptedEffectiveDateFrom",
-                              "Requested effectiveDateFrom for a close period that crosses the fiscal-year boundary."),
+                              "Requested effectiveDateFrom for a sweep period that crosses the fiscal-year boundary."),
                           detailField(
                               "attemptedEffectiveDateTo",
-                              "Requested effectiveDateTo for a close period that crosses the fiscal-year boundary."),
+                              "Requested effectiveDateTo for a sweep period that crosses the fiscal-year boundary."),
                           detailField(
                               "fiscalYearStart",
-                              "Configured fiscal-year start anchor that the requested period crosses.")))));
+                              "Configured fiscal-year start anchor that the requested period crosses.")))),
+              Map.entry(
+                  BookAdministrationRejectionDescriptors.Descriptor.FISCAL_YEAR_CLOSE_MUST_START_AT,
+                  definition(
+                      "fiscal-year-close-must-start-at",
+                      "Fiscal-year close refused because the requested effectiveDateFrom does not match the fiscal year start for the selected period.",
+                      List.of(
+                          detailField(
+                              "requiredEffectiveDateFrom",
+                              "Only admissible effectiveDateFrom for a fiscal-year close covering the selected year.")))),
+              Map.entry(
+                  BookAdministrationRejectionDescriptors.Descriptor.FISCAL_YEAR_CLOSE_MUST_END_AT,
+                  definition(
+                      "fiscal-year-close-must-end-at",
+                      "Fiscal-year close refused because the requested effectiveDateTo does not match the fiscal year end for the selected period.",
+                      List.of(
+                          detailField(
+                              "requiredEffectiveDateTo",
+                              "Only admissible effectiveDateTo for a fiscal-year close covering the selected year.")))),
+              Map.entry(
+                  BookAdministrationRejectionDescriptors.Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE,
+                  definition(
+                      "fiscal-year-close-future-date",
+                      "Fiscal-year close refused because the requested effectiveDateTo lies after the current UTC date.",
+                      List.of(
+                          detailField(
+                              "attemptedEffectiveDateTo",
+                              "Requested effectiveDateTo that lies after the current UTC date.")))));
 
   private BookAdministrationRejectionDescriptorCatalog() {}
 

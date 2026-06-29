@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.BookInspection;
-import dev.erst.fingrind.contract.runtime.BookInspection.ResultTransferReadiness;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -39,7 +38,7 @@ final class CliBookInspectionOutputRenderer {
             section(
                 "Format Compatibility",
                 CliTextFormat.renderKeyValueBlock(formatRows(inspection), TEXT_WRAP_WIDTH)),
-            resultTransferReadinessSection(inspection),
+            closeReadinessSection(inspection),
             identitySection(inspection)));
   }
 
@@ -108,41 +107,47 @@ final class CliBookInspectionOutputRenderer {
     return List.copyOf(rows);
   }
 
-  private static String resultTransferReadinessSection(BookInspection inspection) {
+  private static String closeReadinessSection(BookInspection inspection) {
     if (!(inspection instanceof BookInspection.Initialized initialized)) {
       return "";
     }
-    return section(
-        "Close Readiness",
-        CliTextFormat.renderKeyValueBlock(
-            resultTransferReadinessRows(initialized.resultTransferReadiness()), TEXT_WRAP_WIDTH));
+    return joinSections(
+        section(
+            "Interim Close Target",
+            CliTextFormat.renderKeyValueBlock(
+                closeTargetReadinessRows(initialized.closeReadiness().interimResultTarget()),
+                TEXT_WRAP_WIDTH)),
+        section(
+            "Retained Close Target",
+            CliTextFormat.renderKeyValueBlock(
+                closeTargetReadinessRows(initialized.closeReadiness().retainedAccumulatedTarget()),
+                TEXT_WRAP_WIDTH)));
   }
 
-  private static List<List<String>> resultTransferReadinessRows(
-      ResultTransferReadiness resultTransferReadiness) {
+  private static List<List<String>> closeTargetReadinessRows(
+      BookInspection.CloseTargetReadiness closeTargetReadiness) {
     List<List<String>> rows = new ArrayList<>();
-    rows.add(
-        List.of("Ready", CliQueryScopeText.displayBooleanLabel(resultTransferReadiness.ready())));
+    rows.add(List.of("Ready", CliQueryScopeText.displayBooleanLabel(closeTargetReadiness.ready())));
     rows.add(
         List.of(
-            "Required result-holding classification",
+            "Required classification",
             CliAccountStatementLabels.displayFinancialPositionLineClassification(
-                resultTransferReadiness.requiredFinancialPositionLineClassification())));
+                closeTargetReadiness.requiredFinancialPositionLineClassification())));
     rows.add(
         List.of(
-            "Result-holding account",
-            resultTransferReadiness.resultHoldingAccountCode() == null
+            "Account",
+            closeTargetReadiness.accountCode() == null
                 ? "(none)"
-                : resultTransferReadiness.resultHoldingAccountCode().value()));
-    if (!resultTransferReadiness.ready()) {
-      rows.add(List.of("Blocking code", resultTransferReadiness.blockingCode()));
-      rows.add(List.of("Blocking reason", resultTransferReadiness.blockingMessage()));
+                : closeTargetReadiness.accountCode().value()));
+    if (!closeTargetReadiness.ready()) {
+      rows.add(List.of("Blocking code", closeTargetReadiness.blockingCode()));
+      rows.add(List.of("Blocking reason", closeTargetReadiness.blockingMessage()));
       rows.add(
           List.of(
               "Candidate accounts",
-              resultTransferReadiness.candidateAccountCodes().isEmpty()
+              closeTargetReadiness.candidateAccountCodes().isEmpty()
                   ? "(none)"
-                  : resultTransferReadiness.candidateAccountCodes().stream()
+                  : closeTargetReadiness.candidateAccountCodes().stream()
                       .map(dev.erst.fingrind.core.AccountCode::value)
                       .collect(java.util.stream.Collectors.joining(", "))));
     }

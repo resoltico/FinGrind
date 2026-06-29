@@ -4,16 +4,37 @@ import java.util.List;
 
 /** Canonical caller-authored entry kinds supported by the public bookkeeping write surface. */
 public enum BookkeepingEntryKind implements WireValue {
-  JOURNAL,
-  OPEN_ACCOUNTING_POSITION,
-  REVERSAL_ADJUSTMENT;
+  DIRECT_JOURNAL,
+  SALE,
+  EXPENSE,
+  OWNER_CONTRIBUTION,
+  OWNER_WITHDRAWAL,
+  OPENING_POSITION,
+  REVERSAL;
 
   @Override
   public String wireValue() {
     return switch (this) {
-      case JOURNAL -> "JOURNAL";
-      case OPEN_ACCOUNTING_POSITION -> "OPEN_ACCOUNTING_POSITION";
-      case REVERSAL_ADJUSTMENT -> "REVERSAL_ADJUSTMENT";
+      case DIRECT_JOURNAL -> "DIRECT_JOURNAL";
+      case SALE -> "SALE";
+      case EXPENSE -> "EXPENSE";
+      case OWNER_CONTRIBUTION -> "OWNER_CONTRIBUTION";
+      case OWNER_WITHDRAWAL -> "OWNER_WITHDRAWAL";
+      case OPENING_POSITION -> "OPENING_POSITION";
+      case REVERSAL -> "REVERSAL";
+    };
+  }
+
+  /** Returns one lowercase narrative label for text guidance and rejection language. */
+  public String narrativeLabel() {
+    return switch (this) {
+      case DIRECT_JOURNAL -> "direct journal";
+      case SALE -> "sale";
+      case EXPENSE -> "expense";
+      case OWNER_CONTRIBUTION -> "owner contribution";
+      case OWNER_WITHDRAWAL -> "owner withdrawal";
+      case OPENING_POSITION -> "opening position";
+      case REVERSAL -> "reversal";
     };
   }
 

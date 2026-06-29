@@ -5,6 +5,8 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
@@ -22,100 +24,66 @@ final class CliReportResultAccess {
   private CliReportResultAccess() {}
 
   static @Nullable AccountBalanceSnapshot accountBalanceSnapshot(AccountBalanceResult result) {
-    return switch (result) {
-      case AccountBalanceResult.Reported reported -> reported.snapshot();
-      case AccountBalanceResult.Rejected _ -> null;
-    };
+    return result.fold(AccountBalanceResult.Reported::snapshot, rejected -> null);
   }
 
   static @Nullable BookQueryRejection accountBalanceRejection(AccountBalanceResult result) {
-    return switch (result) {
-      case AccountBalanceResult.Reported _ -> null;
-      case AccountBalanceResult.Rejected rejected -> rejected.rejection();
-    };
+    return result.fold(reported -> null, AccountBalanceResult.Rejected::rejection);
   }
 
   static @Nullable TrialBalanceReport trialBalanceReport(TrialBalanceResult result) {
-    return switch (result) {
-      case TrialBalanceResult.Reported reported -> reported.report();
-      case TrialBalanceResult.Rejected _ -> null;
-    };
+    return result.fold(TrialBalanceResult.Reported::report, rejected -> null);
   }
 
   static @Nullable BookQueryRejection trialBalanceRejection(TrialBalanceResult result) {
-    return switch (result) {
-      case TrialBalanceResult.Reported _ -> null;
-      case TrialBalanceResult.Rejected rejected -> rejected.rejection();
-    };
+    return result.fold(reported -> null, TrialBalanceResult.Rejected::rejection);
   }
 
   static @Nullable AccountLedgerReport accountLedgerReport(AccountLedgerResult result) {
-    return switch (result) {
-      case AccountLedgerResult.Reported reported -> reported.report();
-      case AccountLedgerResult.Rejected _ -> null;
-    };
+    return result.fold(AccountLedgerResult.Reported::report, rejected -> null);
   }
 
   static @Nullable BookQueryRejection accountLedgerRejection(AccountLedgerResult result) {
-    return switch (result) {
-      case AccountLedgerResult.Reported _ -> null;
-      case AccountLedgerResult.Rejected rejected -> rejected.rejection();
-    };
+    return result.fold(reported -> null, AccountLedgerResult.Rejected::rejection);
   }
 
   static @Nullable PeriodSummaryReport periodSummaryReport(PeriodSummaryResult result) {
-    return switch (result) {
-      case PeriodSummaryResult.Reported reported -> reported.report();
-      case PeriodSummaryResult.Rejected _ -> null;
-    };
+    return result.fold(PeriodSummaryResult.Reported::report, rejected -> null);
   }
 
   static @Nullable BookQueryRejection periodSummaryRejection(PeriodSummaryResult result) {
-    return switch (result) {
-      case PeriodSummaryResult.Reported _ -> null;
-      case PeriodSummaryResult.Rejected rejected -> rejected.rejection();
-    };
+    return result.fold(reported -> null, PeriodSummaryResult.Rejected::rejection);
   }
 
   static @Nullable FinancialPositionReport financialPositionReport(FinancialPositionResult result) {
-    return switch (result) {
-      case FinancialPositionResult.Reported reported -> reported.report();
-      case FinancialPositionResult.Rejected _ -> null;
-    };
+    return result.fold(FinancialPositionResult.Reported::report, rejected -> null);
   }
 
   static @Nullable BookQueryRejection financialPositionRejection(FinancialPositionResult result) {
-    return switch (result) {
-      case FinancialPositionResult.Reported _ -> null;
-      case FinancialPositionResult.Rejected rejected -> rejected.rejection();
-    };
+    return result.fold(reported -> null, FinancialPositionResult.Rejected::rejection);
   }
 
   static @Nullable IncomeStatementReport incomeStatementReport(IncomeStatementResult result) {
-    return switch (result) {
-      case IncomeStatementResult.Reported reported -> reported.report();
-      case IncomeStatementResult.Rejected _ -> null;
-    };
+    return result.fold(IncomeStatementResult.Reported::report, rejected -> null);
   }
 
   static @Nullable BookQueryRejection incomeStatementRejection(IncomeStatementResult result) {
-    return switch (result) {
-      case IncomeStatementResult.Reported _ -> null;
-      case IncomeStatementResult.Rejected rejected -> rejected.rejection();
-    };
+    return result.fold(reported -> null, IncomeStatementResult.Rejected::rejection);
+  }
+
+  static @Nullable CashFlowStatementReport cashFlowStatementReport(CashFlowStatementResult result) {
+    return result.fold(CashFlowStatementResult.Reported::report, rejected -> null);
+  }
+
+  static @Nullable BookQueryRejection cashFlowStatementRejection(CashFlowStatementResult result) {
+    return result.fold(reported -> null, CashFlowStatementResult.Rejected::rejection);
   }
 
   static @Nullable ChangesInEquityReport changesInEquityReport(ChangesInEquityResult result) {
-    return switch (result) {
-      case ChangesInEquityResult.Reported reported -> reported.report();
-      case ChangesInEquityResult.Rejected _ -> null;
-    };
+    return result.fold(ChangesInEquityResult.Reported::report, rejected -> null);
   }
 
   static @Nullable BookQueryRejection changesInEquityRejection(ChangesInEquityResult result) {
-    return switch (result) {
-      case ChangesInEquityResult.Reported _ -> null;
-      case ChangesInEquityResult.Rejected rejected -> rejected.rejection();
-    };
+    return result.fold(reported -> null, ChangesInEquityResult.Rejected::rejection);
   }
 }

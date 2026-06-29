@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
@@ -9,15 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -61,8 +60,7 @@ class BookAdministrationServiceTest {
                   new AccountCode("1000"),
                   new AccountName("Cash"),
                   AccountType.ASSET,
-                  accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                  accountTaxonomy(AccountType.ASSET)));
+                  accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT)));
       org.junit.jupiter.api.Assertions.assertEquals(
           new AccountDeclarationOutcome.Declared(
               registeredAccount(
@@ -90,8 +88,7 @@ class BookAdministrationServiceTest {
                   new AccountCode("1000"),
                   new AccountName("Cash"),
                   AccountType.ASSET,
-                  accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                  accountTaxonomy(AccountType.ASSET))));
+                  accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT))));
     }
   }
 
@@ -108,12 +105,13 @@ class BookAdministrationServiceTest {
                   new AccountCode("1010"),
                   new AccountName("Child Cash"),
                   AccountType.ASSET,
-                  accountRole(AccountType.ASSET, NormalBalance.DEBIT),
                   new AccountTaxonomy(
                       dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                       java.util.Optional.of(new AccountCode("9999")),
                       java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                      java.util.Optional.empty())));
+                      java.util.Optional.empty(),
+                      java.util.Optional.of(
+                          CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT))));
 
       org.junit.jupiter.api.Assertions.assertEquals(
           new AccountDeclarationOutcome.Rejected(
@@ -124,7 +122,7 @@ class BookAdministrationServiceTest {
   }
 
   @Test
-  void transferPeriodResult_delegatesToBookSession() {
+  void interimResultSweep_delegatesToBookSession() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService service =
           new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
@@ -134,14 +132,12 @@ class BookAdministrationServiceTest {
               new AccountCode("1000"),
               new AccountName("Cash"),
               AccountType.ASSET,
-              AccountRole.ORDINARY,
               accountTaxonomy(AccountType.ASSET)));
       service.declareAccount(
           new AccountDeclaration(
               new AccountCode("4000"),
               new AccountName("Revenue"),
               AccountType.REVENUE,
-              AccountRole.ORDINARY,
               accountTaxonomy(AccountType.REVENUE)));
 
       bookSession.commit(
@@ -160,7 +156,7 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.Money.parse("EUR", "10.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               dev.erst.fingrind.core.PostingKind.STANDARD,
-              dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+              dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
               ExecutorAccountingTestSupport.accountingEvidence("idem-1"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
@@ -188,7 +184,7 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.Money.parse("EUR", "12.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
               dev.erst.fingrind.core.PostingKind.STANDARD,
-              dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+              dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
               ExecutorAccountingTestSupport.accountingEvidence("idem-2"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
@@ -201,22 +197,22 @@ class BookAdministrationServiceTest {
                   FIXED_CLOCK.instant(),
                   dev.erst.fingrind.core.SourceChannel.CLI)));
 
-      PeriodResultTransferOutcome outcome =
-          new PeriodResultTransferService(
+      InterimResultSweepOutcome outcome =
+          new InterimResultSweepService(
                   bookSession,
                   bookSession,
-                  () -> new dev.erst.fingrind.core.PostingId("period-result-transfer-1"),
+                  () -> new dev.erst.fingrind.core.PostingId("interim-result-sweep-1"),
                   FIXED_CLOCK)
-              .transferPeriodResult(
+              .interimResultSweep(
                   new ReportingPeriod(
                       LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")));
 
       org.junit.jupiter.api.Assertions.assertEquals(
           1,
           org.junit.jupiter.api.Assertions.assertInstanceOf(
-                  PeriodResultTransferOutcome.Transferred.class, outcome)
-              .transferredPeriodResult()
-              .transferPostingIds()
+                  InterimResultSweepOutcome.Transferred.class, outcome)
+              .sweptInterimResult()
+              .sweepPostingIds()
               .size());
     }
   }

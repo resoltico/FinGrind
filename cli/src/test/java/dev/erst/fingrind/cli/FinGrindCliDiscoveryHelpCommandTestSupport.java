@@ -84,11 +84,15 @@ class FinGrindCliDiscoveryHelpCommandTestSupport extends FinGrindCliDiscoveryCom
   }
 
   protected static void assertContainsNestedPostingModelPaths(
-      String help, ContractRequestShapes.PostEntryRequestShapeDescriptor postingModel) {
+      String help, ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel) {
     assertContainsPrefixedFieldRows(help, postingModel.topLevelFields(), "steps[].posting.");
     assertContainsPrefixedFieldRows(help, postingModel.lineFields(), "steps[].posting.lines[].");
     assertContainsPrefixedFieldRows(
         help, postingModel.openingBalanceFields(), "steps[].posting.openingBalances[].");
+    assertContainsPrefixedFieldRows(
+        help, postingModel.foreignExchangeFields(), "steps[].posting.foreignExchange.");
+    assertContainsPrefixedFieldRows(
+        help, postingModel.quotedRateFields(), "steps[].posting.foreignExchange.quotedRate.");
     assertContainsPrefixedFieldRows(
         help, postingModel.evidenceFields(), "steps[].posting.evidence.");
     assertContainsPrefixedFieldRows(
@@ -106,7 +110,8 @@ class FinGrindCliDiscoveryHelpCommandTestSupport extends FinGrindCliDiscoveryCom
         MachineContract.help(
             CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment(), operationId);
     if (helpDescriptor.requestTemplate() != null
-        || helpDescriptor.declareAccountTemplate() != null) {
+        || helpDescriptor.declareAccountTemplate() != null
+        || helpDescriptor.declareTaxRegistrationTemplate() != null) {
       return Optional.of(
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
               + " "

@@ -4,24 +4,21 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRules;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookLifecycleReader;
-import dev.erst.fingrind.executor.spi.BookkeepingReportStore;
+import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
 
 /** Holds the canonical statement-computation seams for one selected bookkeeping book. */
 final class ReportingContext {
-  private final BookLifecycleReader lifecycleReader;
-  private final BookkeepingReportStore reportStore;
+  private final BookkeepingReadStore bookStore;
 
-  ReportingContext(BookLifecycleReader lifecycleReader, BookkeepingReportStore reportStore) {
-    this.lifecycleReader = Objects.requireNonNull(lifecycleReader, "lifecycleReader");
-    this.reportStore = Objects.requireNonNull(reportStore, "reportStore");
+  ReportingContext(BookkeepingReadStore bookStore) {
+    this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
   }
 
-  BookkeepingReportStore reportStore() {
-    return reportStore;
+  BookkeepingReadStore bookStore() {
+    return bookStore;
   }
 
   KernelAccountingRules accountingRules() {
@@ -29,7 +26,7 @@ final class ReportingContext {
   }
 
   BookIdentity bookIdentity() {
-    return switch (lifecycleReader.inspectBook()) {
+    return switch (bookStore.inspectBook()) {
       case BookLifecycleInspection.Initialized initialized -> initialized.bookIdentity();
       case BookLifecycleInspection.Missing _ ->
           throw new IllegalStateException("Statement computation requires one initialized book.");
@@ -42,6 +39,6 @@ final class ReportingContext {
     Objects.requireNonNull(selectedEffectiveDateAsOf, "selectedEffectiveDateAsOf");
     return selectedEffectiveDateAsOf.isPresent()
         ? selectedEffectiveDateAsOf
-        : reportStore.latestPostingEffectiveDate();
+        : bookStore.latestPostingEffectiveDate();
   }
 }

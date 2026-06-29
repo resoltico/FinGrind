@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import java.io.ByteArrayInputStream;
@@ -31,7 +32,7 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     assertTrue(json.contains("\"administration-book-not-initialized\""));
     assertTrue(json.contains("\"query-book-not-initialized\""));
     assertTrue(json.contains("\"posting-book-not-initialized\""));
-    assertTrue(json.contains("\"account-role-conflict\""));
+    assertTrue(json.contains("\"close-target-account-candidate-missing\""));
     assertTrue(json.contains("\"posting-not-found\""));
     assertCapabilitiesCommandCatalog(payload);
     assertCapabilitiesRequestShapes(payload);
@@ -88,10 +89,16 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
             });
     assertEquals(0, exitCode);
     assertTrue(Files.isRegularFile(keyFilePath));
-    JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    JsonNode envelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    JsonNode payload = envelope.path("payload");
     assertGeneratedKeyFileIsSecure(keyFilePath, payload.path("permissions").stringValue());
+    assertTrue(payload.path("bookKeyFile").isMissingNode());
     assertEquals(
-        CliPublicPaths.redactedValue(keyFilePath), payload.path("bookKeyFile").stringValue());
+        ProtocolArtifactOutput.bookKeyFileFormat(),
+        envelope.path("artifacts").get(0).path("format").stringValue());
+    assertEquals(
+        CliPublicPaths.redactedValue(keyFilePath),
+        envelope.path("artifacts").get(0).path("path").stringValue());
     assertEquals("base64url-no-padding", payload.path("encoding").stringValue());
     assertEquals(256, payload.path("entropyBits").asInt());
     assertFalse(

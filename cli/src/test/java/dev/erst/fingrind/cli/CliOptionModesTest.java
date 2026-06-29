@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.core.PostingCoverage;
+import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -90,6 +91,27 @@ class CliOptionModesTest {
         assertThrows(
             CliArgumentsException.class,
             () -> CliOptionModes.requireOutputMode(null, "text", List.of(OutputMode.JSON)));
+    assertEquals("--output", unsupported.argument());
+  }
+
+  @Test
+  void resolvedReportOutput_rejectsCsvStdoutWhenPdfArtifactIsRequested() {
+    CliCommand.ReportOutput jsonWithPdf =
+        CliOptionModes.resolvedReportOutput(OutputMode.JSON, Path.of("reports/trial-balance.pdf"));
+    assertEquals(OutputMode.JSON, jsonWithPdf.outputMode());
+    assertEquals(Path.of("reports/trial-balance.pdf"), jsonWithPdf.pdfOutPath());
+
+    CliCommand.ReportOutput defaultTextWithPdf =
+        CliOptionModes.resolvedReportOutput(null, Path.of("reports/trial-balance.pdf"));
+    assertEquals(OutputMode.TEXT, defaultTextWithPdf.outputMode());
+    assertEquals(Path.of("reports/trial-balance.pdf"), defaultTextWithPdf.pdfOutPath());
+
+    CliArgumentsException unsupported =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliOptionModes.resolvedReportOutput(
+                    OutputMode.CSV, Path.of("reports/trial-balance.pdf")));
     assertEquals("--output", unsupported.argument());
   }
 }

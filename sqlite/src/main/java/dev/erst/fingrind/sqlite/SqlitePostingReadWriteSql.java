@@ -8,6 +8,12 @@ final class SqlitePostingReadWriteSql {
           posting_id,
           posting_kind,
           posting_origin_kind,
+          entry_cash_account_code,
+          entry_revenue_account_code,
+          entry_expense_account_code,
+          entry_equity_account_code,
+          entry_amount_currency_code,
+          entry_amount_minor,
           effective_date,
           recorded_at,
           actor_id,
@@ -18,7 +24,9 @@ final class SqlitePostingReadWriteSql {
           correlation_id,
           reason,
           source_channel,
-          prior_posting_id
+          prior_posting_id,
+          request_fingerprint_version,
+          request_fingerprint_sha256
       from posting_fact
       """;
 
@@ -28,10 +36,10 @@ final class SqlitePostingReadWriteSql {
           account_code,
           account_name,
           account_type,
-          account_role,
           account_node_kind,
           parent_account_code,
           financial_position_line_classification,
+          cash_flow_asset_classification,
           profit_and_loss_line_classification,
           active,
           declared_at
@@ -68,10 +76,7 @@ final class SqlitePostingReadWriteSql {
       select
           source_document_id,
           source_document_type,
-          document_date,
-          captured_at,
-          storage_locator,
-          content_sha256
+          document_date
       from posting_source_document
       where posting_id = ?
       order by source_document_order
@@ -107,6 +112,12 @@ final class SqlitePostingReadWriteSql {
           posting_id,
           posting_kind,
           posting_origin_kind,
+          entry_cash_account_code,
+          entry_revenue_account_code,
+          entry_expense_account_code,
+          entry_equity_account_code,
+          entry_amount_currency_code,
+          entry_amount_minor,
           effective_date,
           recorded_at,
           actor_id,
@@ -117,8 +128,10 @@ final class SqlitePostingReadWriteSql {
           correlation_id,
           reason,
           source_channel,
-          prior_posting_id
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          prior_posting_id,
+          request_fingerprint_version,
+          request_fingerprint_sha256
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_JOURNAL_LINE =
@@ -140,11 +153,8 @@ final class SqlitePostingReadWriteSql {
           source_document_order,
           source_document_id,
           source_document_type,
-          document_date,
-          captured_at,
-          storage_locator,
-          content_sha256
-      ) values (?, ?, ?, ?, ?, ?, ?, ?)
+          document_date
+      ) values (?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_POSTING_APPROVAL =
@@ -168,7 +178,7 @@ final class SqlitePostingReadWriteSql {
           event_kind,
           account_code,
           posting_id,
-          period_result_transfer_order
+          close_operation_order
       ) values (?, ?, ?, ?, ?)
       """;
 
@@ -178,10 +188,10 @@ final class SqlitePostingReadWriteSql {
           account_code,
           account_name,
           account_type,
-          account_role,
           account_node_kind,
           parent_account_code,
           financial_position_line_classification,
+          cash_flow_asset_classification,
           profit_and_loss_line_classification,
           active,
           declared_at

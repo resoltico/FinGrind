@@ -18,21 +18,10 @@ final class CliPlanResponseWriter {
     Objects.requireNonNull(result, "result");
     Objects.requireNonNull(outputMode, "outputMode");
     Objects.requireNonNull(resultDetail, "resultDetail");
-    boolean succeeded = result instanceof LedgerPlanResult.Succeeded;
     if (outputMode == OutputMode.TEXT) {
-      String rendered = CliPlanTextRenderer.renderLedgerPlanResult(result, resultDetail);
-      if (succeeded) {
-        outputChannel.writeText(rendered);
-      } else {
-        outputChannel.writeFailureText(rendered);
-      }
+      outputChannel.writeText(CliPlanTextRenderer.renderLedgerPlanResult(result, resultDetail));
       return;
     }
-    if (succeeded) {
-      outputChannel.writeEnvelope(CliEnvelopeMapper.ledgerPlanEnvelope(result, resultDetail));
-      return;
-    }
-    outputChannel.writeDiagnosticEnvelope(
-        CliEnvelopeMapper.ledgerPlanEnvelope(result, resultDetail));
+    outputChannel.writeEnvelope(CliEnvelopeMapper.ledgerPlanEnvelope(result, resultDetail));
   }
 }

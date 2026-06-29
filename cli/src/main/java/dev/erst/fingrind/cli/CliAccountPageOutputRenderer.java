@@ -5,6 +5,8 @@ import java.util.List;
 
 /** Renders declared-account page payloads for text and CSV output modes. */
 final class CliAccountPageOutputRenderer {
+  private static final String RECORD_KIND = CliCsvExportFamilies.ACCOUNTS;
+
   private CliAccountPageOutputRenderer() {}
 
   static String renderText(AccountPage page) {
@@ -30,6 +32,7 @@ final class CliAccountPageOutputRenderer {
                     "Name",
                     "Type",
                     "Financial position line",
+                    "Cash-flow asset",
                     "Profit or loss line",
                     "Parent",
                     "Normal",
@@ -48,6 +51,13 @@ final class CliAccountPageOutputRenderer {
                                     .map(
                                         CliAccountStatementLabels
                                             ::displayFinancialPositionLineClassification)
+                                    .orElse("(none)"),
+                                account
+                                    .accountTaxonomy()
+                                    .cashFlowAssetClassification()
+                                    .map(
+                                        CliAccountStatementLabels
+                                            ::displayCashFlowAssetClassification)
                                     .orElse("(none)"),
                                 account
                                     .accountTaxonomy()
@@ -86,8 +96,8 @@ final class CliAccountPageOutputRenderer {
             "accountName",
             "parentAccountCode",
             "accountType",
-            "accountRole",
             "financialPositionLineClassification",
+            "cashFlowAssetClassification",
             "profitAndLossLineClassification",
             "normalBalance",
             "active",
@@ -96,11 +106,11 @@ final class CliAccountPageOutputRenderer {
         page.accounts().isEmpty()
             ? List.of(
                 List.of(
-                    CliCsvExportFamilies.FLAT_REGISTER,
+                    CliCsvExportFamilies.ACCOUNTS,
                     "accounts:scope-empty",
                     "",
                     "scope-empty",
-                    CliCsvEmptyKinds.SCOPE_EMPTY,
+                    RECORD_KIND,
                     "",
                     "",
                     "",
@@ -116,11 +126,11 @@ final class CliAccountPageOutputRenderer {
                 .map(
                     account ->
                         List.of(
-                            CliCsvExportFamilies.FLAT_REGISTER,
+                            CliCsvExportFamilies.ACCOUNTS,
                             "account:" + account.accountCode().value(),
                             "",
                             "account",
-                            "row",
+                            RECORD_KIND,
                             account.accountCode().value(),
                             account.accountName().value(),
                             account
@@ -129,10 +139,14 @@ final class CliAccountPageOutputRenderer {
                                 .map(parent -> parent.value())
                                 .orElse(""),
                             account.accountType().wireValue(),
-                            account.accountRole().wireValue(),
                             account
                                 .accountTaxonomy()
                                 .financialPositionLineClassification()
+                                .map(classification -> classification.wireValue())
+                                .orElse(""),
+                            account
+                                .accountTaxonomy()
+                                .cashFlowAssetClassification()
                                 .map(classification -> classification.wireValue())
                                 .orElse(""),
                             account

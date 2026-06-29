@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ final class CliDiscoveryHelpTextRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Version", helpDescriptor.version()),
+                List.of("Protocol version", helpDescriptor.protocolVersion()),
                 List.of("Description", helpDescriptor.description()),
                 List.of(
                     "Default output mode", defaultOutputLabel(environmentDescriptor.runtime()))),
@@ -63,6 +65,7 @@ final class CliDiscoveryHelpTextRenderer {
         "FinGrind Help",
         CliDiscoveryTextSupport.joinSections(
             header,
+            keyFilePathGuidanceSection(),
             CliDiscoveryTextSupport.section("Quick Start", firstSuccessfulRun),
             CliDiscoveryTextSupport.section("Reference", reference),
             CliDiscoveryTextSupport.section("Command Catalog", commandFamilies)));
@@ -75,6 +78,7 @@ final class CliDiscoveryHelpTextRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Version", helpDescriptor.version()),
+                List.of("Protocol version", helpDescriptor.protocolVersion()),
                 List.of("Description", helpDescriptor.description()),
                 List.of("Default output mode", defaultOutputLabel(environmentDescriptor.runtime())),
                 List.of("Full guide", CliInvocationText.commandExample(OperationId.HELP))),
@@ -102,6 +106,7 @@ final class CliDiscoveryHelpTextRenderer {
         "FinGrind",
         CliDiscoveryTextSupport.joinSections(
             header,
+            keyFilePathGuidanceSection(),
             CliDiscoveryTextSupport.section("Shortcuts", shortcuts),
             CliDiscoveryTextSupport.section("Command Catalog", commandFamilies)));
   }
@@ -148,12 +153,16 @@ final class CliDiscoveryHelpTextRenderer {
                   "Review the seeded starter chart",
                   CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.LIST_ACCOUNTS)),
               List.of(
-                  "Create the first request",
+                  "Create the first sale request",
                   CliDiscoveryCommandHelpSupport.primaryStarterRequestCommand(
-                      OperationId.POST_ENTRY)),
+                      OperationId.RECORD_SALE)),
               List.of(
-                  "Preflight or commit one entry",
-                  CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.POST_ENTRY)),
+                  "Validate the first sale request",
+                  CliDiscoveryCommandHelpSupport.primaryCommandExample(
+                      OperationId.PREFLIGHT_ENTRY)),
+              List.of(
+                  "Commit the first sale",
+                  CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.RECORD_SALE)),
               List.of(
                   "Read the first report",
                   CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.TRIAL_BALANCE))),
@@ -219,10 +228,13 @@ final class CliDiscoveryHelpTextRenderer {
     }
     if (command.contains("quick-start-request.json")
         || command.contains(ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE))) {
-      return "Create the first request";
+      return "Create the first sale request";
     }
     if (command.contains(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY))) {
-      return "Validate the first request";
+      return "Validate the first sale request";
+    }
+    if (command.contains(ProtocolCatalog.operationName(OperationId.RECORD_SALE))) {
+      return "Commit the first sale";
     }
     if (command.contains(ProtocolCatalog.operationName(OperationId.POST_ENTRY))) {
       return "Commit the first entry";
@@ -231,6 +243,24 @@ final class CliDiscoveryHelpTextRenderer {
       return "Read the first report";
     }
     return "Step " + (index + 1);
+  }
+
+  private static String keyFilePathGuidanceSection() {
+    return keyFilePathGuidanceSection(keyFilePathGuidance());
+  }
+
+  static String keyFilePathGuidanceSection(String guidance) {
+    return guidance.isBlank() ? "" : CliDiscoveryTextSupport.section("Key-File Path", guidance);
+  }
+
+  private static String keyFilePathGuidance() {
+    return ProtocolCatalog.operation(OperationId.GENERATE_BOOK_KEY_FILE).exampleSteps().stream()
+        .filter(ProtocolExampleStep.Note.class::isInstance)
+        .map(ProtocolExampleStep.Note.class::cast)
+        .map(ProtocolExampleStep.Note::text)
+        .findFirst()
+        .map(note -> CliTextFormat.wrap(note, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH))
+        .orElse("");
   }
 
   private static String joinCommandNames(List<CommandDescriptor> commands) {

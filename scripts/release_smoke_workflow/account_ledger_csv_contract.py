@@ -11,7 +11,6 @@ ACCOUNT_LEDGER_CSV_HEADER: Final[list[str]] = [
     "accountCode",
     "accountName",
     "accountType",
-    "accountRole",
     "normalBalance",
     "active",
     "effectiveDateFrom",
@@ -45,17 +44,16 @@ ACCOUNT_LEDGER_CSV_HEADER: Final[list[str]] = [
 ]
 
 
-def account_ledger_base_row(record_kind: str, **overrides: str) -> dict[str, str]:
+def account_ledger_base_row(**overrides: str) -> dict[str, str]:
     base = {
         "exportFamily": "",
         "rowId": "",
         "parentRowId": "",
         "relationKind": "",
-        "recordKind": record_kind,
+        "recordKind": "account-ledger",
         "accountCode": "cash",
         "accountName": "Cash",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY",
         "normalBalance": "DEBIT",
         "active": "true",
         "effectiveDateFrom": "2026-04-07",
@@ -102,8 +100,7 @@ def account_ledger_movement_row(
     running_net: str,
 ) -> dict[str, str]:
     return account_ledger_base_row(
-        "entry",
-        exportFamily="posting-relationships",
+        exportFamily="account-ledger",
         rowId="ledger-entry:" + posting_id,
         relationKind="entry",
         currencyCode="EUR",

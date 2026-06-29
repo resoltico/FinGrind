@@ -71,10 +71,7 @@ def load_contract_values_payload(
             "hostBundleTarget": host_bundle_target,
         },
         "releasePublication": release_publication,
-        "operationIds": load_operation_ids(
-            contract_documents.operation_ids,
-            schema_sections.operation_id,
-        ),
+        "operationIds": load_operation_ids(contract_documents.operation_ids),
     }
 
 

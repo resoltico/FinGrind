@@ -11,11 +11,10 @@
       }
     },
     {
-      "stepId": "post-journal",
-      "kind": "post-entry",
+      "stepId": "record-sale",
+      "kind": "record-sale",
       "posting": {
-        "entryKind": "JOURNAL",
-        "recipeKind": "CASH_REVENUE",
+        "entryKind": "SALE",
         "effectiveDate": "2026-04-07",
         "cashAccountCode": "cash",
         "revenueAccountCode": "service-revenue",
@@ -28,13 +27,12 @@
             {
               "sourceDocumentId": "document-query-1",
               "sourceDocumentType": "cash-receipt",
-              "documentDate": "2026-04-07",
-              "capturedAt": "2026-04-07T10:15:30Z",
-              "storageLocator": "vault://fixtures/document-query-1",
-              "contentSha256": "5555555555555555555555555555555555555555555555555555555555555555"
+              "documentDate": "2026-04-07"
             }
           ],
-          "approvals": []
+          "approvals": [
+
+          ]
         },
         "provenance": {
           "actorId": "agent-query-1",

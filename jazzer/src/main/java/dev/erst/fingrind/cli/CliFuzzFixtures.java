@@ -34,7 +34,9 @@ public final class CliFuzzFixtures {
   public static dev.erst.fingrind.executor.bookkeeping.PostingCommand bookkeepingCommand(
       PostEntryCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    return PostEntryCommandTranslator.toPostingCommand(command);
+    return PostEntryCommandTranslator.toPostingCommand(
+        command,
+        CliFuzzSyntheticTaxRegistrations.lookupStore(command.entry(), FIXED_CLOCK.instant()));
   }
 
   /** Returns the derived journal entry carried by one published command. */

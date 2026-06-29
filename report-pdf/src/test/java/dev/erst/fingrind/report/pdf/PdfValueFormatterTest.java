@@ -5,15 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -32,7 +31,6 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.StorageLocator;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -41,9 +39,6 @@ import org.junit.jupiter.api.Test;
 
 /** Focused branch coverage tests for {@link PdfValueFormatter}. */
 class PdfValueFormatterTest {
-  private static final String DOCUMENT_SHA256 =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-
   @Test
   void displayMoneyUsesCanonicalCurrencyScale() {
     assertEquals("12.50", PdfValueFormatter.displayMoney(Money.parse("EUR", "12.50")));
@@ -76,6 +71,12 @@ class PdfValueFormatterTest {
     assertEquals(
         "Expenses",
         PdfValueFormatter.displayAccountTypeSection(dev.erst.fingrind.core.AccountType.EXPENSE));
+    assertEquals(
+        "Operating", PdfValueFormatter.displayCashFlowSection(CashFlowSectionKind.OPERATING));
+    assertEquals(
+        "Investing", PdfValueFormatter.displayCashFlowSection(CashFlowSectionKind.INVESTING));
+    assertEquals(
+        "Financing", PdfValueFormatter.displayCashFlowSection(CashFlowSectionKind.FINANCING));
   }
 
   @Test
@@ -94,12 +95,6 @@ class PdfValueFormatterTest {
   }
 
   @Test
-  void displayLineRoleFormatsDeclaredAndDerivedRoles() {
-    assertEquals("Ordinary", PdfValueFormatter.displayLineRole(Optional.of(AccountRole.ORDINARY)));
-    assertEquals("Calculated line", PdfValueFormatter.displayLineRole(Optional.empty()));
-  }
-
-  @Test
   void displayAccountTypeFormatsEveryVariant() {
     assertEquals(
         "Asset", PdfValueFormatter.displayAccountType(dev.erst.fingrind.core.AccountType.ASSET));
@@ -114,12 +109,6 @@ class PdfValueFormatterTest {
     assertEquals(
         "Expense",
         PdfValueFormatter.displayAccountType(dev.erst.fingrind.core.AccountType.EXPENSE));
-  }
-
-  @Test
-  void displayAccountRoleFormatsEveryVariant() {
-    assertEquals("Ordinary", PdfValueFormatter.displayAccountRole(AccountRole.ORDINARY));
-    assertEquals("Contra", PdfValueFormatter.displayAccountRole(AccountRole.POLARITY_INVERTED));
   }
 
   @Test
@@ -152,6 +141,10 @@ class PdfValueFormatterTest {
         "Accumulated result",
         PdfValueFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.RESULT_HOLDING));
+    assertEquals(
+        "Retained accumulated",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.RETAINED_ACCUMULATED));
     assertEquals(
         "Reserve",
         PdfValueFormatter.displayFinancialPositionLineClassification(
@@ -213,7 +206,7 @@ class PdfValueFormatterTest {
                     new ReversalReference(new PostingId("posting-1")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
@@ -239,7 +232,7 @@ class PdfValueFormatterTest {
                     new ReversalReference(new PostingId("posting-1")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
@@ -275,22 +268,19 @@ class PdfValueFormatterTest {
         "All posting kinds",
         PdfPostingValueFormatter.displayPostingCoverage(PostingCoverage.ALL_POSTING_KINDS));
     assertEquals(
-        "Non-transfer postings",
+        "Non-close postings",
         PdfPostingValueFormatter.displayPostingCoverage(PostingCoverage.NON_CLOSING_POSTINGS));
-  }
-
-  @Test
-  void displayIdentityProfileValuesFormatsAccountRoleFacts() {
-    assertEquals("Ordinary", PdfValueFormatter.displayAccountRole(AccountRole.ORDINARY));
-    assertEquals("Contra", PdfValueFormatter.displayAccountRole(AccountRole.POLARITY_INVERTED));
   }
 
   @Test
   void displayPostingKindFormatsEveryVariant() {
     assertEquals("Standard", PdfPostingValueFormatter.displayPostingKind(PostingKind.STANDARD));
     assertEquals(
-        "Period result transfer",
-        PdfPostingValueFormatter.displayPostingKind(PostingKind.PERIOD_RESULT_TRANSFER));
+        "Interim result sweep",
+        PdfPostingValueFormatter.displayPostingKind(PostingKind.INTERIM_RESULT_SWEEP));
+    assertEquals(
+        "Fiscal-year close",
+        PdfPostingValueFormatter.displayPostingKind(PostingKind.FISCAL_YEAR_CLOSE));
     assertEquals(
         "Opening accounting position",
         PdfPostingValueFormatter.displayPostingKind(PostingKind.OPENING_BALANCE));
@@ -363,7 +353,7 @@ class PdfValueFormatterTest {
                 new ReversalReference(new PostingId("posting-1")),
                 new ReversalReason("undo test posting")),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             evidence("idem-1"),
             direct.provenance());
 
@@ -378,7 +368,7 @@ class PdfValueFormatterTest {
         journalEntry(),
         postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         evidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -398,10 +388,7 @@ class PdfValueFormatterTest {
             new SourceDocumentReference(
                 new SourceDocumentId("document-" + token),
                 new SourceDocumentType("cash-receipt"),
-                LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z"),
-                new StorageLocator("evidence://documents/document-" + token + ".pdf"),
-                new ContentSha256(DOCUMENT_SHA256))),
+                LocalDate.parse("2026-04-07"))),
         List.of());
   }
 

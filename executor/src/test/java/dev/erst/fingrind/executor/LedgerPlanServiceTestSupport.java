@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
@@ -22,7 +21,6 @@ import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
@@ -43,20 +41,23 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
-import dev.erst.fingrind.executor.spi.PeriodResultTransferStore;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -94,15 +95,13 @@ final class LedgerPlanServiceTestSupport {
         new AccountCode("1000"),
         new AccountName("Cash"),
         AccountType.ASSET,
-        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-        accountTaxonomy(AccountType.ASSET),
+        accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
         FIXED_CLOCK.instant());
     bookSession.declareAccount(
         new AccountCode("2000"),
         new AccountName("Revenue"),
         AccountType.REVENUE,
-        accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
-        accountTaxonomy(AccountType.REVENUE),
+        accountTaxonomy(AccountType.REVENUE, NormalBalance.CREDIT),
         FIXED_CLOCK.instant());
     PostEntryResult committed =
         new PostingApplicationService(
@@ -200,17 +199,19 @@ final class LedgerPlanServiceTestSupport {
         new AccountCode(accountCode),
         new AccountName(accountName),
         accountType,
-        accountRole(accountType, normalBalance),
-        accountTaxonomy(accountType));
+        accountTaxonomy(accountType, normalBalance));
   }
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        BookkeepingEntry.cashRevenue(
+        new BookkeepingEntry.Sale(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("2000"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null,
+            null),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
             new ActorId("actor-1"),
@@ -233,7 +234,7 @@ final class LedgerPlanServiceTestSupport {
           BookkeepingReadStore,
           PostingValidationStore,
           PostingCommitStore,
-          PeriodResultTransferStore,
+          ReportingPeriodCloseStore,
           AccountCatalogStore,
           AutoCloseable {}
 
@@ -261,11 +262,10 @@ final class LedgerPlanServiceTestSupport {
         AccountCode accountCode,
         AccountName accountName,
         AccountType accountType,
-        AccountRole accountRole,
         AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       return delegate.declareAccount(
-          accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
+          accountCode, accountName, accountType, accountTaxonomy, declaredAt);
     }
 
     @Override
@@ -275,8 +275,14 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
-    public java.util.Optional<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
-        findExistingPosting(dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
+    public java.util.Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration>
+        findTaxRegistration(dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+      return delegate.findTaxRegistration(taxRegistrationId);
+    }
+
+    @Override
+    public java.util.Optional<StoredRequestPosting> findExistingPosting(
+        dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
       return delegate.findExistingPosting(idempotencyKey);
     }
 
@@ -367,26 +373,32 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
-    public PeriodResultTransferOutcome transferPeriodResult(
+    public InterimResultSweepOutcome interimResultSweep(
         dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
         dev.erst.fingrind.core.BookIdentity bookIdentity,
-        PeriodResultTransferPlanner planner,
+        InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
-        Instant transferredAt,
+        Instant sweptAt,
         PostingIdGenerator postingIdGenerator) {
-      return delegate.transferPeriodResult(
-          reportingPeriod,
-          bookIdentity,
-          planner,
-          currentUtcDate,
-          transferredAt,
-          postingIdGenerator);
+      return delegate.interimResultSweep(
+          reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
     }
 
-    PeriodResultTransferOutcome transferPeriodResult(
-        PeriodResultTransferDraft periodResultTransferDraft,
+    @Override
+    public FiscalYearCloseOutcome fiscalYearClose(
+        dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        FiscalYearClosePlanner planner,
+        LocalDate currentUtcDate,
+        Instant closedAt,
         PostingIdGenerator postingIdGenerator) {
-      return delegate.transferPeriodResult(periodResultTransferDraft, postingIdGenerator);
+      return delegate.fiscalYearClose(
+          reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
+    }
+
+    InterimResultSweepOutcome interimResultSweep(
+        InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
+      return delegate.interimResultSweep(interimResultSweepDraft, postingIdGenerator);
     }
 
     @Override
@@ -442,7 +454,6 @@ final class LedgerPlanServiceTestSupport {
         AccountCode accountCode,
         AccountName accountName,
         AccountType accountType,
-        AccountRole accountRole,
         AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       throw new IllegalStateException("declare boom");

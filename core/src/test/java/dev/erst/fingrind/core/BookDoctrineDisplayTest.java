@@ -11,9 +11,9 @@ class BookDoctrineDisplayTest {
   @Test
   void bookDoctrineDisplay_rendersCanonicalHumanLabels() {
     assertEquals(
-        "Internal management cash bookkeeping",
+        "Internal management bookkeeping",
         BookDoctrineDisplay.accountingKernel(
-            AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL));
+            AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL));
     assertEquals("Cash basis", BookDoctrineDisplay.accountingBasis(AccountingBasis.CASH_BASIS));
     assertEquals(
         "Non-statutory internal management",
@@ -24,7 +24,7 @@ class BookDoctrineDisplayTest {
         BookDoctrineDisplay.entityForm(EntityForm.OWNER_MANAGED_SINGLE_ENTITY));
     assertEquals(
         "Owner-managed service starter chart",
-        BookDoctrineDisplay.bookTemplate(BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+        BookDoctrineDisplay.bookTemplate(BookTemplateId.OWNER_MANAGED_SERVICE));
   }
 
   @Test

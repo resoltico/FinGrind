@@ -75,7 +75,7 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("full reversal")),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         CliFixtureSupport.accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
@@ -102,7 +102,7 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("full reversal")),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         CliFixtureSupport.accountingEvidenceWithApproval("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(

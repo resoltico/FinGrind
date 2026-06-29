@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
-/** Subprocess crash-coverage tests for staged protected-book maintenance phases. */
+/** Subprocess crash-coverage tests for staged protected-book maintenance checkpoints. */
 class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridgeTestSupport {
   private static final SqlitePassphraseResolver KEY_FILE_RESOLVER =
       (resolvedBookPath, passphraseSource, intent) ->

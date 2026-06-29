@@ -1,8 +1,8 @@
 package dev.erst.fingrind.report.pdf;
 
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
@@ -36,6 +36,14 @@ final class PdfValueFormatter {
     };
   }
 
+  static String displayCashFlowSection(CashFlowSectionKind sectionKind) {
+    return switch (sectionKind) {
+      case OPERATING -> "Operating";
+      case INVESTING -> "Investing";
+      case FINANCING -> "Financing";
+    };
+  }
+
   static String displayRowKind(StatementLineKind lineKind) {
     return switch (lineKind) {
       case DECLARED_ACCOUNT -> "Account";
@@ -50,10 +58,6 @@ final class PdfValueFormatter {
     };
   }
 
-  static String displayLineRole(Optional<AccountRole> lineRole) {
-    return lineRole.map(PdfValueFormatter::displayAccountRole).orElse("Calculated line");
-  }
-
   static String displayAccountType(AccountType accountType) {
     return switch (accountType) {
       case ASSET -> "Asset";
@@ -61,13 +65,6 @@ final class PdfValueFormatter {
       case EQUITY -> "Equity";
       case REVENUE -> "Revenue";
       case EXPENSE -> "Expense";
-    };
-  }
-
-  static String displayAccountRole(AccountRole accountRole) {
-    return switch (accountRole) {
-      case ORDINARY -> "Ordinary";
-      case POLARITY_INVERTED -> "Contra";
     };
   }
 
@@ -81,6 +78,7 @@ final class PdfValueFormatter {
       case EQUITY_CONTRIBUTION -> "Contributed capital";
       case EQUITY_WITHDRAWAL -> "Distributions";
       case RESULT_HOLDING -> "Accumulated result";
+      case RETAINED_ACCUMULATED -> "Retained accumulated";
       case RESERVE -> "Reserve";
       case OTHER_EQUITY -> "Other equity";
     };

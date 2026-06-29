@@ -15,7 +15,6 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
@@ -25,10 +24,10 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -53,7 +52,6 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.StorageLocator;
 import java.io.IOException;
 import java.time.Clock;
 import java.time.Instant;
@@ -72,15 +70,13 @@ import org.apache.pdfbox.text.PDFTextStripper;
 final class PdfReportFixtureSupport {
   private PdfReportFixtureSupport() {}
 
-  static final String DOCUMENT_SHA256 =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
   static final Clock CLOCK = Clock.fixed(Instant.parse("2026-04-19T10:15:30Z"), ZoneOffset.UTC);
   static final PdfReportService PDF_REPORT_SERVICE =
       new PdfReportService("FinGrind", "0.57.0", CLOCK);
   static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Acme Studio")),
-          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"));
   static final DeclaredAccount CASH_ACCOUNT =
@@ -167,7 +163,7 @@ final class PdfReportFixtureSupport {
                 new ReversalReason("Automated reversal %03d".formatted(index)))
             : PostingLineage.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         evidence("idem-%03d".formatted(index)),
         new CommittedProvenance(
             new RequestProvenance(
@@ -187,10 +183,7 @@ final class PdfReportFixtureSupport {
             new SourceDocumentReference(
                 new SourceDocumentId("document-" + token),
                 new SourceDocumentType("cash-receipt"),
-                LocalDate.parse("2026-04-19"),
-                Instant.parse("2026-04-19T10:15:30Z"),
-                new StorageLocator("evidence://documents/document-" + token + ".pdf"),
-                new ContentSha256(DOCUMENT_SHA256))),
+                LocalDate.parse("2026-04-19"))),
         List.of());
   }
 
@@ -202,7 +195,6 @@ final class PdfReportFixtureSupport {
         new AccountCode(code),
         new AccountName(name),
         accountType,
-        AccountRole.ORDINARY,
         accountTaxonomy(accountType),
         active,
         Instant.parse("2026-04-01T08:00:00Z"));
@@ -212,14 +204,12 @@ final class PdfReportFixtureSupport {
       String lineCode,
       String lineName,
       AccountType accountType,
-      AccountRole accountRole,
       FinancialPositionLineClassification lineClassification,
       CurrencyBalance balance) {
     return new FinancialPositionRow(
         lineCode,
         lineName,
         accountType,
-        Optional.of(accountRole),
         Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         balance);
@@ -229,14 +219,12 @@ final class PdfReportFixtureSupport {
       String lineCode,
       String lineName,
       AccountType accountType,
-      AccountRole accountRole,
       ProfitAndLossLineClassification lineClassification,
       CurrencyBalance movement) {
     return new IncomeStatementRow(
         lineCode,
         lineName,
         accountType,
-        Optional.of(accountRole),
         lineClassification,
         StatementLineKind.DECLARED_ACCOUNT,
         movement);
@@ -245,7 +233,6 @@ final class PdfReportFixtureSupport {
   static ChangesInEquityRow changesInEquityRow(
       String lineCode,
       String lineName,
-      AccountRole accountRole,
       FinancialPositionLineClassification lineClassification,
       CurrencyBalance openingBalance,
       CurrencyBalance movement,
@@ -254,7 +241,6 @@ final class PdfReportFixtureSupport {
         lineCode,
         lineName,
         Optional.of(AccountType.EQUITY),
-        Optional.of(accountRole),
         Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         openingBalance,
@@ -269,7 +255,8 @@ final class PdfReportFixtureSupport {
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty());
+              Optional.empty(),
+              Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
       case LIABILITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,

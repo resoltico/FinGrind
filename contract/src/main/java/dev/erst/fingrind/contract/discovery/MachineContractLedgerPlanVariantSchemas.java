@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -38,73 +39,50 @@ final class MachineContractLedgerPlanVariantSchemas {
   }
 
   private static Map<String, Object> stepVariantSchema(LedgerStepKind kind) {
-    return switch (kind) {
-      case ENSURE_BOOK ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan step `" + kind.wireValue() + "`.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredEnsureBookField()));
-      case INSPECT_BOOK ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan step `" + kind.wireValue() + "`.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind)));
-      case DECLARE_ACCOUNT ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan step `" + kind.wireValue() + "`.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredDeclareAccountField()));
-      case PREFLIGHT_ENTRY, POST_ENTRY ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan step `" + kind.wireValue() + "`.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredPostingField()));
-      case LIST_ACCOUNTS ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan step `" + kind.wireValue() + "`.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepPayloadFieldSpecs.optionalQueryField(
-                      listAccountsQuerySchema())));
-      case GET_POSTING ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan step `" + kind.wireValue() + "`.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredPostingIdField()));
-      case LIST_POSTINGS ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan step `" + kind.wireValue() + "`.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepPayloadFieldSpecs.optionalQueryField(
-                      listPostingsQuerySchema())));
-      case ACCOUNT_BALANCE ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan step `" + kind.wireValue() + "`.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredQueryField(
-                      accountBalanceQuerySchema())));
-      case ASSERT ->
-          MachineContractSchemaSupport.objectSchema(
-              "Ledger-plan assertion step.",
-              List.of(
-                  MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
-                  MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
-                  MachineContractLedgerPlanStepPayloadFieldSpecs.requiredAssertionField()));
-    };
+    if (kind == LedgerStepKind.ENSURE_BOOK) {
+      return ledgerStepSchema(
+          kind, MachineContractLedgerPlanStepPayloadFieldSpecs.requiredEnsureBookField());
+    }
+    if (kind == LedgerStepKind.INSPECT_BOOK) {
+      return ledgerStepSchema(kind);
+    }
+    if (kind == LedgerStepKind.DECLARE_ACCOUNT) {
+      return ledgerStepSchema(
+          kind, MachineContractLedgerPlanStepPayloadFieldSpecs.requiredDeclareAccountField());
+    }
+    if (kind.carriesPostingPayload()) {
+      return ledgerStepSchema(
+          kind, MachineContractLedgerPlanStepPayloadFieldSpecs.requiredPostingField());
+    }
+    if (kind == LedgerStepKind.GET_POSTING) {
+      return ledgerStepSchema(
+          kind, MachineContractLedgerPlanStepPayloadFieldSpecs.requiredPostingIdField());
+    }
+    if (kind == LedgerStepKind.ACCOUNT_BALANCE) {
+      return ledgerStepSchema(
+          kind,
+          MachineContractLedgerPlanStepPayloadFieldSpecs.requiredQueryField(
+              accountBalanceQuerySchema()));
+    }
+    if (kind == LedgerStepKind.ASSERT) {
+      return MachineContractSchemaSupport.objectSchema(
+          "Ledger-plan assertion step.",
+          List.of(
+              MachineContractLedgerPlanStructureFieldSpecs.stepIdField(),
+              MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind),
+              MachineContractLedgerPlanStepPayloadFieldSpecs.requiredAssertionField()));
+    }
+    return ledgerStepSchema(
+        kind,
+        MachineContractLedgerPlanStepPayloadFieldSpecs.optionalQueryField(
+            optionalQuerySchema(kind)));
+  }
+
+  private static Map<String, Object> optionalQuerySchema(LedgerStepKind kind) {
+    if (kind == LedgerStepKind.LIST_ACCOUNTS) {
+      return listAccountsQuerySchema();
+    }
+    return listPostingsQuerySchema();
   }
 
   private static Map<String, Object> listAccountsQuerySchema() {
@@ -168,5 +146,15 @@ final class MachineContractLedgerPlanVariantSchemas {
                   MachineContractLedgerPlanAssertionFieldSpecs
                       .requiredAssertionBalanceSideField()));
     };
+  }
+
+  private static Map<String, Object> ledgerStepSchema(
+      LedgerStepKind kind, MachineContractFieldSpec... payloadFields) {
+    List<MachineContractFieldSpec> fields = new ArrayList<>();
+    fields.add(MachineContractLedgerPlanStructureFieldSpecs.stepIdField());
+    fields.add(MachineContractLedgerPlanStructureFieldSpecs.requiredConstStepKindField(kind));
+    fields.addAll(List.of(payloadFields));
+    return MachineContractSchemaSupport.objectSchema(
+        "Ledger-plan step `" + kind.wireValue() + "`.", fields);
   }
 }

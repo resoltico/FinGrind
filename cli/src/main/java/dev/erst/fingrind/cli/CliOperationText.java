@@ -34,6 +34,17 @@ final class CliOperationText {
         + " response.";
   }
 
+  static String listTaxRegistrationsCursorRepairHint() {
+    String listTaxRegistrations = operationName(OperationId.LIST_TAX_REGISTRATIONS);
+    return "Rerun "
+        + listTaxRegistrations
+        + " without "
+        + ProtocolOptions.CURSOR
+        + ", or pass the opaque nextCursor value returned by a prior successful "
+        + listTaxRegistrations
+        + " response.";
+  }
+
   static String initializeWithOpenBookLabel() {
     return "Can initialize with " + operationName(OperationId.OPEN_BOOK);
   }

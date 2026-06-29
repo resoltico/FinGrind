@@ -21,11 +21,20 @@ final class CliDiscoveryCommandGuidance {
           OperationId.INCOME_STATEMENT,
           OperationId.CHANGES_IN_EQUITY,
           OperationId.PERIOD_SUMMARY,
+          OperationId.TAX_OBLIGATION,
           OperationId.LIST_POSTINGS,
           OperationId.GET_POSTING);
 
   private static final Set<OperationId> ENTRY_REQUEST_OPERATIONS =
-      Set.of(OperationId.POST_ENTRY, OperationId.PREFLIGHT_ENTRY);
+      Set.of(
+          OperationId.POST_ENTRY,
+          OperationId.PREFLIGHT_ENTRY,
+          OperationId.RECORD_SALE,
+          OperationId.RECORD_EXPENSE,
+          OperationId.RECORD_OWNER_CONTRIBUTION,
+          OperationId.RECORD_OWNER_WITHDRAWAL,
+          OperationId.RECORD_OPENING_POSITION,
+          OperationId.RECORD_REVERSAL);
   private static final Set<OperationId> TEMPORAL_SCOPE_OPERATIONS =
       Set.of(
           OperationId.ACCOUNT_BALANCE,
@@ -35,8 +44,9 @@ final class CliDiscoveryCommandGuidance {
           OperationId.INCOME_STATEMENT,
           OperationId.CHANGES_IN_EQUITY,
           OperationId.PERIOD_SUMMARY,
+          OperationId.TAX_OBLIGATION,
           OperationId.LIST_POSTINGS,
-          OperationId.TRANSFER_PERIOD_RESULT);
+          OperationId.INTERIM_RESULT_SWEEP);
 
   private CliDiscoveryCommandGuidance() {}
 
@@ -53,6 +63,9 @@ final class CliDiscoveryCommandGuidance {
     }
     if (operationId == OperationId.DECLARE_ACCOUNT) {
       return renderDeclareAccountRequestGuidance(helpDescriptor);
+    }
+    if (operationId == OperationId.DECLARE_TAX_REGISTRATION) {
+      return renderDeclareTaxRegistrationRequestGuidance(helpDescriptor);
     }
     if (operationId == OperationId.EXECUTE_PLAN) {
       return renderLedgerPlanRequestGuidance(helpDescriptor);
@@ -102,6 +115,13 @@ final class CliDiscoveryCommandGuidance {
               + " "
               + OperationId.DECLARE_ACCOUNT.wireName());
     }
+    if (operationId == OperationId.DECLARE_TAX_REGISTRATION) {
+      return CliDiscoveryCommandHelpSupport.SupportEntry.command(
+          "Request template",
+          CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+              + " "
+              + OperationId.DECLARE_TAX_REGISTRATION.wireName());
+    }
     if (operationId == OperationId.EXECUTE_PLAN) {
       return CliDiscoveryCommandHelpSupport.SupportEntry.command(
           "Request template", CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE));
@@ -116,6 +136,14 @@ final class CliDiscoveryCommandGuidance {
           List.of(
               "Next step after success",
               CliDiscoveryCommandExamples.primaryCommandExample(OperationId.LIST_ACCOUNTS)));
+    }
+    if (operationId == OperationId.DECLARE_TAX_REGISTRATION) {
+      return List.of(
+          List.of("Needs", "One opened protected book."),
+          List.of(
+              "Next step after success",
+              CliDiscoveryCommandExamples.primaryCommandExample(
+                  OperationId.LIST_TAX_REGISTRATIONS)));
     }
     if (ENTRY_REQUEST_OPERATIONS.contains(operationId)) {
       return List.of(
@@ -139,12 +167,12 @@ final class CliDiscoveryCommandGuidance {
   private static String renderPostingRequestGuidance(
       HelpDescriptor helpDescriptor, OperationId operationId) {
     if (helpDescriptor.requestShapes() == null
-        || helpDescriptor.requestShapes().postEntry() == null
+        || helpDescriptor.requestShapes().bookkeepingEntry() == null
         || helpDescriptor.requestTemplate() == null) {
       return "";
     }
-    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
-        helpDescriptor.requestShapes().postEntry();
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape =
+        helpDescriptor.requestShapes().bookkeepingEntry();
     ContractTemplates.PostingRequestTemplateDescriptor requestTemplate =
         helpDescriptor.requestTemplate();
     return CliDiscoveryTextSupport.joinSections(
@@ -173,6 +201,21 @@ final class CliDiscoveryCommandGuidance {
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.DECLARE_ACCOUNT.wireName()));
+  }
+
+  private static String renderDeclareTaxRegistrationRequestGuidance(HelpDescriptor helpDescriptor) {
+    if (helpDescriptor.requestShapes() == null
+        || helpDescriptor.requestShapes().declareTaxRegistration() == null
+        || helpDescriptor.declareTaxRegistrationTemplate() == null) {
+      return "";
+    }
+    return CliDiscoveryTextSupport.section(
+        "Input Contract",
+        requestFileGuidance(
+            "Pass one JSON object through --request-file <path|->.",
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + OperationId.DECLARE_TAX_REGISTRATION.wireName()));
   }
 
   private static String renderLedgerPlanRequestGuidance(HelpDescriptor helpDescriptor) {
@@ -214,9 +257,25 @@ final class CliDiscoveryCommandGuidance {
     appendLedgerPlanRows(rows, ledgerPlanShape.assertionFields(), "steps[].assertion.");
     rows.addAll(
         CliDiscoveryPostingModelGuidance.postingModelRows(
-            ledgerPlanShape.postingModel(), postingTemplate, "steps[].posting."));
-    return CliTextFormat.renderKeyValueBlock(
-        List.copyOf(rows), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH, HELP_STRUCTURE_LABEL_WIDTH_CAP);
+            ledgerPlanShape.postingModel(), postingTemplate, "steps[].posting.", true));
+    String primaryBlock =
+        CliTextFormat.renderKeyValueBlock(
+            List.copyOf(rows),
+            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH,
+            HELP_STRUCTURE_LABEL_WIDTH_CAP);
+    List<List<String>> supplementalPostingRows =
+        CliDiscoveryPostingModelGuidance.supplementalPostingModelRows(
+            ledgerPlanShape.postingModel(), postingTemplate, "steps[].posting.");
+    if (supplementalPostingRows.isEmpty()) {
+      return primaryBlock;
+    }
+    return primaryBlock
+        + System.lineSeparator()
+        + System.lineSeparator()
+        + CliTextFormat.renderKeyValueBlock(
+            supplementalPostingRows,
+            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH,
+            HELP_STRUCTURE_LABEL_WIDTH_CAP);
   }
 
   private static void appendTopLevelLedgerPlanRows(

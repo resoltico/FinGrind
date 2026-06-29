@@ -6,150 +6,154 @@ import java.util.Map;
 
 /** Canonical template-shape policy tables for ledger-plan steps and assertions. */
 final class ContractTemplateShapeRules {
+  private static final ContractTemplateStepShapeRequirements ENSURE_BOOK_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          false);
+  private static final ContractTemplateStepShapeRequirements INSPECT_BOOK_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          false);
+  private static final ContractTemplateStepShapeRequirements DECLARE_ACCOUNT_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          false);
+  private static final ContractTemplateStepShapeRequirements POSTING_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          false);
+  private static final ContractTemplateStepShapeRequirements OPTIONAL_QUERY_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.OPTIONAL,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          false);
+  private static final ContractTemplateStepShapeRequirements REQUIRED_BALANCE_QUERY_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          true);
+  private static final ContractTemplateStepShapeRequirements POSTING_ID_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.REQUIRED,
+          false);
+  private static final ContractTemplateStepShapeRequirements ASSERTION_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          false);
+  private static final ContractTemplateAssertionShapeRequirements ACCOUNT_CODE_ASSERTION_SHAPE =
+      assertionShape(
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN);
+  private static final ContractTemplateAssertionShapeRequirements POSTING_ID_ASSERTION_SHAPE =
+      assertionShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.REQUIRED);
+  private static final ContractTemplateAssertionShapeRequirements ACCOUNT_BALANCE_ASSERTION_SHAPE =
+      assertionShape(
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN);
+
   private ContractTemplateShapeRules() {}
 
   static Map<LedgerStepKind, ContractTemplateStepShapeRequirements> stepShapeRequirements() {
     return Map.ofEntries(
-        Map.entry(
-            LedgerStepKind.ENSURE_BOOK,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.INSPECT_BOOK,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.DECLARE_ACCOUNT,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.PREFLIGHT_ENTRY,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.POST_ENTRY,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.LIST_ACCOUNTS,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.OPTIONAL,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.LIST_POSTINGS,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.OPTIONAL,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                false)),
-        Map.entry(
-            LedgerStepKind.ACCOUNT_BALANCE,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                true)),
-        Map.entry(
-            LedgerStepKind.GET_POSTING,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED,
-                false)),
-        Map.entry(
-            LedgerStepKind.ASSERT,
-            new ContractTemplateStepShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                false)));
+        Map.entry(LedgerStepKind.ENSURE_BOOK, ENSURE_BOOK_STEP_SHAPE),
+        Map.entry(LedgerStepKind.INSPECT_BOOK, INSPECT_BOOK_STEP_SHAPE),
+        Map.entry(LedgerStepKind.DECLARE_ACCOUNT, DECLARE_ACCOUNT_STEP_SHAPE),
+        Map.entry(LedgerStepKind.PREFLIGHT_ENTRY, POSTING_STEP_SHAPE),
+        Map.entry(LedgerStepKind.RECORD_SALE, POSTING_STEP_SHAPE),
+        Map.entry(LedgerStepKind.RECORD_EXPENSE, POSTING_STEP_SHAPE),
+        Map.entry(LedgerStepKind.RECORD_OWNER_CONTRIBUTION, POSTING_STEP_SHAPE),
+        Map.entry(LedgerStepKind.RECORD_OWNER_WITHDRAWAL, POSTING_STEP_SHAPE),
+        Map.entry(LedgerStepKind.RECORD_OPENING_POSITION, POSTING_STEP_SHAPE),
+        Map.entry(LedgerStepKind.RECORD_REVERSAL, POSTING_STEP_SHAPE),
+        Map.entry(LedgerStepKind.POST_ENTRY, POSTING_STEP_SHAPE),
+        Map.entry(LedgerStepKind.LIST_ACCOUNTS, OPTIONAL_QUERY_STEP_SHAPE),
+        Map.entry(LedgerStepKind.LIST_POSTINGS, OPTIONAL_QUERY_STEP_SHAPE),
+        Map.entry(LedgerStepKind.ACCOUNT_BALANCE, REQUIRED_BALANCE_QUERY_STEP_SHAPE),
+        Map.entry(LedgerStepKind.GET_POSTING, POSTING_ID_STEP_SHAPE),
+        Map.entry(LedgerStepKind.ASSERT, ASSERTION_STEP_SHAPE));
   }
 
   static Map<LedgerAssertionKind, ContractTemplateAssertionShapeRequirements>
       assertionShapeRequirements() {
     return Map.ofEntries(
-        Map.entry(
-            LedgerAssertionKind.ACCOUNT_DECLARED,
-            new ContractTemplateAssertionShapeRequirements(
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN)),
-        Map.entry(
-            LedgerAssertionKind.ACCOUNT_ACTIVE,
-            new ContractTemplateAssertionShapeRequirements(
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN)),
-        Map.entry(
-            LedgerAssertionKind.POSTING_EXISTS,
-            new ContractTemplateAssertionShapeRequirements(
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED)),
-        Map.entry(
-            LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
-            new ContractTemplateAssertionShapeRequirements(
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.FORBIDDEN,
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.REQUIRED,
-                ContractTemplateFieldPresence.FORBIDDEN)));
+        Map.entry(LedgerAssertionKind.ACCOUNT_DECLARED, ACCOUNT_CODE_ASSERTION_SHAPE),
+        Map.entry(LedgerAssertionKind.ACCOUNT_ACTIVE, ACCOUNT_CODE_ASSERTION_SHAPE),
+        Map.entry(LedgerAssertionKind.POSTING_EXISTS, POSTING_ID_ASSERTION_SHAPE),
+        Map.entry(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, ACCOUNT_BALANCE_ASSERTION_SHAPE));
+  }
+
+  private static ContractTemplateStepShapeRequirements stepShape(
+      ContractTemplateFieldPresence openBook,
+      ContractTemplateFieldPresence posting,
+      ContractTemplateFieldPresence declareAccount,
+      ContractTemplateFieldPresence query,
+      ContractTemplateFieldPresence assertion,
+      ContractTemplateFieldPresence postingId,
+      boolean queryAccountCodeRequired) {
+    return new ContractTemplateStepShapeRequirements(
+        openBook, posting, declareAccount, query, assertion, postingId, queryAccountCodeRequired);
+  }
+
+  private static ContractTemplateAssertionShapeRequirements assertionShape(
+      ContractTemplateFieldPresence accountCode,
+      ContractTemplateFieldPresence effectiveDateFrom,
+      ContractTemplateFieldPresence effectiveDateTo,
+      ContractTemplateFieldPresence netAmount,
+      ContractTemplateFieldPresence balanceSide,
+      ContractTemplateFieldPresence postingId) {
+    return new ContractTemplateAssertionShapeRequirements(
+        accountCode, effectiveDateFrom, effectiveDateTo, netAmount, balanceSide, postingId);
   }
 }

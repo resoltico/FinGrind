@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookReadService;
@@ -299,7 +300,8 @@ class SqliteBookSessionContentionTest extends SqlitePostingFactStoreTestSupport 
   private void assertPublicTrialBalance(BookReadService service) {
     TrialBalanceResult result =
         service.trialBalance(
-            new TrialBalanceQuery(Optional.empty(), PostingCoverage.ALL_POSTING_KINDS));
+            new TrialBalanceQuery(
+                Optional.empty(), PostingCoverage.ALL_POSTING_KINDS, ComparativeSelection.none()));
     assertEquals(2, ((TrialBalanceResult.Reported) result).report().rows().size());
   }
 

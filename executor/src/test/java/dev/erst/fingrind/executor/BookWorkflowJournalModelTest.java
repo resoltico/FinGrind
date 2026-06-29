@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
-import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryPhase;
+import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryCheckpoint;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionJournal;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionStatus;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
@@ -59,7 +59,7 @@ class BookWorkflowJournalModelTest {
         () ->
             new BookWorkflowJournalEntry.AssertionFailed(
                 stepId("assert-balance"),
-                new BookWorkflowJournalDescriptor.Boundary(BookWorkflowBoundaryPhase.COMMIT),
+                new BookWorkflowJournalDescriptor.Boundary(BookWorkflowBoundaryCheckpoint.COMMIT),
                 STARTED_AT,
                 FINISHED_AT,
                 List.of(),

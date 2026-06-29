@@ -1,21 +1,17 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.CanonicalTemporalText;
-import dev.erst.fingrind.executor.bookkeeping.AcceptedResultHoldingSelection;
-import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlan;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferPlanner;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.RejectedResultHoldingSelection;
-import dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy.Decision;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -24,7 +20,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 /** Mutation operations over one SQLite-backed book session. */
 final class SqliteStoreMutationOperations {
@@ -37,10 +32,10 @@ final class SqliteStoreMutationOperations {
 
   private final SqliteStoreContext context;
   private final SqliteStoreLifecycle lifecycle;
-  private final SqliteCommitFaultHook commitFaultHook;
   private final SqliteRekeyService rekeyService;
   private final PostingAcceptancePolicy postingAcceptancePolicy;
   private final SqliteStoreAdministrationMutationOperations administrationOperations;
+  private final SqliteClosingMutationOperations closingOperations;
 
   SqliteStoreMutationOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
     this(context, lifecycle, SqliteCommitFaultHook.NONE, PostingAcceptancePolicy.currentKernel());
@@ -60,12 +55,17 @@ final class SqliteStoreMutationOperations {
       PostingAcceptancePolicy postingAcceptancePolicy) {
     this.context = Objects.requireNonNull(context, "context");
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
-    this.commitFaultHook = Objects.requireNonNull(commitFaultHook, "commitFaultHook");
     this.rekeyService = new SqliteRekeyService(context, lifecycle);
     this.postingAcceptancePolicy =
         Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy");
     this.administrationOperations =
         new SqliteStoreAdministrationMutationOperations(context, lifecycle);
+    this.closingOperations =
+        new SqliteClosingMutationOperations(
+            context,
+            lifecycle,
+            Objects.requireNonNull(commitFaultHook, "commitFaultHook"),
+            this.postingAcceptancePolicy);
   }
 
   dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openBook(
@@ -79,11 +79,15 @@ final class SqliteStoreMutationOperations {
       dev.erst.fingrind.core.AccountCode accountCode,
       dev.erst.fingrind.core.AccountName accountName,
       dev.erst.fingrind.core.AccountType accountType,
-      dev.erst.fingrind.core.AccountRole accountRole,
       dev.erst.fingrind.core.AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     return administrationOperations.declareAccount(
-        accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
+        accountCode, accountName, accountType, accountTaxonomy, declaredAt);
+  }
+
+  DeclareTaxRegistrationResult declareTaxRegistration(
+      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+    return administrationOperations.declareTaxRegistration(command, declaredAt);
   }
 
   PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
@@ -97,21 +101,30 @@ final class SqliteStoreMutationOperations {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
             transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-            Optional<BookkeepingPostingRejection> ordinaryOutcome =
-                postingAcceptancePolicy.rejectionFor(
+            Decision decision =
+                postingAcceptancePolicy.decisionFor(
                     postingDraft,
                     new SqliteTransactionValidationBook(activeDatabase, context.postingReader()));
-            if (ordinaryOutcome.isPresent()) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return new PostingCommitResult.Rejected(ordinaryOutcome.orElseThrow());
-            }
-            CommittedPosting postingFact =
-                persistAcceptedPosting(
-                    activeDatabase,
-                    postingDraft,
-                    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"));
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return new PostingCommitResult.Committed(postingFact);
+            return switch (decision) {
+              case Decision.Replay replay -> {
+                SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
+                yield new PostingCommitResult.Committed(replay.postingFact(), true);
+              }
+              case Decision.Rejected rejected -> {
+                SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+                yield new PostingCommitResult.Rejected(rejected.rejection());
+              }
+              case Decision.Accepted accepted -> {
+                CommittedPosting postingFact =
+                    persistAcceptedPosting(
+                        activeDatabase,
+                        postingDraft,
+                        accepted.requestFingerprint(),
+                        Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"));
+                SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
+                yield new PostingCommitResult.Committed(postingFact, false);
+              }
+            };
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
@@ -123,145 +136,32 @@ final class SqliteStoreMutationOperations {
         });
   }
 
-  PeriodResultTransferOutcome transferPeriodResult(
+  InterimResultSweepOutcome interimResultSweep(
       dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
       BookIdentity bookIdentity,
-      PeriodResultTransferPlanner planner,
+      InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
-      Instant transferredAt,
+      Instant sweptAt,
       PostingIdGenerator postingIdGenerator) {
-    lifecycle.ensureOpenSession();
-    context.accessMode().requireWritableMutation();
-    Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(planner, "planner");
-    Objects.requireNonNull(currentUtcDate, "currentUtcDate");
-    Objects.requireNonNull(transferredAt, "transferredAt");
-    if (Files.notExists(context.bookPath())) {
-      return new PeriodResultTransferOutcome.Rejected(
-          new BookkeepingAdministrationRejection.BookNotInitialized());
-    }
-    return withBorrowedDatabase(
-        activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          try {
-            if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new PeriodResultTransferOutcome.Rejected(
-                  new BookkeepingAdministrationRejection.BookNotInitialized());
-            }
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-            List<RegisteredAccount> accounts =
-                SqliteStatementQueries.loadAllAccounts(
-                    activeDatabase, SqlitePostingSql.LOAD_ALL_ACCOUNTS);
-            var resultHoldingSelection = planner.resultHoldingAccount(bookIdentity, accounts);
-            if (resultHoldingSelection instanceof RejectedResultHoldingSelection rejected) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return new PeriodResultTransferOutcome.Rejected(rejected.rejection());
-            }
-            Optional<BookkeepingAdministrationRejection> closeHorizonRejection =
-                planner.closeHorizonRejection(
-                    reportingPeriod,
-                    bookIdentity,
-                    currentUtcDate,
-                    loadTransferredThroughEffectiveDate(activeDatabase));
-            if (closeHorizonRejection.isPresent()) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return new PeriodResultTransferOutcome.Rejected(closeHorizonRejection.orElseThrow());
-            }
-            RegisteredAccount resultHoldingAccount =
-                ((AcceptedResultHoldingSelection) resultHoldingSelection).account();
-            PeriodResultTransferPlan closePlan =
-                planner.closingPostings(
-                    reportingPeriod,
-                    resultHoldingAccount,
-                    accounts,
-                    loadPostingsInRange(activeDatabase, reportingPeriod.effectiveDateRange()),
-                    transferredAt);
-            PeriodResultTransferOutcome outcome =
-                persistPeriodResultTransfer(
-                    activeDatabase,
-                    new PeriodResultTransferDraft(
-                        reportingPeriod,
-                        resultHoldingAccount.accountCode(),
-                        closePlan.transferredTotals(),
-                        transferredAt,
-                        closePlan.closingPostings()),
-                    postingIdGenerator);
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return outcome;
-          } catch (SqliteNativeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to close one SQLite reporting period.", exception);
-          } catch (RuntimeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw exception;
-          }
-        });
+    return closingOperations.interimResultSweep(
+        reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
   }
 
-  PeriodResultTransferOutcome transferPeriodResult(
-      PeriodResultTransferDraft periodResultTransferDraft, PostingIdGenerator postingIdGenerator) {
-    lifecycle.ensureOpenSession();
-    context.accessMode().requireWritableMutation();
-    if (Files.notExists(context.bookPath())) {
-      return new PeriodResultTransferOutcome.Rejected(
-          new BookkeepingAdministrationRejection.BookNotInitialized());
-    }
-    return withBorrowedDatabase(
-        activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          boolean committed = false;
-          try {
-            if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new PeriodResultTransferOutcome.Rejected(
-                  new BookkeepingAdministrationRejection.BookNotInitialized());
-            }
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-            PeriodResultTransferOutcome outcome =
-                persistPeriodResultTransfer(
-                    activeDatabase, periodResultTransferDraft, postingIdGenerator);
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            committed = true;
-            return outcome;
-          } catch (SqliteNativeException exception) {
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to close one SQLite reporting period.", exception);
-          } finally {
-            if (!committed) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            }
-          }
-        });
+  InterimResultSweepOutcome interimResultSweep(
+      dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft interimResultSweepDraft,
+      PostingIdGenerator postingIdGenerator) {
+    return closingOperations.interimResultSweep(interimResultSweepDraft, postingIdGenerator);
   }
 
-  private List<CommittedPosting> loadPostingsInRange(
-      SqliteNativeDatabase activeDatabase, dev.erst.fingrind.core.EffectiveDateRange range) {
-    return context
-        .postingReader()
-        .loadCommittedPostings(
-            activeDatabase,
-            SqlitePostingSql.LOAD_POSTINGS_IN_RANGE,
-            statement -> {
-              String effectiveDateFrom =
-                  range
-                      .effectiveDateFrom()
-                      .map(CanonicalTemporalText::formatLocalDate)
-                      .orElse(null);
-              String effectiveDateTo =
-                  range.effectiveDateTo().map(CanonicalTemporalText::formatLocalDate).orElse(null);
-              statement.bindText(1, effectiveDateFrom);
-              statement.bindText(2, effectiveDateFrom);
-              statement.bindText(3, effectiveDateTo);
-              statement.bindText(4, effectiveDateTo);
-            });
-  }
-
-  private Optional<LocalDate> loadTransferredThroughEffectiveDate(
-      SqliteNativeDatabase activeDatabase) {
-    return SqliteStatementQueries.loadOptionalText(
-            activeDatabase, SqlitePostingSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE, statement -> {})
-        .map(LocalDate::parse);
+  FiscalYearCloseOutcome fiscalYearClose(
+      dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
+      BookIdentity bookIdentity,
+      FiscalYearClosePlanner planner,
+      LocalDate currentUtcDate,
+      Instant closedAt,
+      PostingIdGenerator postingIdGenerator) {
+    return closingOperations.fiscalYearClose(
+        reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
   }
 
   RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {
@@ -272,53 +172,12 @@ final class SqliteStoreMutationOperations {
     return action.run(lifecycle.database());
   }
 
-  private PeriodResultTransferOutcome persistPeriodResultTransfer(
-      SqliteNativeDatabase activeDatabase,
-      PeriodResultTransferDraft periodResultTransferDraft,
-      PostingIdGenerator postingIdGenerator) {
-    SqliteTransactionValidationBook validationBook =
-        new SqliteTransactionValidationBook(activeDatabase, context.postingReader());
-    PostingIdGenerator requiredPostingIdGenerator =
-        Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
-    List<CommittedPosting> closingPostings = new java.util.ArrayList<>();
-    for (PostingDraft closingPostingDraft : periodResultTransferDraft.closingPostings()) {
-      Optional<BookkeepingPostingRejection> rejection =
-          postingAcceptancePolicy.rejectionFor(closingPostingDraft, validationBook);
-      if (rejection.isPresent()) {
-        throw new IllegalStateException(
-            "Generated period-result-transfer posting failed bookkeeping acceptance: "
-                + rejection.orElseThrow());
-      }
-      closingPostings.add(
-          persistAcceptedPosting(activeDatabase, closingPostingDraft, requiredPostingIdGenerator));
-    }
-    TransferredPeriodResult transferredPeriodResult =
-        SqliteMutationWriter.insertPeriodResultTransfer(
-            activeDatabase,
-            periodResultTransferDraft.reportingPeriod(),
-            periodResultTransferDraft.resultHoldingAccountCode(),
-            periodResultTransferDraft.transferredTotals(),
-            periodResultTransferDraft.transferredAt(),
-            closingPostings);
-    SqliteAuditEventWriter.insertAuditEvent(
-        activeDatabase,
-        BookAuditEvent.periodResultTransferred(
-            periodResultTransferDraft.transferredAt(), transferredPeriodResult.transferOrder()));
-    return new PeriodResultTransferOutcome.Transferred(transferredPeriodResult);
-  }
-
   private CommittedPosting persistAcceptedPosting(
       SqliteNativeDatabase activeDatabase,
       PostingDraft postingDraft,
+      dev.erst.fingrind.core.RequestFingerprint requestFingerprint,
       PostingIdGenerator postingIdGenerator) {
-    CommittedPosting postingFact =
-        postingDraft.materialize(
-            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator").nextPostingId());
-    SqliteMutationWriter.insertPostingFact(activeDatabase, postingFact);
-    commitFaultHook.afterPostingFactInserted(postingFact);
-    SqliteMutationWriter.insertJournalLines(activeDatabase, postingFact, commitFaultHook);
-    SqliteAuditEventWriter.insertAuditEvent(
-        activeDatabase, BookAuditEvent.postingCommitted(postingFact));
-    return postingFact;
+    return closingOperations.persistAcceptedPosting(
+        activeDatabase, postingDraft, requestFingerprint, postingIdGenerator);
   }
 }

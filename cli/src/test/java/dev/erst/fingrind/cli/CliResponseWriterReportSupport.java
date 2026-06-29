@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
@@ -78,6 +79,15 @@ class CliResponseWriterReportSupport extends CliResponseWriterBookReadSupport {
   void writeIncomeStatementResult(
       IncomeStatementResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     reportWriter.writeIncomeStatementResult(result, outputMode, exportedArtifactPath);
+  }
+
+  void writeCashFlowStatementResult(CashFlowStatementResult result, OutputMode outputMode) {
+    reportWriter.writeCashFlowStatementResult(result, outputMode, null);
+  }
+
+  void writeCashFlowStatementResult(
+      CashFlowStatementResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    reportWriter.writeCashFlowStatementResult(result, outputMode, exportedArtifactPath);
   }
 
   void writeChangesInEquityResult(ChangesInEquityResult result, OutputMode outputMode) {

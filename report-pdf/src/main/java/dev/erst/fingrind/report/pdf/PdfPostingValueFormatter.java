@@ -13,7 +13,7 @@ final class PdfPostingValueFormatter {
     Objects.requireNonNull(postingCoverage, "postingCoverage");
     return switch (postingCoverage) {
       case ALL_POSTING_KINDS -> "All posting kinds";
-      case NON_CLOSING_POSTINGS -> "Non-transfer postings";
+      case NON_CLOSING_POSTINGS -> "Non-close postings";
     };
   }
 
@@ -34,8 +34,9 @@ final class PdfPostingValueFormatter {
     Objects.requireNonNull(postingKind, "postingKind");
     return switch (postingKind) {
       case STANDARD -> "Standard";
-      case PERIOD_RESULT_TRANSFER -> "Period result transfer";
       case OPENING_BALANCE -> "Opening accounting position";
+      case INTERIM_RESULT_SWEEP -> "Interim result sweep";
+      case FISCAL_YEAR_CLOSE -> "Fiscal-year close";
     };
   }
 }

@@ -17,6 +17,7 @@ final class CliDiscoveryCapabilitiesTextRenderer {
             java.util.List.of(
                 java.util.List.of("Application", capabilitiesDescriptor.application()),
                 java.util.List.of("Version", capabilitiesDescriptor.version()),
+                java.util.List.of("Protocol version", capabilitiesDescriptor.protocolVersion()),
                 java.util.List.of(
                     "Book boundary", displayBookBoundary(storageDescriptor.bookBoundary())),
                 java.util.List.of(
@@ -95,6 +96,8 @@ final class CliDiscoveryCapabilitiesTextRenderer {
     String multiCurrency =
         switch (capabilitiesDescriptor.currencyModel().multiCurrencyStatus()) {
           case "not-supported" -> "additional transaction currencies are not available";
+          case "owned-foreign-exchange-only" ->
+              "foreign-currency business events are supported through owned foreign-exchange facts while mixed-currency journal lines remain unavailable";
           case "supported" -> "additional transaction currencies are available";
           default -> capabilitiesDescriptor.currencyModel().multiCurrencyStatus().replace('-', ' ');
         };

@@ -1,6 +1,8 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
+import dev.erst.fingrind.cli.json.CliOpeningBalancePayload;
+import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -14,10 +16,10 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.requiredTextFact(facts, "accountCode"),
         CliLedgerFactAccess.requiredTextFact(facts, "accountName"),
         CliLedgerFactAccess.requiredTextFact(facts, "accountType"),
-        CliLedgerFactAccess.requiredTextFact(facts, "accountRole"),
         CliLedgerFactAccess.requiredTextFact(facts, "accountNodeKind"),
         CliLedgerFactAccess.optionalTextFact(facts, "parentAccountCode"),
         CliLedgerFactAccess.optionalTextFact(facts, "financialPositionLineClassification"),
+        CliLedgerFactAccess.optionalTextFact(facts, "cashFlowAssetClassification"),
         CliLedgerFactAccess.optionalTextFact(facts, "profitAndLossLineClassification"),
         CliLedgerFactAccess.requiredTextFact(facts, "normalBalance"),
         CliLedgerFactAccess.requiredFlagFact(facts, "active"),
@@ -27,6 +29,7 @@ final class CliLedgerBookQueryPayloadMapper {
   static CliBookQueryJsonModels.PostingPayload postingPayload(List<LedgerFact> facts) {
     List<LedgerFact> provenanceFacts = CliLedgerFactAccess.requiredGroupFacts(facts, "provenance");
     List<LedgerFact> evidenceFacts = CliLedgerFactAccess.requiredGroupFacts(facts, "evidence");
+    @Nullable List<LedgerFact> entryFacts = CliLedgerFactAccess.optionalGroupFacts(facts, "entry");
     @Nullable List<LedgerFact> reversalFacts =
         CliLedgerFactAccess.optionalGroupFacts(facts, "reversal");
     return new CliBookQueryJsonModels.PostingPayload(
@@ -34,6 +37,10 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.requiredTextFact(facts, "postingKind"),
         CliLedgerFactAccess.requiredTextFact(facts, "postingOriginKind"),
         CliLedgerFactAccess.requiredTextFact(facts, "reversalState"),
+        reversalFacts == null
+            ? null
+            : CliLedgerFactAccess.optionalTextFact(reversalFacts, "priorPostingId"),
+        CliLedgerFactAccess.optionalTextFact(facts, "reversedByPostingId"),
         CliLedgerFactAccess.requiredTextFact(facts, "effectiveDate"),
         CliLedgerFactAccess.requiredTextFact(facts, "recordedAt"),
         CliLedgerFactAccess.requiredTextFact(provenanceFacts, "actorId"),
@@ -44,6 +51,7 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.optionalTextFact(provenanceFacts, "correlationId"),
         CliLedgerFactAccess.requiredTextFact(provenanceFacts, "sourceChannel"),
         evidencePayload(evidenceFacts),
+        entryFacts == null ? null : entryPayload(entryFacts),
         reversalFacts == null ? null : reversalPayload(reversalFacts),
         CliLedgerFactAccess.groupedFacts(facts, "line").stream()
             .map(CliLedgerBookQueryPayloadMapper::linePayload)
@@ -63,6 +71,7 @@ final class CliLedgerBookQueryPayloadMapper {
         reversalFacts == null
             ? null
             : CliLedgerFactAccess.optionalTextFact(reversalFacts, "priorPostingId"),
+        CliLedgerFactAccess.optionalTextFact(facts, "reversedByPostingId"),
         CliLedgerFactAccess.requiredTextFact(facts, "effectiveDate"),
         CliLedgerFactAccess.requiredTextFact(facts, "recordedAt"),
         CliLedgerFactAccess.requiredMoneyFact(facts, "debitTotal"),
@@ -99,10 +108,7 @@ final class CliLedgerBookQueryPayloadMapper {
     return new CliBookQueryJsonModels.SourceDocumentPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "sourceDocumentId"),
         CliLedgerFactAccess.requiredTextFact(facts, "sourceDocumentType"),
-        CliLedgerFactAccess.requiredTextFact(facts, "documentDate"),
-        CliLedgerFactAccess.requiredTextFact(facts, "capturedAt"),
-        CliLedgerFactAccess.requiredTextFact(facts, "storageLocator"),
-        CliLedgerFactAccess.requiredTextFact(facts, "contentSha256"));
+        CliLedgerFactAccess.requiredTextFact(facts, "documentDate"));
   }
 
   private static CliBookQueryJsonModels.ApprovalPayload approvalPayload(List<LedgerFact> facts) {
@@ -119,6 +125,34 @@ final class CliLedgerBookQueryPayloadMapper {
     return new CliBookQueryJsonModels.ReversalPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "priorPostingId"),
         CliLedgerFactAccess.requiredTextFact(facts, "reason"));
+  }
+
+  private static CliPostingEntryPayload entryPayload(List<LedgerFact> facts) {
+    @Nullable List<LedgerFact> reversalFacts =
+        CliLedgerFactAccess.optionalGroupFacts(facts, "reversal");
+    List<CliOpeningBalancePayload> openingBalances =
+        CliLedgerFactAccess.groupedFacts(facts, "openingBalance").stream()
+            .map(CliLedgerBookQueryPayloadMapper::openingBalancePayload)
+            .toList();
+    return new CliPostingEntryPayload(
+        CliLedgerFactAccess.requiredTextFact(facts, "entryKind"),
+        CliLedgerFactAccess.optionalTextFact(facts, "cashAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "revenueAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "expenseAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "equityAccountCode"),
+        CliLedgerFactAccess.optionalMoneyFact(facts, "amount"),
+        null,
+        null,
+        null,
+        reversalFacts == null ? null : reversalPayload(reversalFacts),
+        openingBalances.isEmpty() ? null : openingBalances);
+  }
+
+  private static CliOpeningBalancePayload openingBalancePayload(List<LedgerFact> facts) {
+    return new CliOpeningBalancePayload(
+        CliLedgerFactAccess.requiredTextFact(facts, "accountCode"),
+        CliLedgerFactAccess.requiredTextFact(facts, "side"),
+        CliLedgerFactAccess.requiredMoneyFact(facts, "amount"));
   }
 
   private static CliBookQueryJsonModels.JournalLinePayload linePayload(List<LedgerFact> facts) {

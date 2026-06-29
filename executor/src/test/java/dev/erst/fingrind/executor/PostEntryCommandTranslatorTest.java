@@ -15,6 +15,7 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.spi.TaxRegistrationLookupStore;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,15 +23,21 @@ import org.junit.jupiter.api.Test;
 
 /** Covers application-boundary translation from published entry commands to internal postings. */
 class PostEntryCommandTranslatorTest {
+  private static final TaxRegistrationLookupStore EMPTY_TAX_REGISTRATIONS =
+      taxRegistrationId -> java.util.Optional.empty();
+
   @Test
-  void toPostingCommand_translatesTypedCashRevenueIntoCanonicalPostingCommand() {
+  void toPostingCommand_translatesSalesIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            BookkeepingEntry.cashRevenue(
+            new BookkeepingEntry.Sale(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
-                new MonetaryAmount("EUR", "1250")),
+                new MonetaryAmount("EUR", "1250"),
+                null,
+                null,
+                null),
             accountingEvidence("recipe-cash-revenue"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-revenue"),
             SourceChannel.CLI);
@@ -38,7 +45,7 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CASH_REVENUE,
+            dev.erst.fingrind.core.PostingOriginKind.SALE,
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -53,19 +60,23 @@ class PostEntryCommandTranslatorTest {
             PostingLineageModel.direct(),
             accountingEvidence("recipe-cash-revenue"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-revenue"),
-            SourceChannel.CLI),
-        PostEntryCommandTranslator.toPostingCommand(command));
+            SourceChannel.CLI,
+            command.entry()),
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
   }
 
   @Test
-  void toPostingCommand_translatesTypedCashExpenseIntoCanonicalPostingCommand() {
+  void toPostingCommand_translatesExpensesIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            BookkeepingEntry.cashExpense(
+            new BookkeepingEntry.Expense(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("5000"),
                 new AccountCode("1000"),
-                new MonetaryAmount("EUR", "1250")),
+                new MonetaryAmount("EUR", "1250"),
+                null,
+                null,
+                null),
             accountingEvidence("recipe-cash-expense"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-expense"),
             SourceChannel.CLI);
@@ -73,7 +84,7 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.CASH_EXPENSE,
+            dev.erst.fingrind.core.PostingOriginKind.EXPENSE,
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -88,19 +99,21 @@ class PostEntryCommandTranslatorTest {
             PostingLineageModel.direct(),
             accountingEvidence("recipe-cash-expense"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-expense"),
-            SourceChannel.CLI),
-        PostEntryCommandTranslator.toPostingCommand(command));
+            SourceChannel.CLI,
+            command.entry()),
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
   }
 
   @Test
-  void toPostingCommand_translatesEquityContributionIntoCanonicalPostingCommand() {
+  void toPostingCommand_translatesOwnerContributionsIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            BookkeepingEntry.equityContribution(
+            new BookkeepingEntry.OwnerContribution(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("3000"),
-                new MonetaryAmount("EUR", "1250")),
+                new MonetaryAmount("EUR", "1250"),
+                null),
             accountingEvidence("recipe-equity-contribution"),
             PostingApplicationServiceTestSupport.requestProvenance(
                 "idem-recipe-equity-contribution"),
@@ -109,7 +122,7 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.EQUITY_CONTRIBUTION,
+            dev.erst.fingrind.core.PostingOriginKind.OWNER_CONTRIBUTION,
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -125,19 +138,21 @@ class PostEntryCommandTranslatorTest {
             accountingEvidence("recipe-equity-contribution"),
             PostingApplicationServiceTestSupport.requestProvenance(
                 "idem-recipe-equity-contribution"),
-            SourceChannel.CLI),
-        PostEntryCommandTranslator.toPostingCommand(command));
+            SourceChannel.CLI,
+            command.entry()),
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
   }
 
   @Test
-  void toPostingCommand_translatesEquityWithdrawalIntoCanonicalPostingCommand() {
+  void toPostingCommand_translatesOwnerWithdrawalsIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            BookkeepingEntry.equityWithdrawal(
+            new BookkeepingEntry.OwnerWithdrawal(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("3000"),
                 new AccountCode("1000"),
-                new MonetaryAmount("EUR", "1250")),
+                new MonetaryAmount("EUR", "1250"),
+                null),
             accountingEvidence("recipe-equity-withdrawal"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-equity-withdrawal"),
             SourceChannel.CLI);
@@ -145,7 +160,7 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.EQUITY_WITHDRAWAL,
+            dev.erst.fingrind.core.PostingOriginKind.OWNER_WITHDRAWAL,
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -160,8 +175,9 @@ class PostEntryCommandTranslatorTest {
             PostingLineageModel.direct(),
             accountingEvidence("recipe-equity-withdrawal"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-equity-withdrawal"),
-            SourceChannel.CLI),
-        PostEntryCommandTranslator.toPostingCommand(command));
+            SourceChannel.CLI,
+            command.entry()),
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
   }
 
   @Test
@@ -180,11 +196,12 @@ class PostEntryCommandTranslatorTest {
                     Money.parse("EUR", "12.50"))));
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.ReversalAdjustment(
+            new BookkeepingEntry.Reversal(
                 journalEntry,
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                     new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
-                    new dev.erst.fingrind.core.ReversalReason("reverse erroneous entry"))),
+                    new dev.erst.fingrind.core.ReversalReason("reverse erroneous entry")),
+                null),
             accountingEvidence("reversal-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-adjustment"),
             SourceChannel.CLI);
@@ -192,19 +209,20 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             journalEntry,
             PostingLineageModel.reversal(
                 new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
                 new dev.erst.fingrind.core.ReversalReason("reverse erroneous entry")),
             accountingEvidence("reversal-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-adjustment"),
-            SourceChannel.CLI),
-        PostEntryCommandTranslator.toPostingCommand(command));
+            SourceChannel.CLI,
+            command.entry()),
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
   }
 
   @Test
-  void toPostingCommand_translatesOpenAccountingPositionWithDirectLineage() {
+  void toPostingCommand_translatesOpeningPositionWithDirectLineage() {
     JournalEntry journalEntry =
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
@@ -219,7 +237,7 @@ class PostEntryCommandTranslatorTest {
                     Money.parse("EUR", "12.50"))));
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.OpenAccountingPosition(
+            new BookkeepingEntry.OpeningPosition(
                 journalEntry.effectiveDate(), openingBalances(journalEntry)),
             accountingEvidence("opening-balance-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance(
@@ -229,18 +247,19 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.OPENING_BALANCE,
-            dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
+            dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION,
             journalEntry,
             PostingLineageModel.direct(),
             accountingEvidence("opening-balance-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance(
                 "idem-opening-balance-adjustment"),
-            SourceChannel.CLI),
-        PostEntryCommandTranslator.toPostingCommand(command));
+            SourceChannel.CLI,
+            command.entry()),
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
   }
 
   @Test
-  void toPostingCommand_translatesOpenAccountingPositionIntoOpeningBalancePosting() {
+  void toPostingCommand_translatesOpeningPositionIntoOpeningBalancePosting() {
     JournalEntry journalEntry =
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
@@ -255,7 +274,7 @@ class PostEntryCommandTranslatorTest {
                     Money.parse("EUR", "12.50"))));
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.OpenAccountingPosition(
+            new BookkeepingEntry.OpeningPosition(
                 journalEntry.effectiveDate(), openingBalances(journalEntry)),
             accountingEvidence("correction-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
@@ -264,13 +283,14 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.OPENING_BALANCE,
-            dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
+            dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION,
             journalEntry,
             PostingLineageModel.direct(),
             accountingEvidence("correction-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
-            SourceChannel.CLI),
-        PostEntryCommandTranslator.toPostingCommand(command));
+            SourceChannel.CLI,
+            command.entry()),
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
   }
 
   @Test
@@ -289,7 +309,7 @@ class PostEntryCommandTranslatorTest {
                     Money.parse("EUR", "12.50"))));
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.Journal(journalEntry, null),
+            new BookkeepingEntry.DirectJournal(journalEntry, null),
             accountingEvidence("direct-journal"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-direct-journal"),
             SourceChannel.CLI);
@@ -297,22 +317,23 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.JOURNAL,
+            dev.erst.fingrind.core.PostingOriginKind.DIRECT_JOURNAL,
             journalEntry,
             PostingLineageModel.direct(),
             accountingEvidence("direct-journal"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-direct-journal"),
-            SourceChannel.CLI),
-        PostEntryCommandTranslator.toPostingCommand(command));
+            SourceChannel.CLI,
+            command.entry()),
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
   }
 
-  private static List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance>
-      openingBalances(JournalEntry journalEntry) {
-    List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance> balances =
+  private static List<BookkeepingEntry.OpeningPosition.OpeningAccountBalance> openingBalances(
+      JournalEntry journalEntry) {
+    List<BookkeepingEntry.OpeningPosition.OpeningAccountBalance> balances =
         new ArrayList<>(journalEntry.lines().size());
     for (JournalLine line : journalEntry.lines()) {
       balances.add(
-          new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+          new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
               line.accountCode(), line.side(), MonetaryAmount.of(line.amount().money())));
     }
     return List.copyOf(balances);

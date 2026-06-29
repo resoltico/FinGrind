@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -21,19 +20,19 @@ import org.junit.jupiter.api.Test;
 /** Constructor guards for local bookkeeping posting rejections. */
 class BookkeepingPostingRejectionTest {
   @Test
-  void openAccountingPositionWindowClosed_requiresBothBlockingFacts() throws Exception {
+  void openingPositionWindowClosed_requiresBothBlockingFacts() throws Exception {
     InvocationTargetException nullPostingKind =
         assertThrows(
             InvocationTargetException.class,
             () ->
-                BookkeepingPostingRejection.OpenAccountingPositionWindowClosed.class
+                BookkeepingPostingRejection.OpeningPositionWindowClosed.class
                     .getDeclaredConstructor(PostingKind.class, LocalDate.class)
                     .newInstance(null, LocalDate.parse("2026-04-07")));
     InvocationTargetException nullEffectiveDate =
         assertThrows(
             InvocationTargetException.class,
             () ->
-                BookkeepingPostingRejection.OpenAccountingPositionWindowClosed.class
+                BookkeepingPostingRejection.OpeningPositionWindowClosed.class
                     .getDeclaredConstructor(PostingKind.class, LocalDate.class)
                     .newInstance(PostingKind.STANDARD, null));
 
@@ -96,103 +95,133 @@ class BookkeepingPostingRejectionTest {
   @Test
   void entrySemanticsFactoriesProduceCanonicalViolationPayloads() {
     BookkeepingPostingRejection.EntrySemanticsViolation accountTypeMismatch =
-        BookkeepingPostingRejection.accountTypeMismatch(
-            JournalRecipeKind.CASH_REVENUE.wireValue(),
+        BookkeepingEntrySemanticsViolationFactory.accountTypeMismatch(
+            "entryKind",
+            BookkeepingEntryKind.SALE.wireValue(),
             "cashAccountCode",
             new AccountCode("2000"),
             AccountType.ASSET,
             AccountType.REVENUE);
     BookkeepingPostingRejection.EntrySemanticsViolation classificationMismatch =
-        BookkeepingPostingRejection.financialPositionClassificationMismatch(
-            JournalRecipeKind.EQUITY_WITHDRAWAL.wireValue(),
+        BookkeepingEntrySemanticsViolationFactory.financialPositionClassificationMismatch(
+            "entryKind",
+            BookkeepingEntryKind.OWNER_WITHDRAWAL.wireValue(),
             "equityAccountCode",
             new AccountCode("3200"),
             FinancialPositionLineClassification.EQUITY_WITHDRAWAL,
             null);
     BookkeepingPostingRejection.EntrySemanticsViolation sourceDocumentTypeNotAccepted =
-        BookkeepingPostingRejection.sourceDocumentTypeNotAccepted(
-            JournalRecipeKind.CASH_EXPENSE.wireValue(),
+        BookkeepingEntrySemanticsViolationFactory.sourceDocumentTypeNotAccepted(
+            "entryKind",
+            BookkeepingEntryKind.EXPENSE.wireValue(),
             new SourceDocumentType("invoice"),
             List.of("expense-receipt", "cash-disbursement"));
     BookkeepingPostingRejection.EntrySemanticsViolation economicNullJournal =
-        BookkeepingPostingRejection.economicNullJournal(BookkeepingEntryKind.JOURNAL);
+        BookkeepingEntrySemanticsViolationFactory.economicNullJournal(
+            "entryKind", BookkeepingEntryKind.DIRECT_JOURNAL.wireValue());
+    BookkeepingPostingRejection.EntrySemanticsViolation cashBasisAccountRequired =
+        BookkeepingEntrySemanticsViolationFactory.cashBasisAccountRequired(
+            "entryKind",
+            BookkeepingEntryKind.DIRECT_JOURNAL.wireValue(),
+            List.of(new AccountCode("3000"), new AccountCode("3200")));
 
     assertEquals("account-type-mismatch", accountTypeMismatch.code());
     assertEquals("cashAccountCode", accountTypeMismatch.field());
     assertEquals(
-        "Entry kind 'CASH_REVENUE' requires cashAccountCode '2000' to be account type 'ASSET', but the declared account type is 'REVENUE'.",
+        "entryKind 'SALE' requires cashAccountCode '2000' to be account type 'ASSET', but the declared account type is 'REVENUE'.",
         accountTypeMismatch.message());
     assertEquals("financial-position-classification-mismatch", classificationMismatch.code());
     assertEquals("equityAccountCode", classificationMismatch.field());
     assertEquals(
-        "Entry kind 'EQUITY_WITHDRAWAL' requires equityAccountCode '3200' to use financialPositionLineClassification 'EQUITY_WITHDRAWAL', but the declared account uses '<absent>'.",
+        "entryKind 'OWNER_WITHDRAWAL' requires equityAccountCode '3200' to use financialPositionLineClassification 'EQUITY_WITHDRAWAL', but the declared account uses '<absent>'.",
         classificationMismatch.message());
     assertEquals("source-document-type-not-accepted", sourceDocumentTypeNotAccepted.code());
     assertEquals(
         "evidence.sourceDocuments[].sourceDocumentType", sourceDocumentTypeNotAccepted.field());
     assertEquals(
-        "Entry kind 'CASH_EXPENSE' does not accept sourceDocumentType 'invoice'. Accepted values: expense-receipt, cash-disbursement.",
+        "entryKind 'EXPENSE' does not accept evidence.sourceDocuments[].sourceDocumentType 'invoice'. Accepted values: expense-receipt, cash-disbursement.",
         sourceDocumentTypeNotAccepted.message());
     assertEquals("economic-null-journal", economicNullJournal.code());
     assertEquals("lines", economicNullJournal.field());
     assertEquals(
-        "Entry kind 'JOURNAL' uses journal lines whose debit-credit netting reduces every referenced account to zero, so the journal would record no durable account movement.",
+        "entryKind 'DIRECT_JOURNAL' uses journal lines whose debit-credit netting reduces every referenced account to zero, so the journal would record no durable account movement.",
         economicNullJournal.message());
+    assertEquals("cash-basis-account-required", cashBasisAccountRequired.code());
+    assertEquals("lines[].accountCode", cashBasisAccountRequired.field());
+    assertEquals(
+        "entryKind 'DIRECT_JOURNAL' requires at least one lines[].accountCode to reference a declared cash-and-cash-equivalent asset account, but the request references only '3000', '3200'.",
+        cashBasisAccountRequired.message());
     assertNull(
         new BookkeepingPostingRejection.EntrySemanticsViolation("code", null, "message").field());
   }
 
   @Test
+  void cashBasisAccountRequired_rejectsEmptyReferencedAccountLists() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                BookkeepingEntrySemanticsViolationFactory.cashBasisAccountRequired(
+                    "entryKind", BookkeepingEntryKind.DIRECT_JOURNAL.wireValue(), List.of()));
+
+    assertEquals("referencedAccountCodes must contain at least one item.", exception.getMessage());
+  }
+
+  @Test
   void entrySemanticsFactoriesSupportCanonicalEntryKindsAndReferencedAccountSets() {
     BookkeepingPostingRejection.EntrySemanticsViolation accountTypeMismatch =
-        BookkeepingPostingRejection.accountTypeMismatch(
-            BookkeepingEntryKind.JOURNAL,
+        BookkeepingEntrySemanticsViolationFactory.accountTypeMismatch(
+            "entryKind",
+            BookkeepingEntryKind.SALE.wireValue(),
             "cashAccountCode",
             new AccountCode("2000"),
             AccountType.ASSET,
             AccountType.REVENUE);
     BookkeepingPostingRejection.EntrySemanticsViolation classificationMismatch =
-        BookkeepingPostingRejection.financialPositionClassificationMismatch(
-            BookkeepingEntryKind.JOURNAL,
+        BookkeepingEntrySemanticsViolationFactory.financialPositionClassificationMismatch(
+            "entryKind",
+            BookkeepingEntryKind.OWNER_WITHDRAWAL.wireValue(),
             "equityAccountCode",
             new AccountCode("3200"),
             FinancialPositionLineClassification.EQUITY_WITHDRAWAL,
             FinancialPositionLineClassification.OTHER_EQUITY);
     BookkeepingPostingRejection.EntrySemanticsViolation sourceDocumentTypeNotAccepted =
-        BookkeepingPostingRejection.sourceDocumentTypeNotAccepted(
-            BookkeepingEntryKind.JOURNAL,
+        BookkeepingEntrySemanticsViolationFactory.sourceDocumentTypeNotAccepted(
+            "entryKind",
+            BookkeepingEntryKind.SALE.wireValue(),
             new SourceDocumentType("invoice"),
             List.of("cash-receipt", "bank-deposit"));
     BookkeepingPostingRejection.EntrySemanticsViolation distinctRoleAccountsRequired =
-        BookkeepingPostingRejection.distinctRoleAccountsRequired(
-            BookkeepingEntryKind.JOURNAL,
+        BookkeepingEntrySemanticsViolationFactory.distinctRoleAccountsRequired(
+            "entryKind",
+            BookkeepingEntryKind.SALE.wireValue(),
             "cashAccountCode",
             "revenueAccountCode",
             new AccountCode("1000"));
 
     assertEquals(
-        "Entry kind 'JOURNAL' requires cashAccountCode '2000' to be account type 'ASSET', but the declared account type is 'REVENUE'.",
+        "entryKind 'SALE' requires cashAccountCode '2000' to be account type 'ASSET', but the declared account type is 'REVENUE'.",
         accountTypeMismatch.message());
     assertEquals(
-        "Entry kind 'JOURNAL' requires equityAccountCode '3200' to use financialPositionLineClassification 'EQUITY_WITHDRAWAL', but the declared account uses 'OTHER_EQUITY'.",
+        "entryKind 'OWNER_WITHDRAWAL' requires equityAccountCode '3200' to use financialPositionLineClassification 'EQUITY_WITHDRAWAL', but the declared account uses 'OTHER_EQUITY'.",
         classificationMismatch.message());
     assertEquals(
-        "Entry kind 'JOURNAL' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit.",
+        "entryKind 'SALE' does not accept evidence.sourceDocuments[].sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit.",
         sourceDocumentTypeNotAccepted.message());
     assertEquals(
-        "Entry kind 'JOURNAL' requires cashAccountCode and revenueAccountCode to reference distinct accounts, but both point to '1000'.",
+        "entryKind 'SALE' requires cashAccountCode and revenueAccountCode to reference distinct accounts, but both point to '1000'.",
         distinctRoleAccountsRequired.message());
     assertEquals(
         List.of(new AccountCode("1000"), new AccountCode("2000")),
         List.copyOf(
-            BookkeepingPostingRejection.referencedAccountSet(
+            BookkeepingEntrySemanticsViolationFactory.referencedAccountSet(
                 new AccountCode("1000"), new AccountCode("2000"), new AccountCode("1000"))));
 
     NullPointerException nullAccountCode =
         assertThrows(
             NullPointerException.class,
             () ->
-                BookkeepingPostingRejection.referencedAccountSet(
+                BookkeepingEntrySemanticsViolationFactory.referencedAccountSet(
                     new AccountCode("1000"), nullOf(), new AccountCode("2000")));
     assertEquals("accountCode", nullAccountCode.getMessage());
   }

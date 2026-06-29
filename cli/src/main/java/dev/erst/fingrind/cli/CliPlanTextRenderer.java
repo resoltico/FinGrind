@@ -2,7 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
@@ -97,9 +97,12 @@ final class CliPlanTextRenderer {
           + CliPlanDetailTextRenderer.displayLabel(step.detailKind().wireValue())
           + ")";
     }
-    LedgerBoundaryPhase boundaryPhase = step.boundaryPhase();
-    if (boundaryPhase != null) {
-      return base + " (" + CliPlanDetailTextRenderer.displayLabel(boundaryPhase.wireValue()) + ")";
+    LedgerBoundaryCheckpoint boundaryCheckpoint = step.boundaryCheckpoint();
+    if (boundaryCheckpoint != null) {
+      return base
+          + " ("
+          + CliPlanDetailTextRenderer.displayLabel(boundaryCheckpoint.wireValue())
+          + ")";
     }
     return base;
   }

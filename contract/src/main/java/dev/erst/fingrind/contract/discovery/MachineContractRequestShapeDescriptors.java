@@ -9,6 +9,7 @@ final class MachineContractRequestShapeDescriptors {
         MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
         MachineContractPostEntrySchemas.descriptor(),
         MachineContractDeclareAccountSchemas.descriptor(),
+        MachineContractDeclareTaxRegistrationSchemas.descriptor(),
         MachineContractLedgerPlanSchemas.descriptor());
   }
 }

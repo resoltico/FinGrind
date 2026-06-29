@@ -4,11 +4,11 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteAdministrationSession;
-import dev.erst.fingrind.sqlite.SqlitePeriodResultTransferSession;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSession;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
 import dev.erst.fingrind.sqlite.SqliteRekeySession;
+import dev.erst.fingrind.sqlite.SqliteReportingPeriodCloseSession;
 import java.time.Clock;
 import java.util.function.Function;
 
@@ -50,12 +50,12 @@ final class SqliteCliWorkflowSessions {
         ContractDecision::rejected);
   }
 
-  static <T> ContractDecision<T> withPeriodResultTransferSession(
-      ContractDecision<SqlitePeriodResultTransferSession> decision,
-      Function<SqlitePeriodResultTransferSession, T> work) {
+  static <T> ContractDecision<T> withReportingPeriodCloseSession(
+      ContractDecision<SqliteReportingPeriodCloseSession> decision,
+      Function<SqliteReportingPeriodCloseSession, T> work) {
     return decision.fold(
         bookSession -> {
-          try (SqlitePeriodResultTransferSession ignored = bookSession) {
+          try (SqliteReportingPeriodCloseSession ignored = bookSession) {
             return ContractDecision.accepted(work.apply(bookSession));
           }
         },

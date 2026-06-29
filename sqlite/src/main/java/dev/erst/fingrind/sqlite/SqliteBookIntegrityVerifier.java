@@ -89,6 +89,12 @@ final class SqliteBookIntegrityVerifier {
         && !SqliteStatementQueries.existsRow(
             activeDatabase,
             SqlitePostingSql.FIND_INVALID_PERIOD_RESULT_TRANSFER_TARGET_ACCOUNT,
+            statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase, SqlitePostingSql.FIND_INVALID_FISCAL_YEAR_CLOSE_LINK, statement -> {})
+        && !SqliteStatementQueries.existsRow(
+            activeDatabase,
+            SqlitePostingSql.FIND_INVALID_FISCAL_YEAR_CLOSE_TARGET_ACCOUNT,
             statement -> {});
   }
 
@@ -120,7 +126,7 @@ final class SqliteBookIntegrityVerifier {
   }
 
   private static boolean hasSingleOkResult(SqliteNativeDatabase activeDatabase, String sql) {
-    SqliteStatementQueries.OptionalTextRow row =
+    SqliteOptionalTextRow row =
         SqliteStatementQueries.loadOptionalTextRow(activeDatabase, sql, statement -> {});
     return row.singleRow() && "ok".equals(row.value().orElse(null));
   }

@@ -130,34 +130,9 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             },
             "operationIdContract": {
                 "help": "HELP",
-                "version": "VERSION",
                 "capabilities": "CAPABILITIES",
                 "printRequestTemplate": "PRINT_REQUEST_TEMPLATE",
                 "printPlanTemplate": "PRINT_PLAN_TEMPLATE",
-                "generateBookKeyFile": "GENERATE_BOOK_KEY_FILE",
-                "openBook": "OPEN_BOOK",
-                "rekeyBook": "REKEY_BOOK",
-                "backupBook": "BACKUP_BOOK",
-                "restoreBook": "RESTORE_BOOK",
-                "inspectRekeyRollback": "INSPECT_REKEY_ROLLBACK",
-                "deleteRekeyRollback": "DELETE_REKEY_ROLLBACK",
-                "restoreRekeyRollback": "RESTORE_REKEY_ROLLBACK",
-                "declareAccount": "DECLARE_ACCOUNT",
-                "transferPeriodResult": "TRANSFER_PERIOD_RESULT",
-                "inspectBook": "INSPECT_BOOK",
-                "listAccounts": "LIST_ACCOUNTS",
-                "getPosting": "GET_POSTING",
-                "listPostings": "LIST_POSTINGS",
-                "accountBalance": "ACCOUNT_BALANCE",
-                "trialBalance": "TRIAL_BALANCE",
-                "accountLedger": "ACCOUNT_LEDGER",
-                "periodSummary": "PERIOD_SUMMARY",
-                "financialPosition": "FINANCIAL_POSITION",
-                "incomeStatement": "INCOME_STATEMENT",
-                "changesInEquity": "CHANGES_IN_EQUITY",
-                "executePlan": "EXECUTE_PLAN",
-                "preflightEntry": "PREFLIGHT_ENTRY",
-                "postEntry": "POST_ENTRY",
             },
         },
     )
@@ -273,6 +248,7 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "HELP": "help",
             "VERSION": "version",
             "CAPABILITIES": "capabilities",
+            "ENVIRONMENT": "environment",
             "PRINT_REQUEST_TEMPLATE": "print-request-template",
             "PRINT_PLAN_TEMPLATE": "print-plan-template",
             "GENERATE_BOOK_KEY_FILE": "generate-book-key-file",
@@ -284,21 +260,32 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "DELETE_REKEY_ROLLBACK": "delete-rekey-rollback",
             "RESTORE_REKEY_ROLLBACK": "restore-rekey-rollback",
             "DECLARE_ACCOUNT": "declare-account",
-            "TRANSFER_PERIOD_RESULT": "transfer-period-result",
+            "DECLARE_TAX_REGISTRATION": "declare-tax-registration",
+            "INTERIM_RESULT_SWEEP": "interim-result-sweep",
+            "FISCAL_YEAR_CLOSE": "fiscal-year-close",
             "INSPECT_BOOK": "inspect-book",
             "LIST_ACCOUNTS": "list-accounts",
             "GET_POSTING": "get-posting",
             "LIST_POSTINGS": "list-postings",
+            "LIST_TAX_REGISTRATIONS": "list-tax-registrations",
+            "TAX_OBLIGATION": "tax-obligation",
             "ACCOUNT_BALANCE": "account-balance",
             "TRIAL_BALANCE": "trial-balance",
             "ACCOUNT_LEDGER": "account-ledger",
             "PERIOD_SUMMARY": "period-summary",
             "FINANCIAL_POSITION": "financial-position",
             "INCOME_STATEMENT": "income-statement",
+            "CASH_FLOW_STATEMENT": "cash-flow-statement",
             "CHANGES_IN_EQUITY": "changes-in-equity",
             "EXECUTE_PLAN": "execute-plan",
             "PREFLIGHT_ENTRY": "preflight-entry",
             "POST_ENTRY": "post-entry",
+            "RECORD_SALE": "record-sale",
+            "RECORD_EXPENSE": "record-expense",
+            "RECORD_OWNER_CONTRIBUTION": "record-owner-contribution",
+            "RECORD_OWNER_WITHDRAWAL": "record-owner-withdrawal",
+            "RECORD_OPENING_POSITION": "record-opening-position",
+            "RECORD_REVERSAL": "record-reversal",
         },
     )
 
@@ -345,7 +332,12 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     assert loaded["releasePublication"]["containerStagingImageName"] == "fingrind-publication-staging"
     assert loaded["releasePublication"]["containerPlatforms"] == ["linux/amd64"]
     assert loaded["operationIds"]["version"] == "version"
+    assert loaded["operationIds"]["environment"] == "environment"
     assert loaded["operationIds"]["generateBookKeyFile"] == "generate-book-key-file"
+    assert loaded["operationIds"]["declareTaxRegistration"] == "declare-tax-registration"
+    assert loaded["operationIds"]["listTaxRegistrations"] == "list-tax-registrations"
+    assert loaded["operationIds"]["taxObligation"] == "tax-obligation"
+    assert loaded["operationIds"]["cashFlowStatement"] == "cash-flow-statement"
 
     write_json(
         protocol_root / "bundle-layout-contract.json",
@@ -480,7 +472,7 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         protocol_root / "operation-id-contract.json",
         {
             **read_json(protocol_root / "operation-id-contract.json"),
-            "SURPRISE_OPERATION": "surprise-operation",
+            "SURPRISE__OPERATION": "surprise-operation",
         },
     )
     try:
@@ -488,9 +480,9 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             fixture_root, os_name="Linux", architecture="x86_64"
         )
     except ValueError as exc:
-        assert "declared an enum without one canonical semantic key" in str(exc)
+        assert "must be one non-blank upper-snake enum name" in str(exc)
     else:
-        raise AssertionError("expected undeclared operation-id semantic-key validation failure")
+        raise AssertionError("expected malformed operation-id enum-key validation failure")
 
     write_json(
         protocol_root / "operation-id-contract.json",
@@ -498,6 +490,7 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "HELP": "help",
             "VERSION": "version",
             "CAPABILITIES": "capabilities",
+            "ENVIRONMENT": "environment",
             "PRINT_REQUEST_TEMPLATE": "print-request-template",
             "PRINT_PLAN_TEMPLATE": "print-plan-template",
             "GENERATE_BOOK_KEY_FILE": "generate-book-key-file",
@@ -509,21 +502,32 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "DELETE_REKEY_ROLLBACK": "delete-rekey-rollback",
             "RESTORE_REKEY_ROLLBACK": "restore-rekey-rollback",
             "DECLARE_ACCOUNT": "declare-account",
-            "TRANSFER_PERIOD_RESULT": "transfer-period-result",
+            "DECLARE_TAX_REGISTRATION": "declare-tax-registration",
+            "INTERIM_RESULT_SWEEP": "interim-result-sweep",
+            "FISCAL_YEAR_CLOSE": "fiscal-year-close",
             "INSPECT_BOOK": "inspect-book",
             "LIST_ACCOUNTS": "list-accounts",
             "GET_POSTING": "get-posting",
             "LIST_POSTINGS": "list-postings",
+            "LIST_TAX_REGISTRATIONS": "list-tax-registrations",
+            "TAX_OBLIGATION": "tax-obligation",
             "ACCOUNT_BALANCE": "account-balance",
             "TRIAL_BALANCE": "trial-balance",
             "ACCOUNT_LEDGER": "account-ledger",
             "PERIOD_SUMMARY": "period-summary",
             "FINANCIAL_POSITION": "financial-position",
             "INCOME_STATEMENT": "income-statement",
+            "CASH_FLOW_STATEMENT": "cash-flow-statement",
             "CHANGES_IN_EQUITY": "changes-in-equity",
             "EXECUTE_PLAN": "execute-plan",
             "PREFLIGHT_ENTRY": "preflight-entry",
             "POST_ENTRY": "post-entry",
+            "RECORD_SALE": "record-sale",
+            "RECORD_EXPENSE": "record-expense",
+            "RECORD_OWNER_CONTRIBUTION": "record-owner-contribution",
+            "RECORD_OWNER_WITHDRAWAL": "record-owner-withdrawal",
+            "RECORD_OPENING_POSITION": "record-opening-position",
+            "RECORD_REVERSAL": "record-reversal",
         },
     )
     (

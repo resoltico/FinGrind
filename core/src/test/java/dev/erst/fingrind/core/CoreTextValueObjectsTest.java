@@ -79,20 +79,20 @@ class CoreTextValueObjectsTest {
     BookIdentity bookIdentity =
         new BookIdentity(
             entityProfile,
-            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             functionalCurrency,
             fiscalYearStart);
 
     assertEquals(entityName, bookIdentity.entityName());
     assertEquals(
-        AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+        AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
         bookIdentity.bookDoctrine().accountingKernelProfileId());
     assertThrows(
         NullPointerException.class,
         () ->
             new BookIdentity(
                 nullOf(),
-                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                 functionalCurrency,
                 fiscalYearStart));
     assertThrows(
@@ -103,7 +103,7 @@ class CoreTextValueObjectsTest {
         () ->
             new BookIdentity(
                 entityProfile,
-                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                 nullOf(),
                 fiscalYearStart));
     assertThrows(
@@ -111,7 +111,7 @@ class CoreTextValueObjectsTest {
         () ->
             new BookIdentity(
                 entityProfile,
-                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                 functionalCurrency,
                 nullOf()));
   }
@@ -120,21 +120,21 @@ class CoreTextValueObjectsTest {
   void bookDoctrine_requiresEveryConstituentValueObject() {
     BookDoctrine doctrine =
         new BookDoctrine(
-            AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+            AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
             AccountingBasis.CASH_BASIS,
             AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
             EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-            BookTemplateId.OWNER_MANAGED_SERVICE_CASH);
+            BookTemplateId.OWNER_MANAGED_SERVICE);
 
     assertEquals(
-        AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+        AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
         doctrine.accountingKernelProfileId());
     assertEquals(AccountingBasis.CASH_BASIS, doctrine.accountingBasis());
     assertEquals(
         AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
         doctrine.accountingFrameworkPosition());
     assertEquals(EntityForm.OWNER_MANAGED_SINGLE_ENTITY, doctrine.entityForm());
-    assertEquals(BookTemplateId.OWNER_MANAGED_SERVICE_CASH, doctrine.bookTemplateId());
+    assertEquals(BookTemplateId.OWNER_MANAGED_SERVICE, doctrine.bookTemplateId());
     assertThrows(
         NullPointerException.class,
         () ->
@@ -143,39 +143,39 @@ class CoreTextValueObjectsTest {
                 AccountingBasis.CASH_BASIS,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+                BookTemplateId.OWNER_MANAGED_SERVICE));
     assertThrows(
         NullPointerException.class,
         () ->
             new BookDoctrine(
-                AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
                 nullOf(),
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+                BookTemplateId.OWNER_MANAGED_SERVICE));
     assertThrows(
         NullPointerException.class,
         () ->
             new BookDoctrine(
-                AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
                 AccountingBasis.CASH_BASIS,
                 nullOf(),
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+                BookTemplateId.OWNER_MANAGED_SERVICE));
     assertThrows(
         NullPointerException.class,
         () ->
             new BookDoctrine(
-                AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
                 AccountingBasis.CASH_BASIS,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 nullOf(),
-                BookTemplateId.OWNER_MANAGED_SERVICE_CASH));
+                BookTemplateId.OWNER_MANAGED_SERVICE));
     assertThrows(
         NullPointerException.class,
         () ->
             new BookDoctrine(
-                AccountingKernelProfiles.INTERNAL_MANAGEMENT_CASH_BOOKKEEPING_KERNEL,
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
                 AccountingBasis.CASH_BASIS,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
@@ -184,12 +184,6 @@ class CoreTextValueObjectsTest {
 
   @Test
   void bookDoctrineVocabularyAndBuiltInDoctrineAreStable() {
-    assertEquals(List.of("CASH_BASIS"), AccountingBasis.wireValues());
-    assertEquals(
-        AccountingBasis.CASH_BASIS,
-        AccountingBasis.fromWireValue(AccountingBasis.CASH_BASIS.wireValue()));
-    assertThrows(IllegalArgumentException.class, () -> AccountingBasis.fromWireValue("cash-basis"));
-
     assertEquals(
         List.of("NON_STATUTORY_INTERNAL_MANAGEMENT"), AccountingFrameworkPosition.wireValues());
     assertEquals(
@@ -208,43 +202,49 @@ class CoreTextValueObjectsTest {
         IllegalArgumentException.class,
         () -> EntityForm.fromWireValue("owner-managed-single-entity"));
 
-    assertEquals(List.of("OWNER_MANAGED_SERVICE_CASH"), BookTemplateId.wireValues());
+    assertEquals(List.of("OWNER_MANAGED_SERVICE"), BookTemplateId.wireValues());
     assertEquals(
-        BookTemplateId.OWNER_MANAGED_SERVICE_CASH,
-        BookTemplateId.fromWireValue(BookTemplateId.OWNER_MANAGED_SERVICE_CASH.wireValue()));
+        BookTemplateId.OWNER_MANAGED_SERVICE,
+        BookTemplateId.fromWireValue(BookTemplateId.OWNER_MANAGED_SERVICE.wireValue()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> BookTemplateId.fromWireValue("owner-managed-service-cash"));
+        () -> BookTemplateId.fromWireValue("owner-managed-service"));
 
+    assertEquals(List.of("CASH_BASIS"), AccountingBasis.wireValues());
     assertEquals(
         AccountingBasis.CASH_BASIS,
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE.accountingBasis());
+        AccountingBasis.fromWireValue(AccountingBasis.CASH_BASIS.wireValue()));
+    assertThrows(IllegalArgumentException.class, () -> AccountingBasis.fromWireValue("cash-basis"));
+
     assertEquals(
         AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE.accountingFrameworkPosition());
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE.accountingFrameworkPosition());
+    assertEquals(
+        AccountingBasis.CASH_BASIS,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE.accountingBasis());
     assertEquals(
         EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE.entityForm());
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE.entityForm());
     assertEquals(
-        BookTemplateId.OWNER_MANAGED_SERVICE_CASH,
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE.bookTemplateId());
+        BookTemplateId.OWNER_MANAGED_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE.bookTemplateId());
   }
 
   @Test
   void accountingKernelProfileId_stripsWhitespaceAndRejectsInvalidValues() {
     assertEquals(
-        "internal-management-cash-bookkeeping-kernel",
-        new AccountingKernelProfileId("  internal-management-cash-bookkeeping-kernel  ").value());
+        "internal-management-bookkeeping-kernel",
+        new AccountingKernelProfileId("  internal-management-bookkeeping-kernel  ").value());
     assertThrows(NullPointerException.class, () -> new AccountingKernelProfileId(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> new AccountingKernelProfileId("   "));
     assertThrows(
         IllegalArgumentException.class, () -> new AccountingKernelProfileId("x".repeat(121)));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new AccountingKernelProfileId("Internal-Management-Cash-Bookkeeping-Kernel"));
+        () -> new AccountingKernelProfileId("Internal-Management-Bookkeeping-Kernel"));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new AccountingKernelProfileId("internal_management_cash_bookkeeping_kernel"));
+        () -> new AccountingKernelProfileId("internal_management_bookkeeping_kernel"));
   }
 
   @Test
@@ -263,16 +263,6 @@ class CoreTextValueObjectsTest {
 
   @Test
   void retainedEvidenceSupportTypesValidateCanonicalValues() {
-    assertEquals(
-        "evidence://documents/invoice-1.pdf",
-        new StorageLocator("  evidence://documents/invoice-1.pdf  ").value());
-    assertThrows(IllegalArgumentException.class, () -> new StorageLocator("   "));
-    assertThrows(IllegalArgumentException.class, () -> new StorageLocator("x".repeat(513)));
-
-    String sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    assertEquals(sha256, new ContentSha256(sha256).value());
-    assertThrows(IllegalArgumentException.class, () -> new ContentSha256("abc"));
-
     assertEquals("APPROVED", ApprovalDecision.APPROVED.wireValue());
     assertEquals("REJECTED", ApprovalDecision.REJECTED.wireValue());
     assertEquals(ApprovalDecision.APPROVED, ApprovalDecision.fromWireValue("APPROVED"));
@@ -292,6 +282,7 @@ class CoreTextValueObjectsTest {
             "EQUITY_CONTRIBUTION",
             "EQUITY_WITHDRAWAL",
             "RESULT_HOLDING",
+            "RETAINED_ACCUMULATED",
             "RESERVE",
             "OTHER_EQUITY"),
         FinancialPositionLineClassification.wireValues());
@@ -304,6 +295,7 @@ class CoreTextValueObjectsTest {
             "EQUITY_CONTRIBUTION",
             "EQUITY_WITHDRAWAL",
             "RESULT_HOLDING",
+            "RETAINED_ACCUMULATED",
             "RESERVE",
             "OTHER_EQUITY"),
         FinancialPositionLineClassification.declaredAccountWireValues());
@@ -328,9 +320,14 @@ class CoreTextValueObjectsTest {
         AccountType.EQUITY, FinancialPositionLineClassification.EQUITY_WITHDRAWAL.accountType());
     assertEquals(
         AccountType.EQUITY, FinancialPositionLineClassification.RESULT_HOLDING.accountType());
+    assertEquals(
+        AccountType.EQUITY, FinancialPositionLineClassification.RETAINED_ACCUMULATED.accountType());
     assertEquals(AccountType.EQUITY, FinancialPositionLineClassification.RESERVE.accountType());
     assertEquals(
         AccountType.EQUITY, FinancialPositionLineClassification.OTHER_EQUITY.accountType());
+    assertEquals(
+        NormalBalance.CREDIT,
+        FinancialPositionLineClassification.RETAINED_ACCUMULATED.normalBalance());
     assertThrows(
         IllegalArgumentException.class,
         () -> FinancialPositionLineClassification.fromWireValue("current-asset"));
@@ -402,6 +399,12 @@ class CoreTextValueObjectsTest {
     assertEquals(
         LocalDate.parse("2026-04-01"),
         aprilStart.containingFiscalYearStart(LocalDate.parse("2026-04-01")));
+    assertEquals(
+        LocalDate.parse("2026-03-31"),
+        aprilStart.containingFiscalYearEnd(LocalDate.parse("2026-03-31")));
+    assertEquals(
+        LocalDate.parse("2027-03-31"),
+        aprilStart.containingFiscalYearEnd(LocalDate.parse("2026-04-01")));
     assertTrue(
         aprilStart.containsSingleFiscalYear(
             LocalDate.parse("2026-04-01"), LocalDate.parse("2027-03-31")));
@@ -414,10 +417,17 @@ class CoreTextValueObjectsTest {
     assertEquals(
         LocalDate.parse("2024-02-29"),
         leapDayStart.containingFiscalYearStart(LocalDate.parse("2024-03-01")));
+    assertEquals(
+        LocalDate.parse("2026-02-27"),
+        leapDayStart.containingFiscalYearEnd(LocalDate.parse("2025-03-01")));
+    assertEquals(
+        LocalDate.parse("2025-02-27"),
+        leapDayStart.containingFiscalYearEnd(LocalDate.parse("2024-03-01")));
     assertThrows(NullPointerException.class, () -> FiscalYearStart.parse(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> FiscalYearStart.parse("1-1"));
     assertThrows(IllegalArgumentException.class, () -> FiscalYearStart.parse("13-01"));
     assertThrows(NullPointerException.class, () -> aprilStart.containingFiscalYearStart(nullOf()));
+    assertThrows(NullPointerException.class, () -> aprilStart.containingFiscalYearEnd(nullOf()));
     assertThrows(
         NullPointerException.class,
         () -> aprilStart.containsSingleFiscalYear(nullOf(), LocalDate.parse("2026-04-01")));
@@ -486,34 +496,32 @@ class CoreTextValueObjectsTest {
         java.util.List.of("ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"),
         AccountType.wireValues());
     assertThrows(IllegalArgumentException.class, () -> AccountType.fromWireValue("asset"));
-
-    assertEquals("ORDINARY", AccountRole.ORDINARY.wireValue());
-    assertEquals("POLARITY_INVERTED", AccountRole.POLARITY_INVERTED.wireValue());
-    assertEquals("POLARITY_INVERTED", AccountRole.POLARITY_INVERTED.wireValue());
-    assertEquals(AccountRole.ORDINARY, AccountRole.fromWireValue("ORDINARY"));
-    assertEquals(AccountRole.POLARITY_INVERTED, AccountRole.fromWireValue("POLARITY_INVERTED"));
-    assertEquals(java.util.List.of("ORDINARY", "POLARITY_INVERTED"), AccountRole.wireValues());
-    assertThrows(IllegalArgumentException.class, () -> AccountRole.fromWireValue("ordinary"));
   }
 
   @Test
   void postingKindWireVocabularyAndClassificationRemainStable() {
     assertEquals("STANDARD", PostingKind.STANDARD.wireValue());
     assertEquals("OPENING_BALANCE", PostingKind.OPENING_BALANCE.wireValue());
-    assertEquals("PERIOD_RESULT_TRANSFER", PostingKind.PERIOD_RESULT_TRANSFER.wireValue());
+    assertEquals("INTERIM_RESULT_SWEEP", PostingKind.INTERIM_RESULT_SWEEP.wireValue());
+    assertEquals("FISCAL_YEAR_CLOSE", PostingKind.FISCAL_YEAR_CLOSE.wireValue());
     assertEquals(PostingKind.STANDARD, PostingKind.fromWireValue("STANDARD"));
     assertEquals(PostingKind.OPENING_BALANCE, PostingKind.fromWireValue("OPENING_BALANCE"));
     assertEquals(
-        PostingKind.PERIOD_RESULT_TRANSFER, PostingKind.fromWireValue("PERIOD_RESULT_TRANSFER"));
+        PostingKind.INTERIM_RESULT_SWEEP, PostingKind.fromWireValue("INTERIM_RESULT_SWEEP"));
+    assertEquals(PostingKind.FISCAL_YEAR_CLOSE, PostingKind.fromWireValue("FISCAL_YEAR_CLOSE"));
     assertEquals(
-        java.util.List.of("STANDARD", "OPENING_BALANCE", "PERIOD_RESULT_TRANSFER"),
+        java.util.List.of(
+            "STANDARD", "OPENING_BALANCE", "INTERIM_RESULT_SWEEP", "FISCAL_YEAR_CLOSE"),
         PostingKind.wireValues());
     assertThrows(IllegalArgumentException.class, () -> PostingKind.fromWireValue("CLOSING"));
     assertTrue(PostingKind.STANDARD.isStandard());
     assertTrue(PostingKind.OPENING_BALANCE.isOpeningBalance());
-    assertTrue(PostingKind.PERIOD_RESULT_TRANSFER.isGenerated());
-    assertFalse(PostingKind.PERIOD_RESULT_TRANSFER.isStandard());
-    assertFalse(PostingKind.PERIOD_RESULT_TRANSFER.isOpeningBalance());
+    assertTrue(PostingKind.INTERIM_RESULT_SWEEP.isGenerated());
+    assertTrue(PostingKind.FISCAL_YEAR_CLOSE.isGenerated());
+    assertFalse(PostingKind.INTERIM_RESULT_SWEEP.isStandard());
+    assertFalse(PostingKind.INTERIM_RESULT_SWEEP.isOpeningBalance());
+    assertFalse(PostingKind.FISCAL_YEAR_CLOSE.isStandard());
+    assertFalse(PostingKind.FISCAL_YEAR_CLOSE.isOpeningBalance());
     assertFalse(PostingKind.STANDARD.isGenerated());
     assertFalse(PostingKind.OPENING_BALANCE.isGenerated());
   }
@@ -537,10 +545,12 @@ class CoreTextValueObjectsTest {
     assertTrue(PostingCoverage.NON_CLOSING_POSTINGS.isNonClosingOnly());
     assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.STANDARD));
     assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.OPENING_BALANCE));
-    assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.PERIOD_RESULT_TRANSFER));
+    assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.INTERIM_RESULT_SWEEP));
+    assertTrue(PostingCoverage.ALL_POSTING_KINDS.includes(PostingKind.FISCAL_YEAR_CLOSE));
     assertTrue(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.STANDARD));
     assertTrue(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.OPENING_BALANCE));
-    assertFalse(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.PERIOD_RESULT_TRANSFER));
+    assertFalse(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.INTERIM_RESULT_SWEEP));
+    assertFalse(PostingCoverage.NON_CLOSING_POSTINGS.includes(PostingKind.FISCAL_YEAR_CLOSE));
     assertThrows(
         NullPointerException.class, () -> PostingCoverage.ALL_POSTING_KINDS.includes(nullOf()));
   }

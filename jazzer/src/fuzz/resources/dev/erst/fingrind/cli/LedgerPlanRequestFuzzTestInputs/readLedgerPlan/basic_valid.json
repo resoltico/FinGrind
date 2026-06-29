@@ -17,10 +17,10 @@
         "accountCode": "1000",
         "accountName": "Cash",
         "accountType": "ASSET",
-        "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": "CURRENT_ASSET",
-        "profitAndLossLineClassification": null
+        "profitAndLossLineClassification": null,
+        "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
       }
     },
     {
@@ -30,7 +30,6 @@
         "accountCode": "2000",
         "accountName": "Revenue",
         "accountType": "REVENUE",
-        "accountRole": "ORDINARY",
         "accountNodeKind": "POSTABLE",
         "financialPositionLineClassification": null,
         "profitAndLossLineClassification": "OPERATING_REVENUE"
@@ -38,10 +37,9 @@
     },
     {
       "stepId": "post-sale",
-      "kind": "post-entry",
+      "kind": "record-sale",
       "posting": {
-        "entryKind": "JOURNAL",
-        "recipeKind": "CASH_REVENUE",
+        "entryKind": "SALE",
         "effectiveDate": "2026-04-07",
         "cashAccountCode": "1000",
         "revenueAccountCode": "2000",
@@ -54,13 +52,12 @@
             {
               "sourceDocumentId": "document-idem-plan-1",
               "sourceDocumentType": "cash-receipt",
-              "documentDate": "2026-04-07",
-              "capturedAt": "2026-04-07T10:15:30Z",
-              "storageLocator": "vault://fixtures/document-idem-plan-1",
-              "contentSha256": "6a278323d58e3ee9b2cf7411ed54fdf9230592b46a1c78918a39bf404a22e6c5"
+              "documentDate": "2026-04-07"
             }
           ],
-          "approvals": []
+          "approvals": [
+
+          ]
         },
         "provenance": {
           "actorId": "agent-1",

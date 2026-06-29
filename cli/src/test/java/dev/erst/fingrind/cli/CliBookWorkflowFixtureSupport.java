@@ -30,7 +30,7 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   protected static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }
@@ -102,17 +102,30 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         supportedBookFormatVersion,
         initializedAt,
         bookIdentity(),
-        resultTransferReadyInspection());
+        readyCloseReadiness());
   }
 
-  protected static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
-    return new BookInspection.ResultTransferReadiness(
-        true,
-        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
-        new AccountCode("3200"),
-        null,
-        null,
-        List.of());
+  protected static BookInspection.CloseReadiness readyCloseReadiness() {
+    return new BookInspection.CloseReadiness(
+        readyCloseTarget(
+            FinancialPositionLineClassification.RESULT_HOLDING, new AccountCode("3200")),
+        readyCloseTarget(
+            FinancialPositionLineClassification.RETAINED_ACCUMULATED, new AccountCode("3300")));
+  }
+
+  protected static BookInspection.CloseTargetReadiness readyCloseTarget(
+      FinancialPositionLineClassification classification, AccountCode accountCode) {
+    return new BookInspection.CloseTargetReadiness(
+        true, classification, accountCode, null, null, List.of());
+  }
+
+  protected static BookInspection.CloseTargetReadiness blockedCloseTarget(
+      FinancialPositionLineClassification classification,
+      String blockingCode,
+      String blockingMessage,
+      List<AccountCode> candidateAccountCodes) {
+    return new BookInspection.CloseTargetReadiness(
+        false, classification, null, blockingCode, blockingMessage, candidateAccountCodes);
   }
 
   protected static PostingCoverage allPostingKinds() {
@@ -143,10 +156,16 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       int limit,
       Optional<PostingPageCursor> nextCursor) {
     return new PostingPage(
-        bookIdentity(), accountCodeFilter, effectiveDateRange, postings, limit, nextCursor);
+        bookIdentity(),
+        accountCodeFilter,
+        effectiveDateRange,
+        postings,
+        limit,
+        nextCursor,
+        java.util.Map.of());
   }
 
   protected static GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact);
+    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
   }
 }

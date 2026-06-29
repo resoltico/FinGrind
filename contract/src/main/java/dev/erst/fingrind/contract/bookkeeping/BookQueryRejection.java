@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.contract.internal.ContractRejectionDescriptors;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
@@ -48,10 +49,6 @@ public sealed interface BookQueryRejection
     }
   }
 
-  private static ContractResponse.FieldDescriptor detailField(String name, String description) {
-    return new ContractResponse.FieldDescriptor(name, description);
-  }
-
   private static Descriptor descriptorFor(BookQueryRejection rejection) {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
       case BookQueryRejection.BookNotInitialized _ -> Descriptor.BOOK_NOT_INITIALIZED;
@@ -62,56 +59,59 @@ public sealed interface BookQueryRejection
 
   /** Canonical query rejection metadata keyed by stable wire code. */
   enum Descriptor {
-    BOOK_NOT_INITIALIZED,
-    UNKNOWN_ACCOUNT,
-    POSTING_NOT_FOUND;
+    BOOK_NOT_INITIALIZED(
+        "query-book-not-initialized",
+        "Query refused because the selected book does not exist or has not been initialized with "
+            + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+            + ".") {
+      @Override
+      List<ContractResponse.FieldDescriptor> detailFields() {
+        return List.of();
+      }
+    },
+    UNKNOWN_ACCOUNT(
+        "unknown-account",
+        "Query refused because the selected accountCode is not declared in this book.") {
+      @Override
+      List<ContractResponse.FieldDescriptor> detailFields() {
+        return List.of(
+            ContractRejectionDescriptors.detailField(
+                "accountCode",
+                "Undeclared accountCode supplied by the caller for the rejected query."));
+      }
+    },
+    POSTING_NOT_FOUND(
+        "posting-not-found",
+        "Query refused because the selected postingId does not identify a committed posting in this book.") {
+      @Override
+      List<ContractResponse.FieldDescriptor> detailFields() {
+        return List.of(
+            ContractRejectionDescriptors.detailField(
+                "postingId",
+                "Posting identifier supplied by the caller that does not exist in this book."));
+      }
+    };
+
+    private final String code;
+    private final String description;
+
+    Descriptor(String code, String description) {
+      this.code = code;
+      this.description = description;
+    }
 
     private String code() {
-      return switch (this) {
-        case BOOK_NOT_INITIALIZED -> "query-book-not-initialized";
-        case UNKNOWN_ACCOUNT -> "unknown-account";
-        case POSTING_NOT_FOUND -> "posting-not-found";
-      };
-    }
-
-    private String description() {
-      return switch (this) {
-        case BOOK_NOT_INITIALIZED ->
-            "Query refused because the selected book does not exist or has not been initialized with "
-                + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
-                + ".";
-        case UNKNOWN_ACCOUNT ->
-            "Query refused because the selected accountCode is not declared in this book.";
-        case POSTING_NOT_FOUND ->
-            "Query refused because the selected postingId does not identify a committed posting in this book.";
-      };
-    }
-
-    private List<ContractResponse.FieldDescriptor> detailFields() {
-      return switch (this) {
-        case BOOK_NOT_INITIALIZED -> List.of();
-        case UNKNOWN_ACCOUNT ->
-            List.of(
-                detailField(
-                    "accountCode",
-                    "Undeclared accountCode supplied by the caller for the rejected query."));
-        case POSTING_NOT_FOUND ->
-            List.of(
-                detailField(
-                    "postingId",
-                    "Posting identifier supplied by the caller that does not exist in this book."));
-      };
-    }
-
-    private ContractResponse.RejectionDescriptor descriptor() {
-      return new ContractResponse.RejectionDescriptor(
-          code(), description(), detailFields(), List.of());
+      return code;
     }
 
     private static List<ContractResponse.RejectionDescriptor> descriptors() {
-      return List.of(BOOK_NOT_INITIALIZED, UNKNOWN_ACCOUNT, POSTING_NOT_FOUND).stream()
-          .map(Descriptor::descriptor)
-          .toList();
+      return ContractRejectionDescriptors.descriptors(values(), Descriptor::descriptor);
     }
+
+    private ContractResponse.RejectionDescriptor descriptor() {
+      return ContractRejectionDescriptors.descriptor(code, description, detailFields());
+    }
+
+    abstract List<ContractResponse.FieldDescriptor> detailFields();
   }
 }

@@ -11,11 +11,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -27,6 +27,7 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
@@ -36,8 +37,10 @@ import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintTestSupport;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -66,13 +69,31 @@ class PostingAcceptancePolicyTest {
   void rejectionFor_reportsDuplicateIdempotencyBeforeAccountViolations() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
-    book.existingPosting = Optional.of(existingPosting("posting-1", "idem-1"));
+    book.existingPosting =
+        Optional.of(storedRequestPosting(conflictingExistingPosting("posting-1", "idem-1")));
 
     Optional<BookkeepingPostingRejection> rejection =
         POSTING_ACCEPTANCE_POLICY.rejectionFor(command("idem-1"), book);
 
-    assertEquals(Optional.of(new BookkeepingPostingRejection.DuplicateIdempotencyKey()), rejection);
+    assertEquals(Optional.of(new BookkeepingPostingRejection.IdempotencyKeyConflict()), rejection);
     assertEquals(0, book.findAccountsCalls);
+  }
+
+  @Test
+  void decisionFor_replaysMatchingIdempotencyKeyAndFingerprint() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    PostingCommand request = command("idem-replay");
+    CommittedPosting existingPosting = existingPosting("posting-1", "idem-replay");
+    book.existingPosting = Optional.of(storedRequestPosting(existingPosting));
+
+    PostingAcceptancePolicy.Decision decision =
+        POSTING_ACCEPTANCE_POLICY.decisionFor(request, book);
+
+    assertEquals(new PostingAcceptancePolicy.Decision.Replay(existingPosting), decision);
+    assertEquals(
+        RequestFingerprint.CURRENT_VERSION,
+        book.existingPosting.orElseThrow().requestFingerprint().version());
   }
 
   @Test
@@ -120,12 +141,12 @@ class PostingAcceptancePolicyTest {
             new AccountCode("1000"),
             new AccountName("Cash Header"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
             new AccountTaxonomy(
                 AccountNodeKind.HEADER,
                 Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                Optional.empty()),
+                Optional.empty(),
+                Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
     RegisteredAccount revenue =
@@ -179,7 +200,7 @@ class PostingAcceptancePolicyTest {
   }
 
   @Test
-  void rejectionFor_rejectsTransferredPeriodResultAttemptsBeforeAccountChecks() {
+  void rejectionFor_rejectsSweptInterimResultAttemptsBeforeAccountChecks() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
     book.closedThrough = Optional.of(LocalDate.parse("2026-04-07"));
@@ -189,7 +210,7 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.TransferredPeriodResultViolation(
+            new BookkeepingPostingRejection.SweptInterimResultViolation(
                 LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"))),
         rejection);
     assertEquals(0, book.findAccountsCalls);
@@ -204,7 +225,6 @@ class PostingAcceptancePolicyTest {
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
-            AccountRole.ORDINARY,
             financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
@@ -222,8 +242,8 @@ class PostingAcceptancePolicyTest {
     Optional<BookkeepingPostingRejection> rejection =
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
-                PostingKind.PERIOD_RESULT_TRANSFER,
-                dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
+                PostingKind.INTERIM_RESULT_SWEEP,
+                dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
                 "idem-system-command",
                 SourceChannel.SYSTEM,
                 List.of(
@@ -235,6 +255,80 @@ class PostingAcceptancePolicyTest {
   }
 
   @Test
+  void rejectionFor_allowsInternalFiscalYearClosePostingsAfterInterimSweepReachedYearEnd() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    book.closedThrough = Optional.of(LocalDate.parse("2026-12-31"));
+    RegisteredAccount capital =
+        new RegisteredAccount(
+            new AccountCode("3000"),
+            new AccountName("Capital"),
+            AccountType.EQUITY,
+            financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount resultHolding =
+        new RegisteredAccount(
+            new AccountCode("3200"),
+            new AccountName("Result Holding"),
+            AccountType.EQUITY,
+            financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount retainedAccumulated =
+        new RegisteredAccount(
+            new AccountCode("3300"),
+            new AccountName("Retained Accumulated"),
+            AccountType.EQUITY,
+            financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_ACCUMULATED),
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(capital.accountCode(), capital);
+    book.accounts.put(resultHolding.accountCode(), resultHolding);
+    book.accounts.put(retainedAccumulated.accountCode(), retainedAccumulated);
+
+    Optional<BookkeepingPostingRejection> rejection =
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
+            command(
+                PostingKind.FISCAL_YEAR_CLOSE,
+                dev.erst.fingrind.core.PostingOriginKind.FISCAL_YEAR_CLOSE,
+                "idem-fiscal-year-close",
+                SourceChannel.SYSTEM,
+                List.of(
+                    line("3200", JournalLine.EntrySide.DEBIT, "75.00"),
+                    line("3300", JournalLine.EntrySide.CREDIT, "75.00"))),
+            book);
+
+    assertEquals(Optional.empty(), rejection);
+  }
+
+  @Test
+  void rejectionFor_rejectsCallerFiscalYearClosePostingsAfterInterimSweepReachedYearEnd() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    book.closedThrough = Optional.of(LocalDate.parse("2026-12-31"));
+
+    Optional<BookkeepingPostingRejection> rejection =
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(
+            command(
+                PostingKind.FISCAL_YEAR_CLOSE,
+                dev.erst.fingrind.core.PostingOriginKind.FISCAL_YEAR_CLOSE,
+                "idem-fiscal-year-close-cli",
+                SourceChannel.CLI,
+                List.of(
+                    line("3200", JournalLine.EntrySide.DEBIT, "75.00"),
+                    line("3300", JournalLine.EntrySide.CREDIT, "75.00"))),
+            book);
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingPostingRejection.SweptInterimResultViolation(
+                LocalDate.parse("2026-12-31"), LocalDate.parse("2026-04-07"))),
+        rejection);
+    assertEquals(0, book.findAccountsCalls);
+  }
+
+  @Test
   void rejectionFor_rejectsFunctionalCurrencyMismatchBeforeAccountChecks() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
@@ -243,7 +337,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.STANDARD,
-                dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+                dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                 "idem-usd",
                 SourceChannel.CLI,
                 List.of(
@@ -287,7 +381,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION,
                 "idem-opening-revenue",
                 SourceChannel.CLI,
                 List.of(
@@ -297,7 +391,7 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
+            new BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount(
                 new AccountCode("4000"), AccountType.REVENUE)),
         rejection);
   }
@@ -329,7 +423,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION,
                 "idem-opening-expense",
                 SourceChannel.CLI,
                 List.of(
@@ -339,7 +433,7 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount(
+            new BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount(
                 new AccountCode("5000"), AccountType.EXPENSE)),
         rejection);
   }
@@ -371,7 +465,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION,
                 "idem-opening-balance-sheet",
                 SourceChannel.CLI,
                 List.of(
@@ -413,7 +507,7 @@ class PostingAcceptancePolicyTest {
                 openingPosting.journalEntry(),
                 openingPosting.postingLineage(),
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION,
                 openingPosting.evidence(),
                 openingPosting.provenance()),
             ordinaryPosting);
@@ -422,7 +516,7 @@ class PostingAcceptancePolicyTest {
         POSTING_ACCEPTANCE_POLICY.rejectionFor(
             command(
                 PostingKind.OPENING_BALANCE,
-                dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION,
+                dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION,
                 "idem-opening-late",
                 SourceChannel.CLI,
                 List.of(
@@ -432,13 +526,13 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.OpenAccountingPositionWindowClosed(
+            new BookkeepingPostingRejection.OpeningPositionWindowClosed(
                 PostingKind.OPENING_BALANCE, LocalDate.parse("2026-04-07"))),
         rejection);
   }
 
   @Test
-  void rejectionFor_rejectsRetainedEarningsAccountOutsidePeriodResultTransferPosting() {
+  void rejectionFor_rejectsRetainedEarningsAccountOutsideInterimResultSweepPosting() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
     RegisteredAccount resultHolding =
@@ -446,7 +540,6 @@ class PostingAcceptancePolicyTest {
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
-            AccountRole.ORDINARY,
             financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
@@ -472,13 +565,13 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(
         Optional.of(
-            new BookkeepingPostingRejection.ResultHoldingAccountReserved(
-                resultHolding.accountCode())),
+            new BookkeepingPostingRejection.ReservedResultClassification(
+                resultHolding.accountCode(), FinancialPositionLineClassification.RESULT_HOLDING)),
         rejection);
   }
 
   @Test
-  void rejectionFor_allowsRetainedEarningsAccountInsidePeriodResultTransferPosting() {
+  void rejectionFor_allowsRetainedEarningsAccountInsideInterimResultSweepPosting() {
     RecordingValidationBook book = new RecordingValidationBook();
     book.initialized = true;
     RegisteredAccount resultHolding =
@@ -486,7 +579,6 @@ class PostingAcceptancePolicyTest {
             new AccountCode("3200"),
             new AccountName("Retained Earnings"),
             AccountType.EQUITY,
-            AccountRole.ORDINARY,
             financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
@@ -509,9 +601,10 @@ class PostingAcceptancePolicyTest {
                     line("4000", JournalLine.EntrySide.DEBIT, "10.00"),
                     line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
             PostingLineageModel.direct(),
-            PostingKind.PERIOD_RESULT_TRANSFER,
-            dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER,
-            generatedEvidence("idem-close", "period-result-transfer-plan"),
+            PostingKind.INTERIM_RESULT_SWEEP,
+            dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
+            generatedEvidence("idem-close", "interim-result-sweep-plan"),
+            unusedRequestFingerprint(),
             new dev.erst.fingrind.core.CommittedProvenance(
                 new RequestProvenance(
                     new ActorId("actor-1"),
@@ -557,7 +650,7 @@ class PostingAcceptancePolicyTest {
   private static PostingCommand command(String idempotencyKey) {
     return command(
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         idempotencyKey,
         SourceChannel.CLI,
         List.of(
@@ -568,7 +661,7 @@ class PostingAcceptancePolicyTest {
   private static PostingCommand command(String idempotencyKey, List<JournalLine> lines) {
     return command(
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         idempotencyKey,
         SourceChannel.CLI,
         lines);
@@ -597,16 +690,36 @@ class PostingAcceptancePolicyTest {
   }
 
   private static CommittedPosting existingPosting(String postingId, String idempotencyKey) {
-    return new CommittedPosting(
-        new PostingId(postingId),
+    return existingPosting(
+        postingId,
+        idempotencyKey,
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
-                line("2000", JournalLine.EntrySide.CREDIT, "10.00"))),
+                line("2000", JournalLine.EntrySide.CREDIT, "10.00"))));
+  }
+
+  private static CommittedPosting conflictingExistingPosting(
+      String postingId, String idempotencyKey) {
+    return existingPosting(
+        postingId,
+        idempotencyKey,
+        new JournalEntry(
+            LocalDate.parse("2026-04-07"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "11.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "11.00"))));
+  }
+
+  private static CommittedPosting existingPosting(
+      String postingId, String idempotencyKey, JournalEntry journalEntry) {
+    return new CommittedPosting(
+        new PostingId(postingId),
+        journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence(idempotencyKey),
         new dev.erst.fingrind.core.CommittedProvenance(
             new RequestProvenance(
@@ -618,6 +731,23 @@ class PostingAcceptancePolicyTest {
                 Optional.of(new CorrelationId("corr-1"))),
             Instant.parse("2026-04-07T10:15:30Z"),
             SourceChannel.CLI));
+  }
+
+  private static StoredRequestPosting storedRequestPosting(CommittedPosting postingFact) {
+    return new StoredRequestPosting(
+        postingFact,
+        RequestFingerprintTestSupport.fingerprint(
+            RequestFingerprintTestSupport.fingerprintedDraft(
+                postingFact.journalEntry(),
+                postingFact.postingLineage(),
+                postingFact.postingKind(),
+                postingFact.postingOriginKind(),
+                postingFact.evidence(),
+                postingFact.provenance())));
+  }
+
+  private static RequestFingerprint unusedRequestFingerprint() {
+    return new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64));
   }
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
@@ -633,7 +763,7 @@ class PostingAcceptancePolicyTest {
   private static final class RecordingValidationBook implements PostingValidationStore {
     private final Map<AccountCode, RegisteredAccount> accounts = new ConcurrentHashMap<>();
     private boolean initialized;
-    private Optional<CommittedPosting> existingPosting = Optional.empty();
+    private Optional<StoredRequestPosting> existingPosting = Optional.empty();
     private Optional<LocalDate> closedThrough = Optional.empty();
     private List<CommittedPosting> postings = List.of();
     private int findAccountsCalls;
@@ -652,6 +782,12 @@ class PostingAcceptancePolicyTest {
     }
 
     @Override
+    public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
+        dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+      return Optional.empty();
+    }
+
+    @Override
     public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
       findAccountsCalls++;
       requestedAccounts = List.copyOf(accountCodes);
@@ -667,7 +803,7 @@ class PostingAcceptancePolicyTest {
     }
 
     @Override
-    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       return existingPosting;
     }
 
@@ -718,7 +854,13 @@ class PostingAcceptancePolicyTest {
     }
 
     @Override
-    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
+        dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       return Optional.empty();
     }
 

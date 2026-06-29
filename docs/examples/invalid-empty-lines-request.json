@@ -1,19 +1,20 @@
 {
-  "entryKind": "REVERSAL_ADJUSTMENT",
+  "entryKind": "REVERSAL",
   "effectiveDate": "2026-04-08",
-  "lines": [],
+  "lines": [
+
+  ],
   "evidence": {
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-invalid-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-08",
-        "capturedAt": "2026-04-08T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-invalid-1",
-        "contentSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+        "documentDate": "2026-04-08"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "agent-invalid-1",

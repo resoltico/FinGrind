@@ -14,7 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
-/** Subprocess helper that parks inside one staged maintenance phase until the parent kills it. */
+/** Subprocess helper that parks inside one staged maintenance step until the parent kills it. */
 public final class SqliteProtectedBookMaintenanceProcessHelper {
   private static final SqlitePassphraseResolver KEY_FILE_RESOLVER =
       (resolvedBookPath, passphraseSource, intent) ->

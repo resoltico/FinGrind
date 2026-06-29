@@ -68,7 +68,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
                 jsonArguments(
-                    "post-entry",
+                    "record-sale",
                     "--book-file",
                     bookFilePath.toString(),
                     "--book-key-file",
@@ -167,11 +167,11 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     Path declareBankFile =
         writeNamedRequest(
             "raw-declare-bank.json",
-            declareAccountJson("operating-bank", "Operating Bank", "ASSET", "ORDINARY"));
+            declareAccountJson("operating-bank", "Operating Bank", "ASSET", "CURRENT_ASSET", null));
     Path declareExpenseFile =
         writeNamedRequest(
             "raw-declare-expense.json",
-            declareAccountJson("5000", "Misc Expense", "EXPENSE", "ORDINARY"));
+            declareAccountJson("5000", "Misc Expense", "EXPENSE", null, "OPERATING_EXPENSE"));
     Path bookFilePath = tempDirectory.resolve("raw-journal-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     assertEquals(
@@ -279,7 +279,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                     "--posting-id",
                     postingId)));
     String getPostingJson = getPostingOutput.toString(StandardCharsets.UTF_8);
-    assertJsonContains(getPostingJson, "\"postingOriginKind\":\"JOURNAL\"");
+    assertJsonContains(getPostingJson, "\"postingOriginKind\":\"DIRECT_JOURNAL\"");
     assertJsonContains(getPostingJson, "\"sourceDocumentType\":\"" + sourceDocumentType + "\"");
     for (String expectedAccountCode : expectedAccountCodes) {
       assertJsonContains(getPostingJson, "\"accountCode\":\"" + expectedAccountCode + "\"");
@@ -313,7 +313,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                     "--limit",
                     "10")));
     String listPostingsJson = listPostingsOutput.toString(StandardCharsets.UTF_8);
-    assertJsonContains(listPostingsJson, "\"postingOriginKind\":\"JOURNAL\"");
+    assertJsonContains(listPostingsJson, "\"postingOriginKind\":\"DIRECT_JOURNAL\"");
     assertTrue(listPostingsJson.contains(postingId));
   }
 

@@ -38,7 +38,11 @@ final class CliLifecycleMutationArguments {
     return CliRekeyRollbackArguments.parseRestoreRekeyRollbackCommand(arguments);
   }
 
-  static CliCommand parsePeriodResultTransferCommand(List<String> arguments) {
-    return CliPeriodResultTransferArguments.parsePeriodResultTransferCommand(arguments);
+  static CliCommand parseInterimResultSweepCommand(List<String> arguments) {
+    return CliInterimResultSweepArguments.parseInterimResultSweepCommand(arguments);
+  }
+
+  static CliCommand parseFiscalYearCloseCommand(List<String> arguments) {
+    return CliFiscalYearCloseArguments.parseFiscalYearCloseCommand(arguments);
   }
 }

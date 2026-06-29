@@ -67,6 +67,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
         new CapabilitiesDescriptor(
             canonical.application(),
             canonical.version(),
+            canonical.protocolVersion(),
             canonical.storage(),
             new CommandCatalogDescriptor(
                 List.of(
@@ -173,6 +174,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
         new CapabilitiesDescriptor(
             canonical.application(),
             canonical.version(),
+            canonical.protocolVersion(),
             canonical.storage(),
             canonical.commands(),
             canonical.requestInput(),
@@ -206,6 +208,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
         new CapabilitiesDescriptor(
             canonical.application(),
             canonical.version(),
+            canonical.protocolVersion(),
             new dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor(
                 canonical.storage().engines(), "profile-owned-boundary"),
             canonical.commands(),
@@ -235,6 +238,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
         new CapabilitiesDescriptor(
             canonical.application(),
             canonical.version(),
+            canonical.protocolVersion(),
             new dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor(
                 canonical.storage().engines(), "protected-book-file"),
             canonical.commands(),
@@ -255,6 +259,50 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(rendered.contains("One protected book per file."));
     assertTrue(rendered.contains("additional transaction currencies"));
     assertTrue(rendered.contains("available"));
+  }
+
+  @Test
+  void renderCapabilitiesText_rendersNotSupportedCurrencyStatusInOperatorLanguage() {
+    CapabilitiesDescriptor canonical =
+        MachineContract.capabilities(CliDiscoveryTestSupport.identity());
+    CapabilitiesDescriptor customized =
+        new CapabilitiesDescriptor(
+            canonical.application(),
+            canonical.version(),
+            canonical.protocolVersion(),
+            canonical.storage(),
+            canonical.commands(),
+            canonical.requestInput(),
+            canonical.requestShapes(),
+            canonical.responseModel(),
+            canonical.planExecution(),
+            canonical.audit(),
+            canonical.accountRegistry(),
+            canonical.reversals(),
+            canonical.preflight(),
+            new ContractResponse.CurrencyDescriptor(
+                "book-functional-currency", "not-supported", "desc"),
+            canonical.bookkeepingKernel());
+
+    String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(customized);
+    String normalized = rendered.replaceAll("\\s+", " ");
+
+    assertTrue(
+        normalized.contains(
+            "Book Functional Currency; additional transaction currencies are not available."));
+  }
+
+  @Test
+  void renderCapabilitiesText_rendersOwnedForeignExchangeCurrencyStatusInOperatorLanguage() {
+    String rendered =
+        CliDiscoveryOutputRenderer.renderCapabilitiesText(
+            MachineContract.capabilities(CliDiscoveryTestSupport.identity()));
+    String normalized = rendered.replaceAll("\\s+", " ");
+
+    assertTrue(
+        normalized.contains(
+            "foreign-currency business events are supported through owned foreign-exchange facts"));
+    assertTrue(normalized.contains("mixed-currency journal lines remain unavailable"));
   }
 
   @Test

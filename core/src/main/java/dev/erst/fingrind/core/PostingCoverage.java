@@ -29,7 +29,7 @@ public enum PostingCoverage implements WireValue {
     return WireValue.fromWireValue(PostingCoverage.class, wireValue, "Unsupported postingCoverage");
   }
 
-  /** Returns whether this coverage mode excludes generated transfer postings. */
+  /** Returns whether this coverage mode excludes generated close postings. */
   public boolean isNonClosingOnly() {
     return this == NON_CLOSING_POSTINGS;
   }
@@ -39,7 +39,7 @@ public enum PostingCoverage implements WireValue {
     Objects.requireNonNull(postingKind, "postingKind");
     return switch (this) {
       case ALL_POSTING_KINDS -> true;
-      case NON_CLOSING_POSTINGS -> postingKind != PostingKind.PERIOD_RESULT_TRANSFER;
+      case NON_CLOSING_POSTINGS -> !postingKind.isGenerated();
     };
   }
 }

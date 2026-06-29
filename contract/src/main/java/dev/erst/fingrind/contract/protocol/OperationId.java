@@ -1,7 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.core.WireValue;
-import java.util.List;
 
 /** Canonical FinGrind operation identifiers exposed on the public machine contract. */
 public enum OperationId implements WireValue {
@@ -35,12 +34,20 @@ public enum OperationId implements WireValue {
   RESTORE_REKEY_ROLLBACK,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
+  /** Declares or updates one owned tax registration. */
+  DECLARE_TAX_REGISTRATION,
   /** Transfers one contiguous reporting period into the policy-selected result-holding account. */
-  TRANSFER_PERIOD_RESULT,
+  INTERIM_RESULT_SWEEP,
+  /** Closes one fiscal year into capital and retained accumulated targets. */
+  FISCAL_YEAR_CLOSE,
   /** Inspects one book for lifecycle and compatibility state. */
   INSPECT_BOOK,
   /** Lists the declared account registry. */
   LIST_ACCOUNTS,
+  /** Lists the declared tax-registration registry. */
+  LIST_TAX_REGISTRATIONS,
+  /** Computes one tax-obligation report for one declared tax registration. */
+  TAX_OBLIGATION,
   /** Returns one committed posting. */
   GET_POSTING,
   /** Lists committed postings. */
@@ -57,12 +64,26 @@ public enum OperationId implements WireValue {
   FINANCIAL_POSITION,
   /** Computes one bounded income statement. */
   INCOME_STATEMENT,
+  /** Computes one bounded cash-flow statement. */
+  CASH_FLOW_STATEMENT,
   /** Computes one bounded statement of changes in equity. */
   CHANGES_IN_EQUITY,
   /** Executes one ordered AI-agent ledger plan transaction. */
   EXECUTE_PLAN,
   /** Validates one posting request without committing it. */
   PREFLIGHT_ENTRY,
+  /** Commits one sale entry using the sale-first request language. */
+  RECORD_SALE,
+  /** Commits one expense entry using the expense-first request language. */
+  RECORD_EXPENSE,
+  /** Commits one owner-contribution entry using the contribution-first request language. */
+  RECORD_OWNER_CONTRIBUTION,
+  /** Commits one owner-withdrawal entry using the withdrawal-first request language. */
+  RECORD_OWNER_WITHDRAWAL,
+  /** Commits one opening-position entry using the opening-position-first request language. */
+  RECORD_OPENING_POSITION,
+  /** Commits one reversal entry using the reversal-first request language. */
+  RECORD_REVERSAL,
   /** Commits one posting request. */
   POST_ENTRY;
 
@@ -75,16 +96,6 @@ public enum OperationId implements WireValue {
   @Override
   public String wireValue() {
     return wireName();
-  }
-
-  /** Returns every stable public operation identifier in declaration order. */
-  public static List<String> wireValues() {
-    return WireValue.wireValues(OperationId.class);
-  }
-
-  /** Parses one stable public operation identifier. */
-  public static OperationId fromWireValue(String wireValue) {
-    return WireValue.fromWireValue(OperationId.class, wireValue, "Unsupported operation id");
   }
 
   @Override

@@ -20,7 +20,7 @@ class PdfStatementMetadataRowsTest {
     BookIdentity bookIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Acme Studio")),
-            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
 
@@ -32,7 +32,8 @@ class PdfStatementMetadataRowsTest {
 
     assertEquals("Entity", rows.get(0).getFirst());
     assertEquals("Starter chart", rows.get(1).getFirst());
-    assertEquals("Posting coverage", rows.get(4).getFirst());
+    assertEquals("Accounting basis", rows.get(2).getFirst());
+    assertEquals("Posting coverage", rows.get(5).getFirst());
     assertTrue(rows.contains(List.of("As of", "2026-04-30")));
   }
 }

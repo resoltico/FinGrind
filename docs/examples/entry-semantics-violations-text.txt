@@ -2,18 +2,25 @@ Rejected
 ========
 
 Code            : entry-semantics-violations
-Summary         : Posting rejected with 2 entry-semantics issues.
+Summary         : Posting rejected with 3 entry-semantics issues.
 Idempotency key : idem-multi-violation
 
 Issue 1 | distinct-role-accounts-required
 -----------------------------------------
 Category : account-role-assignment
-Why      : Entry kind 'CASH_REVENUE' requires cashAccountCode and revenueAccountCode to reference distinct accounts, but both point to '1000'.
+Why      : entryKind 'SALE' requires cashAccountCode and revenueAccountCode to reference distinct accounts, but both point to 'cash'.
 Repair   : Assign distinct accounts to the semantic role fields named in the violation.
 
-Issue 2 | source-document-type-not-accepted
+Issue 2 | account-type-mismatch
+-------------------------------
+Field    : revenueAccountCode
+Category : account-type
+Why      : entryKind 'SALE' requires revenueAccountCode 'cash' to be account type 'REVENUE', but the declared account type is 'ASSET'.
+Repair   : Use accounts whose declared account type matches the violated field requirement.
+
+Issue 3 | source-document-type-not-accepted
 -------------------------------------------
 Field    : evidence.sourceDocuments[].sourceDocumentType
 Category : source-document-type
-Why      : Entry kind 'CASH_REVENUE' does not accept sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement.
-Repair   : Use an accepted source document type for the selected entry kind's evidence profile.
+Why      : entryKind 'SALE' does not accept evidence.sourceDocuments[].sourceDocumentType 'invoice'. Accepted values: cash-receipt, bank-deposit, card-settlement.
+Repair   : Use an accepted source document type for the selected entry kind's source-document policy.

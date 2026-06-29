@@ -163,8 +163,8 @@ public final class SqliteRoundTripWorkflowAssertions {
           CliFuzzWorkflowFixtures.postingApplicationService(
               reloadedStore, reloadedStore, CliFuzzFixtures.postingIdGenerator(input));
       PostingLifecycleStatus duplicateStatus =
-          SqliteRoundTripWorkflowPersistenceAssertions.requireDuplicateRejection(
-              CliFuzzWorkflowFixtures.commit(duplicateService, command));
+          SqliteRoundTripWorkflowPersistenceAssertions.requireIdempotentReplay(
+              CliFuzzWorkflowFixtures.commit(duplicateService, command), committed);
       return new DirectRoundTripState(
           new SqliteRoundTripWorkflowSnapshot(
               uninitializedCommitStatus,

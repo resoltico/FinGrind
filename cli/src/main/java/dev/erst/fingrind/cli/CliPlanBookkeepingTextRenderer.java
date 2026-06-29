@@ -10,12 +10,13 @@ import org.jspecify.annotations.Nullable;
 final class CliPlanBookkeepingTextRenderer {
   private CliPlanBookkeepingTextRenderer() {}
 
-  static String renderDeclaredAccount(CliBookQueryJsonModels.DeclaredAccountPayload account) {
+  static String renderDeclaredAccount(
+      String outcome, CliBookQueryJsonModels.DeclaredAccountPayload account) {
     List<List<String>> rows = new ArrayList<>();
+    rows.add(List.of("Outcome", outcome));
     rows.add(List.of("Account code", account.accountCode()));
     rows.add(List.of("Account name", account.accountName()));
     rows.add(List.of("Account type", CliTextDisplay.wireLabel(account.accountType())));
-    rows.add(List.of("Account role", CliTextDisplay.wireLabel(account.accountRole())));
     rows.add(List.of("Node kind", CliTextDisplay.wireLabel(account.accountNodeKind())));
     rows.add(List.of("Parent account", displayOrNone(account.parentAccountCode())));
     rows.add(
@@ -44,7 +45,7 @@ final class CliPlanBookkeepingTextRenderer {
             ? CliQueryScopeText.noMatchesLabel("accounts")
             : CliTextFormat.renderAdaptiveTable(
                 CliReportRenderSupport.TEXT_TABLE_WIDTH,
-                List.of("Account code", "Account name", "Type", "Role", "Normal balance", "Active"),
+                List.of("Account code", "Account name", "Type", "Normal balance", "Active"),
                 accountPage.accounts().stream()
                     .map(
                         account ->
@@ -52,7 +53,6 @@ final class CliPlanBookkeepingTextRenderer {
                                 account.accountCode(),
                                 account.accountName(),
                                 CliTextDisplay.wireLabel(account.accountType()),
-                                CliTextDisplay.wireLabel(account.accountRole()),
                                 CliTextDisplay.wireLabel(account.normalBalance()),
                                 CliQueryScopeText.displayBooleanLabel(account.active())))
                     .toList());
@@ -93,6 +93,11 @@ final class CliPlanBookkeepingTextRenderer {
             3);
     List<String> sections = new ArrayList<>();
     sections.add(CliTextFormat.renderKeyValueBlock(List.copyOf(summaryRows)));
+    if (posting.entry() != null) {
+      sections.add(
+          CliReportRenderSupport.section(
+              "Entry facts", CliPostingEntryPayloadSupport.renderEntryFacts(posting.entry())));
+    }
     sections.add(CliReportRenderSupport.section("Journal lines", linesTable));
     sections.add(CliReportRenderSupport.section("Evidence", renderEvidence(posting.evidence())));
     if (posting.reversal() != null) {
@@ -183,23 +188,14 @@ final class CliPlanBookkeepingTextRenderer {
             ? CliQueryScopeText.noMatchesLabel("source documents")
             : CliTextFormat.renderAdaptiveTable(
                 CliReportRenderSupport.TEXT_TABLE_WIDTH,
-                List.of(
-                    "Source document id",
-                    "Type",
-                    "Document date",
-                    "Captured at",
-                    "Storage locator",
-                    "Content sha256"),
+                List.of("Source document id", "Type", "Document date"),
                 evidence.sourceDocuments().stream()
                     .map(
                         document ->
                             List.of(
                                 document.sourceDocumentId(),
                                 CliTextDisplay.wireLabel(document.sourceDocumentType()),
-                                document.documentDate(),
-                                document.capturedAt(),
-                                document.storageLocator(),
-                                document.contentSha256()))
+                                document.documentDate()))
                     .toList());
     sections.add(CliReportRenderSupport.section("Source documents", sourceDocumentsTable));
     String approvalsTable =

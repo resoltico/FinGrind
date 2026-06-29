@@ -36,10 +36,7 @@ class PostingWorkflowInvariantAssertionsTest {
             CliFuzzFixtures.journalEntry(command).effectiveDate());
     Committed committed = committed(command, "posting-1");
     PostingFact postingFact = postingFact(command, "posting-1");
-    CommitRejected duplicateRejected =
-        new CommitRejected(
-            command.requestProvenance().idempotencyKey(),
-            new PostingRejection.DuplicateIdempotencyKey());
+    Committed replayed = committed(command, "posting-1", true);
 
     assertDoesNotThrow(
         () ->
@@ -77,8 +74,7 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyStoredPosting(
                 postingFact, committed, command));
     assertEquals(
-        duplicateRejected,
-        PostingWorkflowInvariantAssertions.requireDuplicateRejection(duplicateRejected));
+        replayed, PostingWorkflowInvariantAssertions.requireIdempotentReplay(replayed, committed));
   }
 
   @Test
@@ -221,15 +217,54 @@ class PostingWorkflowInvariantAssertionsTest {
     assertThrows(
         IllegalStateException.class,
         () ->
-            PostingWorkflowInvariantAssertions.requireDuplicateRejection(
-                committed(command, "posting-1")));
+            PostingWorkflowInvariantAssertions.requireIdempotentReplay(
+                committed(command, "posting-1"), committed));
     assertThrows(
         IllegalStateException.class,
         () ->
-            PostingWorkflowInvariantAssertions.requireDuplicateRejection(
-                new CommitRejected(
+            PostingWorkflowInvariantAssertions.requireIdempotentReplay(
+                committed(command, "posting-2", true), committed));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PostingWorkflowInvariantAssertions.requireIdempotentReplay(
+                new Committed(
+                    new PostingId("posting-1"),
+                    new dev.erst.fingrind.core.IdempotencyKey("idem-2"),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate(),
+                    CliFuzzFixtures.fixedClock().instant(),
+                    true),
+                committed));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PostingWorkflowInvariantAssertions.requireIdempotentReplay(
+                new Committed(
+                    new PostingId("posting-1"),
                     command.requestProvenance().idempotencyKey(),
-                    new PostingRejection.BookNotInitialized())));
+                    CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
+                    CliFuzzFixtures.fixedClock().instant(),
+                    true),
+                committed));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PostingWorkflowInvariantAssertions.requireIdempotentReplay(
+                new Committed(
+                    new PostingId("posting-1"),
+                    command.requestProvenance().idempotencyKey(),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate(),
+                    CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
+                    true),
+                committed));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PostingWorkflowInvariantAssertions.requireIdempotentReplay(
+                new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected(
+                    command.requestProvenance().idempotencyKey(),
+                    new PostingRejection.BookNotInitialized()),
+                committed));
   }
 
   @Test
@@ -247,11 +282,11 @@ class PostingWorkflowInvariantAssertionsTest {
     PreflightRejected duplicateRejected =
         new PreflightRejected(
             command.requestProvenance().idempotencyKey(),
-            new PostingRejection.DuplicateIdempotencyKey());
+            new PostingRejection.IdempotencyKeyConflict());
     CommitRejected duplicateCommitRejected =
         new CommitRejected(
             command.requestProvenance().idempotencyKey(),
-            new PostingRejection.DuplicateIdempotencyKey());
+            new PostingRejection.IdempotencyKeyConflict());
     PreflightRejected preflightAccountRejected =
         accountStateRejected(command, new PostingRejection.UnknownAccount(accountCode));
     CommitRejected commitAccountRejected =
@@ -290,7 +325,7 @@ class PostingWorkflowInvariantAssertionsTest {
     PreflightRejected duplicateRejected =
         new PreflightRejected(
             command.requestProvenance().idempotencyKey(),
-            new PostingRejection.DuplicateIdempotencyKey());
+            new PostingRejection.IdempotencyKeyConflict());
     PreflightRejected mixedAccountRejected =
         new PreflightRejected(
             command.requestProvenance().idempotencyKey(),
@@ -331,7 +366,7 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.assertRejected(
                 new PreflightRejected(
                     command.requestProvenance().idempotencyKey(),
-                    new PostingRejection.DuplicateIdempotencyKey()),
+                    new PostingRejection.IdempotencyKeyConflict()),
                 PostingRejection.BookNotInitialized.class));
     assertThrows(
         IllegalStateException.class,
@@ -345,7 +380,7 @@ class PostingWorkflowInvariantAssertionsTest {
                 new CommitRejected(
                     command.requestProvenance().idempotencyKey(),
                     new PostingRejection.BookNotInitialized()),
-                PostingRejection.DuplicateIdempotencyKey.class));
+                PostingRejection.IdempotencyKeyConflict.class));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -384,11 +419,17 @@ class PostingWorkflowInvariantAssertionsTest {
   }
 
   private static Committed committed(PostEntryCommand command, String postingId) {
+    return committed(command, postingId, false);
+  }
+
+  private static Committed committed(
+      PostEntryCommand command, String postingId, boolean idempotentReplay) {
     return new Committed(
         new PostingId(postingId),
         command.requestProvenance().idempotencyKey(),
         CliFuzzFixtures.journalEntry(command).effectiveDate(),
-        CliFuzzFixtures.fixedClock().instant());
+        CliFuzzFixtures.fixedClock().instant(),
+        idempotentReplay);
   }
 
   private static PostingFact postingFact(PostEntryCommand command, String postingId) {
@@ -415,7 +456,9 @@ class PostingWorkflowInvariantAssertionsTest {
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        postingLineage.reversalReference().isPresent()
+            ? dev.erst.fingrind.core.PostingOriginKind.REVERSAL
+            : dev.erst.fingrind.core.PostingOriginKind.SALE,
         evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }

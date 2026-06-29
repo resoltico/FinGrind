@@ -32,7 +32,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
   private static final BookIdentity BOOK_IDENTITY =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Acme Studio")),
-          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("EUR"),
           FiscalYearStart.parse("01-01"));
 
@@ -182,7 +182,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
             SqliteRoundTripWorkflowDecisionAssertions.requireCommitted(
                 ContractDecision.accepted(
                     SqliteRoundTripWorkflowTestSupport.commitRejected(
-                        new PostingRejection.DuplicateIdempotencyKey()))));
+                        new PostingRejection.IdempotencyKeyConflict()))));
 
     assertThrows(
         IllegalStateException.class,

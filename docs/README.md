@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -25,19 +25,20 @@ Then choose one of the user, developer, or reference tracks below.
 - [USER_INSTALL.md](./USER_INSTALL.md): exact public bundle names, launcher paths, checksum commands, attestation commands, and container package surface
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, report output modes, PDF artifact behavior, exit codes, and runtime requirements
 - [USER_CONTAINER.md](./USER_CONTAINER.md): published container image workflow, mounted workspace model, and smoke-tested command examples
-- [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, ledger-plan, read/report JSON shapes, executable request schemas, deterministic error codes, and response envelopes
+- [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, and ledger-plan JSON request shapes plus executable request schemas
+- [USER_RESPONSES.md](./USER_RESPONSES.md): success, rejection, and error envelopes plus read, report, discovery, and plan-result payloads
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, atomic ledger plans, duplicates, stdin, and reversal templates
 
 The checked-in `examples/*` files below are source-checkout fixtures for review and copying.
 Public release bundles do not include the repository's `docs/examples/` tree.
-- [examples/basic-posting-request.json](./examples/basic-posting-request.json): primary raw-journal posting example
-- [examples/request-template.json](./examples/request-template.json): checked-in source-copy companion for the `print-request-template` raw-journal scaffold
+- [examples/basic-posting-request.json](./examples/basic-posting-request.json): primary sale posting example
+- [examples/request-template.json](./examples/request-template.json): checked-in source-copy companion for the `print-request-template` minimal sale scaffold
 - [examples/declare-account-supplemental-cash-reserve.json](./examples/declare-account-supplemental-cash-reserve.json): supplemental account-declaration request for an additional cash reserve account on top of the seeded starter chart
 - [examples/declare-account-supplemental-misc-revenue.json](./examples/declare-account-supplemental-misc-revenue.json): supplemental account-declaration request for an additional miscellaneous revenue account on top of the seeded starter chart
-- [examples/unknown-account-request.json](./examples/unknown-account-request.json): recipe-shortcut posting request that deterministically rejects for an undeclared account
+- [examples/unknown-account-request.json](./examples/unknown-account-request.json): typed posting request that deterministically rejects for an undeclared account
 - [examples/account-state-violations-response.json](./examples/account-state-violations-response.json): machine rejection example with a stable family summary plus aggregated account-state details
 - [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt): operator-facing text rejection example with one `Summary` header plus one typed issue section per account-state violation
-- [examples/entry-semantics-multi-violation-request.json](./examples/entry-semantics-multi-violation-request.json): recipe-backed posting request that deterministically rejects with multiple entry-semantics violations
+- [examples/entry-semantics-multi-violation-request.json](./examples/entry-semantics-multi-violation-request.json): typed posting request that deterministically rejects with multiple entry-semantics violations
 - [examples/entry-semantics-violations-response.json](./examples/entry-semantics-violations-response.json): machine rejection example with ordered entry-semantics `details.violations[]` items
 - [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt): operator-facing text rejection example with one `Summary` header plus one typed issue section per entry-semantics violation
 - [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json): example committed response with a UUID v7 `postingId`
@@ -58,9 +59,9 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
 - [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` raw-journal ledger-plan scaffold
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` minimal sale ledger-plan scaffold
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable `execute-plan` request for a fresh book using direct journal lines
-- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): recipe-shortcut `execute-plan` request that pages accounts and postings inside the plan journal
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): sale-first `execute-plan` request that pages accounts and postings inside the plan journal
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with `resultDetail: "full"` and a per-step journal
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json): example failed assertion ledger-plan response with `resultDetail: "full"` and a bounded per-step journal
 - [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json): example committed ledger-plan response with `resultDetail: "full"` whose query steps retain pagination facts and structured row groups
@@ -92,10 +93,17 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md): first-time GitHub repository bootstrap and workflow bring-up
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md): release preparation, tag verification, and public artifact publication flow
 
+## Historical Release Notes
+
+- [DOC_CHANGELOG_ARCHIVE_2026_MAY.md](./DOC_CHANGELOG_ARCHIVE_2026_MAY.md): archived release notes for `0.30.0` through `0.23.0`
+- [DOC_CHANGELOG_ARCHIVE_2026_APRIL_I.md](./DOC_CHANGELOG_ARCHIVE_2026_APRIL_I.md): archived release notes for `0.22.0` through `0.12.0`
+- [DOC_CHANGELOG_ARCHIVE_2026_APRIL_II.md](./DOC_CHANGELOG_ARCHIVE_2026_APRIL_II.md): archived release notes for `0.11.0` through `0.1.0`
+
 ## Reference And Schema
 
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
+- [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md)
 - [DOC_01_Core_EvidenceAndWire.md](./DOC_01_Core_EvidenceAndWire.md)
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
@@ -105,3 +113,20 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)
+- [sqlite/SCHEMA_CORE_01_FOUNDATION.md](./sqlite/SCHEMA_CORE_01_FOUNDATION.md)
+- [sqlite/SCHEMA_CORE_02_ACCOUNT_TABLE.md](./sqlite/SCHEMA_CORE_02_ACCOUNT_TABLE.md)
+- [sqlite/SCHEMA_CORE_03_ACCOUNT_RULES.md](./sqlite/SCHEMA_CORE_03_ACCOUNT_RULES.md)
+- [sqlite/SCHEMA_CORE_03z_TAX_REGISTRATION.md](./sqlite/SCHEMA_CORE_03z_TAX_REGISTRATION.md)
+- [sqlite/SCHEMA_CORE_04_POSTING_FACT.md](./sqlite/SCHEMA_CORE_04_POSTING_FACT.md)
+- [sqlite/SCHEMA_CORE_05_POSTING_SOURCE_DOCUMENT.md](./sqlite/SCHEMA_CORE_05_POSTING_SOURCE_DOCUMENT.md)
+- [sqlite/SCHEMA_CORE_06_POSTING_APPROVAL.md](./sqlite/SCHEMA_CORE_06_POSTING_APPROVAL.md)
+- [sqlite/SCHEMA_CORE_06z_POSTING_APPLIED_TAX.md](./sqlite/SCHEMA_CORE_06z_POSTING_APPLIED_TAX.md)
+- [sqlite/SCHEMA_CORE_06za_POSTING_FOREIGN_EXCHANGE.md](./sqlite/SCHEMA_CORE_06za_POSTING_FOREIGN_EXCHANGE.md)
+- [sqlite/SCHEMA_CORE_07_JOURNAL_LINES.md](./sqlite/SCHEMA_CORE_07_JOURNAL_LINES.md)
+- [sqlite/SCHEMA_CORE_08_INTERIM_RESULT_SWEEP_CORE.md](./sqlite/SCHEMA_CORE_08_INTERIM_RESULT_SWEEP_CORE.md)
+- [sqlite/SCHEMA_CORE_09_INTERIM_RESULT_SWEEP_LINKS.md](./sqlite/SCHEMA_CORE_09_INTERIM_RESULT_SWEEP_LINKS.md)
+- [sqlite/SCHEMA_CORE_10_FISCAL_YEAR_CLOSE_TABLE.md](./sqlite/SCHEMA_CORE_10_FISCAL_YEAR_CLOSE_TABLE.md)
+- [sqlite/SCHEMA_CORE_11_FISCAL_YEAR_CLOSE_TARGET_RULES.md](./sqlite/SCHEMA_CORE_11_FISCAL_YEAR_CLOSE_TARGET_RULES.md)
+- [sqlite/SCHEMA_CORE_12_FISCAL_YEAR_CLOSE_LINKS.md](./sqlite/SCHEMA_CORE_12_FISCAL_YEAR_CLOSE_LINKS.md)
+- [sqlite/SCHEMA_CORE_13_AUDIT_EVENTS.md](./sqlite/SCHEMA_CORE_13_AUDIT_EVENTS.md)
+- [sqlite/SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md](./sqlite/SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md)

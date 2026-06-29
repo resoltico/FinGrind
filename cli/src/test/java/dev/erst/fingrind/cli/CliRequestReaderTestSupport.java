@@ -29,7 +29,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
     if (includeReversal) {
       return """
               {
-                "entryKind": "REVERSAL_ADJUSTMENT",
+                "entryKind": "REVERSAL",
                 "effectiveDate": "2026-04-07",
                 "lines": [
                   {
@@ -63,8 +63,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
     }
     return """
             {
-              "entryKind": "JOURNAL",
-              "recipeKind": "CASH_REVENUE",
+              "entryKind": "SALE",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "revenueAccountCode": "2000",
@@ -86,7 +85,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
   static String validLegacyCorrectionRequestJson() {
     return """
         {
-          "entryKind": "REVERSAL_ADJUSTMENT",
+          "entryKind": "REVERSAL",
           "effectiveDate": "2026-04-07",
           "lines": [
             {
@@ -170,9 +169,9 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "accountCode": "1000",
                 "accountName": "Cash",
                 "accountType": "ASSET",
-                "accountRole": "ORDINARY",
                 "accountNodeKind": "POSTABLE",
-                "financialPositionLineClassification": "CURRENT_ASSET"
+                "financialPositionLineClassification": "CURRENT_ASSET",
+                "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
               }
             },
             {
@@ -182,7 +181,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             },
             {
               "stepId": "post",
-              "kind": "post-entry",
+              "kind": "record-sale",
               "posting": %s
             },
             {

@@ -70,9 +70,11 @@ fg_cli_wrapper_prepare_runtime_if_needed() {
         && fg_cli_wrapper_runtime_inputs_are_fresh; then
         return 0
     fi
+    # A corrupted or stale manifest must force a real refresh instead of relying on Gradle's
+    # up-to-date checks, which only see that the output path exists.
     if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
-        && fg_cli_wrapper_runtime_manifest_is_usable \
-        && ! fg_cli_wrapper_runtime_inputs_are_fresh; then
+        && ( ! fg_cli_wrapper_runtime_manifest_is_usable \
+            || ! fg_cli_wrapper_runtime_inputs_are_fresh ); then
         force_rerun=true
     fi
     acquire_lock
@@ -83,8 +85,8 @@ fg_cli_wrapper_prepare_runtime_if_needed() {
         return 0
     fi
     if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
-        && fg_cli_wrapper_runtime_manifest_is_usable \
-        && ! fg_cli_wrapper_runtime_inputs_are_fresh; then
+        && ( ! fg_cli_wrapper_runtime_manifest_is_usable \
+            || ! fg_cli_wrapper_runtime_inputs_are_fresh ); then
         force_rerun=true
     fi
     if ! (

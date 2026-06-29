@@ -11,8 +11,8 @@ final class BookAdministrationRejectionNarrative {
     if (isLifecycleRejection(rejection)) {
       return lifecycleMessage(rejection);
     }
-    if (isTransferHorizonRejection(rejection)) {
-      return transferHorizonMessage(rejection);
+    if (isCloseWindowRejection(rejection)) {
+      return closeWindowMessage(rejection);
     }
     return accountCatalogMessage(rejection);
   }
@@ -23,13 +23,16 @@ final class BookAdministrationRejectionNarrative {
         || rejection instanceof BookAdministrationRejection.BookContainsSchema;
   }
 
-  private static boolean isTransferHorizonRejection(BookAdministrationRejection rejection) {
-    return rejection instanceof BookAdministrationRejection.ResultHoldingAccountCandidateMissing
-        || rejection instanceof BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous
-        || rejection instanceof BookAdministrationRejection.PeriodResultTransferMustStartAt
-        || rejection instanceof BookAdministrationRejection.PeriodResultTransferFutureDate
+  private static boolean isCloseWindowRejection(BookAdministrationRejection rejection) {
+    return rejection instanceof BookAdministrationRejection.CloseTargetAccountCandidateMissing
+        || rejection instanceof CloseTargetAccountCandidateAmbiguous
+        || rejection instanceof BookAdministrationRejection.InterimResultSweepMustStartAt
+        || rejection instanceof BookAdministrationRejection.InterimResultSweepFutureDate
         || rejection
-            instanceof BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary;
+            instanceof BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary
+        || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustStartAt
+        || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustEndAt
+        || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate;
   }
 
   static String lifecycleMessage(BookAdministrationRejection rejection) {
@@ -54,12 +57,6 @@ final class BookAdministrationRejectionNarrative {
                   accountTypeConflict.accountCode().value(),
                   accountTypeConflict.existingAccountType().wireValue(),
                   accountTypeConflict.requestedAccountType().wireValue());
-      case BookAdministrationRejection.AccountRoleConflict accountRoleConflict ->
-          "Account '%s' already exists with account role '%s'; FinGrind will not amend it to '%s'."
-              .formatted(
-                  accountRoleConflict.accountCode().value(),
-                  accountRoleConflict.existingAccountRole().wireValue(),
-                  accountRoleConflict.requestedAccountRole().wireValue());
       case BookAdministrationRejection.AccountTaxonomyConflict accountTaxonomyConflict ->
           "Account '%s' already exists with a different immutable hierarchy or statement taxonomy."
               .formatted(accountTaxonomyConflict.accountCode().value());
@@ -80,13 +77,6 @@ final class BookAdministrationRejectionNarrative {
                   rejectionTypeConflict.requestedAccountType().wireValue(),
                   rejectionTypeConflict.parentAccountCode().value(),
                   rejectionTypeConflict.parentAccountType().wireValue());
-      case BookAdministrationRejection.ParentAccountRoleConflict rejectionRoleConflict ->
-          "Account '%s' is declared with role '%s', but parent account '%s' uses role '%s'. Parent and child must share one account role."
-              .formatted(
-                  rejectionRoleConflict.accountCode().value(),
-                  rejectionRoleConflict.requestedAccountRole().wireValue(),
-                  rejectionRoleConflict.parentAccountCode().value(),
-                  rejectionRoleConflict.parentAccountRole().wireValue());
       case BookAdministrationRejection.ParentAccountNotHeader rejectionNotHeader ->
           "Account '%s' names parent account '%s', but that parent is declared as '%s' and cannot own child accounts."
               .formatted(
@@ -107,41 +97,50 @@ final class BookAdministrationRejectionNarrative {
     };
   }
 
-  static String transferHorizonMessage(BookAdministrationRejection rejection) {
+  static String closeWindowMessage(BookAdministrationRejection rejection) {
     return switch (rejection) {
-      case BookAdministrationRejection.ResultHoldingAccountCandidateMissing rejectionMissing ->
+      case BookAdministrationRejection.CloseTargetAccountCandidateMissing rejectionMissing ->
           rejectionMissing.inactiveCandidateAccountCodes().isEmpty()
-              ? "No active declared result-holding account satisfies required classification '%s'."
+              ? "No active declared close target satisfies required classification '%s'."
                   .formatted(
                       rejectionMissing.requiredFinancialPositionLineClassification().wireValue())
-              : "No active declared result-holding account satisfies required classification '%s'; inactive candidates: %s."
+              : "No active declared close target satisfies required classification '%s'; inactive candidates: %s."
                   .formatted(
                       rejectionMissing.requiredFinancialPositionLineClassification().wireValue(),
                       rejectionMissing.inactiveCandidateAccountCodes().stream()
                           .map(AccountCode::value)
                           .collect(Collectors.joining(", ")));
-      case BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous rejectionAmbiguous ->
-          "More than one active declared result-holding account satisfies required classification '%s': %s."
+      case CloseTargetAccountCandidateAmbiguous rejectionAmbiguous ->
+          "More than one active declared close target satisfies required classification '%s': %s."
               .formatted(
                   rejectionAmbiguous.requiredFinancialPositionLineClassification().wireValue(),
                   rejectionAmbiguous.candidateAccountCodes().stream()
                       .map(AccountCode::value)
                       .collect(Collectors.joining(", ")));
-      case BookAdministrationRejection.PeriodResultTransferMustStartAt rejectionStartAt ->
-          "Period result transfer must start at '%s' to preserve one contiguous transfer horizon."
+      case BookAdministrationRejection.InterimResultSweepMustStartAt rejectionStartAt ->
+          "Interim result sweep must start at '%s' to preserve one contiguous sweep horizon."
               .formatted(rejectionStartAt.requiredEffectiveDateFrom());
-      case BookAdministrationRejection.PeriodResultTransferFutureDate rejectionFutureDate ->
-          "Period result transfer cannot end after the current UTC date; requested '%s'."
+      case BookAdministrationRejection.InterimResultSweepFutureDate rejectionFutureDate ->
+          "Interim result sweep cannot end after the current UTC date; requested '%s'."
               .formatted(rejectionFutureDate.attemptedEffectiveDateTo());
-      case BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary
+      case BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary
               rejectionBoundary ->
-          "Period result transfer '%s' through '%s' crosses this book's fiscal-year boundary '%s'."
+          "Interim result sweep '%s' through '%s' crosses this book's fiscal-year boundary '%s'."
               .formatted(
                   rejectionBoundary.attemptedEffectiveDateFrom(),
                   rejectionBoundary.attemptedEffectiveDateTo(),
                   rejectionBoundary.fiscalYearStart().wireValue());
+      case BookAdministrationRejection.FiscalYearCloseMustStartAt rejectionStartAt ->
+          "Fiscal-year close must start at '%s' to cover one full fiscal year."
+              .formatted(rejectionStartAt.requiredEffectiveDateFrom());
+      case BookAdministrationRejection.FiscalYearCloseMustEndAt rejectionEndAt ->
+          "Fiscal-year close must end at '%s' to cover one full fiscal year."
+              .formatted(rejectionEndAt.requiredEffectiveDateTo());
+      case BookAdministrationRejection.FiscalYearCloseFutureDate rejectionFutureDate ->
+          "Fiscal-year close cannot end after the current UTC date; requested '%s'."
+              .formatted(rejectionFutureDate.attemptedEffectiveDateTo());
       default ->
-          throw new IllegalStateException("Unsupported transfer-horizon rejection: " + rejection);
+          throw new IllegalStateException("Unsupported close-window rejection: " + rejection);
     };
   }
 }

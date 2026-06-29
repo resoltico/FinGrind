@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.SourceChannel;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -192,11 +194,11 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                   ) values (
                                       1,
                                       'Acme Studio',
-                                      'internal-management-cash-bookkeeping-kernel',
+                                      'internal-management-bookkeeping-kernel',
                                       'CASH_BASIS',
                                       'NON_STATUTORY_INTERNAL_MANAGEMENT',
                                       'OWNER_MANAGED_SINGLE_ENTITY',
-                                      'OWNER_MANAGED_SERVICE_CASH',
+                                      'OWNER_MANAGED_SERVICE',
                                       'EUR',
                                       2,
                                       30
@@ -260,10 +262,10 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       account_code,
                                       account_name,
                                       account_type,
-                                      account_role,
                                       account_node_kind,
                                       parent_account_code,
                                       financial_position_line_classification,
+                                      cash_flow_asset_classification,
                                       profit_and_loss_line_classification,
                                       active,
                                       declared_at
@@ -271,10 +273,10 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       '1010',
                                       'Petty Cash',
                                       'ASSET',
-                                      'ORDINARY',
                                       'POSTABLE',
                                       '1000',
                                       'CURRENT_ASSET',
+                                      'CASH_AND_CASH_EQUIVALENT',
                                       null,
                                       1,
                                       '2026-04-07T10:15:30Z'
@@ -291,10 +293,10 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           account_code,
                           account_name,
                           account_type,
-                          account_role,
                           account_node_kind,
                           parent_account_code,
                           financial_position_line_classification,
+                          cash_flow_asset_classification,
                           profit_and_loss_line_classification,
                           active,
                           declared_at
@@ -302,10 +304,10 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           '1100',
                           'Cash Header',
                           'ASSET',
-                          'ORDINARY',
                           'HEADER',
                           null,
                           'CURRENT_ASSET',
+                          'CASH_AND_CASH_EQUIVALENT',
                           null,
                           1,
                           '2026-04-07T10:15:30Z'
@@ -322,10 +324,10 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       account_code,
                                       account_name,
                                       account_type,
-                                      account_role,
                                       account_node_kind,
                                       parent_account_code,
                                       financial_position_line_classification,
+                                      cash_flow_asset_classification,
                                       profit_and_loss_line_classification,
                                       active,
                                       declared_at
@@ -333,10 +335,10 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       '1110',
                                       'Equipment',
                                       'ASSET',
-                                      'ORDINARY',
                                       'POSTABLE',
                                       '1100',
                                       'NONCURRENT_ASSET',
+                                      'NON_CASH',
                                       null,
                                       1,
                                       '2026-04-07T10:15:30Z'
@@ -504,10 +506,9 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
   }
 
   @Test
-  void
-      canonicalStrictSchema_rejectsTransferredPeriodResultBackfillAndBrokenPeriodResultTransferLinks() {
+  void canonicalStrictSchema_rejectsSweptInterimResultBackfillAndBrokenInterimResultSweepLinks() {
     Path invalidCloseTargetPath =
-        tempDirectory.resolve("invalid-period-result-transfer-target.sqlite");
+        tempDirectory.resolve("invalid-interim-result-sweep-target.sqlite");
     assertDoesNotThrow(
         () ->
             withStandaloneDatabase(
@@ -524,12 +525,12 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           () ->
                               database.executeStatement(
                                   """
-                                  insert into period_result_transfer (
-                                      period_result_transfer_order,
+                                  insert into interim_result_sweep (
+                                      interim_result_sweep_order,
                                       effective_date_from,
                                       effective_date_to,
-                                      closing_equity_account_code,
-                                      closed_at
+                                      result_holding_account_code,
+                                      swept_at
                                   ) values (
                                       1,
                                       '2026-04-01',
@@ -557,41 +558,42 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                   insertAccountRow(
                       database,
                       "3000",
-                      "Retained Earnings",
+                      "Result holding",
                       "EQUITY",
-                      "CREDIT",
+                      SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                          FinancialPositionLineClassification.RESULT_HOLDING),
                       1,
                       "2026-04-07T10:15:30Z");
                   insertAccountRow(
                       database, "4000", "Sales", "REVENUE", "CREDIT", 1, "2026-04-07T10:15:30Z");
                   insertPostingFactRow(
                       database,
-                      "posting-period-result-transfer",
-                      "PERIOD_RESULT_TRANSFER",
+                      "posting-interim-result-sweep",
+                      "INTERIM_RESULT_SWEEP",
                       "2026-04-30",
                       "2026-04-30T23:59:59Z",
                       new PostingFactSqlLiterals(
-                          "system:periodResultTransfer",
+                          "system:interimResultSweep",
                           "SYSTEM",
-                          "periodResultTransfer:2026-04",
-                          "periodResultTransfer:2026-04",
-                          "periodResultTransfer:2026-04",
-                          "'periodResultTransfer:2026-04'",
+                          "interimResultSweep:2026-04",
+                          "interimResultSweep:2026-04",
+                          "interimResultSweep:2026-04",
+                          "'interimResultSweep:2026-04'",
                           "null",
                           SourceChannel.SYSTEM.wireValue(),
                           "null"));
                   insertJournalLineRow(
-                      database, "posting-period-result-transfer", 0, "4000", "DEBIT", "EUR", 1000);
+                      database, "posting-interim-result-sweep", 0, "4000", "DEBIT", "EUR", 1000);
                   insertJournalLineRow(
-                      database, "posting-period-result-transfer", 1, "3000", "CREDIT", "EUR", 1000);
+                      database, "posting-interim-result-sweep", 1, "3000", "CREDIT", "EUR", 1000);
                   database.executeStatement(
                       """
-                      insert into period_result_transfer (
-                          period_result_transfer_order,
+                      insert into interim_result_sweep (
+                          interim_result_sweep_order,
                           effective_date_from,
                           effective_date_to,
-                          closing_equity_account_code,
-                          closed_at
+                          result_holding_account_code,
+                          swept_at
                       ) values (
                           1,
                           '2026-04-01',
@@ -602,12 +604,12 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                       """);
                   database.executeStatement(
                       """
-                      insert into period_result_transfer_posting (
-                          period_result_transfer_order,
+                      insert into interim_result_sweep_posting (
+                          interim_result_sweep_order,
                           posting_id
                       ) values (
                           1,
-                          'posting-period-result-transfer'
+                          'posting-interim-result-sweep'
                       )
                       """);
                   insertPostingFactRow(
@@ -662,8 +664,8 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           () ->
                               database.executeStatement(
                                   """
-                                  insert into period_result_transfer_posting (
-                                      period_result_transfer_order,
+                                  insert into interim_result_sweep_posting (
+                                      interim_result_sweep_order,
                                       posting_id
                                   ) values (
                                       1,
@@ -727,7 +729,9 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
             correlation_id,
             reason,
             source_channel,
-            prior_posting_id
+            prior_posting_id,
+            request_fingerprint_version,
+            request_fingerprint_sha256
         ) values (
             '%s',
             '%s',
@@ -742,7 +746,9 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
             %s,
             %s,
             '%s',
-            %s
+            %s,
+            %d,
+            '%s'
         )
         """
             .formatted(
@@ -759,16 +765,20 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                 sqlLiterals.correlationIdSqlLiteral(),
                 sqlLiterals.reasonSqlLiteral(),
                 sqlLiterals.sourceChannel(),
-                sqlLiterals.priorPostingIdSqlLiteral()));
+                sqlLiterals.priorPostingIdSqlLiteral(),
+                RequestFingerprint.CURRENT_VERSION,
+                "0".repeat(64)));
   }
 
   private static String defaultPostingOriginKind(String postingKind) {
     return switch (postingKind) {
       case "OPENING_BALANCE" ->
-          dev.erst.fingrind.core.PostingOriginKind.OPEN_ACCOUNTING_POSITION.wireValue();
-      case "PERIOD_RESULT_TRANSFER" ->
-          dev.erst.fingrind.core.PostingOriginKind.PERIOD_RESULT_TRANSFER.wireValue();
-      default -> dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue();
+          dev.erst.fingrind.core.PostingOriginKind.OPENING_POSITION.wireValue();
+      case "INTERIM_RESULT_SWEEP" ->
+          dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP.wireValue();
+      case "FISCAL_YEAR_CLOSE" ->
+          dev.erst.fingrind.core.PostingOriginKind.FISCAL_YEAR_CLOSE.wireValue();
+      default -> dev.erst.fingrind.core.PostingOriginKind.REVERSAL.wireValue();
     };
   }
 

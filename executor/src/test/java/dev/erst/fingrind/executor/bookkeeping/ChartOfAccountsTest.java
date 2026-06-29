@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -10,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
@@ -55,12 +54,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1020"),
                 new AccountName("Petty Cash"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("1010")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty()))));
+                currentAssetTaxonomy(Optional.of(new AccountCode("1010"))))));
     assertEquals(
         Optional.empty(),
         chart.validate(
@@ -68,8 +62,7 @@ class ChartOfAccountsTest {
                 new AccountCode("4000"),
                 new AccountName("Revenue"),
                 AccountType.REVENUE,
-                accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
-                accountTaxonomy(AccountType.REVENUE))));
+                accountTaxonomy(AccountType.REVENUE, NormalBalance.CREDIT))));
 
     ChartOfAccounts chartWithMissingAncestor =
         ChartOfAccounts.of(
@@ -81,12 +74,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1020"),
                 new AccountName("Child Cash"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("1010")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty()))));
+                currentAssetTaxonomy(Optional.of(new AccountCode("1010"))))));
   }
 
   @Test
@@ -99,12 +87,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1010"),
                 new AccountName("Child Cash"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("9999")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty())));
+                currentAssetTaxonomy(Optional.of(new AccountCode("9999")))));
 
     ChartOfAccounts inactiveParentChart =
         ChartOfAccounts.of(List.of(assetAccount("1000", Optional.empty(), false)));
@@ -114,12 +97,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1010"),
                 new AccountName("Child Cash"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("1000")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty())));
+                currentAssetTaxonomy(Optional.of(new AccountCode("1000")))));
 
     ChartOfAccounts typeConflictChart =
         ChartOfAccounts.of(
@@ -128,7 +106,6 @@ class ChartOfAccountsTest {
                     new AccountCode("2000"),
                     new AccountName("Trade Payables"),
                     AccountType.LIABILITY,
-                    accountRole(AccountType.LIABILITY, NormalBalance.CREDIT),
                     financialPositionTaxonomy(
                         FinancialPositionLineClassification.CURRENT_LIABILITY),
                     true,
@@ -139,12 +116,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1010"),
                 new AccountName("Child Cash"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("2000")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty())));
+                currentAssetTaxonomy(Optional.of(new AccountCode("2000")))));
 
     assertEquals(
         "9999",
@@ -178,12 +150,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1010"),
                 new AccountName("Child Cash"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("1000")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty())));
+                currentAssetTaxonomy(Optional.of(new AccountCode("1000")))));
 
     ChartOfAccounts taxonomyConflictChart =
         ChartOfAccounts.of(
@@ -192,12 +159,7 @@ class ChartOfAccountsTest {
                     new AccountCode("1100"),
                     new AccountName("Cash Header"),
                     AccountType.ASSET,
-                    accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                    new AccountTaxonomy(
-                        dev.erst.fingrind.core.AccountNodeKind.HEADER,
-                        Optional.empty(),
-                        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                        Optional.empty()),
+                    currentAssetHeaderTaxonomy(Optional.empty()),
                     true,
                     DECLARED_AT)));
     Optional<BookkeepingAdministrationRejection> taxonomyConflict =
@@ -206,12 +168,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1110"),
                 new AccountName("Equipment"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("1100")),
-                    Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
-                    Optional.empty())));
+                nonCurrentAssetTaxonomy(Optional.of(new AccountCode("1100")))));
 
     assertEquals(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
@@ -230,7 +187,7 @@ class ChartOfAccountsTest {
   }
 
   @Test
-  void validateRejectsParentRoleConflictsBeforeTaxonomyValidation() {
+  void validateAcceptsMatchingParentAndChildClassificationsWithoutSeparateRoleChecks() {
     ChartOfAccounts chart =
         ChartOfAccounts.of(
             List.of(
@@ -238,12 +195,7 @@ class ChartOfAccountsTest {
                     new AccountCode("1100"),
                     new AccountName("Contra Asset Header"),
                     AccountType.ASSET,
-                    AccountRole.POLARITY_INVERTED,
-                    new AccountTaxonomy(
-                        dev.erst.fingrind.core.AccountNodeKind.HEADER,
-                        Optional.empty(),
-                        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                        Optional.empty()),
+                    currentAssetHeaderTaxonomy(Optional.empty()),
                     true,
                     DECLARED_AT)));
 
@@ -253,19 +205,9 @@ class ChartOfAccountsTest {
                 new AccountCode("1110"),
                 new AccountName("Cash Child"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("1100")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty())));
+                currentAssetTaxonomy(Optional.of(new AccountCode("1100")))));
 
-    BookkeepingAdministrationRejection.ParentAccountRoleConflict conflict =
-        assertInstanceOf(
-            BookkeepingAdministrationRejection.ParentAccountRoleConflict.class,
-            rejection.orElseThrow());
-    assertEquals(AccountRole.POLARITY_INVERTED, conflict.parentAccountRole());
-    assertEquals(AccountRole.ORDINARY, conflict.requestedAccountRole());
+    assertEquals(Optional.empty(), rejection);
   }
 
   @Test
@@ -278,12 +220,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1000"),
                 new AccountName("Self Parent"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("1000")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty())));
+                currentAssetTaxonomy(Optional.of(new AccountCode("1000")))));
 
     ChartOfAccounts transitiveCycleChart =
         ChartOfAccounts.of(
@@ -297,12 +234,7 @@ class ChartOfAccountsTest {
                 new AccountCode("1020"),
                 new AccountName("Cycle Root"),
                 AccountType.ASSET,
-                accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-                new AccountTaxonomy(
-                    dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-                    Optional.of(new AccountCode("1010")),
-                    Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                    Optional.empty())));
+                currentAssetTaxonomy(Optional.of(new AccountCode("1010")))));
 
     assertEquals(
         "1000",
@@ -334,7 +266,6 @@ class ChartOfAccountsTest {
                 new AccountCode("3210"),
                 new AccountName("Replacement Result Holding"),
                 AccountType.EQUITY,
-                accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.empty(),
@@ -346,16 +277,15 @@ class ChartOfAccountsTest {
   void validateRejectsAmbiguousActiveResultHoldingDeclarations() {
     ChartOfAccounts chart = ChartOfAccounts.of(List.of(resultHoldingAccount("3200", true)));
 
-    BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous rejection =
+    CloseTargetAccountCandidateAmbiguous rejection =
         assertInstanceOf(
-            BookkeepingAdministrationRejection.ResultHoldingAccountCandidateAmbiguous.class,
+            CloseTargetAccountCandidateAmbiguous.class,
             chart
                 .validate(
                     new AccountDeclaration(
                         new AccountCode("3210"),
                         new AccountName("Replacement Result Holding"),
                         AccountType.EQUITY,
-                        accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
                         new AccountTaxonomy(
                             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                             Optional.empty(),
@@ -374,12 +304,7 @@ class ChartOfAccountsTest {
         new AccountCode(accountCode),
         new AccountName("Account " + accountCode),
         AccountType.ASSET,
-        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-        new AccountTaxonomy(
-            dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-            parentAccountCode,
-            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-            Optional.empty()),
+        currentAssetTaxonomy(parentAccountCode),
         active,
         DECLARED_AT);
   }
@@ -390,14 +315,37 @@ class ChartOfAccountsTest {
         new AccountCode(accountCode),
         new AccountName("Header " + accountCode),
         AccountType.ASSET,
-        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-        new AccountTaxonomy(
-            dev.erst.fingrind.core.AccountNodeKind.HEADER,
-            parentAccountCode,
-            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-            Optional.empty()),
+        currentAssetHeaderTaxonomy(parentAccountCode),
         active,
         DECLARED_AT);
+  }
+
+  private static AccountTaxonomy currentAssetTaxonomy(Optional<AccountCode> parentAccountCode) {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        parentAccountCode,
+        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+        Optional.empty(),
+        Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
+  }
+
+  private static AccountTaxonomy currentAssetHeaderTaxonomy(
+      Optional<AccountCode> parentAccountCode) {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.HEADER,
+        parentAccountCode,
+        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+        Optional.empty(),
+        Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
+  }
+
+  private static AccountTaxonomy nonCurrentAssetTaxonomy(Optional<AccountCode> parentAccountCode) {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        parentAccountCode,
+        Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
+        Optional.empty(),
+        Optional.of(CashFlowAssetClassification.NON_CASH));
   }
 
   private static RegisteredAccount resultHoldingAccount(String accountCode, boolean active) {
@@ -405,7 +353,6 @@ class ChartOfAccountsTest {
         new AccountCode(accountCode),
         new AccountName("Result Holding " + accountCode),
         AccountType.EQUITY,
-        accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
         financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
         active,
         DECLARED_AT);

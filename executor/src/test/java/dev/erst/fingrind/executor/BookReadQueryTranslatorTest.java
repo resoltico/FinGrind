@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
@@ -63,17 +64,17 @@ class BookReadQueryTranslatorTest {
   @Test
   void queryTranslator_translatesStatementQueries() {
     assertEquals(
-        new FinancialPositionCriteria(Optional.of(EFFECTIVE_DATE)),
+        new FinancialPositionCriteria(Optional.of(EFFECTIVE_DATE), ComparativeSelection.none()),
         BookReadQueryTranslator.fromPublished(
-            new FinancialPositionQuery(Optional.of(EFFECTIVE_DATE))));
+            new FinancialPositionQuery(Optional.of(EFFECTIVE_DATE), ComparativeSelection.none())));
     assertEquals(
-        new IncomeStatementCriteria(EFFECTIVE_DATE, EFFECTIVE_DATE),
+        new IncomeStatementCriteria(EFFECTIVE_DATE, EFFECTIVE_DATE, ComparativeSelection.none()),
         BookReadQueryTranslator.fromPublished(
-            new IncomeStatementQuery(EFFECTIVE_DATE, EFFECTIVE_DATE)));
+            new IncomeStatementQuery(EFFECTIVE_DATE, EFFECTIVE_DATE, ComparativeSelection.none())));
     assertEquals(
-        new ChangesInEquityCriteria(EFFECTIVE_DATE, EFFECTIVE_DATE),
+        new ChangesInEquityCriteria(EFFECTIVE_DATE, EFFECTIVE_DATE, ComparativeSelection.none()),
         BookReadQueryTranslator.fromPublished(
-            new ChangesInEquityQuery(EFFECTIVE_DATE, EFFECTIVE_DATE)));
+            new ChangesInEquityQuery(EFFECTIVE_DATE, EFFECTIVE_DATE, ComparativeSelection.none())));
   }
 
   @Test

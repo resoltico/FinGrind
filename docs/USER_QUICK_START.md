@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: USER_QUICK_START
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, quick start, first run, open book, starter chart, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -10,7 +10,7 @@ route:
 
 # Quick Start
 
-**Purpose**: Get one protected FinGrind book running, post one entry, and read one report back.
+**Purpose**: Get one protected FinGrind book running, record one sale, and read one report back.
 **Prerequisites**: Download one public FinGrind bundle that matches your host and unpack it. The
 published Linux bundles require glibc `2.34` or newer; use the compatibility matrix below as the
 authoritative target check. The public bundle already includes what it needs to run. The examples
@@ -131,43 +131,29 @@ cp ./quick-start-request.json ./request.json
 
 That bundled file is a concrete sample document. Replace the sample evidence, provenance, and
 idempotency values before real-world use. Reusing one committed `idempotencyKey` against the same
-book is rejected. The sample uses direct balanced journal lines so the canonical write boundary is
-visible immediately; recipe shortcuts remain available in the broader examples and request docs.
+book is rejected. The bundled quick-start sample follows the minimal sale request path, while the
+raw direct-journal scaffold remains available through `print-request-template post-entry` and
+still has to move at least one declared cash-and-cash-equivalent asset account.
 
-`./quick-start-request.json` already contains one balanced entry that uses the seeded starter
+`./quick-start-request.json` already contains one sale entry that uses the seeded starter
 accounts:
 
 ```json
 {
-  "entryKind": "JOURNAL",
+  "entryKind": "SALE",
   "effectiveDate": "2026-04-08",
-  "lines": [
-    {
-      "accountCode": "cash",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    },
-    {
-      "accountCode": "service-revenue",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    }
-  ],
+  "cashAccountCode": "cash",
+  "revenueAccountCode": "service-revenue",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
   "evidence": {
     "sourceDocuments": [
       {
         "sourceDocumentId": "quick-start-cash-receipt-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-08",
-        "capturedAt": "2026-04-08T10:15:30Z",
-        "storageLocator": "vault://quick-start/cash-receipt-1",
-        "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "documentDate": "2026-04-08"
       }
     ],
     "approvals": []
@@ -175,9 +161,9 @@ accounts:
   "provenance": {
     "actorId": "quick-start-operator",
     "actorType": "PERSON",
-    "commandId": "quick-start-posting",
+    "commandId": "quick-start-record-sale",
     "idempotencyKey": "quick-start-idem-1",
-    "causationId": "quick-start-cause-1"
+    "causationId": "quick-start-sale-cause-1"
   }
 }
 ```
@@ -191,7 +177,7 @@ fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secre
 Then commit it:
 
 ```bash
-fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
+fingrind record-sale --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
 ```
 
 ## 7. Read The Result Back
@@ -213,6 +199,7 @@ fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secre
 - [USER_INSTALL.md](./USER_INSTALL.md) for exact public package names, launcher paths, checksums, and attestation commands
 - [USER_CONTAINER.md](./USER_CONTAINER.md) for the published container image workflow
 - [USER_CLI.md](./USER_CLI.md) for the full command surface and exit behavior
-- [USER_REQUESTS.md](./USER_REQUESTS.md) for request and response shapes
+- [USER_REQUESTS.md](./USER_REQUESTS.md) for request shapes
+- [USER_RESPONSES.md](./USER_RESPONSES.md) for response envelopes, report payloads, and deterministic error output
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md) for longer flows, reversals, plans, and report examples
 - [README.md](../README.md) for the storefront overview

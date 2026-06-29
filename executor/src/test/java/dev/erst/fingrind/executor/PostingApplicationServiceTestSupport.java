@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
@@ -39,11 +38,13 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintTestSupport;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -70,15 +71,28 @@ final class PostingApplicationServiceTestSupport {
         new AccountCode("1000"),
         new AccountName("Cash"),
         AccountType.ASSET,
-        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-        accountTaxonomy(AccountType.ASSET),
+        accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
         FIXED_CLOCK.instant());
     bookSession.declareAccount(
         new AccountCode("2000"),
         new AccountName("Revenue"),
         AccountType.REVENUE,
-        accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
-        accountTaxonomy(AccountType.REVENUE),
+        accountTaxonomy(AccountType.REVENUE, NormalBalance.CREDIT),
+        FIXED_CLOCK.instant());
+  }
+
+  static void declareNonCashDirectJournalAccounts(InMemoryBookSession bookSession) {
+    bookSession.declareAccount(
+        new AccountCode("3000"),
+        new AccountName("Operating Expense"),
+        AccountType.EXPENSE,
+        accountTaxonomy(AccountType.EXPENSE, NormalBalance.DEBIT),
+        FIXED_CLOCK.instant());
+    bookSession.declareAccount(
+        new AccountCode("3200"),
+        new AccountName("Owner Capital"),
+        AccountType.EQUITY,
+        accountTaxonomy(AccountType.EQUITY, NormalBalance.CREDIT),
         FIXED_CLOCK.instant());
   }
 
@@ -90,11 +104,14 @@ final class PostingApplicationServiceTestSupport {
 
   static PostEntryCommand command(String idempotencyKey) {
     return new PostEntryCommand(
-        BookkeepingEntry.cashRevenue(
+        new BookkeepingEntry.Sale(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("2000"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null,
+            null),
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
         SourceChannel.CLI);
@@ -124,10 +141,11 @@ final class PostingApplicationServiceTestSupport {
       JournalEntry journalEntry) {
     BookkeepingEntry entry =
         reversalReference.isPresent()
-            ? new BookkeepingEntry.ReversalAdjustment(
+            ? new BookkeepingEntry.Reversal(
                 journalEntry,
-                new PostingLineage.Reversal(reversalReference.orElseThrow(), reason.orElseThrow()))
-            : new BookkeepingEntry.OpenAccountingPosition(
+                new PostingLineage.Reversal(reversalReference.orElseThrow(), reason.orElseThrow()),
+                null)
+            : new BookkeepingEntry.OpeningPosition(
                 journalEntry.effectiveDate(), openingBalances(journalEntry));
     return new PostEntryCommand(
         entry,
@@ -136,13 +154,13 @@ final class PostingApplicationServiceTestSupport {
         SourceChannel.CLI);
   }
 
-  private static List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance>
-      openingBalances(JournalEntry journalEntry) {
-    List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance> balances =
+  private static List<BookkeepingEntry.OpeningPosition.OpeningAccountBalance> openingBalances(
+      JournalEntry journalEntry) {
+    List<BookkeepingEntry.OpeningPosition.OpeningAccountBalance> balances =
         new ArrayList<>(journalEntry.lines().size());
     for (JournalLine line : journalEntry.lines()) {
       balances.add(
-          new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+          new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
               line.accountCode(), line.side(), MonetaryAmount.of(line.amount().money())));
     }
     return List.copyOf(balances);
@@ -153,14 +171,31 @@ final class PostingApplicationServiceTestSupport {
   }
 
   static CommittedPosting existingPosting(String postingId, String idempotencyKey) {
+    return existingPosting(postingId, idempotencyKey, journalEntry());
+  }
+
+  static CommittedPosting conflictingPosting(String postingId, String idempotencyKey) {
+    return existingPosting(postingId, idempotencyKey, conflictingJournalEntry());
+  }
+
+  static CommittedPosting existingPosting(
+      String postingId, String idempotencyKey, JournalEntry journalEntry) {
     return new CommittedPosting(
         new PostingId(postingId),
-        journalEntry(),
+        journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.SALE,
         accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
+  }
+
+  static StoredRequestPosting existingStoredPosting(String postingId, String idempotencyKey) {
+    return storedPosting(existingPosting(postingId, idempotencyKey));
+  }
+
+  static StoredRequestPosting conflictingStoredPosting(String postingId, String idempotencyKey) {
+    return storedPosting(conflictingPosting(postingId, idempotencyKey));
   }
 
   static CommittedProvenance committedProvenance(String idempotencyKey) {
@@ -192,6 +227,14 @@ final class PostingApplicationServiceTestSupport {
         List.of(
             line("1000", JournalLine.EntrySide.CREDIT, "10.00"),
             line("2000", JournalLine.EntrySide.DEBIT, "10.00")));
+  }
+
+  static JournalEntry conflictingJournalEntry() {
+    return new JournalEntry(
+        LocalDate.parse("2026-04-07"),
+        List.of(
+            line("1000", JournalLine.EntrySide.DEBIT, "11.00"),
+            line("2000", JournalLine.EntrySide.CREDIT, "11.00")));
   }
 
   static JournalEntry mismatchedReversalJournalEntry() {
@@ -254,7 +297,7 @@ final class PostingApplicationServiceTestSupport {
                               new AccountCode("1000")))));
           case "idem-duplicate" ->
               new PostingCommitResult.Rejected(
-                  new BookkeepingPostingRejection.DuplicateIdempotencyKey());
+                  new BookkeepingPostingRejection.IdempotencyKeyConflict());
           case "idem-reversal-duplicate" ->
               new PostingCommitResult.Rejected(
                   new BookkeepingPostingRejection.ReversalAlreadyExists(
@@ -263,6 +306,19 @@ final class PostingApplicationServiceTestSupport {
         };
       }
     };
+  }
+
+  private static StoredRequestPosting storedPosting(CommittedPosting posting) {
+    return new StoredRequestPosting(
+        posting,
+        RequestFingerprintTestSupport.fingerprint(
+            RequestFingerprintTestSupport.fingerprintedDraft(
+                posting.journalEntry(),
+                posting.postingLineage(),
+                posting.postingKind(),
+                posting.postingOriginKind(),
+                posting.evidence(),
+                posting.provenance())));
   }
 
   /** Minimal book-session stub whose methods fail unless a test overrides them. */
@@ -281,7 +337,13 @@ final class PostingApplicationServiceTestSupport {
     }
 
     @Override
-    public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+    public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
+        dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
       return Optional.empty();
     }
 

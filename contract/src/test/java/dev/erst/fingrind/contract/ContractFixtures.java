@@ -25,7 +25,6 @@ import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
@@ -38,9 +37,9 @@ import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -62,7 +61,6 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.StorageLocator;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -72,15 +70,13 @@ import java.util.Optional;
 final class ContractFixtures {
   private static final Instant FIXTURE_INSTANT = Instant.parse("2026-04-07T10:15:30Z");
   private static final LocalDate FIXTURE_DATE = LocalDate.parse("2026-04-07");
-  private static final String DOCUMENT_SHA256 =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
   private ContractFixtures() {}
 
   static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }
@@ -107,7 +103,13 @@ final class ContractFixtures {
       int limit,
       Optional<PostingPageCursor> nextCursor) {
     return new PostingPage(
-        bookIdentity(), accountCodeFilter, effectiveDateRange, postings, limit, nextCursor);
+        bookIdentity(),
+        accountCodeFilter,
+        effectiveDateRange,
+        postings,
+        limit,
+        nextCursor,
+        java.util.Map.of());
   }
 
   static AccountTaxonomy accountTaxonomy(AccountType accountType) {
@@ -117,31 +119,36 @@ final class ContractFixtures {
               AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty());
+              Optional.empty(),
+              Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
       case LIABILITY ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty(),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+              Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+              Optional.empty());
     };
   }
 
@@ -149,26 +156,23 @@ final class ContractFixtures {
       String accountCode,
       String accountName,
       AccountType accountType,
-      AccountRole accountRole,
       boolean active,
       Instant declaredAt) {
     return new DeclaredAccount(
         new AccountCode(accountCode),
         new AccountName(accountName),
         accountType,
-        accountRole,
         accountTaxonomy(accountType),
         active,
         declaredAt);
   }
 
   static DeclareAccountCommand declareAccountCommand(
-      String accountCode, String accountName, AccountType accountType, AccountRole accountRole) {
+      String accountCode, String accountName, AccountType accountType) {
     return new DeclareAccountCommand(
         new AccountCode(accountCode),
         new AccountName(accountName),
         accountType,
-        accountRole,
         accountTaxonomy(accountType));
   }
 
@@ -176,37 +180,28 @@ final class ContractFixtures {
       String lineCode,
       String lineName,
       AccountType accountType,
-      Optional<AccountRole> lineRole,
       FinancialPositionLineClassification lineClassification,
       StatementLineKind lineKind,
       dev.erst.fingrind.core.CurrencyBalance balance) {
     return new FinancialPositionRow(
-        lineCode,
-        lineName,
-        accountType,
-        lineRole,
-        Optional.of(lineClassification),
-        lineKind,
-        balance);
+        lineCode, lineName, accountType, Optional.of(lineClassification), lineKind, balance);
   }
 
   static IncomeStatementRow incomeStatementRow(
       String lineCode,
       String lineName,
       AccountType accountType,
-      Optional<AccountRole> lineRole,
       ProfitAndLossLineClassification lineClassification,
       StatementLineKind lineKind,
       dev.erst.fingrind.core.CurrencyBalance movement) {
     return new IncomeStatementRow(
-        lineCode, lineName, accountType, lineRole, lineClassification, lineKind, movement);
+        lineCode, lineName, accountType, lineClassification, lineKind, movement);
   }
 
   static ChangesInEquityRow changesInEquityRow(
       String lineCode,
       String lineName,
       Optional<AccountType> lineType,
-      Optional<AccountRole> lineRole,
       FinancialPositionLineClassification lineClassification,
       StatementLineKind lineKind,
       dev.erst.fingrind.core.CurrencyBalance openingBalance,
@@ -216,7 +211,6 @@ final class ContractFixtures {
         lineCode,
         lineName,
         lineType,
-        lineRole,
         Optional.of(lineClassification),
         lineKind,
         openingBalance,
@@ -226,7 +220,7 @@ final class ContractFixtures {
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.ReversalAdjustment(
+        new BookkeepingEntry.Reversal(
             new JournalEntry(
                 FIXTURE_DATE,
                 List.of(
@@ -240,7 +234,8 @@ final class ContractFixtures {
                         Money.parse("EUR", "10.00")))),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                 new ReversalReference(new PostingId("posting-0")),
-                new ReversalReason("operator reversal"))),
+                new ReversalReason("operator reversal")),
+            null),
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
         SourceChannel.CLI);
@@ -264,10 +259,7 @@ final class ContractFixtures {
     return new SourceDocumentReference(
         new SourceDocumentId("document-" + token),
         new SourceDocumentType("cash-receipt"),
-        FIXTURE_DATE,
-        FIXTURE_INSTANT,
-        new StorageLocator("evidence://documents/document-" + token + ".pdf"),
-        new ContentSha256(DOCUMENT_SHA256));
+        FIXTURE_DATE);
   }
 
   static ApprovalReference approvalReference(String token) {

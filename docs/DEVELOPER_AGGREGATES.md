@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_AGGREGATES
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, aggregates, consistency boundary, bookkeeping, workflow, account registry, posting ledger, audit stream, idempotency]
   questions: ["what are fingrind's aggregate boundaries", "which service owns a bookkeeping invariant in fingrind", "where is transaction consistency enforced in fingrind"]
@@ -77,11 +77,11 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 
 ## Account Registry Boundary
 
-- Invariant: one `accountCode` identifies one declared account whose `accountType`,
-  `accountRole`, and declared taxonomy are immutable after first declaration; redeclaration may
-  reactivate the account and rename it, but may not rewrite classification, doctrinal role, or
-  statement-line taxonomy. `normalBalance` is a derived fact from `accountType` plus
-  `accountRole`.
+- Invariant: one `accountCode` identifies one declared account whose `accountType` and declared
+  taxonomy are immutable after first declaration; redeclaration may reactivate the account and
+  rename it, but may not rewrite classification or statement-line taxonomy. `normalBalance` is a
+  derived fact from `accountType` plus the declared classification owned by
+  `AccountTaxonomyDoctrine`.
 - Mutation paths: `declare-account` and `declare-account` workflow steps.
 - Immediate or derived: immediate.
 - Domain owners:

@@ -7,7 +7,6 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
 
 /** Canonical statement of changes in equity for one bounded reporting period. */
 public record ChangesInEquityReport(
@@ -26,25 +25,33 @@ public record ChangesInEquityReport(
     List<CurrencyBalance> comparativeClosingTotals) {
   /** Validates one changes-in-equity report. */
   public ChangesInEquityReport {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
-    if (effectiveDateFrom.isAfter(effectiveDateTo)) {
-      throw new IllegalArgumentException("effectiveDateFrom must be on or before effectiveDateTo.");
-    }
-    Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
-    Objects.requireNonNull(postingCoverage, "postingCoverage");
+    var statementWindow =
+        BookkeepingComparativeReportValidation.requireStatementWindow(
+            bookIdentity,
+            effectiveDateFrom,
+            effectiveDateTo,
+            comparativeEffectiveDateRange,
+            postingCoverage);
+    bookIdentity = statementWindow.bookIdentity();
+    effectiveDateFrom = statementWindow.effectiveDateFrom();
+    effectiveDateTo = statementWindow.effectiveDateTo();
+    comparativeEffectiveDateRange = statementWindow.comparativeEffectiveDateRange();
+    postingCoverage = statementWindow.postingCoverage();
+    var totals =
+        BookkeepingComparativeReportValidation.copyComparativeCurrencyBalances(
+            openingTotals,
+            movementTotals,
+            closingTotals,
+            comparativeOpeningTotals,
+            comparativeMovementTotals,
+            comparativeClosingTotals);
     rows = ContractDescriptorValidation.copyList(rows, "rows");
-    openingTotals = ContractDescriptorValidation.copyList(openingTotals, "openingTotals");
-    movementTotals = ContractDescriptorValidation.copyList(movementTotals, "movementTotals");
-    closingTotals = ContractDescriptorValidation.copyList(closingTotals, "closingTotals");
+    openingTotals = totals.openingTotals();
+    movementTotals = totals.movementTotals();
+    closingTotals = totals.closingTotals();
     comparativeRows = ContractDescriptorValidation.copyList(comparativeRows, "comparativeRows");
-    comparativeOpeningTotals =
-        ContractDescriptorValidation.copyList(comparativeOpeningTotals, "comparativeOpeningTotals");
-    comparativeMovementTotals =
-        ContractDescriptorValidation.copyList(
-            comparativeMovementTotals, "comparativeMovementTotals");
-    comparativeClosingTotals =
-        ContractDescriptorValidation.copyList(comparativeClosingTotals, "comparativeClosingTotals");
+    comparativeOpeningTotals = totals.comparativeOpeningTotals();
+    comparativeMovementTotals = totals.comparativeMovementTotals();
+    comparativeClosingTotals = totals.comparativeClosingTotals();
   }
 }

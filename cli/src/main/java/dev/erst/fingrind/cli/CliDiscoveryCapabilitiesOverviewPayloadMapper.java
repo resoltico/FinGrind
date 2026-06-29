@@ -20,6 +20,7 @@ final class CliDiscoveryCapabilitiesOverviewPayloadMapper {
     return new CliDiscoveryCapabilitiesJsonModels.CapabilitiesMinimalPayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
+        capabilitiesDescriptor.protocolVersion(),
         DiscoveryDetail.MINIMAL,
         DiscoveryFocus.OVERVIEW,
         capabilitiesDescriptor.bookkeepingKernel().scope(),
@@ -38,6 +39,7 @@ final class CliDiscoveryCapabilitiesOverviewPayloadMapper {
     return new CliDiscoveryCapabilitiesJsonModels.CapabilitiesCompactPayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
+        capabilitiesDescriptor.protocolVersion(),
         DiscoveryDetail.COMPACT,
         DiscoveryFocus.OVERVIEW,
         capabilitiesDescriptor.storage().bookBoundary(),
@@ -63,6 +65,7 @@ final class CliDiscoveryCapabilitiesOverviewPayloadMapper {
     return new CliDiscoveryCapabilitiesJsonModels.CapabilitiesPayload(
         capabilitiesDescriptor.application(),
         capabilitiesDescriptor.version(),
+        capabilitiesDescriptor.protocolVersion(),
         DiscoveryDetail.FULL,
         DiscoveryFocus.OVERVIEW,
         capabilitiesDescriptor.storage(),

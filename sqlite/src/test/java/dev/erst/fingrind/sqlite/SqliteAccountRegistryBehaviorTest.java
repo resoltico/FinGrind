@@ -7,8 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
@@ -65,14 +65,14 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
               Instant.parse("2026-04-07T10:15:30Z")));
       deactivateAccount(databasePath, "1000");
       assertEquals(
-          new AccountDeclarationOutcome.Declared(
+          new AccountDeclarationOutcome.Reactivated(
               registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash main"),
                   dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
-                  Instant.parse("2026-04-08T10:15:30Z"))),
+                  Instant.parse("2026-04-07T10:15:30Z"))),
           declareAccount(
               postingFactStore,
               new AccountCode("1000"),
@@ -88,7 +88,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                   dev.erst.fingrind.core.AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
-                  Instant.parse("2026-04-08T10:15:30Z"))),
+                  Instant.parse("2026-04-07T10:15:30Z"))),
           listAccounts(postingFactStore));
     }
   }
@@ -112,7 +112,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
-  void declareAccount_rejectsAccountRoleConflict() {
+  void declareAccount_rejectsAccountTaxonomyConflict() {
     Path databasePath = tempDirectory.resolve("declare-conflict.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       openBookWithNoDeclaredAccounts(postingFactStore);
@@ -125,14 +125,16 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
           Instant.parse("2026-04-07T10:15:30Z"));
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
-              new BookkeepingAdministrationRejection.AccountRoleConflict(
-                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)),
+              new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
+                  new AccountCode("1000"),
+                  accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.NONCURRENT_ASSET))),
           declareAccount(
               postingFactStore,
               new AccountCode("1000"),
               new AccountName("Cash"),
               AccountType.ASSET,
-              NormalBalance.CREDIT,
+              financialPositionTaxonomy(FinancialPositionLineClassification.NONCURRENT_ASSET),
               Instant.parse("2026-04-08T10:15:30Z")));
     }
   }
@@ -217,7 +219,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
-  void mutationWriterUpsertAccount_preservesImmutableTypeAndBalanceAndUpdatesTimestamp() {
+  void mutationWriterUpsertAccount_preservesImmutableTypeAndTaxonomyAndUpdatesTimestamp() {
     Path databasePath = tempDirectory.resolve("upsert-account-columns.sqlite");
     assertDoesNotThrow(
         () ->
@@ -249,10 +251,10 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                           database,
                           "select account_name from account where account_code = '1000'"));
                   assertEquals(
-                      "ORDINARY",
+                      "CURRENT_ASSET",
                       queryText(
                           database,
-                          "select account_role from account where account_code = '1000'"));
+                          "select financial_position_line_classification from account where account_code = '1000'"));
                   assertEquals(
                       "ASSET",
                       queryText(

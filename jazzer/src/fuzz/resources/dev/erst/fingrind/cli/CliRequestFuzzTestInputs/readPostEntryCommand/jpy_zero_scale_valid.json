@@ -1,6 +1,5 @@
 {
-  "entryKind": "JOURNAL",
-  "recipeKind": "CASH_REVENUE",
+  "entryKind": "SALE",
   "effectiveDate": "2026-06-10",
   "cashAccountCode": "1110",
   "revenueAccountCode": "2110",
@@ -13,13 +12,12 @@
       {
         "sourceDocumentId": "document-seed-cli-jpy-idem-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-06-10",
-        "capturedAt": "2026-06-10T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-seed-cli-jpy-idem-1",
-        "contentSha256": "48114c886dde52948ebf9012f103b627ea2235b9984c5a7bc623f3f5ea2bfbaa"
+        "documentDate": "2026-06-10"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "seed-cli-jpy-1",

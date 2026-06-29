@@ -26,9 +26,21 @@ final class MachineContractLedgerPlanStepPayloadFieldSpecs {
   static MachineContractFieldSpec conditionalPostingField() {
     String description =
         "Posting request payload for "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.POST_ENTRY)
-            + " and "
             + MachineContractLedgerPlanFieldSupport.operation(OperationId.PREFLIGHT_ENTRY)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_SALE)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_EXPENSE)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_OWNER_CONTRIBUTION)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_OWNER_WITHDRAWAL)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_OPENING_POSITION)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_REVERSAL)
+            + ", and "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.POST_ENTRY)
             + " steps.";
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Step.POSTING,

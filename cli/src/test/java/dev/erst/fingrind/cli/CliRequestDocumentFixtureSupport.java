@@ -1,7 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.NormalBalance;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,8 +37,7 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
   protected static String validRequestJson() {
     return """
             {
-              "entryKind": "JOURNAL",
-              "recipeKind": "CASH_REVENUE",
+              "entryKind": "SALE",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "revenueAccountCode": "2000",
@@ -61,6 +58,17 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
         .formatted(evidenceJson().indent(14).stripLeading());
   }
 
+  protected static String validRawJournalRequestJson() {
+    return rawJournalRequestJson(
+        "2026-04-07",
+        "command-1",
+        "idem-1",
+        "document-1",
+        "cash-receipt",
+        journalLineJson("1000", "DEBIT", "1000"),
+        journalLineJson("2000", "CREDIT", "1000"));
+  }
+
   protected static String rawJournalRequestJson(
       String effectiveDate,
       String commandId,
@@ -70,7 +78,7 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
       String... lines) {
     return """
             {
-              "entryKind": "JOURNAL",
+              "entryKind": "DIRECT_JOURNAL",
               "effectiveDate": "%s",
               "lines": [
             %s
@@ -80,10 +88,7 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
                   {
                     "sourceDocumentId": "%s",
                     "sourceDocumentType": "%s",
-                    "documentDate": "%s",
-                    "capturedAt": "%sT10:15:30Z",
-                    "storageLocator": "vault://fixtures/%s",
-                    "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                    "documentDate": "%s"
                   }
                 ],
                 "approvals": []
@@ -103,8 +108,6 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
             sourceDocumentId,
             sourceDocumentType,
             effectiveDate,
-            effectiveDate,
-            sourceDocumentId,
             commandId,
             idempotencyKey);
   }
@@ -130,10 +133,7 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
             {
               "sourceDocumentId": "document-1",
               "sourceDocumentType": "cash-receipt",
-              "documentDate": "2026-04-07",
-              "capturedAt": "2026-04-07T10:15:30Z",
-              "storageLocator": "vault://fixtures/document-1",
-              "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+              "documentDate": "2026-04-07"
             }
           ],
           "approvals": []
@@ -153,9 +153,9 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
                     "accountCode": "1000",
                     "accountName": "Cash",
                     "accountType": "ASSET",
-                    "accountRole": "ORDINARY",
                     "accountNodeKind": "POSTABLE",
-                    "financialPositionLineClassification": "CURRENT_ASSET"
+                    "financialPositionLineClassification": "CURRENT_ASSET",
+                    "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
                   }
                 }
               ]
@@ -202,20 +202,16 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
 
   protected static String declareAccountJson(
       String accountCode, String accountName, String normalBalance) {
-    return declareAccountJson(
-        accountCode,
-        accountName,
-        fixtureAccountTypeWireValue(normalBalance),
-        fixtureAccountRoleWireValue(normalBalance));
+    return declareAccountJsonForAccountType(
+        accountCode, accountName, fixtureAccountTypeWireValue(normalBalance));
   }
 
-  protected static String declareAccountJson(
-      String accountCode, String accountName, String accountType, String accountRole) {
+  protected static String declareAccountJsonForAccountType(
+      String accountCode, String accountName, String accountType) {
     return declareAccountJson(
         accountCode,
         accountName,
         accountType,
-        accountRole,
         fixtureFinancialPositionLineClassificationWireValue(accountType),
         fixtureProfitAndLossLineClassificationWireValue(accountType));
   }
@@ -224,17 +220,20 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
       String accountCode,
       String accountName,
       String accountType,
-      String accountRole,
       @Nullable String financialPositionLineClassification,
       @Nullable String profitAndLossLineClassification) {
+    String cashFlowAssetClassification =
+        quotedOrNull(
+            fixtureCashFlowAssetClassificationWireValue(
+                accountType, financialPositionLineClassification));
     return """
             {
               "accountCode": "%s",
               "accountName": "%s",
               "accountType": "%s",
-              "accountRole": "%s",
               "accountNodeKind": "POSTABLE",
               "financialPositionLineClassification": %s,
+              "cashFlowAssetClassification": %s,
               "profitAndLossLineClassification": %s
             }
             """
@@ -242,8 +241,8 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
             accountCode,
             accountName,
             accountType,
-            accountRole,
             quotedOrNull(financialPositionLineClassification),
+            cashFlowAssetClassification,
             quotedOrNull(profitAndLossLineClassification));
   }
 
@@ -278,14 +277,22 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
     };
   }
 
-  private static String quotedOrNull(@Nullable String value) {
-    return value == null ? "null" : "\"" + value + "\"";
+  private static @Nullable String fixtureCashFlowAssetClassificationWireValue(
+      String accountType, @Nullable String financialPositionLineClassification) {
+    if (!"ASSET".equals(accountType)) {
+      return null;
+    }
+    if (financialPositionLineClassification == null) {
+      return "CASH_AND_CASH_EQUIVALENT";
+    }
+    return switch (financialPositionLineClassification) {
+      case "CURRENT_ASSET" -> "CASH_AND_CASH_EQUIVALENT";
+      case "NONCURRENT_ASSET" -> "NON_CASH";
+      default -> "CASH_AND_CASH_EQUIVALENT";
+    };
   }
 
-  private static String fixtureAccountRoleWireValue(String normalBalance) {
-    AccountType accountType = AccountType.fromWireValue(fixtureAccountTypeWireValue(normalBalance));
-    NormalBalance parsedNormalBalance = NormalBalance.valueOf(normalBalance);
-    return CliAccountingReportFixtureSupport.fixtureAccountRole(accountType, parsedNormalBalance)
-        .wireValue();
+  private static String quotedOrNull(@Nullable String value) {
+    return value == null ? "null" : "\"" + value + "\"";
   }
 }

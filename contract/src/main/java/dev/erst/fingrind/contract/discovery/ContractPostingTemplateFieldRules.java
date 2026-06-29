@@ -1,12 +1,11 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.JournalLineTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.OpeningBalanceTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.ReversalTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.TaxSelectionTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -65,17 +64,23 @@ final class ContractPostingTemplateFieldRules {
     }
   }
 
-  static void forbidReversal(@Nullable ReversalTemplateDescriptor reversal) {
-    if (reversal != null) {
-      throw new IllegalArgumentException("reversal must be absent for this entryKind.");
+  static void forbidTax(@Nullable TaxSelectionTemplateDescriptor tax, String entryKindName) {
+    if (tax != null) {
+      throw new IllegalArgumentException("tax must be absent for " + entryKindName + ".");
     }
   }
 
-  static void forbidRecipeKind(
-      @Nullable JournalRecipeKind recipeKind, BookkeepingEntryKind entryKind) {
-    if (recipeKind != null) {
+  static void forbidForeignExchange(
+      @Nullable ForeignExchangeTemplateDescriptor foreignExchange, String entryKindName) {
+    if (foreignExchange != null) {
       throw new IllegalArgumentException(
-          "recipeKind must be absent for " + entryKind.wireValue() + ".");
+          "foreignExchange must be absent for " + entryKindName + ".");
+    }
+  }
+
+  static void forbidReversal(@Nullable ReversalTemplateDescriptor reversal) {
+    if (reversal != null) {
+      throw new IllegalArgumentException("reversal must be absent for this entryKind.");
     }
   }
 }

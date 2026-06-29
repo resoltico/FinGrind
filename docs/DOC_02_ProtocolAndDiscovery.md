@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
-  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates]
-  questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented"]
+  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, declare-tax-registration, tax-obligation]
+  questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented", "where is the tax request surface documented"]
 ---
 
 # Contract Protocol And Discovery Reference
@@ -117,23 +117,21 @@ public enum PlanResultDetail implements WireValue
   execution journal without inventing renderer-local flags or ad hoc booleans
 - Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)`
 
-## `ProtocolSuccessPayload`, `ProtocolEnvelopeStatus`, And `ProtocolDiagnosticCode`
+## `ProtocolSuccessPayload` And `ProtocolEnvelopeStatus`
 
-This marker interface plus these enums are the canonical owners of public envelope success payload
-typing, top-level status tokens, and diagnostics tokens.
+This marker interface plus this enum are the canonical owners of public envelope success payload
+typing and top-level status tokens.
 
 ```java
 public sealed interface ProtocolSuccessPayload
 public enum ProtocolEnvelopeStatus implements WireValue
-public enum ProtocolDiagnosticCode implements WireValue
 ```
 
 - Purpose: distinguish success, deterministic rejection, and runtime failure statuses through one
-  canonical top-level envelope vocabulary, keep post-success diagnostics codes typed instead of
-  renderer-local string literals, and prevent arbitrary records from drifting onto the public
-  success-envelope payload surface.
+  canonical top-level envelope vocabulary and prevent arbitrary records from drifting onto the
+  public success-envelope payload surface.
 - Surface: `ProtocolSuccessPayload` as the marker interface plus `wireValue()`, `wireValues()`,
-  and `fromWireValue(...)` on the enums.
+  and `fromWireValue(...)` on the enum.
 
 ## `ProtocolOptions`
 
@@ -218,9 +216,9 @@ final class OperationIdContract
 
 - Purpose: keep operation wire ids in one resource-backed owner shared by typed catalog code,
   shell-side contract readers, and distribution verification
-- Related contract: the semantic-key-to-enum-name mapping is explicitly owned by
-  `contract-schema-keys.json`, so shell consumers do not infer semantic keys by transforming enum
-  names
+- Related contract: `contract-schema-keys.json` owns only the discovery/build schema keys that
+  need stable public names, while `operation-id-contract.json` remains the sole owner of the full
+  public operation catalog consumed by typed loaders and shell-side verifiers
 
 ## `ProtocolArtifactOutput`
 
@@ -231,7 +229,9 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 ```
 
 - Purpose: advertise supported artifact outputs without ad hoc CLI strings
-- Current scope: PDF export through `ProtocolArtifactOutput.pdf()`
+- Current scope: report PDF export plus the generated/replacement book-key-file, backup-book,
+  backup-book-key-file, and rollback-book artifact families published through the uniform
+  `artifacts[]` response home
 
 ## `PublicCliBundleTarget`
 
@@ -408,6 +408,28 @@ public record MonetaryAmount(String currencyCode, String minorUnits)
 - Validation: rejects non-ISO currencies, redundant leading zeroes, non-digit minor-unit text,
   minor-unit strings longer than 19 digits, and out-of-range exact amounts
 
+## `ForeignExchangeDetails`, `ForeignExchangeTreatmentKind`, And `QuotedExchangeRate`
+
+These contract-owned FX types keep foreign-currency event facts separate from the book's
+functional-currency posting amounts.
+
+```java
+public record ForeignExchangeDetails(...)
+public enum ForeignExchangeTreatmentKind
+public record QuotedExchangeRate(...)
+```
+
+- Purpose: publish one owned transaction-currency amount, one translated functional amount, one
+  exact quoted rate, and one closed treatment vocabulary without reopening mixed-currency journal
+  lines
+- `ForeignExchangeDetails`: validates distinct transaction and functional currencies, requires one
+  positive amount on both sides, and proves that the published functional amount equals the quoted
+  rate translation exactly
+- `ForeignExchangeTreatmentKind`: closes the public treatment vocabulary to
+  `SPOT_SETTLEMENT`, `REALIZED_SETTLEMENT`, and `UNREALIZED_REMEASUREMENT`
+- `QuotedExchangeRate`: owns one directional exact quote with quote date and quote source, and
+  performs half-up translation from transaction currency into functional currency
+
 ## `ProtocolSharedRequestFields`
 
 `ProtocolSharedRequestFields` owns the cross-request field names reused by declare-account,
@@ -432,7 +454,7 @@ public final class ProtocolMoneyFields
   contracts, request parsing, templates, response renderers, and docs
 - Current fields: `currencyCode` and `minorUnits`, returned in stable wire order by `fields()`
 
-## `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields`
+## `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields`
 
 These protocol-owned constant classes keep public JSON field names canonical for their
 surface-specific JSON scopes.
@@ -440,6 +462,7 @@ surface-specific JSON scopes.
 ```java
 public final class ProtocolOpenBookFields
 public final class ProtocolDeclareAccountFields
+public final class ProtocolTaxRegistrationFields
 public final class ProtocolPostEntryFields
 public final class ProtocolLedgerPlanFields
 ```
@@ -448,14 +471,18 @@ public final class ProtocolLedgerPlanFields
   field-name registries
 - `ProtocolOpenBookFields`: owns the nested `entityName`, `functionalCurrency`, and
   `fiscalYearStart` field names for explicit book initialization
-- `ProtocolPostEntryFields.TopLevel`, `.JournalLine`, `.Provenance`, and `.Reversal` group the
-  canonical posting-request field families by JSON object scope; journal-line `amount` is one
-  nested exact-money object keyed by `ProtocolMoneyFields`
+- `ProtocolTaxRegistrationFields` and nested `.TaxCode` own the canonical top-level and declared
+  tax-code field names for `declare-tax-registration`
+- `ProtocolPostEntryFields.TopLevel`, `.ForeignExchange`, `.QuotedRate`, `.Tax`, `.JournalLine`,
+  `.Provenance`, and `.Reversal` group the canonical posting-request field families by JSON object
+  scope; foreign-currency business events now carry one nested `foreignExchange` object with one
+  nested `quotedRate` object, while mixed-currency journal lines remain unavailable and
+  journal-line `amount` remains one nested exact-money object keyed by `ProtocolMoneyFields`
 - `ProtocolLedgerPlanFields.Plan`, `.Step`, `.Query`, and `.Assertion` group the canonical
   ledger-plan field families by JSON object scope; assertion `netAmount` is the same nested
   exact-money object shape
 
-## `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, And `ProtocolLedgerPlanRequestFieldSets`
+## `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets`
 
 These protocol field-set owners are the canonical accepted-field registries across public request
 families.
@@ -463,18 +490,54 @@ families.
 ```java
 public final class ProtocolBookRequestFieldSets
 public final class ProtocolPostingRequestFieldSets
+public final class ProtocolPostingNestedFieldSets
 public final class ProtocolLedgerPlanRequestFieldSets
 ```
 
 - Purpose: keep JSON schema descriptors, CLI request validation, and docs aligned on one
   allowed-field registry instead of hand-maintained accepted-key sets in multiple surfaces
 - Scope: `ProtocolBookRequestFieldSets` owns explicit field inventories for `open-book` and
-  `declare-account`; `ProtocolPostingRequestFieldSets` owns posting top-level and nested objects;
+  `declare-account` plus `declare-tax-registration`; `ProtocolPostingRequestFieldSets` owns
+  posting top-level request families; `ProtocolPostingNestedFieldSets` owns nested posting
+  objects, including journal lines, evidence, tax selectors, and foreign-exchange fact bundles;
   `ProtocolLedgerPlanRequestFieldSets` owns ledger-plan top-level, step, query, and assertion
   objects
 - Boundary: these types own accepted-field inventories only; scalar grammar, requiredness, and
   nested object semantics remain owned by the narrower protocol field classes and request-shape
   descriptors
+
+## `ProtocolPostingRequestTopics`
+
+This protocol helper is the canonical command-topic selector for published posting-request lanes.
+
+```java
+public final class ProtocolPostingRequestTopics
+```
+
+- Purpose: keep discovery templates, CLI request parsing, and request-topic narrowing aligned on
+  one published ownership table instead of duplicating command-to-entry-kind mappings
+- Scope: identifies which posting commands accept the full published family, which require one
+  exact `entryKind`, and which scaffold entry kind each request-template topic should emit
+- Boundary: this type owns topic selection only; field inventories remain owned by the posting
+  field registries, while business semantics remain owned by the entry validators and request
+  surface facts
+
+## `ProtocolRequestTemplateTopics`
+
+This protocol helper is the canonical topic inventory for `print-request-template`.
+
+```java
+public final class ProtocolRequestTemplateTopics
+```
+
+- Purpose: keep request-template syntax, topic validation, and unsupported-topic diagnostics
+  derived from one published ownership table instead of hand-maintained string lists
+- Scope: identifies every operation that owns one raw request-template scaffold and publishes the
+  stable wire-name inventory and command syntax used by discovery and CLI help, including
+  `declare-tax-registration`
+- Boundary: this type owns request-template topics only; posting entry-kind selection remains owned
+  by `ProtocolPostingRequestTopics`, while scaffold document shapes remain owned by the contract
+  template and request-shape builders
 
 ## `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog`
 
@@ -493,12 +556,12 @@ public final class ProtocolManagedSqliteCatalog
 - Scope: `ProtocolCatalog` composes these catalogs into the public discovery surface without
   collapsing their ownership boundaries
 - `ProtocolDomainCatalog` now publishes `RequestSurfaceFacts` as the canonical owner for per-entry
-  posting request semantics, evidence-profile doctrine, account-classification reachability facts,
-  and the temporal-scope lexicon reused by discovery, validation, help, and repair hints
-- `RequestSurfaceFacts` groups `PostEntryKindFacts`, `JournalRecipeFacts`,
-  `EvidenceProfileFacts`, `ReachabilityCellFacts`, `EvidenceRequirementFacts`,
-  `TemporalScopeFacts`, and `CommandTemporalScopeFacts` so one edit can update request-shape
-  discovery and runtime validation together
+  posting request semantics, co-located source-document-type policy, account-classification
+  reachability facts, and the temporal-scope lexicon reused by discovery, validation, help, and
+  repair hints
+- `RequestSurfaceFacts` groups `BookkeepingEntryKindFacts`, `ReachabilityCellFacts`,
+  `EvidenceRequirementFacts`, `TemporalScopeFacts`, and `CommandTemporalScopeFacts` so one edit
+  can update request-shape discovery and runtime validation together
 - `SourceDocumentTypePolicyMode` distinguishes entry kinds that publish one closed
   `sourceDocumentType` enum from entry kinds that leave that token caller-authored under the shared
   token grammar
@@ -522,6 +585,9 @@ public final class MachineContract
 ```
 
 - Purpose: render discovery payloads from typed contract state instead of CLI-owned literals
+- Versioning: `protocolVersion()` is the single canonical owner for the public discovery and
+  machine-envelope contract line, and discovery JSON payloads carry that field directly so
+  callers can detect hard public breaks without inferring from the application version
 - Inputs: `ProtocolCatalog`, `ContractDiscovery`, the top-level discovery descriptor types,
   `ContractRequestShapes`, `ContractResponse`, and `ContractTemplates`
 - Help behavior: `help()` now owns the canonical typed workflow and note inventory, while the CLI
@@ -532,7 +598,8 @@ public final class MachineContract
   canonical `fingrind ...` examples and repair hints to the active launcher surface such as
   `./bin/fingrind` or `.\bin\fingrind.ps1`; request-file commands additionally inline the
   canonical request template, accepted field tables, and enum vocabularies so a caller can form a
-  valid payload from the CLI alone
+  valid payload from the CLI alone, and typed `record-*` help narrows that payload guidance to the
+  selected business-event variant instead of restating the full union write shape
 - Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic placeholder-first
   sample documents, while the CLI raw-template commands now route both help snippets and
   `print-request-template` / `print-plan-template` through the same canonical serializer so
@@ -583,6 +650,9 @@ public final class ContractTemplates
   `EnvironmentRuntimeDescriptor`, `EnvironmentPublicationDescriptor`,
   `EnvironmentStorageDescriptor`, `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
   `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
+- `MachineContract.protocolVersion()` is the canonical owner for the current public discovery and
+  machine-envelope contract line, and `HelpDescriptor`, `CapabilitiesDescriptor`, and
+  `VersionDescriptor` all publish that value directly
 - `EnvironmentSqliteDescriptor.runtime` is an explicit state family with `ReadyRuntime`,
   `UnavailableRuntime`, `FailedRuntime`, and `IncompatibleRuntime`, so discovery payloads publish
   compile-option proof, trust basis, loaded-library facts, and failure detail only in the runtime
@@ -601,19 +671,25 @@ public final class ContractTemplates
 - `CommandDescriptor` keeps command identity, execution mode, output modes, and artifact outputs
   typed through `OperationId`, `ExecutionMode`, `OutputMode`, and `ArtifactOutputDescriptor`
   instead of flattening those closed vocabularies into strings
-- `ContractRequestShapes`: transport request-input descriptors plus posting, account-declaration, and ledger-plan
-  request-shape descriptors
+- `ContractRequestShapes`: transport request-input descriptors plus bookkeeping-entry,
+  account-declaration, tax-registration declaration, and ledger-plan request-shape descriptors
 - `ContractRequestShapes.RequestShapeDescriptorType` is the sealed nested owner that keeps the
   published request-shape inventory exhaustive
 - `ContractRequestShapes.RequestInputDescriptor`, `.RequestShapesDescriptor`,
-  `.PostEntryRequestShapeDescriptor`, `.DeclareAccountRequestShapeDescriptor`,
-  `.LedgerPlanRequestShapeDescriptor`, `.RequestFieldDescriptor`,
+  `.BookkeepingEntryRequestShapeDescriptor`, `.DeclareAccountRequestShapeDescriptor`,
+  `.DeclareTaxRegistrationRequestShapeDescriptor`, `.LedgerPlanRequestShapeDescriptor`,
+  `.RequestFieldDescriptor`,
   `.EntryKindSemanticsDescriptor`, `.EvidenceRequirementDescriptor`, and
   `.EnumVocabularyDescriptor` are the nested typed request-shape descriptors
+- `ContractRequestShapes.RequestShapesDescriptor` publishes `declareTaxRegistration` as one
+  first-class sibling beside the bookkeeping-entry, account, and ledger-plan request shapes
+- `ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor` now publishes the nested request
+  `foreignExchangeFields`, `quotedRateFields`, and `taxFields` inventories beside the
+  journal-line, opening-balance, evidence, provenance, and reversal families
 - `ContractRequestShapes.EntryKindSemanticsDescriptor` publishes one entry kind's required and
   forbidden top-level fields plus the canonical `sourceDocumentType` policy for that entry kind
 - `ContractRequestShapes.EvidenceRequirementDescriptor` publishes the non-negotiable source-document
-  minimum and field inventory for every posting request
+  minimum for every bookkeeping-entry request
 - `RequestFieldPresence` is the stable request-field presence vocabulary shared by request-shape
   descriptors and executable schema authorship, with `required`, `conditional`, `optional`, and
   `forbidden` wire values
@@ -633,9 +709,12 @@ public final class ContractTemplates
   `.LedgerPlanStepTemplateDescriptor`, `.LedgerPlanQueryTemplateDescriptor`, and
   `.LedgerAssertionTemplateDescriptor` are the nested typed ledger-plan template descriptors
 - `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
-  `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
-  `.DeclareAccountTemplateDescriptor`, and related evidence descriptors are the nested typed
-  request template descriptors
+  `.TaxSelectionTemplateDescriptor`, `.ProvenanceTemplateDescriptor`,
+  `.ReversalTemplateDescriptor`, `.DeclareAccountTemplateDescriptor`,
+  `.DeclareTaxRegistrationTemplateDescriptor`, `.DeclareTaxCodeTemplateDescriptor`, and related
+  evidence descriptors are the nested typed request template descriptors
+- `ForeignExchangeTemplateDescriptor` and `QuotedExchangeRateTemplateDescriptor` are the
+  top-level typed FX request template descriptors reused by posting request templates
 - Template descriptors keep actor type, account type, entry side, normal balance, step kind,
   assertion kind, balance side, and exact money typed at the public boundary, and they reject
   structurally impossible ledger plan step or assertion combinations before any renderer publishes
@@ -694,7 +773,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 24`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 33`
 
 ## `ProtectedBookFormatContract`
 

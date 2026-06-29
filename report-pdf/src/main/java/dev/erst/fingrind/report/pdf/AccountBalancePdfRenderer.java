@@ -22,9 +22,6 @@ final class AccountBalancePdfRenderer {
                     "Account type",
                     PdfValueFormatter.displayAccountType(snapshot.account().accountType())),
                 List.of(
-                    "Account role",
-                    PdfValueFormatter.displayAccountRole(snapshot.account().accountRole())),
-                List.of(
                     "Normal balance",
                     PdfValueFormatter.displayNormalBalance(snapshot.account().normalBalance())),
                 List.of("Active", PdfValueFormatter.displayBoolean(snapshot.account().active())),

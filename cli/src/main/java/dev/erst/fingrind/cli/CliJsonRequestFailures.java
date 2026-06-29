@@ -25,6 +25,7 @@ final class CliJsonRequestFailures {
         readErrorDetails.message(),
         hint,
         exception,
+        null,
         readErrorDetails.details());
   }
 

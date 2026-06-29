@@ -45,7 +45,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     assertTrue(help.contains("Quick Start"));
     assertTrue(help.contains("Generate one key file"));
     assertTrue(help.contains("Review the seeded starter chart"));
-    assertTrue(help.contains("Create the first request"));
+    assertTrue(help.contains("Create the first sale request"));
     assertTrue(
         containsCollapsedText(
             help,
@@ -88,11 +88,34 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     String help = runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY);
 
     assertTrue(help.contains("Posting model"), help);
-    assertTrue(help.contains("JOURNAL"), help);
+    assertTrue(help.contains("DIRECT_JOURNAL"), help);
+    assertTrue(containsCollapsedText(help, "Canonical scaffold value: DIRECT_JOURNAL."), help);
     assertTrue(help.contains("lines"), help);
     assertTrue(help.contains("side"), help);
-    assertTrue(help.contains("recipeKind"), help);
+    assertFalse(help.contains("SALE"), help);
+    assertFalse(help.contains("cashAccountCode"), help);
     assertTrue(help.contains("Input Contract"), help);
+  }
+
+  @Test
+  void run_recordSaleHelpPublishesOnlySalePostingFields() {
+    String help = runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.RECORD_SALE);
+
+    assertTrue(help.contains("Posting model"), help);
+    assertTrue(containsCollapsedText(help, "Canonical scaffold value: SALE."), help);
+    assertTrue(help.contains("cashAccountCode"), help);
+    assertTrue(help.contains("revenueAccountCode"), help);
+    assertTrue(help.contains("amount"), help);
+    assertTrue(help.contains("sourceDocumentType"), help);
+    assertTrue(
+        containsCollapsedText(
+            help, "Accepted values: cash-receipt, bank-deposit, card-settlement."),
+        help);
+    assertFalse(help.contains("expenseAccountCode"), help);
+    assertFalse(help.contains("equityAccountCode"), help);
+    assertFalse(help.contains("lines[].accountCode"), help);
+    assertFalse(help.contains("openingBalances[].accountCode"), help);
+    assertFalse(help.contains("reversal.priorPostingId"), help);
   }
 
   @Test
@@ -188,6 +211,23 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
   }
 
   @Test
+  void run_declareTaxRegistrationHelpPublishesStarterRequestGuidanceWithoutPostingModel() {
+    String help =
+        runCommandHelpText(
+            dev.erst.fingrind.contract.protocol.OperationId.DECLARE_TAX_REGISTRATION);
+
+    assertTrue(help.contains("Input Contract"), help);
+    assertTrue(
+        containsCollapsedText(
+            help,
+            CliInvocationText.commandExample(
+                    dev.erst.fingrind.contract.protocol.OperationId.PRINT_REQUEST_TEMPLATE)
+                + " declare-tax-registration"),
+        help);
+    assertFalse(help.contains("Posting model"), help);
+  }
+
+  @Test
   void run_executePlanHelpFullJsonPublishesNestedPostingModelWithoutTopLevelPostingLeak()
       throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -201,7 +241,8 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
     JsonNode requestShapes = payload.path("requestFile").path("requestShapes");
     assertTrue(requestShapes.isObject(), payload.toPrettyString());
-    assertTrue(requestShapes.path("postEntry").isMissingNode(), requestShapes.toPrettyString());
+    assertTrue(
+        requestShapes.path("bookkeepingEntry").isMissingNode(), requestShapes.toPrettyString());
     assertTrue(
         requestShapes.path("declareAccount").isMissingNode(), requestShapes.toPrettyString());
     JsonNode ledgerPlan = requestShapes.path("ledgerPlan");
@@ -211,7 +252,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     assertTrue(
         hasNamedField(postingModel.path("topLevelFields"), "lines"), postingModel.toPrettyString());
     assertTrue(
-        hasNamedField(postingModel.path("topLevelFields"), "recipeKind"),
+        hasNamedField(postingModel.path("topLevelFields"), "cashAccountCode"),
         postingModel.toPrettyString());
     assertTrue(
         hasNamedField(postingModel.path("lineFields"), "side"), postingModel.toPrettyString());
@@ -239,7 +280,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
         runCommandHelpPayloadJson(dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY)
             .path("requestFile")
             .path("requestShapes")
-            .path("postEntry");
+            .path("bookkeepingEntry");
     assertForbiddenPresence(postEntryRequestShape.path("provenanceFields"), "recordedAt");
     assertForbiddenPresence(postEntryRequestShape.path("provenanceFields"), "sourceChannel");
     assertForbiddenPresence(postEntryRequestShape.path("reversalFields"), "kind");
@@ -264,40 +305,44 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
             dev.erst.fingrind.contract.protocol.OperationId.POST_ENTRY);
     ContractRequestShapes.RequestShapesDescriptor requestShapes =
         Objects.requireNonNull(baseHelp.requestShapes());
-    ContractRequestShapes.PostEntryRequestShapeDescriptor postEntryShape =
-        Objects.requireNonNull(requestShapes.postEntry());
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape =
+        Objects.requireNonNull(requestShapes.bookkeepingEntry());
     HelpDescriptor mutatedHelp =
         new HelpDescriptor(
             baseHelp.application(),
             baseHelp.version(),
+            baseHelp.protocolVersion(),
             baseHelp.description(),
             baseHelp.usage(),
             baseHelp.bookModel(),
             baseHelp.bookkeepingKernel(),
             new ContractRequestShapes.RequestShapesDescriptor(
                 requestShapes.schemaDialect(),
-                new ContractRequestShapes.PostEntryRequestShapeDescriptor(
+                new ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor(
                     postEntryShape.topLevelFields().stream()
-                        .filter(field -> !"recipeKind".equals(field.name()))
+                        .filter(field -> !"entryKind".equals(field.name()))
                         .toList(),
                     postEntryShape.lineFields(),
                     postEntryShape.openingBalanceFields(),
+                    postEntryShape.foreignExchangeFields(),
+                    postEntryShape.quotedRateFields(),
+                    postEntryShape.taxFields(),
                     postEntryShape.evidenceFields(),
                     postEntryShape.sourceDocumentFields(),
                     postEntryShape.approvalFields(),
                     postEntryShape.provenanceFields(),
                     postEntryShape.reversalFields(),
                     postEntryShape.entryKindSemantics(),
-                    postEntryShape.journalRecipeSemantics(),
-                    postEntryShape.evidenceProfiles(),
                     postEntryShape.reachabilityMatrix(),
                     postEntryShape.evidenceRequirement(),
                     postEntryShape.enumVocabularies(),
                     postEntryShape.schema()),
                 requestShapes.declareAccount(),
+                requestShapes.declareTaxRegistration(),
                 requestShapes.ledgerPlan()),
             baseHelp.requestTemplate(),
             baseHelp.declareAccountTemplate(),
+            baseHelp.declareTaxRegistrationTemplate(),
             baseHelp.planTemplate(),
             baseHelp.commands(),
             baseHelp.quickStart(),
@@ -314,7 +359,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
 
     assertTrue(
         Objects.requireNonNull(missingField.getMessage())
-            .contains("posting-request field 'recipeKind'"));
+            .contains("posting-request field 'entryKind'"));
   }
 
   @Test
@@ -434,6 +479,11 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
         "as-of-date",
         "--effective-date-as-of",
         "Supply --effective-date-as-of to pin that cutoff explicitly");
+    assertTemporalScopeHelp(
+        "tax-obligation",
+        "bounded-period",
+        "--period-start, --period-end",
+        "Both boundaries must be supplied");
   }
 
   @Test
@@ -558,7 +608,8 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
-                Instant.parse("2026-04-07T10:15:30Z")));
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(

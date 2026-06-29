@@ -1,40 +1,13 @@
 package dev.erst.fingrind.testsupport;
 
-import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
-import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
-import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
-import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.ContentSha256;
-import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.JournalEntry;
-import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.PostingKind;
-import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
-import dev.erst.fingrind.core.RequestProvenance;
-import dev.erst.fingrind.core.ReversalReason;
-import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.core.SourceDocumentId;
-import dev.erst.fingrind.core.SourceDocumentReference;
-import dev.erst.fingrind.core.SourceDocumentType;
-import dev.erst.fingrind.core.StorageLocator;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Clock;
 import java.time.Instant;
@@ -69,105 +42,12 @@ public final class PostingRouteReachabilityTestSupport {
         + cell.classification().toLowerCase(Locale.ROOT);
   }
 
-  /** Builds an opening-balance command for one reachability cell. */
-  public static PostEntryCommand openAccountingPositionCommand(String token) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.OpenAccountingPosition(
-            EFFECTIVE_DATE,
-            List.of(
-                new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
-                    CANDIDATE_ACCOUNT_CODE,
-                    JournalLine.EntrySide.DEBIT,
-                    MonetaryAmount.of(Money.parse("EUR", "10.00"))),
-                new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
-                    COUNTER_ACCOUNT_CODE,
-                    JournalLine.EntrySide.CREDIT,
-                    MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
-        generatedEvidence(token, "opening-balance"),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  /** Builds a direct raw journal command for one reachability cell. */
-  public static PostEntryCommand directJournalCommand(String token) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.Journal(
-            new JournalEntry(
-                EFFECTIVE_DATE,
-                List.of(
-                    new JournalLine(
-                        CANDIDATE_ACCOUNT_CODE,
-                        JournalLine.EntrySide.DEBIT,
-                        Money.parse("EUR", "10.00")),
-                    new JournalLine(
-                        COUNTER_ACCOUNT_CODE,
-                        JournalLine.EntrySide.CREDIT,
-                        Money.parse("EUR", "10.00")))),
-            null),
-        generatedEvidence(token, "operator-note"),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  /** Builds a reversal command that targets the supplied prior posting. */
-  public static PostEntryCommand reversalCommand(String token, PostingId priorPostingId) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.ReversalAdjustment(
-            new JournalEntry(
-                EFFECTIVE_DATE,
-                List.of(
-                    new JournalLine(
-                        CANDIDATE_ACCOUNT_CODE,
-                        JournalLine.EntrySide.CREDIT,
-                        Money.parse("EUR", "10.00")),
-                    new JournalLine(
-                        COUNTER_ACCOUNT_CODE,
-                        JournalLine.EntrySide.DEBIT,
-                        Money.parse("EUR", "10.00")))),
-            new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                new ReversalReference(priorPostingId), new ReversalReason("full reversal"))),
-        generatedEvidence(token, "operator-annotation"),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  /** Chooses the canonical prior-posting route required to make a reversal scenario valid. */
-  public static PostEntryCommand priorPostingCommandForReversal(
-      RequestSurfaceFacts.ReachabilityCellFacts cell, String token) {
-    return cell.operationalJournalReachable()
-        ? directJournalCommand(token)
-        : openAccountingPositionCommand(token);
-  }
-
-  /** Materializes the committed prior posting used by reversal reachability scenarios. */
-  public static CommittedPosting priorPosting(
-      RequestSurfaceFacts.ReachabilityCellFacts cell, String token, PostingId postingId) {
-    PostEntryCommand seedCommand = priorPostingCommandForReversal(cell, token);
-    PostingOriginKind postingOriginKind =
-        seedCommand.entry().entryKind() == dev.erst.fingrind.core.BookkeepingEntryKind.JOURNAL
-            ? PostingOriginKind.JOURNAL
-            : PostingOriginKind.OPEN_ACCOUNTING_POSITION;
-    PostingKind postingKind =
-        postingOriginKind == PostingOriginKind.OPEN_ACCOUNTING_POSITION
-            ? PostingKind.OPENING_BALANCE
-            : PostingKind.STANDARD;
-    return new CommittedPosting(
-        postingId,
-        journalEntry(seedCommand.entry()),
-        PostingLineageModel.direct(),
-        postingKind,
-        postingOriginKind,
-        generatedEvidence(token, sourceDocumentType(seedCommand.entry())),
-        committedProvenance(token));
-  }
-
   /** Declares the scenario's candidate account using the matrix cell taxonomy. */
   public static RegisteredAccount candidateAccount(RequestSurfaceFacts.ReachabilityCellFacts cell) {
     return new RegisteredAccount(
         CANDIDATE_ACCOUNT_CODE,
         new AccountName("Candidate"),
         cell.accountType(),
-        AccountRole.ORDINARY,
         taxonomy(cell),
         true,
         DECLARED_AT);
@@ -179,12 +59,12 @@ public final class PostingRouteReachabilityTestSupport {
         COUNTER_ACCOUNT_CODE,
         new AccountName("Cash"),
         dev.erst.fingrind.core.AccountType.ASSET,
-        AccountRole.ORDINARY,
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-            Optional.empty()),
+            Optional.empty(),
+            Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
         true,
         DECLARED_AT);
   }
@@ -192,77 +72,46 @@ public final class PostingRouteReachabilityTestSupport {
   /** Translates one matrix cell into the corresponding executable account taxonomy. */
   public static AccountTaxonomy taxonomy(RequestSurfaceFacts.ReachabilityCellFacts cell) {
     return switch (cell.classificationFamily()) {
-      case "financial-position" ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.fromWireValue(cell.classification())),
-              Optional.empty());
-      case "profit-and-loss" ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.fromWireValue(cell.classification())));
+      case "financial-position" -> financialPositionTaxonomy(cell.classification());
+      case "profit-and-loss" -> profitAndLossTaxonomy(cell.classification());
       default ->
           throw new IllegalArgumentException(
               "Unsupported classification family " + cell.classificationFamily());
     };
   }
 
-  /** Builds the operator provenance used by shared reachability scenarios. */
-  public static RequestProvenance requestProvenance(String token) {
-    return new RequestProvenance(
-        new ActorId("actor-" + token),
-        ActorType.AGENT,
-        new CommandId("command-" + token),
-        new IdempotencyKey("idem-" + token),
-        new CausationId("cause-" + token),
-        Optional.of(new CorrelationId("corr-" + token)));
+  private static AccountTaxonomy financialPositionTaxonomy(String classificationWireValue) {
+    FinancialPositionLineClassification classification =
+        FinancialPositionLineClassification.fromWireValue(classificationWireValue);
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(classification),
+        Optional.empty(),
+        assetCashFlowClassification(classification));
   }
 
-  /** Builds the evidence bundle that matches the command category for a scenario. */
-  public static dev.erst.fingrind.core.AccountingEvidence generatedEvidence(
-      String token, String sourceDocumentType) {
-    return new dev.erst.fingrind.core.AccountingEvidence(
-        List.of(
-            new SourceDocumentReference(
-                new SourceDocumentId("document-" + token),
-                new SourceDocumentType(sourceDocumentType),
-                EFFECTIVE_DATE,
-                DECLARED_AT,
-                new StorageLocator("vault://fixtures/" + token),
-                new ContentSha256(
-                    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
-        List.of());
-  }
-
-  /** Builds committed provenance for fixtures that need a persisted posting. */
-  public static CommittedProvenance committedProvenance(String token) {
-    return new CommittedProvenance(
-        requestProvenance(token), FIXED_CLOCK.instant(), SourceChannel.CLI);
-  }
-
-  private static JournalEntry journalEntry(BookkeepingEntry entry) {
-    return switch (entry) {
-      case BookkeepingEntry.Journal journal -> journal.journalEntry();
-      case BookkeepingEntry.OpenAccountingPosition openingPosition ->
-          new JournalEntry(
-              openingPosition.effectiveDate(),
-              openingPosition.lines().stream()
-                  .map(
-                      line ->
-                          new JournalLine(line.accountCode(), line.side(), line.amount().money()))
-                  .toList());
-      case BookkeepingEntry.ReversalAdjustment reversal -> reversal.journalEntry();
+  private static Optional<CashFlowAssetClassification> assetCashFlowClassification(
+      FinancialPositionLineClassification classification) {
+    return switch (classification) {
+      case CURRENT_ASSET, NONCURRENT_ASSET -> Optional.of(CashFlowAssetClassification.NON_CASH);
+      case CURRENT_LIABILITY,
+          NONCURRENT_LIABILITY,
+          EQUITY_CONTRIBUTION,
+          EQUITY_WITHDRAWAL,
+          RESULT_HOLDING,
+          RETAINED_ACCUMULATED,
+          RESERVE,
+          OTHER_EQUITY ->
+          Optional.empty();
     };
   }
 
-  private static String sourceDocumentType(BookkeepingEntry entry) {
-    return switch (entry.entryKind()) {
-      case JOURNAL -> "operator-note";
-      case OPEN_ACCOUNTING_POSITION -> "opening-balance";
-      case REVERSAL_ADJUSTMENT -> "operator-annotation";
-    };
+  private static AccountTaxonomy profitAndLossTaxonomy(String classificationWireValue) {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.of(ProfitAndLossLineClassification.fromWireValue(classificationWireValue)));
   }
 }

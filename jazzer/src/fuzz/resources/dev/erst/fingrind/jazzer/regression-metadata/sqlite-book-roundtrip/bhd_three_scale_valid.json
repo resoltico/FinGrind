@@ -21,7 +21,7 @@
       "outcome": {
         "finalCommitStatus": "committed",
         "reloadStatus": "reloaded",
-        "duplicateStatus": "duplicate-idempotency-key",
+        "duplicateStatus": "idempotent-replay",
         "storedFactPresent": true
       }
     }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingKind;
@@ -7,6 +8,7 @@ import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
+import dev.erst.fingrind.core.SourceChannel;
 
 /** Minimal bookkeeping posting shape shared by preflight commands and commit drafts. */
 public sealed interface PostingRequestModel
@@ -38,4 +40,12 @@ public sealed interface PostingRequestModel
 
   /** Returns the caller-supplied request provenance. */
   RequestProvenance requestProvenance();
+
+  /** Returns the logical source channel that owns this posting attempt. */
+  SourceChannel sourceChannel();
+
+  /** Returns the optional caller-authored entry facts retained for durable traceability. */
+  default java.util.Optional<BookkeepingEntry> callerAuthoredEntry() {
+    return java.util.Optional.empty();
+  }
 }

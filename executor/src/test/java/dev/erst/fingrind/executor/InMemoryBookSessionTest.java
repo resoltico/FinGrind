@@ -1,10 +1,10 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.allPostingKinds;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -24,8 +23,10 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -33,6 +34,7 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -59,10 +61,12 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintTestSupport;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -99,8 +103,7 @@ class InMemoryBookSessionTest {
               new AccountCode("1000"),
               new AccountName("Cash"),
               AccountType.ASSET,
-              accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-              accountTaxonomy(AccountType.ASSET),
+              accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
               FIXED_INSTANT));
     }
   }
@@ -115,8 +118,7 @@ class InMemoryBookSessionTest {
               new AccountCode("1000"),
               new AccountName("Cash"),
               AccountType.ASSET,
-              accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-              accountTaxonomy(AccountType.ASSET),
+              accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
               FIXED_INSTANT);
 
       assertEquals(
@@ -187,15 +189,14 @@ class InMemoryBookSessionTest {
   }
 
   @Test
-  void declareAccount_reactivatesExistingAccountUsingThePersistedRedeclarationTimestamp() {
+  void declareAccount_reactivatesExistingAccountWhilePreservingTheFirstDeclarationTimestamp() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
       bookSession.declareAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
           AccountType.ASSET,
-          accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-          accountTaxonomy(AccountType.ASSET),
+          accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
           FIXED_INSTANT);
       bookSession.deactivateAccount(new AccountCode("1000"));
 
@@ -204,33 +205,31 @@ class InMemoryBookSessionTest {
               new AccountCode("1000"),
               new AccountName("Cash main"),
               AccountType.ASSET,
-              accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-              accountTaxonomy(AccountType.ASSET),
+              accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
               Instant.parse("2026-04-08T11:00:00Z"));
 
       assertEquals(
-          new AccountDeclarationOutcome.Declared(
+          new AccountDeclarationOutcome.Reactivated(
               registeredAccount(
                   new AccountCode("1000"),
                   new AccountName("Cash main"),
                   AccountType.ASSET,
                   NormalBalance.DEBIT,
                   true,
-                  Instant.parse("2026-04-08T11:00:00Z"))),
+                  FIXED_INSTANT)),
           result);
     }
   }
 
   @Test
-  void declareAccount_rejectsAccountRoleConflict() {
+  void declareAccount_rejectsAccountTaxonomyConflict() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
       bookSession.declareAccount(
           new AccountCode("1000"),
           new AccountName("Cash"),
           AccountType.ASSET,
-          accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-          accountTaxonomy(AccountType.ASSET),
+          accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
           FIXED_INSTANT);
 
       AccountDeclarationOutcome result =
@@ -238,14 +237,15 @@ class InMemoryBookSessionTest {
               new AccountCode("1000"),
               new AccountName("Cash"),
               AccountType.ASSET,
-              accountRole(AccountType.ASSET, NormalBalance.CREDIT),
-              accountTaxonomy(AccountType.ASSET),
+              financialPositionTaxonomy(FinancialPositionLineClassification.NONCURRENT_ASSET),
               FIXED_INSTANT);
 
       assertEquals(
           new AccountDeclarationOutcome.Rejected(
-              new BookkeepingAdministrationRejection.AccountRoleConflict(
-                  new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)),
+              new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
+                  new AccountCode("1000"),
+                  accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
+                  financialPositionTaxonomy(FinancialPositionLineClassification.NONCURRENT_ASSET))),
           result);
     }
   }
@@ -293,20 +293,22 @@ class InMemoryBookSessionTest {
       CommittedPosting secondReversal = reversalFact("idem-reversal-2", "posting-idem-original");
 
       assertEquals(
-          new PostingCommitResult.Committed(originalPosting), bookSession.commit(originalPosting));
+          new PostingCommitResult.Committed(originalPosting, false),
+          bookSession.commit(originalPosting));
       assertEquals(
-          Optional.of(originalPosting),
+          Optional.of(
+              new StoredRequestPosting(originalPosting, requestFingerprint(originalPosting))),
           bookSession.findExistingPosting(new IdempotencyKey("idem-original")));
       assertEquals(
           Optional.of(originalPosting),
           bookSession.findPosting(new PostingId("posting-idem-original")));
       assertEquals(
-          new PostingCommitResult.Rejected(
-              new BookkeepingPostingRejection.DuplicateIdempotencyKey()),
+          new PostingCommitResult.Committed(originalPosting, true),
           bookSession.commit(postingFact("idem-original")));
 
       assertEquals(
-          new PostingCommitResult.Committed(firstReversal), bookSession.commit(firstReversal));
+          new PostingCommitResult.Committed(firstReversal, false),
+          bookSession.commit(firstReversal));
       assertEquals(
           Optional.of(firstReversal),
           bookSession.findReversalFor(new PostingId("posting-idem-original")));
@@ -466,7 +468,9 @@ class InMemoryBookSessionTest {
               List.of()),
           bookSession.trialBalance(
               new TrialBalanceCriteria(
-                  Optional.of(LocalDate.parse("2026-04-07")), allPostingKinds())));
+                  Optional.of(LocalDate.parse("2026-04-07")),
+                  allPostingKinds(),
+                  ComparativeSelection.none())));
       assertEquals(
           new AccountLedgerView(
               cashAccount,
@@ -590,15 +594,13 @@ class InMemoryBookSessionTest {
         new AccountCode("1000"),
         new AccountName("Cash"),
         AccountType.ASSET,
-        accountRole(AccountType.ASSET, NormalBalance.DEBIT),
-        accountTaxonomy(AccountType.ASSET),
+        accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
         FIXED_INSTANT);
     bookSession.declareAccount(
         new AccountCode("2000"),
         new AccountName("Revenue"),
         AccountType.REVENUE,
-        accountRole(AccountType.REVENUE, NormalBalance.CREDIT),
-        accountTaxonomy(AccountType.REVENUE),
+        accountTaxonomy(AccountType.REVENUE, NormalBalance.CREDIT),
         FIXED_INSTANT);
   }
 
@@ -613,8 +615,7 @@ class InMemoryBookSessionTest {
             accountCode,
             accountName,
             accountType,
-            accountRole(accountType, normalBalance),
-            accountTaxonomy(accountType),
+            accountTaxonomy(accountType, normalBalance),
             FIXED_INSTANT);
     if (outcome instanceof AccountDeclarationOutcome.Declared declared) {
       return declared.account();
@@ -644,7 +645,7 @@ class InMemoryBookSessionTest {
         new JournalEntry(effectiveDate, List.copyOf(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey, recordedAt));
   }
@@ -657,9 +658,20 @@ class InMemoryBookSessionTest {
             new ReversalReference(new PostingId(priorPostingId)),
             new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
+  }
+
+  private static RequestFingerprint requestFingerprint(CommittedPosting postingFact) {
+    return RequestFingerprintTestSupport.fingerprint(
+        RequestFingerprintTestSupport.fingerprintedDraft(
+            postingFact.journalEntry(),
+            postingFact.postingLineage(),
+            postingFact.postingKind(),
+            postingFact.postingOriginKind(),
+            postingFact.evidence(),
+            postingFact.provenance()));
   }
 
   private static CommittedProvenance committedProvenance(String idempotencyKey) {

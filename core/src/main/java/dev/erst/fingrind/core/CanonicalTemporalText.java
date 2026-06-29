@@ -1,8 +1,15 @@
 package dev.erst.fingrind.core;
 
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.MonthDay;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
+import java.time.temporal.ChronoField;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -10,11 +17,28 @@ import java.util.regex.Pattern;
 public final class CanonicalTemporalText {
   public static final String LOCAL_DATE_PATTERN =
       "^(?:\\d{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])$";
+  public static final String MONTH_DAY_PATTERN = "^(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])$";
   public static final String UTC_INSTANT_PATTERN =
       "^(?:\\d{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\\d|3[01])T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d{3}(?:\\d{3}(?:\\d{3})?)?)?Z$";
 
-  private static final Pattern LOCAL_DATE_REGEX = Pattern.compile(LOCAL_DATE_PATTERN);
   private static final Pattern UTC_INSTANT_REGEX = Pattern.compile(UTC_INSTANT_PATTERN);
+  private static final DateTimeFormatter LOCAL_DATE_FORMATTER =
+      new DateTimeFormatterBuilder()
+          .appendValue(ChronoField.YEAR, 4)
+          .appendLiteral('-')
+          .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+          .appendLiteral('-')
+          .appendValue(ChronoField.DAY_OF_MONTH, 2)
+          .toFormatter(Locale.ROOT)
+          .withResolverStyle(ResolverStyle.STRICT);
+  private static final DateTimeFormatter MONTH_DAY_FORMATTER =
+      new DateTimeFormatterBuilder()
+          .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+          .appendLiteral('-')
+          .appendValue(ChronoField.DAY_OF_MONTH, 2)
+          .parseDefaulting(ChronoField.YEAR, 2000)
+          .toFormatter(Locale.ROOT)
+          .withResolverStyle(ResolverStyle.STRICT);
 
   private CanonicalTemporalText() {}
 
@@ -22,13 +46,21 @@ public final class CanonicalTemporalText {
   public static LocalDate parseLocalDate(String text, String fieldDescription) {
     String normalizedText = requireText(text, fieldDescription);
     String normalizedFieldDescription = requireFieldDescription(fieldDescription);
-    if (!LOCAL_DATE_REGEX.matcher(normalizedText).matches()) {
-      throw invalidLocalDate(normalizedFieldDescription);
-    }
     try {
-      return LocalDate.parse(normalizedText);
-    } catch (DateTimeParseException exception) {
+      return LocalDate.from(LOCAL_DATE_FORMATTER.parse(normalizedText));
+    } catch (DateTimeException exception) {
       throw invalidLocalDate(normalizedFieldDescription, exception);
+    }
+  }
+
+  /** Parses one canonical {@code MM-DD} month-day for the named field. */
+  public static MonthDay parseMonthDay(String text, String fieldDescription) {
+    String normalizedText = requireText(text, fieldDescription);
+    String normalizedFieldDescription = requireFieldDescription(fieldDescription);
+    try {
+      return MonthDay.from(MONTH_DAY_FORMATTER.parse(normalizedText));
+    } catch (DateTimeException exception) {
+      throw invalidMonthDay(normalizedFieldDescription, exception);
     }
   }
 
@@ -55,6 +87,13 @@ public final class CanonicalTemporalText {
     return Objects.requireNonNull(localDate, "localDate").toString();
   }
 
+  /** Formats one month-day into FinGrind's canonical {@code MM-DD} form. */
+  public static String formatMonthDay(MonthDay monthDay) {
+    MonthDay validatedMonthDay = Objects.requireNonNull(monthDay, "monthDay");
+    return "%02d-%02d"
+        .formatted(validatedMonthDay.getMonthValue(), validatedMonthDay.getDayOfMonth());
+  }
+
   /** Formats one UTC instant into FinGrind's canonical persisted ISO-8601 {@code Z} form. */
   public static String formatUtcInstant(Instant instant) {
     return Objects.requireNonNull(instant, "instant").toString();
@@ -64,6 +103,16 @@ public final class CanonicalTemporalText {
   public static boolean isCanonicalLocalDate(String text) {
     try {
       parseLocalDate(text, "local date");
+      return true;
+    } catch (IllegalArgumentException exception) {
+      return false;
+    }
+  }
+
+  /** Reports whether the provided text already matches FinGrind's canonical month-day grammar. */
+  public static boolean isCanonicalMonthDay(String text) {
+    try {
+      parseMonthDay(text, "month-day");
       return true;
     } catch (IllegalArgumentException exception) {
       return false;
@@ -94,15 +143,16 @@ public final class CanonicalTemporalText {
     return normalized;
   }
 
-  private static IllegalArgumentException invalidLocalDate(String fieldDescription) {
-    return new IllegalArgumentException(
-        "Expected one canonical YYYY-MM-DD local date for " + fieldDescription + ".");
-  }
-
   private static IllegalArgumentException invalidLocalDate(
       String fieldDescription, Exception exception) {
     return new IllegalArgumentException(
         "Expected one canonical YYYY-MM-DD local date for " + fieldDescription + ".", exception);
+  }
+
+  private static IllegalArgumentException invalidMonthDay(
+      String fieldDescription, Exception exception) {
+    return new IllegalArgumentException(
+        "Expected one canonical MM-DD month-day for " + fieldDescription + ".", exception);
   }
 
   private static IllegalArgumentException invalidUtcInstant(String fieldDescription) {

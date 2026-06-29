@@ -2,11 +2,11 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
@@ -19,12 +19,13 @@ import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -37,6 +38,7 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
@@ -44,26 +46,30 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
-import dev.erst.fingrind.core.StorageLocator;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /** Shared SQLite posting/book fixtures and native-handle doubles for split store tests. */
 class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
   static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }
@@ -104,12 +110,16 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       Optional<ReversalReference> reversalReference,
       Optional<ReversalReason> reason,
       AccountingEvidence evidence) {
+    JournalEntry journalEntry = journalEntry(reversalReference);
+    PostingLineageModel postingLineage = postingLineage(reversalReference, reason);
     return new CommittedPosting(
         new PostingId(postingId),
-        journalEntry(reversalReference),
-        postingLineage(reversalReference, reason),
+        journalEntry,
+        postingLineage,
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        reversalReference
+            .map(ignored -> dev.erst.fingrind.core.PostingOriginKind.REVERSAL)
+            .orElse(dev.erst.fingrind.core.PostingOriginKind.SALE),
         evidence,
         new CommittedProvenance(
             new RequestProvenance(
@@ -120,7 +130,8 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),
             Instant.parse("2026-04-07T10:15:30Z"),
-            SourceChannel.CLI));
+            SourceChannel.CLI),
+        originatingEntry(journalEntry, postingLineage));
   }
 
   static CommittedPosting postingFact(
@@ -129,12 +140,13 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       LocalDate effectiveDate,
       Instant recordedAt,
       List<JournalLine> lines) {
+    JournalEntry journalEntry = new JournalEntry(effectiveDate, lines);
     return new CommittedPosting(
         new PostingId(postingId),
-        new JournalEntry(effectiveDate, lines),
+        journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.DIRECT_JOURNAL,
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
@@ -145,7 +157,29 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),
             recordedAt,
-            SourceChannel.CLI));
+            SourceChannel.CLI),
+        new BookkeepingEntry.DirectJournal(journalEntry, null));
+  }
+
+  private static BookkeepingEntry originatingEntry(
+      JournalEntry journalEntry, PostingLineageModel postingLineage) {
+    return switch (postingLineage) {
+      case PostingLineageModel.Direct _ ->
+          new BookkeepingEntry.Sale(
+              journalEntry.effectiveDate(),
+              new AccountCode("1000"),
+              new AccountCode("2000"),
+              MonetaryAmount.of(money("EUR", "10.00")),
+              null,
+              null,
+              null);
+      case PostingLineageModel.Reversal reversal ->
+          new BookkeepingEntry.Reversal(
+              journalEntry,
+              new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                  reversal.reference(), reversal.reason()),
+              null);
+    };
   }
 
   static AccountingEvidence accountingEvidence(String token) {
@@ -169,10 +203,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     return new SourceDocumentReference(
         new SourceDocumentId(sourceDocumentId),
         new SourceDocumentType(sourceDocumentType),
-        LocalDate.parse("2026-04-07"),
-        Instant.parse("2026-04-07T10:15:30Z"),
-        new StorageLocator("vault://fixtures/" + sourceDocumentId),
-        new ContentSha256("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
+        LocalDate.parse("2026-04-07"));
   }
 
   private static ApprovalReference approval(String approvalId, String approvalType) {
@@ -198,16 +229,138 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     return BookkeepingPublishedLanguageTranslator.toPublished(postingFact);
   }
 
-  static DeclaredAccount publishedAccount(RegisteredAccount account) {
-    return BookkeepingPublishedLanguageTranslator.toPublished(account);
+  static PostingDraft postingDraft(CommittedPosting postingFact) {
+    return new PostingDraft(
+        postingFact.journalEntry(),
+        postingFact.postingLineage(),
+        postingFact.postingKind(),
+        postingFact.postingOriginKind(),
+        postingFact.evidence(),
+        new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
+        postingFact.provenance(),
+        postingFact.originatingEntry());
   }
 
-  static AccountRole accountRole(AccountType accountType, NormalBalance normalBalance) {
-    Objects.requireNonNull(accountType, "accountType");
-    Objects.requireNonNull(normalBalance, "normalBalance");
-    return AccountSemantics.normalBalance(accountType, AccountRole.ORDINARY) == normalBalance
-        ? AccountRole.ORDINARY
-        : AccountRole.POLARITY_INVERTED;
+  static StoredRequestPosting storedRequestPosting(CommittedPosting postingFact) {
+    return new StoredRequestPosting(postingFact, semanticRequestFingerprint(postingFact));
+  }
+
+  private static RequestFingerprint semanticRequestFingerprint(CommittedPosting postingFact) {
+    PostingAcceptancePolicy.Decision decision =
+        PostingAcceptancePolicy.currentKernel()
+            .decisionFor(
+                postingDraft(postingFact), new FingerprintExpectationValidationBook(postingFact));
+    if (decision instanceof PostingAcceptancePolicy.Decision.Accepted accepted) {
+      return accepted.requestFingerprint();
+    }
+    if (decision instanceof PostingAcceptancePolicy.Decision.Rejected rejected) {
+      throw new IllegalStateException(
+          "SQLite test support could not derive an accepted request fingerprint: "
+              + rejected.rejection());
+    }
+    throw new IllegalStateException(
+        "SQLite test support unexpectedly treated a fresh posting expectation as replay.");
+  }
+
+  /**
+   * Minimal initialized validation-book double for deriving semantic fingerprints in sqlite tests.
+   */
+  private static final class FingerprintExpectationValidationBook
+      implements PostingValidationStore {
+    private static final Instant DECLARED_AT = Instant.parse("2026-04-07T10:15:30Z");
+    private final CommittedPosting postingFact;
+    private final Map<AccountCode, RegisteredAccount> accounts;
+
+    private FingerprintExpectationValidationBook(CommittedPosting postingFact) {
+      this.postingFact = postingFact;
+      this.accounts =
+          Map.of(
+              new AccountCode("1000"),
+              registeredAccount(
+                  new AccountCode("1000"),
+                  new AccountName("Cash"),
+                  AccountType.ASSET,
+                  NormalBalance.DEBIT,
+                  true,
+                  DECLARED_AT),
+              new AccountCode("2000"),
+              registeredAccount(
+                  new AccountCode("2000"),
+                  new AccountName("Revenue"),
+                  AccountType.REVENUE,
+                  NormalBalance.CREDIT,
+                  true,
+                  DECLARED_AT));
+    }
+
+    @Override
+    public BookLifecycleInspection inspectBook() {
+      return initializedLifecycleInspection(
+          SqliteBookContract.APPLICATION_ID,
+          SqliteBookContract.FORMAT_VERSION,
+          SqliteBookContract.FORMAT_VERSION,
+          DECLARED_AT);
+    }
+
+    @Override
+    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
+      return Optional.ofNullable(accounts.get(accountCode));
+    }
+
+    @Override
+    public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
+        dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
+      return accountCodes.stream()
+          .filter(accounts::containsKey)
+          .collect(java.util.stream.Collectors.toUnmodifiableMap(code -> code, accounts::get));
+    }
+
+    @Override
+    public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<CommittedPosting> findPosting(PostingId postingId) {
+      return postingFact.postingLineage() instanceof PostingLineageModel.Reversal reversal
+              && reversal.reference().priorPostingId().equals(postingId)
+          ? Optional.of(
+              postingFact(
+                  postingId.value(),
+                  "fingerprint-existing-" + postingId.value(),
+                  Optional.empty(),
+                  Optional.empty()))
+          : Optional.empty();
+    }
+
+    @Override
+    public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      return List.of();
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
+      return Optional.empty();
+    }
+  }
+
+  static DeclaredAccount publishedAccount(RegisteredAccount account) {
+    return BookkeepingPublishedLanguageTranslator.toPublished(account);
   }
 
   static AccountTaxonomy accountTaxonomy(AccountType accountType) {
@@ -217,32 +370,41 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty());
+              Optional.empty(),
+              Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
       case LIABILITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty(),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+              Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+              Optional.empty());
     };
+  }
+
+  static AccountTaxonomy accountTaxonomy(AccountType accountType, NormalBalance normalBalance) {
+    return SqlitePostingTaxonomyFixtures.accountTaxonomy(accountType, normalBalance);
   }
 
   static AccountTaxonomy financialPositionTaxonomy(
@@ -251,7 +413,10 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
         Optional.of(lineClassification),
-        Optional.empty());
+        Optional.empty(),
+        lineClassification.accountType() == AccountType.ASSET
+            ? Optional.of(CashFlowAssetClassification.NON_CASH)
+            : Optional.empty());
   }
 
   static RegisteredAccount registeredAccount(
@@ -265,8 +430,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         accountCode,
         accountName,
         accountType,
-        accountRole(accountType, normalBalance),
-        accountTaxonomy(accountType),
+        accountTaxonomy(accountType, normalBalance),
         active,
         declaredAt);
   }
@@ -275,12 +439,11 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       boolean active,
       Instant declaredAt) {
     return new RegisteredAccount(
-        accountCode, accountName, accountType, accountRole, accountTaxonomy, active, declaredAt);
+        accountCode, accountName, accountType, accountTaxonomy, active, declaredAt);
   }
 
   static DeclaredAccount declaredAccount(
@@ -307,8 +470,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         accountCode,
         accountName,
         accountType,
-        accountRole(accountType, normalBalance),
-        accountTaxonomy(accountType),
+        accountTaxonomy(accountType, normalBalance),
         declaredAt);
   }
 
@@ -317,11 +479,10 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     return postingFactStore.declareAccount(
-        accountCode, accountName, accountType, accountRole, accountTaxonomy, declaredAt);
+        accountCode, accountName, accountType, accountTaxonomy, declaredAt);
   }
 
   static void openBookWithNoDeclaredAccounts(SqlitePostingFactStore postingFactStore) {
@@ -406,8 +567,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
 
   static void insertPostingFactRow(
       SqliteNativeDatabase database, String postingId, String idempotencyKey) {
-    String postingOriginKind =
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue();
+    String postingOriginKind = dev.erst.fingrind.core.PostingOriginKind.DIRECT_JOURNAL.wireValue();
     database.executeStatement(
         """
         insert into posting_fact (
@@ -424,7 +584,9 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             correlation_id,
             reason,
             source_channel,
-            prior_posting_id
+            prior_posting_id,
+            request_fingerprint_version,
+            request_fingerprint_sha256
         ) values (
             '%s',
             'STANDARD',
@@ -439,7 +601,9 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             null,
             null,
             '%s',
-            null
+            null,
+            %d,
+            '%s'
         )
         """
             .formatted(
@@ -447,6 +611,25 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
                 postingOriginKind,
                 postingId,
                 idempotencyKey,
-                SourceChannel.CLI.wireValue()));
+                SourceChannel.CLI.wireValue(),
+                RequestFingerprint.CURRENT_VERSION,
+                "0".repeat(64)));
+  }
+
+  static dev.erst.fingrind.executor.spi.PostingDraft postingDraft(
+      JournalEntry journalEntry,
+      PostingLineageModel postingLineage,
+      PostingKind postingKind,
+      dev.erst.fingrind.core.PostingOriginKind postingOriginKind,
+      AccountingEvidence evidence,
+      CommittedProvenance provenance) {
+    return new PostingDraft(
+        journalEntry,
+        postingLineage,
+        postingKind,
+        postingOriginKind,
+        evidence,
+        new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
+        provenance);
   }
 }

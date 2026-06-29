@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: ADAPTERS
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -69,9 +69,10 @@ public record CommittedPosting(
 
 - Purpose: preserve bookkeeping-local lineage typing and provenance while one write is being
   stored, queried, or journaled
-- Added fact: `postingKind` keeps standard, opening-balance, and period-result-transfer postings distinct
-  inside local bookkeeping seams, while `postingOriginKind` preserves which published entry family
-  produced one committed posting and `evidence` keeps the retained justification bundle attached
+- Added fact: `postingKind` keeps standard, opening-balance, interim-result-sweep, and
+  fiscal-year-close postings distinct inside local bookkeeping seams, while
+  `postingOriginKind` preserves which published entry family produced one committed posting and
+  `evidence` keeps the retained justification bundle attached
 - Boundary: projected to `PostingFact` only at the public published-language edge
 
 ## `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount`
@@ -84,7 +85,6 @@ public record AccountDeclaration(
     AccountCode accountCode,
     AccountName accountName,
     AccountType accountType,
-    AccountRole accountRole,
     AccountTaxonomy accountTaxonomy)
 public sealed interface AccountDeclarationOutcome
 public sealed interface BookOpeningOutcome
@@ -96,8 +96,8 @@ public record RegisteredAccount(...)
 - `AccountDeclarationOutcome`: closed family of accepted-versus-rejected declaration outcomes
 - `BookOpeningOutcome`: closed family of accepted-versus-rejected initialization outcomes
 - `RegisteredAccount`: local registry snapshot that owns redeclare/reactivate semantics and
-  preserves declared-at time while keeping `accountType`, `accountRole`, and `accountTaxonomy`
-  immutable after the first declaration while deriving `normalBalance()` from `AccountSemantics`
+  preserves declared-at time while keeping `accountType` and `accountTaxonomy` immutable after the
+  first declaration while deriving `normalBalance()` from `AccountTaxonomyDoctrine`
 
 ## `BookAuditEvent` And `BookAuditEventKind`
 
@@ -115,11 +115,12 @@ public enum BookAuditEventKind implements WireValue
 - Current kinds: `BOOK_OPENED`, `ACCOUNT_DECLARED`, `ACCOUNT_REACTIVATED`,
   `POSTING_COMMITTED`, `POSTING_REVERSED`, `BOOK_REKEYED`, `BACKUP_CREATED`,
   `BACKUP_RESTORED`, `REKEY_ROLLBACK_RESTORED`, `REKEY_ROLLBACK_DELETED`,
-  `BACKUP_CREATED_COMPENSATED`, `REKEY_ROLLBACK_DELETED_COMPENSATED`, and `PERIOD_RESULT_TRANSFERRED`
+  `BACKUP_CREATED_COMPENSATED`, `REKEY_ROLLBACK_DELETED_COMPENSATED`,
+  `INTERIM_RESULT_SWEPT`, and `FISCAL_YEAR_CLOSED`
 - Storage boundary: SQLite persists these rows in `audit_event` and rejects direct update/delete
   mutation through append-only triggers
 
-## `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `PeriodResultTransferStore`, And `LedgerPlanTransaction`
+## `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `ReportingPeriodCloseStore`, And `LedgerPlanTransaction`
 
 These exported `executor.spi` interfaces are the explicit store-port set for one selected book
 boundary.
@@ -135,7 +136,7 @@ public interface PostingRangeStore
 public interface BookkeepingReportStore
 public interface BookkeepingReadStore
 public interface PostingCommitStore
-public interface PeriodResultTransferStore
+public interface ReportingPeriodCloseStore
 public interface LedgerPlanTransaction
 ```
 
@@ -147,11 +148,11 @@ public interface LedgerPlanTransaction
 - `PostingHistoryStore`: paginated posting-history reads
 - `PostingRangeStore`: effective-date posting streams plus earliest-posting and close-horizon facts
 - `BookkeepingReportStore`: grouped totals plus account-balance, trial-balance, account-ledger,
-  and period-summary local report views
+  period-summary, and statement local report views
 - `BookkeepingReadStore`: the composite read-side seam that combines lifecycle, lookup, history,
   and report ports for application read services
 - `PostingCommitStore`: durable posting commit boundary
-- `PeriodResultTransferStore`: durable generated transfer-period-result commit boundary
+- `ReportingPeriodCloseStore`: durable interim-result-sweep and fiscal-year-close commit boundary
 - `LedgerPlanTransaction`: explicit begin/commit/rollback boundary for atomic ledger-plan
   execution
 - Purpose: keep lifecycle, administration, lookup, history, reporting, durable commit, and
@@ -167,12 +168,15 @@ generation.
 public record AccountCurrencyTotals(
     RegisteredAccount account,
     CurrencyUnit currencyUnit,
-    CurrencyBalance balance)
+    long debitTotalMinor,
+    long creditTotalMinor)
 ```
 
 - Purpose: move per-account, per-currency exact totals across the
   `BookkeepingReportStore.accountTotals(...)` seam without materializing full posting streams for
   statement computation
+- Surface: `balance()` derives the canonical `CurrencyBalance` projection when local reporting
+  callers need one net balance view
 - Boundary: stores compute these totals; statement and close services consume them as local
   aggregate truth
 
@@ -395,7 +399,25 @@ public record PeriodSummaryView(...)
   `AccountPage`, `PostingPage`, `AccountBalanceSnapshot`, `TrialBalanceReport`,
   `AccountLedgerReport`, and `PeriodSummaryReport`
 
-## `PostingDraft`, `PostingCommitResult`, And `PostingIdGenerator`
+## `CashFlowStatementCriteria`, `CashFlowRowView`, `CashFlowSectionView`, And `CashFlowStatementView`
+
+These exported `executor.bookkeeping` types are the local cash receipts/payments read model used
+by `BookkeepingReadStore`, `BookkeepingReadService`, SQLite read helpers, and reporting
+translators before any public cash-basis report DTOs are projected.
+
+```java
+public record CashFlowStatementCriteria(...)
+public record CashFlowRowView(...)
+public record CashFlowSectionView(...)
+public record CashFlowStatementView(...)
+```
+
+- Purpose: keep cash-basis criteria, section rows, section totals, and articulated opening and
+  closing cash totals inside the local bookkeeping context
+- Boundary: `BookkeepingReadStatementPublishedLanguageTranslator` is the only owner that maps
+  these types to `CashFlowStatementReport`
+
+## `PostingDraft`, `PostingCommitResult`, `PostingIdGenerator`, And `StoredRequestPosting`
 
 These exported `executor.spi` types keep durable posting commit explicit at the store seam.
 
@@ -403,6 +425,7 @@ These exported `executor.spi` types keep durable posting commit explicit at the 
 public record PostingDraft(...)
 public sealed interface PostingCommitResult
 public interface PostingIdGenerator
+public record StoredRequestPosting(...)
 ```
 
 - `PostingDraft`: commit-ready posting material that defers durable posting-id allocation until the
@@ -414,6 +437,8 @@ public interface PostingIdGenerator
   application service translates them into public `PostingRejection`
 - `PostingIdGenerator`: keeps posting-id allocation explicit and injectable at the durable commit
   boundary
+- `StoredRequestPosting`: pairs one committed posting fact with its persisted `RequestFingerprint`
+  so idempotent replay compares normalized semantics instead of raw request bytes
 
 ## `SqliteBookPassphrase`
 
@@ -528,7 +553,7 @@ public final class SqliteStorageFailureException extends IllegalStateException
   that FinGrind should have rejected before commit, so the CLI classifies it as `internal-error`
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
-## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqlitePeriodResultTransferSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqlitePeriodResultTransferSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
+## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
 
 FinGrind now publishes one family of workflow-shaped SQLite session views instead of one composite
 god-session. `SqliteBookSessionMode` names the caller intent, `SqlitePassphraseIntent` and
@@ -540,13 +565,13 @@ workflow-specific opener classes resolve access into the right session view, and
 public interface SqliteAdministrationSession extends AutoCloseable
 public interface SqliteReadSession extends AutoCloseable
 public interface SqlitePostingSession extends AutoCloseable
-public interface SqlitePeriodResultTransferSession extends AutoCloseable
+public interface SqliteReportingPeriodCloseSession extends AutoCloseable
 public interface SqlitePlanExecutionSession extends AutoCloseable
 public interface SqliteRekeySession extends AutoCloseable
 public final class SqliteAdministrationSessions
 public final class SqliteReadSessions
 public final class SqlitePostingSessions
-public final class SqlitePeriodResultTransferSessions
+public final class SqliteReportingPeriodCloseSessions
 public final class SqlitePlanExecutionSessions
 public final class SqliteRekeySessions
 public enum SqliteBookSessionMode
@@ -560,13 +585,14 @@ public final class SqliteBookSessions
 - `SqliteAdministrationSession`: lifecycle and account-registry workflows
 - `SqliteReadSession`: inspection, lookup, list, and report workflows
 - `SqlitePostingSession`: administration, reads, validation, and commit for ordinary posting flows
-- `SqlitePeriodResultTransferSession`: period-result-transfer workflows
+- `SqliteReportingPeriodCloseSession`: interim-result-sweep and fiscal-year-close workflows
 - `SqlitePlanExecutionSession`: plan execution plus transaction ownership
 - `SqliteRekeySession`: rekey workflows
 - `SqliteAdministrationSessions`: resolves one protected-book access tuple into an administration session
 - `SqliteReadSessions`: resolves one protected-book access tuple into a read session
 - `SqlitePostingSessions`: resolves one protected-book access tuple into a posting session
-- `SqlitePeriodResultTransferSessions`: resolves one protected-book access tuple into a transfer session
+- `SqliteReportingPeriodCloseSessions`: resolves one protected-book access tuple into a close-operation
+  session
 - `SqlitePlanExecutionSessions`: resolves one protected-book access tuple into a plan-execution session
 - `SqliteRekeySessions`: resolves one protected-book access tuple into a rekey session
 - `SqliteBookSessionMode`: distinguishes `READ_ONLY`, `READ_WRITE_EXISTING`,

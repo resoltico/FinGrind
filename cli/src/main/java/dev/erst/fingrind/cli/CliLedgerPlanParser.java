@@ -23,7 +23,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanRequestFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolOpenBookFields;
-import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
@@ -76,51 +75,63 @@ final class CliLedgerPlanParser {
             LedgerStepKind.wireValues(),
             LedgerStepKind::fromWireValue);
     rejectUnexpectedStepFields(stepNode, kind);
-    return switch (kind) {
-      case ENSURE_BOOK ->
-          new LedgerStep.EnsureBook(
-              stepId,
-              readEnsureBookCommand(
-                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ENSURE_BOOK)));
-      case DECLARE_ACCOUNT ->
-          new LedgerStep.DeclareAccount(
-              stepId,
-              CliPostingRequestParser.readDeclareAccountCommand(
-                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT)));
-      case PREFLIGHT_ENTRY ->
-          new LedgerStep.PreflightEntry(
-              stepId,
-              CliPostingRequestParser.readPostEntryCommand(
-                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.POSTING)));
-      case POST_ENTRY ->
-          new LedgerStep.PostEntry(
-              stepId,
-              CliPostingRequestParser.readPostEntryCommand(
-                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.POSTING)));
-      case INSPECT_BOOK -> new LedgerStep.InspectBook(stepId);
-      case LIST_ACCOUNTS ->
-          new LedgerStep.ListAccounts(
-              stepId,
-              readListAccountsQuery(optionalObject(stepNode, ProtocolLedgerPlanFields.Step.QUERY)));
-      case GET_POSTING ->
-          new LedgerStep.GetPosting(
-              stepId,
-              new PostingId(requiredText(stepNode, ProtocolLedgerPlanFields.Step.POSTING_ID)));
-      case LIST_POSTINGS ->
-          new LedgerStep.ListPostings(
-              stepId,
-              readListPostingsQuery(optionalObject(stepNode, ProtocolLedgerPlanFields.Step.QUERY)));
-      case ACCOUNT_BALANCE ->
-          new LedgerStep.AccountBalance(
-              stepId,
-              readAccountBalanceQuery(
-                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.QUERY)));
-      case ASSERT ->
-          new LedgerStep.Assert(
-              stepId,
-              readLedgerAssertion(
-                  requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ASSERTION)));
-    };
+    if (kind.commitsPosting()) {
+      return CliLedgerPlanPostingStepParser.readCommittedStep(stepId, kind, stepNode);
+    }
+    if (kind == LedgerStepKind.PREFLIGHT_ENTRY) {
+      return CliLedgerPlanPostingStepParser.readPreflightStep(stepId, stepNode);
+    }
+    if (kind == LedgerStepKind.ASSERT) {
+      return new LedgerStep.Assert(
+          stepId,
+          readLedgerAssertion(requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ASSERTION)));
+    }
+    if (isAdministrativeStepKind(kind)) {
+      return readAdministrativeStep(stepId, kind, stepNode);
+    }
+    return readQueryStep(stepId, kind, stepNode);
+  }
+
+  private static boolean isAdministrativeStepKind(LedgerStepKind kind) {
+    return kind == LedgerStepKind.ENSURE_BOOK || kind == LedgerStepKind.DECLARE_ACCOUNT;
+  }
+
+  private static LedgerStep readAdministrativeStep(
+      LedgerStepId stepId, LedgerStepKind kind, ObjectNode stepNode) {
+    if (kind == LedgerStepKind.ENSURE_BOOK) {
+      return new LedgerStep.EnsureBook(
+          stepId,
+          readEnsureBookCommand(
+              requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ENSURE_BOOK)));
+    }
+    return new LedgerStep.DeclareAccount(
+        stepId,
+        CliPostingRequestParser.readDeclareAccountCommand(
+            requiredObject(stepNode, ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT)));
+  }
+
+  private static LedgerStep readQueryStep(
+      LedgerStepId stepId, LedgerStepKind kind, ObjectNode stepNode) {
+    if (kind == LedgerStepKind.INSPECT_BOOK) {
+      return new LedgerStep.InspectBook(stepId);
+    }
+    if (kind == LedgerStepKind.LIST_ACCOUNTS) {
+      return new LedgerStep.ListAccounts(
+          stepId,
+          readListAccountsQuery(optionalObject(stepNode, ProtocolLedgerPlanFields.Step.QUERY)));
+    }
+    if (kind == LedgerStepKind.GET_POSTING) {
+      return new LedgerStep.GetPosting(
+          stepId, new PostingId(requiredText(stepNode, ProtocolLedgerPlanFields.Step.POSTING_ID)));
+    }
+    if (kind == LedgerStepKind.LIST_POSTINGS) {
+      return new LedgerStep.ListPostings(
+          stepId,
+          readListPostingsQuery(optionalObject(stepNode, ProtocolLedgerPlanFields.Step.QUERY)));
+    }
+    return new LedgerStep.AccountBalance(
+        stepId,
+        readAccountBalanceQuery(requiredObject(stepNode, ProtocolLedgerPlanFields.Step.QUERY)));
   }
 
   private static void rejectUnexpectedStepFields(ObjectNode stepNode, LedgerStepKind kind) {
@@ -144,14 +155,7 @@ final class CliLedgerPlanParser {
         ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT,
         ProtocolBookRequestFieldSets.declareAccountFields(),
         LedgerStepKind.DECLARE_ACCOUNT);
-    rejectFlattenedNestedStepPayload(
-        stepNode,
-        kind,
-        unexpectedFields,
-        ProtocolLedgerPlanFields.Step.POSTING,
-        ProtocolPostingRequestFieldSets.postEntryTopLevelFields(),
-        LedgerStepKind.PREFLIGHT_ENTRY,
-        LedgerStepKind.POST_ENTRY);
+    CliLedgerPlanPostingStepParser.rejectFlattenedPostingPayload(stepNode, kind, unexpectedFields);
     rejectFlattenedNestedStepPayload(
         stepNode,
         kind,
@@ -209,7 +213,7 @@ final class CliLedgerPlanParser {
                 CliOptionValues.parseBookEntityNameOption(
                     requiredText(ensureBookNode, ProtocolOpenBookFields.ENTITY_NAME),
                     "ensureBook." + ProtocolOpenBookFields.ENTITY_NAME)),
-            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CliOptionValues.parseCurrencyUnitOption(
                 requiredText(ensureBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
                 "ensureBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),

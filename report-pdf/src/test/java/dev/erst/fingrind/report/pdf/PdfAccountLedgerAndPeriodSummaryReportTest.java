@@ -80,7 +80,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
     assertTrue(accountLedgerText.contains("Acme Studio"));
     assertTrue(accountLedgerText.contains("All posting kinds"));
     assertTrue(accountLedgerText.contains("Account type"));
-    assertTrue(accountLedgerText.contains("Account role"));
+    assertTrue(accountLedgerText.contains("Normal balance"));
     assertTrue(accountLedgerText.contains("Effective date from"));
     assertTrue(accountLedgerText.contains("Ledger Entries"));
     assertFalse(accountLedgerText.contains("Opening Balances"));
@@ -111,7 +111,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                 new ReversalReference(new PostingId("019e26ff-0000-7000-8000-000000000000")),
                 new ReversalReason("duplicate-charge")),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             evidence("idem-reversal"),
             new CommittedProvenance(
                 new RequestProvenance(
@@ -188,7 +188,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                         CASH_ACCOUNT.accountCode(), EntrySide.CREDIT, money("EUR", "10.00")))),
             PostingLineage.direct(),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             evidence("idem-self"),
             new CommittedProvenance(
                 new RequestProvenance(

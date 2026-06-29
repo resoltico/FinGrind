@@ -11,9 +11,9 @@ final class CliTrialBalanceReportRenderer {
   private CliTrialBalanceReportRenderer() {}
 
   static String renderText(TrialBalanceReport report) {
-    boolean hasComparative = CliReportSurfacePolicy.hasComparative(report);
-    boolean hasComparativeData = CliReportSurfacePolicy.hasComparativeData(report);
-    boolean hasCurrent = CliReportSurfacePolicy.hasCurrent(report);
+    boolean hasComparative = CliTrialBalanceSurfacePolicy.hasComparative(report);
+    boolean hasComparativeData = CliTrialBalanceSurfacePolicy.hasComparativeData(report);
+    boolean hasCurrent = CliTrialBalanceSurfacePolicy.hasCurrent(report);
     String summary =
         CliTextFormat.renderKeyValueBlock(
             hasCurrent

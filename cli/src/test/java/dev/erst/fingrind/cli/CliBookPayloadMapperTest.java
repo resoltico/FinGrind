@@ -1,11 +1,12 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
-import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.cli.json.CliCloseTargetReadinessPayload;
+import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -35,7 +36,7 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
 
     assertEquals("Acme Studio", bookContext.bookIdentity().entityName());
     assertEquals(
-        "internal-management-cash-bookkeeping-kernel",
+        "internal-management-bookkeeping-kernel",
         bookContext.bookIdentity().accountingKernelProfile());
     assertEquals("CASH_BASIS", bookContext.bookIdentity().accountingBasis());
     assertEquals(
@@ -60,17 +61,17 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
     BookIdentity doctrinalIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Acme Studio")),
-            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
 
     var payload = CliBookPayloadMapper.bookIdentityPayload(doctrinalIdentity);
 
-    assertEquals("internal-management-cash-bookkeeping-kernel", payload.accountingKernelProfile());
+    assertEquals("internal-management-bookkeeping-kernel", payload.accountingKernelProfile());
     assertEquals("CASH_BASIS", payload.accountingBasis());
     assertEquals("NON_STATUTORY_INTERNAL_MANAGEMENT", payload.accountingFrameworkPosition());
     assertEquals("OWNER_MANAGED_SINGLE_ENTITY", payload.entityForm());
-    assertEquals("OWNER_MANAGED_SERVICE_CASH", payload.bookTemplateId());
+    assertEquals("OWNER_MANAGED_SERVICE", payload.bookTemplateId());
   }
 
   @Test
@@ -97,28 +98,38 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void resultTransferReadinessPayload_mapsSelectedAndCandidateAccountFacts() {
-    CliAdministrationJsonModels.ResultTransferReadinessPayload readyPayload =
-        CliBookInspectionPayloadMapper.resultTransferReadinessPayload(
-            new BookInspection.ResultTransferReadiness(
-                true,
+  void postingDetailsPayload_mapsCallerAuthoredSaleEntryFacts() {
+    CliBookQueryJsonModels.PostingPayload payload =
+        CliBookPayloadMapper.postingDetailsPayload(bookIdentity(), salePostingFact()).posting();
+    CliPostingEntryPayload entry = payload.entry();
+    assertNotNull(entry);
+    var amount = entry.amount();
+    assertNotNull(amount);
+
+    assertEquals("SALE", entry.entryKind());
+    assertEquals("cash", entry.cashAccountCode());
+    assertEquals("service-revenue", entry.revenueAccountCode());
+    assertEquals("1000", amount.minorUnits());
+    assertNull(entry.openingBalances());
+    assertNull(entry.reversal());
+  }
+
+  @Test
+  void closeTargetReadinessPayload_mapsSelectedAndCandidateAccountFacts() {
+    CliCloseTargetReadinessPayload readyPayload =
+        CliBookInspectionPayloadMapper.closeTargetReadinessPayload(
+            readyCloseTarget(
+                FinancialPositionLineClassification.RESULT_HOLDING, new AccountCode("3200")));
+    CliCloseTargetReadinessPayload ambiguousPayload =
+        CliBookInspectionPayloadMapper.closeTargetReadinessPayload(
+            blockedCloseTarget(
                 FinancialPositionLineClassification.RESULT_HOLDING,
-                new AccountCode("3200"),
-                null,
-                null,
-                List.of()));
-    CliAdministrationJsonModels.ResultTransferReadinessPayload ambiguousPayload =
-        CliBookInspectionPayloadMapper.resultTransferReadinessPayload(
-            new BookInspection.ResultTransferReadiness(
-                false,
-                FinancialPositionLineClassification.RESULT_HOLDING,
-                null,
-                "result-holding-account-candidate-ambiguous",
+                "close-target-account-candidate-ambiguous",
                 "More than one active declared result-holding account satisfies required classification 'RESULT_HOLDING': 3200, 3210.",
                 List.of(new AccountCode("3200"), new AccountCode("3210"))));
 
-    assertEquals("3200", readyPayload.resultHoldingAccountCode());
-    assertNull(ambiguousPayload.resultHoldingAccountCode());
+    assertEquals("3200", readyPayload.accountCode());
+    assertNull(ambiguousPayload.accountCode());
     assertEquals(List.of("3200", "3210"), ambiguousPayload.candidateAccountCodes());
   }
 }

@@ -28,9 +28,9 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(guide.contains("--functional-currency"));
     assertTrue(guide.contains("--fiscal-year-start"));
     assertTrue(guide.contains("starter chart"));
-    assertTrue(guide.contains("\"lines\": ["));
-    assertTrue(guide.contains("\"accountCode\": \"cash\""));
-    assertTrue(guide.contains("\"accountCode\": \"service-revenue\""));
+    assertTrue(guide.contains("\"entryKind\": \"SALE\""));
+    assertTrue(guide.contains("\"cashAccountCode\": \"cash\""));
+    assertTrue(guide.contains("\"revenueAccountCode\": \"service-revenue\""));
     assertFalse(guide.contains("\"recipeKind\": \"CASH_REVENUE\""));
     assertTrue(guide.contains("quick-start-request.json"));
     Path workspace = tempDirectory.resolve("quick-start");
@@ -53,16 +53,13 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals(
         "Acme Studio",
         openBook.path("payload").path("bookIdentity").path("entityName").stringValue());
-    JsonNode requestTemplate = runRawJsonCommand("print-request-template");
-    assertEquals("2026-01-15", requestTemplate.path("effectiveDate").stringValue());
-    assertTrue(requestTemplate.path("recipeKind").isMissingNode());
-    assertEquals(2, requestTemplate.path("lines").size());
-    assertEquals("cash", requestTemplate.path("lines").get(0).path("accountCode").stringValue());
+    JsonNode quickStartRequest = readJson(requestFile);
+    assertEquals("SALE", quickStartRequest.path("entryKind").stringValue());
+    assertEquals("cash", quickStartRequest.path("cashAccountCode").stringValue());
+    assertEquals("service-revenue", quickStartRequest.path("revenueAccountCode").stringValue());
     assertEquals(
-        "service-revenue", requestTemplate.path("lines").get(1).path("accountCode").stringValue());
-    assertEquals(
-        "replace-before-commit-source-document-id",
-        requestTemplate
+        "quick-start-cash-receipt-1",
+        quickStartRequest
             .path("evidence")
             .path("sourceDocuments")
             .get(0)
@@ -70,25 +67,25 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             .stringValue());
     assertEquals(
         "cash-receipt",
-        requestTemplate
+        quickStartRequest
             .path("evidence")
             .path("sourceDocuments")
             .get(0)
             .path("sourceDocumentType")
             .stringValue());
     assertEquals(
-        "replace-before-commit-storage-locator",
-        requestTemplate
+        "2026-04-08",
+        quickStartRequest
             .path("evidence")
             .path("sourceDocuments")
             .get(0)
-            .path("storageLocator")
+            .path("documentDate")
             .stringValue());
-    assertEquals(0, requestTemplate.path("evidence").path("approvals").size());
-    assertEquals("PERSON", requestTemplate.path("provenance").path("actorType").stringValue());
+    assertEquals(0, quickStartRequest.path("evidence").path("approvals").size());
+    assertEquals("PERSON", quickStartRequest.path("provenance").path("actorType").stringValue());
     assertEquals(
-        "replace-before-commit-idempotency-key",
-        requestTemplate.path("provenance").path("idempotencyKey").stringValue());
+        "quick-start-idem-1",
+        quickStartRequest.path("provenance").path("idempotencyKey").stringValue());
     JsonNode preflight =
         runJsonCommand(
             "preflight-entry",
@@ -101,7 +98,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals("ok", preflight.path("status").stringValue());
     JsonNode committed =
         runJsonCommand(
-            "post-entry",
+            "record-sale",
             "--book-file",
             bookFile.toString(),
             "--book-key-file",
@@ -165,20 +162,21 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     Path queryPlanRequestFile = copyExampleFixture("ledger-plan-query-request.json");
     JsonNode postingRequest = readJson(postingRequestFile);
     assertTrue(postingRequest.path("recipeKind").isMissingNode());
-    assertEquals(2, postingRequest.path("lines").size());
+    assertEquals("SALE", postingRequest.path("entryKind").stringValue());
+    assertEquals("cash", postingRequest.path("cashAccountCode").stringValue());
     JsonNode planRequest = readJson(planRequestFile);
     JsonNode planPosting = canonicalPostingStep(planRequest).path("posting");
     assertTrue(planPosting.path("recipeKind").isMissingNode());
-    assertEquals(2, planPosting.path("lines").size());
+    assertEquals("SALE", planPosting.path("entryKind").stringValue());
+    assertEquals("cash", planPosting.path("cashAccountCode").stringValue());
     JsonNode queryPlanRequest = readJson(queryPlanRequestFile);
     assertEquals(
-        "CASH_REVENUE",
-        canonicalPostingStep(queryPlanRequest).path("posting").path("recipeKind").stringValue());
+        "SALE",
+        canonicalPostingStep(queryPlanRequest).path("posting").path("entryKind").stringValue());
     JsonNode unknownAccountRequest = readJson(unknownAccountRequestFile);
-    assertEquals("CASH_REVENUE", unknownAccountRequest.path("recipeKind").stringValue());
+    assertEquals("SALE", unknownAccountRequest.path("entryKind").stringValue());
     JsonNode entrySemanticsRequest = readJson(entrySemanticsRequestFile);
-    assertEquals("JOURNAL", entrySemanticsRequest.path("entryKind").stringValue());
-    assertEquals("CASH_REVENUE", entrySemanticsRequest.path("recipeKind").stringValue());
+    assertEquals("SALE", entrySemanticsRequest.path("entryKind").stringValue());
     runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     runJsonCommand(
@@ -199,7 +197,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         declareRevenueFile.toString());
     JsonNode committed =
         runJsonCommand(
-            "post-entry",
+            "record-sale",
             "--book-file",
             bookFile.toString(),
             "--book-key-file",
@@ -239,7 +237,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =
         runJsonCommand(
-            "post-entry",
+            "record-reversal",
             "--book-file",
             bookFile.toString(),
             "--book-key-file",
@@ -262,7 +260,8 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
     JsonNode rawPlanPosting = canonicalPostingStep(rawPlanTemplate).path("posting");
     assertTrue(rawPlanPosting.path("recipeKind").isMissingNode());
-    assertEquals(2, rawPlanPosting.path("lines").size());
+    assertEquals("SALE", rawPlanPosting.path("entryKind").stringValue());
+    assertEquals("cash", rawPlanPosting.path("cashAccountCode").stringValue());
     assertEquals(
         "replace-before-commit-source-document-id",
         rawPlanPosting
@@ -315,19 +314,33 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
   private static JsonNode canonicalPostingStep(JsonNode planDocument) {
     JsonNode matchingStep = null;
     for (JsonNode step : planDocument.path("steps")) {
-      if ("post-entry".equals(step.path("kind").stringValue()) && step.has("posting")) {
+      if (isCommittedPostingKind(step.path("kind").stringValue()) && step.has("posting")) {
         if (matchingStep != null) {
           throw new AssertionError(
-              "Expected exactly one canonical POST_ENTRY scaffold step in the plan document.");
+              "Expected exactly one canonical committed-posting scaffold step in the plan document.");
         }
         matchingStep = step;
       }
     }
     if (matchingStep == null) {
       throw new AssertionError(
-          "Expected exactly one canonical POST_ENTRY scaffold step in the plan document.");
+          "Expected exactly one canonical committed-posting scaffold step in the plan document.");
     }
     return matchingStep;
+  }
+
+  private static boolean isCommittedPostingKind(String kind) {
+    return switch (kind) {
+      case "record-sale",
+          "record-expense",
+          "record-owner-contribution",
+          "record-owner-withdrawal",
+          "record-opening-position",
+          "record-reversal",
+          "post-entry" ->
+          true;
+      default -> false;
+    };
   }
 
   private static JsonNode readJson(Path path) throws IOException {

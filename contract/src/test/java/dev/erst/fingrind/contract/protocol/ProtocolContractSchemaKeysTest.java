@@ -27,21 +27,10 @@ class ProtocolContractSchemaKeysTest {
     assertEquals("bundleTargets", current.bundlePublication().bundleTargets());
     assertEquals("status", current.bundlePublication().status());
     assertEquals("runnerLabel", current.bundlePublication().runnerLabel());
-    assertEquals("VERSION", current.operationIds().version());
+    assertEquals("HELP", current.operationIds().help());
+    assertEquals("CAPABILITIES", current.operationIds().capabilities());
+    assertEquals("PRINT_REQUEST_TEMPLATE", current.operationIds().printRequestTemplate());
     assertEquals("PRINT_PLAN_TEMPLATE", current.operationIds().printPlanTemplate());
-    assertEquals("GENERATE_BOOK_KEY_FILE", current.operationIds().generateBookKeyFile());
-    assertEquals("BACKUP_BOOK", current.operationIds().backupBook());
-    assertEquals("RESTORE_BOOK", current.operationIds().restoreBook());
-    assertEquals("INSPECT_REKEY_ROLLBACK", current.operationIds().inspectRekeyRollback());
-    assertEquals("DELETE_REKEY_ROLLBACK", current.operationIds().deleteRekeyRollback());
-    assertEquals("RESTORE_REKEY_ROLLBACK", current.operationIds().restoreRekeyRollback());
-    assertEquals("TRANSFER_PERIOD_RESULT", current.operationIds().transferPeriodResult());
-    assertEquals("LIST_POSTINGS", current.operationIds().listPostings());
-    assertEquals("FINANCIAL_POSITION", current.operationIds().financialPosition());
-    assertEquals("INCOME_STATEMENT", current.operationIds().incomeStatement());
-    assertEquals("CHANGES_IN_EQUITY", current.operationIds().changesInEquity());
-    assertEquals("EXECUTE_PLAN", current.operationIds().executePlan());
-    assertEquals("POST_ENTRY", current.operationIds().postEntry());
   }
 
   @Test

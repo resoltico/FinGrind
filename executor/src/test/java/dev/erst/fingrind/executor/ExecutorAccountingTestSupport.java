@@ -11,15 +11,13 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.ContentSha256;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.EntityProfile;
@@ -31,7 +29,6 @@ import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
-import dev.erst.fingrind.core.StorageLocator;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -41,23 +38,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Shared test-only helpers for expressing legacy normal-balance fixtures in account-role terms. */
+/** Shared test-only helpers for expressing declared-account fixtures through taxonomy owners. */
 public final class ExecutorAccountingTestSupport {
   private ExecutorAccountingTestSupport() {}
-
-  /**
-   * Derives the doctrinal role implied by one legacy fixture balance.
-   *
-   * <p>Tests that need specialized equity taxonomy must request it explicitly rather than relying
-   * on this ordinary/contra projection.
-   */
-  public static AccountRole accountRole(AccountType accountType, NormalBalance normalBalance) {
-    Objects.requireNonNull(accountType, "accountType");
-    Objects.requireNonNull(normalBalance, "normalBalance");
-    return AccountSemantics.normalBalance(accountType, AccountRole.ORDINARY) == normalBalance
-        ? AccountRole.ORDINARY
-        : AccountRole.POLARITY_INVERTED;
-  }
 
   /** Returns the default taxonomy owner used by legacy balance-driven test fixtures. */
   public static AccountTaxonomy accountTaxonomy(AccountType accountType) {
@@ -67,7 +50,8 @@ public final class ExecutorAccountingTestSupport {
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty());
+              Optional.empty(),
+              Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
       case LIABILITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
@@ -95,15 +79,90 @@ public final class ExecutorAccountingTestSupport {
     };
   }
 
+  /**
+   * Returns one taxonomy that owns the requested normal balance when the current doctrine defines
+   * one directly.
+   */
+  public static AccountTaxonomy accountTaxonomy(
+      AccountType accountType, NormalBalance normalBalance) {
+    Objects.requireNonNull(accountType, "accountType");
+    Objects.requireNonNull(normalBalance, "normalBalance");
+    return switch (accountType) {
+      case ASSET -> assetTaxonomy(normalBalance);
+      case LIABILITY -> liabilityTaxonomy(normalBalance);
+      case EQUITY -> equityTaxonomy(normalBalance);
+      case REVENUE -> revenueTaxonomy(normalBalance);
+      case EXPENSE -> expenseTaxonomy(normalBalance);
+    };
+  }
+
+  private static AccountTaxonomy assetTaxonomy(NormalBalance normalBalance) {
+    return switch (normalBalance) {
+      case DEBIT -> accountTaxonomy(AccountType.ASSET);
+      case CREDIT ->
+          throw new IllegalArgumentException(
+              "ASSET tests must name an explicit contra-owning taxonomy, not credit-normal polarity.");
+    };
+  }
+
+  private static AccountTaxonomy liabilityTaxonomy(NormalBalance normalBalance) {
+    return switch (normalBalance) {
+      case CREDIT -> accountTaxonomy(AccountType.LIABILITY);
+      case DEBIT ->
+          throw new IllegalArgumentException(
+              "LIABILITY tests must name an explicit contra-owning taxonomy, not debit-normal polarity.");
+    };
+  }
+
+  private static AccountTaxonomy equityTaxonomy(NormalBalance normalBalance) {
+    return switch (normalBalance) {
+      case CREDIT -> accountTaxonomy(AccountType.EQUITY);
+      case DEBIT ->
+          financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL);
+    };
+  }
+
+  private static AccountTaxonomy revenueTaxonomy(NormalBalance normalBalance) {
+    return switch (normalBalance) {
+      case CREDIT -> accountTaxonomy(AccountType.REVENUE);
+      case DEBIT ->
+          throw new IllegalArgumentException(
+              "REVENUE tests must name an explicit profit-and-loss taxonomy, not debit-normal polarity.");
+    };
+  }
+
+  private static AccountTaxonomy expenseTaxonomy(NormalBalance normalBalance) {
+    return switch (normalBalance) {
+      case DEBIT -> accountTaxonomy(AccountType.EXPENSE);
+      case CREDIT ->
+          throw new IllegalArgumentException(
+              "EXPENSE tests must name an explicit profit-and-loss taxonomy, not credit-normal polarity.");
+    };
+  }
+
   /** Returns one explicit balance-sheet taxonomy for tests that need a specific statement line. */
   public static AccountTaxonomy financialPositionTaxonomy(
       FinancialPositionLineClassification lineClassification) {
     Objects.requireNonNull(lineClassification, "lineClassification");
+    Optional<CashFlowAssetClassification> cashFlowAssetClassification =
+        switch (lineClassification) {
+          case CURRENT_ASSET, NONCURRENT_ASSET -> Optional.of(CashFlowAssetClassification.NON_CASH);
+          case CURRENT_LIABILITY,
+              NONCURRENT_LIABILITY,
+              EQUITY_CONTRIBUTION,
+              EQUITY_WITHDRAWAL,
+              RESULT_HOLDING,
+              RETAINED_ACCUMULATED,
+              RESERVE,
+              OTHER_EQUITY ->
+              Optional.empty();
+        };
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
         Optional.of(lineClassification),
-        Optional.empty());
+        Optional.empty(),
+        cashFlowAssetClassification);
   }
 
   /**
@@ -131,23 +190,21 @@ public final class ExecutorAccountingTestSupport {
         accountCode,
         accountName,
         accountType,
-        accountRole(accountType, normalBalance),
-        accountTaxonomy(accountType),
+        accountTaxonomy(accountType, normalBalance),
         active,
         declaredAt);
   }
 
-  /** Builds one published declared-account snapshot from an explicit role and taxonomy. */
+  /** Builds one published declared-account snapshot from an explicit taxonomy. */
   public static DeclaredAccount declaredAccount(
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       boolean active,
       Instant declaredAt) {
     return new DeclaredAccount(
-        accountCode, accountName, accountType, accountRole, accountTaxonomy, active, declaredAt);
+        accountCode, accountName, accountType, accountTaxonomy, active, declaredAt);
   }
 
   /** Builds one local registered-account snapshot from a legacy normal-balance fixture. */
@@ -162,30 +219,28 @@ public final class ExecutorAccountingTestSupport {
         accountCode,
         accountName,
         accountType,
-        accountRole(accountType, normalBalance),
-        accountTaxonomy(accountType),
+        accountTaxonomy(accountType, normalBalance),
         active,
         declaredAt);
   }
 
-  /** Builds one local registered-account snapshot from an explicit role and taxonomy. */
+  /** Builds one local registered-account snapshot from an explicit taxonomy. */
   public static RegisteredAccount registeredAccount(
       AccountCode accountCode,
       AccountName accountName,
       AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy,
       boolean active,
       Instant declaredAt) {
     return new RegisteredAccount(
-        accountCode, accountName, accountType, accountRole, accountTaxonomy, active, declaredAt);
+        accountCode, accountName, accountType, accountTaxonomy, active, declaredAt);
   }
 
   /** Returns one canonical test-only book identity for explicit open-book flows. */
   public static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
   }
@@ -223,20 +278,23 @@ public final class ExecutorAccountingTestSupport {
         supportedBookFormatVersion,
         initializedAt,
         bookIdentity(),
-        resultTransferReadyInspection());
+        readyCloseReadiness());
   }
 
-  /**
-   * Returns one canonical result-transfer-readiness fixture for initialized inspection snapshots.
-   */
-  public static BookInspection.ResultTransferReadiness resultTransferReadyInspection() {
-    return new BookInspection.ResultTransferReadiness(
-        true,
-        FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
-        new AccountCode("3200"),
-        null,
-        null,
-        List.of());
+  /** Returns one canonical close-readiness fixture for initialized inspection snapshots. */
+  public static BookInspection.CloseReadiness readyCloseReadiness() {
+    return new BookInspection.CloseReadiness(
+        readyCloseTarget(
+            FinancialPositionLineClassification.RESULT_HOLDING, new AccountCode("3200")),
+        readyCloseTarget(
+            FinancialPositionLineClassification.RETAINED_ACCUMULATED, new AccountCode("3300")));
+  }
+
+  /** Returns one canonical ready close-target fixture. */
+  public static BookInspection.CloseTargetReadiness readyCloseTarget(
+      FinancialPositionLineClassification classification, AccountCode accountCode) {
+    return new BookInspection.CloseTargetReadiness(
+        true, classification, accountCode, null, null, List.of());
   }
 
   /** Returns one canonical book-opened outcome fixture. */
@@ -274,10 +332,7 @@ public final class ExecutorAccountingTestSupport {
     return new SourceDocumentReference(
         new SourceDocumentId(sourceDocumentId),
         new SourceDocumentType(sourceDocumentType),
-        LocalDate.parse("2026-04-07"),
-        Instant.parse("2026-04-07T10:15:30Z"),
-        new StorageLocator("vault://fixtures/" + sourceDocumentId),
-        new ContentSha256("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
+        LocalDate.parse("2026-04-07"));
   }
 
   /** Builds one published account page rooted in the canonical test book identity. */
@@ -294,11 +349,17 @@ public final class ExecutorAccountingTestSupport {
       int limit,
       Optional<PostingPageCursor> nextCursor) {
     return new PostingPage(
-        bookIdentity(), accountCodeFilter, effectiveDateRange, postings, limit, nextCursor);
+        bookIdentity(),
+        accountCodeFilter,
+        effectiveDateRange,
+        postings,
+        limit,
+        nextCursor,
+        java.util.Map.of());
   }
 
   /** Builds one published posting lookup success rooted in the canonical test book identity. */
   public static GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact);
+    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
   }
 }

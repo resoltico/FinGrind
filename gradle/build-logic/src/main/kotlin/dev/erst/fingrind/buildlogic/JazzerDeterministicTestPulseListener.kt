@@ -31,7 +31,7 @@ internal class JazzerDeterministicTestPulseListener(
                 return
             }
             rootStarted = true
-            emit("deterministic-tests phase=start")
+            emit("deterministic-tests event=start")
             startPulseLoop(::emitHeartbeat)
         }
     }
@@ -43,7 +43,7 @@ internal class JazzerDeterministicTestPulseListener(
         synchronized(lock) {
             finishActiveClass()
             emit(
-                "deterministic-tests phase=finish completed-classes=$completedClasses completed-tests=$completedTests result=${result.resultType}",
+                "deterministic-tests event=finish completed-classes=$completedClasses completed-tests=$completedTests result=${result.resultType}",
             )
             rootFinished = true
             stopPulseLoop()
@@ -75,7 +75,7 @@ internal class JazzerDeterministicTestPulseListener(
             }
 
             emit(
-                "deterministic-tests phase=test-complete completed-tests=$completedTests class=${pulseValue(testDescriptor.className)} name=${pulseValue(testDescriptor.name)} result=${result.resultType}",
+                "deterministic-tests event=test-complete completed-tests=$completedTests class=${pulseValue(testDescriptor.className)} name=${pulseValue(testDescriptor.name)} result=${result.resultType}",
             )
 
             if (activeTestClass == testDescriptor.className && activeTestName == testDescriptor.name) {
@@ -93,7 +93,7 @@ internal class JazzerDeterministicTestPulseListener(
                 }
                 val className = activeTestClass ?: activeTopLevelClass ?: return
                 buildString {
-                    append("deterministic-tests phase=test-progress")
+                    append("deterministic-tests event=test-progress")
                     append(" completed-tests=").append(completedTests)
                     append(" completed-classes=").append(completedClasses)
                     append(" class=").append(pulseValue(className))
@@ -110,14 +110,14 @@ internal class JazzerDeterministicTestPulseListener(
         activeClassTests = 0
         activeClassFailedTests = 0
         activeClassSkippedTests = 0
-        emit("deterministic-tests phase=class-start class=${pulseValue(topLevelClass)}")
+        emit("deterministic-tests event=class-start class=${pulseValue(topLevelClass)}")
     }
 
     private fun finishActiveClass() {
         val topLevelClass = activeTopLevelClass ?: return
         completedClasses += 1
         emit(
-            "deterministic-tests phase=class-complete completed-classes=$completedClasses class=${pulseValue(topLevelClass)} result=${activeClassResult()}",
+            "deterministic-tests event=class-complete completed-classes=$completedClasses class=${pulseValue(topLevelClass)} result=${activeClassResult()}",
         )
         activeTopLevelClass = null
         activeClassTests = 0

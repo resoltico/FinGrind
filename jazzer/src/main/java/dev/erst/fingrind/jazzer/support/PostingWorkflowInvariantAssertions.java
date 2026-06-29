@@ -106,19 +106,28 @@ public final class PostingWorkflowInvariantAssertions {
     }
   }
 
-  /** Requires duplicate submission to produce a duplicate-idempotency-key rejection. */
-  public static CommitRejected requireDuplicateRejection(CommitEntryResult duplicateResult) {
+  /** Requires duplicate submission to replay the original success with the replay marker set. */
+  public static Committed requireIdempotentReplay(
+      CommitEntryResult duplicateResult, Committed committed) {
     Objects.requireNonNull(duplicateResult, "duplicateResult must not be null");
-    CommitRejected rejected =
+    Objects.requireNonNull(committed, "committed must not be null");
+    Committed replayed =
         switch (duplicateResult) {
-          case CommitRejected commitRejected -> commitRejected;
-          case Committed _ ->
-              throw new IllegalStateException("Duplicate commit should be rejected.");
+          case Committed duplicateCommitted -> duplicateCommitted;
+          case CommitRejected _ ->
+              throw new IllegalStateException(
+                  "Duplicate commit should replay the original success.");
         };
-    if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
-      throw new IllegalStateException("Duplicate commit returned the wrong rejection code.");
+    if (!replayed.idempotentReplay()) {
+      throw new IllegalStateException("Duplicate commit did not mark the replayed success.");
     }
-    return rejected;
+    if (!replayed.postingId().equals(committed.postingId())
+        || !replayed.idempotencyKey().equals(committed.idempotencyKey())
+        || !replayed.effectiveDate().equals(committed.effectiveDate())
+        || !replayed.recordedAt().equals(committed.recordedAt())) {
+      throw new IllegalStateException("Duplicate commit drifted from the original success shape.");
+    }
+    return replayed;
   }
 
   /** Verifies that a rejected preflight remains rejected with the same deterministic rejection. */

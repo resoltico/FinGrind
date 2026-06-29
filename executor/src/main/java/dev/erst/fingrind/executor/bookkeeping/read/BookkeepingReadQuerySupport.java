@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping.read;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
+import dev.erst.fingrind.executor.bookkeeping.ComparativeRangeResolver;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
@@ -31,9 +32,11 @@ final class BookkeepingReadQuerySupport {
     TrialBalanceView currentView = bookStore.trialBalance(query);
     var accountingRules = KernelAccountingRulesResolver.forBookIdentity(currentView.bookIdentity());
     var comparativeRange =
-        accountingRules
-            .statementComparativePolicy()
-            .comparativeAsOf(currentView.bookIdentity(), currentView.resolvedEffectiveDateAsOf());
+        ComparativeRangeResolver.asOf(
+            currentView.bookIdentity(),
+            currentView.resolvedEffectiveDateAsOf(),
+            query.comparativeSelection(),
+            accountingRules.statementComparativePolicy());
     return new TrialBalanceView(
         currentView.bookIdentity(),
         currentView.effectiveDateAsOf(),
@@ -45,7 +48,9 @@ final class BookkeepingReadQuerySupport {
             ? bookStore
                 .trialBalance(
                     new TrialBalanceCriteria(
-                        comparativeRange.effectiveDateTo(), query.postingCoverage()))
+                        comparativeRange.effectiveDateTo(),
+                        query.postingCoverage(),
+                        dev.erst.fingrind.core.ComparativeSelection.none()))
                 .rows()
             : List.of());
   }

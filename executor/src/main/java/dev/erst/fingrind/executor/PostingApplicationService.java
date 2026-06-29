@@ -67,19 +67,22 @@ public final class PostingApplicationService {
     }
     PostingCommand postingCommand = localPostingCommand(command);
     return switch (bookkeepingPostingService.commit(postingCommand)) {
-      case PostingCommitResult.Committed committed -> committedResult(committed.postingFact());
+      case PostingCommitResult.Committed committed ->
+          committedResult(committed.postingFact(), committed.idempotentReplay());
       case PostingCommitResult.Rejected rejected ->
           rejectedCommit(
               command, BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
     };
   }
 
-  private static PostEntryResult.Committed committedResult(CommittedPosting committedPosting) {
+  private static PostEntryResult.Committed committedResult(
+      CommittedPosting committedPosting, boolean idempotentReplay) {
     return new PostEntryResult.Committed(
         committedPosting.postingId(),
         committedPosting.provenance().requestProvenance().idempotencyKey(),
         committedPosting.journalEntry().effectiveDate(),
-        committedPosting.provenance().recordedAt());
+        committedPosting.provenance().recordedAt(),
+        idempotentReplay);
   }
 
   private static PostEntryResult.PreflightRejected rejectedPreflight(
@@ -110,6 +113,6 @@ public final class PostingApplicationService {
   }
 
   private PostingCommand localPostingCommand(PostEntryCommand command) {
-    return PostEntryCommandTranslator.toPostingCommand(command);
+    return PostEntryCommandTranslator.toPostingCommand(command, validationStore);
   }
 }

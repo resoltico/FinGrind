@@ -129,9 +129,29 @@ TEXT
         || die "published text trial balance did not render the expected context block"
 }
 
+verify_text_pdf_artifact_output() {
+    local text_output=$1
+    local reported_path=$2
+    local artifact_block
+
+    artifact_block="$(cat <<TEXT
+Artifact
+========
+
+Format : pdf
+Path   : ${reported_path}
+TEXT
+)"
+
+    require_literal_block "${text_output}" "${artifact_block}" \
+        || die "published text PDF export did not emit one artifact confirmation block"
+    ! require_match "${text_output}" '^Trial Balance$' || die \
+        "published text PDF export leaked the full trial-balance report body onto stdout"
+}
+
 verify_mounted_book_surface() {
     local image_ref="${image_name}:${primary_tag_ref}"
-    local text_output pdf_path="${report_root}/trial-balance.pdf" pdf_signature=''
+    local text_output pdf_stdout pdf_path="${report_root}/trial-balance.pdf" pdf_signature=''
     local raw_post_output raw_posting_id raw_get_output
 
     seed_public_fixture
@@ -150,7 +170,7 @@ verify_mounted_book_surface() {
     mounted_container_run "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-revenue.json >/dev/null
     mounted_container_run "${image_ref}" \
-        post-entry --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json >/dev/null
+        record-sale --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json >/dev/null
 
     text_output="$(
         mounted_container_run "${image_ref}" \
@@ -159,9 +179,13 @@ verify_mounted_book_surface() {
     )"
     verify_text_trial_balance "${text_output}"
 
-    mounted_container_run "${image_ref}" \
-        trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key \
-        --effective-date-as-of 2026-04-08 --output text --pdf-out /work/trial-balance.pdf >/dev/null
+    pdf_stdout="$(
+        mounted_container_run "${image_ref}" \
+            trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key \
+            --effective-date-as-of 2026-04-08 --output text --pdf-out /work/trial-balance.pdf \
+            | tr -d '\r'
+    )"
+    verify_text_pdf_artifact_output "${pdf_stdout}" '/work/trial-balance.pdf'
 
     [[ -f "${pdf_path}" ]] || die "published container did not write trial-balance.pdf"
     [[ -r "${pdf_path}" ]] || die \
@@ -191,8 +215,8 @@ verify_mounted_book_surface() {
             get-posting --book-file /work/book.sqlite --book-key-file /work/book.key \
             --posting-id "${raw_posting_id}" --output json | tr -d '\r'
     )"
-    require_match "${raw_get_output}" '"postingOriginKind"[[:space:]]*:[[:space:]]*"JOURNAL"' \
-        || die "published container did not read back the direct journal posting as JOURNAL origin"
+    require_match "${raw_get_output}" '"postingOriginKind"[[:space:]]*:[[:space:]]*"DIRECT_JOURNAL"' \
+        || die "published container did not read back the direct journal posting as DIRECT_JOURNAL origin"
     require_match "${raw_get_output}" '"sourceDocumentType"[[:space:]]*:[[:space:]]*"bank-deposit"' \
         || die "published container did not preserve direct journal evidence on read-back"
     require_match "${raw_get_output}" '"accountCode"[[:space:]]*:[[:space:]]*"operating-bank"' \

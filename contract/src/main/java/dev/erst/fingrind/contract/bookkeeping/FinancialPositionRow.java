@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -13,7 +12,6 @@ public record FinancialPositionRow(
     String lineCode,
     String lineName,
     AccountType lineType,
-    Optional<AccountRole> lineRole,
     Optional<FinancialPositionLineClassification> lineClassification,
     StatementLineKind lineKind,
     CurrencyBalance balance) {
@@ -26,9 +24,6 @@ public record FinancialPositionRow(
         dev.erst.fingrind.contract.internal.ContractDescriptorValidation.requireText(
             lineName, "lineName");
     Objects.requireNonNull(lineType, "lineType");
-    lineRole =
-        dev.erst.fingrind.contract.internal.ContractDescriptorValidation.requireValue(
-            lineRole, "lineRole");
     lineClassification =
         dev.erst.fingrind.contract.internal.ContractDescriptorValidation.requireValue(
             lineClassification, "lineClassification");

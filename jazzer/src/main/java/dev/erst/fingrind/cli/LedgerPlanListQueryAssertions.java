@@ -34,21 +34,14 @@ final class LedgerPlanListQueryAssertions {
   }
 
   static String expectedListQueryGroupName(LedgerJournalKind kind) {
-    return switch (kind) {
-      case LIST_ACCOUNTS -> "account";
-      case LIST_POSTINGS -> "posting";
-      case ENSURE_BOOK,
-          DECLARE_ACCOUNT,
-          PREFLIGHT_ENTRY,
-          POST_ENTRY,
-          INSPECT_BOOK,
-          GET_POSTING,
-          ACCOUNT_BALANCE,
-          ASSERT,
-          PLAN_BOUNDARY ->
-          throw new IllegalArgumentException(
-              "Expected a list-query journal kind but received '%s'.".formatted(kind.wireValue()));
-    };
+    if (kind == LedgerJournalKind.LIST_ACCOUNTS) {
+      return "account";
+    }
+    if (kind == LedgerJournalKind.LIST_POSTINGS) {
+      return "posting";
+    }
+    throw new IllegalArgumentException(
+        "Expected a list-query journal kind but received '%s'.".formatted(kind.wireValue()));
   }
 
   static LedgerFact.Count requiredCountFact(List<LedgerFact> facts, String factName) {

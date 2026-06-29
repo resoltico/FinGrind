@@ -4,7 +4,9 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.PostingId;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -15,7 +17,8 @@ public record PostingPage(
     EffectiveDateRange effectiveDateRange,
     List<PostingFact> postings,
     int limit,
-    Optional<PostingPageCursor> nextCursor) {
+    Optional<PostingPageCursor> nextCursor,
+    Map<PostingId, PostingId> reversedByPostingIds) {
   /** Validates one committed-posting page. */
   public PostingPage(
       BookIdentity bookIdentity,
@@ -23,13 +26,16 @@ public record PostingPage(
       EffectiveDateRange effectiveDateRange,
       List<PostingFact> postings,
       int limit,
-      Optional<PostingPageCursor> nextCursor) {
+      Optional<PostingPageCursor> nextCursor,
+      Map<PostingId, PostingId> reversedByPostingIds) {
     this.bookIdentity = Objects.requireNonNull(bookIdentity, "bookIdentity");
     this.accountCodeFilter = Objects.requireNonNull(accountCodeFilter, "accountCodeFilter");
     this.effectiveDateRange = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
     this.postings = ContractDescriptorValidation.copyList(postings, "postings");
     this.limit = limit;
     this.nextCursor = Objects.requireNonNull(nextCursor, "nextCursor");
+    this.reversedByPostingIds =
+        Map.copyOf(Objects.requireNonNull(reversedByPostingIds, "reversedByPostingIds"));
     if (limit < 1) {
       throw new IllegalArgumentException("Posting page limit must be greater than zero.");
     }

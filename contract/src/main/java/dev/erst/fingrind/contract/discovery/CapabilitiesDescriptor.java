@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 public record CapabilitiesDescriptor(
     String application,
     String version,
+    String protocolVersion,
     StorageSurfaceDescriptor storage,
     CommandCatalogDescriptor commands,
     ContractRequestShapes.RequestInputDescriptor requestInput,
@@ -25,6 +26,7 @@ public record CapabilitiesDescriptor(
   public CapabilitiesDescriptor {
     application = ContractDescriptorValidation.requireText(application, "application");
     version = ContractDescriptorValidation.requireText(version, "version");
+    protocolVersion = ContractDescriptorValidation.requireText(protocolVersion, "protocolVersion");
     storage = ContractDescriptorValidation.requireValue(storage, "storage");
     commands = ContractDescriptorValidation.requireValue(commands, "commands");
     requestInput = ContractDescriptorValidation.requireValue(requestInput, "requestInput");

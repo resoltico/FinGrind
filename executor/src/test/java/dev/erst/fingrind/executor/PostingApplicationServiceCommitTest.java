@@ -7,7 +7,9 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.FI
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.applicationService;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.command;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.commitRejected;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.conflictingStoredPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareDefaultAccounts;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareNonCashDirectJournalAccounts;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.existingPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.mappedOutcomeBookSession;
@@ -18,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -27,6 +28,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
@@ -56,7 +58,8 @@ class PostingApplicationServiceCommitTest {
               new PostingId("posting-new"),
               new IdempotencyKey("idem-1"),
               LocalDate.parse("2026-04-07"),
-              FIXED_CLOCK.instant()),
+              FIXED_CLOCK.instant(),
+              false),
           result);
     }
   }
@@ -101,7 +104,8 @@ class PostingApplicationServiceCommitTest {
               new PostingId("posting-new"),
               new IdempotencyKey("idem-1"),
               LocalDate.parse("2026-04-07"),
-              FIXED_CLOCK.instant()),
+              FIXED_CLOCK.instant(),
+              false),
           result);
     }
   }
@@ -113,11 +117,14 @@ class PostingApplicationServiceCommitTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryCommand command =
           new PostEntryCommand(
-              BookkeepingEntry.cashRevenue(
+              new BookkeepingEntry.Sale(
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("2000"),
                   new AccountCode("1000"),
-                  MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
+                  null,
+                  null),
               generatedEvidence("idem-semantics", "invoice"),
               requestProvenance("idem-semantics"),
               SourceChannel.CLI);
@@ -130,19 +137,30 @@ class PostingApplicationServiceCommitTest {
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
                       PostingRejectionSemantics.accountTypeMismatch(
-                          JournalRecipeKind.CASH_REVENUE.wireValue(),
+                          "entryKind",
+                          BookkeepingEntryKind.SALE.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           AccountType.ASSET,
                           AccountType.REVENUE),
+                      PostingRejectionSemantics.cashFlowAssetClassificationMismatch(
+                          "entryKind",
+                          BookkeepingEntryKind.SALE.wireValue(),
+                          "cashAccountCode",
+                          new AccountCode("2000"),
+                          dev.erst.fingrind.core.CashFlowAssetClassification
+                              .CASH_AND_CASH_EQUIVALENT,
+                          null),
                       PostingRejectionSemantics.accountTypeMismatch(
-                          JournalRecipeKind.CASH_REVENUE.wireValue(),
+                          "entryKind",
+                          BookkeepingEntryKind.SALE.wireValue(),
                           "revenueAccountCode",
                           new AccountCode("1000"),
                           AccountType.REVENUE,
                           AccountType.ASSET),
                       PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-                          JournalRecipeKind.CASH_REVENUE.wireValue(),
+                          "entryKind",
+                          BookkeepingEntryKind.SALE.wireValue(),
                           new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                           List.of("cash-receipt", "bank-deposit", "card-settlement"))))),
           result);
@@ -156,7 +174,7 @@ class PostingApplicationServiceCommitTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryCommand command =
           new PostEntryCommand(
-              new BookkeepingEntry.Journal(
+              new BookkeepingEntry.DirectJournal(
                   new dev.erst.fingrind.core.JournalEntry(
                       LocalDate.parse("2026-04-07"),
                       List.of(
@@ -187,7 +205,47 @@ class PostingApplicationServiceCommitTest {
           commitRejected(
               new IdempotencyKey("idem-economic-null"),
               new PostingRejection.EntrySemanticsViolations(
-                  List.of(PostingRejectionSemantics.economicNullJournal("JOURNAL")))),
+                  List.of(
+                      PostingRejectionSemantics.economicNullJournal(
+                          BookkeepingEntryKind.DIRECT_JOURNAL.wireValue())))),
+          result);
+    }
+  }
+
+  @Test
+  void commit_rejectsDirectJournalsThatNeverTouchDeclaredCashAccounts() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareNonCashDirectJournalAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.DirectJournal(
+                  new dev.erst.fingrind.core.JournalEntry(
+                      LocalDate.parse("2026-04-07"),
+                      List.of(
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("3000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("3200"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              Money.parse("EUR", "10.00")))),
+                  null),
+              generatedEvidence("idem-non-cash-direct-journal", "operator-note"),
+              requestProvenance("idem-non-cash-direct-journal"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.commit(command);
+
+      assertEquals(
+          commitRejected(
+              new IdempotencyKey("idem-non-cash-direct-journal"),
+              new PostingRejection.EntrySemanticsViolations(
+                  List.of(
+                      PostingRejectionSemantics.cashBasisAccountRequired(
+                          BookkeepingEntryKind.DIRECT_JOURNAL.wireValue(),
+                          List.of(new AccountCode("3000"), new AccountCode("3200")))))),
           result);
     }
   }
@@ -217,7 +275,7 @@ class PostingApplicationServiceCommitTest {
         applicationService.commit(command("idem-inactive-account")));
     assertEquals(
         commitRejected(
-            new IdempotencyKey("idem-duplicate"), new PostingRejection.DuplicateIdempotencyKey()),
+            new IdempotencyKey("idem-duplicate"), new PostingRejection.IdempotencyKeyConflict()),
         applicationService.commit(command("idem-duplicate")));
     assertEquals(
         commitRejected(
@@ -253,9 +311,10 @@ class PostingApplicationServiceCommitTest {
           }
 
           @Override
-          public Optional<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
-              findExistingPosting(IdempotencyKey idempotencyKey) {
-            return Optional.of(existingPosting("posting-existing", idempotencyKey.value()));
+          public Optional<dev.erst.fingrind.executor.spi.StoredRequestPosting> findExistingPosting(
+              IdempotencyKey idempotencyKey) {
+            return Optional.of(
+                conflictingStoredPosting("posting-existing", idempotencyKey.value()));
           }
 
           @Override
@@ -271,7 +330,7 @@ class PostingApplicationServiceCommitTest {
 
     assertEquals(
         commitRejected(
-            new IdempotencyKey("idem-duplicate"), new PostingRejection.DuplicateIdempotencyKey()),
+            new IdempotencyKey("idem-duplicate"), new PostingRejection.IdempotencyKeyConflict()),
         result);
   }
 

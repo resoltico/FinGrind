@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates.LedgerPlanTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareTaxRegistrationTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
@@ -11,7 +12,7 @@ import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolRequestTemplateTopics;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.util.List;
@@ -88,10 +89,13 @@ final class CliDiscoveryCommandExecutor {
     @Nullable PostingRequestTemplateDescriptor requestTemplate = helpDescriptor.requestTemplate();
     @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate =
         helpDescriptor.declareAccountTemplate();
+    @Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistrationTemplate =
+        helpDescriptor.declareTaxRegistrationTemplate();
     @Nullable LedgerPlanTemplateDescriptor planTemplate = helpDescriptor.planTemplate();
     return new HelpDescriptor(
         helpDescriptor.application(),
         helpDescriptor.version(),
+        helpDescriptor.protocolVersion(),
         helpDescriptor.description(),
         usage,
         helpDescriptor.bookModel(),
@@ -99,6 +103,7 @@ final class CliDiscoveryCommandExecutor {
         requestShapes,
         requestTemplate,
         declareAccountTemplate,
+        declareTaxRegistrationTemplate,
         planTemplate,
         helpDescriptor.commands(),
         helpDescriptor.quickStart(),
@@ -115,21 +120,24 @@ final class CliDiscoveryCommandExecutor {
   }
 
   static Object requestTemplateFor(@Nullable OperationId commandTopic) {
-    if (commandTopic == null
-        || commandTopic == OperationId.POST_ENTRY
-        || commandTopic == OperationId.PREFLIGHT_ENTRY) {
+    if (commandTopic == null) {
       return MachineContract.requestTemplate();
+    }
+    if (commandTopic == OperationId.DECLARE_TAX_REGISTRATION) {
+      return MachineContract.declareTaxRegistrationTemplate();
+    }
+    if (ProtocolRequestTemplateTopics.supports(commandTopic)
+        && commandTopic != OperationId.DECLARE_ACCOUNT) {
+      return Objects.requireNonNull(
+          MachineContract.requestTemplate(commandTopic),
+          "Missing request template for " + commandTopic.wireName() + ".");
     }
     if (commandTopic == OperationId.DECLARE_ACCOUNT) {
       return MachineContract.declareAccountTemplate();
     }
     throw new IllegalArgumentException(
         "Request templates are available only for "
-            + String.join(
-                ", ",
-                ProtocolCatalog.operationName(OperationId.POST_ENTRY),
-                ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY),
-                ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT))
+            + String.join(", ", ProtocolRequestTemplateTopics.topicNames())
             + ".");
   }
 }

@@ -30,7 +30,7 @@
       "outcome": {
         "finalPreflightStatus": "preflight-accepted",
         "finalCommitStatus": "committed",
-        "duplicateStatus": "duplicate-idempotency-key",
+        "duplicateStatus": "idempotent-replay",
         "storedFactPresent": true
       }
     }

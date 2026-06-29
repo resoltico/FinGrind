@@ -12,7 +12,6 @@ import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
@@ -25,7 +24,6 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
-import dev.erst.fingrind.core.StorageLocator;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -47,12 +45,13 @@ final class SqliteRoundTripWorkflowCommandDerivation {
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
-        new BookkeepingEntry.ReversalAdjustment(
+        new BookkeepingEntry.Reversal(
             new JournalEntry(
                 CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
                 exactReversalLines(CliFuzzFixtures.journalEntry(command).lines())),
             new PostingLineage.Reversal(
-                new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario))),
+                new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario)),
+            command.entry().foreignExchangeDetails()),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
@@ -62,29 +61,30 @@ final class SqliteRoundTripWorkflowCommandDerivation {
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
     return new PostEntryCommand(
-        new BookkeepingEntry.ReversalAdjustment(
+        new BookkeepingEntry.Reversal(
             new JournalEntry(
                 CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
                 nonNegatingReversalLines(CliFuzzFixtures.journalEntry(command).lines())),
             new PostingLineage.Reversal(
-                new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario))),
+                new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario)),
+            command.entry().foreignExchangeDetails()),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
   }
 
   private static BookkeepingEntry directAdministrativeEntry(PostEntryCommand command) {
-    if (command.entry() instanceof BookkeepingEntry.OpenAccountingPosition openingPosition) {
-      return new BookkeepingEntry.OpenAccountingPosition(
+    if (command.entry() instanceof BookkeepingEntry.OpeningPosition openingPosition) {
+      return new BookkeepingEntry.OpeningPosition(
           openingPosition.effectiveDate(), openingPosition.balances());
     }
     JournalEntry journalEntry = CliFuzzFixtures.journalEntry(command);
-    return new BookkeepingEntry.OpenAccountingPosition(
+    return new BookkeepingEntry.OpeningPosition(
         journalEntry.effectiveDate(),
         journalEntry.lines().stream()
             .map(
                 line ->
-                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         line.accountCode(),
                         line.side(),
                         dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(
@@ -157,11 +157,7 @@ final class SqliteRoundTripWorkflowCommandDerivation {
                         new SourceDocumentId(
                             sourceDocument.sourceDocumentId().value() + "-" + stableToken),
                         new SourceDocumentType(sourceDocument.sourceDocumentType().value()),
-                        sourceDocument.documentDate(),
-                        sourceDocument.capturedAt(),
-                        new StorageLocator(
-                            sourceDocument.storageLocator().value() + "-" + stableToken),
-                        new ContentSha256(sourceDocument.contentSha256().value())))
+                        sourceDocument.documentDate()))
             .toList(),
         evidence.approvals().stream()
             .map(

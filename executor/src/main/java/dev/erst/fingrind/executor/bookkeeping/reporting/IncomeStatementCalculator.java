@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
+import dev.erst.fingrind.executor.bookkeeping.ComparativeRangeResolver;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementRowView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementSectionView;
@@ -35,20 +36,21 @@ final class IncomeStatementCalculator {
     BookIdentity bookIdentity = context.bookIdentity();
     PostingCoverage postingCoverage = PostingCoverage.NON_CLOSING_POSTINGS;
     EffectiveDateRange comparativeRange =
-        context
-            .accountingRules()
-            .statementComparativePolicy()
-            .comparativePeriod(
-                bookIdentity, criteria.effectiveDateFrom(), criteria.effectiveDateTo());
+        ComparativeRangeResolver.period(
+            bookIdentity,
+            criteria.effectiveDateFrom(),
+            criteria.effectiveDateTo(),
+            criteria.comparativeSelection(),
+            context.accountingRules().statementComparativePolicy());
     IncomeStatementSnapshot currentSnapshot =
         snapshot(
             context
-                .reportStore()
+                .bookStore()
                 .accountTotals(
                     EffectiveDateRange.of(criteria.effectiveDateFrom(), criteria.effectiveDateTo()),
                     postingCoverage));
     IncomeStatementSnapshot comparativeSnapshot =
-        snapshot(context.reportStore().accountTotals(comparativeRange, postingCoverage));
+        comparativeSnapshot(comparativeRange, postingCoverage);
     return new IncomeStatementView(
         bookIdentity,
         criteria.effectiveDateFrom(),
@@ -61,23 +63,30 @@ final class IncomeStatementCalculator {
         comparativeSnapshot.netIncomeTotals());
   }
 
+  private IncomeStatementSnapshot comparativeSnapshot(
+      EffectiveDateRange comparativeRange, PostingCoverage postingCoverage) {
+    return PeriodComparativeRangeSupport.boundedRange(comparativeRange)
+        .map(range -> snapshot(context.bookStore().accountTotals(range, postingCoverage)))
+        .orElseGet(IncomeStatementSnapshot::empty);
+  }
+
   private IncomeStatementSnapshot snapshot(List<AccountCurrencyTotals> accountTotals) {
     IncomeStatementRows rows = new IncomeStatementRows();
     for (AccountCurrencyTotals accountTotal : accountTotals) {
       if (!context
           .accountingRules()
-          .resultTransferPolicy()
+          .closePostingPolicy()
           .closesAccountType(accountTotal.account().accountType())) {
         continue;
       }
       rows.add(
           accountTotal.account().accountType(),
-          ReportingViewSupport.incomeStatementRow(accountTotal));
+          ReportingRowViewFactory.incomeStatementRow(accountTotal));
     }
     List<CurrencyBalance> netIncomeTotals =
         profitAndLossContributionCalculator.contributionMap(accountTotals).entrySet().stream()
-            .map(entry -> ReportingViewSupport.signedBalance(entry.getKey(), entry.getValue()))
-            .sorted(ReportingViewSupport.BALANCE_ORDER)
+            .map(entry -> ReportingBalanceSupport.signedBalance(entry.getKey(), entry.getValue()))
+            .sorted(ReportingRowOrdering.BALANCE_ORDER)
             .toList();
     return new IncomeStatementSnapshot(rows.sections(), netIncomeTotals);
   }
@@ -95,7 +104,7 @@ final class IncomeStatementCalculator {
       return SECTION_ORDER.stream()
           .map(
               accountType ->
-                  ReportingViewSupport.toIncomeStatementSection(
+                  ReportingRowViewFactory.toIncomeStatementSection(
                       accountType, rowsByType.getOrDefault(accountType, List.of())))
           .toList();
     }
@@ -103,6 +112,10 @@ final class IncomeStatementCalculator {
 
   private record IncomeStatementSnapshot(
       List<IncomeStatementSectionView> sections, List<CurrencyBalance> netIncomeTotals) {
+    private static IncomeStatementSnapshot empty() {
+      return new IncomeStatementSnapshot(List.of(), List.of());
+    }
+
     private IncomeStatementSnapshot {
       sections = List.copyOf(Objects.requireNonNull(sections, "sections"));
       netIncomeTotals = List.copyOf(Objects.requireNonNull(netIncomeTotals, "netIncomeTotals"));

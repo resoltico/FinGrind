@@ -15,10 +15,7 @@ import org.junit.jupiter.api.Test;
 /** Unit tests for first-class evidence value objects. */
 class AccountingEvidenceTest {
   private static final LocalDate DOCUMENT_DATE = LocalDate.parse("2026-04-07");
-  private static final Instant CAPTURED_AT = Instant.parse("2026-04-07T10:15:30Z");
   private static final Instant APPROVED_AT = Instant.parse("2026-04-07T10:18:00Z");
-  private static final String DOCUMENT_SHA256 =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
   @Test
   void sourceDocumentId_publishesBoundaryContractAndNormalizesValues() {
@@ -85,82 +82,20 @@ class AccountingEvidenceTest {
   void sourceDocumentReference_requiresRetainedDocumentFact() {
     SourceDocumentId sourceDocumentId = new SourceDocumentId("invoice-1");
     SourceDocumentType sourceDocumentType = new SourceDocumentType("cash-receipt");
-    StorageLocator storageLocator = new StorageLocator("evidence://documents/invoice-1.pdf");
-    ContentSha256 contentSha256 = new ContentSha256(DOCUMENT_SHA256);
     SourceDocumentReference reference =
-        new SourceDocumentReference(
-            sourceDocumentId,
-            sourceDocumentType,
-            DOCUMENT_DATE,
-            CAPTURED_AT,
-            storageLocator,
-            contentSha256);
+        new SourceDocumentReference(sourceDocumentId, sourceDocumentType, DOCUMENT_DATE);
     assertEquals(sourceDocumentId, reference.sourceDocumentId());
     assertEquals(sourceDocumentType, reference.sourceDocumentType());
     assertEquals(DOCUMENT_DATE, reference.documentDate());
-    assertEquals(CAPTURED_AT, reference.capturedAt());
-    assertEquals(storageLocator, reference.storageLocator());
-    assertEquals(contentSha256, reference.contentSha256());
     assertThrows(
         NullPointerException.class,
-        () ->
-            new SourceDocumentReference(
-                nullOf(),
-                sourceDocumentType,
-                DOCUMENT_DATE,
-                CAPTURED_AT,
-                storageLocator,
-                contentSha256));
+        () -> new SourceDocumentReference(nullOf(), sourceDocumentType, DOCUMENT_DATE));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new SourceDocumentReference(
-                sourceDocumentId,
-                nullOf(),
-                DOCUMENT_DATE,
-                CAPTURED_AT,
-                storageLocator,
-                contentSha256));
+        () -> new SourceDocumentReference(sourceDocumentId, nullOf(), DOCUMENT_DATE));
     assertThrows(
         NullPointerException.class,
-        () ->
-            new SourceDocumentReference(
-                sourceDocumentId,
-                sourceDocumentType,
-                nullOf(),
-                CAPTURED_AT,
-                storageLocator,
-                contentSha256));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new SourceDocumentReference(
-                sourceDocumentId,
-                sourceDocumentType,
-                DOCUMENT_DATE,
-                nullOf(),
-                storageLocator,
-                contentSha256));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new SourceDocumentReference(
-                sourceDocumentId,
-                sourceDocumentType,
-                DOCUMENT_DATE,
-                CAPTURED_AT,
-                nullOf(),
-                contentSha256));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new SourceDocumentReference(
-                sourceDocumentId,
-                sourceDocumentType,
-                DOCUMENT_DATE,
-                CAPTURED_AT,
-                storageLocator,
-                nullOf()));
+        () -> new SourceDocumentReference(sourceDocumentId, sourceDocumentType, nullOf()));
   }
 
   @Test
@@ -276,14 +211,26 @@ class AccountingEvidenceTest {
     assertFalse(accountingEvidence.hasApprovals());
   }
 
+  @Test
+  void accountingEvidence_preservesDuplicateIdentifiersUntilDurableStoreBoundary() {
+    AccountingEvidence accountingEvidence =
+        new AccountingEvidence(
+            List.of(sourceDocumentReference("invoice-1"), sourceDocumentReference("invoice-1")),
+            List.of(approvalReference("approval-1"), approvalReference("approval-1")));
+
+    assertEquals(2, accountingEvidence.sourceDocuments().size());
+    assertEquals(
+        "invoice-1", accountingEvidence.sourceDocuments().get(0).sourceDocumentId().value());
+    assertEquals(
+        "invoice-1", accountingEvidence.sourceDocuments().get(1).sourceDocumentId().value());
+    assertEquals(2, accountingEvidence.approvals().size());
+    assertEquals("approval-1", accountingEvidence.approvals().get(0).approvalId().value());
+    assertEquals("approval-1", accountingEvidence.approvals().get(1).approvalId().value());
+  }
+
   private static SourceDocumentReference sourceDocumentReference(String token) {
     return new SourceDocumentReference(
-        new SourceDocumentId(token),
-        new SourceDocumentType("cash-receipt"),
-        DOCUMENT_DATE,
-        CAPTURED_AT,
-        new StorageLocator("evidence://documents/%s.pdf".formatted(token)),
-        new ContentSha256(DOCUMENT_SHA256));
+        new SourceDocumentId(token), new SourceDocumentType("cash-receipt"), DOCUMENT_DATE);
   }
 
   private static ApprovalReference approvalReference(String token) {

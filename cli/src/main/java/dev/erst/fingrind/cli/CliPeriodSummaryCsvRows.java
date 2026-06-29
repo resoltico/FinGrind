@@ -9,8 +9,9 @@ import java.util.List;
 
 /** Builds CSV row families for the period-summary report surface. */
 final class CliPeriodSummaryCsvRows {
-  private static final String EXPORT_FAMILY = CliCsvExportFamilies.METRICS;
+  private static final String EXPORT_FAMILY = CliCsvExportFamilies.PERIOD_SUMMARY;
   private static final String OPERATION_ID = OperationId.PERIOD_SUMMARY.wireName();
+  private static final String RECORD_KIND = CliCsvExportFamilies.PERIOD_SUMMARY;
 
   private CliPeriodSummaryCsvRows() {}
 
@@ -28,7 +29,7 @@ final class CliPeriodSummaryCsvRows {
             rowId("posting-count"),
             "",
             "summary-metric",
-            "summary",
+            RECORD_KIND,
             new MetricSubject("book", "", ""),
             new MetricValue("postingCount", Integer.toString(report.postingCount()), "", "count"),
             ""),
@@ -36,7 +37,7 @@ final class CliPeriodSummaryCsvRows {
             rowId("posting-line-count"),
             "",
             "summary-metric",
-            "summary",
+            RECORD_KIND,
             new MetricSubject("book", "", ""),
             new MetricValue(
                 "postingLineCount", Integer.toString(report.postingLineCount()), "", "count"),
@@ -45,7 +46,7 @@ final class CliPeriodSummaryCsvRows {
             rowId("accounts-touched"),
             "",
             "summary-metric",
-            "summary",
+            RECORD_KIND,
             new MetricSubject("book", "", ""),
             new MetricValue(
                 "accountsTouched", Integer.toString(report.accountsTouched()), "", "count"),
@@ -87,7 +88,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":debit",
             parentRowId,
             "metric",
-            "currency-total",
+            RECORD_KIND,
             subject,
             new MetricValue(
                 "debitTotal",
@@ -99,7 +100,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":credit",
             parentRowId,
             "metric",
-            "currency-total",
+            RECORD_KIND,
             subject,
             new MetricValue(
                 "creditTotal",
@@ -111,7 +112,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":net",
             parentRowId,
             "metric",
-            "currency-total",
+            RECORD_KIND,
             subject,
             new MetricValue(
                 "netAmount",
@@ -123,7 +124,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":side",
             parentRowId,
             "metric",
-            "currency-total",
+            RECORD_KIND,
             subject,
             new MetricValue("balanceSide", summary.totals().balanceSide().wireValue(), "", "enum"),
             ""));
@@ -140,23 +141,15 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":type",
             parentRowId,
             "metric",
-            "account-activity",
+            RECORD_KIND,
             subject,
             new MetricValue("accountType", row.account().accountType().wireValue(), "", "enum"),
-            ""),
-        metricRow(
-            parentRowId + ":role",
-            parentRowId,
-            "metric",
-            "account-activity",
-            subject,
-            new MetricValue("accountRole", row.account().accountRole().wireValue(), "", "enum"),
             ""),
         metricRow(
             parentRowId + ":normal-balance",
             parentRowId,
             "metric",
-            "account-activity",
+            RECORD_KIND,
             subject,
             new MetricValue("normalBalance", row.account().normalBalance().wireValue(), "", "enum"),
             ""),
@@ -164,7 +157,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":active",
             parentRowId,
             "metric",
-            "account-activity",
+            RECORD_KIND,
             subject,
             new MetricValue("active", Boolean.toString(row.account().active()), "", "flag"),
             ""),
@@ -172,7 +165,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":declared-at",
             parentRowId,
             "metric",
-            "account-activity",
+            RECORD_KIND,
             subject,
             new MetricValue("declaredAt", row.account().declaredAt().toString(), "", "timestamp"),
             ""),
@@ -180,7 +173,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":debit",
             parentRowId,
             "metric",
-            "account-activity",
+            RECORD_KIND,
             subject,
             new MetricValue(
                 "debitTotal",
@@ -192,7 +185,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":credit",
             parentRowId,
             "metric",
-            "account-activity",
+            RECORD_KIND,
             subject,
             new MetricValue(
                 "creditTotal",
@@ -204,7 +197,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":net",
             parentRowId,
             "metric",
-            "account-activity",
+            RECORD_KIND,
             subject,
             new MetricValue(
                 "netAmount",
@@ -216,7 +209,7 @@ final class CliPeriodSummaryCsvRows {
             parentRowId + ":side",
             parentRowId,
             "metric",
-            "account-activity",
+            RECORD_KIND,
             subject,
             new MetricValue("balanceSide", row.movement().balanceSide().wireValue(), "", "enum"),
             ""));
@@ -251,7 +244,7 @@ final class CliPeriodSummaryCsvRows {
         rowId,
         "",
         "section-empty",
-        CliCsvEmptyKinds.SECTION_EMPTY,
+        RECORD_KIND,
         new MetricSubject(subjectKind, "", ""),
         new MetricValue("", "", "", ""),
         message);

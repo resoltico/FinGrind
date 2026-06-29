@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.io.ByteArrayOutputStream;
@@ -748,8 +749,14 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             hint(Path.of("backup/entity.key"))),
         OutputMode.JSON);
     assertEquals(
+        publicHintValue(Path.of("books/entity.sqlite")),
+        readJson(output).path("payload").path("bookFile").asText().replace('\\', '/'));
+    assertEquals(
         publicHintValue(Path.of("backup/entity.sqlite")),
-        readJson(output).path("payload").path("backupFile").asText().replace('\\', '/'));
+        readJson(output).path("artifacts").get(0).path("path").asText().replace('\\', '/'));
+    assertEquals(
+        ProtocolArtifactOutput.backupBookFileFormat(),
+        readJson(output).path("artifacts").get(0).path("format").asText());
     output.reset();
 
     writer.writeRestoreBookResult(
@@ -759,8 +766,14 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             hint(Path.of("backup/entity.key"))),
         OutputMode.JSON);
     assertEquals(
+        publicHintValue(Path.of("books/entity.sqlite")),
+        readJson(output).path("payload").path("bookFile").asText().replace('\\', '/'));
+    assertEquals(
         publicHintValue(Path.of("backup/entity.key")),
-        readJson(output).path("payload").path("backupBookKeyFile").asText().replace('\\', '/'));
+        readJson(output).path("artifacts").get(1).path("path").asText().replace('\\', '/'));
+    assertEquals(
+        ProtocolArtifactOutput.backupBookKeyFileFormat(),
+        readJson(output).path("artifacts").get(1).path("format").asText());
     output.reset();
 
     writer.writeInspectRekeyRollbackResult(
@@ -768,7 +781,10 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             hint(Path.of("books/entity.sqlite")),
             List.of(hint(Path.of("books/entity.rekey-rollback.sqlite")))),
         OutputMode.JSON);
-    assertEquals(1, readJson(output).path("payload").path("rollbackArtifacts").size());
+    assertEquals(1, readJson(output).path("artifacts").size());
+    assertEquals(
+        ProtocolArtifactOutput.rollbackBookFileFormat(),
+        readJson(output).path("artifacts").get(0).path("format").asText());
     output.reset();
 
     writer.writeDeleteRekeyRollbackResult(
@@ -786,7 +802,10 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         OutputMode.JSON);
     assertEquals(
         publicHintValue(Path.of("books/entity.rekey-rollback.sqlite")),
-        readJson(output).path("payload").path("rollbackArtifact").asText().replace('\\', '/'));
+        readJson(output).path("artifacts").get(0).path("path").asText().replace('\\', '/'));
+    assertEquals(
+        ProtocolArtifactOutput.rollbackBookFileFormat(),
+        readJson(output).path("artifacts").get(0).path("format").asText());
     output.reset();
 
     writer.writeRestoreRekeyRollbackResult(
@@ -873,15 +892,28 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
   }
 
   @Test
+  void inspectRekeyRollbackJson_omitsArtifactsWhenNoRollbackFilesExist() throws Exception {
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    CliMutationResponseWriter writer =
+        new CliMutationResponseWriter(new CliOutputChannel(utf8PrintStream(output)));
+
+    writer.writeInspectRekeyRollbackResult(
+        new RekeyRollbackResult.Inspected(hint(Path.of("books/entity.sqlite")), List.of()),
+        OutputMode.JSON);
+
+    assertTrue(readJson(output).path("artifacts").isMissingNode());
+  }
+
+  @Test
   void mutationOutputRenderer_rendersRollbackRecoveryVariants() {
     String inspectedText =
-        CliMutationOutputRenderer.renderInspectRekeyRollbackText(
+        CliBookMaintenanceOutputRenderer.renderInspectRekeyRollbackText(
             new RekeyRollbackResult.Inspected(hint(Path.of("books/entity.sqlite")), List.of()));
     assertTrue(inspectedText.contains("Rollback artifacts"));
     assertTrue(inspectedText.contains("(none)"));
 
     String restoredText =
-        CliMutationOutputRenderer.renderRestoreRekeyRollbackText(
+        CliBookMaintenanceOutputRenderer.renderRestoreRekeyRollbackText(
             new RekeyRollbackResult.Restored(
                 hint(Path.of("books/entity.sqlite")),
                 hint(Path.of("books/entity.rekey-rollback.sqlite"))));
@@ -973,7 +1005,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
 
   private static void assertMaintenanceEnvelope(
       BookMaintenanceRejection rejection, String expectedHintFragment, Class<?> detailsType) {
-    CliEnvelopeJsonModels.RejectedEnvelope envelope =
+    CliEnvelopeJsonModels.Envelope<?> envelope =
         CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejection);
     String hint = envelope.hint();
     assertNotNull(hint);

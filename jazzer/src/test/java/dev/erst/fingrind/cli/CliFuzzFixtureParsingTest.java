@@ -86,45 +86,50 @@ class CliFuzzFixtureParsingTest {
     PostEntryCommand cashExpenseCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            BookkeepingEntry.cashExpense(
+            new BookkeepingEntry.Expense(
                 LocalDate.parse("2026-04-09"),
                 new AccountCode("6100"),
                 new AccountCode("1100"),
-                new MonetaryAmount("CHF", "42")));
+                new MonetaryAmount("CHF", "42"),
+                null,
+                null,
+                null));
     PostEntryCommand equityContributionCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            BookkeepingEntry.equityContribution(
+            new BookkeepingEntry.OwnerContribution(
                 LocalDate.parse("2026-04-10"),
                 new AccountCode("1100"),
                 new AccountCode("3100"),
-                new MonetaryAmount("CAD", "750")));
+                new MonetaryAmount("CAD", "750"),
+                null));
     PostEntryCommand equityWithdrawalCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            BookkeepingEntry.equityWithdrawal(
+            new BookkeepingEntry.OwnerWithdrawal(
                 LocalDate.parse("2026-04-11"),
                 new AccountCode("3100"),
                 new AccountCode("1100"),
-                new MonetaryAmount("USD", "55")));
+                new MonetaryAmount("USD", "55"),
+                null));
     PostEntryCommand structuredOpeningPositionCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            new BookkeepingEntry.OpenAccountingPosition(
+            new BookkeepingEntry.OpeningPosition(
                 LocalDate.parse("2026-04-12"),
                 List.of(
-                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
                         new MonetaryAmount("SEK", "4200")),
-                    new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+                    new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
                         new MonetaryAmount("SEK", "4200")))));
     PostEntryCommand reversalCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            new BookkeepingEntry.ReversalAdjustment(
+            new BookkeepingEntry.Reversal(
                 new dev.erst.fingrind.core.JournalEntry(
                     LocalDate.parse("2026-04-13"),
                     List.of(
@@ -139,7 +144,8 @@ class CliFuzzFixtureParsingTest {
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                     new dev.erst.fingrind.core.ReversalReference(
                         new dev.erst.fingrind.core.PostingId("posting-1")),
-                    new dev.erst.fingrind.core.ReversalReason("operator reversal"))));
+                    new dev.erst.fingrind.core.ReversalReason("operator reversal")),
+                null));
 
     assertEquals("JPY", CliFuzzFixtures.journalEntry(typedCommand).currencyUnit().code());
     assertEquals(

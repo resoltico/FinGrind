@@ -113,7 +113,8 @@ class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStore
                   "fixture-posting-2",
                   "fixture-idem-2",
                   java.util.Optional.empty(),
-                  java.util.Optional.empty())),
+                  java.util.Optional.empty()),
+              false),
           commitPosting(
               postingFactStore,
               postingFact(

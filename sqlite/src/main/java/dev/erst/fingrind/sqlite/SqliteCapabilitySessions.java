@@ -18,8 +18,8 @@ final class SqliteCapabilitySessions {
     return new SqlitePostingCapabilitySession(store);
   }
 
-  static SqlitePeriodResultTransferSession periodResultTransfer(SqlitePostingFactStore store) {
-    return new SqlitePeriodResultTransferCapabilitySession(store);
+  static SqliteReportingPeriodCloseSession reportingPeriodClose(SqlitePostingFactStore store) {
+    return new SqliteReportingPeriodCloseCapabilitySession(store);
   }
 
   static SqlitePlanExecutionSession planExecution(SqlitePostingFactStore store) {

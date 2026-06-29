@@ -17,6 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowSection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
@@ -26,9 +29,9 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -81,12 +84,12 @@ class PdfReportServiceTest {
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
     assertTrue(trialBalanceText.contains("Acme Studio"));
-    assertTrue(trialBalanceText.contains("Starter chart"));
+    assertTrue(trialBalanceText.contains("Owner-managed service"));
     assertTrue(trialBalanceText.contains("EUR"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("Comparative Trial Balance"));
     assertTrue(trialBalanceText.contains("Asset"));
-    assertTrue(trialBalanceText.contains("Ordinary"));
+    assertTrue(trialBalanceText.contains("Debit"));
     assertTrue(trialBalanceText.contains("Yes"));
     assertTrue(trialBalanceText.contains("Subscription Revenue from"));
     assertTrue(trialBalanceText.contains("Enterprise Customers"));
@@ -112,7 +115,6 @@ class PdfReportServiceTest {
                             "Current period result",
                             AccountType.EQUITY,
                             Optional.empty(),
-                            Optional.empty(),
                             StatementLineKind.CURRENT_PERIOD_RESULT,
                             creditBalance)),
                     List.of(creditBalance))),
@@ -129,7 +131,6 @@ class PdfReportServiceTest {
                     "current-period-result",
                     "Current period result",
                     Optional.of(AccountType.EQUITY),
-                    Optional.empty(),
                     Optional.empty(),
                     StatementLineKind.CURRENT_PERIOD_RESULT,
                     balance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO),
@@ -172,7 +173,6 @@ class PdfReportServiceTest {
                             "1000",
                             "Cash and Cash Equivalents",
                             AccountType.ASSET,
-                            AccountRole.ORDINARY,
                             FinancialPositionLineClassification.CURRENT_ASSET,
                             balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
                     List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))),
@@ -184,7 +184,6 @@ class PdfReportServiceTest {
                             "1000",
                             "Prior Cash and Cash Equivalents",
                             AccountType.ASSET,
-                            AccountRole.ORDINARY,
                             FinancialPositionLineClassification.CURRENT_ASSET,
                             balance("EUR", "1000.00", "10.00", "990.00", BalanceSide.DEBIT))),
                     List.of(balance("EUR", "1000.00", "10.00", "990.00", BalanceSide.DEBIT)))));
@@ -203,7 +202,6 @@ class PdfReportServiceTest {
                             "4000",
                             "Subscription Revenue",
                             AccountType.REVENUE,
-                            AccountRole.ORDINARY,
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
                     List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)))),
@@ -216,7 +214,6 @@ class PdfReportServiceTest {
                             "4000",
                             "Prior Subscription Revenue",
                             AccountType.REVENUE,
-                            AccountRole.ORDINARY,
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             balance("EUR", "0.00", "1750.00", "1750.00", BalanceSide.CREDIT))),
                     List.of(balance("EUR", "0.00", "1750.00", "1750.00", BalanceSide.CREDIT)))),
@@ -232,7 +229,6 @@ class PdfReportServiceTest {
                 changesInEquityRow(
                     "3000",
                     "Contributed Capital",
-                    AccountRole.ORDINARY,
                     FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
@@ -244,7 +240,6 @@ class PdfReportServiceTest {
                 changesInEquityRow(
                     "3000",
                     "Prior Contributed Capital",
-                    AccountRole.ORDINARY,
                     FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
                     balance("EUR", "0.00", "800.00", "800.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "200.00", "200.00", BalanceSide.CREDIT),
@@ -269,24 +264,360 @@ class PdfReportServiceTest {
     assertTrue(financialPositionText.contains("Acme Studio"));
     assertTrue(financialPositionText.contains("All posting kinds"));
     assertTrue(financialPositionText.contains("Balanced"));
-    assertTrue(financialPositionText.contains("Ordinary"));
+    assertTrue(financialPositionText.contains("Current asset"));
+    assertTrue(financialPositionText.contains("Account"));
     assertTrue(financialPositionText.contains("Comparative Assets"));
     assertTrue(financialPositionText.contains("Prior Cash and Cash"));
     assertTrue(financialPositionText.contains("Equivalents"));
     assertTrue(incomeStatementText.contains("Subscription Revenue"));
     assertTrue(incomeStatementText.contains("Income Statement"));
-    assertTrue(incomeStatementText.contains("Non-transfer postings"));
-    assertTrue(incomeStatementText.contains("Ordinary"));
+    assertTrue(incomeStatementText.contains("Non-close postings"));
+    assertTrue(incomeStatementText.contains("Operating revenue"));
+    assertTrue(incomeStatementText.contains("Account"));
     assertTrue(incomeStatementText.contains("Comparative Revenue"));
     assertTrue(incomeStatementText.contains("Comparative Net Income Totals"));
     assertTrue(incomeStatementText.contains("Prior Subscription Revenue"));
     assertTrue(changesInEquityText.contains("Contributed Capital"));
     assertTrue(changesInEquityText.contains("Changes In Equity"));
     assertTrue(changesInEquityText.contains("Acme Studio"));
-    assertTrue(changesInEquityText.contains("Ordinary"));
+    assertTrue(changesInEquityText.contains("Contributed capital"));
+    assertTrue(changesInEquityText.contains("Account"));
     assertTrue(changesInEquityText.contains("Comparative Changes In Equity"));
     assertTrue(changesInEquityText.contains("Comparative Equity Totals"));
     assertTrue(changesInEquityText.contains("Prior Contributed Capital"));
+  }
+
+  @Test
+  void renderCashFlowStatementIncludesSectionTablesAndMetadata() throws IOException {
+    CashFlowStatementReport report =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
+            List.of(
+                new CashFlowSection(
+                    CashFlowSectionKind.OPERATING,
+                    List.of(
+                        new CashFlowRow(
+                            "2000",
+                            "Subscription Revenue",
+                            AccountType.REVENUE,
+                            Optional.empty(),
+                            Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            balance("EUR", "25.00", "0.00", "25.00", BalanceSide.DEBIT))),
+                    List.of(balance("EUR", "25.00", "0.00", "25.00", BalanceSide.DEBIT))),
+                new CashFlowSection(CashFlowSectionKind.INVESTING, List.of(), List.of()),
+                new CashFlowSection(
+                    CashFlowSectionKind.FINANCING,
+                    List.of(
+                        new CashFlowRow(
+                            "3000",
+                            "Contributed Capital",
+                            AccountType.EQUITY,
+                            Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+                            Optional.empty(),
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            balance("EUR", "5.00", "0.00", "5.00", BalanceSide.DEBIT))),
+                    List.of(balance("EUR", "5.00", "0.00", "5.00", BalanceSide.DEBIT)))),
+            List.of(balance("EUR", "30.00", "0.00", "30.00", BalanceSide.DEBIT)),
+            List.of(balance("EUR", "40.00", "0.00", "40.00", BalanceSide.DEBIT)),
+            List.of(balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT)),
+            List.of(
+                new CashFlowSection(
+                    CashFlowSectionKind.OPERATING,
+                    List.of(
+                        new CashFlowRow(
+                            "2000",
+                            "Prior Subscription Revenue",
+                            AccountType.REVENUE,
+                            Optional.empty(),
+                            Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            balance("EUR", "20.00", "0.00", "20.00", BalanceSide.DEBIT))),
+                    List.of(balance("EUR", "20.00", "0.00", "20.00", BalanceSide.DEBIT))),
+                new CashFlowSection(CashFlowSectionKind.INVESTING, List.of(), List.of()),
+                new CashFlowSection(CashFlowSectionKind.FINANCING, List.of(), List.of())),
+            List.of(balance("EUR", "20.00", "0.00", "20.00", BalanceSide.DEBIT)),
+            List.of(balance("EUR", "28.00", "0.00", "28.00", BalanceSide.DEBIT)));
+
+    byte[] pdf = PDF_REPORT_SERVICE.renderCashFlowStatement(report);
+
+    assertPdfMetadata(pdf, "Cash Receipts And Payments", false);
+    String text = extractedText(pdf);
+    assertTrue(text.contains("Cash Receipts And Payments"));
+    assertTrue(text.contains("Comparative Cash Receipts And Payments"));
+    assertTrue(text.contains("Operating"));
+    assertTrue(text.contains("Financing"));
+    assertTrue(text.contains("Comparative Operating"));
+    assertTrue(text.contains("Opening Cash Totals"));
+    assertTrue(text.contains("Closing Cash Totals"));
+    assertTrue(text.contains("Non-close postings"));
+  }
+
+  @Test
+  void renderCashFlowStatementHandlesTotalsOnlyRowsOnlyAndMissingComparatives() throws IOException {
+    CashFlowStatementReport report =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
+            List.of(
+                new CashFlowSection(
+                    CashFlowSectionKind.OPERATING,
+                    List.of(),
+                    List.of(balance("EUR", "7.00", "0.00", "7.00", BalanceSide.DEBIT))),
+                new CashFlowSection(
+                    CashFlowSectionKind.FINANCING,
+                    List.of(
+                        new CashFlowRow(
+                            "3000",
+                            "Contributed Capital",
+                            AccountType.EQUITY,
+                            Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+                            Optional.empty(),
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            balance("EUR", "5.00", "0.00", "5.00", BalanceSide.DEBIT))),
+                    List.of())),
+            List.of(balance("EUR", "12.00", "0.00", "12.00", BalanceSide.DEBIT)),
+            List.of(balance("EUR", "22.00", "0.00", "22.00", BalanceSide.DEBIT)),
+            List.of(),
+            List.of(
+                new CashFlowSection(CashFlowSectionKind.OPERATING, List.of(), List.of()),
+                new CashFlowSection(
+                    CashFlowSectionKind.FINANCING,
+                    List.of(
+                        new CashFlowRow(
+                            "3000",
+                            "Prior Contributed Capital",
+                            AccountType.EQUITY,
+                            Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+                            Optional.empty(),
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            balance("EUR", "4.00", "0.00", "4.00", BalanceSide.DEBIT))),
+                    List.of())),
+            List.of(),
+            List.of());
+
+    byte[] pdf = PDF_REPORT_SERVICE.renderCashFlowStatement(report);
+
+    assertPdfMetadata(pdf, "Cash Receipts And Payments", false);
+    String text = extractedText(pdf);
+    assertTrue(text.contains("Comparative Cash Receipts And Payments"));
+    assertTrue(text.contains("Operating Totals"));
+    assertTrue(text.contains("Financing"));
+    assertTrue(text.contains("Prior Contributed Capital"));
+    assertFalse(text.contains("Comparative Opening Cash Totals"));
+    assertFalse(text.contains("Comparative Movement Totals"));
+    assertFalse(text.contains("Comparative Closing Cash Totals"));
+  }
+
+  @Test
+  void renderCashFlowStatementSurfacesRequestedEmptyComparativeScope() throws IOException {
+    CashFlowStatementReport report =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
+            List.of(
+                new CashFlowSection(
+                    CashFlowSectionKind.OPERATING,
+                    List.of(
+                        new CashFlowRow(
+                            "2000",
+                            "Subscription Revenue",
+                            AccountType.REVENUE,
+                            Optional.empty(),
+                            Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT))),
+                    List.of(balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT))),
+                new CashFlowSection(CashFlowSectionKind.INVESTING, List.of(), List.of()),
+                new CashFlowSection(CashFlowSectionKind.FINANCING, List.of(), List.of())),
+            List.of(balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT)),
+            List.of(balance("EUR", "18.00", "0.00", "18.00", BalanceSide.DEBIT)),
+            List.of(),
+            List.of(
+                new CashFlowSection(CashFlowSectionKind.OPERATING, List.of(), List.of()),
+                new CashFlowSection(CashFlowSectionKind.INVESTING, List.of(), List.of()),
+                new CashFlowSection(CashFlowSectionKind.FINANCING, List.of(), List.of())),
+            List.of(),
+            List.of());
+
+    String text = extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(report));
+
+    assertTrue(text.contains("Comparative Cash Receipts And Payments"));
+    assertTrue(text.contains("Comparative range"));
+    assertTrue(text.contains("2025-04-01 to 2025-04-30"));
+    assertTrue(text.contains("No cash-flow lines matched the selected scope."));
+    assertTrue(text.contains("Empty sections"));
+    assertTrue(text.contains("Operating, Investing, Financing"));
+  }
+
+  @Test
+  void renderCashFlowStatementCoversComparativePresenceBranches() throws IOException {
+    CashFlowStatementReport noComparativeRequested =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
+            List.of(
+                new CashFlowSection(
+                    CashFlowSectionKind.OPERATING,
+                    List.of(
+                        new CashFlowRow(
+                            "2000",
+                            "Subscription Revenue",
+                            AccountType.REVENUE,
+                            Optional.empty(),
+                            Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT))),
+                    List.of(balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT)))),
+            List.of(balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT)),
+            List.of(balance("EUR", "18.00", "0.00", "18.00", BalanceSide.DEBIT)),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport lowerBoundOnlyComparative =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.from(LocalDate.parse("2025-04-01")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            noComparativeRequested.openingCashTotals(),
+            noComparativeRequested.sections(),
+            noComparativeRequested.movementTotals(),
+            noComparativeRequested.closingCashTotals(),
+            List.of(),
+            List.of(
+                new CashFlowSection(CashFlowSectionKind.OPERATING, List.of(), List.of()),
+                new CashFlowSection(CashFlowSectionKind.INVESTING, List.of(), List.of())),
+            List.of(),
+            List.of());
+    CashFlowStatementReport upperBoundOnlyComparative =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.to(LocalDate.parse("2025-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            noComparativeRequested.openingCashTotals(),
+            noComparativeRequested.sections(),
+            noComparativeRequested.movementTotals(),
+            noComparativeRequested.closingCashTotals(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport openingOnlyComparative =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            noComparativeRequested.openingCashTotals(),
+            noComparativeRequested.sections(),
+            noComparativeRequested.movementTotals(),
+            noComparativeRequested.closingCashTotals(),
+            List.of(balance("EUR", "4.00", "0.00", "4.00", BalanceSide.DEBIT)),
+            List.of(),
+            List.of(),
+            List.of());
+    CashFlowStatementReport movementOnlyComparative =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            noComparativeRequested.openingCashTotals(),
+            noComparativeRequested.sections(),
+            noComparativeRequested.movementTotals(),
+            noComparativeRequested.closingCashTotals(),
+            List.of(),
+            List.of(),
+            List.of(balance("EUR", "5.00", "0.00", "5.00", BalanceSide.DEBIT)),
+            List.of());
+    CashFlowStatementReport closingOnlyComparative =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            noComparativeRequested.openingCashTotals(),
+            noComparativeRequested.sections(),
+            noComparativeRequested.movementTotals(),
+            noComparativeRequested.closingCashTotals(),
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(balance("EUR", "6.00", "0.00", "6.00", BalanceSide.DEBIT)));
+    CashFlowStatementReport totalsOnlySectionComparative =
+        new CashFlowStatementReport(
+            BOOK_IDENTITY,
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            noComparativeRequested.openingCashTotals(),
+            noComparativeRequested.sections(),
+            noComparativeRequested.movementTotals(),
+            noComparativeRequested.closingCashTotals(),
+            List.of(),
+            List.of(
+                new CashFlowSection(
+                    CashFlowSectionKind.FINANCING,
+                    List.of(),
+                    List.of(balance("EUR", "7.00", "0.00", "7.00", BalanceSide.DEBIT)))),
+            List.of(),
+            List.of());
+
+    String noComparativeText =
+        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(noComparativeRequested));
+    String lowerBoundComparativeText =
+        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(lowerBoundOnlyComparative));
+    String upperBoundComparativeText =
+        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(upperBoundOnlyComparative));
+    String openingOnlyComparativeText =
+        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(openingOnlyComparative));
+    String movementOnlyComparativeText =
+        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(movementOnlyComparative));
+    String closingOnlyComparativeText =
+        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(closingOnlyComparative));
+    String totalsOnlySectionComparativeText =
+        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(totalsOnlySectionComparative));
+
+    assertFalse(noComparativeText.contains("Comparative Cash Receipts And Payments"));
+
+    assertTrue(lowerBoundComparativeText.contains("Comparative Cash Receipts And Payments"));
+    assertTrue(lowerBoundComparativeText.contains("2025-04-01 to current book horizon"));
+    assertTrue(lowerBoundComparativeText.contains("Empty sections"));
+
+    assertTrue(upperBoundComparativeText.contains("Comparative Cash Receipts And Payments"));
+    assertTrue(upperBoundComparativeText.contains("book start to 2025-04-30"));
+    assertFalse(upperBoundComparativeText.contains("Empty sections"));
+
+    assertTrue(openingOnlyComparativeText.contains("Comparative Opening Cash Totals"));
+    assertTrue(movementOnlyComparativeText.contains("Comparative Movement Totals"));
+    assertTrue(closingOnlyComparativeText.contains("Comparative Closing Cash Totals"));
+    assertTrue(totalsOnlySectionComparativeText.contains("Comparative Financing Totals"));
   }
 
   @Test
@@ -307,7 +638,6 @@ class PdfReportServiceTest {
                             "1000",
                             "Cash and Cash Equivalents",
                             AccountType.ASSET,
-                            AccountRole.ORDINARY,
                             FinancialPositionLineClassification.CURRENT_ASSET,
                             balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
                     List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))),
@@ -348,7 +678,6 @@ class PdfReportServiceTest {
                             "4000",
                             "Subscription Revenue",
                             AccountType.REVENUE,
-                            AccountRole.ORDINARY,
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
                     List.of(balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT)))),
@@ -376,7 +705,6 @@ class PdfReportServiceTest {
                 changesInEquityRow(
                     "3000",
                     "Contributed Capital",
-                    AccountRole.ORDINARY,
                     FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
                     balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT),
                     balance("EUR", "0.00", "250.00", "250.00", BalanceSide.CREDIT),
@@ -451,7 +779,6 @@ class PdfReportServiceTest {
                             "1000",
                             "Cash without Totals",
                             AccountType.ASSET,
-                            AccountRole.ORDINARY,
                             FinancialPositionLineClassification.CURRENT_ASSET,
                             balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT))),
                     List.of()),
@@ -476,7 +803,6 @@ class PdfReportServiceTest {
                             "4000",
                             "Revenue without Totals",
                             AccountType.REVENUE,
-                            AccountRole.ORDINARY,
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             balance("EUR", "0.00", "2500.00", "2500.00", BalanceSide.CREDIT))),
                     List.of()),
@@ -519,6 +845,8 @@ class PdfReportServiceTest {
     assertThrows(
         NullPointerException.class, () -> PDF_REPORT_SERVICE.renderFinancialPosition(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderIncomeStatement(null));
+    assertThrows(
+        NullPointerException.class, () -> PDF_REPORT_SERVICE.renderCashFlowStatement(null));
     assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderChangesInEquity(null));
   }
 }

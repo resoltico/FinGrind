@@ -10,8 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferDraft;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -53,25 +53,25 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   }
 
   @Test
-  void periodResultTransferCapabilitySessionCoversDraftHelperAndStoreContext() {
+  void reportingPeriodCloseCapabilitySessionCoversDraftHelperAndStoreContext() {
     Path missingBookPath = tempDirectory.resolve("period-transfer-session-coverage.sqlite");
     LocalDate effectiveDate = LocalDate.parse("2026-04-07");
-    Instant transferredAt = Instant.parse("2026-04-07T10:15:30Z");
+    Instant sweptAt = Instant.parse("2026-04-07T10:15:30Z");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath));
-        SqlitePeriodResultTransferSession periodResultTransferSession =
-            SqliteCapabilitySessions.periodResultTransfer(postingFactStore)) {
+        SqliteReportingPeriodCloseSession reportingPeriodCloseSession =
+            SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
       assertSame(
           postingFactStore.storeContext(),
           assertInstanceOf(
-                  SqlitePeriodResultTransferCapabilitySession.class, periodResultTransferSession)
+                  SqliteReportingPeriodCloseCapabilitySession.class, reportingPeriodCloseSession)
               .storeContext());
       assertEquals(
-          new PeriodResultTransferOutcome.Rejected(
+          new InterimResultSweepOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           assertInstanceOf(
-                  SqlitePeriodResultTransferCapabilitySession.class, periodResultTransferSession)
-              .transferPeriodResult(
-                  emptyPeriodResultTransferDraft(effectiveDate, transferredAt),
+                  SqliteReportingPeriodCloseCapabilitySession.class, reportingPeriodCloseSession)
+              .interimResultSweep(
+                  emptyInterimResultSweepDraft(effectiveDate, sweptAt),
                   unusedPostingIdGenerator()));
     }
   }
@@ -162,13 +162,13 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
     return () -> new dev.erst.fingrind.core.PostingId("unused");
   }
 
-  private static PeriodResultTransferDraft emptyPeriodResultTransferDraft(
-      LocalDate effectiveDate, Instant transferredAt) {
-    return new PeriodResultTransferDraft(
+  private static InterimResultSweepDraft emptyInterimResultSweepDraft(
+      LocalDate effectiveDate, Instant sweptAt) {
+    return new InterimResultSweepDraft(
         new ReportingPeriod(effectiveDate, effectiveDate),
         new AccountCode("3200"),
         List.of(),
-        transferredAt,
+        sweptAt,
         List.of());
   }
 }

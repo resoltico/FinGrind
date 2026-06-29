@@ -28,7 +28,7 @@ class JazzerReplaySqliteBookRoundTripTest {
             new SqliteBookRoundTripOutcomeDetails(
                 PostingLifecycleStatus.COMMITTED,
                 PostingLifecycleStatus.RELOADED,
-                PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
+                PostingLifecycleStatus.IDEMPOTENT_REPLAY,
                 true)),
         success.details());
   }

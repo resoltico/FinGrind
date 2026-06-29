@@ -7,16 +7,14 @@ import re
 from .models import ReleaseSmokeFailure
 
 
-def extract_pdf_exported_path(pdf_stderr: str) -> str:
+def extract_pdf_artifact_path(pdf_stdout: str) -> str:
     match = re.search(
-        r"^Message\s+:\s+Wrote the requested PDF report artifact to (.+)$",
-        pdf_stderr,
+        r"^Path\s+:\s+(.+)$",
+        pdf_stdout,
         re.MULTILINE,
     )
     if match is None:
-        raise ReleaseSmokeFailure(
-            "missing pdf-exported diagnostics message with the written artifact path hint"
-        )
+        raise ReleaseSmokeFailure("missing artifact confirmation path for the written PDF report")
     return match.group(1).strip()
 
 

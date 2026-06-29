@@ -1,5 +1,5 @@
 {
-  "entryKind": "REVERSAL_ADJUSTMENT",
+  "entryKind": "REVERSAL",
   "effectiveDate": "2026-04-07",
   "lines": [
     {
@@ -28,13 +28,12 @@
       {
         "sourceDocumentId": "document-idem-3",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-07",
-        "capturedAt": "2026-04-07T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-idem-3",
-        "contentSha256": "d0c2639c05769d19082c62620756a576dc4bdd3b82c420427e7d097af463645f"
+        "documentDate": "2026-04-07"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "actor-3",

@@ -29,11 +29,11 @@ final class SqliteReportRowValues {
 
   static CurrencyUnit reportCurrencyCode(SqliteNativeStatement statement) {
     return SqlitePersistedMoneyCodec.readCurrencyUnit(
-        statement, SqlitePostingSql.COL_REPORT_CURRENCY_CODE);
+        statement, SqlitePostingColumnIndexes.COL_REPORT_CURRENCY_CODE);
   }
 
   static long reportAmountMinor(SqliteNativeStatement statement) {
-    return statement.columnLong(SqlitePostingSql.COL_REPORT_AMOUNT_MINOR);
+    return statement.columnLong(SqlitePostingColumnIndexes.COL_REPORT_AMOUNT_MINOR);
   }
 
   static <K, V> Map<K, V> insertionOrderedMap() {

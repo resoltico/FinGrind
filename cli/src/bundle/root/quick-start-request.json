@@ -1,42 +1,29 @@
 {
-  "entryKind": "JOURNAL",
+  "entryKind": "SALE",
   "effectiveDate": "2026-04-08",
-  "lines": [
-    {
-      "accountCode": "cash",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    },
-    {
-      "accountCode": "service-revenue",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    }
-  ],
+  "cashAccountCode": "cash",
+  "revenueAccountCode": "service-revenue",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
   "evidence": {
     "sourceDocuments": [
       {
         "sourceDocumentId": "quick-start-cash-receipt-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-08",
-        "capturedAt": "2026-04-08T10:15:30Z",
-        "storageLocator": "vault://quick-start/cash-receipt-1",
-        "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "documentDate": "2026-04-08"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
     "actorId": "quick-start-operator",
     "actorType": "PERSON",
-    "commandId": "quick-start-posting",
+    "commandId": "quick-start-record-sale",
     "idempotencyKey": "quick-start-idem-1",
-    "causationId": "quick-start-cause-1"
+    "causationId": "quick-start-sale-cause-1"
   }
 }

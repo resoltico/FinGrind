@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: CORE
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
-  keywords: [fingrind, core, source-document, storage-locator, content-sha256, reversal, source-channel, wire-value]
+  keywords: [fingrind, core, source-document, reversal, source-channel, wire-value]
   questions: ["where are fingrind source-document primitives documented", "how does reversal lineage work in the core model", "what is WireValue in fingrind core"]
 ---
 
@@ -14,8 +14,9 @@ This companion file continues the exported `core` reference for source-document 
 reversal-lineage primitives, committed source-channel provenance, and the shared machine-vocabulary
 contract.
 
-The main accounting and ledger primitives remain in
-[DOC_01_Core.md](./DOC_01_Core.md).
+Account doctrine and shared kernel primitives remain in [DOC_01_Core.md](./DOC_01_Core.md).
+Journal, money, posting, reporting-period, and request-provenance primitives remain in
+[DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md).
 
 ## `SourceDocumentId`
 
@@ -44,29 +45,6 @@ public record SourceDocumentType(String value)
 - Validation: rejects `null`, blank text, and values outside the public source-document-type
   grammar
 
-## `StorageLocator`
-
-`StorageLocator` is the stable retained locator for one evidence artifact payload.
-
-```java
-public record StorageLocator(String value)
-```
-
-- Purpose: keep evidence retention references explicit without forcing one storage backend into the
-  core model
-- Validation: rejects `null`, blank text, and values longer than the public maximum length
-
-## `ContentSha256`
-
-`ContentSha256` is the canonical lowercase SHA-256 hex digest retained for one evidence artifact.
-
-```java
-public record ContentSha256(String value)
-```
-
-- Purpose: let FinGrind retain verifiable content identity for source documents
-- Validation: rejects `null` and any value outside the 64-character lowercase hex grammar
-
 ## `SourceDocumentReference`
 
 `SourceDocumentReference` is the typed evidence link to one source document.
@@ -75,16 +53,12 @@ public record ContentSha256(String value)
 public record SourceDocumentReference(
     SourceDocumentId sourceDocumentId,
     SourceDocumentType sourceDocumentType,
-    LocalDate documentDate,
-    Instant capturedAt,
-    StorageLocator storageLocator,
-    ContentSha256 contentSha256)
+    LocalDate documentDate)
 ```
 
 - Purpose: keep source-document evidence structured and durable across request and
   committed-posting surfaces
-- Validation: rejects `null` source-document id, source-document type, document date, capture
-  timestamp, storage locator, or content digest
+- Validation: rejects `null` source-document id, source-document type, or document date
 
 ## `ReversalReason`
 
@@ -120,7 +94,7 @@ public enum SourceChannel implements WireValue {
 ```
 
 - Purpose: record whether one committed posting came from the operator-facing CLI surface or an
-  internal system workflow such as period-result transfer
+  internal system workflow such as interim-result sweep
 - Current scope: `CLI` for operator-issued commands and `SYSTEM` for FinGrind-generated
   administrative postings
 - Wire contract: `wireValue()`, `wireValues()`, `values()`, and `fromWireValue(...)` own the

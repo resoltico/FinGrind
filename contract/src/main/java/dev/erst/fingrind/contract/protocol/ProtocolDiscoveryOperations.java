@@ -22,11 +22,11 @@ final class ProtocolDiscoveryOperations {
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print command usage, examples, and workflow guidance.",
             List.of(
-                ProtocolExampleStep.command("fingrind help post-entry"),
-                ProtocolExampleStep.command("fingrind post-entry --help"),
-                ProtocolExampleStep.command("fingrind help post-entry --output json"),
+                ProtocolExampleStep.command("fingrind help record-sale"),
+                ProtocolExampleStep.command("fingrind record-sale --help"),
+                ProtocolExampleStep.command("fingrind help record-sale --output json"),
                 ProtocolExampleStep.command(
-                    "fingrind help post-entry --output json --detail full"))),
+                    "fingrind help record-sale --output json --detail full"))),
         ProtocolOperationDefinitions.operation(
             OperationId.VERSION,
             OperationCategory.DISCOVERY,
@@ -71,12 +71,15 @@ final class ProtocolDiscoveryOperations {
             OperationCategory.DISCOVERY,
             "Print Request Template",
             List.of("--print-request-template"),
-            List.of("[post-entry|preflight-entry|declare-account]"),
+            List.of(ProtocolRequestTemplateTopics.syntax()),
             ExecutionMode.RAW_JSON,
             "Print the canonical minimal request scaffold JSON document for one request-file command.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s > request.json"
+                        .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind %s record-sale > sale.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
                 ProtocolExampleStep.command(
                     "fingrind %s declare-account > declare-account.json"

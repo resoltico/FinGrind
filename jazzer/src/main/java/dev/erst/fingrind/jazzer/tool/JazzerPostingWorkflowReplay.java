@@ -131,11 +131,9 @@ final class JazzerPostingWorkflowReplay {
                       bookSession, command.requestProvenance().idempotencyKey()));
           PostingWorkflowInvariantAssertions.verifyStoredPosting(postingFact, committed, command);
           state.storedFactPresent = true;
-          state.duplicateStatus =
-              JazzerReplayOutcomeSupport.rejectionStatus(
-                  PostingWorkflowInvariantAssertions.requireDuplicateRejection(
-                          CliFuzzWorkflowFixtures.commit(applicationService, command))
-                      .rejection());
+          PostingWorkflowInvariantAssertions.requireIdempotentReplay(
+              CliFuzzWorkflowFixtures.commit(applicationService, command), committed);
+          state.duplicateStatus = PostingLifecycleStatus.IDEMPOTENT_REPLAY;
         }
         case PreflightRejected preflightRejected -> {
           state.finalPreflightStatus =

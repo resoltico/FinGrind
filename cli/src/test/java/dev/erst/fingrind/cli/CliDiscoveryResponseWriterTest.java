@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.NormalBalance;
@@ -131,10 +132,14 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         new VersionDescriptor(
             "FinGrind",
             "0.9.0",
+            MachineContract.protocolVersion(),
             "Command-line double-entry bookkeeping with one protected book per accounting entity"));
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").stringValue());
     assertEquals("0.9.0", json.path("payload").path("version").stringValue());
+    assertEquals(
+        MachineContract.protocolVersion(),
+        json.path("payload").path("protocolVersion").stringValue());
   }
 
   @Test
@@ -144,7 +149,8 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Command-line double-entry bookkeeping with one protected book per accounting entity"),
+                "Command-line double-entry bookkeeping with one protected book per accounting"
+                    + " entity"),
             environmentDescriptor(
                 FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
@@ -175,10 +181,12 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Command-line double-entry bookkeeping with one protected book per accounting entity")));
+                "Command-line double-entry bookkeeping with one protected book per accounting"
+                    + " entity")));
     JsonNode json = readJson(outputStream);
     JsonNode payload = json.path("payload");
     assertEquals("minimal", payload.path("detail").stringValue());
+    assertEquals(MachineContract.protocolVersion(), payload.path("protocolVersion").stringValue());
     assertEquals("overview", payload.path("focus").stringValue());
     assertTrue(payload.has("bookBoundary"));
     assertTrue(payload.has("requestInput"));
@@ -197,7 +205,8 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             new ApplicationIdentity(
                 "FinGrind",
                 "0.9.0",
-                "Command-line double-entry bookkeeping with one protected book per accounting entity"));
+                "Command-line double-entry bookkeeping with one protected book per accounting"
+                    + " entity"));
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
     CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
     textWriter.writeCapabilities(capabilities, OutputMode.TEXT);
@@ -237,6 +246,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         new VersionDescriptor(
             "FinGrind",
             "0.9.0",
+            MachineContract.protocolVersion(),
             "Command-line double-entry bookkeeping with one protected book per accounting entity");
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
     CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
@@ -258,9 +268,13 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             Path.of("secrets").resolve("entity.book-key"), "base64url-no-padding", 256, "0600"));
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").stringValue());
+    assertTrue(json.path("payload").path("bookKeyFile").isMissingNode());
+    assertEquals(
+        ProtocolArtifactOutput.bookKeyFileFormat(),
+        json.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
         CliPublicPaths.redactedValue(Path.of("secrets").resolve("entity.book-key")),
-        json.path("payload").path("bookKeyFile").stringValue());
+        json.path("artifacts").get(0).path("path").stringValue());
     assertEquals("base64url-no-padding", json.path("payload").path("encoding").stringValue());
     assertEquals(256, json.path("payload").path("entropyBits").asInt());
     assertEquals("0600", json.path("payload").path("permissions").stringValue());

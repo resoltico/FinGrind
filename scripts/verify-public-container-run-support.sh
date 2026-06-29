@@ -31,17 +31,16 @@ require_nonempty_container_file() {
 
 seed_public_fixture() {
     cat > "${report_root}/declare-bank.json" <<'JSON'
-{"accountCode":"operating-bank","accountName":"Operating Bank","accountType":"ASSET","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
+{"accountCode":"operating-bank","accountName":"Operating Bank","accountType":"ASSET","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
 JSON
 
     cat > "${report_root}/declare-revenue.json" <<'JSON'
-{"accountCode":"misc-revenue","accountName":"Misc Revenue","accountType":"REVENUE","accountRole":"ORDINARY","accountNodeKind":"POSTABLE","financialPositionLineClassification":null,"profitAndLossLineClassification":"OTHER_REVENUE"}
+{"accountCode":"misc-revenue","accountName":"Misc Revenue","accountType":"REVENUE","accountNodeKind":"POSTABLE","financialPositionLineClassification":null,"profitAndLossLineClassification":"OTHER_REVENUE"}
 JSON
 
 cat > "${report_root}/posting.json" <<'JSON'
 {
-  "entryKind": "JOURNAL",
-  "recipeKind": "CASH_REVENUE",
+  "entryKind": "SALE",
   "effectiveDate": "2026-04-08",
   "cashAccountCode": "cash",
   "revenueAccountCode": "service-revenue",
@@ -54,10 +53,7 @@ cat > "${report_root}/posting.json" <<'JSON'
       {
         "sourceDocumentId": "release-protocol-cash-receipt-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-08",
-        "capturedAt": "2026-04-08T10:15:30Z",
-        "storageLocator": "vault://release-protocol/cash-receipt-1",
-        "contentSha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        "documentDate": "2026-04-08"
       }
     ],
     "approvals": []
@@ -74,7 +70,7 @@ JSON
 
 cat > "${report_root}/raw-transfer.json" <<'JSON'
 {
-  "entryKind": "JOURNAL",
+  "entryKind": "DIRECT_JOURNAL",
   "effectiveDate": "2026-04-08",
   "lines": [
     {
@@ -99,10 +95,7 @@ cat > "${report_root}/raw-transfer.json" <<'JSON'
       {
         "sourceDocumentId": "release-protocol-bank-deposit-1",
         "sourceDocumentType": "bank-deposit",
-        "documentDate": "2026-04-08",
-        "capturedAt": "2026-04-08T10:15:30Z",
-        "storageLocator": "vault://release-protocol/bank-deposit-1",
-        "contentSha256": "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+        "documentDate": "2026-04-08"
       }
     ],
     "approvals": []

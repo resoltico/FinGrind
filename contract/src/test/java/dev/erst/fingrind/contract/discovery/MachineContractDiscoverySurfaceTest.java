@@ -1,12 +1,13 @@
 package dev.erst.fingrind.contract.discovery;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.LedgerPlanRequestShapeDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -14,6 +15,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
+import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
@@ -55,6 +57,12 @@ class MachineContractDiscoverySurfaceTest {
   void helpForOperationTopicsPublishesOnlyRelevantTemplatesAndNoQuickStart() {
     assertPostingTopic(OperationId.POST_ENTRY);
     assertPostingTopic(OperationId.PREFLIGHT_ENTRY);
+    assertPostingTopic(OperationId.RECORD_SALE);
+    assertPostingTopic(OperationId.RECORD_EXPENSE);
+    assertPostingTopic(OperationId.RECORD_OWNER_CONTRIBUTION);
+    assertPostingTopic(OperationId.RECORD_OWNER_WITHDRAWAL);
+    assertPostingTopic(OperationId.RECORD_OPENING_POSITION);
+    assertPostingTopic(OperationId.RECORD_REVERSAL);
 
     HelpDescriptor declareAccountHelp =
         MachineContract.help(
@@ -96,7 +104,9 @@ class MachineContractDiscoverySurfaceTest {
 
     assertEquals(IDENTITY.application(), version.application());
     assertEquals(IDENTITY.version(), version.version());
+    assertEquals(MachineContract.protocolVersion(), version.protocolVersion());
     assertEquals(IDENTITY.description(), version.description());
+    assertEquals(MachineContract.protocolVersion(), capabilities.protocolVersion());
     assertEquals("single-sqlite-file", capabilities.storage().bookBoundary());
     assertEquals(
         ProtocolCatalog.operations().size(),
@@ -127,14 +137,71 @@ class MachineContractDiscoverySurfaceTest {
   }
 
   @Test
+  void capabilitiesRequestInputNotesDescribePdfArtifactPublicationContract() {
+    CapabilitiesDescriptor capabilities = MachineContract.capabilities(IDENTITY);
+
+    assertTrue(
+        capabilities.requestInput().outputSemantics().stream()
+            .anyMatch(
+                note ->
+                    note.contains(
+                            "successful JSON exports publish the normalized artifact path under artifacts[]")
+                        && note.contains(
+                            "successful text exports replace the full report body with one artifact confirmation block on stdout")
+                        && note.contains("--output csv cannot be combined with --pdf-out")));
+  }
+
+  @Test
+  void
+      capabilitiesResponseModelDescribesLiftedPlanOutcomePayloadsWithoutChangingPostingRejections() {
+    CapabilitiesDescriptor capabilities = MachineContract.capabilities(IDENTITY);
+
+    ContractResponse.FieldDescriptor rejectionPayload =
+        fieldNamed(capabilities.responseModel().rejectionFields(), "payload");
+    assertTrue(
+        rejectionPayload
+            .description()
+            .contains(ProtocolCatalog.operationName(OperationId.EXECUTE_PLAN)));
+    assertTrue(rejectionPayload.description().contains("assertion-failed"));
+
+    ContractResponse.FieldDescriptor errorPayload =
+        fieldNamed(capabilities.responseModel().errorFields(), "payload");
+    assertTrue(
+        errorPayload
+            .description()
+            .contains(ProtocolCatalog.operationName(OperationId.EXECUTE_PLAN)));
+    assertTrue(errorPayload.description().contains("rejected"));
+
+    assertTrue(
+        capabilities.responseModel().postEntryRejectionFields().stream()
+            .noneMatch(field -> "payload".equals(field.name())));
+  }
+
+  @Test
   void templateCatalogPublishesCanonicalScaffoldsForEverySupportedSelection() {
     assertTrue(
         MachineContractTemplatesCatalog.declareAccountCashJson().contains("\"cash-reserve\""));
     assertTrue(
         MachineContractTemplatesCatalog.declareAccountRevenueJson().contains("\"misc-revenue\""));
-    assertEquals(BookkeepingEntryKind.JOURNAL, MachineContract.requestTemplate().entryKind());
-    assertNull(MachineContract.requestTemplate().recipeKind());
-    assertEquals(2, Objects.requireNonNull(MachineContract.requestTemplate().lines()).size());
+    assertEquals(BookkeepingEntryKind.SALE, MachineContract.requestTemplate().entryKind());
+    assertEquals("cash", MachineContract.requestTemplate().cashAccountCode());
+    assertNull(MachineContract.requestTemplate().lines());
+    assertEquals(
+        BookkeepingEntryKind.DIRECT_JOURNAL,
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.POST_ENTRY))
+            .entryKind());
+    assertEquals(
+        BookkeepingEntryKind.SALE,
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.PREFLIGHT_ENTRY))
+            .entryKind());
+    assertEquals(
+        BookkeepingEntryKind.SALE,
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE))
+            .entryKind());
+    assertEquals(
+        BookkeepingEntryKind.REVERSAL,
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_REVERSAL))
+            .entryKind());
     assertEquals("cash-reserve", MachineContract.declareAccountTemplate().accountCode());
     assertEquals("plan-1", MachineContract.planTemplate().planId());
     assertNull(MachineContractTemplatesCatalog.requestShapesFor(null));
@@ -153,63 +220,118 @@ class MachineContractDiscoverySurfaceTest {
   }
 
   @Test
+  void typedPostingTemplateLookupRejectsOperationsOutsideTheTypedEntryFamily() {
+    IllegalArgumentException cause =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                MachineContractTemplatesCatalog.requiredPostingEntryKind(
+                    ProtocolCatalog.operation(OperationId.HELP)));
+    assertEquals("Operation help does not own one typed posting template.", cause.getMessage());
+  }
+
+  @Test
   void requestSurfaceFactsDrivePostingDiscoverySemantics() {
     CapabilitiesDescriptor capabilities = MachineContract.capabilities(IDENTITY);
     RequestSurfaceFacts requestSurface = ProtocolCatalog.domain().requestSurface();
-    var postEntry = capabilities.requestShapes().postEntry();
+    var postEntry = capabilities.requestShapes().bookkeepingEntry();
     assertNotNull(postEntry);
     assertEquals(
-        requestSurface.postEntryEvidence().minimumSourceDocuments(),
+        requestSurface.bookkeepingEntryEvidence().minimumSourceDocuments(),
         postEntry.evidenceRequirement().minimumSourceDocuments());
-    assertEquals(
-        requestSurface.postEntryEvidence().requiredSourceDocumentFields(),
-        postEntry.evidenceRequirement().requiredSourceDocumentFields());
-    ContractRequestShapes.JournalRecipeSemanticsDescriptor cashRevenue =
-        postEntry.journalRecipeSemantics().stream()
-            .filter(descriptor -> descriptor.recipeKind() == JournalRecipeKind.CASH_REVENUE)
-            .findFirst()
-            .orElseThrow();
-    assertEquals(
-        requestSurface.journalRecipe(JournalRecipeKind.CASH_REVENUE).evidenceProfileId(),
-        cashRevenue.evidenceProfileId());
-    assertEquals(
-        requestSurface
-            .evidenceProfile(
-                requestSurface.journalRecipe(JournalRecipeKind.CASH_REVENUE).evidenceProfileId())
-            .sourceDocumentTypes()
-            .acceptedValues(),
-        postEntry.evidenceProfiles().stream()
-            .filter(
-                profile ->
-                    profile
-                        .profileId()
-                        .equals(
-                            requestSurface
-                                .journalRecipe(JournalRecipeKind.CASH_REVENUE)
-                                .evidenceProfileId()))
-            .findFirst()
-            .orElseThrow()
-            .acceptedSourceDocumentTypes());
-    ContractRequestShapes.EntryKindSemanticsDescriptor openAccountingPosition =
+    ContractRequestShapes.EntryKindSemanticsDescriptor sale =
         postEntry.entryKindSemantics().stream()
-            .filter(
-                descriptor ->
-                    descriptor.entryKind() == BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION)
+            .filter(descriptor -> descriptor.entryKind() == BookkeepingEntryKind.SALE)
             .findFirst()
             .orElseThrow();
+    RequestSurfaceFacts.BookkeepingEntryKindFacts saleFacts =
+        requestSurface.bookkeepingEntryKind(BookkeepingEntryKind.SALE);
+    assertEquals(saleFacts.requiredTopLevelFields(), sale.requiredTopLevelFields());
+    assertEquals(saleFacts.requiredSourceDocumentFields(), sale.requiredSourceDocumentFields());
+    assertEquals(saleFacts.sourceDocumentTypes().mode().wireValue(), sale.sourceDocumentTypeMode());
     assertEquals(
-        requestSurface
-            .postEntryKind(BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION)
-            .evidenceProfileId(),
-        openAccountingPosition.evidenceProfileId());
-    assertTrue(
-        postEntry.evidenceProfiles().stream()
-            .filter(
-                profile -> profile.profileId().equals(openAccountingPosition.evidenceProfileId()))
+        saleFacts.sourceDocumentTypes().acceptedValues(), sale.acceptedSourceDocumentTypes());
+    assertEquals(saleFacts.sourceDocumentTypes().semantics(), sale.sourceDocumentTypeSemantics());
+    assertEquals(
+        saleFacts.sourceDocumentTypes().scaffoldValue(),
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE))
+            .evidence()
+            .sourceDocuments()
+            .getFirst()
+            .sourceDocumentType());
+    ContractRequestShapes.EntryKindSemanticsDescriptor openingPosition =
+        postEntry.entryKindSemantics().stream()
+            .filter(descriptor -> descriptor.entryKind() == BookkeepingEntryKind.OPENING_POSITION)
+            .findFirst()
+            .orElseThrow();
+    RequestSurfaceFacts.BookkeepingEntryKindFacts openingFacts =
+        requestSurface.bookkeepingEntryKind(BookkeepingEntryKind.OPENING_POSITION);
+    assertEquals(
+        openingFacts.sourceDocumentTypes().mode().wireValue(),
+        openingPosition.sourceDocumentTypeMode());
+    assertTrue(openingPosition.acceptedSourceDocumentTypes().isEmpty());
+    assertEquals(
+        openingFacts.sourceDocumentTypes().scaffoldValue(),
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_OPENING_POSITION))
+            .evidence()
+            .sourceDocuments()
+            .getFirst()
+            .sourceDocumentType());
+  }
+
+  @Test
+  void narrowedBookkeepingEntryShapePublishesSourceDocumentTypePolicyDirectly() {
+    HelpDescriptor saleHelp =
+        MachineContract.help(
+            IDENTITY,
+            environment(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE),
+            OperationId.RECORD_SALE);
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor saleShape =
+        Objects.requireNonNull(Objects.requireNonNull(saleHelp.requestShapes()).bookkeepingEntry());
+    RequestSurfaceFacts.BookkeepingEntryKindFacts saleFacts =
+        ProtocolCatalog.domain().requestSurface().bookkeepingEntryKind(BookkeepingEntryKind.SALE);
+    ContractRequestShapes.RequestFieldDescriptor sourceDocumentTypeField =
+        saleShape.sourceDocumentFields().stream()
+            .filter(field -> "sourceDocumentType".equals(field.name()))
+            .findFirst()
+            .orElseThrow();
+
+    assertTrue(sourceDocumentTypeField.description().contains("Accepted values: cash-receipt"));
+    assertFalse(sourceDocumentTypeField.description().contains("entryKindSemantics"));
+    assertEquals(
+        saleFacts.sourceDocumentTypes().acceptedValues(),
+        saleShape.enumVocabularies().stream()
+            .filter(vocabulary -> "sourceDocumentType".equals(vocabulary.name()))
             .findFirst()
             .orElseThrow()
-            .acceptedSourceDocumentTypes()
-            .isEmpty());
+            .values());
+    assertEquals(
+        saleFacts.sourceDocumentTypes().acceptedValues(),
+        ContractSchemaTestSupport.stringList(
+            ContractSchemaTestSupport.requiredValue(
+                ContractSchemaTestSupport.sourceDocumentTypeSchema(saleShape), "enum")));
+
+    HelpDescriptor openingPositionHelp =
+        MachineContract.help(
+            IDENTITY,
+            environment(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE),
+            OperationId.RECORD_OPENING_POSITION);
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor openingPositionShape =
+        Objects.requireNonNull(
+            Objects.requireNonNull(openingPositionHelp.requestShapes()).bookkeepingEntry());
+    ContractRequestShapes.RequestFieldDescriptor openingSourceDocumentTypeField =
+        openingPositionShape.sourceDocumentFields().stream()
+            .filter(field -> "sourceDocumentType".equals(field.name()))
+            .findFirst()
+            .orElseThrow();
+
+    assertTrue(openingSourceDocumentTypeField.description().contains("caller-authored"));
+    assertFalse(openingSourceDocumentTypeField.description().contains("entryKindSemantics"));
+    assertTrue(
+        openingPositionShape.enumVocabularies().stream()
+            .noneMatch(vocabulary -> "sourceDocumentType".equals(vocabulary.name())));
+    assertNull(
+        ContractSchemaTestSupport.sourceDocumentTypeSchema(openingPositionShape).get("enum"));
   }
 
   @Test
@@ -222,12 +344,12 @@ class MachineContractDiscoverySurfaceTest {
 
     ContractRequestShapes.RequestShapesDescriptor requestShapes =
         Objects.requireNonNull(executePlanHelp.requestShapes());
-    assertNull(requestShapes.postEntry());
+    assertNull(requestShapes.bookkeepingEntry());
     assertNull(requestShapes.declareAccount());
     assertNotNull(requestShapes.ledgerPlan());
     assertNotNull(executePlanHelp.planTemplate());
     assertEquals(
-        dev.erst.fingrind.core.BookkeepingEntryKind.JOURNAL,
+        dev.erst.fingrind.core.BookkeepingEntryKind.SALE,
         Objects.requireNonNull(executePlanHelp.planTemplate())
             .canonicalPostingTemplate()
             .entryKind());
@@ -261,6 +383,43 @@ class MachineContractDiscoverySurfaceTest {
     assertEquals(
         List.of(ProtocolCatalog.operation(operationId).id()),
         help.commands().stream().map(CommandDescriptor::name).toList());
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntry =
+        Objects.requireNonNull(help.requestShapes()).bookkeepingEntry();
+    assertNotNull(postEntry);
+    if (operationId == OperationId.PREFLIGHT_ENTRY) {
+      assertEquals(BookkeepingEntryKind.values().length, postEntry.entryKindSemantics().size());
+      return;
+    }
+    if (operationId == OperationId.POST_ENTRY) {
+      assertEquals(
+          List.of(BookkeepingEntryKind.DIRECT_JOURNAL),
+          postEntry.entryKindSemantics().stream()
+              .map(ContractRequestShapes.EntryKindSemanticsDescriptor::entryKind)
+              .toList());
+      return;
+    }
+    BookkeepingEntryKind expectedEntryKind =
+        switch (operationId) {
+          case RECORD_SALE -> BookkeepingEntryKind.SALE;
+          case RECORD_EXPENSE -> BookkeepingEntryKind.EXPENSE;
+          case RECORD_OWNER_CONTRIBUTION -> BookkeepingEntryKind.OWNER_CONTRIBUTION;
+          case RECORD_OWNER_WITHDRAWAL -> BookkeepingEntryKind.OWNER_WITHDRAWAL;
+          case RECORD_OPENING_POSITION -> BookkeepingEntryKind.OPENING_POSITION;
+          case RECORD_REVERSAL -> BookkeepingEntryKind.REVERSAL;
+          default -> throw new AssertionError("Unexpected posting topic " + operationId);
+        };
+    assertEquals(
+        List.of(expectedEntryKind),
+        postEntry.entryKindSemantics().stream()
+            .map(ContractRequestShapes.EntryKindSemanticsDescriptor::entryKind)
+            .toList());
+    assertEquals(
+        List.of(expectedEntryKind.wireValue()),
+        postEntry.enumVocabularies().stream()
+            .filter(vocabulary -> "entryKind".equals(vocabulary.name()))
+            .findFirst()
+            .orElseThrow()
+            .values());
   }
 
   private static void assertExitCodes(OperationId operationId, List<Integer> expectedExitCodes) {
@@ -270,6 +429,14 @@ class MachineContractDiscoverySurfaceTest {
 
     assertEquals(
         expectedExitCodes, help.exitCodes().stream().map(exitCode -> exitCode.code()).toList());
+  }
+
+  private static ContractResponse.FieldDescriptor fieldNamed(
+      List<ContractResponse.FieldDescriptor> fields, String fieldName) {
+    return fields.stream()
+        .filter(field -> fieldName.equals(field.name()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Missing response-model field " + fieldName));
   }
 
   private static void assertQuickStartSurface(
@@ -322,7 +489,7 @@ class MachineContractDiscoverySurfaceTest {
             .text()
             .contains(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY)));
     assertTrue(
-        steps.postEntry().text().contains(ProtocolCatalog.operationName(OperationId.POST_ENTRY)));
+        steps.postEntry().text().contains(ProtocolCatalog.operationName(OperationId.RECORD_SALE)));
     assertTrue(
         steps
             .trialBalance()

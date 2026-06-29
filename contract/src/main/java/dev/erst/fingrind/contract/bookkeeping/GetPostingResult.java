@@ -1,7 +1,9 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 
 /** Closed result family for one committed-posting lookup. */
@@ -11,11 +13,14 @@ public sealed interface GetPostingResult permits GetPostingResult.Found, GetPost
   <T> T fold(Function<Found, T> foundMapper, Function<Rejected, T> rejectedMapper);
 
   /** Success result carrying the matching committed posting. */
-  record Found(BookIdentity bookIdentity, PostingFact postingFact) implements GetPostingResult {
+  record Found(
+      BookIdentity bookIdentity, PostingFact postingFact, Optional<PostingId> reversedByPostingId)
+      implements GetPostingResult {
     /** Validates the committed-posting payload. */
     public Found {
       Objects.requireNonNull(bookIdentity, "bookIdentity");
       Objects.requireNonNull(postingFact, "postingFact");
+      Objects.requireNonNull(reversedByPostingId, "reversedByPostingId");
     }
 
     @Override

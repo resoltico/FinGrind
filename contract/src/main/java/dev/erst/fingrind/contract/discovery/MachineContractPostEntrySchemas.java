@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
+import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
@@ -23,15 +23,21 @@ final class MachineContractPostEntrySchemas {
     return MachineContractSchemaSupport.stripDialect(postEntrySchema());
   }
 
-  static ContractRequestShapes.PostEntryRequestShapeDescriptor descriptor() {
+  static ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor descriptor() {
     RequestSurfaceFacts requestSurface = ProtocolCatalog.domain().requestSurface();
-    return new ContractRequestShapes.PostEntryRequestShapeDescriptor(
+    return new ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor(
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.topLevelFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.lineFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.openingBalanceFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryForeignExchangeFieldSpecs.foreignExchangeFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryForeignExchangeFieldSpecs.quotedRateFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.taxFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.evidenceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
@@ -42,29 +48,23 @@ final class MachineContractPostEntrySchemas {
             MachineContractPostEntryFieldSpecs.provenanceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.reversalFields()),
-        requestSurface.postEntryKinds().stream()
+        requestSurface.bookkeepingEntryKinds().stream()
             .map(MachineContractPostEntrySchemas::entryKindSemanticsDescriptor)
-            .toList(),
-        requestSurface.journalRecipes().stream()
-            .map(MachineContractPostEntrySchemas::journalRecipeSemanticsDescriptor)
-            .toList(),
-        requestSurface.evidenceProfiles().stream()
-            .map(MachineContractPostEntrySchemas::evidenceProfileDescriptor)
             .toList(),
         requestSurface.reachabilityMatrix().stream()
             .map(MachineContractPostEntrySchemas::reachabilityCellDescriptor)
             .toList(),
         new ContractRequestShapes.EvidenceRequirementDescriptor(
-            requestSurface.postEntryEvidence().description(),
-            requestSurface.postEntryEvidence().minimumSourceDocuments(),
-            requestSurface.postEntryEvidence().requiredSourceDocumentFields()),
+            requestSurface.bookkeepingEntryEvidence().description(),
+            requestSurface.bookkeepingEntryEvidence().minimumSourceDocuments()),
         List.of(
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 ProtocolPostEntryFields.TopLevel.ENTRY_KIND, BookkeepingEntryKind.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
-                ProtocolPostEntryFields.TopLevel.RECIPE_KIND, JournalRecipeKind.wireValues()),
-            new ContractRequestShapes.EnumVocabularyDescriptor(
                 ProtocolPostEntryFields.JournalLine.SIDE, JournalLine.EntrySide.wireValues()),
+            new ContractRequestShapes.EnumVocabularyDescriptor(
+                ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND,
+                ForeignExchangeTreatmentKind.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 ProtocolPostEntryFields.Provenance.ACTOR_TYPE, ActorType.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
@@ -72,34 +72,96 @@ final class MachineContractPostEntrySchemas {
         postEntrySchema());
   }
 
+  static ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor descriptor(
+      BookkeepingEntryKind entryKind) {
+    RequestSurfaceFacts requestSurface = ProtocolCatalog.domain().requestSurface();
+    RequestSurfaceFacts.BookkeepingEntryKindFacts facts =
+        requestSurface.bookkeepingEntryKind(entryKind);
+    return new ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor(
+        topLevelFieldDescriptors(facts),
+        nestedFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.lineFields(),
+            facts.requiredTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.LINES)),
+        nestedFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.openingBalanceFields(),
+            facts
+                .requiredTopLevelFields()
+                .contains(ProtocolPostEntryFields.TopLevel.OPENING_BALANCES)),
+        nestedFieldDescriptors(
+            MachineContractPostEntryForeignExchangeFieldSpecs.foreignExchangeFields(),
+            facts
+                .optionalTopLevelFields()
+                .contains(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE)),
+        nestedFieldDescriptors(
+            MachineContractPostEntryForeignExchangeFieldSpecs.quotedRateFields(),
+            facts
+                .optionalTopLevelFields()
+                .contains(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE)),
+        nestedFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.taxFields(),
+            facts.optionalTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.TAX)),
+        MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.evidenceFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.sourceDocumentFields(facts)),
+        MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.approvalFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.provenanceFields()),
+        nestedFieldDescriptors(
+            MachineContractPostEntryFieldSpecs.reversalFields(),
+            facts.requiredTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.REVERSAL)),
+        List.of(entryKindSemanticsDescriptor(facts)),
+        requestSurface.reachabilityMatrix().stream()
+            .map(MachineContractPostEntrySchemas::reachabilityCellDescriptor)
+            .toList(),
+        new ContractRequestShapes.EvidenceRequirementDescriptor(
+            requestSurface.bookkeepingEntryEvidence().description(),
+            requestSurface.bookkeepingEntryEvidence().minimumSourceDocuments()),
+        selectedEnumVocabularies(entryKind, facts),
+        MachineContractPostEntryVariantSchemas.schema(entryKind));
+  }
+
   private static ContractRequestShapes.EntryKindSemanticsDescriptor entryKindSemanticsDescriptor(
-      RequestSurfaceFacts.PostEntryKindFacts facts) {
+      RequestSurfaceFacts.BookkeepingEntryKindFacts facts) {
     return new ContractRequestShapes.EntryKindSemanticsDescriptor(
         facts.entryKind(),
         facts.requiredTopLevelFields(),
+        facts.optionalTopLevelFields(),
         facts.forbiddenTopLevelFields(),
-        facts.evidenceProfileId(),
-        facts.semantics());
-  }
-
-  private static ContractRequestShapes.JournalRecipeSemanticsDescriptor
-      journalRecipeSemanticsDescriptor(RequestSurfaceFacts.JournalRecipeFacts facts) {
-    return new ContractRequestShapes.JournalRecipeSemanticsDescriptor(
-        facts.recipeKind(),
-        facts.requiredTopLevelFields(),
-        facts.forbiddenTopLevelFields(),
-        facts.evidenceProfileId(),
-        facts.semantics());
-  }
-
-  private static ContractRequestShapes.EvidenceProfileDescriptor evidenceProfileDescriptor(
-      RequestSurfaceFacts.EvidenceProfileFacts facts) {
-    return new ContractRequestShapes.EvidenceProfileDescriptor(
-        facts.profileId(),
+        facts.requiredSourceDocumentFields(),
         facts.sourceDocumentTypes().mode().wireValue(),
         facts.sourceDocumentTypes().acceptedValues(),
         facts.sourceDocumentTypes().semantics(),
         facts.semantics());
+  }
+
+  private static List<ContractRequestShapes.RequestFieldDescriptor> topLevelFieldDescriptors(
+      RequestSurfaceFacts.BookkeepingEntryKindFacts facts) {
+    return MachineContractPostEntryFieldSpecs.topLevelFields().stream()
+        .map(
+            field ->
+                new ContractRequestShapes.RequestFieldDescriptor(
+                    field.name(),
+                    facts.requiredTopLevelFields().contains(field.name())
+                        ? RequestFieldPresence.REQUIRED
+                        : facts.optionalTopLevelFields().contains(field.name())
+                            ? RequestFieldPresence.OPTIONAL
+                            : RequestFieldPresence.FORBIDDEN,
+                    field.description()))
+        .toList();
+  }
+
+  private static List<ContractRequestShapes.RequestFieldDescriptor> nestedFieldDescriptors(
+      List<MachineContractFieldSpec> fieldSpecs, boolean accepted) {
+    return fieldSpecs.stream()
+        .map(
+            field ->
+                new ContractRequestShapes.RequestFieldDescriptor(
+                    field.name(),
+                    accepted ? field.presence() : RequestFieldPresence.FORBIDDEN,
+                    field.description()))
+        .toList();
   }
 
   private static ContractRequestShapes.ReachabilityCellDescriptor reachabilityCellDescriptor(
@@ -112,5 +174,37 @@ final class MachineContractPostEntrySchemas {
         facts.openingReachable(),
         facts.operationalJournalReachable(),
         facts.reversalReachable());
+  }
+
+  private static List<ContractRequestShapes.EnumVocabularyDescriptor> selectedEnumVocabularies(
+      BookkeepingEntryKind entryKind, RequestSurfaceFacts.BookkeepingEntryKindFacts facts) {
+    List<ContractRequestShapes.EnumVocabularyDescriptor> enumVocabularies =
+        new java.util.ArrayList<>(
+            List.of(
+                new ContractRequestShapes.EnumVocabularyDescriptor(
+                    ProtocolPostEntryFields.TopLevel.ENTRY_KIND, List.of(entryKind.wireValue())),
+                new ContractRequestShapes.EnumVocabularyDescriptor(
+                    ProtocolPostEntryFields.JournalLine.SIDE, JournalLine.EntrySide.wireValues()),
+                new ContractRequestShapes.EnumVocabularyDescriptor(
+                    ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND,
+                    ForeignExchangeTreatmentKind.wireValues()),
+                new ContractRequestShapes.EnumVocabularyDescriptor(
+                    ProtocolPostEntryFields.Provenance.ACTOR_TYPE, ActorType.wireValues()),
+                new ContractRequestShapes.EnumVocabularyDescriptor(
+                    ProtocolPostEntryFields.Approval.DECISION, ApprovalDecision.wireValues())));
+    if (!facts
+        .optionalTopLevelFields()
+        .contains(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE)) {
+      enumVocabularies.removeIf(
+          vocabulary ->
+              ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND.equals(vocabulary.name()));
+    }
+    if (!facts.sourceDocumentTypes().acceptedValues().isEmpty()) {
+      enumVocabularies.add(
+          new ContractRequestShapes.EnumVocabularyDescriptor(
+              ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_TYPE,
+              facts.sourceDocumentTypes().acceptedValues()));
+    }
+    return List.copyOf(enumVocabularies);
   }
 }

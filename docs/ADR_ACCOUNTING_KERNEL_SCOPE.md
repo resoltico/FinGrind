@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: ADR_ACCOUNTING_KERNEL_SCOPE
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, bookkeeping kernel, country agnostic, functional currency, scope, internal management]
   questions: ["what bookkeeping kernel does fingrind publish today", "what does country agnostic mean in fingrind today", "what accounting scope is intentionally out of scope", "does fingrind publish a standards baseline"]
@@ -17,8 +17,10 @@ system.
 - [ADR_ACCOUNTING_FOUNDATION.md](./ADR_ACCOUNTING_FOUNDATION.md)
 - [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
+- [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
 - [USER_REQUESTS.md](./USER_REQUESTS.md)
+- [USER_RESPONSES.md](./USER_RESPONSES.md)
 
 ## Decision
 
@@ -29,10 +31,11 @@ The machine contract, CLI help, examples, and docs must describe only this live 
 - one protected single-entity book
 - one functional currency per book
 - one built-in bookkeeping kernel
-- one journal-first internal-management write surface with recipe-backed cash and equity helpers
-- three built-in internal-management statements:
+- one business-event-first internal-management write surface plus one raw direct-journal path
+- four built-in internal-management statements:
   - financial position
   - income statement
+  - cash receipts and payments
   - changes in equity
 
 Standards posture, jurisdiction overlays, and the route to a broader accounting foundation belong
@@ -46,22 +49,27 @@ The current hard-break line is:
 - books are explicitly initialized before postings or account declarations
 - every caller-authored posting line and every persisted journal line must use the selected book
   functional currency
-- mixed-currency entries are rejected
-- caller-authored operational posting crosses one balanced-journal boundary, with optional
-  recipe-backed helpers for cash revenue, cash expense, equity contribution, and equity
-  withdrawal
-- `OPEN_ACCOUNTING_POSITION` remains the one opening-only adoption path before the first committed
+- owned foreign-exchange facts may accompany eligible business events and direct journals while
+  journal lines remain in the selected functional currency
+- mixed-currency journal lines remain rejected
+- caller-authored operational posting crosses one balanced-journal boundary through typed business
+  entries (`SALE`, `EXPENSE`, `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, `OPENING_POSITION`,
+  `REVERSAL`) plus the raw `DIRECT_JOURNAL` path
+- `OPENING_POSITION` remains the one opening-only adoption path before the first committed
   posting exists
-- `RESULT_HOLDING` remains declarable and opening-reachable but is reserved from caller-authored
-  standard journals and reversals because generated period-result transfer owns its ongoing
-  movement
-- generated period-result-transfer postings remain separate from caller-authored postings
+- `RESULT_HOLDING` and `RETAINED_ACCUMULATED` remain declarable and opening-reachable but are
+  reserved from caller-authored standard journals and reversals because close operations own their
+  ongoing movement
+- generated interim-result-sweep and fiscal-year-close postings remain separate from
+  caller-authored postings
 - comparative windows derive from the declared fiscal-year anchor
-- built-in reporting stops at financial position, income statement, and changes in equity
+- built-in reporting stops at financial position, income statement, cash receipts/payments, and
+  changes in equity
 
 The current kernel therefore models one narrow internal-management bookkeeping system for a
-single-entity, single-functional-currency book. It does not publish one standards-conformance
-baseline, one statutory reporting package, or one general-purpose operating-accounting product.
+single-entity, single-functional-currency book with owned foreign-exchange facts on eligible
+events. It does not publish one standards-conformance baseline, one statutory reporting package,
+or one general-purpose operating-accounting product.
 
 ## Public Truth Rules
 
@@ -80,11 +88,13 @@ The public contract must not publish:
 ## Intentional Exclusions
 
 The current kernel does not publish first-class support for:
-- cash-flow reporting
+- standards-oriented external cash-flow presentation beyond the internal-management statement of
+  cash receipts and payments
 - OCI / comprehensive-income presentation
 - note or disclosure packages
 - tax determination or filing doctrine
-- foreign-exchange transaction, settlement, or remeasurement doctrine
+- mixed-currency journal-line posting or multi-functional-currency books beyond the owned
+  foreign-exchange fact model
 - receivables, payables, invoicing, settlement, inventory, payroll, or other operational
   subledgers
 - jurisdiction-specific chart templates, filing exports, or close doctrines

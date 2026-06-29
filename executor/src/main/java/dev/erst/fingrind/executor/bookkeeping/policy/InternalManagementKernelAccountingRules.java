@@ -12,8 +12,8 @@ public final class InternalManagementKernelAccountingRules implements KernelAcco
   private static final InternalManagementKernelAccountingRules CURRENT =
       new InternalManagementKernelAccountingRules();
   private static final ChartPolicy CHART_POLICY = () -> true;
-  private static final ResultTransferPolicy CLOSE_POLICY =
-      new ResultTransferPolicy() {
+  private static final ClosePostingPolicy CLOSE_POLICY =
+      new ClosePostingPolicy() {
         @Override
         public boolean closesAccountType(AccountType accountType) {
           return switch (accountType) {
@@ -64,7 +64,7 @@ public final class InternalManagementKernelAccountingRules implements KernelAcco
   }
 
   @Override
-  public ResultTransferPolicy resultTransferPolicy() {
+  public ClosePostingPolicy closePostingPolicy() {
     return CLOSE_POLICY;
   }
 

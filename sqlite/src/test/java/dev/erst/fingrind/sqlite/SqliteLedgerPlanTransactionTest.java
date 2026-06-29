@@ -71,7 +71,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
               Instant.parse("2026-04-07T10:15:31Z")));
       assertEquals(
           new PostingCommitResult.Committed(
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())),
+              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()), false),
           postingFactStore.commit(
               postingDraft("posting-1", "idem-1", Optional.empty(), Optional.empty()),
               () -> new PostingId("posting-1")));

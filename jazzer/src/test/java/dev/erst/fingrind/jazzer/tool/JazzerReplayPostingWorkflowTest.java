@@ -32,7 +32,7 @@ class JazzerReplayPostingWorkflowTest {
             new PostingWorkflowOutcomeDetails(
                 PostingLifecycleStatus.PREFLIGHT_ACCEPTED,
                 PostingLifecycleStatus.COMMITTED,
-                PostingLifecycleStatus.DUPLICATE_IDEMPOTENCY_KEY,
+                PostingLifecycleStatus.IDEMPOTENT_REPLAY,
                 true)),
         success.details());
   }

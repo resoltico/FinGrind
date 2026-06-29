@@ -14,64 +14,6 @@ final class SqlitePostingSql {
   static final String SCHEMA_FINGERPRINT_META_KEY =
       SqlitePostingMetadataSql.SCHEMA_FINGERPRINT_META_KEY;
 
-  static final int COL_POSTING_ID = SqlitePostingColumnIndexes.COL_POSTING_ID;
-  static final int COL_POSTING_KIND = SqlitePostingColumnIndexes.COL_POSTING_KIND;
-  static final int COL_POSTING_ORIGIN_KIND = SqlitePostingColumnIndexes.COL_POSTING_ORIGIN_KIND;
-  static final int COL_EFFECTIVE_DATE = SqlitePostingColumnIndexes.COL_EFFECTIVE_DATE;
-  static final int COL_RECORDED_AT = SqlitePostingColumnIndexes.COL_RECORDED_AT;
-  static final int COL_ACTOR_ID = SqlitePostingColumnIndexes.COL_ACTOR_ID;
-  static final int COL_ACTOR_TYPE = SqlitePostingColumnIndexes.COL_ACTOR_TYPE;
-  static final int COL_COMMAND_ID = SqlitePostingColumnIndexes.COL_COMMAND_ID;
-  static final int COL_IDEMPOTENCY_KEY = SqlitePostingColumnIndexes.COL_IDEMPOTENCY_KEY;
-  static final int COL_CAUSATION_ID = SqlitePostingColumnIndexes.COL_CAUSATION_ID;
-  static final int COL_CORRELATION_ID = SqlitePostingColumnIndexes.COL_CORRELATION_ID;
-  static final int COL_REASON = SqlitePostingColumnIndexes.COL_REASON;
-  static final int COL_SOURCE_CHANNEL = SqlitePostingColumnIndexes.COL_SOURCE_CHANNEL;
-  static final int COL_PRIOR_POSTING_ID = SqlitePostingColumnIndexes.COL_PRIOR_POSTING_ID;
-
-  static final int COL_LINE_ACCOUNT_CODE = SqlitePostingColumnIndexes.COL_LINE_ACCOUNT_CODE;
-  static final int COL_LINE_ENTRY_SIDE = SqlitePostingColumnIndexes.COL_LINE_ENTRY_SIDE;
-  static final int COL_LINE_CURRENCY_CODE = SqlitePostingColumnIndexes.COL_LINE_CURRENCY_CODE;
-  static final int COL_LINE_AMOUNT_MINOR = SqlitePostingColumnIndexes.COL_LINE_AMOUNT_MINOR;
-
-  static final int COL_SOURCE_DOCUMENT_ID = SqlitePostingColumnIndexes.COL_SOURCE_DOCUMENT_ID;
-  static final int COL_SOURCE_DOCUMENT_TYPE = SqlitePostingColumnIndexes.COL_SOURCE_DOCUMENT_TYPE;
-  static final int COL_SOURCE_DOCUMENT_DATE = SqlitePostingColumnIndexes.COL_SOURCE_DOCUMENT_DATE;
-  static final int COL_SOURCE_DOCUMENT_CAPTURED_AT =
-      SqlitePostingColumnIndexes.COL_SOURCE_DOCUMENT_CAPTURED_AT;
-  static final int COL_SOURCE_DOCUMENT_STORAGE_LOCATOR =
-      SqlitePostingColumnIndexes.COL_SOURCE_DOCUMENT_STORAGE_LOCATOR;
-  static final int COL_SOURCE_DOCUMENT_CONTENT_SHA256 =
-      SqlitePostingColumnIndexes.COL_SOURCE_DOCUMENT_CONTENT_SHA256;
-
-  static final int COL_APPROVAL_ID = SqlitePostingColumnIndexes.COL_APPROVAL_ID;
-  static final int COL_APPROVAL_TYPE = SqlitePostingColumnIndexes.COL_APPROVAL_TYPE;
-  static final int COL_APPROVER_ID = SqlitePostingColumnIndexes.COL_APPROVER_ID;
-  static final int COL_APPROVER_TYPE = SqlitePostingColumnIndexes.COL_APPROVER_TYPE;
-  static final int COL_APPROVAL_DECISION = SqlitePostingColumnIndexes.COL_APPROVAL_DECISION;
-  static final int COL_APPROVED_AT = SqlitePostingColumnIndexes.COL_APPROVED_AT;
-
-  static final int COL_ACCOUNT_CODE = SqlitePostingColumnIndexes.COL_ACCOUNT_CODE;
-  static final int COL_ACCOUNT_NAME = SqlitePostingColumnIndexes.COL_ACCOUNT_NAME;
-  static final int COL_ACCOUNT_TYPE = SqlitePostingColumnIndexes.COL_ACCOUNT_TYPE;
-  static final int COL_ACCOUNT_ROLE = SqlitePostingColumnIndexes.COL_ACCOUNT_ROLE;
-  static final int COL_ACCOUNT_NODE_KIND = SqlitePostingColumnIndexes.COL_ACCOUNT_NODE_KIND;
-  static final int COL_ACCOUNT_PARENT_ACCOUNT_CODE =
-      SqlitePostingColumnIndexes.COL_ACCOUNT_PARENT_ACCOUNT_CODE;
-  static final int COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION =
-      SqlitePostingColumnIndexes.COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION;
-  static final int COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION =
-      SqlitePostingColumnIndexes.COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION;
-  static final int COL_ACCOUNT_ACTIVE = SqlitePostingColumnIndexes.COL_ACCOUNT_ACTIVE;
-  static final int COL_ACCOUNT_DECLARED_AT = SqlitePostingColumnIndexes.COL_ACCOUNT_DECLARED_AT;
-  static final int COL_REPORT_POSTING_ID = SqlitePostingColumnIndexes.COL_REPORT_POSTING_ID;
-  static final int COL_REPORT_ENTRY_SIDE = SqlitePostingColumnIndexes.COL_REPORT_ENTRY_SIDE;
-  static final int COL_REPORT_CURRENCY_CODE = SqlitePostingColumnIndexes.COL_REPORT_CURRENCY_CODE;
-  static final int COL_REPORT_AMOUNT_MINOR = SqlitePostingColumnIndexes.COL_REPORT_AMOUNT_MINOR;
-  static final int COL_TOTAL_CURRENCY_CODE = SqlitePostingColumnIndexes.COL_TOTAL_CURRENCY_CODE;
-  static final int COL_TOTAL_DEBIT_MINOR = SqlitePostingColumnIndexes.COL_TOTAL_DEBIT_MINOR;
-  static final int COL_TOTAL_CREDIT_MINOR = SqlitePostingColumnIndexes.COL_TOTAL_CREDIT_MINOR;
-
   static final String USER_SCHEMA_EXISTS = SqlitePostingMetadataSql.USER_SCHEMA_EXISTS;
   static final String TABLE_EXISTS = SqlitePostingMetadataSql.TABLE_EXISTS;
   static final String BOOK_INITIALIZED_EXISTS = SqlitePostingMetadataSql.BOOK_INITIALIZED_EXISTS;
@@ -97,22 +39,16 @@ final class SqlitePostingSql {
   static final String LOAD_LINES = SqlitePostingReadWriteSql.LOAD_LINES;
   static final String LOAD_SOURCE_DOCUMENTS = SqlitePostingReadWriteSql.LOAD_SOURCE_DOCUMENTS;
   static final String LOAD_APPROVALS = SqlitePostingReadWriteSql.LOAD_APPROVALS;
+  static final String LOAD_POSTING_FOREIGN_EXCHANGE =
+      SqliteForeignExchangeSql.LOAD_POSTING_FOREIGN_EXCHANGE;
   static final String INSERT_POSTING_FACT = SqlitePostingReadWriteSql.INSERT_POSTING_FACT;
   static final String INSERT_JOURNAL_LINE = SqlitePostingReadWriteSql.INSERT_JOURNAL_LINE;
   static final String INSERT_POSTING_SOURCE_DOCUMENT =
       SqlitePostingReadWriteSql.INSERT_POSTING_SOURCE_DOCUMENT;
   static final String INSERT_POSTING_APPROVAL = SqlitePostingReadWriteSql.INSERT_POSTING_APPROVAL;
+  static final String INSERT_POSTING_FOREIGN_EXCHANGE =
+      SqliteForeignExchangeSql.INSERT_POSTING_FOREIGN_EXCHANGE;
   static final String INSERT_AUDIT_EVENT = SqlitePostingReadWriteSql.INSERT_AUDIT_EVENT;
-  static final String INSERT_PERIOD_RESULT_TRANSFER =
-      SqlitePeriodResultTransferSql.INSERT_PERIOD_RESULT_TRANSFER;
-  static final String INSERT_PERIOD_RESULT_TRANSFER_TOTAL =
-      SqlitePeriodResultTransferSql.INSERT_PERIOD_RESULT_TRANSFER_TOTAL;
-  static final String INSERT_PERIOD_RESULT_TRANSFER_POSTING =
-      SqlitePeriodResultTransferSql.INSERT_PERIOD_RESULT_TRANSFER_POSTING;
-  static final String FIND_CLOSED_THROUGH_EFFECTIVE_DATE =
-      SqlitePeriodResultTransferSql.FIND_CLOSED_THROUGH_EFFECTIVE_DATE;
-  static final String FIND_EARLIEST_POSTING_EFFECTIVE_DATE =
-      SqlitePeriodResultTransferSql.FIND_EARLIEST_POSTING_EFFECTIVE_DATE;
   static final String FIND_LATEST_POSTING_EFFECTIVE_DATE =
       SqlitePostingQuerySql.FIND_LATEST_POSTING_EFFECTIVE_DATE;
   static final String LOAD_ALL_ACCOUNTS = SqlitePostingReadWriteSql.LOAD_ALL_ACCOUNTS;
@@ -144,6 +80,10 @@ final class SqlitePostingSql {
       SqlitePostingIntegritySql.FIND_INVALID_PERIOD_RESULT_TRANSFER_LINK;
   static final String FIND_INVALID_PERIOD_RESULT_TRANSFER_TARGET_ACCOUNT =
       SqlitePostingIntegritySql.FIND_INVALID_PERIOD_RESULT_TRANSFER_TARGET_ACCOUNT;
+  static final String FIND_INVALID_FISCAL_YEAR_CLOSE_LINK =
+      SqlitePostingIntegritySql.FIND_INVALID_FISCAL_YEAR_CLOSE_LINK;
+  static final String FIND_INVALID_FISCAL_YEAR_CLOSE_TARGET_ACCOUNT =
+      SqlitePostingIntegritySql.FIND_INVALID_FISCAL_YEAR_CLOSE_TARGET_ACCOUNT;
   static final String LOAD_PERSISTED_MONEY_AUDIT_ROWS =
       SqlitePostingIntegritySql.LOAD_PERSISTED_MONEY_AUDIT_ROWS;
   static final String FIND_JOURNAL_LINE_OUTSIDE_FUNCTIONAL_CURRENCY =

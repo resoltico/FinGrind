@@ -222,78 +222,46 @@ repo_hygiene_process_is_live() {
     [[ -n "${process_state}" && "${process_state}" != Z* ]]
 }
 
-repo_hygiene_run_object_store_verification_with_heartbeat() {
+repo_hygiene_git_fsck_supports_no_references() {
     local repo_root=$1
-    local git_objects_dir=$2
+    git -C "${repo_root}" fsck -h 2>&1 | grep -Fq -- '--no-references'
+}
+
+repo_hygiene_run_git_fsck_with_heartbeat() {
+    local repo_root=$1
     local heartbeat_seconds=30
     local elapsed_seconds=0
-    local object_format
     local output_file
     local heartbeat_pid
-    local idx_path
-
-    object_format="$(git -C "${repo_root}" rev-parse --show-object-format)"
+    local -a fsck_command
     output_file="$(mktemp "${TMPDIR:-/tmp}/fingrind-git-fsck.XXXXXX")"
     printf '%s\n' 'repo hygiene verification: checking git object store'
+    fsck_command=(git -C "${repo_root}" fsck --full --no-dangling --no-progress)
+    if repo_hygiene_git_fsck_supports_no_references "${repo_root}"; then
+        fsck_command+=(--no-references)
+    fi
     (
-        shopt -s nullglob
-        for idx_path in "${git_objects_dir}/pack/"*.idx; do
-            git verify-pack -s "${idx_path}" >/dev/null
-        done
-        shopt -u nullglob
-
-        python3 - "${git_objects_dir}" "${object_format}" <<'PY'
-import hashlib
-import pathlib
-import sys
-import zlib
-
-objects_dir = pathlib.Path(sys.argv[1])
-object_format = sys.argv[2]
-
-try:
-    hashlib.new(object_format)
-except ValueError as exc:
-    raise SystemExit(f"unsupported Git object format {object_format!r}: {exc}") from exc
-
-for prefix in sorted(objects_dir.iterdir()):
-    if not prefix.is_dir():
-        continue
-    if prefix.name in {"info", "pack"}:
-        continue
-    if len(prefix.name) != 2:
-        continue
-    for object_file in prefix.iterdir():
-        if not object_file.is_file():
-            continue
-        expected_oid = prefix.name + object_file.name
-        try:
-            raw_object = zlib.decompress(object_file.read_bytes())
-        except zlib.error as exc:
-            raise SystemExit(f"corrupt loose object {object_file}: {exc}") from exc
-        actual_oid = hashlib.new(object_format, raw_object).hexdigest()
-        if actual_oid != expected_oid:
-            raise SystemExit(
-                f"loose object hash mismatch for {object_file}: expected {expected_oid}, got {actual_oid}"
-            )
-PY
+        # Git-private tool refs can live under .git/refs without belonging to the repository
+        # contract, so verify repo-owned refs explicitly first and use git's ref-elision
+        # switch when the local Git build supports it.
+        "${fsck_command[@]}"
     ) >"${output_file}" 2>&1 &
-    local verification_pid=$!
+    local fsck_pid=$!
     (
-        while repo_hygiene_process_is_live "${verification_pid}"; do
+        while repo_hygiene_process_is_live "${fsck_pid}"; do
             sleep "${heartbeat_seconds}"
             elapsed_seconds=$((elapsed_seconds + heartbeat_seconds))
-            if repo_hygiene_process_is_live "${verification_pid}"; then
-                printf 'repo hygiene verification: object-store scan still running (%ss elapsed)\n' "${elapsed_seconds}"
+            if repo_hygiene_process_is_live "${fsck_pid}"; then
+                printf 'repo hygiene verification: git fsck still running (%ss elapsed)\n' "${elapsed_seconds}"
             fi
         done
     ) &
     heartbeat_pid=$!
-    wait "${verification_pid}"
-    local verification_status=$?
+    wait "${fsck_pid}"
+    local fsck_status=$?
     kill "${heartbeat_pid}" 2>/dev/null || true
     wait "${heartbeat_pid}" 2>/dev/null || true
     object_store_output="$(cat "${output_file}")"
     rm -f "${output_file}"
-    return "${verification_status}"
+    return "${fsck_status}"
 }

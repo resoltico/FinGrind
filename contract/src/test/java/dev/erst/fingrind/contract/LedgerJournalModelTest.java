@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
@@ -33,7 +33,7 @@ class LedgerJournalModelTest extends ContractTestSupport {
     LedgerJournalStep standardStep = LedgerJournalStep.standard(LedgerStepKind.POST_ENTRY);
     LedgerJournalStep assertionStep =
         LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_DECLARED);
-    LedgerJournalStep boundaryStep = LedgerJournalStep.boundary(LedgerBoundaryPhase.COMMIT);
+    LedgerJournalStep boundaryStep = LedgerJournalStep.boundary(LedgerBoundaryCheckpoint.COMMIT);
     MonetaryAmount amount = monetaryAmount("EUR", "10.00");
     assertEquals("value", LedgerFact.text("text", "value").value());
     assertTrue(LedgerFact.flag("flag", true).value());
@@ -48,7 +48,7 @@ class LedgerJournalModelTest extends ContractTestSupport {
     assertEquals(LedgerAssertionKind.ACCOUNT_DECLARED, assertionStep.detailKind());
     assertEquals(LedgerJournalKind.PLAN_BOUNDARY, boundaryStep.kind());
     assertNull(boundaryStep.detailKind());
-    assertEquals(LedgerBoundaryPhase.COMMIT, boundaryStep.boundaryPhase());
+    assertEquals(LedgerBoundaryCheckpoint.COMMIT, boundaryStep.boundaryCheckpoint());
     assertThrows(NullPointerException.class, () -> new LedgerFact.Text("null", nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.count(" ", 7));
     assertThrows(NullPointerException.class, () -> LedgerFact.money("amount", nullOf()));
@@ -88,9 +88,9 @@ class LedgerJournalModelTest extends ContractTestSupport {
     assertEquals(LedgerJournalKind.ASSERT, detailed.kind());
     assertNull(nullableOptionals.detailKind());
     assertEquals(LedgerJournalKind.POST_ENTRY, nullableOptionals.kind());
-    assertNull(nullableOptionals.boundaryPhase());
+    assertNull(nullableOptionals.boundaryCheckpoint());
     assertEquals(LedgerJournalKind.PLAN_BOUNDARY, boundaryFailed.kind());
-    assertEquals(LedgerBoundaryPhase.COMMIT, boundaryFailed.boundaryPhase());
+    assertEquals(LedgerBoundaryCheckpoint.COMMIT, boundaryFailed.boundaryCheckpoint());
     assertNull(boundaryFailed.detailKind());
     assertNull(new LedgerStep.EnsureBook(stepId("open"), openBookCommand()).detailKind());
     assertEquals(Optional.of(failure), detailed.optionalFailure());
@@ -129,12 +129,18 @@ class LedgerJournalModelTest extends ContractTestSupport {
   }
 
   @Test
-  void journalKindsAndBoundaryPhasesPublishStableWireValues() {
+  void journalKindsAndBoundaryCheckpointsPublishStableWireValues() {
     assertEquals(
         List.of(
             "ensure-book",
             "declare-account",
             "preflight-entry",
+            "record-sale",
+            "record-expense",
+            "record-owner-contribution",
+            "record-owner-withdrawal",
+            "record-opening-position",
+            "record-reversal",
             "post-entry",
             "inspect-book",
             "list-accounts",
@@ -147,10 +153,10 @@ class LedgerJournalModelTest extends ContractTestSupport {
     assertEquals(LedgerJournalKind.PLAN_BOUNDARY, LedgerJournalKind.fromWireValue("plan-boundary"));
     assertEquals(
         List.of("begin", "initialization-check", "commit", "rollback"),
-        LedgerBoundaryPhase.wireValues());
+        LedgerBoundaryCheckpoint.wireValues());
     assertEquals(
-        LedgerBoundaryPhase.INITIALIZATION_CHECK,
-        LedgerBoundaryPhase.fromWireValue("initialization-check"));
+        LedgerBoundaryCheckpoint.INITIALIZATION_CHECK,
+        LedgerBoundaryCheckpoint.fromWireValue("initialization-check"));
   }
 
   @Test

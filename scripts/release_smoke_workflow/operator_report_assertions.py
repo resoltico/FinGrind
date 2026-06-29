@@ -5,7 +5,7 @@ import re
 from .account_ledger_assertions import assert_account_ledger_csv
 from .artifact_contracts import reported_artifact_path_matches
 from .models import ReleaseSmokeConfig
-from .path_support import extract_pdf_exported_path
+from .path_support import extract_pdf_artifact_path
 from .support import require, require_match
 
 
@@ -97,23 +97,31 @@ def _assert_pdf_export(
         f"{config.label} trial-balance PDF artifact did not start with %PDF-",
     )
     require(
-        pdf_stdout == trial_balance_text_output,
-        f"{config.label} PDF export changed stdout instead of preserving the text report surface",
+        pdf_stdout != trial_balance_text_output,
+        f"{config.label} PDF export did not replace stdout with one artifact confirmation block",
+    )
+    require(
+        "Trial Balance" not in pdf_stdout,
+        f"{config.label} PDF export leaked the full text report body onto stdout",
     )
     for pattern, message in (
-        (r"^Info$", "canonical diagnostics heading"),
-        (r"^Code[[:space:]]+:[[:space:]]+pdf-exported$", "canonical pdf-exported diagnostics code"),
-        (r"^Argument[[:space:]]+:[[:space:]]+--pdf-out$", "diagnostics attribution to --pdf-out"),
+        (r"^Artifact$", "artifact confirmation heading"),
+        (r"^Format[[:space:]]+:[[:space:]]+pdf$", "artifact format line"),
+        (r"^Path[[:space:]]+:[[:space:]]+.+$", "artifact path line"),
     ):
         require_match(
-            pdf_stderr,
+            pdf_stdout,
             pattern,
             f"{config.label} PDF export did not emit the {message}",
         )
-    reported_pdf_path = extract_pdf_exported_path(pdf_stderr)
+    require(
+        pdf_stderr == "",
+        f"{config.label} successful PDF export emitted diagnostics instead of staying silent",
+    )
+    reported_pdf_path = extract_pdf_artifact_path(pdf_stdout)
     require(
         reported_artifact_path_matches(config, config.trial_balance_pdf, reported_pdf_path),
-        f"{config.label} PDF export diagnostics did not report the redacted public path hint",
+        f"{config.label} PDF export stdout did not report the redacted public path hint",
     )
 
 

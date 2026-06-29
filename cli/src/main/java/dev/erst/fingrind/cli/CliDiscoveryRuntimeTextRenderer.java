@@ -62,6 +62,7 @@ final class CliDiscoveryRuntimeTextRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Version", versionDescriptor.version()),
+                List.of("Protocol version", versionDescriptor.protocolVersion()),
                 List.of("Description", versionDescriptor.description())),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH));
   }

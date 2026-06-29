@@ -1,13 +1,13 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.directJournalCommand;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.openingPositionCommand;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.priorPosting;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.reversalCommand;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.candidateAccount;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.cellToken;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.counterAssetAccount;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.directJournalCommand;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.openAccountingPositionCommand;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.priorPosting;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.reversalCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -57,18 +58,19 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
   public void assertOpeningPositionReachability(RequestSurfaceFacts.ReachabilityCellFacts cell) {
     ReachabilityValidationBook book =
         new ReachabilityValidationBook(candidateAccount(cell), counterAssetAccount());
-    PostEntryCommand command = openAccountingPositionCommand("opening-" + cellToken(cell));
+    PostEntryCommand command = openingPositionCommand("opening-" + cellToken(cell));
 
     Optional<BookkeepingPostingRejection> rejection =
-        POSTING_ACCEPTANCE.rejectionFor(PostEntryCommandTranslator.toPostingCommand(command), book);
+        POSTING_ACCEPTANCE.rejectionFor(
+            PostEntryCommandTranslator.toPostingCommand(command, book), book);
 
     if (cell.openingReachable()) {
       assertEquals(Optional.empty(), rejection, "opening route should accept " + cell);
       return;
     }
-    BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount nominalRejection =
+    BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount nominalRejection =
         assertInstanceOf(
-            BookkeepingPostingRejection.OpenAccountingPositionTouchesNominalAccount.class,
+            BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount.class,
             rejection.orElseThrow(),
             "opening route should reject non-opening cell " + cell);
     assertEquals(
@@ -87,20 +89,23 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
         ENTRY_SEMANTICS.rejectionFor(command, book).isEmpty(),
         "entry semantics should accept " + cell);
     Optional<BookkeepingPostingRejection> rejection =
-        POSTING_ACCEPTANCE.rejectionFor(PostEntryCommandTranslator.toPostingCommand(command), book);
+        POSTING_ACCEPTANCE.rejectionFor(
+            PostEntryCommandTranslator.toPostingCommand(command, book), book);
 
     if (cell.operationalJournalReachable()) {
       assertEquals(Optional.empty(), rejection, "direct journal route should accept " + cell);
       return;
     }
-    BookkeepingPostingRejection.ResultHoldingAccountReserved reservedRejection =
+    BookkeepingPostingRejection.ReservedResultClassification reservedRejection =
         assertInstanceOf(
-            BookkeepingPostingRejection.ResultHoldingAccountReserved.class,
+            BookkeepingPostingRejection.ReservedResultClassification.class,
             rejection.orElseThrow(),
             "direct journal route should reject reserved cell " + cell);
     assertEquals(
         PostingRouteReachabilityTestSupport.CANDIDATE_ACCOUNT_CODE,
         reservedRejection.accountCode());
+    assertEquals(
+        reservedClassification(cell), reservedRejection.financialPositionLineClassification());
   }
 
   @Override
@@ -119,20 +124,33 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
         ENTRY_SEMANTICS.rejectionFor(command, book).isEmpty(),
         "reversal semantics should accept " + cell);
     Optional<BookkeepingPostingRejection> rejection =
-        POSTING_ACCEPTANCE.rejectionFor(PostEntryCommandTranslator.toPostingCommand(command), book);
+        POSTING_ACCEPTANCE.rejectionFor(
+            PostEntryCommandTranslator.toPostingCommand(command, book), book);
 
     if (cell.reversalReachable()) {
       assertEquals(Optional.empty(), rejection, "reversal route should accept " + cell);
       return;
     }
-    BookkeepingPostingRejection.ResultHoldingAccountReserved reservedRejection =
+    BookkeepingPostingRejection.ReservedResultClassification reservedRejection =
         assertInstanceOf(
-            BookkeepingPostingRejection.ResultHoldingAccountReserved.class,
+            BookkeepingPostingRejection.ReservedResultClassification.class,
             rejection.orElseThrow(),
             "reversal route should reject reserved cell " + cell);
     assertEquals(
         PostingRouteReachabilityTestSupport.CANDIDATE_ACCOUNT_CODE,
         reservedRejection.accountCode());
+    assertEquals(
+        reservedClassification(cell), reservedRejection.financialPositionLineClassification());
+  }
+
+  private static FinancialPositionLineClassification reservedClassification(
+      RequestSurfaceFacts.ReachabilityCellFacts cell) {
+    return PostingRouteReachabilityTestSupport.taxonomy(cell)
+        .financialPositionLineClassification()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Reserved direct-posting cells must declare one financial-position classification."));
   }
 
   /** Minimal posting-validation store tailored to one reachability scenario. */
@@ -172,7 +190,13 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
     }
 
     @Override
-    public Optional<CommittedPosting> findExistingPosting(
+    public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
+        dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+      return Optional.empty();
+    }
+
+    @Override
+    public Optional<dev.erst.fingrind.executor.spi.StoredRequestPosting> findExistingPosting(
         dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
       return Optional.empty();
     }

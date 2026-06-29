@@ -14,7 +14,11 @@ public interface CliMutationJsonModels {
   }
 
   record CommittedPostingPayload(
-      String postingId, String idempotencyKey, String effectiveDate, String recordedAt)
+      String postingId,
+      String idempotencyKey,
+      String effectiveDate,
+      String recordedAt,
+      boolean idempotentReplay)
       implements CliSuccessPayload {
     public CommittedPostingPayload {
       postingId = requireText(postingId, "postingId");

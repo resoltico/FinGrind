@@ -23,9 +23,6 @@ final class BookAdministrationRejectionDescriptors {
                   BookAdministrationRejection.AccountTypeConflict.class,
                   Descriptor.ACCOUNT_TYPE_CONFLICT),
               Map.entry(
-                  BookAdministrationRejection.AccountRoleConflict.class,
-                  Descriptor.ACCOUNT_ROLE_CONFLICT),
-              Map.entry(
                   BookAdministrationRejection.AccountTaxonomyConflict.class,
                   Descriptor.ACCOUNT_TAXONOMY_CONFLICT),
               Map.entry(
@@ -38,9 +35,6 @@ final class BookAdministrationRejectionDescriptors {
                   BookAdministrationRejection.ParentAccountTypeConflict.class,
                   Descriptor.PARENT_ACCOUNT_TYPE_CONFLICT),
               Map.entry(
-                  BookAdministrationRejection.ParentAccountRoleConflict.class,
-                  Descriptor.PARENT_ACCOUNT_ROLE_CONFLICT),
-              Map.entry(
                   BookAdministrationRejection.ParentAccountNotHeader.class,
                   Descriptor.PARENT_ACCOUNT_NOT_HEADER),
               Map.entry(
@@ -50,20 +44,29 @@ final class BookAdministrationRejectionDescriptors {
                   BookAdministrationRejection.AccountHierarchyCycle.class,
                   Descriptor.ACCOUNT_HIERARCHY_CYCLE),
               Map.entry(
-                  BookAdministrationRejection.ResultHoldingAccountCandidateMissing.class,
+                  BookAdministrationRejection.CloseTargetAccountCandidateMissing.class,
                   Descriptor.CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING),
               Map.entry(
-                  BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous.class,
+                  CloseTargetAccountCandidateAmbiguous.class,
                   Descriptor.CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS),
               Map.entry(
-                  BookAdministrationRejection.PeriodResultTransferMustStartAt.class,
-                  Descriptor.PERIOD_RESULT_TRANSFER_MUST_START_AT),
+                  BookAdministrationRejection.InterimResultSweepMustStartAt.class,
+                  Descriptor.INTERIM_RESULT_SWEEP_MUST_START_AT),
               Map.entry(
-                  BookAdministrationRejection.PeriodResultTransferFutureDate.class,
-                  Descriptor.PERIOD_RESULT_TRANSFER_FUTURE_DATE),
+                  BookAdministrationRejection.InterimResultSweepFutureDate.class,
+                  Descriptor.INTERIM_RESULT_SWEEP_FUTURE_DATE),
               Map.entry(
-                  BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary.class,
-                  Descriptor.PERIOD_RESULT_TRANSFER_CROSSES_FISCAL_YEAR_BOUNDARY));
+                  BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary.class,
+                  Descriptor.INTERIM_RESULT_SWEEP_CROSSES_FISCAL_YEAR_BOUNDARY),
+              Map.entry(
+                  BookAdministrationRejection.FiscalYearCloseMustStartAt.class,
+                  Descriptor.FISCAL_YEAR_CLOSE_MUST_START_AT),
+              Map.entry(
+                  BookAdministrationRejection.FiscalYearCloseMustEndAt.class,
+                  Descriptor.FISCAL_YEAR_CLOSE_MUST_END_AT),
+              Map.entry(
+                  BookAdministrationRejection.FiscalYearCloseFutureDate.class,
+                  Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE));
 
   private BookAdministrationRejectionDescriptors() {}
 
@@ -98,8 +101,6 @@ final class BookAdministrationRejectionDescriptors {
     BOOK_CONTAINS_SCHEMA,
     /** Descriptor for conflicting immutable account type declarations. */
     ACCOUNT_TYPE_CONFLICT,
-    /** Descriptor for conflicting immutable account role declarations. */
-    ACCOUNT_ROLE_CONFLICT,
     /** Descriptor for conflicting immutable account taxonomy declarations. */
     ACCOUNT_TAXONOMY_CONFLICT,
     /** Descriptor for missing requested parent accounts. */
@@ -108,24 +109,28 @@ final class BookAdministrationRejectionDescriptors {
     PARENT_ACCOUNT_INACTIVE,
     /** Descriptor for parent-child account type mismatches. */
     PARENT_ACCOUNT_TYPE_CONFLICT,
-    /** Descriptor for parent-child account role mismatches. */
-    PARENT_ACCOUNT_ROLE_CONFLICT,
     /** Descriptor for parent accounts that are not header nodes. */
     PARENT_ACCOUNT_NOT_HEADER,
     /** Descriptor for parent-child taxonomy family mismatches. */
     PARENT_ACCOUNT_TAXONOMY_CONFLICT,
     /** Descriptor for parent-child hierarchy cycles. */
     ACCOUNT_HIERARCHY_CYCLE,
-    /** Descriptor for missing result-holding account candidates. */
+    /** Descriptor for missing close-target account candidates. */
     CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING,
-    /** Descriptor for ambiguous result-holding account candidates. */
+    /** Descriptor for ambiguous close-target account candidates. */
     CLOSING_EQUITY_ACCOUNT_CANDIDATE_AMBIGUOUS,
-    /** Descriptor for non-contiguous period result transfer starts. */
-    PERIOD_RESULT_TRANSFER_MUST_START_AT,
-    /** Descriptor for period result transfers that target a future date. */
-    PERIOD_RESULT_TRANSFER_FUTURE_DATE,
-    /** Descriptor for period result transfers that cross a fiscal-year boundary. */
-    PERIOD_RESULT_TRANSFER_CROSSES_FISCAL_YEAR_BOUNDARY;
+    /** Descriptor for non-contiguous interim-result sweep starts. */
+    INTERIM_RESULT_SWEEP_MUST_START_AT,
+    /** Descriptor for interim-result sweeps that target a future date. */
+    INTERIM_RESULT_SWEEP_FUTURE_DATE,
+    /** Descriptor for interim-result sweeps that cross a fiscal-year boundary. */
+    INTERIM_RESULT_SWEEP_CROSSES_FISCAL_YEAR_BOUNDARY,
+    /** Descriptor for fiscal-year closes that miss the required year start. */
+    FISCAL_YEAR_CLOSE_MUST_START_AT,
+    /** Descriptor for fiscal-year closes that miss the required year end. */
+    FISCAL_YEAR_CLOSE_MUST_END_AT,
+    /** Descriptor for fiscal-year closes that target a future date. */
+    FISCAL_YEAR_CLOSE_FUTURE_DATE;
 
     String code() {
       return BookAdministrationRejectionDescriptorCatalog.code(this);

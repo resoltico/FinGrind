@@ -6,7 +6,6 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
 
 /** Local bookkeeping statement-of-changes-in-equity view. */
 public record ChangesInEquityView(
@@ -24,24 +23,29 @@ public record ChangesInEquityView(
     List<CurrencyBalance> comparativeMovementTotals,
     List<CurrencyBalance> comparativeClosingTotals) {
   public ChangesInEquityView {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
-    Objects.requireNonNull(effectiveDateTo, "effectiveDateTo");
-    if (effectiveDateFrom.isAfter(effectiveDateTo)) {
-      throw new IllegalArgumentException("effectiveDateFrom must be on or before effectiveDateTo.");
-    }
-    Objects.requireNonNull(comparativeEffectiveDateRange, "comparativeEffectiveDateRange");
-    Objects.requireNonNull(postingCoverage, "postingCoverage");
-    rows = List.copyOf(Objects.requireNonNull(rows, "rows"));
-    openingTotals = List.copyOf(Objects.requireNonNull(openingTotals, "openingTotals"));
-    movementTotals = List.copyOf(Objects.requireNonNull(movementTotals, "movementTotals"));
-    closingTotals = List.copyOf(Objects.requireNonNull(closingTotals, "closingTotals"));
-    comparativeRows = List.copyOf(Objects.requireNonNull(comparativeRows, "comparativeRows"));
+    BookkeepingStatementViewValidation.requireComparativeStatementHeader(
+        bookIdentity,
+        effectiveDateFrom,
+        effectiveDateTo,
+        comparativeEffectiveDateRange,
+        postingCoverage);
+    rows = BookkeepingStatementViewValidation.immutableList("rows", rows);
+    openingTotals =
+        BookkeepingStatementViewValidation.immutableList("openingTotals", openingTotals);
+    movementTotals =
+        BookkeepingStatementViewValidation.immutableList("movementTotals", movementTotals);
+    closingTotals =
+        BookkeepingStatementViewValidation.immutableList("closingTotals", closingTotals);
+    comparativeRows =
+        BookkeepingStatementViewValidation.immutableList("comparativeRows", comparativeRows);
     comparativeOpeningTotals =
-        List.copyOf(Objects.requireNonNull(comparativeOpeningTotals, "comparativeOpeningTotals"));
+        BookkeepingStatementViewValidation.immutableList(
+            "comparativeOpeningTotals", comparativeOpeningTotals);
     comparativeMovementTotals =
-        List.copyOf(Objects.requireNonNull(comparativeMovementTotals, "comparativeMovementTotals"));
+        BookkeepingStatementViewValidation.immutableList(
+            "comparativeMovementTotals", comparativeMovementTotals);
     comparativeClosingTotals =
-        List.copyOf(Objects.requireNonNull(comparativeClosingTotals, "comparativeClosingTotals"));
+        BookkeepingStatementViewValidation.immutableList(
+            "comparativeClosingTotals", comparativeClosingTotals);
   }
 }

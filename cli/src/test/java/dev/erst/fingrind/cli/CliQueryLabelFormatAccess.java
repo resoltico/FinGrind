@@ -2,7 +2,6 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
@@ -31,14 +30,6 @@ final class CliQueryLabelFormatAccess {
 
   static String displayStatementLineCode(String lineCode, StatementLineKind lineKind) {
     return CliAccountStatementLabels.displayStatementLineCode(lineCode, lineKind);
-  }
-
-  static String displayLineRole(Optional<AccountRole> lineRole) {
-    return CliAccountStatementLabels.displayLineRole(lineRole);
-  }
-
-  static String displayAccountRoleLabel(AccountRole accountRole) {
-    return CliAccountStatementLabels.displayAccountRoleLabel(accountRole);
   }
 
   static String displayAccountNodeKindLabel(AccountNodeKind nodeKind) {

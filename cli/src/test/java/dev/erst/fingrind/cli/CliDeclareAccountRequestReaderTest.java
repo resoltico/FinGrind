@@ -25,9 +25,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
               "accountCode": "1000",
               "accountName": "Cash",
               "accountType": "ASSET",
-              "accountRole": "ORDINARY",
               "accountNodeKind": "POSTABLE",
               "financialPositionLineClassification": "CURRENT_ASSET",
+              "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT",
               "profitAndLossLineClassification": null
             }
             """);
@@ -38,7 +38,6 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
     assertEquals("1000", command.accountCode().value());
     assertEquals("Cash", command.accountName().value());
     assertEquals("ASSET", command.accountType().wireValue());
-    assertEquals("ORDINARY", command.accountRole().wireValue());
   }
 
   @Test
@@ -50,8 +49,8 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                 {
                   "accountCode": "1000",
                   "accountType": "ASSET",
-                  "accountRole": "ORDINARY",
                   "financialPositionLineClassification": "CURRENT_ASSET",
+                  "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT",
                   "profitAndLossLineClassification": null
                 }
                 """
@@ -70,7 +69,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readDeclareAccountCommand_rejectsInvalidAccountRole() {
+  void readDeclareAccountCommand_rejectsObsoleteAccountRoleField() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -80,7 +79,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountName": "Cash",
                   "accountType": "ASSET",
                   "accountRole": "SIDEWAYS",
+                  "accountNodeKind": "POSTABLE",
                   "financialPositionLineClassification": "CURRENT_ASSET",
+                  "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT",
                   "profitAndLossLineClassification": null
                 }
                 """
@@ -89,10 +90,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
-
-    assertEquals(
-        "Unsupported value for accountRole: SIDEWAYS. Accepted values: ORDINARY, POLARITY_INVERTED.",
-        exception.getMessage());
+    assertEquals("Unexpected field: accountRole", exception.getMessage());
   }
 
   @Test
@@ -105,7 +103,6 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountCode": "3000",
                   "accountName": "Derived Result Placeholder",
                   "accountType": "EQUITY",
-                  "accountRole": "ORDINARY",
                   "accountNodeKind": "POSTABLE",
                   "financialPositionLineClassification": "CURRENT_PERIOD_RESULT",
                   "profitAndLossLineClassification": null
@@ -118,7 +115,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals(
-        "Unsupported value for financialPositionLineClassification: CURRENT_PERIOD_RESULT. Accepted values: CURRENT_ASSET, NONCURRENT_ASSET, CURRENT_LIABILITY, NONCURRENT_LIABILITY, EQUITY_CONTRIBUTION, EQUITY_WITHDRAWAL, RESULT_HOLDING, RESERVE, OTHER_EQUITY.",
+        "Unsupported value for financialPositionLineClassification: CURRENT_PERIOD_RESULT. Accepted values: CURRENT_ASSET, NONCURRENT_ASSET, CURRENT_LIABILITY, NONCURRENT_LIABILITY, EQUITY_CONTRIBUTION, EQUITY_WITHDRAWAL, RESULT_HOLDING, RETAINED_ACCUMULATED, RESERVE, OTHER_EQUITY.",
         exception.getMessage());
   }
 
@@ -132,9 +129,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountCode": "1000",
                   "accountName": "Cash",
                   "accountType": "ASSET",
-                  "accountRole": "ORDINARY",
                   "accountNodeKind": "POSTABLE",
                   "financialPositionLineClassification": "CURRENT_ASSET",
+                  "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT",
                   "profitAndLossLineClassification": null,
                   "ignored": true
                 }
@@ -158,9 +155,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountCode": "1000",
                   "accountName": "Cash",
                   "accountType": "ASSET",
-                  "accountRole": "ORDINARY",
                   "accountNodeKind": "POSTABLE",
                   "financialPositionLineClassification": "CURRENT_ASSET",
+                  "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT",
                   "profitAndLossLineClassification": null,
                   "ignored": true,
                   "alsoIgnored": true
@@ -186,9 +183,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                     "accountCode": "1000",
                     "accountName": "Cash",
                     "accountType": "ASSET",
-                    "accountRole": "ORDINARY",
                     "accountNodeKind": "POSTABLE",
                     "financialPositionLineClassification": "CURRENT_ASSET",
+                    "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT",
                     "profitAndLossLineClassification": null
                   }
                 ]
@@ -213,9 +210,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                     "accountCode": "1000",
                     "accountName": "Cash",
                     "accountType": "ASSET",
-                    "accountRole": "ORDINARY",
                     "accountNodeKind": "POSTABLE",
                     "financialPositionLineClassification": "CURRENT_ASSET",
+                    "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT",
                     "profitAndLossLineClassification": null
                   }
                 }
@@ -241,12 +238,10 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
                   "accountCode": "1000",
                   "accountName": "Cash",
                   "accountType": "ASSET",
-                  "accountRole": "ORDINARY",
                   "declareAccount": {
                     "accountCode": "1000",
                     "accountName": "Cash",
-                    "accountType": "ASSET",
-                    "accountRole": "ORDINARY"
+                    "accountType": "ASSET"
                   }
                 }
                 """

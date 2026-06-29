@@ -23,17 +23,15 @@ def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_out
     )
     row_groups = _group_rows(config, rows)
     assert_summary_row(config, row_groups["summary"][0])
-    opening_entry = next(
-        row for row in row_groups["entry"] if row["postingOriginKind"] == "CASH_REVENUE"
-    )
+    opening_entry = next(row for row in row_groups["entry"] if row["postingOriginKind"] == "SALE")
     expense_entry = next(
-        row for row in row_groups["entry"] if row["postingOriginKind"] == "CASH_EXPENSE"
+        row for row in row_groups["entry"] if row["postingOriginKind"] == "EXPENSE"
     )
     assert_entry_row(
         config,
         opening_entry,
         effective_date="2026-04-07",
-        posting_origin_kind="CASH_REVENUE",
+        posting_origin_kind="SALE",
         debit_amount="10.00",
         credit_amount="0.00",
         running_net_amount="10.00",
@@ -43,7 +41,7 @@ def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_out
         config,
         expense_entry,
         effective_date="2026-04-08",
-        posting_origin_kind="CASH_EXPENSE",
+        posting_origin_kind="EXPENSE",
         debit_amount="0.00",
         credit_amount="4.00",
         running_net_amount="6.00",
@@ -65,12 +63,18 @@ def _group_rows(
         len(rows) == 7,
         f"{config.label} account-ledger CSV output did not render the expected normalized row count",
     )
+    require(
+        all(row["recordKind"] == "account-ledger" for row in rows),
+        f"{config.label} account-ledger CSV output did not keep recordKind anchored to account-ledger",
+    )
     grouped = {
-        "summary": [row for row in rows if row["recordKind"] == "summary"],
-        "entry": [row for row in rows if row["recordKind"] == "entry"],
-        "counterpart-account": [row for row in rows if row["recordKind"] == "counterpart-account"],
-        "source-document": [row for row in rows if row["recordKind"] == "source-document"],
-        "approval": [row for row in rows if row["recordKind"] == "approval"],
+        "summary": [row for row in rows if row["relationKind"] == "ledger-summary"],
+        "entry": [row for row in rows if row["relationKind"] == "entry"],
+        "counterpart-account": [
+            row for row in rows if row["relationKind"] == "counterpart-account"
+        ],
+        "source-document": [row for row in rows if row["relationKind"] == "source-document"],
+        "approval": [row for row in rows if row["relationKind"] == "approval"],
     }
     require(
         len(grouped["summary"]) == 1

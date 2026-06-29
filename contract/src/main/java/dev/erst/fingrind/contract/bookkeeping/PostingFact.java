@@ -10,6 +10,7 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Committed posting fact carried across application-owned book sessions. */
 public record PostingFact(
@@ -19,7 +20,8 @@ public record PostingFact(
     PostingKind postingKind,
     PostingOriginKind postingOriginKind,
     AccountingEvidence evidence,
-    CommittedProvenance provenance) {
+    CommittedProvenance provenance,
+    @Nullable BookkeepingEntry originatingEntry) {
   /** Validates the canonical fact shape stored by book-session adapters. */
   public PostingFact {
     Objects.requireNonNull(postingId, "postingId");
@@ -29,6 +31,28 @@ public record PostingFact(
     Objects.requireNonNull(postingOriginKind, "postingOriginKind");
     Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(provenance, "provenance");
+    requireMatchingOriginatingEntry(
+        originatingEntry, postingKind, postingOriginKind, journalEntry, postingLineage);
+  }
+
+  /** Builds one committed posting fact without retained caller-authored entry details. */
+  public PostingFact(
+      PostingId postingId,
+      JournalEntry journalEntry,
+      PostingLineage postingLineage,
+      PostingKind postingKind,
+      PostingOriginKind postingOriginKind,
+      AccountingEvidence evidence,
+      CommittedProvenance provenance) {
+    this(
+        postingId,
+        journalEntry,
+        postingLineage,
+        postingKind,
+        postingOriginKind,
+        evidence,
+        provenance,
+        null);
   }
 
   /** Returns the optional reversal lineage descriptor for this committed fact. */
@@ -39,5 +63,37 @@ public record PostingFact(
   /** Returns the optional reversal reason carried by this committed fact. */
   public Optional<ReversalReason> reversalReason() {
     return postingLineage.reversalReason();
+  }
+
+  /** Returns the optional caller-authored entry facts retained with this committed fact. */
+  public Optional<BookkeepingEntry> callerAuthoredEntry() {
+    return Optional.ofNullable(originatingEntry);
+  }
+
+  private static void requireMatchingOriginatingEntry(
+      @Nullable BookkeepingEntry originatingEntry,
+      PostingKind postingKind,
+      PostingOriginKind postingOriginKind,
+      JournalEntry journalEntry,
+      PostingLineage postingLineage) {
+    if (originatingEntry == null) {
+      return;
+    }
+    if (originatingEntry.postingKind() != postingKind) {
+      throw new IllegalArgumentException(
+          "originatingEntry postingKind must match the committed posting fact.");
+    }
+    if (originatingEntry.postingOriginKind() != postingOriginKind) {
+      throw new IllegalArgumentException(
+          "originatingEntry postingOriginKind must match the committed posting fact.");
+    }
+    if (!originatingEntry.journalEntry().equals(journalEntry)) {
+      throw new IllegalArgumentException(
+          "originatingEntry journalEntry must match the committed posting fact journalEntry.");
+    }
+    if (!originatingEntry.postingLineage().equals(postingLineage)) {
+      throw new IllegalArgumentException(
+          "originatingEntry postingLineage must match the committed posting fact lineage.");
+    }
   }
 }

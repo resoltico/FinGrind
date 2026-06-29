@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.tax.TaxRegistrationPageCursor;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.nio.file.Path;
 import java.util.List;
@@ -177,7 +178,17 @@ final class CliOptionModes {
 
   static CliCommand.ReportOutput resolvedReportOutput(
       @Nullable OutputMode outputMode, @Nullable Path pdfOutPath) {
-    return new CliCommand.ReportOutput(resolvedOutputMode(outputMode), pdfOutPath);
+    OutputMode resolvedOutputMode = resolvedOutputMode(outputMode);
+    if (pdfOutPath != null && resolvedOutputMode == OutputMode.CSV) {
+      throw CliArgumentValueParser.unsupportedOutputSelection(
+          ProtocolOptions.OUTPUT,
+          "Unsupported output mode for "
+              + ProtocolOptions.OUTPUT
+              + ": csv. When "
+              + ProtocolOptions.PDF_OUT
+              + " is selected, accepted stdout modes are json or text.");
+    }
+    return new CliCommand.ReportOutput(resolvedOutputMode, pdfOutPath);
   }
 
   static Path requirePdfOutPath(
@@ -215,6 +226,20 @@ final class CliOptionModes {
           ProtocolOptions.CURSOR,
           Objects.requireNonNullElse(exception.getMessage(), "Unsupported account page cursor."),
           CliOperationText.listAccountsCursorRepairHint(),
+          exception);
+    }
+  }
+
+  static TaxRegistrationPageCursor taxRegistrationPageCursor(String wireValue) {
+    try {
+      return TaxRegistrationPageCursor.fromWireValue(wireValue);
+    } catch (IllegalArgumentException exception) {
+      throw new CliArgumentsException(
+          ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
+          ProtocolOptions.CURSOR,
+          Objects.requireNonNullElse(
+              exception.getMessage(), "Unsupported tax registration page cursor."),
+          CliOperationText.listTaxRegistrationsCursorRepairHint(),
           exception);
     }
   }

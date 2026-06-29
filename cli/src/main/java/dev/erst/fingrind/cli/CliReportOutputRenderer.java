@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
@@ -49,6 +50,14 @@ final class CliReportOutputRenderer {
 
   static String renderIncomeStatementCsv(IncomeStatementReport report) {
     return CliIncomeStatementReportRenderer.renderCsv(report);
+  }
+
+  static String renderCashFlowStatementText(CashFlowStatementReport report) {
+    return CliCashFlowReportRenderer.renderText(report);
+  }
+
+  static String renderCashFlowStatementCsv(CashFlowStatementReport report) {
+    return CliCashFlowReportRenderer.renderCsv(report);
   }
 
   static String renderChangesInEquityText(ChangesInEquityReport report) {

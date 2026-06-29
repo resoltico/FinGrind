@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.protocol;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.EnumSet;
 import java.util.List;
@@ -11,44 +10,33 @@ final class RequestSurfaceFactsValidation {
   private RequestSurfaceFactsValidation() {}
 
   static void requireUniqueEntryKinds(
-      List<RequestSurfaceFacts.PostEntryKindFacts> factsByEntryKind) {
+      List<RequestSurfaceFacts.BookkeepingEntryKindFacts> factsByEntryKind) {
     Set<BookkeepingEntryKind> seen = EnumSet.noneOf(BookkeepingEntryKind.class);
-    factsByEntryKind.stream()
-        .map(RequestSurfaceFacts.PostEntryKindFacts::entryKind)
-        .filter(entryKind -> !seen.add(entryKind))
-        .findFirst()
-        .ifPresent(
-            entryKind -> {
-              throw new IllegalArgumentException(
-                  "Duplicate request-surface facts for entryKind " + entryKind + ".");
-            });
+    factsByEntryKind.forEach(
+        facts -> {
+          if (!seen.add(facts.entryKind())) {
+            throw new IllegalArgumentException(
+                "Duplicate request-surface facts for entryKind " + facts.entryKind() + ".");
+          }
+          requireDistinctTopLevelFields(facts);
+        });
   }
 
-  static void requireUniqueRecipeKinds(
-      List<RequestSurfaceFacts.JournalRecipeFacts> factsByRecipeKind) {
-    Set<JournalRecipeKind> seen = EnumSet.noneOf(JournalRecipeKind.class);
-    factsByRecipeKind.stream()
-        .map(RequestSurfaceFacts.JournalRecipeFacts::recipeKind)
-        .filter(recipeKind -> !seen.add(recipeKind))
-        .findFirst()
-        .ifPresent(
-            recipeKind -> {
-              throw new IllegalArgumentException(
-                  "Duplicate journal recipe facts for recipeKind " + recipeKind + ".");
-            });
-  }
-
-  static void requireUniqueEvidenceProfiles(
-      List<RequestSurfaceFacts.EvidenceProfileFacts> profiles) {
-    Set<String> seen = new java.util.LinkedHashSet<>();
-    profiles.stream()
-        .map(RequestSurfaceFacts.EvidenceProfileFacts::profileId)
-        .filter(profileId -> !seen.add(profileId))
-        .findFirst()
-        .ifPresent(
-            profileId -> {
-              throw new IllegalArgumentException(
-                  "Duplicate evidence profile facts for profileId " + profileId + ".");
+  private static void requireDistinctTopLevelFields(
+      RequestSurfaceFacts.BookkeepingEntryKindFacts facts) {
+    Set<String> acceptedFields = new java.util.LinkedHashSet<>(facts.requiredTopLevelFields());
+    facts
+        .optionalTopLevelFields()
+        .forEach(
+            field -> {
+              if (!acceptedFields.add(field)) {
+                throw new IllegalArgumentException(
+                    "Entry kind "
+                        + facts.entryKind()
+                        + " repeats accepted top-level field "
+                        + field
+                        + ".");
+              }
             });
   }
 

@@ -31,6 +31,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -52,7 +53,10 @@ class BookReadServiceReportQueryTest {
       assertEquals(
           new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.trialBalance(
-              new TrialBalanceQuery(Optional.of(EFFECTIVE_DATE), allPostingKinds())));
+              new TrialBalanceQuery(
+                  Optional.of(EFFECTIVE_DATE),
+                  allPostingKinds(),
+                  ComparativeSelection.priorPeriod())));
     }
   }
 
@@ -68,14 +72,15 @@ class BookReadServiceReportQueryTest {
               trialBalanceReport(
                   bookIdentity(),
                   Optional.of(EFFECTIVE_DATE),
-                  EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
+                  EffectiveDateRange.unbounded(),
                   allPostingKinds(),
                   List.of(
                       new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE),
                       new TrialBalanceRow(REVENUE_ACCOUNT, EUR_CREDIT_BALANCE)),
                   List.of())),
           service.trialBalance(
-              new TrialBalanceQuery(Optional.of(EFFECTIVE_DATE), allPostingKinds())));
+              new TrialBalanceQuery(
+                  Optional.of(EFFECTIVE_DATE), allPostingKinds(), ComparativeSelection.none())));
     }
   }
 
@@ -92,7 +97,7 @@ class BookReadServiceReportQueryTest {
                   bookIdentity(),
                   Optional.empty(),
                   Optional.of(EFFECTIVE_DATE),
-                  EffectiveDateRange.of(null, EFFECTIVE_DATE.minusYears(1)),
+                  EffectiveDateRange.unbounded(),
                   allPostingKinds(),
                   List.of(
                       new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE),
@@ -102,7 +107,9 @@ class BookReadServiceReportQueryTest {
                   List.of(),
                   List.of(),
                   true)),
-          service.trialBalance(new TrialBalanceQuery(Optional.empty(), allPostingKinds())));
+          service.trialBalance(
+              new TrialBalanceQuery(
+                  Optional.empty(), allPostingKinds(), ComparativeSelection.none())));
     }
   }
 
@@ -125,7 +132,9 @@ class BookReadServiceReportQueryTest {
                   List.of(),
                   List.of(),
                   true)),
-          service.trialBalance(new TrialBalanceQuery(Optional.empty(), allPostingKinds())));
+          service.trialBalance(
+              new TrialBalanceQuery(
+                  Optional.empty(), allPostingKinds(), ComparativeSelection.none())));
     }
   }
 

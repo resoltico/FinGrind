@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.List;
 import java.util.Objects;
@@ -28,7 +29,7 @@ public final class CliFuzzAccountFixtures {
     Objects.requireNonNull(command, "command must not be null");
     return CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(command).stream()
         .map(declareAccountCommand -> declareAccount(administrationService, declareAccountCommand))
-        .map(CliFuzzAccountFixtures::requireDeclaredAccount)
+        .map(CliFuzzAccountFixtures::requireSuccessfulAccountState)
         .toList();
   }
 
@@ -44,9 +45,8 @@ public final class CliFuzzAccountFixtures {
                 account.accountCode(),
                 new dev.erst.fingrind.core.AccountName(account.accountName().value() + " restored"),
                 account.accountType(),
-                account.accountRole(),
                 account.accountTaxonomy()));
-    DeclaredAccount restoredAccount = requireDeclaredAccount(result);
+    DeclaredAccount restoredAccount = requireSuccessfulAccountState(result);
     if (!restoredAccount.active()) {
       throw new IllegalStateException("Account reactivation did not restore the active flag.");
     }
@@ -87,9 +87,12 @@ public final class CliFuzzAccountFixtures {
             dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits.PAGE_LIMIT_MAX, cursor));
   }
 
-  private static DeclaredAccount requireDeclaredAccount(DeclareAccountResult result) {
+  private static DeclaredAccount requireSuccessfulAccountState(DeclareAccountResult result) {
     return switch (result) {
       case DeclareAccountResult.Declared declared -> declared.account();
+      case DeclareAccountResult.Reactivated reactivated -> reactivated.account();
+      case DeclareAccountResult.Renamed renamed -> renamed.account();
+      case DeclareAccountResult.Unchanged unchanged -> unchanged.account();
       case DeclareAccountResult.Rejected _ ->
           throw new IllegalStateException("Lifecycle setup failed to declare an account.");
     };
@@ -99,6 +102,6 @@ public final class CliFuzzAccountFixtures {
       BookAdministrationService administrationService, DeclareAccountCommand command) {
     return BookkeepingPublishedLanguageTranslator.toPublished(
         administrationService.declareAccount(
-            BookkeepingPublishedLanguageTranslator.fromPublished(command)));
+            BookkeepingRequestPublishedLanguageTranslator.fromPublished(command)));
   }
 }

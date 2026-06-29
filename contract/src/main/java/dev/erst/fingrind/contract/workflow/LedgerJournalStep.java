@@ -18,10 +18,10 @@ public sealed interface LedgerJournalStep
   @Nullable LedgerAssertionKind detailKind();
 
   /**
-   * Returns the nested boundary phase when the journal step represents one plan-boundary phase, or
-   * {@code null} for standard and assertion journal steps.
+   * Returns the nested boundary checkpoint when the journal step represents one plan-boundary
+   * checkpoint, or {@code null} for standard and assertion journal steps.
    */
-  default @Nullable LedgerBoundaryPhase boundaryPhase() {
+  default @Nullable LedgerBoundaryCheckpoint boundaryCheckpoint() {
     return null;
   }
 
@@ -36,8 +36,8 @@ public sealed interface LedgerJournalStep
   }
 
   /** Creates one plan-boundary journal step identity. */
-  static LedgerJournalStep boundary(LedgerBoundaryPhase phase) {
-    return new Boundary(phase);
+  static LedgerJournalStep boundary(LedgerBoundaryCheckpoint checkpoint) {
+    return new Boundary(checkpoint);
   }
 
   /** Journal step identity for one non-assert plan step. */
@@ -75,10 +75,10 @@ public sealed interface LedgerJournalStep
     }
   }
 
-  /** Journal step identity for one begin/commit/rollback boundary phase. */
-  record Boundary(LedgerBoundaryPhase phase) implements LedgerJournalStep {
+  /** Journal step identity for one begin/check/commit/rollback boundary checkpoint. */
+  record Boundary(LedgerBoundaryCheckpoint checkpoint) implements LedgerJournalStep {
     public Boundary {
-      Objects.requireNonNull(phase, "phase");
+      Objects.requireNonNull(checkpoint, "checkpoint");
     }
 
     @Override
@@ -92,8 +92,8 @@ public sealed interface LedgerJournalStep
     }
 
     @Override
-    public LedgerBoundaryPhase boundaryPhase() {
-      return phase;
+    public LedgerBoundaryCheckpoint boundaryCheckpoint() {
+      return checkpoint;
     }
   }
 }

@@ -18,6 +18,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
@@ -43,9 +44,10 @@ final class SqliteRoundTripWorkflowCliCoverage {
     CliBookReadWorkflow readWorkflow = SqliteRoundTripWorkflowResources.sqliteReadWorkflow();
     PostEntryCommand workflowCommand =
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(command, "workflow");
-    PostingId postingId =
+    Committed committed =
         initializeAndCommitWorkflowBook(
             lifecycleWorkflow, mutationWorkflow, bookAccess, workflowCommand);
+    PostingId postingId = committed.postingId();
     AccountCode primaryAccount = CliFuzzSyntheticAccountFixtures.firstAccountCode(workflowCommand);
     LocalDate effectiveDate = CliFuzzFixtures.journalEntry(workflowCommand).effectiveDate();
 
@@ -85,7 +87,10 @@ final class SqliteRoundTripWorkflowCliCoverage {
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         readWorkflow.trialBalance(
             bookAccess,
-            new TrialBalanceQuery(Optional.of(effectiveDate), PostingCoverage.ALL_POSTING_KINDS)),
+            new TrialBalanceQuery(
+                Optional.of(effectiveDate),
+                PostingCoverage.ALL_POSTING_KINDS,
+                ComparativeSelection.none())),
         OutputMode.CSV,
         (writers, result, mode) -> writers.query().writeTrialBalanceResult(result, mode),
         primaryAccount.value());
@@ -121,7 +126,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
 
     PreflightEntryResult duplicatePreflight =
         mutationWorkflow.preflight(bookAccess, workflowCommand).requireAccepted();
-    SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateWorkflowPreflightRejected(
+    SqliteRoundTripWorkflowDecisionAssertions.requireDuplicateWorkflowPreflightAccepted(
         duplicatePreflight);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicatePreflight),
@@ -132,19 +137,18 @@ final class SqliteRoundTripWorkflowCliCoverage {
 
     CommitEntryResult duplicateCommit =
         mutationWorkflow.commit(bookAccess, workflowCommand).requireAccepted();
-    SqliteRoundTripWorkflowDecisionAssertions.assertDuplicateWorkflowCommitRejected(
-        duplicateCommit);
+    SqliteRoundTripWorkflowDecisionAssertions.requireCommittedReplay(duplicateCommit, committed);
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         ContractDecision.accepted(duplicateCommit),
         OutputMode.JSON,
         (writers, result, mode) ->
             writers.mutation().writePostEntryResult((PostEntryResult) result, mode),
-        "duplicate-idempotency-key");
+        "idempotentReplay");
 
     exerciseDerivedReversalScenarios(mutationWorkflow, bookAccess, workflowCommand, postingId);
   }
 
-  private static PostingId initializeAndCommitWorkflowBook(
+  private static Committed initializeAndCommitWorkflowBook(
       CliBookLifecycleWorkflow lifecycleWorkflow,
       CliBookMutationWorkflow mutationWorkflow,
       BookAccess bookAccess,
@@ -182,7 +186,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         OutputMode.JSON,
         (writers, result, mode) -> writers.mutation().writePostEntryResult(result, mode),
         committed.postingId().value());
-    return committed.postingId();
+    return committed;
   }
 
   private static void exerciseDerivedReversalScenarios(

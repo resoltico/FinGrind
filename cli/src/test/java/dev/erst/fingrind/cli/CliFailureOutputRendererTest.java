@@ -63,6 +63,17 @@ class CliFailureOutputRendererTest {
   }
 
   @Test
+  void renderFailureText_omitsHintRowWhenNoHintIsProvided() {
+    String rendered =
+        CliFailureOutputRenderer.renderFailureText(
+            new CliFailure("runtime-failure", "Runtime exploded.", null, "--book-file"));
+
+    assertTrue(rendered.contains("Argument"));
+    assertTrue(rendered.contains("--book-file"));
+    assertFalse(rendered.contains("Hint"), rendered);
+  }
+
+  @Test
   void renderRejectedText_rendersEveryStructuredRejectionShape() {
     assertRenderedNestedRepairableRejection(
         "account-state-violations",
@@ -104,12 +115,6 @@ class CliFailureOutputRendererTest {
         new CliRejectionJsonModels.PriorPostingDetails("posting-9"),
         "Prior posting id",
         "posting-9");
-    assertRenderedRejection(
-        new CliRejectionJsonModels.AccountRoleConflictDetails(
-            "3200", "ORDINARY", "POLARITY_INVERTED"),
-        "Existing account role",
-        "Requested account role",
-        "POLARITY_INVERTED");
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountTypeConflictDetails("3200", "EQUITY", "LIABILITY"),
         "Existing account type",
@@ -163,13 +168,6 @@ class CliFailureOutputRendererTest {
         "Parent account type",
         "REVENUE");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ParentAccountRoleConflictDetails(
-            "4100", "ORDINARY", "4000", "POLARITY_INVERTED"),
-        "Requested account role",
-        "ORDINARY",
-        "Parent account role",
-        "POLARITY_INVERTED");
-    assertRenderedRejection(
         new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", "POSTABLE"),
         "Parent account code",
         "4000",
@@ -199,51 +197,65 @@ class CliFailureOutputRendererTest {
         "Attempted currency",
         "USD");
     assertRenderedRejection(
-        new CliRejectionJsonModels.OpenAccountingPositionWindowClosedDetails(
-            "STANDARD", "2026-04-07"),
+        new CliRejectionJsonModels.OpeningPositionWindowClosedDetails("STANDARD", "2026-04-07"),
         "First blocking posting kind",
         "STANDARD",
         "First blocking effective date",
         "2026-04-07");
     assertRenderedRejection(
-        new CliRejectionJsonModels.OpenAccountingPositionNominalAccountDetails("4000", "REVENUE"),
+        new CliRejectionJsonModels.OpeningPositionNominalAccountDetails("4000", "REVENUE"),
         "Account code",
         "4000",
         "Account type",
         "REVENUE");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ResultHoldingAccountDetails("3200"), "Account code", "3200");
+        new CliRejectionJsonModels.ReservedResultClassificationDetails("3200", "result-holding"),
+        "Account code",
+        "3200",
+        "Financial position classification",
+        "result-holding");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ResultHoldingAccountCandidateMissingDetails(
+        new CliRejectionJsonModels.CloseTargetAccountCandidateMissingDetails(
             "retained-earnings", List.of("3200")),
         "Required financial position classification",
         "retained-earnings",
         "Inactive candidate account codes",
         "3200");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ResultHoldingAccountCandidateAmbiguousDetails(
+        new CliRejectionJsonModels.CloseTargetAccountCandidateAmbiguousDetails(
             "other-equity", List.of("3200", "3210")),
         "Required financial position classification",
         "other-equity",
         "Candidate account codes",
         "3200, 3210");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PeriodResultTransferStartDetails("2026-04-01"),
+        new CliRejectionJsonModels.InterimResultSweepStartDetails("2026-04-01"),
         "Required start date",
         "2026-04-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PeriodResultTransferFutureDateDetails("2026-05-01"),
+        new CliRejectionJsonModels.InterimResultSweepFutureDateDetails("2026-05-01"),
         "Attempted end date",
         "2026-05-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PeriodResultTransferFiscalYearDetails(
+        new CliRejectionJsonModels.InterimResultSweepFiscalYearDetails(
             "2026-12-15", "2027-01-15", "01-01"),
         "Attempted start date",
         "Attempted end date",
         "Fiscal year start");
     assertRenderedRejection(
-        new CliRejectionJsonModels.TransferredPeriodResultViolationDetails(
-            "2026-04-30", "2026-05-01"),
+        new CliRejectionJsonModels.FiscalYearCloseStartDetails("2026-01-01"),
+        "Required start date",
+        "2026-01-01");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.FiscalYearCloseEndDetails("2026-12-31"),
+        "Required end date",
+        "2026-12-31");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.FiscalYearCloseFutureDateDetails("2027-01-01"),
+        "Attempted end date",
+        "2027-01-01");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.SweptInterimResultViolationDetails("2026-04-30", "2026-05-01"),
         "Transferred through",
         "Attempted effective date",
         "2026-05-01");
@@ -255,6 +267,37 @@ class CliFailureOutputRendererTest {
         "posting-404");
     assertRenderedRejection(
         new CliRejectionJsonModels.PlanRejectionDetails(samplePlan()), "Plan id", "plan-1");
+  }
+
+  @Test
+  void renderRejectedText_rendersTaxRejectionDetails() {
+    assertRenderedRejection(
+        new dev.erst.fingrind.cli.json.CliTaxRejectionJsonModels.TaxDefinitionViolationsDetails(
+            List.of(
+                new dev.erst.fingrind.cli.json.CliTaxRejectionJsonModels
+                    .TaxDefinitionViolationDetails(
+                    "missing-tax-code", "taxCodes[0].taxCode", "Tax code is required."),
+                new dev.erst.fingrind.cli.json.CliTaxRejectionJsonModels
+                    .TaxDefinitionViolationDetails(
+                    "invalid-jurisdiction", null, "Jurisdiction must be ISO 3166-1 alpha-2."))),
+        "Violation 1",
+        "taxCodes[0].taxCode [missing-tax-code]: Tax code is required.",
+        "Violation 2",
+        "invalid-jurisdiction [invalid-jurisdiction]: Jurisdiction must be ISO 3166-1 alpha-2.");
+    assertRenderedRejection(
+        new dev.erst.fingrind.cli.json.CliTaxRejectionJsonModels.UnknownTaxRegistrationDetails(
+            "vat-missing"),
+        "Tax registration id",
+        "vat-missing");
+    assertRenderedRejection(
+        new dev.erst.fingrind.cli.json.CliTaxRejectionJsonModels.ObligationPeriodMismatchDetails(
+            "MONTHLY", "2026-04-01", "2026-04-15"),
+        "Obligation frequency",
+        "Monthly",
+        "Requested period start",
+        "2026-04-01",
+        "Requested period end",
+        "2026-04-15");
   }
 
   @Test
@@ -278,7 +321,7 @@ class CliFailureOutputRendererTest {
                         null,
                         "invoice does not prove cash receipt",
                         "source-document-type",
-                        "Use an accepted source document type for the selected entry kind's evidence profile."))));
+                        "Use an accepted source document type for the selected entry kind's source-document policy."))));
 
     assertTrue(rendered.contains("entry-semantics-violations"));
     assertTrue(rendered.contains("Summary"));
@@ -363,14 +406,7 @@ class CliFailureOutputRendererTest {
         LedgerPlanStatus.REJECTED,
         PlanResultDetail.FULL,
         new CliPlanJsonModels.LedgerPlanSummaryPayload(
-            "2026-05-13T10:15:30Z",
-            "2026-05-13T10:15:31Z",
-            1,
-            0,
-            1,
-            "step-1",
-            "rejected-code",
-            "Rejected message."),
+            "2026-05-13T10:15:30Z", "2026-05-13T10:15:31Z", 1, 0, 1, "step-1"),
         new CliPlanJsonModels.LedgerExecutionJournalPayload(
             "2026-05-13T10:15:30Z",
             "2026-05-13T10:15:31Z",

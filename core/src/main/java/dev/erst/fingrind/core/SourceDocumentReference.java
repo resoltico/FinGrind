@@ -1,6 +1,5 @@
 package dev.erst.fingrind.core;
 
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
 
@@ -8,17 +7,11 @@ import java.util.Objects;
 public record SourceDocumentReference(
     SourceDocumentId sourceDocumentId,
     SourceDocumentType sourceDocumentType,
-    LocalDate documentDate,
-    Instant capturedAt,
-    StorageLocator storageLocator,
-    ContentSha256 contentSha256) {
+    LocalDate documentDate) {
   /** Validates one retained source-document fact. */
   public SourceDocumentReference {
     Objects.requireNonNull(sourceDocumentId, "sourceDocumentId");
     Objects.requireNonNull(sourceDocumentType, "sourceDocumentType");
     Objects.requireNonNull(documentDate, "documentDate");
-    Objects.requireNonNull(capturedAt, "capturedAt");
-    Objects.requireNonNull(storageLocator, "storageLocator");
-    Objects.requireNonNull(contentSha256, "contentSha256");
   }
 }

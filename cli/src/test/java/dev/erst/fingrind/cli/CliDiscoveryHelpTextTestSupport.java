@@ -46,11 +46,15 @@ class CliDiscoveryHelpTextTestSupport {
   }
 
   protected final List<String> acceptedPostingFieldPaths(
-      ContractRequestShapes.PostEntryRequestShapeDescriptor postingModel) {
+      ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel) {
     List<String> labels = new ArrayList<>();
     appendAcceptedFieldPaths(labels, postingModel.topLevelFields(), "");
     appendAcceptedFieldPaths(labels, postingModel.lineFields(), "lines[].");
     appendAcceptedFieldPaths(labels, postingModel.openingBalanceFields(), "openingBalances[].");
+    appendAcceptedFieldPaths(labels, postingModel.foreignExchangeFields(), "foreignExchange.");
+    appendAcceptedFieldPaths(
+        labels, postingModel.quotedRateFields(), "foreignExchange.quotedRate.");
+    appendAcceptedFieldPaths(labels, postingModel.taxFields(), "tax.");
     appendAcceptedFieldPaths(labels, postingModel.evidenceFields(), "evidence.");
     appendAcceptedFieldPaths(
         labels, postingModel.sourceDocumentFields(), "evidence.sourceDocuments[].");
@@ -111,12 +115,17 @@ class CliDiscoveryHelpTextTestSupport {
   }
 
   protected final void assertContainsNestedPostingModelPaths(
-      String rendered, ContractRequestShapes.PostEntryRequestShapeDescriptor postingModel) {
+      String rendered, ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel) {
     assertContainsPrefixedFieldRows(rendered, postingModel.topLevelFields(), "steps[].posting.");
     assertContainsPrefixedFieldRows(
         rendered, postingModel.lineFields(), "steps[].posting.lines[].");
     assertContainsPrefixedFieldRows(
         rendered, postingModel.openingBalanceFields(), "steps[].posting.openingBalances[].");
+    assertContainsPrefixedFieldRows(
+        rendered, postingModel.foreignExchangeFields(), "steps[].posting.foreignExchange.");
+    assertContainsPrefixedFieldRows(
+        rendered, postingModel.quotedRateFields(), "steps[].posting.foreignExchange.quotedRate.");
+    assertContainsPrefixedFieldRows(rendered, postingModel.taxFields(), "steps[].posting.tax.");
     assertContainsPrefixedFieldRows(
         rendered, postingModel.evidenceFields(), "steps[].posting.evidence.");
     assertContainsPrefixedFieldRows(
@@ -134,7 +143,8 @@ class CliDiscoveryHelpTextTestSupport {
   protected final Optional<String> expectedRequestTemplateSupportCommand(
       HelpDescriptor helpDescriptor, OperationId operationId) {
     if (helpDescriptor.requestTemplate() != null
-        || helpDescriptor.declareAccountTemplate() != null) {
+        || helpDescriptor.declareAccountTemplate() != null
+        || helpDescriptor.declareTaxRegistrationTemplate() != null) {
       return Optional.of(
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
               + " "
@@ -151,6 +161,7 @@ class CliDiscoveryHelpTextTestSupport {
     return new HelpDescriptor(
         baseHelp.application(),
         baseHelp.version(),
+        baseHelp.protocolVersion(),
         baseHelp.description(),
         baseHelp.usage(),
         baseHelp.bookModel(),
@@ -158,6 +169,7 @@ class CliDiscoveryHelpTextTestSupport {
         baseHelp.requestShapes(),
         baseHelp.requestTemplate(),
         baseHelp.declareAccountTemplate(),
+        baseHelp.declareTaxRegistrationTemplate(),
         planTemplate,
         baseHelp.commands(),
         baseHelp.quickStart(),
@@ -167,13 +179,14 @@ class CliDiscoveryHelpTextTestSupport {
   }
 
   protected final ContractTemplates.PostingRequestTemplateDescriptor
-      conflictingOpenAccountingPositionTemplate() {
+      conflictingOpeningPositionTemplate() {
     ContractTemplates.PostingRequestTemplateDescriptor canonical =
         MachineContract.requestTemplate();
     return new ContractTemplates.PostingRequestTemplateDescriptor(
-        BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
-        null,
+        BookkeepingEntryKind.OPENING_POSITION,
         "2026-01-01",
+        null,
+        null,
         null,
         null,
         null,

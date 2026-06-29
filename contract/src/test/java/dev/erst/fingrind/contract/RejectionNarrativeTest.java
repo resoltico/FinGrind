@@ -11,12 +11,12 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -44,11 +44,6 @@ class RejectionNarrativeTest {
                 new BookAdministrationRejection.AccountTypeConflict(
                     new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY))
             .contains("account type"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookAdministrationRejection.AccountRoleConflict(
-                    new AccountCode("1000"), AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED))
-            .contains("1000"));
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.AccountTaxonomyConflict(
@@ -84,14 +79,6 @@ class RejectionNarrativeTest {
             .contains("Parent and child must share one account type"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.ParentAccountRoleConflict(
-                    new AccountCode("1010"),
-                    AccountRole.ORDINARY,
-                    new AccountCode("1000"),
-                    AccountRole.POLARITY_INVERTED))
-            .contains("Parent and child must share one account role"));
-    assertTrue(
-        RejectionNarrative.message(
                 new BookAdministrationRejection.ParentAccountNotHeader(
                     new AccountCode("1010"),
                     new AccountCode("1000"),
@@ -120,38 +107,53 @@ class RejectionNarrativeTest {
             .contains("chart hierarchy cycle"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
                     FinancialPositionLineClassification.RESULT_HOLDING, List.of()))
             .contains("required classification"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.ResultHoldingAccountCandidateMissing(
+                new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
                     FinancialPositionLineClassification.RESULT_HOLDING,
                     List.of(new AccountCode("3200"))))
             .contains("inactive candidates: 3200"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.ResultHoldingAccountCandidateAmbiguous(
+                new CloseTargetAccountCandidateAmbiguous(
                     FinancialPositionLineClassification.OTHER_EQUITY,
                     List.of(new AccountCode("3200"), new AccountCode("3210"))))
             .contains("3200, 3210"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.PeriodResultTransferMustStartAt(
+                new BookAdministrationRejection.InterimResultSweepMustStartAt(
                     LocalDate.parse("2026-01-01")))
             .contains("2026-01-01"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.PeriodResultTransferFutureDate(
+                new BookAdministrationRejection.InterimResultSweepFutureDate(
                     LocalDate.parse("2026-12-31")))
             .contains("2026-12-31"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.PeriodResultTransferCrossesFiscalYearBoundary(
+                new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
                     LocalDate.parse("2026-12-15"),
                     LocalDate.parse("2027-01-15"),
                     dev.erst.fingrind.core.FiscalYearStart.parse("01-01")))
             .contains("01-01"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.FiscalYearCloseMustStartAt(
+                    LocalDate.parse("2026-01-01")))
+            .contains("2026-01-01"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.FiscalYearCloseMustEndAt(
+                    LocalDate.parse("2026-12-31")))
+            .contains("2026-12-31"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.FiscalYearCloseFutureDate(
+                    LocalDate.parse("2027-01-01")))
+            .contains("2027-01-01"));
   }
 
   @Test
@@ -261,7 +263,7 @@ class RejectionNarrativeTest {
         new PostingRejection.EntrySemanticsViolations(
             List.of(
                 PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-                    "CASH_REVENUE",
+                    "SALE",
                     new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                     List.of("cash-receipt", "bank-deposit"))));
 
@@ -280,26 +282,23 @@ class RejectionNarrativeTest {
         new PostingRejection.EntrySemanticsViolations(
             List.of(
                 PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-                    "CASH_REVENUE",
+                    "SALE",
                     new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                     List.of("cash-receipt", "bank-deposit")),
                 PostingRejectionSemantics.accountTypeMismatch(
-                    "CASH_REVENUE",
+                    "SALE",
                     "revenueAccountCode",
                     new AccountCode("1000"),
                     AccountType.REVENUE,
                     AccountType.ASSET),
                 PostingRejectionSemantics.distinctRoleAccountsRequired(
-                    "CASH_REVENUE",
-                    "cashAccountCode",
-                    "revenueAccountCode",
-                    new AccountCode("1000"))));
+                    "SALE", "cashAccountCode", "revenueAccountCode", new AccountCode("1000"))));
     String multipleEntrySemanticsMessage =
         RejectionNarrative.message(multipleEntrySemanticsViolations);
     assertEquals("Posting rejected with 3 entry-semantics issues.", multipleEntrySemanticsMessage);
     assertTrue(
-        RejectionNarrative.message(new PostingRejection.DuplicateIdempotencyKey())
-            .contains("same idempotency key"));
+        RejectionNarrative.message(new PostingRejection.IdempotencyKeyConflict())
+            .contains("different committed posting request"));
     assertTrue(
         RejectionNarrative.message(
                 new PostingRejection.BookFunctionalCurrencyMismatch(
@@ -308,23 +307,31 @@ class RejectionNarrativeTest {
             .contains("EUR"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.TransferredPeriodResultViolation(
+                new PostingRejection.SweptInterimResultViolation(
                     LocalDate.parse("2026-05-01"), LocalDate.parse("2026-04-30")))
             .contains("transferred-through horizon"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.OpenAccountingPositionWindowClosed(
+                new PostingRejection.OpeningPositionWindowClosed(
                     dev.erst.fingrind.core.PostingKind.STANDARD, LocalDate.parse("2026-05-02")))
             .contains("first blocking posting"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
+                new PostingRejection.OpeningPositionTouchesNominalAccount(
                     new AccountCode("4000"), AccountType.REVENUE))
             .contains("4000"));
-    assertTrue(
+    String resultHoldingMessage =
         RejectionNarrative.message(
-                new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3900")))
-            .contains("3900"));
+            new PostingRejection.ReservedResultClassification(
+                new AccountCode("3900"), FinancialPositionLineClassification.RESULT_HOLDING));
+    assertTrue(resultHoldingMessage.contains("3900"));
+    assertTrue(resultHoldingMessage.contains("RESULT_HOLDING"));
+    String retainedAccumulatedMessage =
+        RejectionNarrative.message(
+            new PostingRejection.ReservedResultClassification(
+                new AccountCode("3950"), FinancialPositionLineClassification.RETAINED_ACCUMULATED));
+    assertTrue(retainedAccumulatedMessage.contains("3950"));
+    assertTrue(retainedAccumulatedMessage.contains("RETAINED_ACCUMULATED"));
     assertTrue(
         RejectionNarrative.message(
                 new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")))
@@ -343,25 +350,22 @@ class RejectionNarrativeTest {
   void postingHintsCoverEveryRejection() {
     PostingRejection.EntrySemanticsViolations singleEntrySemanticsViolation =
         new PostingRejection.EntrySemanticsViolations(
-            List.of(PostingRejectionSemantics.economicNullJournal("JOURNAL")));
+            List.of(PostingRejectionSemantics.economicNullJournal("DIRECT_JOURNAL")));
     PostingRejection.EntrySemanticsViolations multipleEntrySemanticsViolations =
         new PostingRejection.EntrySemanticsViolations(
             List.of(
                 PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-                    "CASH_REVENUE",
+                    "SALE",
                     new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                     List.of("cash-receipt", "bank-deposit")),
                 PostingRejectionSemantics.accountTypeMismatch(
-                    "CASH_REVENUE",
+                    "SALE",
                     "revenueAccountCode",
                     new AccountCode("1000"),
                     AccountType.REVENUE,
                     AccountType.ASSET),
                 PostingRejectionSemantics.distinctRoleAccountsRequired(
-                    "CASH_REVENUE",
-                    "cashAccountCode",
-                    "revenueAccountCode",
-                    new AccountCode("1000"))));
+                    "SALE", "cashAccountCode", "revenueAccountCode", new AccountCode("1000"))));
 
     assertTrue(
         java.util.Objects.requireNonNull(
@@ -375,8 +379,8 @@ class RejectionNarrativeTest {
     assertNull(RejectionNarrative.hint(multipleEntrySemanticsViolations));
     assertTrue(
         java.util.Objects.requireNonNull(
-                RejectionNarrative.hint(new PostingRejection.DuplicateIdempotencyKey()))
-            .contains("retrying the same key"));
+                RejectionNarrative.hint(new PostingRejection.IdempotencyKeyConflict()))
+            .contains("exact same normalized request"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
@@ -387,27 +391,35 @@ class RejectionNarrativeTest {
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.TransferredPeriodResultViolation(
+                    new PostingRejection.SweptInterimResultViolation(
                         LocalDate.parse("2026-05-01"), LocalDate.parse("2026-04-30"))))
             .contains("transferred-through horizon"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.OpenAccountingPositionWindowClosed(
+                    new PostingRejection.OpeningPositionWindowClosed(
                         dev.erst.fingrind.core.PostingKind.STANDARD,
                         LocalDate.parse("2026-05-02"))))
             .contains("first committed posting"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
+                    new PostingRejection.OpeningPositionTouchesNominalAccount(
                         new AccountCode("4000"), AccountType.REVENUE)))
             .contains("asset, liability, or equity"));
-    assertTrue(
+    String resultHoldingHint =
         java.util.Objects.requireNonNull(
-                RejectionNarrative.hint(
-                    new PostingRejection.ResultHoldingAccountReserved(new AccountCode("3000"))))
-            .contains("transfer-period-result"));
+            RejectionNarrative.hint(
+                new PostingRejection.ReservedResultClassification(
+                    new AccountCode("3000"), FinancialPositionLineClassification.RESULT_HOLDING)));
+    assertTrue(resultHoldingHint.contains("RESULT_HOLDING"));
+    String retainedAccumulatedHint =
+        java.util.Objects.requireNonNull(
+            RejectionNarrative.hint(
+                new PostingRejection.ReservedResultClassification(
+                    new AccountCode("3001"),
+                    FinancialPositionLineClassification.RETAINED_ACCUMULATED)));
+    assertTrue(retainedAccumulatedHint.contains("RETAINED_ACCUMULATED"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(

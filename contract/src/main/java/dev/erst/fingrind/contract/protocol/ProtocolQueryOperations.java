@@ -10,6 +10,8 @@ final class ProtocolQueryOperations {
     return List.of(
         inspectBookOperation(),
         listAccountsOperation(),
+        listTaxRegistrationsOperation(),
+        taxObligationOperation(),
         getPostingOperation(),
         listPostingsOperation(),
         accountBalanceOperation(),
@@ -18,6 +20,7 @@ final class ProtocolQueryOperations {
         periodSummaryOperation(),
         financialPositionOperation(),
         incomeStatementOperation(),
+        cashFlowStatementOperation(),
         changesInEquityOperation());
   }
 
@@ -64,6 +67,33 @@ final class ProtocolQueryOperations {
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s %d"
                     .formatted(
                         OperationId.LIST_ACCOUNTS.wireName(),
+                        ProtocolOptions.BOOK_FILE,
+                        ProtocolOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.LIMIT,
+                        ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT))));
+  }
+
+  private static ProtocolOperation listTaxRegistrationsOperation() {
+    return ProtocolOperationDefinitions.operation(
+        OperationId.LIST_TAX_REGISTRATIONS,
+        OperationCategory.QUERY,
+        "List Tax Registrations",
+        List.of(),
+        List.of(
+            ProtocolOptions.BOOK_FILE + " <path>",
+            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptions.optionalLimitSyntax(),
+            ProtocolOptions.optionalCursorSyntax(),
+            ProtocolOptions.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
+        "List one stable page of declared tax registrations in the selected book using keyset pagination.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s %d"
+                    .formatted(
+                        OperationId.LIST_TAX_REGISTRATIONS.wireName(),
                         ProtocolOptions.BOOK_FILE,
                         ProtocolOptions.BOOK_KEY_FILE,
                         ProtocolOptions.LIMIT,
@@ -124,6 +154,27 @@ final class ProtocolQueryOperations {
                         ProtocolOptions.LIMIT))));
   }
 
+  private static ProtocolOperation taxObligationOperation() {
+    return ProtocolOperationDefinitions.operation(
+        OperationId.TAX_OBLIGATION,
+        OperationCategory.QUERY,
+        "Tax Obligation",
+        List.of(),
+        List.of(
+            ProtocolOptions.BOOK_FILE + " <path>",
+            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptions.TAX_REGISTRATION_ID + " <tax-registration-id>",
+            ProtocolOptions.PERIOD_START + " <YYYY-MM-DD>",
+            ProtocolOptions.PERIOD_END + " <YYYY-MM-DD>",
+            ProtocolOptions.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
+        "Compute one bounded tax-obligation report for the selected declared tax registration.",
+        List.of(
+            ProtocolExampleStep.command(ProtocolQueryOperationExamples.taxObligationExample())));
+  }
+
   private static ProtocolOperation accountBalanceOperation() {
     return ProtocolQueryReportOperations.accountWindowReportOperation(
         OperationId.ACCOUNT_BALANCE,
@@ -152,6 +203,7 @@ final class ProtocolQueryOperations {
     return ProtocolQueryReportOperations.periodReportOperation(
         OperationId.PERIOD_SUMMARY,
         "Period Summary",
+        false,
         true,
         "Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.",
         ProtocolQueryOperationExamples.periodSummaryExample());
@@ -169,15 +221,27 @@ final class ProtocolQueryOperations {
     return ProtocolQueryReportOperations.periodReportOperation(
         OperationId.INCOME_STATEMENT,
         "Income Statement",
+        true,
         false,
         "Compute one bounded income statement for the selected reporting period.",
         ProtocolQueryOperationExamples.incomeStatementExample());
+  }
+
+  private static ProtocolOperation cashFlowStatementOperation() {
+    return ProtocolQueryReportOperations.periodReportOperation(
+        OperationId.CASH_FLOW_STATEMENT,
+        "Cash Flow Statement",
+        true,
+        false,
+        "Compute one bounded statement of cash receipts and payments for the selected reporting period.",
+        ProtocolQueryOperationExamples.cashFlowStatementExample());
   }
 
   private static ProtocolOperation changesInEquityOperation() {
     return ProtocolQueryReportOperations.periodReportOperation(
         OperationId.CHANGES_IN_EQUITY,
         "Changes In Equity",
+        true,
         false,
         "Compute one bounded statement of changes in equity for the selected reporting period.",
         ProtocolQueryOperationExamples.changesInEquityExample());

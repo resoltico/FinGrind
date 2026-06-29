@@ -12,8 +12,8 @@ public interface KernelAccountingRules {
   /** Returns the policy that governs chart hierarchy and taxonomy support. */
   ChartPolicy chartPolicy();
 
-  /** Returns the policy that governs period-result-transfer account-type behavior. */
-  ResultTransferPolicy resultTransferPolicy();
+  /** Returns the policy that governs reporting-period-close account-type behavior. */
+  ClosePostingPolicy closePostingPolicy();
 
   /** Returns the policy that governs statement presentation classification. */
   StatementPresentationPolicy statementPresentationPolicy();

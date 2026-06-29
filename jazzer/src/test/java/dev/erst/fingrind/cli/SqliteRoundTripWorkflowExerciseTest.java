@@ -18,11 +18,12 @@ class SqliteRoundTripWorkflowExerciseTest {
     PostEntryCommand baseCommand = SqliteRoundTripWorkflowTestSupport.basicValidCommand();
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.ReversalAdjustment(
+            new BookkeepingEntry.Reversal(
                 CliFuzzFixtures.journalEntry(baseCommand),
                 new PostingLineage.Reversal(
                     new ReversalReference(new PostingId("missing-posting")),
-                    new ReversalReason("Missing prior posting"))),
+                    new ReversalReason("Missing prior posting")),
+                null),
             baseCommand.evidence(),
             baseCommand.requestProvenance(),
             baseCommand.sourceChannel());

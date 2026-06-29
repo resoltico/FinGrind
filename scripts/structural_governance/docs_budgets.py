@@ -5,6 +5,26 @@ from pathlib import Path
 from .models import FileBudget
 
 
+def markdown_budget(
+    role_name: str,
+    max_physical_lines: int,
+    max_logical_lines: int,
+    max_import_like_lines: int,
+    max_duplicate_window_lines: int,
+    split_hint: str,
+) -> FileBudget:
+    return FileBudget(
+        role_name=role_name,
+        max_physical_lines=max_physical_lines,
+        max_logical_lines=max_logical_lines,
+        max_import_like_lines=max_import_like_lines,
+        max_functions=0,
+        max_nested_types=0,
+        max_duplicate_window_lines=max_duplicate_window_lines,
+        split_hint=split_hint,
+    )
+
+
 def markdown_budget_for(relative_path: Path) -> FileBudget:
     path_text = relative_path.as_posix()
     name = relative_path.name
@@ -31,15 +51,22 @@ def markdown_budget_for(relative_path: Path) -> FileBudget:
             split_hint="keep changelog entries concise and move evergreen guidance into focused docs instead of growing the history surface.",
         )
     if path_text == "docs/sqlite/SCHEMA_CORE.md":
-        return FileBudget(
+        return markdown_budget(
             role_name="docs-schema-reference",
             max_physical_lines=1450,
             max_logical_lines=1320,
             max_import_like_lines=180,
-            max_functions=0,
-            max_nested_types=0,
             max_duplicate_window_lines=36,
             split_hint="split the schema reference by one schema responsibility family before adding another independent contract cluster.",
+        )
+    if path_text.startswith("docs/sqlite/SCHEMA_CORE_"):
+        return markdown_budget(
+            role_name="docs-schema-reference-companion",
+            max_physical_lines=300,
+            max_logical_lines=260,
+            max_import_like_lines=36,
+            max_duplicate_window_lines=64,
+            split_hint="split the schema companion by one schema responsibility family or move repeated doctrine back into a smaller canonical SQL owner before regenerating.",
         )
     if path_text == "docs/RELEASE_PROTOCOL.md":
         return FileBudget(
@@ -50,7 +77,7 @@ def markdown_budget_for(relative_path: Path) -> FileBudget:
             max_functions=0,
             max_nested_types=0,
             max_duplicate_window_lines=34,
-            split_hint="split release prose by one publication phase or operator path instead of one broad protocol narrative.",
+            split_hint="split release prose by one publication track or operator path instead of one broad protocol narrative.",
         )
     if path_text.startswith("docs/USER_"):
         return FileBudget(

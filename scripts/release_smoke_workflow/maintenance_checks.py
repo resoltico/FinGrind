@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from .cli import run_cli
 from .models import ReleaseSmokeConfig
-from .support import parse_json_output, payload_field, require, require_match
+from .support import parse_json_output, require, require_match
 
 
 def verify_backup_restore_and_rollback_surfaces(
@@ -101,6 +101,6 @@ def verify_backup_restore_and_rollback_surfaces(
         f"{config.label} inspect-rekey-rollback did not report ok status",
     )
     require(
-        payload_field(rollback_payload, "payload", "rollbackArtifacts") == [],
+        "artifacts" not in rollback_payload,
         f"{config.label} inspect-rekey-rollback reported unexpected rollback artifacts for a healthy book",
     )

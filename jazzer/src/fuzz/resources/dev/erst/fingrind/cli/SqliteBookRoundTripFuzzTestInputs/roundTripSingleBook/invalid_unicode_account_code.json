@@ -1,9 +1,8 @@
 {
-  "entryKind": "JOURNAL",
-  "recipeKind": "CASH_REVENUE",
+  "entryKind": "SALE",
   "effectiveDate": "2026-04-07",
   "cashAccountCode": "1000-kase",
-  "revenueAccountCode": "2000-ie\u0146\u0113mumi",
+  "revenueAccountCode": "2000-ieņēmumi",
   "amount": {
     "currencyCode": "EUR",
     "minorUnits": "1000"
@@ -13,19 +12,18 @@
       {
         "sourceDocumentId": "document-idem-unicode-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-07",
-        "capturedAt": "2026-04-07T10:15:30Z",
-        "storageLocator": "vault://fixtures/document-idem-unicode-1",
-        "contentSha256": "ec92b69f1e1a3179de840e5a0fb55afea8af5d4cb1d5b3720119dbb0a3261700"
+        "documentDate": "2026-04-07"
       }
     ],
-    "approvals": []
+    "approvals": [
+
+    ]
   },
   "provenance": {
-    "actorId": "aktieris-\u0101",
+    "actorId": "aktieris-ā",
     "actorType": "AGENT",
-    "commandId": "komanda-\u6f22\u5b57",
+    "commandId": "komanda-漢字",
     "idempotencyKey": "idem-unicode-1",
-    "causationId": "cause-\u20ac-1"
+    "causationId": "cause-€-1"
   }
 }

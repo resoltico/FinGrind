@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
@@ -92,7 +92,7 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     LedgerJournalEntry.Succeeded commitStep =
         new LedgerJournalEntry.Succeeded(
             stepId("@plan-boundary:commit"),
-            LedgerJournalStep.boundary(LedgerBoundaryPhase.COMMIT),
+            LedgerJournalStep.boundary(LedgerBoundaryCheckpoint.COMMIT),
             openFinishedAt,
             commitFinishedAt,
             List.of());

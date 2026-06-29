@@ -1,8 +1,9 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
+import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
@@ -47,19 +48,6 @@ final class CliAccountStatementLabels {
     };
   }
 
-  static String displayLineRole(Optional<AccountRole> lineRole) {
-    return lineRole
-        .map(CliAccountStatementLabels::displayAccountRoleLabel)
-        .orElse(CliHumanDisplay.calculatedLineLabel());
-  }
-
-  static String displayAccountRoleLabel(AccountRole accountRole) {
-    return switch (accountRole) {
-      case ORDINARY -> "Ordinary";
-      case POLARITY_INVERTED -> "Contra";
-    };
-  }
-
   static String displayAccountNodeKindLabel(AccountNodeKind nodeKind) {
     return switch (nodeKind) {
       case HEADER -> "Header";
@@ -77,6 +65,7 @@ final class CliAccountStatementLabels {
       case EQUITY_CONTRIBUTION -> "Contributed capital";
       case EQUITY_WITHDRAWAL -> "Distributions";
       case RESULT_HOLDING -> "Accumulated result";
+      case RETAINED_ACCUMULATED -> "Retained accumulated";
       case RESERVE -> "Reserve";
       case OTHER_EQUITY -> "Other equity";
     };
@@ -100,6 +89,22 @@ final class CliAccountStatementLabels {
       case DEPRECIATION_AND_AMORTIZATION -> "Depreciation and amortization";
       case FINANCE_EXPENSE -> "Finance expense";
       case OTHER_EXPENSE -> "Other expense";
+    };
+  }
+
+  static String displayCashFlowAssetClassification(
+      CashFlowAssetClassification cashFlowAssetClassification) {
+    return switch (cashFlowAssetClassification) {
+      case CASH_AND_CASH_EQUIVALENT -> "Cash and cash equivalents";
+      case NON_CASH -> "Non-cash asset";
+    };
+  }
+
+  static String displayCashFlowSectionLabel(CashFlowSectionKind sectionKind) {
+    return switch (sectionKind) {
+      case OPERATING -> "Operating";
+      case INVESTING -> "Investing";
+      case FINANCING -> "Financing";
     };
   }
 

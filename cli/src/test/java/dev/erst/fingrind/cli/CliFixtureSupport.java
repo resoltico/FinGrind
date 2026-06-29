@@ -3,8 +3,13 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowSection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
+import dev.erst.fingrind.contract.bookkeeping.ClosedFiscalYear;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
@@ -12,12 +17,13 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionSection;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
-import dev.erst.fingrind.contract.bookkeeping.TransferredPeriodResult;
+import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
@@ -31,7 +37,6 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
@@ -41,10 +46,10 @@ import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.ContentSha256;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -66,7 +71,6 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.core.StorageLocator;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -109,7 +113,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         PostingLineage.reversal(
             new ReversalReference(new PostingId("posting-0")), new ReversalReason("Correction")),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
@@ -135,7 +139,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     new AccountCode("1000"), JournalLine.EntrySide.CREDIT, money("EUR", "5.00")))),
         PostingLineage.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence("idem-2"),
         new CommittedProvenance(
             new RequestProvenance(
@@ -147,6 +151,36 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 Optional.empty()),
             Instant.parse("2026-04-07T10:20:30Z"),
             SourceChannel.CLI));
+  }
+
+  protected static PostingFact salePostingFact() {
+    BookkeepingEntry.Sale sale =
+        new BookkeepingEntry.Sale(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("cash"),
+            new AccountCode("service-revenue"),
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            null);
+    return new PostingFact(
+        new PostingId("posting-sale-1"),
+        sale.journalEntry(),
+        sale.postingLineage(),
+        sale.postingKind(),
+        sale.postingOriginKind(),
+        accountingEvidence("idem-sale-1"),
+        new CommittedProvenance(
+            new RequestProvenance(
+                new ActorId("actor-sale-1"),
+                ActorType.PERSON,
+                new CommandId("command-sale-1"),
+                new IdempotencyKey("idem-sale-1"),
+                new CausationId("cause-sale-1"),
+                Optional.empty()),
+            Instant.parse("2026-04-07T10:25:30Z"),
+            SourceChannel.CLI),
+        sale);
   }
 
   protected static AccountingEvidence accountingEvidence(String token) {
@@ -165,10 +199,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
     return new SourceDocumentReference(
         new SourceDocumentId(sourceDocumentId),
         new SourceDocumentType(sourceDocumentType),
-        LocalDate.parse("2026-04-07"),
-        Instant.parse("2026-04-07T10:15:30Z"),
-        new StorageLocator("vault://fixtures/" + sourceDocumentId),
-        new ContentSha256("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
+        LocalDate.parse("2026-04-07"));
   }
 
   private static ApprovalReference approval(String approvalId, String approvalType) {
@@ -334,7 +365,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         "1000",
                         "Cash",
                         AccountType.ASSET,
-                        AccountRole.ORDINARY,
                         FinancialPositionLineClassification.CURRENT_ASSET,
                         CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
                 List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")))),
@@ -345,7 +375,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         "3200",
                         "Retained Earnings",
                         AccountType.EQUITY,
-                        AccountRole.ORDINARY,
                         FinancialPositionLineClassification.RESULT_HOLDING,
                         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))),
                 List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00")))));
@@ -372,7 +401,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                         "2000",
                         "Revenue",
                         AccountType.REVENUE,
-                        AccountRole.ORDINARY,
                         ProfitAndLossLineClassification.OPERATING_REVENUE,
                         revenueMovement)),
                 List.of(revenueMovement)));
@@ -388,6 +416,80 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         List.of(revenueMovement));
   }
 
+  protected static CashFlowStatementReport sampleCashFlowStatementReport() {
+    CurrencyBalance openingCash =
+        CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"));
+    CurrencyBalance operatingMovement =
+        CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"));
+    CurrencyBalance financingMovement =
+        CurrencyBalance.ofTotals(money("EUR", "5.00"), money("EUR", "0.00"));
+    CurrencyBalance totalMovement =
+        CurrencyBalance.ofTotals(money("EUR", "15.00"), money("EUR", "0.00"));
+    CurrencyBalance closingCash =
+        CurrencyBalance.ofTotals(money("EUR", "25.00"), money("EUR", "0.00"));
+    List<CashFlowSection> sections =
+        List.of(
+            new CashFlowSection(
+                CashFlowSectionKind.OPERATING,
+                List.of(
+                    new CashFlowRow(
+                        "2000",
+                        "Revenue",
+                        AccountType.REVENUE,
+                        Optional.empty(),
+                        Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                        StatementLineKind.DECLARED_ACCOUNT,
+                        operatingMovement)),
+                List.of(operatingMovement)),
+            new CashFlowSection(CashFlowSectionKind.INVESTING, List.of(), List.of()),
+            new CashFlowSection(
+                CashFlowSectionKind.FINANCING,
+                List.of(
+                    new CashFlowRow(
+                        "3000",
+                        "Owner Capital",
+                        AccountType.EQUITY,
+                        Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+                        Optional.empty(),
+                        StatementLineKind.DECLARED_ACCOUNT,
+                        financingMovement)),
+                List.of(financingMovement)));
+    CurrencyBalance comparativeOpeningCash =
+        CurrencyBalance.ofTotals(money("EUR", "8.00"), money("EUR", "0.00"));
+    CurrencyBalance comparativeMovement =
+        CurrencyBalance.ofTotals(money("EUR", "12.00"), money("EUR", "0.00"));
+    CurrencyBalance comparativeClosingCash =
+        CurrencyBalance.ofTotals(money("EUR", "20.00"), money("EUR", "0.00"));
+    return new CashFlowStatementReport(
+        bookIdentity(),
+        LocalDate.parse("2026-04-01"),
+        LocalDate.parse("2026-04-30"),
+        EffectiveDateRange.of(LocalDate.parse("2025-04-01"), LocalDate.parse("2025-04-30")),
+        standardOnly(),
+        List.of(openingCash),
+        sections,
+        List.of(totalMovement),
+        List.of(closingCash),
+        List.of(comparativeOpeningCash),
+        List.of(
+            new CashFlowSection(
+                CashFlowSectionKind.OPERATING,
+                List.of(
+                    new CashFlowRow(
+                        "2000",
+                        "Prior Revenue",
+                        AccountType.REVENUE,
+                        Optional.empty(),
+                        Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                        StatementLineKind.DECLARED_ACCOUNT,
+                        comparativeMovement)),
+                List.of(comparativeMovement)),
+            new CashFlowSection(CashFlowSectionKind.INVESTING, List.of(), List.of()),
+            new CashFlowSection(CashFlowSectionKind.FINANCING, List.of(), List.of())),
+        List.of(comparativeMovement),
+        List.of(comparativeClosingCash));
+  }
+
   protected static ChangesInEquityReport sampleChangesInEquityReport() {
     CurrencyBalance openingBalance =
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"));
@@ -400,7 +502,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
             changesInEquityRow(
                 "3200",
                 "Retained Earnings",
-                AccountRole.ORDINARY,
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 openingBalance,
                 movementBalance,
@@ -421,8 +522,8 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         List.of(closingBalance));
   }
 
-  protected static TransferredPeriodResult sampleTransferredPeriodResult() {
-    return new TransferredPeriodResult(
+  protected static SweptInterimResult sampleSweptInterimResult() {
+    return new SweptInterimResult(
         1,
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         new AccountCode("3200"),
@@ -431,18 +532,27 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         List.of(new PostingId("posting-close-1")));
   }
 
+  protected static ClosedFiscalYear sampleClosedFiscalYear() {
+    return new ClosedFiscalYear(
+        1,
+        new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")),
+        new AccountCode("3000"),
+        new AccountCode("3200"),
+        new AccountCode("3300"),
+        Instant.parse("2026-12-31T12:00:00Z"),
+        List.of(new PostingId("posting-close-1"), new PostingId("posting-close-2")));
+  }
+
   private static FinancialPositionRow financialPositionRow(
       String lineCode,
       String lineName,
       AccountType accountType,
-      AccountRole accountRole,
       FinancialPositionLineClassification lineClassification,
       CurrencyBalance balance) {
     return new FinancialPositionRow(
         lineCode,
         lineName,
         accountType,
-        Optional.of(accountRole),
         Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         balance);
@@ -452,14 +562,12 @@ class CliFixtureSupport extends CliIoFixtureSupport {
       String lineCode,
       String lineName,
       AccountType accountType,
-      AccountRole accountRole,
       ProfitAndLossLineClassification lineClassification,
       CurrencyBalance movement) {
     return new IncomeStatementRow(
         lineCode,
         lineName,
         accountType,
-        Optional.of(accountRole),
         lineClassification,
         StatementLineKind.DECLARED_ACCOUNT,
         movement);
@@ -468,7 +576,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   private static ChangesInEquityRow changesInEquityRow(
       String lineCode,
       String lineName,
-      AccountRole accountRole,
       FinancialPositionLineClassification lineClassification,
       CurrencyBalance openingBalance,
       CurrencyBalance movement,
@@ -477,7 +584,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         lineCode,
         lineName,
         Optional.of(AccountType.EQUITY),
-        Optional.of(accountRole),
         Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         openingBalance,

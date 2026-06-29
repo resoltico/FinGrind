@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.MonthDay;
 import org.junit.jupiter.api.Test;
 
 /** Covers the canonical persisted date and UTC-instant text contract. */
@@ -40,6 +41,40 @@ class CanonicalTemporalTextTest {
         nonCanonicalDate.getMessage());
     assertFalse(CanonicalTemporalText.isCanonicalLocalDate("2026-02-30"));
     assertFalse(CanonicalTemporalText.isCanonicalLocalDate("2026-5-2"));
+  }
+
+  @Test
+  void parseMonthDay_acceptsCanonicalMonthDayAndLeapDay() {
+    MonthDay ordinaryMonthDay = CanonicalTemporalText.parseMonthDay("05-25", "fiscalYearStart");
+    MonthDay leapDay = CanonicalTemporalText.parseMonthDay("02-29", "fiscalYearStart");
+
+    assertEquals(MonthDay.of(5, 25), ordinaryMonthDay);
+    assertEquals(MonthDay.of(2, 29), leapDay);
+    assertEquals("05-25", CanonicalTemporalText.formatMonthDay(ordinaryMonthDay));
+    assertEquals("02-29", CanonicalTemporalText.formatMonthDay(leapDay));
+    assertTrue(CanonicalTemporalText.isCanonicalMonthDay("05-25"));
+    assertTrue(CanonicalTemporalText.isCanonicalMonthDay("02-29"));
+  }
+
+  @Test
+  void parseMonthDay_rejectsNonCanonicalOrImpossibleMonthDays() {
+    IllegalArgumentException impossibleMonthDay =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CanonicalTemporalText.parseMonthDay("02-30", "fiscalYearStart"));
+    IllegalArgumentException nonCanonicalMonthDay =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CanonicalTemporalText.parseMonthDay("2-5", "fiscalYearStart"));
+
+    assertEquals(
+        "Expected one canonical MM-DD month-day for fiscalYearStart.",
+        impossibleMonthDay.getMessage());
+    assertEquals(
+        "Expected one canonical MM-DD month-day for fiscalYearStart.",
+        nonCanonicalMonthDay.getMessage());
+    assertFalse(CanonicalTemporalText.isCanonicalMonthDay("02-30"));
+    assertFalse(CanonicalTemporalText.isCanonicalMonthDay("2-5"));
   }
 
   @Test
@@ -123,6 +158,9 @@ class CanonicalTemporalTextTest {
         assertThrows(
             NullPointerException.class,
             () -> CanonicalTemporalText.parseLocalDate(nullOf(), "effectiveDate"));
+    NullPointerException nullMonthDay =
+        assertThrows(
+            NullPointerException.class, () -> CanonicalTemporalText.formatMonthDay(nullOf()));
     IllegalArgumentException blankFieldDescription =
         assertThrows(
             IllegalArgumentException.class,
@@ -131,6 +169,7 @@ class CanonicalTemporalTextTest {
     assertEquals("localDate", nullLocalDate.getMessage());
     assertEquals("instant", nullInstant.getMessage());
     assertEquals("effectiveDate text", nullText.getMessage());
+    assertEquals("monthDay", nullMonthDay.getMessage());
     assertEquals("fieldDescription must not be blank.", blankFieldDescription.getMessage());
   }
 }

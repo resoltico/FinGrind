@@ -6,9 +6,9 @@
   "reviewedRoleName": "sqlite-schema-catalog",
   "budgetVarianceReason": "The canonical schema catalog exceeds the default SQLite SQL budget until schema families are generated or split into narrower fragments.",
   "approval": {
-    "physicalLines": 1146,
-    "logicalLines": 1100,
-    "importLikeLines": 45,
+    "physicalLines": 1811,
+    "logicalLines": 1739,
+    "importLikeLines": 71,
     "functions": 0,
     "nestedTypes": 0,
     "expiresOn": "2026-08-01"

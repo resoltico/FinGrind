@@ -1,10 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -76,8 +71,7 @@ public final class CliFuzzHarnessTestSupport {
   public static String cashRevenueRequestJson(CashRevenueRequestInput request) {
     return """
         {
-          "entryKind": "JOURNAL",
-          "recipeKind": "CASH_REVENUE",
+          "entryKind": "SALE",
           "effectiveDate": "%s",
           "cashAccountCode": "%s",
           "revenueAccountCode": "%s",
@@ -108,7 +102,7 @@ public final class CliFuzzHarnessTestSupport {
       OpenAccountingPositionRequestInput request) {
     return """
         {
-          "entryKind": "OPEN_ACCOUNTING_POSITION",
+          "entryKind": "OPENING_POSITION",
           "effectiveDate": "%s",
           "openingBalances": %s,
           "evidence": %s,
@@ -141,7 +135,7 @@ public final class CliFuzzHarnessTestSupport {
                     : ",\n    \"reason\": \"" + request.reversalReason() + "\"");
     return """
         {
-          "entryKind": "REVERSAL_ADJUSTMENT",
+          "entryKind": "REVERSAL",
           "effectiveDate": "%s",
           "lines": %s,
           "reversal": %s,
@@ -170,22 +164,13 @@ public final class CliFuzzHarnessTestSupport {
             {
               "sourceDocumentId": "%s",
               "sourceDocumentType": "%s",
-              "documentDate": "%s",
-              "capturedAt": "%sT10:15:30Z",
-              "storageLocator": "vault://fixtures/%s",
-              "contentSha256": "%s"
+              "documentDate": "%s"
             }
           ],
           "approvals": []
         }
         """
-        .formatted(
-            sourceDocumentId,
-            sourceDocumentType,
-            documentDate,
-            documentDate,
-            sourceDocumentId,
-            sha256Hex(sourceDocumentId));
+        .formatted(sourceDocumentId, sourceDocumentType, documentDate);
   }
 
   public static String provenanceJson(RequestContext context) {
@@ -209,14 +194,5 @@ public final class CliFuzzHarnessTestSupport {
             context.idempotencyKey(),
             context.causationId(),
             correlationField);
-  }
-
-  private static String sha256Hex(String input) {
-    try {
-      byte[] digest = MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8));
-      return HexFormat.of().formatHex(digest);
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException("JVM is missing SHA-256 support.", exception);
-    }
   }
 }

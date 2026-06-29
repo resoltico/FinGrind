@@ -8,7 +8,7 @@ import java.util.Optional;
 /** Looks up committed posting facts by their stable identities. */
 public interface PostingLookupStore {
   /** Looks up one existing posting fact by book-local idempotency identity. */
-  Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey);
+  Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey);
 
   /** Looks up one existing posting fact by durable posting identity. */
   Optional<CommittedPosting> findPosting(PostingId postingId);

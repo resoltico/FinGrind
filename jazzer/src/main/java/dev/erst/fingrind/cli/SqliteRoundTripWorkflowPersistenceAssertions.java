@@ -6,7 +6,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
-import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.jazzer.support.PostingLifecycleStatusMapper;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
@@ -75,15 +74,11 @@ public final class SqliteRoundTripWorkflowPersistenceAssertions {
     }
   }
 
-  /** Requires duplicate-commit handling to reject with the duplicate-idempotency-key code. */
-  public static PostingLifecycleStatus requireDuplicateRejection(
-      CommitEntryResult duplicateResult) {
-    CommitRejected rejected =
-        SqliteRoundTripWorkflowDecisionAssertions.requiredCommitRejected(duplicateResult);
-    if (!(rejected.rejection() instanceof PostingRejection.DuplicateIdempotencyKey)) {
-      throw new IllegalStateException("Duplicate SQLite commit returned the wrong rejection code.");
-    }
-    return PostingLifecycleStatusMapper.forRejection(rejected.rejection());
+  /** Requires duplicate-commit handling to replay the original success deterministically. */
+  public static PostingLifecycleStatus requireIdempotentReplay(
+      CommitEntryResult duplicateResult, Committed committed) {
+    SqliteRoundTripWorkflowDecisionAssertions.requireCommittedReplay(duplicateResult, committed);
+    return PostingLifecycleStatus.IDEMPOTENT_REPLAY;
   }
 
   /** Verifies that repeating a rejected commit preserves the same rejection outcome. */

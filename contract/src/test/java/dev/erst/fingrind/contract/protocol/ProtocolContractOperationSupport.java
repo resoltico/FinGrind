@@ -10,7 +10,7 @@ import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -105,13 +105,16 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     Set<String> ids =
         new HashSet<>(
             Set.of(
-                "account-role-conflict",
+                "close-target-account-candidate-missing",
                 "account-state-violations",
                 "administration-book-not-initialized",
                 "assertion-failed",
                 "book-already-initialized",
+                "book-key-file",
                 "book-contains-schema",
                 "build-logic",
+                "backup-book-file",
+                "backup-book-key-file",
                 "class-complete",
                 "class-start",
                 "cli-request",
@@ -120,7 +123,7 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "docker-run",
                 "docker-buildx",
                 "docker-smoke",
-                "duplicate-idempotency-key",
+                "idempotency-key-conflict",
                 "expected-invalid",
                 "export-ignore",
                 "fuzz-all",
@@ -149,6 +152,7 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "reversal-already-exists",
                 "reversal-does-not-negate-target",
                 "reversal-target-not-found",
+                "rollback-book-file",
                 "runtime-failure",
                 "cash-reserve",
                 "misc-revenue",
@@ -184,7 +188,7 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(collectRejectionCodes(BookMaintenanceRejection.descriptors()));
     ids.addAll(collectRejectionCodes(PostingRejection.descriptors()));
     ids.addAll(LedgerAssertionKind.wireValues());
-    ids.addAll(LedgerBoundaryPhase.wireValues());
+    ids.addAll(LedgerBoundaryCheckpoint.wireValues());
     ids.addAll(LedgerJournalKind.wireValues());
     ids.addAll(RequestFieldPresence.wireValues());
     ids.addAll(RuntimeDistribution.wireValues());
@@ -200,7 +204,6 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(SqliteCompileOptionsVerificationStatus.wireValues());
     ids.addAll(WorkflowSurface.wireValues());
     ids.addAll(ProtocolEnvelopeStatus.wireValues());
-    ids.addAll(ProtocolDiagnosticCode.wireValues());
     ids.addAll(OperationCategory.wireValues());
     ids.addAll(PublicCliBundleTarget.wireValues());
     ids.addAll(PlanTransactionMode.wireValues());

@@ -14,12 +14,8 @@ public record FiscalYearStart(int month, int day) {
 
   /** Parses one canonical {@code MM-DD} fiscal-year anchor. */
   public static FiscalYearStart parse(String wireValue) {
-    Objects.requireNonNull(wireValue, "wireValue");
-    if (!wireValue.matches("^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")) {
-      throw new IllegalArgumentException("Fiscal year start must use MM-DD.");
-    }
-    return new FiscalYearStart(
-        Integer.parseInt(wireValue.substring(0, 2)), Integer.parseInt(wireValue.substring(3, 5)));
+    var parsed = CanonicalTemporalText.parseMonthDay(wireValue, "fiscalYearStart");
+    return new FiscalYearStart(parsed.getMonthValue(), parsed.getDayOfMonth());
   }
 
   /** Returns the validated month-day anchor as one JDK value object. */
@@ -44,6 +40,13 @@ public record FiscalYearStart(int month, int day) {
         .equals(containingFiscalYearStart(effectiveDateTo));
   }
 
+  /** Returns the fiscal-year end date for the fiscal year that contains the supplied date. */
+  public LocalDate containingFiscalYearEnd(LocalDate date) {
+    Objects.requireNonNull(date, "date");
+    LocalDate fiscalYearStartDate = containingFiscalYearStart(date);
+    return resolvedStartDate(fiscalYearStartDate.getYear() + 1).minusDays(1);
+  }
+
   private LocalDate resolvedStartDate(int year) {
     int maxDay = YearMonth.of(year, month).lengthOfMonth();
     return LocalDate.of(year, month, Math.min(day, maxDay));
@@ -51,7 +54,7 @@ public record FiscalYearStart(int month, int day) {
 
   /** Returns the canonical {@code MM-DD} wire shape for this fiscal-year anchor. */
   public String wireValue() {
-    return "%02d-%02d".formatted(month, day);
+    return CanonicalTemporalText.formatMonthDay(monthDay());
   }
 
   @Override

@@ -1,5 +1,8 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowSection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
@@ -51,6 +54,29 @@ public final class BookkeepingReadStatementPublishedLanguageTranslator {
         view.comparativeNetIncomeTotals());
   }
 
+  /** Projects one local cash-flow statement back into the public contract. */
+  public static CashFlowStatementReport toPublished(CashFlowStatementView view) {
+    Objects.requireNonNull(view, "view");
+    return new CashFlowStatementReport(
+        view.bookIdentity(),
+        view.effectiveDateFrom(),
+        view.effectiveDateTo(),
+        view.comparativeEffectiveDateRange(),
+        view.postingCoverage(),
+        view.openingCashTotals(),
+        view.sections().stream()
+            .map(BookkeepingReadStatementPublishedLanguageTranslator::toPublished)
+            .toList(),
+        view.movementTotals(),
+        view.closingCashTotals(),
+        view.comparativeOpeningCashTotals(),
+        view.comparativeSections().stream()
+            .map(BookkeepingReadStatementPublishedLanguageTranslator::toPublished)
+            .toList(),
+        view.comparativeMovementTotals(),
+        view.comparativeClosingCashTotals());
+  }
+
   /** Projects one local statement of changes in equity back into the public contract. */
   public static ChangesInEquityReport toPublished(ChangesInEquityView view) {
     Objects.requireNonNull(view, "view");
@@ -90,7 +116,6 @@ public final class BookkeepingReadStatementPublishedLanguageTranslator {
         row.lineCode(),
         row.lineName(),
         row.lineType(),
-        row.lineRole(),
         row.lineClassification(),
         row.lineKind(),
         row.balance());
@@ -112,8 +137,29 @@ public final class BookkeepingReadStatementPublishedLanguageTranslator {
         row.lineCode(),
         row.lineName(),
         row.lineType(),
-        row.lineRole(),
         row.lineClassification(),
+        row.lineKind(),
+        row.movement());
+  }
+
+  private static CashFlowSection toPublished(CashFlowSectionView section) {
+    Objects.requireNonNull(section, "section");
+    return new CashFlowSection(
+        section.sectionKind(),
+        section.rows().stream()
+            .map(BookkeepingReadStatementPublishedLanguageTranslator::toPublished)
+            .toList(),
+        section.totals());
+  }
+
+  private static CashFlowRow toPublished(CashFlowRowView row) {
+    Objects.requireNonNull(row, "row");
+    return new CashFlowRow(
+        row.lineCode(),
+        row.lineName(),
+        row.lineType(),
+        row.financialPositionLineClassification(),
+        row.profitAndLossLineClassification(),
         row.lineKind(),
         row.movement());
   }
@@ -124,7 +170,6 @@ public final class BookkeepingReadStatementPublishedLanguageTranslator {
         row.lineCode(),
         row.lineName(),
         row.lineType(),
-        row.lineRole(),
         row.lineClassification(),
         row.lineKind(),
         row.openingBalance(),

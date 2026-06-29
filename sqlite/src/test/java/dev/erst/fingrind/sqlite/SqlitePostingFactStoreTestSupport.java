@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
-import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
@@ -56,13 +55,6 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
   static PostingCommitResult commitPosting(
       SqlitePostingFactStore postingFactStore, CommittedPosting postingFact) {
     return postingFactStore.commit(
-        new PostingDraft(
-            postingFact.journalEntry(),
-            postingFact.postingLineage(),
-            postingFact.postingKind(),
-            postingFact.postingOriginKind(),
-            postingFact.evidence(),
-            postingFact.provenance()),
-        postingFact::postingId);
+        SqlitePostingFactFixtureSupport.postingDraft(postingFact), postingFact::postingId);
   }
 }

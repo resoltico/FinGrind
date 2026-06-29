@@ -20,7 +20,6 @@ import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.JournalLine;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
@@ -33,15 +32,15 @@ class MachineContractPlanTemplateTest {
         onlyStepOfKind(template, LedgerStepKind.ENSURE_BOOK);
     ContractPlanTemplates.EnsureBookTemplateDescriptor initializeBookTemplate =
         initializeBook.ensureBook();
-    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor postJournal =
+    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor recordSale =
         template.canonicalPostingScaffoldStep();
-    ContractTemplates.PostingRequestTemplateDescriptor postJournalTemplate = postJournal.posting();
+    ContractTemplates.PostingRequestTemplateDescriptor recordSaleTemplate = recordSale.posting();
     ContractPlanTemplates.LedgerPlanStepTemplateDescriptor assertCashBalance =
         onlyStepOfKind(template, LedgerStepKind.ASSERT);
     ContractPlanTemplates.LedgerAssertionTemplateDescriptor assertCashBalanceTemplate =
         assertCashBalance.assertion();
     assertNotNull(initializeBookTemplate);
-    assertNotNull(postJournalTemplate);
+    assertNotNull(recordSaleTemplate);
     assertNotNull(assertCashBalanceTemplate);
     assertEquals("plan-1", template.planId());
     assertEquals(3, template.steps().size());
@@ -50,23 +49,18 @@ class MachineContractPlanTemplateTest {
     assertEquals("Acme Studio", initializeBookTemplate.entityName());
     assertEquals("EUR", initializeBookTemplate.functionalCurrency());
     assertEquals("01-01", initializeBookTemplate.fiscalYearStart());
-    assertEquals("post-journal", postJournal.stepId());
-    assertEquals(LedgerStepKind.POST_ENTRY, postJournal.kind());
-    assertEquals("2026-01-15", postJournalTemplate.effectiveDate());
-    assertEquals(
-        dev.erst.fingrind.core.BookkeepingEntryKind.JOURNAL, postJournalTemplate.entryKind());
-    assertNull(postJournalTemplate.recipeKind());
-    assertNull(postJournalTemplate.cashAccountCode());
-    assertNull(postJournalTemplate.revenueAccountCode());
-    assertEquals(2, Objects.requireNonNull(postJournalTemplate.lines()).size());
-    assertEquals("cash", postJournalTemplate.lines().getFirst().accountCode());
-    assertEquals(JournalLine.EntrySide.DEBIT, postJournalTemplate.lines().getFirst().side());
-    assertEquals(
-        new MonetaryAmount("EUR", "1000"), postJournalTemplate.lines().getFirst().amount());
-    assertEquals("service-revenue", postJournalTemplate.lines().get(1).accountCode());
-    assertEquals(JournalLine.EntrySide.CREDIT, postJournalTemplate.lines().get(1).side());
-    assertEquals(ScaffoldPlaceholders.ACTOR_ID, postJournalTemplate.provenance().actorId());
-    assertEquals(ActorType.PERSON, postJournalTemplate.provenance().actorType());
+    assertEquals("record-sale", recordSale.stepId());
+    assertEquals(LedgerStepKind.RECORD_SALE, recordSale.kind());
+    assertEquals("2026-01-15", recordSaleTemplate.effectiveDate());
+    assertEquals(dev.erst.fingrind.core.BookkeepingEntryKind.SALE, recordSaleTemplate.entryKind());
+    assertEquals("cash", recordSaleTemplate.cashAccountCode());
+    assertEquals("service-revenue", recordSaleTemplate.revenueAccountCode());
+    assertNull(recordSaleTemplate.expenseAccountCode());
+    assertNull(recordSaleTemplate.equityAccountCode());
+    assertNull(recordSaleTemplate.lines());
+    assertEquals(new MonetaryAmount("EUR", "1000"), recordSaleTemplate.amount());
+    assertEquals(ScaffoldPlaceholders.ACTOR_ID, recordSaleTemplate.provenance().actorId());
+    assertEquals(ActorType.PERSON, recordSaleTemplate.provenance().actorType());
     assertEquals("assert-cash-balance", assertCashBalance.stepId());
     assertEquals(LedgerStepKind.ASSERT, assertCashBalance.kind());
     assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, assertCashBalanceTemplate.kind());
@@ -93,7 +87,7 @@ class MachineContractPlanTemplateTest {
     ContractPlanTemplates.LedgerPlanStepTemplateDescriptor postingStep =
         template.canonicalPostingScaffoldStep();
 
-    assertEquals("post-journal", postingStep.stepId());
+    assertEquals("record-sale", postingStep.stepId());
     assertSame(postingStep.posting(), template.canonicalPostingTemplate());
   }
 
@@ -104,15 +98,14 @@ class MachineContractPlanTemplateTest {
     ContractPlanTemplates.LedgerPlanTemplateDescriptor withoutPostingStep =
         new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
             baseTemplate.planId(),
-            baseTemplate.steps().stream()
-                .filter(step -> step.kind() != LedgerStepKind.POST_ENTRY)
-                .toList());
+            baseTemplate.steps().stream().filter(step -> !step.kind().commitsPosting()).toList());
 
     IllegalStateException failure =
         assertThrows(IllegalStateException.class, withoutPostingStep::canonicalPostingScaffoldStep);
 
     assertTrue(
-        Objects.requireNonNull(failure.getMessage()).contains("canonical POST_ENTRY scaffold"),
+        Objects.requireNonNull(failure.getMessage())
+            .contains("canonical committed-posting scaffold"),
         failure::getMessage);
   }
 
@@ -134,7 +127,8 @@ class MachineContractPlanTemplateTest {
             IllegalStateException.class, duplicatePostingSteps::canonicalPostingScaffoldStep);
 
     assertTrue(
-        Objects.requireNonNull(failure.getMessage()).contains("canonical POST_ENTRY scaffold"),
+        Objects.requireNonNull(failure.getMessage())
+            .contains("canonical committed-posting scaffold"),
         failure::getMessage);
   }
 

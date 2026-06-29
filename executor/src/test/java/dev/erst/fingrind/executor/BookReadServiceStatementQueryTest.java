@@ -9,13 +9,17 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTa
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowSection;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
@@ -30,16 +34,16 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
-import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
+import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalEntry;
@@ -53,21 +57,16 @@ import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.StatementLineKind;
-import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PeriodResultTransferOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
 
 /** End-to-end report-query coverage for the accounting statement surface. */
@@ -79,20 +78,13 @@ class BookReadServiceStatementQueryTest {
       new ReportingPeriod(OPENING_DATE, PERIOD_DATE);
 
   private static final AccountCode CASH_ACCOUNT_CODE = new AccountCode("1000");
-  private static final AccountCode CONTRA_ASSET_ACCOUNT_CODE = new AccountCode("1090");
+  private static final AccountCode PETTY_CASH_ACCOUNT_CODE = new AccountCode("1010");
+  private static final AccountCode EQUIPMENT_ACCOUNT_CODE = new AccountCode("1500");
+  private static final AccountCode LOAN_ACCOUNT_CODE = new AccountCode("2100");
   private static final AccountCode CAPITAL_ACCOUNT_CODE = new AccountCode("3000");
   private static final AccountCode RESULT_HOLDING_ACCOUNT_CODE = new AccountCode("3200");
   private static final AccountCode REVENUE_ACCOUNT_CODE = new AccountCode("4000");
   private static final AccountCode EXPENSE_ACCOUNT_CODE = new AccountCode("5000");
-
-  /** One deterministic grouping key for test-only per-account per-currency totals. */
-  private record AccountTotalsKey(RegisteredAccount account, CurrencyUnit currencyUnit) {}
-
-  /** Mutable debit and credit totals for one grouped test account/currency bucket. */
-  private static final class AccountTotalsAccumulator {
-    private long debitMinor;
-    private long creditMinor;
-  }
 
   @Test
   void statementQueries_rejectUninitializedBook() {
@@ -101,13 +93,185 @@ class BookReadServiceStatementQueryTest {
 
       assertEquals(
           new FinancialPositionResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.financialPosition(new FinancialPositionQuery(Optional.of(PERIOD_DATE))));
+          service.financialPosition(
+              new FinancialPositionQuery(Optional.of(PERIOD_DATE), ComparativeSelection.none())));
       assertEquals(
           new IncomeStatementResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.incomeStatement(new IncomeStatementQuery(PERIOD_DATE, PERIOD_DATE)));
+          service.incomeStatement(
+              new IncomeStatementQuery(PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())));
       assertEquals(
           new ChangesInEquityResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.changesInEquity(new ChangesInEquityQuery(PERIOD_DATE, PERIOD_DATE)));
+          service.changesInEquity(
+              new ChangesInEquityQuery(PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())));
+      assertEquals(
+          new CashFlowStatementResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+          service.cashFlowStatement(
+              new CashFlowStatementQuery(PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())));
+    }
+  }
+
+  @Test
+  void cashFlowStatement_reportsBasisMovementBySectionAndIgnoresInternalCashTransfers() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareStatementAccounts(bookSession);
+      declareAccount(bookSession, PETTY_CASH_ACCOUNT_CODE, "Petty Cash", AccountType.ASSET);
+      declareAccount(
+          bookSession,
+          EQUIPMENT_ACCOUNT_CODE,
+          "Equipment",
+          AccountType.ASSET,
+          new AccountTaxonomy(
+              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+              Optional.empty(),
+              Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
+              Optional.empty(),
+              Optional.of(CashFlowAssetClassification.NON_CASH)));
+      declareAccount(
+          bookSession,
+          LOAN_ACCOUNT_CODE,
+          "Term Loan",
+          AccountType.LIABILITY,
+          financialPositionTaxonomy(FinancialPositionLineClassification.NONCURRENT_LIABILITY));
+      commitPosting(
+          bookSession,
+          "posting-opening-capital",
+          "idem-opening-capital",
+          OPENING_DATE,
+          List.of(
+              line("1000", JournalLine.EntrySide.DEBIT, "100.00"),
+              line("3000", JournalLine.EntrySide.CREDIT, "100.00")));
+      commitPosting(
+          bookSession,
+          "posting-opening-loan",
+          "idem-opening-loan",
+          OPENING_DATE,
+          List.of(
+              line("1000", JournalLine.EntrySide.DEBIT, "60.00"),
+              line("2100", JournalLine.EntrySide.CREDIT, "60.00")));
+      commitPosting(
+          bookSession,
+          "posting-sale",
+          "idem-sale",
+          PERIOD_DATE,
+          List.of(
+              line("1000", JournalLine.EntrySide.DEBIT, "120.00"),
+              line("4000", JournalLine.EntrySide.CREDIT, "120.00")));
+      commitPosting(
+          bookSession,
+          "posting-expense",
+          "idem-expense",
+          PERIOD_DATE,
+          List.of(
+              line("5000", JournalLine.EntrySide.DEBIT, "40.00"),
+              line("1000", JournalLine.EntrySide.CREDIT, "40.00")));
+      commitPosting(
+          bookSession,
+          "posting-equipment",
+          "idem-equipment",
+          PERIOD_DATE,
+          List.of(
+              line("1500", JournalLine.EntrySide.DEBIT, "30.00"),
+              line("1000", JournalLine.EntrySide.CREDIT, "30.00")));
+      commitPosting(
+          bookSession,
+          "posting-owner-contribution",
+          "idem-owner-contribution",
+          PERIOD_DATE,
+          List.of(
+              line("1000", JournalLine.EntrySide.DEBIT, "50.00"),
+              line("3000", JournalLine.EntrySide.CREDIT, "50.00")));
+      commitPosting(
+          bookSession,
+          "posting-loan-payment",
+          "idem-loan-payment",
+          PERIOD_DATE,
+          List.of(
+              line("2100", JournalLine.EntrySide.DEBIT, "20.00"),
+              line("1000", JournalLine.EntrySide.CREDIT, "20.00")));
+      commitPosting(
+          bookSession,
+          "posting-cash-transfer",
+          "idem-cash-transfer",
+          PERIOD_DATE,
+          List.of(
+              line("1010", JournalLine.EntrySide.DEBIT, "15.00"),
+              line("1000", JournalLine.EntrySide.CREDIT, "15.00")));
+
+      CashFlowStatementReport report =
+          assertInstanceOf(
+                  CashFlowStatementResult.Reported.class,
+                  readService(bookSession)
+                      .cashFlowStatement(
+                          new CashFlowStatementQuery(
+                              PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())))
+              .report();
+
+      assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, report.postingCoverage());
+      assertEquals(
+          List.of(currencyBalance("EUR", "160.00", "0.00", "160.00", BalanceSide.DEBIT)),
+          report.openingCashTotals());
+      assertEquals(
+          List.of(currencyBalance("EUR", "170.00", "90.00", "80.00", BalanceSide.DEBIT)),
+          report.movementTotals());
+      assertEquals(
+          List.of(currencyBalance("EUR", "240.00", "0.00", "240.00", BalanceSide.DEBIT)),
+          report.closingCashTotals());
+      assertEquals(
+          List.of(
+              cashFlowSection(
+                  CashFlowSectionKind.OPERATING,
+                  List.of(
+                      cashFlowNominalRow(
+                          "4000",
+                          "Sales Revenue",
+                          AccountType.REVENUE,
+                          ProfitAndLossLineClassification.OPERATING_REVENUE,
+                          currencyBalance("EUR", "120.00", "0.00", "120.00", BalanceSide.DEBIT)),
+                      cashFlowNominalRow(
+                          "5000",
+                          "Operating Expense",
+                          AccountType.EXPENSE,
+                          ProfitAndLossLineClassification.OPERATING_EXPENSE,
+                          currencyBalance("EUR", "0.00", "40.00", "40.00", BalanceSide.CREDIT))),
+                  List.of(currencyBalance("EUR", "120.00", "40.00", "80.00", BalanceSide.DEBIT))),
+              cashFlowSection(
+                  CashFlowSectionKind.INVESTING,
+                  List.of(
+                      cashFlowBalanceSheetRow(
+                          "1500",
+                          "Equipment",
+                          AccountType.ASSET,
+                          FinancialPositionLineClassification.NONCURRENT_ASSET,
+                          currencyBalance("EUR", "0.00", "30.00", "30.00", BalanceSide.CREDIT))),
+                  List.of(currencyBalance("EUR", "0.00", "30.00", "30.00", BalanceSide.CREDIT))),
+              cashFlowSection(
+                  CashFlowSectionKind.FINANCING,
+                  List.of(
+                      cashFlowBalanceSheetRow(
+                          "2100",
+                          "Term Loan",
+                          AccountType.LIABILITY,
+                          FinancialPositionLineClassification.NONCURRENT_LIABILITY,
+                          currencyBalance("EUR", "0.00", "20.00", "20.00", BalanceSide.CREDIT)),
+                      cashFlowBalanceSheetRow(
+                          "3000",
+                          "Owner Capital",
+                          AccountType.EQUITY,
+                          FinancialPositionLineClassification.OTHER_EQUITY,
+                          currencyBalance("EUR", "50.00", "0.00", "50.00", BalanceSide.DEBIT))),
+                  List.of(currencyBalance("EUR", "50.00", "20.00", "30.00", BalanceSide.DEBIT)))),
+          report.sections());
+      assertEquals(EffectiveDateRange.unbounded(), report.comparativeEffectiveDateRange());
+      assertEquals(List.of(), report.comparativeSections());
+      assertEquals(List.of(), report.comparativeOpeningCashTotals());
+      assertEquals(List.of(), report.comparativeMovementTotals());
+      assertEquals(List.of(), report.comparativeClosingCashTotals());
+      assertEquals(
+          List.of("4000", "5000", "1500", "2100", "3000"),
+          report.sections().stream()
+              .flatMap(section -> section.rows().stream())
+              .map(CashFlowRow::lineCode)
+              .toList());
     }
   }
 
@@ -119,7 +283,9 @@ class BookReadServiceStatementQueryTest {
 
       FinancialPositionResult result =
           readService(bookSession)
-              .financialPosition(new FinancialPositionQuery(Optional.of(PERIOD_DATE)));
+              .financialPosition(
+                  new FinancialPositionQuery(
+                      Optional.of(PERIOD_DATE), ComparativeSelection.none()));
       FinancialPositionReport report =
           assertInstanceOf(FinancialPositionResult.Reported.class, result).report();
 
@@ -138,17 +304,10 @@ class BookReadServiceStatementQueryTest {
                   "1000",
                   "Cash",
                   AccountType.ASSET,
-                  AccountRole.ORDINARY,
-                  currencyBalance("220.00", "40.00", "180.00", BalanceSide.DEBIT)),
-              positionRow(
-                  "1090",
-                  "Accumulated Depreciation",
-                  AccountType.ASSET,
-                  AccountRole.POLARITY_INVERTED,
-                  currencyBalance("0.00", "5.00", "5.00", BalanceSide.CREDIT))),
+                  currencyBalance("220.00", "40.00", "180.00", BalanceSide.DEBIT))),
           assetSection.rows());
       assertEquals(
-          List.of(currencyBalance("220.00", "45.00", "175.00", BalanceSide.DEBIT)),
+          List.of(currencyBalance("220.00", "40.00", "180.00", BalanceSide.DEBIT)),
           assetSection.totals());
 
       assertEquals(AccountType.LIABILITY, liabilitySection.accountType());
@@ -162,50 +321,47 @@ class BookReadServiceStatementQueryTest {
                   "3000",
                   "Owner Capital",
                   AccountType.EQUITY,
-                  AccountRole.ORDINARY,
                   currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT)),
               syntheticPositionRow(
                   "current-period-result",
                   "Current Period Result",
                   AccountType.EQUITY,
-                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT))),
+                  currencyBalance("0.00", "80.00", "80.00", BalanceSide.CREDIT))),
           equitySection.rows());
       assertEquals(
-          List.of(currencyBalance("0.00", "175.00", "175.00", BalanceSide.CREDIT)),
+          List.of(currencyBalance("0.00", "180.00", "180.00", BalanceSide.CREDIT)),
           equitySection.totals());
     }
   }
 
   @Test
   void
-      transferPeriodResult_rollsIncomeIntoRetainedEarningsAndLeavesIncomeStatementOnStandardPostings() {
+      interimResultSweep_rollsIncomeIntoRetainedEarningsAndLeavesIncomeStatementOnStandardPostings() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareStatementAccounts(bookSession);
       seedStatementPostings(bookSession);
-      PeriodResultTransferService closeService =
-          new PeriodResultTransferService(
-              bookSession,
-              bookSession,
-              () -> new PostingId("period-result-transfer-1"),
-              FIXED_CLOCK);
+      InterimResultSweepService closeService =
+          new InterimResultSweepService(
+              bookSession, bookSession, () -> new PostingId("interim-result-sweep-1"), FIXED_CLOCK);
 
-      PeriodResultTransferOutcome outcome =
-          closeService.transferPeriodResult(TRANSFER_PERIOD_RESULT);
-      dev.erst.fingrind.executor.bookkeeping.TransferredPeriodResult transferredPeriodResult =
-          assertInstanceOf(PeriodResultTransferOutcome.Transferred.class, outcome)
-              .transferredPeriodResult();
+      InterimResultSweepOutcome outcome = closeService.interimResultSweep(TRANSFER_PERIOD_RESULT);
+      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+          assertInstanceOf(InterimResultSweepOutcome.Transferred.class, outcome)
+              .sweptInterimResult();
 
-      assertEquals(1, transferredPeriodResult.transferOrder());
-      assertEquals(TRANSFER_PERIOD_RESULT, transferredPeriodResult.reportingPeriod());
-      assertEquals(FIXED_INSTANT, transferredPeriodResult.transferredAt());
-      assertEquals(1, transferredPeriodResult.transferPostingIds().size());
+      assertEquals(1, sweptInterimResult.sweepOrder());
+      assertEquals(TRANSFER_PERIOD_RESULT, sweptInterimResult.reportingPeriod());
+      assertEquals(FIXED_INSTANT, sweptInterimResult.sweptAt());
+      assertEquals(1, sweptInterimResult.sweepPostingIds().size());
 
       BookReadService readService = readService(bookSession);
 
       IncomeStatementReport incomeStatement =
           assertInstanceOf(
                   IncomeStatementResult.Reported.class,
-                  readService.incomeStatement(new IncomeStatementQuery(PERIOD_DATE, PERIOD_DATE)))
+                  readService.incomeStatement(
+                      new IncomeStatementQuery(
+                          PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())))
               .report();
       assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, incomeStatement.postingCoverage());
       assertEquals(
@@ -217,7 +373,6 @@ class BookReadServiceStatementQueryTest {
                           "4000",
                           "Sales Revenue",
                           AccountType.REVENUE,
-                          AccountRole.ORDINARY,
                           currencyBalance("0.00", "120.00", "120.00", BalanceSide.CREDIT))),
                   List.of(currencyBalance("0.00", "120.00", "120.00", BalanceSide.CREDIT))),
               new IncomeStatementSection(
@@ -227,19 +382,19 @@ class BookReadServiceStatementQueryTest {
                           "5000",
                           "Operating Expense",
                           AccountType.EXPENSE,
-                          AccountRole.ORDINARY,
-                          currencyBalance("45.00", "0.00", "45.00", BalanceSide.DEBIT))),
-                  List.of(currencyBalance("45.00", "0.00", "45.00", BalanceSide.DEBIT)))),
+                          currencyBalance("40.00", "0.00", "40.00", BalanceSide.DEBIT))),
+                  List.of(currencyBalance("40.00", "0.00", "40.00", BalanceSide.DEBIT)))),
           incomeStatement.sections());
       assertEquals(
-          List.of(currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT)),
+          List.of(currencyBalance("0.00", "80.00", "80.00", BalanceSide.CREDIT)),
           incomeStatement.netIncomeTotals());
 
       FinancialPositionReport financialPosition =
           assertInstanceOf(
                   FinancialPositionResult.Reported.class,
                   readService.financialPosition(
-                      new FinancialPositionQuery(Optional.of(PERIOD_DATE))))
+                      new FinancialPositionQuery(
+                          Optional.of(PERIOD_DATE), ComparativeSelection.none())))
               .report();
       FinancialPositionSection equitySection = financialPosition.sections().get(2);
       assertEquals(
@@ -248,21 +403,21 @@ class BookReadServiceStatementQueryTest {
                   "3000",
                   "Owner Capital",
                   AccountType.EQUITY,
-                  AccountRole.ORDINARY,
                   currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT)),
               positionRow(
                   "3200",
                   "Retained Earnings",
                   AccountType.EQUITY,
-                  AccountRole.ORDINARY,
                   FinancialPositionLineClassification.RESULT_HOLDING,
-                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT))),
+                  currencyBalance("0.00", "80.00", "80.00", BalanceSide.CREDIT))),
           equitySection.rows());
 
       ChangesInEquityReport changesInEquity =
           assertInstanceOf(
                   ChangesInEquityResult.Reported.class,
-                  readService.changesInEquity(new ChangesInEquityQuery(PERIOD_DATE, PERIOD_DATE)))
+                  readService.changesInEquity(
+                      new ChangesInEquityQuery(
+                          PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())))
               .report();
       assertEquals(PostingCoverage.ALL_POSTING_KINDS, changesInEquity.postingCoverage());
       assertEquals(
@@ -270,27 +425,25 @@ class BookReadServiceStatementQueryTest {
               equityRow(
                   "3000",
                   "Owner Capital",
-                  AccountRole.ORDINARY,
                   currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT),
                   currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
                   currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT)),
               equityRow(
                   "3200",
                   "Retained Earnings",
-                  AccountRole.ORDINARY,
                   FinancialPositionLineClassification.RESULT_HOLDING,
                   currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO),
-                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT),
-                  currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT))),
+                  currencyBalance("0.00", "80.00", "80.00", BalanceSide.CREDIT),
+                  currencyBalance("0.00", "80.00", "80.00", BalanceSide.CREDIT))),
           changesInEquity.rows());
       assertEquals(
           List.of(currencyBalance("0.00", "100.00", "100.00", BalanceSide.CREDIT)),
           changesInEquity.openingTotals());
       assertEquals(
-          List.of(currencyBalance("0.00", "75.00", "75.00", BalanceSide.CREDIT)),
+          List.of(currencyBalance("0.00", "80.00", "80.00", BalanceSide.CREDIT)),
           changesInEquity.movementTotals());
       assertEquals(
-          List.of(currencyBalance("0.00", "175.00", "175.00", BalanceSide.CREDIT)),
+          List.of(currencyBalance("0.00", "180.00", "180.00", BalanceSide.CREDIT)),
           changesInEquity.closingTotals());
     }
   }
@@ -320,7 +473,9 @@ class BookReadServiceStatementQueryTest {
       FinancialPositionReport financialPosition =
           assertInstanceOf(
                   FinancialPositionResult.Reported.class,
-                  service.financialPosition(new FinancialPositionQuery(Optional.of(PERIOD_DATE))))
+                  service.financialPosition(
+                      new FinancialPositionQuery(
+                          Optional.of(PERIOD_DATE), ComparativeSelection.none())))
               .report();
       assertEquals(PostingCoverage.ALL_POSTING_KINDS, financialPosition.postingCoverage());
       assertEquals(
@@ -329,7 +484,6 @@ class BookReadServiceStatementQueryTest {
                   "1000",
                   "Cash",
                   AccountType.ASSET,
-                  AccountRole.ORDINARY,
                   currencyBalance("EUR", "100.00", "10.00", "90.00", BalanceSide.DEBIT))),
           financialPosition.sections().getFirst().rows());
       assertEquals(
@@ -338,7 +492,6 @@ class BookReadServiceStatementQueryTest {
                   "3000",
                   "Owner Capital",
                   AccountType.EQUITY,
-                  AccountRole.ORDINARY,
                   currencyBalance("EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT)),
               syntheticPositionRow(
                   "current-period-result",
@@ -350,7 +503,9 @@ class BookReadServiceStatementQueryTest {
       IncomeStatementReport incomeStatement =
           assertInstanceOf(
                   IncomeStatementResult.Reported.class,
-                  service.incomeStatement(new IncomeStatementQuery(PERIOD_DATE, PERIOD_DATE)))
+                  service.incomeStatement(
+                      new IncomeStatementQuery(
+                          PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())))
               .report();
       assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, incomeStatement.postingCoverage());
       assertEquals(List.of(), incomeStatement.sections().getFirst().rows());
@@ -360,7 +515,6 @@ class BookReadServiceStatementQueryTest {
                   "5000",
                   "Operating Expense",
                   AccountType.EXPENSE,
-                  AccountRole.ORDINARY,
                   currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT))),
           incomeStatement.sections().get(1).rows());
       assertEquals(
@@ -370,7 +524,9 @@ class BookReadServiceStatementQueryTest {
       ChangesInEquityReport changesInEquity =
           assertInstanceOf(
                   ChangesInEquityResult.Reported.class,
-                  service.changesInEquity(new ChangesInEquityQuery(PERIOD_DATE, PERIOD_DATE)))
+                  service.changesInEquity(
+                      new ChangesInEquityQuery(
+                          PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())))
               .report();
       assertEquals(PostingCoverage.ALL_POSTING_KINDS, changesInEquity.postingCoverage());
       assertEquals(
@@ -378,7 +534,6 @@ class BookReadServiceStatementQueryTest {
               equityRow(
                   "3000",
                   "Owner Capital",
-                  AccountRole.ORDINARY,
                   currencyBalance("EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT),
                   currencyBalance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO),
                   currencyBalance("EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT)),
@@ -399,7 +554,6 @@ class BookReadServiceStatementQueryTest {
             CASH_ACCOUNT_CODE,
             new AccountName("Cash"),
             AccountType.ASSET,
-            AccountRole.ORDINARY,
             accountTaxonomy(AccountType.ASSET),
             true,
             FIXED_INSTANT);
@@ -410,7 +564,7 @@ class BookReadServiceStatementQueryTest {
                 posting(
                     "posting-unknown-profit",
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+                    dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                     PERIOD_DATE,
                     List.of(
                         moneyLine("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
@@ -424,7 +578,8 @@ class BookReadServiceStatementQueryTest {
                         FinancialPositionResult.Reported.class,
                         new BookReadService(bookStore)
                             .financialPosition(
-                                new FinancialPositionQuery(Optional.of(PERIOD_DATE))))
+                                new FinancialPositionQuery(
+                                    Optional.of(PERIOD_DATE), ComparativeSelection.none())))
                     .report());
     assertEquals(
         "Financial position violates the accounting equation for currency EUR.",
@@ -434,44 +589,24 @@ class BookReadServiceStatementQueryTest {
         assertInstanceOf(
                 IncomeStatementResult.Reported.class,
                 new BookReadService(bookStore)
-                    .incomeStatement(new IncomeStatementQuery(PERIOD_DATE, PERIOD_DATE)))
+                    .incomeStatement(
+                        new IncomeStatementQuery(
+                            PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())))
             .report()
             .netIncomeTotals());
   }
 
   private static void declareStatementAccounts(InMemoryBookSession bookSession) {
-    declareAccount(bookSession, CASH_ACCOUNT_CODE, "Cash", AccountType.ASSET, AccountRole.ORDINARY);
-    declareAccount(
-        bookSession,
-        CONTRA_ASSET_ACCOUNT_CODE,
-        "Accumulated Depreciation",
-        AccountType.ASSET,
-        AccountRole.POLARITY_INVERTED);
-    declareAccount(
-        bookSession,
-        CAPITAL_ACCOUNT_CODE,
-        "Owner Capital",
-        AccountType.EQUITY,
-        AccountRole.ORDINARY);
+    declareAccount(bookSession, CASH_ACCOUNT_CODE, "Cash", AccountType.ASSET);
+    declareAccount(bookSession, CAPITAL_ACCOUNT_CODE, "Owner Capital", AccountType.EQUITY);
     declareAccount(
         bookSession,
         RESULT_HOLDING_ACCOUNT_CODE,
         "Retained Earnings",
         AccountType.EQUITY,
-        AccountRole.ORDINARY,
         financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING));
-    declareAccount(
-        bookSession,
-        REVENUE_ACCOUNT_CODE,
-        "Sales Revenue",
-        AccountType.REVENUE,
-        AccountRole.ORDINARY);
-    declareAccount(
-        bookSession,
-        EXPENSE_ACCOUNT_CODE,
-        "Operating Expense",
-        AccountType.EXPENSE,
-        AccountRole.ORDINARY);
+    declareAccount(bookSession, REVENUE_ACCOUNT_CODE, "Sales Revenue", AccountType.REVENUE);
+    declareAccount(bookSession, EXPENSE_ACCOUNT_CODE, "Operating Expense", AccountType.EXPENSE);
   }
 
   private static void declareAccount(
@@ -479,22 +614,6 @@ class BookReadServiceStatementQueryTest {
       AccountCode accountCode,
       String accountName,
       AccountType accountType,
-      AccountRole accountRole) {
-    declareAccount(
-        bookSession,
-        accountCode,
-        accountName,
-        accountType,
-        accountRole,
-        accountTaxonomy(accountType));
-  }
-
-  private static void declareAccount(
-      InMemoryBookSession bookSession,
-      AccountCode accountCode,
-      String accountName,
-      AccountType accountType,
-      AccountRole accountRole,
       AccountTaxonomy accountTaxonomy) {
     assertInstanceOf(
         AccountDeclarationOutcome.Declared.class,
@@ -502,9 +621,17 @@ class BookReadServiceStatementQueryTest {
             accountCode,
             new AccountName(accountName),
             accountType,
-            accountRole,
             accountTaxonomy,
             FIXED_INSTANT));
+  }
+
+  private static void declareAccount(
+      InMemoryBookSession bookSession,
+      AccountCode accountCode,
+      String accountName,
+      AccountType accountType) {
+    declareAccount(
+        bookSession, accountCode, accountName, accountType, accountTaxonomy(accountType));
   }
 
   private static void seedStatementPostings(InMemoryBookSession bookSession) {
@@ -532,14 +659,6 @@ class BookReadServiceStatementQueryTest {
         List.of(
             line("5000", JournalLine.EntrySide.DEBIT, "40.00"),
             line("1000", JournalLine.EntrySide.CREDIT, "40.00")));
-    commitPosting(
-        bookSession,
-        "posting-expense-contra",
-        "idem-expense-contra",
-        PERIOD_DATE,
-        List.of(
-            line("5000", JournalLine.EntrySide.DEBIT, "5.00"),
-            line("1090", JournalLine.EntrySide.CREDIT, "5.00")));
   }
 
   private static JournalLine moneyLine(
@@ -605,7 +724,7 @@ class BookReadServiceStatementQueryTest {
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
@@ -624,34 +743,28 @@ class BookReadServiceStatementQueryTest {
 
   private static dev.erst.fingrind.core.AccountingEvidence postingEvidence(
       String token, PostingKind postingKind) {
-    if (postingKind == PostingKind.PERIOD_RESULT_TRANSFER) {
-      return generatedEvidence(token, "period-result-transfer-plan");
+    if (postingKind == PostingKind.INTERIM_RESULT_SWEEP) {
+      return generatedEvidence(token, "interim-result-sweep-plan");
     }
     return accountingEvidence("idem-" + token);
   }
 
   private static FinancialPositionRow positionRow(
-      String lineCode,
-      String lineName,
-      AccountType lineType,
-      AccountRole lineRole,
-      CurrencyBalance balance) {
+      String lineCode, String lineName, AccountType lineType, CurrencyBalance balance) {
     return positionRow(
-        lineCode, lineName, lineType, lineRole, financialPositionClassification(lineType), balance);
+        lineCode, lineName, lineType, financialPositionClassification(lineType), balance);
   }
 
   private static FinancialPositionRow positionRow(
       String lineCode,
       String lineName,
       AccountType lineType,
-      AccountRole lineRole,
       FinancialPositionLineClassification lineClassification,
       CurrencyBalance balance) {
     return new FinancialPositionRow(
         lineCode,
         lineName,
         lineType,
-        Optional.of(lineRole),
         Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         balance);
@@ -664,22 +777,16 @@ class BookReadServiceStatementQueryTest {
         lineName,
         lineType,
         Optional.empty(),
-        Optional.empty(),
         StatementLineKind.CURRENT_PERIOD_RESULT,
         balance);
   }
 
   private static IncomeStatementRow incomeRow(
-      String lineCode,
-      String lineName,
-      AccountType lineType,
-      AccountRole lineRole,
-      CurrencyBalance movement) {
+      String lineCode, String lineName, AccountType lineType, CurrencyBalance movement) {
     return new IncomeStatementRow(
         lineCode,
         lineName,
         lineType,
-        Optional.of(lineRole),
         profitAndLossClassification(lineType),
         StatementLineKind.DECLARED_ACCOUNT,
         movement);
@@ -688,14 +795,12 @@ class BookReadServiceStatementQueryTest {
   private static ChangesInEquityRow equityRow(
       String lineCode,
       String lineName,
-      AccountRole lineRole,
       CurrencyBalance openingBalance,
       CurrencyBalance movement,
       CurrencyBalance closingBalance) {
     return equityRow(
         lineCode,
         lineName,
-        lineRole,
         FinancialPositionLineClassification.OTHER_EQUITY,
         openingBalance,
         movement,
@@ -705,7 +810,6 @@ class BookReadServiceStatementQueryTest {
   private static ChangesInEquityRow equityRow(
       String lineCode,
       String lineName,
-      AccountRole lineRole,
       FinancialPositionLineClassification lineClassification,
       CurrencyBalance openingBalance,
       CurrencyBalance movement,
@@ -714,7 +818,6 @@ class BookReadServiceStatementQueryTest {
         lineCode,
         lineName,
         Optional.of(AccountType.EQUITY),
-        Optional.of(lineRole),
         Optional.of(lineClassification),
         StatementLineKind.DECLARED_ACCOUNT,
         openingBalance,
@@ -733,11 +836,47 @@ class BookReadServiceStatementQueryTest {
         lineName,
         Optional.empty(),
         Optional.empty(),
-        Optional.empty(),
         StatementLineKind.CURRENT_PERIOD_RESULT,
         openingBalance,
         movement,
         closingBalance);
+  }
+
+  private static CashFlowSection cashFlowSection(
+      CashFlowSectionKind sectionKind, List<CashFlowRow> rows, List<CurrencyBalance> totals) {
+    return new CashFlowSection(sectionKind, rows, totals);
+  }
+
+  private static CashFlowRow cashFlowNominalRow(
+      String lineCode,
+      String lineName,
+      AccountType lineType,
+      ProfitAndLossLineClassification lineClassification,
+      CurrencyBalance movement) {
+    return new CashFlowRow(
+        lineCode,
+        lineName,
+        lineType,
+        Optional.empty(),
+        Optional.of(lineClassification),
+        StatementLineKind.DECLARED_ACCOUNT,
+        movement);
+  }
+
+  private static CashFlowRow cashFlowBalanceSheetRow(
+      String lineCode,
+      String lineName,
+      AccountType lineType,
+      FinancialPositionLineClassification lineClassification,
+      CurrencyBalance movement) {
+    return new CashFlowRow(
+        lineCode,
+        lineName,
+        lineType,
+        Optional.of(lineClassification),
+        Optional.empty(),
+        StatementLineKind.DECLARED_ACCOUNT,
+        movement);
   }
 
   private static FinancialPositionLineClassification financialPositionClassification(
@@ -760,155 +899,5 @@ class BookReadServiceStatementQueryTest {
       case ASSET, LIABILITY, EQUITY ->
           throw new IllegalArgumentException("Income-statement rows require nominal accounts.");
     };
-  }
-
-  /** Minimal in-memory statement book for targeted read-side edge cases. */
-  private static final class StatementBookStore implements BookkeepingReadStore {
-    private final List<RegisteredAccount> accounts;
-    private final List<CommittedPosting> postings;
-
-    private StatementBookStore(List<RegisteredAccount> accounts, List<CommittedPosting> postings) {
-      this.accounts = List.copyOf(accounts);
-      this.postings = List.copyOf(postings);
-    }
-
-    @Override
-    public BookLifecycleInspection inspectBook() {
-      return initializedLifecycleInspection(
-          BookFormatContract.APPLICATION_ID,
-          BookFormatContract.FORMAT_VERSION,
-          BookFormatContract.FORMAT_VERSION,
-          FIXED_INSTANT);
-    }
-
-    @Override
-    public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
-      return accounts.stream()
-          .filter(account -> account.accountCode().equals(accountCode))
-          .findFirst();
-    }
-
-    @Override
-    public Optional<CommittedPosting> findExistingPosting(
-        dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
-      return Optional.empty();
-    }
-
-    @Override
-    public Optional<CommittedPosting> findPosting(PostingId postingId) {
-      return postings.stream().filter(posting -> posting.postingId().equals(postingId)).findFirst();
-    }
-
-    @Override
-    public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
-      return Optional.empty();
-    }
-
-    @Override
-    public List<RegisteredAccount> allAccounts() {
-      return accounts;
-    }
-
-    @Override
-    public List<AccountCurrencyTotals> accountTotals(
-        EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
-      Map<AccountTotalsKey, AccountTotalsAccumulator> groupedTotals = new ConcurrentHashMap<>();
-      for (CommittedPosting posting : postings) {
-        if (!effectiveDateRange.contains(posting.journalEntry().effectiveDate())
-            || !postingCoverage.includes(posting.postingKind())) {
-          continue;
-        }
-        for (JournalLine line : posting.journalEntry().lines()) {
-          Optional<RegisteredAccount> account = findAccount(line.accountCode());
-          if (account.isEmpty()) {
-            continue;
-          }
-          AccountTotalsAccumulator totals =
-              accountTotalsAccumulator(
-                  groupedTotals, account.orElseThrow(), line.amount().currencyUnit());
-          if (line.side() == JournalLine.EntrySide.DEBIT) {
-            totals.debitMinor = Math.addExact(totals.debitMinor, line.amount().minorUnits());
-          } else {
-            totals.creditMinor = Math.addExact(totals.creditMinor, line.amount().minorUnits());
-          }
-        }
-      }
-      return groupedTotals.entrySet().stream()
-          .sorted(
-              java.util.Comparator.comparing(
-                      (Map.Entry<AccountTotalsKey, AccountTotalsAccumulator> entry) ->
-                          entry.getKey().account().accountCode().value())
-                  .thenComparing(entry -> entry.getKey().currencyUnit().code()))
-          .map(
-              entry ->
-                  new AccountCurrencyTotals(
-                      entry.getKey().account(),
-                      entry.getKey().currencyUnit(),
-                      entry.getValue().debitMinor,
-                      entry.getValue().creditMinor))
-          .toList();
-    }
-
-    @Override
-    public Optional<LocalDate> latestPostingEffectiveDate() {
-      return postings.stream()
-          .map(posting -> posting.journalEntry().effectiveDate())
-          .max(LocalDate::compareTo);
-    }
-
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage listAccounts(
-        dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery query) {
-      throw unsupported();
-    }
-
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage listPostings(
-        dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery query) {
-      throw unsupported();
-    }
-
-    @Override
-    public Optional<dev.erst.fingrind.executor.bookkeeping.AccountBalanceView> accountBalance(
-        dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria query) {
-      throw unsupported();
-    }
-
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.TrialBalanceView trialBalance(
-        dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria query) {
-      throw unsupported();
-    }
-
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.AccountLedgerView accountLedger(
-        dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria query,
-        RegisteredAccount account) {
-      throw unsupported();
-    }
-
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView periodSummary(
-        dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria query) {
-      throw unsupported();
-    }
-
-    private static AccountTotalsAccumulator accountTotalsAccumulator(
-        Map<AccountTotalsKey, AccountTotalsAccumulator> groupedTotals,
-        RegisteredAccount account,
-        CurrencyUnit currencyUnit) {
-      AccountTotalsKey key = new AccountTotalsKey(account, currencyUnit);
-      AccountTotalsAccumulator existing = groupedTotals.get(key);
-      if (existing != null) {
-        return existing;
-      }
-      AccountTotalsAccumulator created = new AccountTotalsAccumulator();
-      groupedTotals.put(key, created);
-      return created;
-    }
-
-    private static AssertionError unsupported() {
-      return new AssertionError("This statement test double does not support that seam.");
-    }
   }
 }

@@ -2,6 +2,7 @@ package dev.erst.fingrind.report.pdf;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
@@ -22,6 +23,7 @@ public final class PdfReportService {
   private final PeriodSummaryPdfRenderer periodSummaryRenderer;
   private final FinancialPositionPdfRenderer financialPositionRenderer;
   private final IncomeStatementPdfRenderer incomeStatementRenderer;
+  private final CashFlowPdfRenderer cashFlowRenderer;
   private final ChangesInEquityPdfRenderer changesInEquityRenderer;
 
   /** Creates the public PDF-report adapter service. */
@@ -37,6 +39,7 @@ public final class PdfReportService {
         new PeriodSummaryPdfRenderer(),
         new FinancialPositionPdfRenderer(),
         new IncomeStatementPdfRenderer(),
+        new CashFlowPdfRenderer(),
         new ChangesInEquityPdfRenderer());
   }
 
@@ -50,6 +53,7 @@ public final class PdfReportService {
         new PeriodSummaryPdfRenderer(),
         new FinancialPositionPdfRenderer(),
         new IncomeStatementPdfRenderer(),
+        new CashFlowPdfRenderer(),
         new ChangesInEquityPdfRenderer());
   }
 
@@ -62,6 +66,7 @@ public final class PdfReportService {
       PeriodSummaryPdfRenderer periodSummaryRenderer,
       FinancialPositionPdfRenderer financialPositionRenderer,
       IncomeStatementPdfRenderer incomeStatementRenderer,
+      CashFlowPdfRenderer cashFlowRenderer,
       ChangesInEquityPdfRenderer changesInEquityRenderer) {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.documentFactory = Objects.requireNonNull(documentFactory, "documentFactory");
@@ -77,6 +82,7 @@ public final class PdfReportService {
         Objects.requireNonNull(financialPositionRenderer, "financialPositionRenderer");
     this.incomeStatementRenderer =
         Objects.requireNonNull(incomeStatementRenderer, "incomeStatementRenderer");
+    this.cashFlowRenderer = Objects.requireNonNull(cashFlowRenderer, "cashFlowRenderer");
     this.changesInEquityRenderer =
         Objects.requireNonNull(changesInEquityRenderer, "changesInEquityRenderer");
   }
@@ -133,6 +139,15 @@ public final class PdfReportService {
         "Income Statement",
         PageOrientation.LANDSCAPE,
         writer -> incomeStatementRenderer.render(writer, report));
+  }
+
+  /** Renders one statement of cash receipts and payments as a landscape PDF artifact. */
+  public byte[] renderCashFlowStatement(CashFlowStatementReport report) {
+    Objects.requireNonNull(report, "report");
+    return renderReport(
+        "Cash Receipts And Payments",
+        PageOrientation.LANDSCAPE,
+        writer -> cashFlowRenderer.render(writer, report));
   }
 
   /** Renders one statement of changes in equity as a landscape PDF artifact. */

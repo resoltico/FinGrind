@@ -88,16 +88,20 @@ class CliPdfReportExporterTest {
     Path trialBalancePdf = tempDirectory.resolve("trial.pdf");
     Path accountLedgerPdf = tempDirectory.resolve("ledger.pdf");
     Path periodSummaryPdf = tempDirectory.resolve("summary.pdf");
+    Path cashFlowPdf = tempDirectory.resolve("cash-flow.pdf");
 
     exporter.exportAccountBalance(accountBalancePdf, accountBalanceSnapshot());
     exporter.exportTrialBalance(trialBalancePdf, trialBalanceReport());
     exporter.exportAccountLedger(accountLedgerPdf, accountLedgerReport());
     exporter.exportPeriodSummary(periodSummaryPdf, periodSummaryReport());
+    exporter.exportCashFlowStatement(
+        cashFlowPdf, CliFixtureSupport.sampleCashFlowStatementReport());
 
     assertPdfFile(accountBalancePdf);
     assertPdfFile(trialBalancePdf);
     assertPdfFile(accountLedgerPdf);
     assertPdfFile(periodSummaryPdf);
+    assertPdfFile(cashFlowPdf);
   }
 
   @Test
@@ -390,7 +394,7 @@ class CliPdfReportExporterTest {
                     money("EUR", "10.00")))),
         PostingLineage.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         CliFixtureSupport.accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(

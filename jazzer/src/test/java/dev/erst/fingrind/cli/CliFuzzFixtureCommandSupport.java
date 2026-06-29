@@ -27,12 +27,11 @@ final class CliFuzzFixtureCommandSupport {
       throw new IllegalArgumentException(
           "Open-accounting-position fixture requires an even positive number of account codes.");
     }
-    List<BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance> balances =
-        new ArrayList<>();
+    List<BookkeepingEntry.OpeningPosition.OpeningAccountBalance> balances = new ArrayList<>();
     int splitIndex = accountCodes.length / 2;
     for (int index = 0; index < accountCodes.length; index++) {
       balances.add(
-          new BookkeepingEntry.OpenAccountingPosition.OpeningAccountBalance(
+          new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
               new AccountCode(accountCodes[index]),
               index < splitIndex
                   ? dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT
@@ -41,7 +40,7 @@ final class CliFuzzFixtureCommandSupport {
     }
     return withEntry(
         CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8)),
-        new BookkeepingEntry.OpenAccountingPosition(LocalDate.parse("2026-04-14"), balances));
+        new BookkeepingEntry.OpeningPosition(LocalDate.parse("2026-04-14"), balances));
   }
 
   static PostEntryCommand reversalAdjustmentCommand(String... accountCodes) {
@@ -62,11 +61,12 @@ final class CliFuzzFixtureCommandSupport {
     }
     return withEntry(
         CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8)),
-        new BookkeepingEntry.ReversalAdjustment(
+        new BookkeepingEntry.Reversal(
             new dev.erst.fingrind.core.JournalEntry(LocalDate.parse("2026-04-14"), lines),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                 new dev.erst.fingrind.core.ReversalReference(
                     new dev.erst.fingrind.core.PostingId("posting-admin-test")),
-                new dev.erst.fingrind.core.ReversalReason("administrative fixture"))));
+                new dev.erst.fingrind.core.ReversalReason("administrative fixture")),
+            null));
   }
 }

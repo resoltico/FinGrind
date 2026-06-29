@@ -90,7 +90,10 @@ public sealed interface LedgerStep
     }
   }
 
-  /** Commits one posting request inside the plan transaction. */
+  /**
+   * Commits one typed business-entry request or one raw direct-journal fallback request inside the
+   * plan transaction.
+   */
   record PostEntry(LedgerStepId stepId, PostEntryCommand command) implements LedgerStep {
     /** Validates the step. */
     public PostEntry {
@@ -100,7 +103,7 @@ public sealed interface LedgerStep
 
     @Override
     public LedgerStepKind kind() {
-      return LedgerStepKind.POST_ENTRY;
+      return LedgerStepKind.forCommittedEntryKind(command.entry().entryKind());
     }
   }
 

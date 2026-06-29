@@ -323,7 +323,7 @@ run_shell_stage() {
     run_monitored_command "${stage_id}" "${stage_label}" "${repo_root}" "$@" || return $?
     if [[ "${stage_id}" == 'jazzer-check' ]]; then
         if ! verify_jazzer_stage_runtime_warnings; then
-            printf '[CHECK-PULSE] stage=%s phase=postcheck-failure reason=forbidden-runtime-warning log=%s\n' \
+            printf '[CHECK-PULSE] stage=%s event=postcheck-failure reason=forbidden-runtime-warning log=%s\n' \
                 "${stage_id}" \
                 "${current_stage_log_path}"
             return 1

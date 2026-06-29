@@ -13,7 +13,6 @@ import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
-import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -28,10 +27,16 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
   void helpPayload_mapsPostingRequestGuidanceForPostingCommands() {
     assertPostingGuidance(OperationId.POST_ENTRY);
     assertPostingGuidance(OperationId.PREFLIGHT_ENTRY);
+    assertPostingGuidance(OperationId.RECORD_SALE);
+    assertPostingGuidance(OperationId.RECORD_EXPENSE);
+    assertPostingGuidance(OperationId.RECORD_OWNER_CONTRIBUTION);
+    assertPostingGuidance(OperationId.RECORD_OWNER_WITHDRAWAL);
+    assertPostingGuidance(OperationId.RECORD_OPENING_POSITION);
+    assertPostingGuidance(OperationId.RECORD_REVERSAL);
   }
 
   @Test
-  void helpPayload_mapsDeclareAccountAndLedgerPlanRequestGuidance() {
+  void helpPayload_mapsAdministrativeAndLedgerPlanRequestGuidance() {
     CliDiscoveryHelpJsonModels.CommandHelpPayload declarePayload =
         assertInstanceOf(
             CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
@@ -40,6 +45,14 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                     CliDiscoveryPayloadMapperTest.identity(),
                     CliDiscoveryPayloadMapperTest.environment(),
                     OperationId.DECLARE_ACCOUNT)));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload declareTaxRegistrationPayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                MachineContract.help(
+                    CliDiscoveryPayloadMapperTest.identity(),
+                    CliDiscoveryPayloadMapperTest.environment(),
+                    OperationId.DECLARE_TAX_REGISTRATION)));
     CliDiscoveryHelpJsonModels.CommandHelpPayload compactDeclarePayload =
         assertInstanceOf(
             CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
@@ -48,6 +61,14 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                     CliDiscoveryPayloadMapperTest.identity(),
                     CliDiscoveryPayloadMapperTest.environment(),
                     OperationId.DECLARE_ACCOUNT)));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload compactDeclareTaxRegistrationPayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.compactHelpPayload(
+                MachineContract.help(
+                    CliDiscoveryPayloadMapperTest.identity(),
+                    CliDiscoveryPayloadMapperTest.environment(),
+                    OperationId.DECLARE_TAX_REGISTRATION)));
     CliDiscoveryHelpJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
             CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
@@ -83,6 +104,32 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         Objects.requireNonNull(compactDeclarePayload.requestFile().shortcutCommand())
             .contains("declare-account"));
 
+    assertNotNull(declareTaxRegistrationPayload.requestFile());
+    assertEquals(
+        ProtocolCatalog.operation(OperationId.DECLARE_TAX_REGISTRATION).usage(),
+        declareTaxRegistrationPayload.syntax());
+    assertNull(declareTaxRegistrationPayload.requestFile().postingTemplate());
+    assertNull(declareTaxRegistrationPayload.requestFile().declareAccountTemplate());
+    assertNotNull(declareTaxRegistrationPayload.requestFile().declareTaxRegistrationTemplate());
+    assertNull(declareTaxRegistrationPayload.requestFile().ledgerPlanTemplate());
+    assertNotNull(declareTaxRegistrationPayload.requestFile().requestShapes());
+    assertNotNull(
+        Objects.requireNonNull(declareTaxRegistrationPayload.requestFile().requestShapes())
+            .declareTaxRegistration());
+    assertTrue(
+        Objects.requireNonNull(declareTaxRegistrationPayload.requestFile().shortcutCommand())
+            .contains("declare-tax-registration"));
+
+    assertNotNull(compactDeclareTaxRegistrationPayload.requestFile());
+    assertNull(compactDeclareTaxRegistrationPayload.requestFile().postingTemplate());
+    assertNull(compactDeclareTaxRegistrationPayload.requestFile().declareAccountTemplate());
+    assertNull(compactDeclareTaxRegistrationPayload.requestFile().declareTaxRegistrationTemplate());
+    assertNull(compactDeclareTaxRegistrationPayload.requestFile().ledgerPlanTemplate());
+    assertNull(compactDeclareTaxRegistrationPayload.requestFile().requestShapes());
+    assertTrue(
+        Objects.requireNonNull(compactDeclareTaxRegistrationPayload.requestFile().shortcutCommand())
+            .contains("declare-tax-registration"));
+
     assertNotNull(planPayload.requestFile());
     assertEquals(ProtocolCatalog.operation(OperationId.EXECUTE_PLAN).usage(), planPayload.syntax());
     assertNull(planPayload.requestFile().postingTemplate());
@@ -102,6 +149,37 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
   }
 
   @Test
+  void helpPayload_omitsDeclareTaxRegistrationRequestGuidanceWhenArtifactsAreMissing() {
+    HelpDescriptor declareTaxRegistration =
+        MachineContract.help(
+            CliDiscoveryPayloadMapperTest.identity(),
+            CliDiscoveryPayloadMapperTest.environment(),
+            OperationId.DECLARE_TAX_REGISTRATION);
+    CliDiscoveryHelpJsonModels.CommandHelpPayload missingRequestShapes =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                helpDescriptorWithDeclareTaxRegistrationArtifacts(
+                    declareTaxRegistration, false, true, true)));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload missingShape =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                helpDescriptorWithDeclareTaxRegistrationArtifacts(
+                    declareTaxRegistration, true, false, true)));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload missingTemplate =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                helpDescriptorWithDeclareTaxRegistrationArtifacts(
+                    declareTaxRegistration, true, true, false)));
+
+    assertNull(missingRequestShapes.requestFile());
+    assertNull(missingShape.requestFile());
+    assertNull(missingTemplate.requestFile());
+  }
+
+  @Test
   void helpPayload_executePlanRejectsMissingCanonicalPostingScaffoldStep() {
     HelpDescriptor executePlan =
         MachineContract.help(
@@ -113,9 +191,7 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     ContractPlanTemplates.LedgerPlanTemplateDescriptor withoutCanonicalPosting =
         new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
             baseTemplate.planId(),
-            baseTemplate.steps().stream()
-                .filter(step -> step.kind() != LedgerStepKind.POST_ENTRY)
-                .toList());
+            baseTemplate.steps().stream().filter(step -> !step.kind().commitsPosting()).toList());
 
     IllegalStateException failure =
         assertThrows(
@@ -125,7 +201,8 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                     helpDescriptorWithPlanTemplate(executePlan, withoutCanonicalPosting)));
 
     assertTrue(
-        Objects.requireNonNull(failure.getMessage()).contains("canonical POST_ENTRY scaffold"),
+        Objects.requireNonNull(failure.getMessage())
+            .contains("canonical committed-posting scaffold"),
         failure::getMessage);
   }
 
@@ -155,7 +232,8 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                     helpDescriptorWithPlanTemplate(executePlan, ambiguousTemplate)));
 
     assertTrue(
-        Objects.requireNonNull(failure.getMessage()).contains("canonical POST_ENTRY scaffold"),
+        Objects.requireNonNull(failure.getMessage())
+            .contains("canonical committed-posting scaffold"),
         failure::getMessage);
   }
 
@@ -173,13 +251,15 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                 new HelpDescriptor(
                     executePlan.application(),
                     executePlan.version(),
+                    executePlan.protocolVersion(),
                     executePlan.description(),
                     executePlan.usage(),
                     executePlan.bookModel(),
                     executePlan.bookkeepingKernel(),
                     executePlan.requestShapes(),
-                    conflictingOpenAccountingPositionTemplate(),
+                    conflictingOpeningPositionTemplate(),
                     executePlan.declareAccountTemplate(),
+                    executePlan.declareTaxRegistrationTemplate(),
                     executePlan.planTemplate(),
                     executePlan.commands(),
                     executePlan.quickStart(),
@@ -191,14 +271,14 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertNull(payload.requestFile().postingTemplate());
     assertNotNull(payload.requestFile().ledgerPlanTemplate());
     assertNotNull(payload.requestFile().requestShapes());
-    assertNull(payload.requestFile().requestShapes().postEntry());
+    assertNull(payload.requestFile().requestShapes().bookkeepingEntry());
     assertNotNull(
         Objects.requireNonNull(payload.requestFile().requestShapes().ledgerPlan()).postingModel());
     ContractPlanTemplates.LedgerPlanStepTemplateDescriptor canonicalPostingStep =
         Objects.requireNonNull(payload.requestFile().ledgerPlanTemplate())
             .canonicalPostingScaffoldStep();
     assertEquals(
-        BookkeepingEntryKind.JOURNAL,
+        BookkeepingEntryKind.SALE,
         Objects.requireNonNull(canonicalPostingStep.posting()).entryKind());
   }
 
@@ -218,8 +298,47 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertNull(payload.requestFile().ledgerPlanTemplate());
     assertNotNull(payload.requestFile().requestShapes());
     assertEquals(
-        CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE),
+        CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+            + " "
+            + operationId.wireName(),
         payload.requestFile().shortcutCommand());
+    var postEntryShape =
+        Objects.requireNonNull(
+            Objects.requireNonNull(payload.requestFile().requestShapes()).bookkeepingEntry());
+    if (operationId == OperationId.PREFLIGHT_ENTRY) {
+      assertEquals(
+          BookkeepingEntryKind.values().length, postEntryShape.entryKindSemantics().size());
+      return;
+    }
+    if (operationId == OperationId.POST_ENTRY) {
+      assertEquals(
+          List.of(BookkeepingEntryKind.DIRECT_JOURNAL),
+          postEntryShape.entryKindSemantics().stream()
+              .map(
+                  dev.erst.fingrind.contract.discovery.ContractRequestShapes
+                          .EntryKindSemanticsDescriptor
+                      ::entryKind)
+              .toList());
+      return;
+    }
+    BookkeepingEntryKind expectedEntryKind =
+        switch (operationId) {
+          case RECORD_SALE -> BookkeepingEntryKind.SALE;
+          case RECORD_EXPENSE -> BookkeepingEntryKind.EXPENSE;
+          case RECORD_OWNER_CONTRIBUTION -> BookkeepingEntryKind.OWNER_CONTRIBUTION;
+          case RECORD_OWNER_WITHDRAWAL -> BookkeepingEntryKind.OWNER_WITHDRAWAL;
+          case RECORD_OPENING_POSITION -> BookkeepingEntryKind.OPENING_POSITION;
+          case RECORD_REVERSAL -> BookkeepingEntryKind.REVERSAL;
+          default -> throw new AssertionError("Unexpected posting topic " + operationId);
+        };
+    assertEquals(
+        List.of(expectedEntryKind),
+        postEntryShape.entryKindSemantics().stream()
+            .map(
+                dev.erst.fingrind.contract.discovery.ContractRequestShapes
+                        .EntryKindSemanticsDescriptor
+                    ::entryKind)
+            .toList());
   }
 
   private static HelpDescriptor helpDescriptorWithPlanTemplate(
@@ -227,6 +346,7 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     return new HelpDescriptor(
         baseHelp.application(),
         baseHelp.version(),
+        baseHelp.protocolVersion(),
         baseHelp.description(),
         baseHelp.usage(),
         baseHelp.bookModel(),
@@ -234,6 +354,7 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         baseHelp.requestShapes(),
         baseHelp.requestTemplate(),
         baseHelp.declareAccountTemplate(),
+        baseHelp.declareTaxRegistrationTemplate(),
         planTemplate,
         baseHelp.commands(),
         baseHelp.quickStart(),
@@ -242,14 +363,50 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         baseHelp.currencyModel());
   }
 
+  private static HelpDescriptor helpDescriptorWithDeclareTaxRegistrationArtifacts(
+      HelpDescriptor baseHelp,
+      boolean includeRequestShapes,
+      boolean includeDeclareTaxRegistrationShape,
+      boolean includeDeclareTaxRegistrationTemplate) {
+    return new HelpDescriptor(
+        baseHelp.application(),
+        baseHelp.version(),
+        baseHelp.protocolVersion(),
+        baseHelp.description(),
+        baseHelp.usage(),
+        baseHelp.bookModel(),
+        baseHelp.bookkeepingKernel(),
+        includeRequestShapes
+            ? new dev.erst.fingrind.contract.discovery.ContractRequestShapes
+                .RequestShapesDescriptor(
+                Objects.requireNonNull(baseHelp.requestShapes()).schemaDialect(),
+                Objects.requireNonNull(baseHelp.requestShapes()).bookkeepingEntry(),
+                Objects.requireNonNull(baseHelp.requestShapes()).declareAccount(),
+                includeDeclareTaxRegistrationShape
+                    ? Objects.requireNonNull(baseHelp.requestShapes()).declareTaxRegistration()
+                    : null,
+                Objects.requireNonNull(baseHelp.requestShapes()).ledgerPlan())
+            : null,
+        baseHelp.requestTemplate(),
+        baseHelp.declareAccountTemplate(),
+        includeDeclareTaxRegistrationTemplate ? baseHelp.declareTaxRegistrationTemplate() : null,
+        baseHelp.planTemplate(),
+        baseHelp.commands(),
+        baseHelp.quickStart(),
+        baseHelp.exitCodes(),
+        baseHelp.preflight(),
+        baseHelp.currencyModel());
+  }
+
   private static ContractTemplates.PostingRequestTemplateDescriptor
-      conflictingOpenAccountingPositionTemplate() {
+      conflictingOpeningPositionTemplate() {
     ContractTemplates.PostingRequestTemplateDescriptor canonical =
         MachineContract.requestTemplate();
     return new ContractTemplates.PostingRequestTemplateDescriptor(
-        BookkeepingEntryKind.OPEN_ACCOUNTING_POSITION,
-        null,
+        BookkeepingEntryKind.OPENING_POSITION,
         "2026-01-01",
+        null,
+        null,
         null,
         null,
         null,

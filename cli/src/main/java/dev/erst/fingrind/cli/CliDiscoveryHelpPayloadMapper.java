@@ -44,6 +44,7 @@ final class CliDiscoveryHelpPayloadMapper {
     return new CliDiscoveryHelpJsonModels.HelpOverviewMinimalPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
+        helpDescriptor.protocolVersion(),
         helpDescriptor.description(),
         DiscoveryDetail.MINIMAL,
         category == null ? null : category.wireValue(),
@@ -57,6 +58,7 @@ final class CliDiscoveryHelpPayloadMapper {
     return new CliDiscoveryHelpJsonModels.HelpOverviewCompactPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
+        helpDescriptor.protocolVersion(),
         helpDescriptor.description(),
         DiscoveryDetail.COMPACT,
         category == null ? null : category.wireValue(),
@@ -77,6 +79,7 @@ final class CliDiscoveryHelpPayloadMapper {
     return new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
+        helpDescriptor.protocolVersion(),
         helpDescriptor.description(),
         DiscoveryDetail.FULL,
         category == null ? null : category.wireValue(),
@@ -107,6 +110,7 @@ final class CliDiscoveryHelpPayloadMapper {
     return new HelpDescriptor(
         helpDescriptor.application(),
         helpDescriptor.version(),
+        helpDescriptor.protocolVersion(),
         helpDescriptor.description(),
         helpDescriptor.usage(),
         helpDescriptor.bookModel(),
@@ -114,6 +118,7 @@ final class CliDiscoveryHelpPayloadMapper {
         helpDescriptor.requestShapes(),
         helpDescriptor.requestTemplate(),
         helpDescriptor.declareAccountTemplate(),
+        helpDescriptor.declareTaxRegistrationTemplate(),
         helpDescriptor.planTemplate(),
         filteredCommands,
         helpDescriptor.quickStart(),
@@ -129,6 +134,7 @@ final class CliDiscoveryHelpPayloadMapper {
     return new CliDiscoveryHelpJsonModels.CommandHelpPayload(
         helpDescriptor.application(),
         helpDescriptor.version(),
+        helpDescriptor.protocolVersion(),
         helpDescriptor.description(),
         detail,
         command,
@@ -144,11 +150,14 @@ final class CliDiscoveryHelpPayloadMapper {
   private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
       requestFileGuidance(
           HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
-    if (operationId == OperationId.POST_ENTRY || operationId == OperationId.PREFLIGHT_ENTRY) {
-      return postingRequestGuidance(helpDescriptor, detail);
+    if (isPostingRequestOperation(operationId)) {
+      return postingRequestGuidance(helpDescriptor, operationId, detail);
     }
     if (operationId == OperationId.DECLARE_ACCOUNT) {
       return declareAccountRequestGuidance(helpDescriptor, detail);
+    }
+    if (operationId == OperationId.DECLARE_TAX_REGISTRATION) {
+      return declareTaxRegistrationRequestGuidance(helpDescriptor, detail);
     }
     if (operationId == OperationId.EXECUTE_PLAN) {
       return ledgerPlanRequestGuidance(helpDescriptor, detail);
@@ -157,9 +166,10 @@ final class CliDiscoveryHelpPayloadMapper {
   }
 
   private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
-      postingRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+      postingRequestGuidance(
+          HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
-        || helpDescriptor.requestShapes().postEntry() == null
+        || helpDescriptor.requestShapes().bookkeepingEntry() == null
         || helpDescriptor.requestTemplate() == null) {
       return Optional.empty();
     }
@@ -170,14 +180,18 @@ final class CliDiscoveryHelpPayloadMapper {
             detail == DiscoveryDetail.FULL ? helpDescriptor.requestTemplate() : null,
             null,
             null,
+            null,
             detail == DiscoveryDetail.FULL
                 ? new ContractRequestShapes.RequestShapesDescriptor(
                     helpDescriptor.requestShapes().schemaDialect(),
-                    helpDescriptor.requestShapes().postEntry(),
+                    helpDescriptor.requestShapes().bookkeepingEntry(),
+                    null,
                     null,
                     null)
                 : null,
-            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)));
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + operationId.wireName()));
   }
 
   private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
@@ -194,16 +208,46 @@ final class CliDiscoveryHelpPayloadMapper {
             null,
             detail == DiscoveryDetail.FULL ? helpDescriptor.declareAccountTemplate() : null,
             null,
+            null,
             detail == DiscoveryDetail.FULL
                 ? new ContractRequestShapes.RequestShapesDescriptor(
                     helpDescriptor.requestShapes().schemaDialect(),
                     null,
                     helpDescriptor.requestShapes().declareAccount(),
+                    null,
                     null)
                 : null,
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.DECLARE_ACCOUNT.wireName()));
+  }
+
+  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
+      declareTaxRegistrationRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+    if (helpDescriptor.requestShapes() == null
+        || helpDescriptor.requestShapes().declareTaxRegistration() == null
+        || helpDescriptor.declareTaxRegistrationTemplate() == null) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+            "Provide one tax-registration declaration JSON object through --request-file <path|->.",
+            detail,
+            null,
+            null,
+            detail == DiscoveryDetail.FULL ? helpDescriptor.declareTaxRegistrationTemplate() : null,
+            null,
+            detail == DiscoveryDetail.FULL
+                ? new ContractRequestShapes.RequestShapesDescriptor(
+                    helpDescriptor.requestShapes().schemaDialect(),
+                    null,
+                    null,
+                    helpDescriptor.requestShapes().declareTaxRegistration(),
+                    null)
+                : null,
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + OperationId.DECLARE_TAX_REGISTRATION.wireName()));
   }
 
   private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
@@ -222,10 +266,12 @@ final class CliDiscoveryHelpPayloadMapper {
             detail,
             null,
             null,
+            null,
             detail == DiscoveryDetail.FULL ? helpDescriptor.planTemplate() : null,
             detail == DiscoveryDetail.FULL
                 ? new ContractRequestShapes.RequestShapesDescriptor(
                     helpDescriptor.requestShapes().schemaDialect(),
+                    null,
                     null,
                     null,
                     helpDescriptor.requestShapes().ledgerPlan())
@@ -246,6 +292,17 @@ final class CliDiscoveryHelpPayloadMapper {
         .filter(ProtocolExampleStep.Note.class::isInstance)
         .map(ProtocolExampleStep::text)
         .toList();
+  }
+
+  private static boolean isPostingRequestOperation(OperationId operationId) {
+    return operationId == OperationId.POST_ENTRY
+        || operationId == OperationId.PREFLIGHT_ENTRY
+        || operationId == OperationId.RECORD_SALE
+        || operationId == OperationId.RECORD_EXPENSE
+        || operationId == OperationId.RECORD_OWNER_CONTRIBUTION
+        || operationId == OperationId.RECORD_OWNER_WITHDRAWAL
+        || operationId == OperationId.RECORD_OPENING_POSITION
+        || operationId == OperationId.RECORD_REVERSAL;
   }
 
   private static boolean isCommandScoped(HelpDescriptor helpDescriptor) {

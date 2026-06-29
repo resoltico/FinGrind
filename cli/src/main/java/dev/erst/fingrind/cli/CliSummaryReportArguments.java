@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
@@ -7,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.PostingCoverage;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -21,6 +23,7 @@ final class CliSummaryReportArguments {
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
               ProtocolOptions.EFFECTIVE_DATE_AS_OF,
+              ProtocolOptions.COMPARATIVE,
               ProtocolOptions.POSTING_COVERAGE,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
@@ -38,6 +41,7 @@ final class CliSummaryReportArguments {
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
               ProtocolOptions.EFFECTIVE_DATE_AS_OF,
+              ProtocolOptions.COMPARATIVE,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
           List.of());
@@ -46,6 +50,7 @@ final class CliSummaryReportArguments {
           List.of(
               ProtocolOptions.PERIOD_START,
               ProtocolOptions.PERIOD_END,
+              ProtocolOptions.COMPARATIVE,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
           List.of());
@@ -54,6 +59,16 @@ final class CliSummaryReportArguments {
           List.of(
               ProtocolOptions.PERIOD_START,
               ProtocolOptions.PERIOD_END,
+              ProtocolOptions.COMPARATIVE,
+              ProtocolOptions.OUTPUT,
+              ProtocolOptions.PDF_OUT),
+          List.of());
+  private static final CliBookArgumentParser.CommandArgumentSpec CASH_FLOW_STATEMENT_ARGUMENTS =
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(
+              ProtocolOptions.PERIOD_START,
+              ProtocolOptions.PERIOD_END,
+              ProtocolOptions.COMPARATIVE,
               ProtocolOptions.OUTPUT,
               ProtocolOptions.PDF_OUT),
           List.of());
@@ -65,6 +80,7 @@ final class CliSummaryReportArguments {
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, TRIAL_BALANCE_ARGUMENTS);
     @Nullable LocalDate effectiveDateTo = null;
     @Nullable PostingCoverage postingCoverage = null;
+    @Nullable ComparativeSelection comparativeSelection = null;
     @Nullable OutputMode outputMode = null;
     @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
@@ -80,6 +96,14 @@ final class CliSummaryReportArguments {
         postingCoverage = CliOptionModes.requirePostingCoverage(postingCoverage, argumentIterator);
         continue;
       }
+      if (ProtocolOptions.COMPARATIVE.equals(argument)) {
+        comparativeSelection =
+            CliReportArguments.requireComparativeSelection(
+                comparativeSelection,
+                argumentIterator,
+                CliReportArguments.ComparativeArgumentShape.AS_OF);
+        continue;
+      }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
@@ -89,13 +113,17 @@ final class CliSummaryReportArguments {
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
     PostingCoverage resolvedPostingCoverage =
         postingCoverage == null ? PostingCoverage.ALL_POSTING_KINDS : postingCoverage;
+    ComparativeSelection resolvedComparativeSelection =
+        comparativeSelection == null ? ComparativeSelection.none() : comparativeSelection;
     return new TrialBalance(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.EFFECTIVE_DATE_AS_OF,
             () ->
                 new TrialBalanceQuery(
-                    Optional.ofNullable(resolvedEffectiveDateTo), resolvedPostingCoverage)),
+                    Optional.ofNullable(resolvedEffectiveDateTo),
+                    resolvedPostingCoverage,
+                    resolvedComparativeSelection)),
         CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
@@ -161,6 +189,7 @@ final class CliSummaryReportArguments {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, FINANCIAL_POSITION_ARGUMENTS);
     @Nullable LocalDate effectiveDateTo = null;
+    @Nullable ComparativeSelection comparativeSelection = null;
     @Nullable OutputMode outputMode = null;
     @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
@@ -172,6 +201,14 @@ final class CliSummaryReportArguments {
                 effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_AS_OF);
         continue;
       }
+      if (ProtocolOptions.COMPARATIVE.equals(argument)) {
+        comparativeSelection =
+            CliReportArguments.requireComparativeSelection(
+                comparativeSelection,
+                argumentIterator,
+                CliReportArguments.ComparativeArgumentShape.AS_OF);
+        continue;
+      }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
         outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
@@ -179,9 +216,12 @@ final class CliSummaryReportArguments {
       pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     LocalDate resolvedEffectiveDateTo = effectiveDateTo;
+    ComparativeSelection resolvedComparativeSelection =
+        comparativeSelection == null ? ComparativeSelection.none() : comparativeSelection;
     return new FinancialPosition(
         parsedArguments.bookAccess(),
-        new FinancialPositionQuery(Optional.ofNullable(resolvedEffectiveDateTo)),
+        new FinancialPositionQuery(
+            Optional.ofNullable(resolvedEffectiveDateTo), resolvedComparativeSelection),
         CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath));
   }
 
@@ -190,9 +230,11 @@ final class CliSummaryReportArguments {
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, INCOME_STATEMENT_ARGUMENTS);
     return boundedPeriodReport(
         parsedArguments,
-        (from, to, output) ->
+        (from, to, comparativeSelection, output) ->
             new IncomeStatement(
-                parsedArguments.bookAccess(), new IncomeStatementQuery(from, to), output));
+                parsedArguments.bookAccess(),
+                new IncomeStatementQuery(from, to, comparativeSelection),
+                output));
   }
 
   static CliCommand parseChangesInEquityCommand(List<String> arguments) {
@@ -200,9 +242,24 @@ final class CliSummaryReportArguments {
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, CHANGES_IN_EQUITY_ARGUMENTS);
     return boundedPeriodReport(
         parsedArguments,
-        (from, to, output) ->
+        (from, to, comparativeSelection, output) ->
             new ChangesInEquity(
-                parsedArguments.bookAccess(), new ChangesInEquityQuery(from, to), output));
+                parsedArguments.bookAccess(),
+                new ChangesInEquityQuery(from, to, comparativeSelection),
+                output));
+  }
+
+  static CliCommand parseCashFlowStatementCommand(List<String> arguments) {
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseBookAndCommandArguments(
+            arguments, CASH_FLOW_STATEMENT_ARGUMENTS);
+    return boundedPeriodReport(
+        parsedArguments,
+        (from, to, comparativeSelection, output) ->
+            new CashFlowStatement(
+                parsedArguments.bookAccess(),
+                new CashFlowStatementQuery(from, to, comparativeSelection),
+                output));
   }
 
   private static CliCommand boundedPeriodReport(
@@ -210,6 +267,7 @@ final class CliSummaryReportArguments {
       BoundedPeriodReportFactory commandFactory) {
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
+    @Nullable ComparativeSelection comparativeSelection = null;
     @Nullable OutputMode outputMode = null;
     @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
@@ -225,6 +283,14 @@ final class CliSummaryReportArguments {
         effectiveDateTo =
             CliReportArguments.requireDateOption(
                 effectiveDateTo, argumentIterator, ProtocolOptions.PERIOD_END);
+        continue;
+      }
+      if (ProtocolOptions.COMPARATIVE.equals(argument)) {
+        comparativeSelection =
+            CliReportArguments.requireComparativeSelection(
+                comparativeSelection,
+                argumentIterator,
+                CliReportArguments.ComparativeArgumentShape.PERIOD);
         continue;
       }
       if (ProtocolOptions.OUTPUT.equals(argument)) {
@@ -251,8 +317,13 @@ final class CliSummaryReportArguments {
         ProtocolOptions.PERIOD_END);
     CliCommand.ReportOutput resolvedOutput =
         CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath);
+    ComparativeSelection resolvedComparativeSelection =
+        comparativeSelection == null ? ComparativeSelection.none() : comparativeSelection;
     return commandFactory.create(
-        requiredEffectiveDateFrom, requiredEffectiveDateTo, resolvedOutput);
+        requiredEffectiveDateFrom,
+        requiredEffectiveDateTo,
+        resolvedComparativeSelection,
+        resolvedOutput);
   }
 
   /** Creates one bounded-period report command from validated effective-date arguments. */
@@ -263,10 +334,14 @@ final class CliSummaryReportArguments {
      *
      * @param effectiveDateFrom lower effective-date bound
      * @param effectiveDateTo upper effective-date bound
+     * @param comparativeSelection comparative selection for the report surface
      * @param output selected operator output destination
      * @return report command ready for execution
      */
     CliCommand create(
-        LocalDate effectiveDateFrom, LocalDate effectiveDateTo, CliCommand.ReportOutput output);
+        LocalDate effectiveDateFrom,
+        LocalDate effectiveDateTo,
+        ComparativeSelection comparativeSelection,
+        CliCommand.ReportOutput output);
   }
 }

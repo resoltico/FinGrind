@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.57.0"
+version: "0.58.0"
 domain: DEVELOPER_DEVCONTAINER
-updated: "2026-06-19"
+updated: "2026-06-29"
 route:
   keywords: [fingrind, devcontainer, vscode, docker desktop, devcontainer cli, zulu26, contributor container, local repo mount, tooling agnostic]
   questions: ["what is the preferred contributor setup for fingrind", "how do i use the fingrind devcontainer", "does the repo stay on macos when i use the container", "why does fingrind prefer a devcontainer over host java tooling", "is vscode mandatory for fingrind", "how do i use the fingrind devcontainer without vscode"]
@@ -116,7 +116,7 @@ docker version --format '{{.Server.Version}}'
    `check` run:
 
 ```bash
-python3 -m pip install --user uv==0.11.15
+python3 -m pip install --user uv==0.11.25
 ```
 
 Expected contributor shape:

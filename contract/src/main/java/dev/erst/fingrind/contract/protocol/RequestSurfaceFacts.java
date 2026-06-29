@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.protocol;
 
-import dev.erst.fingrind.contract.bookkeeping.JournalRecipeKind;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -9,67 +8,41 @@ import java.util.Objects;
 
 /** Canonical request-surface facts shared by validation, discovery, help, and CLI text. */
 public record RequestSurfaceFacts(
-    List<PostEntryKindFacts> postEntryKinds,
-    List<JournalRecipeFacts> journalRecipes,
-    List<EvidenceProfileFacts> evidenceProfiles,
+    List<BookkeepingEntryKindFacts> bookkeepingEntryKinds,
     List<ReachabilityCellFacts> reachabilityMatrix,
-    EvidenceRequirementFacts postEntryEvidence,
+    EvidenceRequirementFacts bookkeepingEntryEvidence,
     List<TemporalScopeFacts> temporalScopes,
     List<CommandTemporalScopeFacts> commandTemporalScopes) {
   /** Validates one request-surface fact bundle. */
   public RequestSurfaceFacts {
-    postEntryKinds = ContractDescriptorValidation.copyList(postEntryKinds, "postEntryKinds");
-    journalRecipes = ContractDescriptorValidation.copyList(journalRecipes, "journalRecipes");
-    evidenceProfiles = ContractDescriptorValidation.copyList(evidenceProfiles, "evidenceProfiles");
+    bookkeepingEntryKinds =
+        ContractDescriptorValidation.copyList(bookkeepingEntryKinds, "bookkeepingEntryKinds");
     reachabilityMatrix =
         ContractDescriptorValidation.copyList(reachabilityMatrix, "reachabilityMatrix");
-    postEntryEvidence =
-        ContractDescriptorValidation.requireValue(postEntryEvidence, "postEntryEvidence");
+    bookkeepingEntryEvidence =
+        ContractDescriptorValidation.requireValue(
+            bookkeepingEntryEvidence, "bookkeepingEntryEvidence");
     temporalScopes = ContractDescriptorValidation.copyList(temporalScopes, "temporalScopes");
     commandTemporalScopes =
         ContractDescriptorValidation.copyList(commandTemporalScopes, "commandTemporalScopes");
-    RequestSurfaceFactsValidation.requireUniqueEntryKinds(postEntryKinds);
-    RequestSurfaceFactsValidation.requireUniqueRecipeKinds(journalRecipes);
-    RequestSurfaceFactsValidation.requireUniqueEvidenceProfiles(evidenceProfiles);
+    RequestSurfaceFactsValidation.requireUniqueEntryKinds(bookkeepingEntryKinds);
     RequestSurfaceFactsValidation.requireUniqueReachabilityCells(reachabilityMatrix);
     RequestSurfaceFactsValidation.requireUniqueTemporalArchetypes(temporalScopes);
     RequestSurfaceFactsValidation.requireUniqueTemporalScopeCommands(commandTemporalScopes);
   }
 
   /** Returns the canonical entry-kind facts for one posting request kind. */
-  public PostEntryKindFacts postEntryKind(BookkeepingEntryKind entryKind) {
+  public BookkeepingEntryKindFacts bookkeepingEntryKind(BookkeepingEntryKind entryKind) {
     BookkeepingEntryKind requiredEntryKind = Objects.requireNonNull(entryKind, "entryKind");
-    return postEntryKinds.stream()
+    return bookkeepingEntryKinds.stream()
         .filter(facts -> facts.entryKind() == requiredEntryKind)
         .findFirst()
         .orElseThrow(
             () ->
                 new IllegalStateException(
-                    "No posting request facts are registered for " + requiredEntryKind + "."));
-  }
-
-  /** Returns the canonical journal-recipe facts for one optional recipe kind. */
-  public JournalRecipeFacts journalRecipe(JournalRecipeKind recipeKind) {
-    JournalRecipeKind requiredRecipeKind = Objects.requireNonNull(recipeKind, "recipeKind");
-    return journalRecipes.stream()
-        .filter(facts -> facts.recipeKind() == requiredRecipeKind)
-        .findFirst()
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "No journal recipe facts are registered for " + requiredRecipeKind + "."));
-  }
-
-  /** Returns the canonical evidence-profile facts for one profile id. */
-  public EvidenceProfileFacts evidenceProfile(String profileId) {
-    String requiredProfileId = ContractDescriptorValidation.requireText(profileId, "profileId");
-    return evidenceProfiles.stream()
-        .filter(facts -> facts.profileId().equals(requiredProfileId))
-        .findFirst()
-        .orElseThrow(
-            () ->
-                new IllegalStateException(
-                    "No evidence profile facts are registered for " + requiredProfileId + "."));
+                    "No bookkeeping-entry request facts are registered for "
+                        + requiredEntryKind
+                        + "."));
   }
 
   /** Returns the canonical temporal-scope facts for one archetype. */
@@ -100,53 +73,53 @@ public record RequestSurfaceFacts(
   }
 
   /** Canonical per-entry-kind posting request facts. */
-  public record PostEntryKindFacts(
+  public record BookkeepingEntryKindFacts(
       BookkeepingEntryKind entryKind,
       List<String> requiredTopLevelFields,
+      List<String> optionalTopLevelFields,
       List<String> forbiddenTopLevelFields,
-      String evidenceProfileId,
+      List<String> requiredSourceDocumentFields,
+      SourceDocumentTypeFacts sourceDocumentTypes,
       String semantics) {
     /** Validates one entry-kind request fact descriptor. */
-    public PostEntryKindFacts {
+    public BookkeepingEntryKindFacts {
       entryKind = ContractDescriptorValidation.requireValue(entryKind, "entryKind");
       requiredTopLevelFields =
           ContractDescriptorValidation.copyList(requiredTopLevelFields, "requiredTopLevelFields");
+      optionalTopLevelFields =
+          ContractDescriptorValidation.copyList(optionalTopLevelFields, "optionalTopLevelFields");
       forbiddenTopLevelFields =
           ContractDescriptorValidation.copyList(forbiddenTopLevelFields, "forbiddenTopLevelFields");
-      evidenceProfileId =
-          ContractDescriptorValidation.requireText(evidenceProfileId, "evidenceProfileId");
+      requiredSourceDocumentFields =
+          ContractDescriptorValidation.copyList(
+              requiredSourceDocumentFields, "requiredSourceDocumentFields");
+      if (requiredSourceDocumentFields.isEmpty()) {
+        throw new IllegalArgumentException("requiredSourceDocumentFields must not be empty.");
+      }
+      sourceDocumentTypes =
+          ContractDescriptorValidation.requireValue(sourceDocumentTypes, "sourceDocumentTypes");
       semantics = ContractDescriptorValidation.requireText(semantics, "semantics");
-    }
-  }
-
-  /** Canonical optional journal-recipe facts for one recipe kind. */
-  public record JournalRecipeFacts(
-      JournalRecipeKind recipeKind,
-      List<String> requiredTopLevelFields,
-      List<String> forbiddenTopLevelFields,
-      String evidenceProfileId,
-      String semantics) {
-    /** Validates one journal-recipe fact descriptor. */
-    public JournalRecipeFacts {
-      recipeKind = ContractDescriptorValidation.requireValue(recipeKind, "recipeKind");
-      requiredTopLevelFields =
-          ContractDescriptorValidation.copyList(requiredTopLevelFields, "requiredTopLevelFields");
-      forbiddenTopLevelFields =
-          ContractDescriptorValidation.copyList(forbiddenTopLevelFields, "forbiddenTopLevelFields");
-      evidenceProfileId =
-          ContractDescriptorValidation.requireText(evidenceProfileId, "evidenceProfileId");
-      semantics = ContractDescriptorValidation.requireText(semantics, "semantics");
+      if (!java.util.Collections.disjoint(requiredTopLevelFields, optionalTopLevelFields)
+          || !java.util.Collections.disjoint(requiredTopLevelFields, forbiddenTopLevelFields)
+          || !java.util.Collections.disjoint(optionalTopLevelFields, forbiddenTopLevelFields)) {
+        throw new IllegalArgumentException(
+            "requiredTopLevelFields, optionalTopLevelFields, and forbiddenTopLevelFields must be disjoint.");
+      }
     }
   }
 
   /** Canonical source-document type facts for one posting entry kind. */
   public record SourceDocumentTypeFacts(
-      SourceDocumentTypePolicyMode mode, List<String> acceptedValues, String semantics) {
+      SourceDocumentTypePolicyMode mode,
+      List<String> acceptedValues,
+      String semantics,
+      String scaffoldValue) {
     /** Validates one source-document type fact bundle. */
     public SourceDocumentTypeFacts {
       mode = ContractDescriptorValidation.requireValue(mode, "mode");
       acceptedValues = ContractDescriptorValidation.copyList(acceptedValues, "acceptedValues");
       semantics = ContractDescriptorValidation.requireText(semantics, "semantics");
+      scaffoldValue = ContractDescriptorValidation.requireText(scaffoldValue, "scaffoldValue");
       if (mode == SourceDocumentTypePolicyMode.ENUMERATED && acceptedValues.isEmpty()) {
         throw new IllegalArgumentException(
             "acceptedValues must not be empty when source-document types are enumerated.");
@@ -155,18 +128,6 @@ public record RequestSurfaceFacts(
         throw new IllegalArgumentException(
             "acceptedValues must be empty when source-document types are pattern-only.");
       }
-    }
-  }
-
-  /** Canonical evidence-profile facts shared by direct journals and named recipes. */
-  public record EvidenceProfileFacts(
-      String profileId, SourceDocumentTypeFacts sourceDocumentTypes, String semantics) {
-    /** Validates one evidence-profile fact bundle. */
-    public EvidenceProfileFacts {
-      profileId = ContractDescriptorValidation.requireText(profileId, "profileId");
-      sourceDocumentTypes =
-          ContractDescriptorValidation.requireValue(sourceDocumentTypes, "sourceDocumentTypes");
-      semantics = ContractDescriptorValidation.requireText(semantics, "semantics");
     }
   }
 
@@ -193,17 +154,13 @@ public record RequestSurfaceFacts(
   }
 
   /** Canonical evidence retention facts for posting requests. */
-  public record EvidenceRequirementFacts(
-      String description, int minimumSourceDocuments, List<String> requiredSourceDocumentFields) {
+  public record EvidenceRequirementFacts(String description, int minimumSourceDocuments) {
     /** Validates one evidence-requirement fact bundle. */
     public EvidenceRequirementFacts {
       description = ContractDescriptorValidation.requireText(description, "description");
       if (minimumSourceDocuments < 1) {
         throw new IllegalArgumentException("minimumSourceDocuments must be at least one.");
       }
-      requiredSourceDocumentFields =
-          ContractDescriptorValidation.copyList(
-              requiredSourceDocumentFields, "requiredSourceDocumentFields");
     }
   }
 

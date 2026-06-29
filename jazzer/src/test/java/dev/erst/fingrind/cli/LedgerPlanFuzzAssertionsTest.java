@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.workflow.LedgerBoundaryPhase;
+import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
@@ -67,7 +67,7 @@ class LedgerPlanFuzzAssertionsTest {
                 %s,
                 {
                   "stepId": "post-sale",
-                  "kind": "post-entry",
+                  "kind": "record-sale",
                   "posting": %s
                 },
                 {
@@ -307,7 +307,7 @@ class LedgerPlanFuzzAssertionsTest {
                         succeededSteps.stream(),
                         java.util.stream.Stream.of(
                             boundaryRejectedEntry(
-                                "@plan-boundary:commit", LedgerBoundaryPhase.COMMIT)))
+                                "@plan-boundary:commit", LedgerBoundaryCheckpoint.COMMIT)))
                     .toList()));
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
@@ -322,7 +322,7 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
-                    boundarySucceededEntry("@plan-boundary:begin", LedgerBoundaryPhase.BEGIN),
+                    boundarySucceededEntry("@plan-boundary:begin", LedgerBoundaryCheckpoint.BEGIN),
                     rejectedEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()))));
     IllegalStateException nonterminalBoundary =
         assertThrows(
@@ -344,7 +344,7 @@ class LedgerPlanFuzzAssertionsTest {
                     succeededEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()),
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
-                    succeededEntry("post-sale", LedgerStepKind.POST_ENTRY, List.of()),
+                    succeededEntry("post-sale", LedgerStepKind.RECORD_SALE, List.of()),
                     succeededEntry(
                         "page-accounts",
                         LedgerStepKind.LIST_ACCOUNTS,
@@ -387,7 +387,7 @@ class LedgerPlanFuzzAssertionsTest {
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("preflight-sale", LedgerStepKind.PREFLIGHT_ENTRY, List.of()),
-                    succeededEntry("post-sale", LedgerStepKind.POST_ENTRY, List.of()),
+                    succeededEntry("post-sale", LedgerStepKind.RECORD_SALE, List.of()),
                     succeededEntry("inspect-book", LedgerStepKind.INSPECT_BOOK, List.of()),
                     succeededEntry(
                         "page-accounts",
@@ -570,20 +570,20 @@ class LedgerPlanFuzzAssertionsTest {
   }
 
   private static LedgerJournalEntry.Succeeded boundarySucceededEntry(
-      String stepId, LedgerBoundaryPhase phase) {
+      String stepId, LedgerBoundaryCheckpoint checkpoint) {
     return new LedgerJournalEntry.Succeeded(
         new LedgerStepId(stepId),
-        LedgerJournalStep.boundary(phase),
+        LedgerJournalStep.boundary(checkpoint),
         Instant.parse("2026-04-07T12:00:00Z"),
         Instant.parse("2026-04-07T12:00:01Z"),
         List.of());
   }
 
   private static LedgerJournalEntry.Rejected boundaryRejectedEntry(
-      String stepId, LedgerBoundaryPhase phase) {
+      String stepId, LedgerBoundaryCheckpoint checkpoint) {
     return new LedgerJournalEntry.Rejected(
         new LedgerStepId(stepId),
-        LedgerJournalStep.boundary(phase),
+        LedgerJournalStep.boundary(checkpoint),
         Instant.parse("2026-04-07T12:00:00Z"),
         Instant.parse("2026-04-07T12:00:01Z"),
         List.of(),
@@ -625,7 +625,7 @@ class LedgerPlanFuzzAssertionsTest {
             %s,
             {
               "stepId": "post-sale",
-              "kind": "post-entry",
+              "kind": "record-sale",
               "posting": %s
             },
             {
@@ -694,7 +694,7 @@ class LedgerPlanFuzzAssertionsTest {
             },
             {
               "stepId": "post-sale",
-              "kind": "post-entry",
+              "kind": "record-sale",
               "posting": %s
             },
             {

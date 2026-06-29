@@ -141,6 +141,10 @@ healed_template_request_stdout="${tmp_dir}/healed-template-request.out"
 healed_template_request_stderr="${tmp_dir}/healed-template-request.err"
 raw_template_request_stdout="${tmp_dir}/raw-template-request.out"
 raw_template_request_stderr="${tmp_dir}/raw-template-request.err"
+post_entry_template_request_stdout="${tmp_dir}/post-entry-template-request.out"
+post_entry_template_request_stderr="${tmp_dir}/post-entry-template-request.err"
+raw_post_entry_template_request_stdout="${tmp_dir}/raw-post-entry-template-request.out"
+raw_post_entry_template_request_stderr="${tmp_dir}/raw-post-entry-template-request.err"
 raw_jar_help_stdout="${tmp_dir}/raw-jar-help.out"
 raw_jar_help_stderr="${tmp_dir}/raw-jar-help.err"
 raw_jar_environment_stdout="${tmp_dir}/raw-jar-environment.out"
@@ -208,6 +212,21 @@ python3 "${launcher_contract_test_support}" \
     assert-request-template \
     --document "${template_request_stdout}" \
     --label 'source-checkout launcher' \
+    --expected-entry-kind SALE \
+    --require-evidence-fields
+
+progress 'source-checkout post-entry request template'
+"${launcher_wrapper}" print-request-template post-entry >"${post_entry_template_request_stdout}" \
+    2>"${post_entry_template_request_stderr}" || die \
+    "source-checkout launcher print-request-template post-entry failed"
+
+[[ ! -s "${post_entry_template_request_stderr}" ]] || die \
+    "source-checkout launcher print-request-template post-entry wrote diagnostics"
+python3 "${launcher_contract_test_support}" \
+    assert-request-template \
+    --document "${post_entry_template_request_stdout}" \
+    --label 'source-checkout launcher post-entry' \
+    --expected-entry-kind DIRECT_JOURNAL \
     --require-evidence-fields
 
 progress 'source-checkout plan template'
@@ -227,7 +246,22 @@ progress 'direct-java request template'
 python3 "${launcher_contract_test_support}" \
     assert-request-template \
     --document "${raw_template_request_stdout}" \
-    --label 'developer direct-Java'
+    --label 'developer direct-Java' \
+    --expected-entry-kind SALE
+
+progress 'direct-java post-entry request template'
+"${raw_java_wrapper}" print-request-template post-entry \
+    >"${raw_post_entry_template_request_stdout}" \
+    2>"${raw_post_entry_template_request_stderr}" || die \
+    "developer direct-Java print-request-template post-entry failed"
+
+[[ ! -s "${raw_post_entry_template_request_stderr}" ]] || die \
+    "developer direct-Java print-request-template post-entry wrote diagnostics"
+python3 "${launcher_contract_test_support}" \
+    assert-request-template \
+    --document "${raw_post_entry_template_request_stdout}" \
+    --label 'developer direct-Java post-entry' \
+    --expected-entry-kind DIRECT_JOURNAL
 
 python3 "${launcher_contract_test_support}" \
     corrupt-runtime-manifest "${source_checkout_runtime_manifest}"
@@ -242,7 +276,8 @@ progress 'source-checkout self-refresh'
 python3 "${launcher_contract_test_support}" \
     assert-request-template \
     --document "${healed_template_request_stdout}" \
-    --label 'source-checkout launcher self-refresh'
+    --label 'source-checkout launcher self-refresh' \
+    --expected-entry-kind SALE
 
 touch -t 200001010000 "${source_checkout_runtime_manifest}"
 : >"${stale_runtime_probe}"
@@ -256,7 +291,7 @@ progress 'source-checkout stale-runtime refresh'
     "source-checkout launcher stale-runtime refresh wrote diagnostics"
 [[ "${source_checkout_runtime_manifest}" -nt "${stale_runtime_probe}" ]] || die \
     "source-checkout launcher did not refresh the stale runtime manifest"
-grep -Fq 'steps[].posting.evidence.sourceDocuments[].contentSha256' "${stale_runtime_help_stdout}" || die \
+grep -Fq 'steps[].posting.evidence.sourceDocuments[].documentDate' "${stale_runtime_help_stdout}" || die \
     "source-checkout launcher stale-runtime refresh did not publish the nested posting evidence structure"
 
 progress 'source-checkout key generation'

@@ -42,11 +42,11 @@ public sealed interface LedgerJournalEntry
   }
 
   /**
-   * Returns the nested boundary phase for plan-boundary journal entries, or {@code null} for
+   * Returns the nested boundary checkpoint for plan-boundary journal entries, or {@code null} for
    * standard and assertion journal entries.
    */
-  default @Nullable LedgerBoundaryPhase boundaryPhase() {
-    return journalStep().boundaryPhase();
+  default @Nullable LedgerBoundaryCheckpoint boundaryCheckpoint() {
+    return journalStep().boundaryCheckpoint();
   }
 
   /** Returns the optional failure payload for this step journal entry. */

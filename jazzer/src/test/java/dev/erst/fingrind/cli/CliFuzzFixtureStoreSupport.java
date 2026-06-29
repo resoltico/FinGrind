@@ -3,10 +3,10 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
@@ -31,6 +31,7 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -43,19 +44,17 @@ final class CliFuzzFixtureStoreSupport {
         account.accountCode(),
         account.accountName(),
         account.accountType(),
-        account.accountRole(),
         account.accountTaxonomy(),
         account.active(),
         account.declaredAt());
   }
 
   static DeclaredAccount declaredAccount(
-      AccountCode accountCode, AccountType accountType, AccountRole accountRole, boolean active) {
+      AccountCode accountCode, AccountType accountType, boolean active) {
     return new DeclaredAccount(
         accountCode,
         new AccountName(accountType == AccountType.REVENUE ? "Revenue" : "Cash"),
         accountType,
-        accountRole,
         accountTaxonomy(accountType),
         active,
         CliFuzzFixtures.fixedClock().instant());
@@ -68,7 +67,8 @@ final class CliFuzzFixtureStoreSupport {
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty());
+              Optional.empty(),
+              Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
       case LIABILITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
@@ -111,7 +111,6 @@ final class CliFuzzFixtureStoreSupport {
         AccountCode accountCode,
         AccountName accountName,
         AccountType accountType,
-        AccountRole accountRole,
         AccountTaxonomy accountTaxonomy,
         Instant declaredAt) {
       throw new UnsupportedOperationException("not used");
@@ -140,7 +139,7 @@ final class CliFuzzFixtureStoreSupport {
     }
 
     @Override
-    public Optional<CommittedPosting> findExistingPosting(
+    public Optional<StoredRequestPosting> findExistingPosting(
         dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
       throw new UnsupportedOperationException("not used");
     }
@@ -179,6 +178,11 @@ final class CliFuzzFixtureStoreSupport {
     @Override
     public List<AccountCurrencyTotals> accountTotals(
         EffectiveDateRange effectiveDateRange, PostingCoverage postingCoverage) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
       throw new UnsupportedOperationException("not used");
     }
 

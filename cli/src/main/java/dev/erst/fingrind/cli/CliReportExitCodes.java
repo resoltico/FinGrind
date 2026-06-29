@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
@@ -51,6 +52,13 @@ final class CliReportExitCodes {
     return switch (result) {
       case IncomeStatementResult.Reported _ -> 0;
       case IncomeStatementResult.Rejected _ -> 2;
+    };
+  }
+
+  static int exitCodeFor(CashFlowStatementResult result) {
+    return switch (result) {
+      case CashFlowStatementResult.Reported _ -> 0;
+      case CashFlowStatementResult.Rejected _ -> 2;
     };
   }
 

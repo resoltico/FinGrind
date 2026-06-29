@@ -52,11 +52,11 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
               ) values (
                   1,
                   'Acme Studio',
-                  'internal-management-cash-bookkeeping-kernel',
+                  'internal-management-bookkeeping-kernel',
                   'CASH_BASIS',
                   'NON_STATUTORY_INTERNAL_MANAGEMENT',
                   'OWNER_MANAGED_SINGLE_ENTITY',
-                  'OWNER_MANAGED_SERVICE_CASH',
+                  'OWNER_MANAGED_SERVICE',
                   'EUR',
                   1,
                   1
@@ -66,7 +66,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
               Optional.of(
                   new BookIdentity(
                       new EntityProfile(new BookEntityName("Acme Studio")),
-                      BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+                      BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                       CurrencyUnit.of("EUR"),
                       FiscalYearStart.parse("01-01"))),
               SqliteStatementQueries.loadBookIdentity(database));
@@ -129,7 +129,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
     BookIdentity bookIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Acme Studio")),
-            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(
@@ -150,7 +150,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
     BookIdentity bookIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Registered Studio")),
-            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_CASH_SERVICE,
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(

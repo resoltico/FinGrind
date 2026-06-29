@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
@@ -61,6 +62,10 @@ final class CliPdfReportExporter {
 
   void exportIncomeStatement(Path outputPath, IncomeStatementReport report) {
     writePdf(outputPath, pdfReportService.renderIncomeStatement(report));
+  }
+
+  void exportCashFlowStatement(Path outputPath, CashFlowStatementReport report) {
+    writePdf(outputPath, pdfReportService.renderCashFlowStatement(report));
   }
 
   void exportChangesInEquity(Path outputPath, ChangesInEquityReport report) {

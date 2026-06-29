@@ -1,11 +1,17 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
+import dev.erst.fingrind.contract.tax.TaxQueryRejection;
+import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -35,17 +41,18 @@ final class CliBookReadResponseWriter {
 
   void writeListAccountsResult(ListAccountsResult result, OutputMode outputMode) {
     switch (result) {
-      case ListAccountsResult.Listed listed ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          CliBookQueryPayloadMapper.accountPagePayload(listed.page()))),
-              () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderText(listed.page())),
-              () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderCsv(listed.page())));
+      case ListAccountsResult.Listed listed -> writeAccountPage(listed.page(), outputMode);
       case ListAccountsResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.queryRejectedEnvelope(rejected.rejection()), outputMode);
+          writeQueryRejection(rejected.rejection(), outputMode);
+    }
+  }
+
+  void writeListTaxRegistrationsResult(ListTaxRegistrationsResult result, OutputMode outputMode) {
+    switch (result) {
+      case ListTaxRegistrationsResult.Listed listed ->
+          writeTaxRegistrationPage(listed.page(), outputMode);
+      case ListTaxRegistrationsResult.Rejected rejected ->
+          writeTaxQueryRejection(rejected.rejection(), outputMode);
     }
   }
 
@@ -56,8 +63,7 @@ final class CliBookReadResponseWriter {
               () ->
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
-                          CliBookQueryPayloadMapper.postingDetailsPayload(
-                              found.bookIdentity(), found.postingFact()))),
+                          CliBookQueryPayloadMapper.postingDetailsPayload(found))),
               () ->
                   outputChannel.writeText(
                       CliPostingOutputRenderer.renderPostingText(
@@ -75,7 +81,7 @@ final class CliBookReadResponseWriter {
   void writeListPostingsResult(ListPostingsResult result, OutputMode outputMode) {
     switch (result) {
       case ListPostingsResult.Listed listed ->
-          outputMode.run(
+          writeListedResult(
               () ->
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
@@ -85,10 +91,70 @@ final class CliBookReadResponseWriter {
                       CliPostingOutputRenderer.renderPostingRegisterText(listed.page())),
               () ->
                   outputChannel.writeText(
-                      CliPostingOutputRenderer.renderPostingRegisterCsv(listed.page())));
+                      CliPostingOutputRenderer.renderPostingRegisterCsv(listed.page())),
+              outputMode);
       case ListPostingsResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.queryRejectedEnvelope(rejected.rejection()), outputMode);
+          writeQueryRejection(rejected.rejection(), outputMode);
     }
+  }
+
+  void writeTaxObligationResult(TaxObligationResult result, OutputMode outputMode) {
+    switch (result) {
+      case TaxObligationResult.Reported reported ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
+                          CliTaxPayloadMapper.taxObligationPayload(reported.report()))),
+              () ->
+                  outputChannel.writeText(
+                      CliTaxOutputRenderer.renderTaxObligationText(reported.report())),
+              () ->
+                  outputChannel.writeText(
+                      CliTaxOutputRenderer.renderTaxObligationCsv(reported.report())));
+      case TaxObligationResult.Rejected rejected ->
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.taxQueryRejectedEnvelope(
+                  OperationId.TAX_OBLIGATION, rejected.rejection()),
+              outputMode);
+    }
+  }
+
+  private void writeListedResult(
+      Runnable jsonWriter, Runnable textWriter, Runnable csvWriter, OutputMode outputMode) {
+    outputMode.run(jsonWriter, textWriter, csvWriter);
+  }
+
+  private void writeAccountPage(AccountPage page, OutputMode outputMode) {
+    writeListedResult(
+        () ->
+            outputChannel.writeEnvelope(
+                CliEnvelopeMapper.successEnvelope(
+                    CliBookQueryPayloadMapper.accountPagePayload(page))),
+        () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderText(page)),
+        () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderCsv(page)),
+        outputMode);
+  }
+
+  private void writeTaxRegistrationPage(TaxRegistrationPage page, OutputMode outputMode) {
+    outputMode.run(
+        () ->
+            outputChannel.writeEnvelope(
+                CliEnvelopeMapper.successEnvelope(
+                    CliTaxPayloadMapper.taxRegistrationPagePayload(page))),
+        () -> outputChannel.writeText(CliTaxOutputRenderer.renderTaxRegistrationListText(page)),
+        () -> outputChannel.writeText(CliTaxOutputRenderer.renderTaxRegistrationListCsv(page)));
+  }
+
+  private void writeQueryRejection(BookQueryRejection rejection, OutputMode outputMode) {
+    outputChannel.writeRejectedEnvelope(
+        CliRejectionPayloadMapper.queryRejectedEnvelope(rejection), outputMode);
+  }
+
+  private void writeTaxQueryRejection(TaxQueryRejection rejection, OutputMode outputMode) {
+    outputChannel.writeRejectedEnvelope(
+        CliRejectionPayloadMapper.taxQueryRejectedEnvelope(
+            OperationId.LIST_TAX_REGISTRATIONS, rejection),
+        outputMode);
   }
 }

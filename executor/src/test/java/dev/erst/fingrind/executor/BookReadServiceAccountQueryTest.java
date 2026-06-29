@@ -10,7 +10,6 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.localReadSer
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.postingFact;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountPage;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountRole;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.foundPosting;
@@ -22,27 +21,35 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
+import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
+import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingLookupOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -66,19 +73,16 @@ class BookReadServiceAccountQueryTest {
               BookFormatContract.FORMAT_VERSION,
               BookReadServiceTestSupport.FIXED_INSTANT,
               bookIdentity(),
-              new BookInspection.ResultTransferReadiness(
-                  false,
-                  FinancialPositionLineClassification.RESULT_HOLDING,
-                  null,
-                  "result-holding-account-candidate-missing",
-                  "No active declared result-holding account satisfies required classification 'RESULT_HOLDING'.",
-                  List.of()));
+              new BookInspection.CloseReadiness(
+                  missingCloseTarget(FinancialPositionLineClassification.RESULT_HOLDING, List.of()),
+                  missingCloseTarget(
+                      FinancialPositionLineClassification.RETAINED_ACCUMULATED, List.of())));
       assertEquals(inspection, service.inspectBook());
     }
   }
 
   @Test
-  void inspectBook_projectsNonInitializedInspectionWithoutResultTransferReadiness() {
+  void inspectBook_projectsNonInitializedInspectionWithoutCloseReadiness() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookReadService service = readService(bookSession);
 
@@ -88,58 +92,52 @@ class BookReadServiceAccountQueryTest {
   }
 
   @Test
-  void inspectBook_reportsAcceptedResultTransferReadinessWhenOneRetainedEarningsAccountIsActive() {
+  void inspectBook_reportsAcceptedInterimCloseTargetWhenOneResultHoldingAccountIsActive() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       bookSession.declareAccount(
           new AccountCode("3200"),
           new AccountName("Retained Earnings"),
           AccountType.EQUITY,
-          accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
           financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
           BookReadServiceTestSupport.FIXED_INSTANT);
 
       BookReadService service = readService(bookSession);
       assertEquals(
-          new BookInspection.ResultTransferReadiness(
-              true,
-              FinancialPositionLineClassification.RESULT_HOLDING,
-              new AccountCode("3200"),
-              null,
-              null,
-              List.of()),
-          ((BookInspection.Initialized) service.inspectBook()).resultTransferReadiness());
+          new BookInspection.CloseReadiness(
+              readyCloseTarget(
+                  FinancialPositionLineClassification.RESULT_HOLDING, new AccountCode("3200")),
+              missingCloseTarget(
+                  FinancialPositionLineClassification.RETAINED_ACCUMULATED, List.of())),
+          ((BookInspection.Initialized) service.inspectBook()).closeReadiness());
     }
   }
 
   @Test
   void
-      inspectBook_reportsAmbiguousResultTransferReadinessCandidatesWhenMultipleRetainedEarningsAccountsExist() {
+      inspectBook_reportsAmbiguousInterimCloseTargetCandidatesWhenMultipleResultHoldingAccountsExist() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       bookSession.declareAccount(
           new AccountCode("3200"),
           new AccountName("Retained Earnings A"),
           AccountType.EQUITY,
-          accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
           financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
           BookReadServiceTestSupport.FIXED_INSTANT);
       bookSession.declareAccount(
           new AccountCode("3210"),
           new AccountName("Retained Earnings B"),
           AccountType.EQUITY,
-          accountRole(AccountType.EQUITY, NormalBalance.CREDIT),
           financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
           BookReadServiceTestSupport.FIXED_INSTANT);
 
       BookReadService service = readService(bookSession);
       assertEquals(
-          new BookInspection.ResultTransferReadiness(
-              false,
-              FinancialPositionLineClassification.RESULT_HOLDING,
-              null,
-              "result-holding-account-candidate-ambiguous",
-              "More than one active declared result-holding account satisfies required classification 'RESULT_HOLDING': 3200, 3210.",
-              List.of(new AccountCode("3200"), new AccountCode("3210"))),
-          ((BookInspection.Initialized) service.inspectBook()).resultTransferReadiness());
+          new BookInspection.CloseReadiness(
+              ambiguousCloseTarget(
+                  FinancialPositionLineClassification.RESULT_HOLDING,
+                  List.of(new AccountCode("3200"), new AccountCode("3210"))),
+              missingCloseTarget(
+                  FinancialPositionLineClassification.RETAINED_ACCUMULATED, List.of())),
+          ((BookInspection.Initialized) service.inspectBook()).closeReadiness());
     }
   }
 
@@ -256,6 +254,33 @@ class BookReadServiceAccountQueryTest {
   }
 
   @Test
+  void listPostings_projects_reversal_backlinks_for_the_current_page() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      CommittedPosting originalPosting = postingFact("posting-1", "idem-1");
+      CommittedPosting reversalPosting = reversalPostingFact("posting-2", "idem-2", "posting-1");
+      bookSession.commit(originalPosting);
+      bookSession.commit(reversalPosting);
+      BookReadService service = readService(bookSession);
+
+      assertEquals(
+          new ListPostingsResult.Listed(
+              new PostingPage(
+                  bookIdentity(),
+                  Optional.empty(),
+                  dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
+                  List.of(
+                      BookkeepingPublishedLanguageTranslator.toPublished(reversalPosting),
+                      BookkeepingPublishedLanguageTranslator.toPublished(originalPosting)),
+                  20,
+                  Optional.empty(),
+                  Map.of(originalPosting.postingId(), reversalPosting.postingId()))),
+          service.listPostings(
+              new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
+    }
+  }
+
+  @Test
   void getPostingAndAccountBalance_returnCommittedSnapshots() {
     BookReadServiceTestSupport.CountingFindAccountBookSession bookSession =
         initializedCountingBook();
@@ -353,5 +378,53 @@ class BookReadServiceAccountQueryTest {
       assertThrows(NullPointerException.class, () -> service.accountLedger(nullOf()));
       assertThrows(NullPointerException.class, () -> service.periodSummary(nullOf()));
     }
+  }
+
+  private static BookInspection.CloseTargetReadiness readyCloseTarget(
+      FinancialPositionLineClassification classification, AccountCode accountCode) {
+    return new BookInspection.CloseTargetReadiness(
+        true, classification, accountCode, null, null, List.of());
+  }
+
+  private static BookInspection.CloseTargetReadiness missingCloseTarget(
+      FinancialPositionLineClassification classification, List<AccountCode> inactiveCandidates) {
+    BookAdministrationRejection rejection =
+        new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+            classification, inactiveCandidates);
+    return new BookInspection.CloseTargetReadiness(
+        false,
+        classification,
+        null,
+        BookAdministrationRejection.wireCode(rejection),
+        RejectionNarrative.message(rejection),
+        inactiveCandidates);
+  }
+
+  private static BookInspection.CloseTargetReadiness ambiguousCloseTarget(
+      FinancialPositionLineClassification classification, List<AccountCode> candidates) {
+    BookAdministrationRejection rejection =
+        new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous(
+            classification, candidates);
+    return new BookInspection.CloseTargetReadiness(
+        false,
+        classification,
+        null,
+        BookAdministrationRejection.wireCode(rejection),
+        RejectionNarrative.message(rejection),
+        candidates);
+  }
+
+  private static CommittedPosting reversalPostingFact(
+      String postingId, String idempotencyKey, String priorPostingId) {
+    return new CommittedPosting(
+        new PostingId(postingId),
+        PostingApplicationServiceTestSupport.reversalJournalEntry(),
+        PostingLineageModel.reversal(
+            new ReversalReference(new PostingId(priorPostingId)),
+            new ReversalReason("operator reversal")),
+        PostingKind.STANDARD,
+        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
+        ExecutorAccountingTestSupport.accountingEvidence(idempotencyKey),
+        PostingApplicationServiceTestSupport.committedProvenance(idempotencyKey));
   }
 }

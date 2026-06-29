@@ -4,12 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
-import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.AccountSemantics;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEventKind;
@@ -20,7 +17,6 @@ import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 
 /** Shared SQLite store/bootstrap fixtures and native-handle doubles for split store tests. */
@@ -59,6 +55,29 @@ class SqliteStoreFixtureSupport {
       assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
       return Objects.requireNonNull(value, "SQLite text query returned null.");
     }
+  }
+
+  protected final int countRows(SqliteNativeDatabase database, String tableName) {
+    return queryInt(database, "select count(*) from " + tableName);
+  }
+
+  protected final int countRowsWhereTextEquals(
+      SqliteNativeDatabase database, String tableName, String columnName, String value) {
+    return queryInt(
+        database,
+        "select count(*) from "
+            + tableName
+            + " where "
+            + columnName
+            + " = "
+            + quotedSqlStringLiteral(value));
+  }
+
+  protected final String fiscalYearCloseTargetCodes(SqliteNativeDatabase database) {
+    return queryText(
+        database,
+        "select capital_account_code || '|' || result_holding_account_code || '|' || retained_accumulated_account_code"
+            + " from fiscal_year_close where fiscal_year_close_order = 1");
   }
 
   static void insertInitializedAtRow(SqliteNativeDatabase database) {
@@ -101,17 +120,29 @@ class SqliteStoreFixtureSupport {
       String normalBalance,
       int active,
       String declaredAt) {
-    AccountTaxonomy accountTaxonomy = impliedAccountTaxonomy(accountType);
+    AccountTaxonomy accountTaxonomy = impliedAccountTaxonomy(accountType, normalBalance);
+    insertAccountRow(
+        database, accountCode, accountName, accountType, accountTaxonomy, active, declaredAt);
+  }
+
+  static void insertAccountRow(
+      SqliteNativeDatabase database,
+      String accountCode,
+      String accountName,
+      String accountType,
+      AccountTaxonomy accountTaxonomy,
+      int active,
+      String declaredAt) {
     database.executeStatement(
         """
         insert into account (
             account_code,
             account_name,
             account_type,
-            account_role,
             account_node_kind,
             parent_account_code,
             financial_position_line_classification,
+            cash_flow_asset_classification,
             profit_and_loss_line_classification,
             active,
             declared_at
@@ -119,9 +150,9 @@ class SqliteStoreFixtureSupport {
             '%s',
             '%s',
             '%s',
-            '%s',
             'POSTABLE',
             null,
+            %s,
             %s,
             %s,
             %d,
@@ -132,10 +163,14 @@ class SqliteStoreFixtureSupport {
                 accountCode,
                 accountName,
                 accountType,
-                impliedAccountRole(accountType, normalBalance),
                 accountTaxonomy
                     .financialPositionLineClassification()
                     .map(FinancialPositionLineClassification::wireValue)
+                    .map(SqliteStoreFixtureSupport::quotedSqlStringLiteral)
+                    .orElse("null"),
+                accountTaxonomy
+                    .cashFlowAssetClassification()
+                    .map(dev.erst.fingrind.core.CashFlowAssetClassification::wireValue)
                     .map(SqliteStoreFixtureSupport::quotedSqlStringLiteral)
                     .orElse("null"),
                 accountTaxonomy
@@ -157,21 +192,10 @@ class SqliteStoreFixtureSupport {
     };
   }
 
-  private static String impliedAccountRole(String accountType, String normalBalance) {
-    AccountType parsedAccountType = AccountType.fromWireValue(accountType);
-    NormalBalance parsedNormalBalance = NormalBalance.valueOf(normalBalance);
-    for (AccountRole accountRole : List.of(AccountRole.ORDINARY, AccountRole.POLARITY_INVERTED)) {
-      if (AccountSemantics.normalBalance(parsedAccountType, accountRole) == parsedNormalBalance) {
-        return accountRole.wireValue();
-      }
-    }
-    throw new IllegalArgumentException(
-        "Unsupported fixture account semantics for %s/%s."
-            .formatted(parsedAccountType.wireValue(), parsedNormalBalance.name()));
-  }
-
-  private static AccountTaxonomy impliedAccountTaxonomy(String accountType) {
-    return SqlitePostingFactFixtureSupport.accountTaxonomy(AccountType.fromWireValue(accountType));
+  private static AccountTaxonomy impliedAccountTaxonomy(String accountType, String normalBalance) {
+    return SqlitePostingFactFixtureSupport.accountTaxonomy(
+        AccountType.fromWireValue(accountType),
+        dev.erst.fingrind.core.NormalBalance.valueOf(normalBalance));
   }
 
   private static String quotedSqlStringLiteral(String value) {
@@ -340,7 +364,9 @@ class SqliteStoreFixtureSupport {
                   correlation_id text null,
                   reason text null,
                   source_channel text not null,
-                  prior_posting_id text null
+                  prior_posting_id text null,
+                  request_fingerprint_version integer not null,
+                  request_fingerprint_sha256 text not null
               )
               """);
           database.executeStatement(
@@ -359,7 +385,9 @@ class SqliteStoreFixtureSupport {
                   correlation_id,
                   reason,
                   source_channel,
-                  prior_posting_id
+                  prior_posting_id,
+                  request_fingerprint_version,
+                  request_fingerprint_sha256
               ) values (
                   'posting-partial',
                   'STANDARD',
@@ -374,12 +402,15 @@ class SqliteStoreFixtureSupport {
                   null,
                   null,
                   '%s',
-                  null
+                  null,
+                  1,
+                  '%s'
               )
               """
                   .formatted(
-                      dev.erst.fingrind.core.PostingOriginKind.REVERSAL_ADJUSTMENT.wireValue(),
-                      SourceChannel.CLI.wireValue()));
+                      dev.erst.fingrind.core.PostingOriginKind.DIRECT_JOURNAL.wireValue(),
+                      SourceChannel.CLI.wireValue(),
+                      "0".repeat(64)));
         });
   }
 

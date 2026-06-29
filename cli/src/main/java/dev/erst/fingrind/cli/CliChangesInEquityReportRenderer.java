@@ -12,14 +12,14 @@ final class CliChangesInEquityReportRenderer {
   private CliChangesInEquityReportRenderer() {}
 
   static String renderText(ChangesInEquityReport report) {
-    boolean hasCurrent = CliReportSurfacePolicy.hasCurrent(report);
+    boolean hasCurrent = CliStatementReportSurfacePolicy.hasCurrent(report);
     String summary = CliTextFormat.renderKeyValueBlock(summaryRows(report, hasCurrent));
     String table =
         report.rows().isEmpty()
             ? ""
             : CliReportRenderSupport.section("Equity lines", renderTable(report.rows()));
     String comparative =
-        CliReportSurfacePolicy.hasComparative(report)
+        CliStatementReportSurfacePolicy.hasComparative(report)
             ? CliReportRenderSupport.section(
                 "Comparative Changes In Equity",
                 CliReportRenderSupport.joinSections(
@@ -137,7 +137,7 @@ final class CliChangesInEquityReportRenderer {
               "Comparative closing totals",
               CliReportRenderSupport.joinedBalancesText(report.comparativeClosingTotals())));
     }
-    if (!CliReportSurfacePolicy.hasComparativeData(report)) {
+    if (!CliStatementReportSurfacePolicy.hasComparativeData(report)) {
       rows.add(List.of("Outcome", CliQueryScopeText.noMatchesLabel("equity lines")));
     }
     return List.copyOf(rows);

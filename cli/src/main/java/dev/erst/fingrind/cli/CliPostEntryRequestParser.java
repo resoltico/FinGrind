@@ -10,12 +10,16 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredObject;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
+import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -31,7 +35,8 @@ final class CliPostEntryRequestParser {
 
   private CliPostEntryRequestParser() {}
 
-  static PostEntryCommand readPostEntryCommand(ObjectNode rootNode) {
+  static PostEntryCommand readPostEntryCommand(
+      ObjectNode rootNode, @org.jspecify.annotations.Nullable OperationId operationId) {
     CliWrappedRequestShapeGuards.rejectWrappedTopLevelPayload(
         rootNode,
         ProtocolLedgerPlanFields.Step.POSTING,
@@ -39,6 +44,7 @@ final class CliPostEntryRequestParser {
         "Posting request fields must be top-level for direct request files; remove the posting wrapper.");
     rejectForbiddenField(rootNode, LEGACY_CORRECTION_FIELD);
     BookkeepingEntry entry = CliBookkeepingEntryRequestParser.readEntry(rootNode);
+    requireAcceptedEntryKind(entry.entryKind(), operationId);
     ObjectNode provenanceNode =
         requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.PROVENANCE);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.REASON);
@@ -47,7 +53,7 @@ final class CliPostEntryRequestParser {
     rejectUnexpectedFields(
         provenanceNode,
         ProtocolPostEntryFields.TopLevel.PROVENANCE,
-        ProtocolPostingRequestFieldSets.provenanceFields());
+        ProtocolPostingNestedFieldSets.provenanceFields());
     String actorId =
         CliRequestPlaceholderValues.requiredRealProvenanceText(
             provenanceNode,
@@ -81,7 +87,7 @@ final class CliPostEntryRequestParser {
     rejectUnexpectedFields(
         evidenceNode,
         ProtocolPostEntryFields.TopLevel.EVIDENCE,
-        ProtocolPostingRequestFieldSets.evidenceFields());
+        ProtocolPostingNestedFieldSets.evidenceFields());
     AccountingEvidence evidence = CliAccountingEvidenceRequestParser.readEvidence(evidenceNode);
     RequestProvenance requestProvenance =
         new RequestProvenance(
@@ -92,5 +98,25 @@ final class CliPostEntryRequestParser {
             new CausationId(causationId),
             correlationId);
     return new PostEntryCommand(entry, evidence, requestProvenance, SourceChannel.CLI);
+  }
+
+  private static void requireAcceptedEntryKind(
+      BookkeepingEntryKind actualEntryKind,
+      @org.jspecify.annotations.Nullable OperationId operationId) {
+    if (operationId == null || ProtocolPostingRequestTopics.acceptsAnyEntryKind(operationId)) {
+      return;
+    }
+    BookkeepingEntryKind requiredEntryKind =
+        ProtocolPostingRequestTopics.requiredEntryKind(operationId).orElse(null);
+    if (requiredEntryKind == null || actualEntryKind == requiredEntryKind) {
+      return;
+    }
+    throw new IllegalArgumentException(
+        "Command '%s' requires request field %s to be '%s', but the request carries '%s'."
+            .formatted(
+                operationId.wireName(),
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                requiredEntryKind.wireValue(),
+                actualEntryKind.wireValue()));
   }
 }

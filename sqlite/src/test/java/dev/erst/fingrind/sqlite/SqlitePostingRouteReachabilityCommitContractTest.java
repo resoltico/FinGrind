@@ -1,21 +1,23 @@
 package dev.erst.fingrind.sqlite;
 
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityProvenanceFixtures.requestProvenance;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.directJournalCommand;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.openingPositionCommand;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.priorPostingCommandForReversal;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.reversalCommand;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.CANDIDATE_ACCOUNT_CODE;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.DECLARED_AT;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.FIXED_CLOCK;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.candidateAccount;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.cellToken;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.counterAssetAccount;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.directJournalCommand;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.openAccountingPositionCommand;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.priorPostingCommandForReversal;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.reversalCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -57,7 +59,7 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
           new PostingApplicationService(
               session, session, oneShotPostingId("posting-" + cellToken(cell)), FIXED_CLOCK);
 
-      PostEntryResult result = application.commit(openAccountingPositionCommand(token));
+      PostEntryResult result = application.commit(openingPositionCommand(token));
 
       if (cell.openingReachable()) {
         assertCommitted(result, "posting-" + cellToken(cell), token);
@@ -65,8 +67,8 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
       }
       assertEquals(
           new PostEntryResult.CommitRejected(
-              PostingRouteReachabilityTestSupport.requestProvenance(token).idempotencyKey(),
-              new PostingRejection.OpenAccountingPositionTouchesNominalAccount(
+              requestProvenance(token).idempotencyKey(),
+              new PostingRejection.OpeningPositionTouchesNominalAccount(
                   CANDIDATE_ACCOUNT_CODE, cell.accountType())),
           result);
     }
@@ -92,8 +94,10 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
       }
       assertEquals(
           new PostEntryResult.CommitRejected(
-              PostingRouteReachabilityTestSupport.requestProvenance(token).idempotencyKey(),
-              new PostingRejection.ResultHoldingAccountReserved(CANDIDATE_ACCOUNT_CODE)),
+              requestProvenance(token).idempotencyKey(),
+              new PostingRejection.ReservedResultClassification(
+                  CANDIDATE_ACCOUNT_CODE,
+                  FinancialPositionLineClassification.fromWireValue(cell.classification()))),
           result);
     }
   }
@@ -131,8 +135,10 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
       }
       assertEquals(
           new PostEntryResult.CommitRejected(
-              PostingRouteReachabilityTestSupport.requestProvenance(token).idempotencyKey(),
-              new PostingRejection.ResultHoldingAccountReserved(CANDIDATE_ACCOUNT_CODE)),
+              requestProvenance(token).idempotencyKey(),
+              new PostingRejection.ReservedResultClassification(
+                  CANDIDATE_ACCOUNT_CODE,
+                  FinancialPositionLineClassification.fromWireValue(cell.classification()))),
           result);
     }
   }
@@ -145,14 +151,12 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
         counterAccount.accountCode(),
         counterAccount.accountName(),
         counterAccount.accountType(),
-        counterAccount.accountRole(),
         counterAccount.accountTaxonomy(),
         counterAccount.declaredAt());
     session.declareAccount(
         candidateAccount.accountCode(),
         candidateAccount.accountName(),
         candidateAccount.accountType(),
-        candidateAccount.accountRole(),
         candidateAccount.accountTaxonomy(),
         candidateAccount.declaredAt());
   }
@@ -161,9 +165,10 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
     assertEquals(
         new PostEntryResult.Committed(
             new PostingId(postingId),
-            PostingRouteReachabilityTestSupport.requestProvenance(token).idempotencyKey(),
+            requestProvenance(token).idempotencyKey(),
             PostingRouteReachabilityTestSupport.EFFECTIVE_DATE,
-            FIXED_CLOCK.instant()),
+            FIXED_CLOCK.instant(),
+            false),
         result);
   }
 

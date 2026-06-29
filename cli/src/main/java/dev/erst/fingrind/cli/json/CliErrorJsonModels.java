@@ -8,7 +8,8 @@ import java.util.List;
 public interface CliErrorJsonModels {
 
   /** Sealed marker for machine-readable CLI failure detail payloads. */
-  sealed interface ErrorDetails permits InvalidJsonDetails, InvalidRequestDetails {}
+  sealed interface ErrorDetails extends CliEnvelopeJsonModels.EnvelopeDetails
+      permits InvalidJsonDetails, InvalidRequestDetails {}
 
   record InvalidJsonDetails(String parseMessage, int line, int column) implements ErrorDetails {
     public InvalidJsonDetails {

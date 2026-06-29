@@ -30,7 +30,8 @@ sealed interface CliCommand
           RestoreRekeyRollback,
           CliBookNullablePathOutputModeCommand,
           CliBookRequestOutputModeCommand,
-          TransferPeriodResult,
+          InterimResultSweep,
+          FiscalYearClose,
           InspectBook,
           GetPosting,
           CliBookQueryOutputModeCommand {

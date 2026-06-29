@@ -11,6 +11,7 @@ public enum FinancialPositionLineClassification implements WireValue {
   EQUITY_CONTRIBUTION,
   EQUITY_WITHDRAWAL,
   RESULT_HOLDING,
+  RETAINED_ACCUMULATED,
   RESERVE,
   OTHER_EQUITY;
 
@@ -19,8 +20,28 @@ public enum FinancialPositionLineClassification implements WireValue {
     return switch (this) {
       case CURRENT_ASSET, NONCURRENT_ASSET -> AccountType.ASSET;
       case CURRENT_LIABILITY, NONCURRENT_LIABILITY -> AccountType.LIABILITY;
-      case EQUITY_CONTRIBUTION, EQUITY_WITHDRAWAL, RESULT_HOLDING, RESERVE, OTHER_EQUITY ->
+      case EQUITY_CONTRIBUTION,
+          EQUITY_WITHDRAWAL,
+          RESULT_HOLDING,
+          RETAINED_ACCUMULATED,
+          RESERVE,
+          OTHER_EQUITY ->
           AccountType.EQUITY;
+    };
+  }
+
+  /** Returns the normal balance implied by this declared financial-position classification. */
+  public NormalBalance normalBalance() {
+    return switch (this) {
+      case CURRENT_ASSET, NONCURRENT_ASSET, EQUITY_WITHDRAWAL -> NormalBalance.DEBIT;
+      case CURRENT_LIABILITY,
+          NONCURRENT_LIABILITY,
+          EQUITY_CONTRIBUTION,
+          RESULT_HOLDING,
+          RETAINED_ACCUMULATED,
+          RESERVE,
+          OTHER_EQUITY ->
+          NormalBalance.CREDIT;
     };
   }
 
@@ -35,6 +56,7 @@ public enum FinancialPositionLineClassification implements WireValue {
       case EQUITY_CONTRIBUTION -> "EQUITY_CONTRIBUTION";
       case EQUITY_WITHDRAWAL -> "EQUITY_WITHDRAWAL";
       case RESULT_HOLDING -> "RESULT_HOLDING";
+      case RETAINED_ACCUMULATED -> "RETAINED_ACCUMULATED";
       case RESERVE -> "RESERVE";
       case OTHER_EQUITY -> "OTHER_EQUITY";
     };

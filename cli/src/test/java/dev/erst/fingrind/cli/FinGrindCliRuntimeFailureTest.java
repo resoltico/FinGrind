@@ -124,7 +124,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
   @Test
   void run_mapsSqliteRuntimeFailureToRuntimeFailureWithSqliteHint() throws IOException {
-    Path requestFile = writeRequest(validRequestJson());
+    Path requestFile = writeRequest(validRawJournalRequestJson());
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -155,7 +155,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
   @Test
   void run_mapsPersistenceInvariantBreachesToInternalErrorWithoutStorageHint() throws IOException {
-    Path requestFile = writeRequest(validRequestJson());
+    Path requestFile = writeRequest(validRawJournalRequestJson());
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -344,7 +344,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   @Test
   void run_mapsGenericRuntimeFailureToInternalErrorWithOpaquePublicIdAndDiagnostics()
       throws IOException {
-    Path requestFile = writeRequest(validRequestJson());
+    Path requestFile = writeRequest(validRawJournalRequestJson());
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

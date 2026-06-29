@@ -23,12 +23,19 @@ abstract class EmptyValidationStore implements PostingValidationStore {
   }
 
   @Override
+  public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
+      dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
+    return Optional.empty();
+  }
+
+  @Override
   public Map<AccountCode, RegisteredAccount> findAccounts(java.util.Set<AccountCode> accountCodes) {
     return Map.of();
   }
 
   @Override
-  public Optional<CommittedPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+  public Optional<dev.erst.fingrind.executor.spi.StoredRequestPosting> findExistingPosting(
+      IdempotencyKey idempotencyKey) {
     return Optional.empty();
   }
 

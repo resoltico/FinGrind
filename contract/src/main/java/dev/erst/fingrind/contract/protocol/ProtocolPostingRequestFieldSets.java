@@ -2,7 +2,7 @@ package dev.erst.fingrind.contract.protocol;
 
 import java.util.Set;
 
-/** Canonical post-entry request-field sets for direct journals, recipes, and special profiles. */
+/** Canonical post-entry request-field sets for direct journals and typed business entries. */
 public final class ProtocolPostingRequestFieldSets {
   private static final Set<String> POST_ENTRY_TOP_LEVEL_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
@@ -11,77 +11,67 @@ public final class ProtocolPostingRequestFieldSets {
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
           ProtocolPostEntryFields.TopLevel.LINES,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> CASH_REVENUE_RECIPE_FIELDS =
+  private static final Set<String> SALE_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> CASH_EXPENSE_RECIPE_FIELDS =
+  private static final Set<String> EXPENSE_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
           ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> EQUITY_CONTRIBUTION_RECIPE_FIELDS =
+  private static final Set<String> OWNER_CONTRIBUTION_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> EQUITY_WITHDRAWAL_RECIPE_FIELDS =
+  private static final Set<String> OWNER_WITHDRAWAL_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.RECIPE_KIND,
           ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> OPEN_ACCOUNTING_POSITION_FIELDS =
+  private static final Set<String> OPENING_POSITION_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
           ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> REVERSAL_ADJUSTMENT_FIELDS =
+  private static final Set<String> REVERSAL_ENTRY_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
           ProtocolPostEntryFields.TopLevel.LINES,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE,
           ProtocolPostEntryFields.TopLevel.REVERSAL);
-  private static final Set<String> EVIDENCE_FIELDS =
-      Set.copyOf(ProtocolPostEntryFields.evidenceFields());
-  private static final Set<String> SOURCE_DOCUMENT_FIELDS =
-      Set.copyOf(ProtocolPostEntryFields.sourceDocumentFields());
-  private static final Set<String> APPROVAL_FIELDS =
-      Set.copyOf(ProtocolPostEntryFields.approvalFields());
-  private static final Set<String> PROVENANCE_FIELDS =
-      Set.copyOf(ProtocolPostEntryFields.provenanceFields());
-  private static final Set<String> JOURNAL_LINE_FIELDS =
-      Set.copyOf(ProtocolPostEntryFields.journalLineFields());
-  private static final Set<String> OPENING_BALANCE_FIELDS =
-      Set.copyOf(ProtocolPostEntryFields.openingBalanceFields());
-  private static final Set<String> REVERSAL_FIELDS =
-      Set.copyOf(ProtocolPostEntryFields.reversalFields());
 
   private ProtocolPostingRequestFieldSets() {}
 
@@ -95,68 +85,33 @@ public final class ProtocolPostingRequestFieldSets {
     return JOURNAL_DIRECT_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for the {@code CASH_REVENUE} journal recipe. */
-  public static Set<String> cashRevenueRecipeFields() {
-    return CASH_REVENUE_RECIPE_FIELDS;
+  /** Returns the accepted top-level fields for sale requests. */
+  public static Set<String> saleFields() {
+    return SALE_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for the {@code CASH_EXPENSE} journal recipe. */
-  public static Set<String> cashExpenseRecipeFields() {
-    return CASH_EXPENSE_RECIPE_FIELDS;
+  /** Returns the accepted top-level fields for expense requests. */
+  public static Set<String> expenseFields() {
+    return EXPENSE_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for the equity-contribution journal recipe. */
-  public static Set<String> equityContributionRecipeFields() {
-    return EQUITY_CONTRIBUTION_RECIPE_FIELDS;
+  /** Returns the accepted top-level fields for owner-contribution requests. */
+  public static Set<String> ownerContributionFields() {
+    return OWNER_CONTRIBUTION_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for the equity-withdrawal journal recipe. */
-  public static Set<String> equityWithdrawalRecipeFields() {
-    return EQUITY_WITHDRAWAL_RECIPE_FIELDS;
+  /** Returns the accepted top-level fields for owner-withdrawal requests. */
+  public static Set<String> ownerWithdrawalFields() {
+    return OWNER_WITHDRAWAL_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for open-accounting-position requests. */
-  public static Set<String> openAccountingPositionFields() {
-    return OPEN_ACCOUNTING_POSITION_FIELDS;
+  /** Returns the accepted top-level fields for opening-position requests. */
+  public static Set<String> openingPositionFields() {
+    return OPENING_POSITION_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for reversal-adjustment requests. */
-  public static Set<String> reversalAdjustmentFields() {
-    return REVERSAL_ADJUSTMENT_FIELDS;
-  }
-
-  /** Returns the accepted nested fields for accounting evidence objects. */
-  public static Set<String> evidenceFields() {
-    return EVIDENCE_FIELDS;
-  }
-
-  /** Returns the accepted nested fields for source-document reference objects. */
-  public static Set<String> sourceDocumentFields() {
-    return SOURCE_DOCUMENT_FIELDS;
-  }
-
-  /** Returns the accepted nested fields for approval reference objects. */
-  public static Set<String> approvalFields() {
-    return APPROVAL_FIELDS;
-  }
-
-  /** Returns the accepted nested fields for provenance objects. */
-  public static Set<String> provenanceFields() {
-    return PROVENANCE_FIELDS;
-  }
-
-  /** Returns the accepted nested fields for journal-line objects. */
-  public static Set<String> journalLineFields() {
-    return JOURNAL_LINE_FIELDS;
-  }
-
-  /** Returns the accepted nested fields for opening-balance objects. */
-  public static Set<String> openingBalanceFields() {
-    return OPENING_BALANCE_FIELDS;
-  }
-
-  /** Returns the accepted nested fields for reversal-reference objects. */
-  public static Set<String> reversalFields() {
-    return REVERSAL_FIELDS;
+  /** Returns the accepted top-level fields for reversal requests. */
+  public static Set<String> reversalEntryFields() {
+    return REVERSAL_ENTRY_FIELDS;
   }
 }
