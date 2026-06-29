@@ -111,16 +111,22 @@ class CliInvocationTextTest {
             null, "Linux", unnamedModule, "fingrind.jar");
 
     assertEquals(
-        "java --enable-native-access=dev.erst.fingrind.cli --module-path fingrind.jar --module"
-            + " dev.erst.fingrind.cli/dev.erst.fingrind.cli.App",
+        "java --enable-native-access=dev.erst.fingrind.cli"
+            + " --add-opens=java.base/java.nio=dev.erst.fingrind.cli"
+            + " --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar"
+            + " --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App",
         launcherCommand);
     assertEquals(
-        "java --enable-native-access=dev.erst.fingrind.cli --module-path fingrind.jar --module"
-            + " dev.erst.fingrind.cli/dev.erst.fingrind.cli.App help",
+        "java --enable-native-access=dev.erst.fingrind.cli"
+            + " --add-opens=java.base/java.nio=dev.erst.fingrind.cli"
+            + " --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar"
+            + " --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App help",
         CliInvocationText.rewriteInvocationPrefix("fingrind help", launcherCommand));
     assertEquals(
         "cat ./secrets/acme.book-key | java --enable-native-access=dev.erst.fingrind.cli"
-            + " --module-path fingrind.jar --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App open-book --book-file"
+            + " --add-opens=java.base/java.nio=dev.erst.fingrind.cli"
+            + " --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar"
+            + " --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App open-book --book-file"
             + " ./books/acme.sqlite --book-passphrase-stdin",
         CliInvocationText.rewriteInvocationPrefix(
             "cat ./secrets/acme.book-key | fingrind open-book --book-file ./books/acme.sqlite --book-passphrase-stdin",

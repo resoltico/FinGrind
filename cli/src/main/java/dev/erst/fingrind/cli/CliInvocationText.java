@@ -159,6 +159,10 @@ final class CliInvocationText {
   private static String rawJarLauncherCommand(String jarFileName) {
     return "java --enable-native-access="
         + RAW_JAR_MODULE_NAME
+        + " --add-opens=java.base/java.nio="
+        + RAW_JAR_MODULE_NAME
+        + " --add-exports=java.base/sun.nio="
+        + RAW_JAR_MODULE_NAME
         + " --module-path "
         + jarFileName
         + " --module "

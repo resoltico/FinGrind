@@ -273,6 +273,8 @@ function Invoke-FinGrindCliWrapper {
 
     & $RuntimeManifest.JavaExecutable `
         "--enable-native-access=$($RuntimeManifest.NativeAccessModule)" `
+        "--add-opens=java.base/java.nio=$($RuntimeManifest.NativeAccessModule)" `
+        "--add-exports=java.base/sun.nio=$($RuntimeManifest.NativeAccessModule)" `
         "-Dfingrind.runtime.distribution=$RuntimeDistribution" `
         "-Dfingrind.source-checkout.root=$($Context.RepoRoot)" `
         "-Dfingrind.source-checkout.build-root=$($Context.RootBuildDir)" `

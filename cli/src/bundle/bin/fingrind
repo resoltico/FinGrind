@@ -36,6 +36,8 @@ unset FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE
 
 exec "${runtime_java}" \
     --enable-native-access=dev.erst.fingrind.cli \
+    --add-opens=java.base/java.nio=dev.erst.fingrind.cli \
+    --add-exports=java.base/sun.nio=dev.erst.fingrind.cli \
     -D{{sqliteBundleHomeSystemProperty}}="${app_home}" \
     -Dfingrind.runtime.distribution={{bundleRuntimeDistribution}} \
     -Dfingrind.runtime.bundle-target={{bundleClassifier}} \

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Reproduce and guard the release-candidate tag verifier so initial publication requires the
-# tagged commit to equal the current default-branch head and to introduce the release version on
-# that default-branch line, while immutable-tag reruns can verify a historical tagged commit after
-# release-control repairs land on main.
+# tagged commit to equal the current default-branch head while allowing unreleased same-version
+# repair commits before the first public tag, and so immutable-tag reruns can verify a historical
+# tagged commit after release-control repairs land on main.
 
 set -euo pipefail
 
@@ -64,16 +64,16 @@ grep -Fq './scripts/verify-release-candidate-tag.sh' "${release_protocol}" || di
     "release protocol no longer requires the release-candidate verifier"
 grep -Fq 'initial release tag' "${verifier}" || die \
     "release-candidate verifier no longer enforces the initial-publication head identity contract"
-grep -Fq 'did not introduce version' "${verifier}" || die \
-    "release-candidate verifier no longer enforces the version-introduction contract"
+grep -Fq 'unreleased target-version line' "${verifier}" || die \
+    "release-candidate verifier no longer documents the active unreleased version-line contract"
 grep -Fq 'rerun release tag' "${verifier}" || die \
     "release-candidate verifier no longer enforces the immutable-tag rerun ancestry contract"
 grep -Fq 'FINGRIND_RELEASE_TAG_VERIFIER_MODE' "${verifier}" || die \
     "release-candidate verifier no longer exposes the explicit initial-versus-rerun mode contract"
 grep -Fq 'workflow-dispatch rerun automatically switches the verifier into rerun mode' "${release_protocol}" || die \
     "release protocol no longer documents the release-candidate verifier rerun mode"
-grep -Fq 'introduces the release version on that default-branch line' "${release_protocol}" || die \
-    "release protocol no longer documents the version-introduction release invariant"
+grep -Fq 'Later unreleased repair commits may still become' "${release_protocol}" || die \
+    "release protocol no longer documents the same-version pre-tag repair release invariant"
 grep -Fq 'FINGRIND_RELEASE_TAG_VERIFIER_MODE: ${{ github.event_name == '\''workflow_dispatch'\'' && '\''rerun'\'' || '\''initial'\'' }}' "${release_workflow}" || die \
     "release workflow no longer selects the explicit release-candidate verifier mode"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
@@ -277,18 +277,6 @@ git -C "${release_checkout}" tag -d v9.9.9 >/dev/null
 git -C "${release_checkout}" tag v9.9.9 "${remote_head_sha}"
 git -C "${release_checkout}" push --force origin refs/tags/v9.9.9 >/dev/null
 
-set +e
-duplicate_version_output="$(
-    run_verifier "${remote_head_sha}" bash "${verifier}" v9.9.9 2>&1
-)"
-duplicate_version_status=$?
-set -e
-
-if [[ ${duplicate_version_status} -eq 0 ]]; then
-    die "release-candidate verifier accepted a tag whose first parent already carried the release version"
-fi
-printf '%s\n' "${duplicate_version_output}" | grep -Fq \
-    "release tag v9.9.9 commit ${remote_head_sha} did not introduce version 9.9.9; first-parent commit ${release_commit_sha} already carried that version" || die \
-    "release-candidate verifier did not report the duplicate-version introduction failure"
+run_verifier "${remote_head_sha}" bash "${verifier}" v9.9.9 >/dev/null
 
 printf 'verify-release-candidate-tag regression: success\n'

@@ -329,6 +329,9 @@ JSON
                     if [[ "${mode}" == 'unreadable-pdf' ]]; then
                         chmod 000 "${pdf_out}"
                     fi
+                    if [[ "${mode}" == 'pdf-stderr' ]]; then
+                        printf 'simulated pdf export warning\n' >&2
+                    fi
                     if [[ "${mode}" == 'bad-pdf-stdout' ]]; then
                         cat <<TEXT
 Trial Balance
@@ -529,5 +532,23 @@ fi
 printf '%s\n' "${pdf_stdout_failure_output}" | grep -Fq \
     'published text PDF export did not emit one artifact confirmation block' || die \
     "public container surface verifier did not report the missing text PDF artifact confirmation block"
+
+set +e
+pdf_stderr_failure_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
+        FAKE_DOCKER_MODE='pdf-stderr' \
+        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
+)"
+pdf_stderr_failure_exit=$?
+set -e
+
+if [[ ${pdf_stderr_failure_exit} -eq 0 ]]; then
+    die "public container surface verifier accepted a successful PDF export that wrote stderr diagnostics"
+fi
+printf '%s\n' "${pdf_stderr_failure_output}" | grep -Fq \
+    'published successful PDF export wrote diagnostics on stderr: simulated pdf export warning' || die \
+    "public container surface verifier did not report the unexpected PDF stderr diagnostics"
 
 printf 'public container surface verifier regression: success\n'
