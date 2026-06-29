@@ -341,13 +341,21 @@ Trial Balance
 As of         : 2026-04-08
 Balance state : Balanced
 TEXT
+                    elif [[ "${mode}" == 'bad-pdf-path' ]]; then
+                        cat <<TEXT
+Artifact
+========
+
+Format : pdf
+Path   : /tmp/not-the-mounted-report.pdf
+TEXT
                     else
                         cat <<TEXT
 Artifact
 ========
 
 Format : pdf
-Path   : /work/trial-balance.pdf
+Path   : <redacted>/work/trial-balance.pdf
 TEXT
                     fi
                 elif [[ "${mode}" == 'bad-report' ]]; then
@@ -533,8 +541,26 @@ if [[ ${pdf_stdout_failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted a text PDF export without the artifact confirmation block"
 fi
 printf '%s\n' "${pdf_stdout_failure_output}" | grep -Fq \
-    'published text PDF export did not emit one artifact confirmation block' || die \
+    'published text PDF export did not emit one artifact confirmation heading' || die \
     "public container surface verifier did not report the missing text PDF artifact confirmation block"
+
+set +e
+pdf_path_failure_output="$(
+    PATH="${fixture_root}/bin:${PATH}" \
+        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
+        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
+        FAKE_DOCKER_MODE='bad-pdf-path' \
+        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
+)"
+pdf_path_failure_exit=$?
+set -e
+
+if [[ ${pdf_path_failure_exit} -eq 0 ]]; then
+    die "public container surface verifier accepted a text PDF export with the wrong reported artifact path"
+fi
+printf '%s\n' "${pdf_path_failure_output}" | grep -Fq \
+    'published text PDF export did not report the expected public artifact path' || die \
+    "public container surface verifier did not report the wrong public artifact path"
 
 set +e
 pdf_stderr_failure_output="$(

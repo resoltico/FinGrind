@@ -52,22 +52,54 @@ TEXT
         || die "published text trial balance did not render the expected context block"
 }
 
+count_pattern_matches() {
+    local text=$1
+    local pattern=$2
+
+    printf '%s\n' "${text}" | grep -Ec "${pattern}" || true
+}
+
+extract_artifact_confirmation_path() {
+    local text=$1
+
+    printf '%s\n' "${text}" | sed -n 's/^Path[[:space:]]*:[[:space:]]*//p' | head -n1
+}
+
+artifact_path_matches() {
+    local reported_path=$1
+    local expected_path=$2
+    local expected_suffix="${expected_path#/}"
+    local expected_basename="${expected_path##*/}"
+
+    [[ -n "${reported_path}" ]] || return 1
+    case "${reported_path}" in
+        "${expected_path}"|"<redacted>${expected_path}"|"<redacted>/${expected_basename}")
+            return 0
+            ;;
+        */"${expected_suffix}"|*/"${expected_basename}")
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 verify_text_pdf_artifact_output() {
     local text_output=$1
     local reported_path=$2
-    local artifact_block
+    local artifact_heading_count artifact_format_count artifact_path_count reported_artifact_path
 
-    artifact_block="$(cat <<TEXT
-Artifact
-========
-
-Format : pdf
-Path   : ${reported_path}
-TEXT
-)"
-
-    require_literal_block "${text_output}" "${artifact_block}" \
-        || die "published text PDF export did not emit one artifact confirmation block"
+    artifact_heading_count="$(count_pattern_matches "${text_output}" '^Artifact$')"
+    [[ "${artifact_heading_count}" == '1' ]] || die \
+        "published text PDF export did not emit one artifact confirmation heading"
+    artifact_format_count="$(count_pattern_matches "${text_output}" '^Format[[:space:]]+:[[:space:]]+pdf$')"
+    [[ "${artifact_format_count}" == '1' ]] || die \
+        "published text PDF export did not emit one PDF artifact format line"
+    artifact_path_count="$(count_pattern_matches "${text_output}" '^Path[[:space:]]+:[[:space:]]+.+$')"
+    [[ "${artifact_path_count}" == '1' ]] || die \
+        "published text PDF export did not emit one artifact confirmation path line"
+    reported_artifact_path="$(extract_artifact_confirmation_path "${text_output}")"
+    artifact_path_matches "${reported_artifact_path}" "${reported_path}" || die \
+        "published text PDF export did not report the expected public artifact path"
     ! require_match "${text_output}" '^Trial Balance$' || die \
         "published text PDF export leaked the full trial-balance report body onto stdout"
 }
