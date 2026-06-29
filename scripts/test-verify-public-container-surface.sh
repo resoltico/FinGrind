@@ -375,6 +375,7 @@ Context
 -------
 Entity              : Release Protocol Fixture
 Starter chart       : Owner-managed service starter chart
+Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds
@@ -404,6 +405,7 @@ Context
 -------
 Entity              : Release Protocol Fixture
 Starter chart       : Owner-managed service starter chart
+Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds

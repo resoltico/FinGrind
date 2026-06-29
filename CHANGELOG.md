@@ -11,7 +11,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
-- Fixed release-publication verifier drift so the anonymous mounted-book container proof now seeds ASSET declaration fixtures with the required `cashFlowAssetClassification`, and the mock-backed verifier regression test now fails if that bank-account fixture falls behind the live declare-account contract again.
+- Fixed release-publication verifier drift so the anonymous mounted-book container proof now seeds ASSET declaration fixtures with the required `cashFlowAssetClassification`, expects the live trial-balance context block including `Accounting basis    : Cash basis`, and fails its mock-backed regression test if either the bank-account declaration fixture or the published text context surface falls behind the current contract again.
 
 ## [0.58.0] - 2026-06-29
 
