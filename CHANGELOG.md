@@ -4,6 +4,14 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Added
+
+- Added one GitHub-native protected-surface review owner line through `.github/CODEOWNERS` plus `main` branch protection that requires code-owner review for workflows, legal/security files, and the canonical release and governance entrypoints.
+
+### Fixed
+
+- Hardened repo hygiene verification so `git fsck` ignores Git-private ref namespaces, emits heartbeat progress during long object-store scans, and fails only on broken repository-owned refs.
+
 ## [0.57.0] - 2026-06-19
 
 ### Changed

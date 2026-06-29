@@ -8,6 +8,10 @@ die() {
     exit 1
 }
 
+progress() {
+    printf 'repo hygiene verifier check: %s\n' "$1"
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -60,9 +64,12 @@ EOF
 git -C "${fixture_root}" add .
 git -C "${fixture_root}" commit -q -m 'fixture: initial state'
 
-"${verifier}" --repo-root "${fixture_root}" >/dev/null || die \
+progress 'clean fixture root passes verification'
+"${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should accept a clean fixture root"
-"${verifier}" --repo-root "${fixture_root}" --report-local-state | grep -F 'SIZE   CATEGORY' >/dev/null || die \
+progress 'local-state reporting stays available'
+report_output="$("${verifier}" --repo-root "${fixture_root}" --report-local-state)"
+[[ "${report_output}" == *'SIZE   CATEGORY'* ]] || die \
     "repo hygiene verifier should support local-state reporting"
 
 mkdir "${fixture_root}/2026-01-31"
@@ -78,9 +85,10 @@ set -e
 [[ "${failure_output}" == *'.DS_Store'* ]] || die \
     "repo hygiene verifier did not report the root .DS_Store file"
 
+progress 'unexpected root entries are cleaned and reverified'
 "${cleaner}" --repo-root "${fixture_root}" >/dev/null || die \
     "repo hygiene cleaner should remove empty unexpected entries and .DS_Store files"
-"${verifier}" --repo-root "${fixture_root}" >/dev/null || die \
+"${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should pass after cleanup"
 
 printf '' > "${fixture_root}/.git/index.lock"
@@ -97,7 +105,8 @@ set -e
     "repo hygiene verifier did not report the Git index lock path"
 rm -f "${fixture_root}/.git/index.lock"
 
-"${verifier}" --repo-root "${fixture_root}" >/dev/null || die \
+progress 'lock-file cleanup restores verifier success'
+"${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should pass after removing the Git coordination lock file"
 
 printf 'warning: unreachable loose objects remain\n' > "${fixture_root}/.git/gc.log"
@@ -114,8 +123,31 @@ set -e
     "repo hygiene verifier did not report the gc.log path"
 rm -f "${fixture_root}/.git/gc.log"
 
-"${verifier}" --repo-root "${fixture_root}" >/dev/null || die \
+progress 'gc.log cleanup restores verifier success'
+"${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should pass after removing the persisted gc.log"
+
+mkdir -p "${fixture_root}/.git/refs/codex/turn-diffs/captures"
+chmod 000 "${fixture_root}/.git/refs/codex/turn-diffs/captures"
+set +e
+private_ref_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
+private_ref_status=$?
+set -e
+[[ ${private_ref_status} -eq 0 ]] || die \
+    "repo hygiene verifier should ignore protected Git-private ref namespaces"
+chmod 700 "${fixture_root}/.git/refs/codex/turn-diffs/captures"
+rm -rf "${fixture_root}/.git/refs/codex"
+
+printf 'not-an-oid\n' > "${fixture_root}/.git/refs/heads/broken"
+set +e
+broken_ref_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
+broken_ref_status=$?
+set -e
+[[ ${broken_ref_status} -ne 0 ]] || die \
+    "repo hygiene verifier should fail when a repo-owned ref is broken"
+[[ "${broken_ref_output}" == *'repo-owned Git reference verification failed'* ]] || die \
+    "repo hygiene verifier did not report repo-owned ref verification failures"
+rm -f "${fixture_root}/.git/refs/heads/broken"
 
 mkdir -p \
     "${fixture_root}/build/report" \
@@ -135,6 +167,7 @@ printf 'generated\n' > "${fixture_root}/.local/tooling/sqlite/archive.txt"
 printf 'generated\n' > "${fixture_root}/.vscode/tasks/tasks.json"
 printf 'generated\n' > "${fixture_root}/tmp/transient/data.txt"
 
+progress 'generated-state purge removes repo-owned build artifacts'
 "${cleaner}" --repo-root "${fixture_root}" --purge-generated-state >/dev/null || die \
     "repo hygiene cleaner should purge repo-owned generated state"
 [[ ! -e "${fixture_root}/build" ]] || die "generated root build state was not removed"
@@ -147,12 +180,14 @@ printf 'generated\n' > "${fixture_root}/tmp/transient/data.txt"
 [[ -d "${fixture_root}/.vscode" ]] || die "editor state should remain without --purge-tool-state"
 [[ -d "${fixture_root}/tmp" ]] || die "tmp root should remain without --purge-tmp"
 
+progress 'tool-state purge remains opt-in and explicit'
 "${cleaner}" --repo-root "${fixture_root}" --purge-tool-state >/dev/null || die \
     "repo hygiene cleaner should support explicit tool-state cleanup"
 [[ ! -e "${fixture_root}/.claude" ]] || die ".claude tool state was not removed"
 [[ ! -e "${fixture_root}/.local" ]] || die ".local tool state was not removed"
 [[ ! -e "${fixture_root}/.vscode" ]] || die ".vscode tool state was not removed"
 
+progress 'tmp purge remains opt-in and explicit'
 "${cleaner}" --repo-root "${fixture_root}" --purge-tmp >/dev/null || die \
     "repo hygiene cleaner should support explicit tmp cleanup"
 [[ ! -e "${fixture_root}/tmp" ]] || die "tmp root was not removed by --purge-tmp"

@@ -1,0 +1,24 @@
+# Protected governance and release surfaces require explicit owner review on main.
+
+/.github/CODEOWNERS @resoltico
+/.github/workflows/** @resoltico
+
+/SECURITY.md @resoltico
+/NOTICE @resoltico
+/LICENSE @resoltico
+/LICENSE-* @resoltico
+/PATENTS.md @resoltico
+
+/check.sh @resoltico
+/scripts/check-release-surface-scripts.sh @resoltico
+/scripts/finalize-github-release.sh @resoltico
+/scripts/prepare-release-version.sh @resoltico
+/scripts/publish-github-release.sh @resoltico
+/scripts/verify-github-release.sh @resoltico
+/scripts/verify-public-container-surface.sh @resoltico
+/scripts/verify-release-candidate-tag.sh @resoltico
+/scripts/verify-release-merge-handoff.sh @resoltico
+/scripts/verify-release-pr-gate.sh @resoltico
+/scripts/verify-release-primary-checkout.sh @resoltico
+/scripts/verify-repo-hygiene.sh @resoltico
+/scripts/verify-security-policy-surface.sh @resoltico

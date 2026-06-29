@@ -156,7 +156,19 @@ if [[ -f "${git_gc_log_path}" ]]; then
 fi
 
 set +e
-object_store_output="$(git -C "${repo_root}" fsck --full --no-dangling --no-progress 2>&1)"
+repo_hygiene_verify_repo_owned_refs "${repo_root}"
+repo_owned_ref_status=$?
+set -e
+
+if (( repo_owned_ref_status != 0 )); then
+    printf '%s\n' \
+        'error: repo-owned Git reference verification failed; the checkout is not safe for release or hygiene-sensitive verification:' >&2
+    printf '%s\n' "${repo_owned_ref_output}" >&2
+    exit 1
+fi
+
+set +e
+repo_hygiene_run_object_store_verification_with_heartbeat "${repo_root}" "${git_common_dir}/objects"
 object_store_status=$?
 set -e
 
