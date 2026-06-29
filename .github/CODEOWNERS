@@ -20,5 +20,6 @@
 /scripts/verify-release-merge-handoff.sh @resoltico
 /scripts/verify-release-pr-gate.sh @resoltico
 /scripts/verify-release-primary-checkout.sh @resoltico
+/scripts/verify-release-repo-settings.sh @resoltico
 /scripts/verify-repo-hygiene.sh @resoltico
 /scripts/verify-security-policy-surface.sh @resoltico

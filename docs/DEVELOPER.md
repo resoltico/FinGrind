@@ -515,12 +515,11 @@ The repository ships four workflow files and one release-blocking CI graph:
    relevant file changed; skipped otherwise. No longer depends on `check` — the devcontainer
    environment is orthogonal to code correctness and should be proven whenever its files change
    regardless of whether the application gate passes.
-6. `gate` — aggregate required-status job using `if: always()` with explicit
-   `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate
-   does not prevent `Gate` from being reported or block merge; only a failed or cancelled job
-   prevents success. It aggregates `check`, `prepare-published-bundle-smoke-matrix`, the published
-   bundle-smoke matrix, and the devcontainer gate pair. Configure branch protection to require `Gate`
-   as the single required check, and code-owner review on the protected surfaces routed through `.github/CODEOWNERS`.
+6. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate does not prevent `Gate` from being reported or block merge; only a failed or cancelled job prevents success.
+   It aggregates `check`, `prepare-published-bundle-smoke-matrix`, the published bundle-smoke matrix, and the devcontainer gate pair.
+   Configure branch protection to require `Gate` as the single required check, code-owner review on the protected surfaces routed through `.github/CODEOWNERS`,
+   and administrator bypass availability for the repository owner so the protected release/publication workflow is not deadlocked
+   by a self-review requirement.
 
 **Path-based devcontainer gate theory.** The devcontainer gate validates the contributor
 *environment*, not application code. Application code changes are already proven by `check` and

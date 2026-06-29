@@ -52,6 +52,7 @@ git status --short
 git fetch origin --prune --tags
 git rev-list --left-right --count HEAD...origin/main
 ./scripts/verify-repo-hygiene.sh
+./scripts/verify-release-repo-settings.sh
 ```
 
 Requirements before continuing:
@@ -154,11 +155,14 @@ be true before any release commit or tag:
 
 - `README.md` does not reference any prior version's container tags.
 - All example JSON files use the current wire names and field shapes for this version.
-- GitHub repository settings are still aligned with this procedure:
+- `./scripts/verify-release-repo-settings.sh` succeeds. That verifier owns the release-critical
+  GitHub settings contract:
   - default branch is `main`
   - `delete_branch_on_merge` is enabled
-  - `main` is protected with admin enforcement
-  - required status checks are exactly `Gate` (the single aggregate check that subsumes all CI jobs)
+  - `main` protection requires exactly the aggregate `Gate` check
+  - code-owner review remains required on the protected surfaces
+  - administrator bypass remains available for the repository owner, so the solo-owner release
+    and publication path is not deadlocked by a self-review requirement
 
 Before cutting the release branch, enumerate open PRs so dependency-automation work is never
 surprise-discovered after publication:
@@ -328,11 +332,12 @@ git switch --detach origin/main
 gh pr view <N> --repo "$REPO" --json number,state,mergedAt,headRefName,baseRefName,url
 ```
 
-The `--admin` flag uses administrator privileges to bypass branch-protection requirements,
-specifically the review-approval rule that GitHub prevents the PR author from satisfying.
-This is the GitHub-intended escape hatch for single-owner repositories where an agent drives
-the release end-to-end. CI status checks remain the authoritative quality gate; the review
-requirement adds no signal in a solo-owner workflow.
+The `--admin` flag uses GitHub's administrator-bypass path to cross the protected review gate that
+the PR author cannot satisfy in a single-owner repository. FinGrind's supported repository
+settings therefore keep `main` review-protected while leaving administrator bypass available to
+the repository owner; `./scripts/verify-release-repo-settings.sh` is the executable owner of that
+precondition. CI status checks remain the authoritative quality gate; the review requirement adds
+no signal in the solo-owner release workflow once `Gate` is green.
 
 Requirements before continuing:
 

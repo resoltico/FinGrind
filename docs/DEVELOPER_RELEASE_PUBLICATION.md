@@ -119,7 +119,8 @@ guesswork.
 When the defect is in workflow publication logic rather than in the released code payload, the
 safe repair path is:
 1. fix the workflow or verifier on `main`
-2. merge that repair normally through branch protection
+2. merge that repair through the protected PR path, using GitHub's administrator bypass when the
+   single-owner review requirement would otherwise deadlock the repair
 3. rerun the release workflow with `workflow_dispatch` against the existing tag
 4. verify the public GitHub Release and public container surfaces directly
 
