@@ -41,7 +41,7 @@ require_nonempty_container_file() {
 
 seed_public_fixture() {
     cat > "${report_root}/declare-bank.json" <<'JSON'
-{"accountCode":"operating-bank","accountName":"Operating Bank","accountType":"ASSET","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","profitAndLossLineClassification":null}
+{"accountCode":"operating-bank","accountName":"Operating Bank","accountType":"ASSET","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","cashFlowAssetClassification":"CASH_AND_CASH_EQUIVALENT","profitAndLossLineClassification":null}
 JSON
 
     cat > "${report_root}/declare-revenue.json" <<'JSON'
