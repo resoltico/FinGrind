@@ -397,7 +397,7 @@ java -jar "${raw_jar}" help --output text >"${raw_jar_help_stdout}" 2>"${raw_jar
     die "raw java -jar help failed"
 
 [[ ! -s "${raw_jar_help_stderr}" ]] || die "raw java -jar help wrote diagnostics"
-normalized_file_contains 'java --enable-native-access=dev.erst.fingrind.cli --module-path fingrind.jar --module' \
+normalized_file_contains 'java --enable-native-access=dev.erst.fingrind.cli --add-opens=java.base/java.nio=dev.erst.fingrind.cli --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar --module' \
     "${raw_jar_help_stdout}" || die \
     "raw java -jar help did not publish the modular launcher prefix"
 normalized_file_contains 'dev.erst.fingrind.cli/dev.erst.fingrind.cli.App help <command>' "${raw_jar_help_stdout}" || die \

@@ -204,6 +204,8 @@ fg_cli_wrapper_exec_java() {
 
     exec "${fg_cli_wrapper_java_executable}" \
         "--enable-native-access=${fg_cli_wrapper_native_access_module}" \
+        "--add-opens=java.base/java.nio=${fg_cli_wrapper_native_access_module}" \
+        "--add-exports=java.base/sun.nio=${fg_cli_wrapper_native_access_module}" \
         "-Dfingrind.runtime.distribution=${runtime_distribution}" \
         "-Dfingrind.source-checkout.root=${fg_cli_wrapper_repo_root}" \
         "-Dfingrind.source-checkout.build-root=${fg_cli_wrapper_root_build_dir}" \

@@ -9,6 +9,8 @@ readonly application_module="dev.erst.fingrind.cli/dev.erst.fingrind.cli.App"
 
 exec "${runtime_java}" \
     --enable-native-access=dev.erst.fingrind.cli \
+    --add-opens=java.base/java.nio=dev.erst.fingrind.cli \
+    --add-exports=java.base/sun.nio=dev.erst.fingrind.cli \
     -D{{sqliteBundleHomeSystemProperty}}="${app_home}" \
     -Dfingrind.runtime.distribution={{containerRuntimeDistribution}} \
     --module-path "${application_jar}" \

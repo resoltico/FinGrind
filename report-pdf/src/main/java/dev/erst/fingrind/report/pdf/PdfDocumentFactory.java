@@ -8,11 +8,6 @@ import java.time.ZoneOffset;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.logging.Filter;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
@@ -48,7 +43,6 @@ final class PdfDocumentFactory {
     Objects.requireNonNull(reportTitle, "reportTitle");
     Objects.requireNonNull(generatedAt, "generatedAt");
     Objects.requireNonNull(orientation, "orientation");
-    PdfboxRuntimeNoiseFilter.install();
     PDDocument document = new PDDocument();
     try {
       configureInformation(document, reportTitle, generatedAt);
@@ -180,40 +174,5 @@ final class PdfDocumentFactory {
   interface DocumentSaver {
     /** Saves one open PDF document into the supplied byte sink. */
     void save(ByteArrayOutputStream outputStream) throws IOException;
-  }
-
-  /** Suppresses one known harmless PDFBox direct-buffer unmapping warning family. */
-  static final class PdfboxRuntimeNoiseFilter {
-    private static final String PDFBOX_IOUTILS_LOGGER = "org.apache.pdfbox.io.IOUtils";
-    private static final Set<String> HARMLESS_UNMAPPING_MESSAGES =
-        Set.of(
-            "Unmapping is not supported.",
-            "Unmapping is not supported because of missing permissions. Please grant at least the following permissions: RuntimePermission(\"accessClassInPackage.sun.misc\")  and ReflectPermission(\"suppressAccessChecks\")",
-            "Unable to unmap ByteBuffer.",
-            "Unable to unmap the mapped buffer");
-    private static final AtomicBoolean INSTALLED = new AtomicBoolean();
-
-    private PdfboxRuntimeNoiseFilter() {}
-
-    static void install() {
-      if (!INSTALLED.compareAndSet(false, true)) {
-        return;
-      }
-      Logger logger = Logger.getLogger(PDFBOX_IOUTILS_LOGGER);
-      logger.setFilter(composeFilter(logger.getFilter()));
-    }
-
-    static Filter composeFilter(@Nullable Filter existingFilter) {
-      return record ->
-          !shouldSuppress(record) && (existingFilter == null || existingFilter.isLoggable(record));
-    }
-
-    static boolean shouldSuppress(@Nullable LogRecord record) {
-      if (record == null) {
-        return false;
-      }
-      return PDFBOX_IOUTILS_LOGGER.equals(record.getLoggerName())
-          && HARMLESS_UNMAPPING_MESSAGES.contains(record.getMessage());
-    }
   }
 }

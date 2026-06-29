@@ -12,6 +12,16 @@ mounted_container_run() {
     anonymous_docker run --rm --user "${docker_run_user}" -v "${report_root}:/work" "${image_ref}" "$@"
 }
 
+mounted_container_run_split_streams() {
+    local image_ref=$1
+    local stdout_path=$2
+    local stderr_path=$3
+    shift 3
+
+    anonymous_docker run --rm --user "${docker_run_user}" -v "${report_root}:/work" "${image_ref}" "$@" \
+        >"${stdout_path}" 2>"${stderr_path}"
+}
+
 container_shell() {
     local image_ref=$1
     local shell_command=$2

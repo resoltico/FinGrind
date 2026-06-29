@@ -69,6 +69,16 @@ def verify_distributed_module_identity(bundle_root: Path, contract: dict[str, ob
     )
     require_match(
         launcher_text,
+        r"--add-opens=java\.base/java\.nio=dev\.erst\.fingrind\.cli",
+        "bundle launcher did not open java.base/java.nio to the canonical module identity",
+    )
+    require_match(
+        launcher_text,
+        r"--add-exports=java\.base/sun\.nio=dev\.erst\.fingrind\.cli",
+        "bundle launcher did not export java.base/sun.nio to the canonical module identity",
+    )
+    require_match(
+        launcher_text,
         r"dev\.erst\.fingrind\.cli/dev\.erst\.fingrind\.cli\.App",
         "bundle launcher did not declare the canonical JPMS application module identity",
     )

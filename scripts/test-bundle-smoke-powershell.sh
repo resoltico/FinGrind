@@ -130,6 +130,10 @@ grep -Fq 'ProcessStartInfo' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer uses a ProcessStartInfo-based native launch path"
 grep -Fq 'ArgumentList.Add' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer forwards Java arguments through ProcessStartInfo.ArgumentList"
+grep -Fq -- '--add-opens=java.base/java.nio=dev.erst.fingrind.cli' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer opens java.base/java.nio to the canonical module identity"
+grep -Fq -- '--add-exports=java.base/sun.nio=dev.erst.fingrind.cli' "${bundle_launcher_ps1}" || die \
+    "fingrind.ps1 no longer exports java.base/sun.nio to the canonical module identity"
 grep -Fq 'RedirectStandardInput' "${bundle_launcher_ps1}" || die \
     "fingrind.ps1 no longer forwards ordinary pipeline stdin into the bundled Java process"
 grep -Fq '[Console]::IsInputRedirected' "${bundle_launcher_ps1}" || die \
