@@ -286,7 +286,7 @@ jobs:
 
       - name: Attest Unix bundle build outputs
         if: runner.os != 'Windows'
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: |
             ${{ steps.unix-bundle-build.outputs.archive-path }}
@@ -294,7 +294,7 @@ jobs:
 
       - name: Attest Windows bundle build outputs
         if: runner.os == 'Windows'
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: |
             ${{ steps.windows-bundle-build.outputs.archive-path }}
@@ -423,7 +423,7 @@ jobs:
             "${asset_names[@]}"
 
       - name: Attest published release assets
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: ${{ needs.prepare-publication.outputs.release-attestation-subject-paths }}
 
