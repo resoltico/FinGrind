@@ -88,8 +88,15 @@ readonly script_dir="$(
 readonly repo_root="$(
     cd -P -- "${script_dir}/.." && pwd
 )"
-readonly verify_script="${repo_root}/scripts/verify-release-primary-checkout.sh"
-[[ -x "${verify_script}" ]] || die "missing executable verifier at ${verify_script}"
+readonly verify_script_source="${repo_root}/scripts/verify-release-primary-checkout.sh"
+[[ -x "${verify_script_source}" ]] || die "missing executable verifier at ${verify_script_source}"
+readonly verify_script_staging_dir="$(
+    mktemp -d "${TMPDIR:-/tmp}/fingrind-reconcile-release-primary-checkout.XXXXXX"
+)" || die "failed to allocate staged verifier directory"
+readonly verify_script="${verify_script_staging_dir}/verify-release-primary-checkout.sh"
+cp "${verify_script_source}" "${verify_script}" || die \
+    "failed to stage verifier helper from ${verify_script_source}"
+chmod +x "${verify_script}" || die "failed to mark staged verifier helper executable"
 
 switch_replacement_to_default_branch "${replacement_checkout}" "${default_branch}"
 "${verify_script}" "${replacement_checkout}" "${expected_version}" "${default_branch}" >/dev/null
@@ -103,6 +110,9 @@ done
 readonly backup_checkout
 
 restore_state='pre-move'
+cleanup_verify_script_staging_dir() {
+    rm -rf "${verify_script_staging_dir}" >/dev/null 2>&1 || true
+}
 restore_primary_checkout() {
     case "${restore_state}" in
         pre-move|done)
@@ -121,6 +131,7 @@ restore_primary_checkout() {
             fi
             ;;
     esac
+    cleanup_verify_script_staging_dir
 }
 trap restore_primary_checkout EXIT
 
@@ -136,6 +147,7 @@ restore_state='replacement-installed'
 
 rm -rf "${backup_checkout}" || die "failed to remove displaced primary checkout backup ${backup_checkout}"
 restore_state='done'
+cleanup_verify_script_staging_dir
 trap - EXIT
 
 printf 'Reconciled primary checkout %s with replacement checkout; version %s is truthful on %s\n' \
