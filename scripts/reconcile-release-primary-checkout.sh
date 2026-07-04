@@ -54,6 +54,22 @@ switch_replacement_to_default_branch() {
         "replacement checkout ${replacement_checkout_path} could not fast-forward to origin/${default_branch_name}"
 }
 
+normalize_backup_checkout_permissions() {
+    local backup_checkout_path=$1
+
+    find "${backup_checkout_path}" -type d -exec chmod -f u+rwx {} + >/dev/null 2>&1 || true
+    find "${backup_checkout_path}" -depth -type f -exec chmod -f u+rw {} + >/dev/null 2>&1 || true
+    find "${backup_checkout_path}" -depth -type d -exec chmod -f u+rwx {} + >/dev/null 2>&1 || true
+}
+
+remove_backup_checkout_if_possible() {
+    local backup_checkout_path=$1
+
+    rm -rf "${backup_checkout_path}" >/dev/null 2>&1 && return 0
+    normalize_backup_checkout_permissions "${backup_checkout_path}"
+    rm -rf "${backup_checkout_path}" >/dev/null 2>&1
+}
+
 (( $# >= 3 && $# <= 4 )) || usage
 
 readonly primary_checkout_input=$1
@@ -146,11 +162,17 @@ restore_state='replacement-installed'
 "${verify_script}" "${primary_checkout}" "${expected_version}" "${default_branch}" >/dev/null
 
 restore_state='done'
-rm -rf "${backup_checkout}" || die "failed to remove displaced primary checkout backup ${backup_checkout}"
 cleanup_verify_script_staging_dir
 trap - EXIT
-
-printf 'Reconciled primary checkout %s with replacement checkout; version %s is truthful on %s\n' \
-    "${primary_checkout}" \
-    "${expected_version}" \
-    "${default_branch}"
+if remove_backup_checkout_if_possible "${backup_checkout}"; then
+    printf 'Reconciled primary checkout %s with replacement checkout; version %s is truthful on %s\n' \
+        "${primary_checkout}" \
+        "${expected_version}" \
+        "${default_branch}"
+else
+    printf 'Reconciled primary checkout %s with replacement checkout; version %s is truthful on %s; preserved displaced backup at %s because automatic cleanup failed\n' \
+        "${primary_checkout}" \
+        "${expected_version}" \
+        "${default_branch}" \
+        "${backup_checkout}"
+fi

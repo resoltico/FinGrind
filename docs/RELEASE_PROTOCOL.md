@@ -819,13 +819,15 @@ closeout. Replace it with the verified release checkout instead:
 
 That helper switches the replacement checkout onto `main`, fast-forwards it to `origin/main`,
 proves it satisfies `./scripts/verify-release-primary-checkout.sh`, installs it at the canonical
-primary-checkout path, reruns the verifier at that canonical path, and removes the displaced
-broken tree only after the replacement is proven truthful.
+primary-checkout path, reruns the verifier there, and only then tries to remove the displaced
+broken tree. It first normalizes owner permissions inside the displaced backup so ordinary
+read-only residue does not strand release closeout. If the replacement is already proven truthful
+and the filesystem still refuses backup deletion, the helper keeps the verified primary checkout
+in place, preserves the hidden `.pre-release-backup*` path, and reports that preserved path
+explicitly instead of pretending the release itself failed.
 
 The verifier is authoritative. It fetches `origin`, requires the primary checkout to be on `main`,
-requires `HEAD` to equal `origin/main`, checks that `gradle.properties` and `CHANGELOG.md` reflect
-the released version, rejects tracked overlays, and rejects unexpected untracked debris outside the
-repo's explicit scratch prefixes.
+requires `HEAD` to equal `origin/main`, checks that `gradle.properties` and `CHANGELOG.md` reflect the released version, rejects tracked overlays, and rejects unexpected untracked debris outside the repo's explicit scratch prefixes.
 
 Requirements before declaring the release session complete:
 
@@ -838,6 +840,7 @@ Requirements before declaring the release session complete:
 - if a clean-clone replacement path was required, `scripts/reconcile-release-primary-checkout.sh`
   is the canonical closeout path; do not leave both the broken original tree and the replacement
   clone behind
+- if that helper reports a preserved displaced backup path because automatic cleanup failed, treat it as cleanup-only debris rather than an authoritative checkout, remove it before leaving the host tidy when the filesystem permits, and report the exact preserved path plus failure reason if host-level deletion remains blocked
 
 If a disposable release worktree was created and is no longer needed:
 
