@@ -9,6 +9,10 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the post-tag public-container publication verifier so the anonymous mounted-book proof now expects the live per-account `trial-balance --output text` layout, the currency-formatted totals row, and the resolved `As of` context line instead of the retired compact account-table rendering that falsely failed the `0.59.0` staging-container publication rerun path after the image itself had already published correctly.
+
 ## [0.59.0] - 2026-07-04
 
 ### Added

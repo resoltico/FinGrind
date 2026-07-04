@@ -390,18 +390,35 @@ Trial Balance
 As of         : 2026-04-08
 Balance state : Balanced
 
+Accounts
+--------
+cash | Cash
+-----------
+Type         : Asset
+Normal       : Debit
+Active       : Yes
+Currency     : USD
+Debit total  : EUR 10.00
+Credit total : EUR 0.00
+Net amount   : EUR 10.00
+Balance side : Debit
+
+service-revenue | Service Revenue
+---------------------------------
+Type         : Revenue
+Normal       : Credit
+Active       : Yes
+Currency     : EUR
+Debit total  : EUR 0.00
+Credit total : EUR 10.00
+Net amount   : EUR 10.00
+Balance side : Credit
+
 Current totals
 --------------
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       10.00 |        10.00 |       0.00 | Zero
-
-Accounts
---------
-Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
-----------------+-----------------+----------+-------------+--------------+------------+-------------
-cash            | Cash            | USD      |       10.00 |         0.00 |      10.00 | Debit
-service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+EUR      |   EUR 10.00 |    EUR 10.00 |   EUR 0.00 | Zero
 
 Context
 -------
@@ -411,6 +428,7 @@ Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds
+As of               : 2026-04-08
 TEXT
                 else
                     cat <<TEXT
@@ -420,18 +438,35 @@ Trial Balance
 As of         : 2026-04-08
 Balance state : Balanced
 
+Accounts
+--------
+cash | Cash
+-----------
+Type         : Asset
+Normal       : Debit
+Active       : Yes
+Currency     : EUR
+Debit total  : EUR 10.00
+Credit total : EUR 0.00
+Net amount   : EUR 10.00
+Balance side : Debit
+
+service-revenue | Service Revenue
+---------------------------------
+Type         : Revenue
+Normal       : Credit
+Active       : Yes
+Currency     : EUR
+Debit total  : EUR 0.00
+Credit total : EUR 10.00
+Net amount   : EUR 10.00
+Balance side : Credit
+
 Current totals
 --------------
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       10.00 |        10.00 |       0.00 | Zero
-
-Accounts
---------
-Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
-----------------+-----------------+----------+-------------+--------------+------------+-------------
-cash            | Cash            | EUR      |       10.00 |         0.00 |      10.00 | Debit
-service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+EUR      |   EUR 10.00 |    EUR 10.00 |   EUR 0.00 | Zero
 
 Context
 -------
@@ -441,6 +476,7 @@ Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds
+As of               : 2026-04-08
 TEXT
                 fi
                 ;;
