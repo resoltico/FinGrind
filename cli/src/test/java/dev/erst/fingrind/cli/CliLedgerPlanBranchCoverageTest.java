@@ -32,8 +32,9 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             postingStepNode(OperationId.PREFLIGHT_ENTRY, LedgerStepKind.PREFLIGHT_ENTRY));
 
     assertEquals(LedgerStepKind.PREFLIGHT_ENTRY, preflight.kind());
-    assertCommittedPostingKind(OperationId.RECORD_SALE, LedgerStepKind.RECORD_SALE);
-    assertCommittedPostingKind(OperationId.RECORD_EXPENSE, LedgerStepKind.RECORD_EXPENSE);
+    assertCommittedPostingKind(OperationId.RECORD_SALE_SETTLED, LedgerStepKind.RECORD_SALE_SETTLED);
+    assertCommittedPostingKind(
+        OperationId.RECORD_EXPENSE_SETTLED, LedgerStepKind.RECORD_EXPENSE_SETTLED);
     assertCommittedPostingKind(
         OperationId.RECORD_OWNER_CONTRIBUTION, LedgerStepKind.RECORD_OWNER_CONTRIBUTION);
     assertCommittedPostingKind(
@@ -61,8 +62,9 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     assertDoesNotThrow(
         () ->
             CliLedgerPlanPostingStepParser.rejectFlattenedPostingPayload(
-                postingStepNode(OperationId.RECORD_SALE, LedgerStepKind.RECORD_SALE),
-                LedgerStepKind.RECORD_SALE,
+                postingStepNode(
+                    OperationId.RECORD_SALE_SETTLED, LedgerStepKind.RECORD_SALE_SETTLED),
+                LedgerStepKind.RECORD_SALE_SETTLED,
                 List.of("effectiveDate")));
     assertDoesNotThrow(
         () ->
@@ -73,8 +75,8 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     assertDoesNotThrow(
         () ->
             CliLedgerPlanPostingStepParser.rejectFlattenedPostingPayload(
-                bareStepNode(LedgerStepKind.RECORD_SALE),
-                LedgerStepKind.RECORD_SALE,
+                bareStepNode(LedgerStepKind.RECORD_SALE_SETTLED),
+                LedgerStepKind.RECORD_SALE_SETTLED,
                 List.of("bogus")));
 
     IllegalArgumentException flattenedFailure =
@@ -82,12 +84,12 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             IllegalArgumentException.class,
             () ->
                 CliLedgerPlanPostingStepParser.rejectFlattenedPostingPayload(
-                    bareStepNode(LedgerStepKind.RECORD_EXPENSE),
-                    LedgerStepKind.RECORD_EXPENSE,
+                    bareStepNode(LedgerStepKind.RECORD_EXPENSE_SETTLED),
+                    LedgerStepKind.RECORD_EXPENSE_SETTLED,
                     List.of("effectiveDate", "amount")));
 
     assertEquals(
-        "Fields effectiveDate, amount must be nested under posting for record-expense ledger plan steps.",
+        "Fields effectiveDate, amount must be nested under posting for record-expense-settled ledger plan steps.",
         flattenedFailure.getMessage());
   }
 
@@ -106,7 +108,7 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             Instant.parse("2026-05-15T10:00:01Z"),
             declareAccountFacts());
 
-    assertEquals(BookkeepingEntryKind.SALE, command.entry().entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, command.entry().entryKind());
     CliPlanJsonModels.AccountDeclarationStepDataPayload payload =
         assertInstanceOf(
             CliPlanJsonModels.AccountDeclarationStepDataPayload.class,

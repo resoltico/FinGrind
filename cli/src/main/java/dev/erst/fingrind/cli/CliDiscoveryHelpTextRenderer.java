@@ -44,13 +44,13 @@ final class CliDiscoveryHelpTextRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
-                    "Inspect one command",
+                    "Inspect a command",
                     CliInvocationText.commandExample(OperationId.HELP) + " <command>"),
                 List.of(
-                    "Print one request scaffold",
+                    "Print a request scaffold",
                     CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)),
                 List.of(
-                    "Print one plan scaffold",
+                    "Print a plan scaffold",
                     CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE))),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     String commandFamilies =
@@ -87,7 +87,7 @@ final class CliDiscoveryHelpTextRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of(
-                    "One command",
+                    "Command help",
                     CliInvocationText.commandExample(OperationId.HELP) + " <command>"),
                 List.of(
                     "Commands",
@@ -143,26 +143,27 @@ final class CliDiscoveryHelpTextRenderer {
       return CliTextFormat.renderKeyValueBlock(
           List.of(
               List.of(
-                  "Generate one key file",
+                  "Generate a key file",
                   CliDiscoveryCommandHelpSupport.primaryCommandExample(
                       OperationId.GENERATE_BOOK_KEY_FILE)),
               List.of(
-                  "Open one protected book",
+                  "Open a protected book",
                   CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.OPEN_BOOK)),
               List.of(
-                  "Review the seeded starter chart",
+                  "Review the seeded accounts",
                   CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.LIST_ACCOUNTS)),
               List.of(
-                  "Create the first sale request",
+                  "Create the first settled-sale request",
                   CliDiscoveryCommandHelpSupport.primaryStarterRequestCommand(
-                      OperationId.RECORD_SALE)),
+                      OperationId.RECORD_SALE_SETTLED)),
               List.of(
-                  "Validate the first sale request",
+                  "Validate the first settled-sale request",
                   CliDiscoveryCommandHelpSupport.primaryCommandExample(
                       OperationId.PREFLIGHT_ENTRY)),
               List.of(
-                  "Commit the first sale",
-                  CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.RECORD_SALE)),
+                  "Commit the first settled sale",
+                  CliDiscoveryCommandHelpSupport.primaryCommandExample(
+                      OperationId.RECORD_SALE_SETTLED)),
               List.of(
                   "Read the first report",
                   CliDiscoveryCommandHelpSupport.primaryCommandExample(OperationId.TRIAL_BALANCE))),
@@ -218,23 +219,23 @@ final class CliDiscoveryHelpTextRenderer {
 
   private static String quickStartCommandLabel(String command, int index) {
     if (command.contains(ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE))) {
-      return "Generate one key file";
+      return "Generate a key file";
     }
     if (command.contains(ProtocolCatalog.operationName(OperationId.OPEN_BOOK))) {
-      return "Open one protected book";
+      return "Open a protected book";
     }
     if (command.contains(ProtocolCatalog.operationName(OperationId.LIST_ACCOUNTS))) {
-      return "Review the seeded starter chart";
+      return "Review the seeded accounts";
     }
     if (command.contains("quick-start-request.json")
         || command.contains(ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE))) {
-      return "Create the first sale request";
+      return "Create the first settled-sale request";
     }
     if (command.contains(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY))) {
-      return "Validate the first sale request";
+      return "Validate the first settled-sale request";
     }
-    if (command.contains(ProtocolCatalog.operationName(OperationId.RECORD_SALE))) {
-      return "Commit the first sale";
+    if (command.contains(ProtocolCatalog.operationName(OperationId.RECORD_SALE_SETTLED))) {
+      return "Commit the first settled sale";
     }
     if (command.contains(ProtocolCatalog.operationName(OperationId.POST_ENTRY))) {
       return "Commit the first entry";

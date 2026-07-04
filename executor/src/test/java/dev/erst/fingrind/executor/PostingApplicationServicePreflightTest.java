@@ -5,7 +5,9 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.ap
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.command;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.conflictingPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareDefaultAccounts;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareLatviaVatRegistration;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareNonCashDirectJournalAccounts;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareTaxAccounts;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.existingPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.mismatchedReversalJournalEntry;
@@ -13,7 +15,10 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.pr
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.requestProvenance;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalJournalEntry;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalReference;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.taxedSaleCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
@@ -21,8 +26,10 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
+import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import dev.erst.fingrind.core.EconomicEventClass;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
@@ -86,10 +93,63 @@ class PostingApplicationServicePreflightTest {
 
       PostEntryResult result = applicationService.preflight(command("idem-1"));
 
+      assertAccepted(result, "idem-1");
+    }
+  }
+
+  @Test
+  void preflight_rejectsFutureEffectiveDatesBeforeSemanticValidation() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.SaleSettled(
+                  LocalDate.parse("2026-04-08"),
+                  new AccountCode("1000"),
+                  new AccountCode("2000"),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
+                  null,
+                  null,
+                  null),
+              generatedEvidence("idem-future", "cash-receipt"),
+              requestProvenance("idem-future"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.preflight(command);
+
       assertEquals(
-          new PostEntryResult.PreflightAccepted(
-              new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
+          preflightRejected(
+              new IdempotencyKey("idem-future"),
+              new PostingRejection.PostingEffectiveDateInFuture(
+                  LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-07"))),
           result);
+    }
+  }
+
+  @Test
+  void preflight_returnsResolvedJournalForTaxedSettledSale() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      declareTaxAccounts(bookSession);
+      declareLatviaVatRegistration(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+
+      PostEntryResult result = applicationService.preflight(taxedSaleCommand("idem-taxed-sale"));
+
+      PostEntryResult.PreflightAccepted accepted =
+          assertInstanceOf(PostEntryResult.PreflightAccepted.class, result);
+      var appliedTax = accepted.resolvedJournal().appliedTax();
+      assertNotNull(appliedTax);
+      assertEquals(new IdempotencyKey("idem-taxed-sale"), accepted.idempotencyKey());
+      assertEquals(
+          EconomicEventClass.SETTLED_SALE,
+          accepted.resolvedJournal().classification().eventClass());
+      assertEquals("2100", appliedTax.taxAmount().minorUnits());
+      assertEquals(
+          new AccountCode("2100"),
+          accepted.resolvedJournal().expandedLines().lines().get(2).accountCode());
     }
   }
 
@@ -100,11 +160,12 @@ class PostingApplicationServicePreflightTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryCommand command =
           new PostEntryCommand(
-              new BookkeepingEntry.Sale(
+              new BookkeepingEntry.SaleSettled(
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("2000"),
                   new AccountCode("1000"),
                   MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
                   null,
                   null,
                   null),
@@ -120,30 +181,26 @@ class PostingApplicationServicePreflightTest {
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
                       PostingRejectionSemantics.accountTypeMismatch(
-                          "entryKind",
-                          BookkeepingEntryKind.SALE.wireValue(),
+                          BookkeepingEntryKind.SALE_SETTLED.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           dev.erst.fingrind.core.AccountType.ASSET,
                           dev.erst.fingrind.core.AccountType.REVENUE),
                       PostingRejectionSemantics.cashFlowAssetClassificationMismatch(
-                          "entryKind",
-                          BookkeepingEntryKind.SALE.wireValue(),
+                          BookkeepingEntryKind.SALE_SETTLED.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           dev.erst.fingrind.core.CashFlowAssetClassification
                               .CASH_AND_CASH_EQUIVALENT,
                           null),
                       PostingRejectionSemantics.accountTypeMismatch(
-                          "entryKind",
-                          BookkeepingEntryKind.SALE.wireValue(),
+                          BookkeepingEntryKind.SALE_SETTLED.wireValue(),
                           "revenueAccountCode",
                           new AccountCode("1000"),
                           dev.erst.fingrind.core.AccountType.REVENUE,
                           dev.erst.fingrind.core.AccountType.ASSET),
                       PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-                          "entryKind",
-                          BookkeepingEntryKind.SALE.wireValue(),
+                          BookkeepingEntryKind.SALE_SETTLED.wireValue(),
                           new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                           List.of("cash-receipt", "bank-deposit", "card-settlement"))))),
           result);
@@ -226,9 +283,8 @@ class PostingApplicationServicePreflightTest {
               new IdempotencyKey("idem-non-cash-direct-journal"),
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
-                      PostingRejectionSemantics.cashBasisAccountRequired(
-                          BookkeepingEntryKind.DIRECT_JOURNAL.wireValue(),
-                          List.of(new AccountCode("3000"), new AccountCode("3200")))))),
+                      PostingRejectionSemantics.rawJournalRequiresCashLine(
+                          BookkeepingEntryKind.DIRECT_JOURNAL.wireValue())))),
           result);
     }
   }
@@ -285,33 +341,29 @@ class PostingApplicationServicePreflightTest {
                   Optional.of(new ReversalReason("full reversal")),
                   reversalJournalEntry()));
 
-      assertEquals(
-          new PostEntryResult.PreflightAccepted(
-              new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-          result);
+      assertAccepted(result, "idem-1");
     }
   }
 
   @Test
-  void preflight_rejectsReversalThatDoesNotNegateTarget() {
+  void preflight_derivesReversalJournalFromTargetPosting() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
       bookSession.commit(existingPosting("posting-1", "idem-existing"));
       PostingApplicationService applicationService = applicationService(bookSession);
 
-      PostEntryResult result =
-          applicationService.preflight(
-              command(
-                  "idem-1",
-                  reversalReference("posting-1"),
-                  Optional.of(new ReversalReason("full reversal")),
-                  mismatchedReversalJournalEntry()));
+      PostEntryResult.PreflightAccepted accepted =
+          assertInstanceOf(
+              PostEntryResult.PreflightAccepted.class,
+              applicationService.preflight(
+                  command(
+                      "idem-1",
+                      reversalReference("posting-1"),
+                      Optional.of(new ReversalReason("full reversal")),
+                      mismatchedReversalJournalEntry())));
 
-      assertEquals(
-          preflightRejected(
-              new IdempotencyKey("idem-1"),
-              new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))),
-          result);
+      assertEquals(new IdempotencyKey("idem-1"), accepted.idempotencyKey());
+      assertEquals(reversalJournalEntry(), accepted.resolvedJournal().expandedLines());
     }
   }
 
@@ -342,5 +394,48 @@ class PostingApplicationServicePreflightTest {
               new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
           result);
     }
+  }
+
+  @Test
+  void preflight_rejectsReversalWhenTargetIsAlreadyAReversal() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryResult.Committed originalCommitted =
+          assertInstanceOf(
+              PostEntryResult.Committed.class, applicationService.commit(command("idem-original")));
+      PostEntryResult.Committed reversalCommitted =
+          assertInstanceOf(
+              PostEntryResult.Committed.class,
+              applicationService.commit(
+                  command(
+                      "idem-reversal",
+                      Optional.of(new ReversalReference(originalCommitted.postingId())),
+                      Optional.of(new ReversalReason("full reversal")),
+                      reversalJournalEntry())));
+
+      PostEntryResult result =
+          applicationService.preflight(
+              command(
+                  "idem-reroll",
+                  Optional.of(new ReversalReference(reversalCommitted.postingId())),
+                  Optional.of(new ReversalReason("redo by reversal")),
+                  reversalJournalEntry()));
+
+      assertEquals(
+          preflightRejected(
+              new IdempotencyKey("idem-reroll"),
+              new ReversalTargetIsReversal(reversalCommitted.postingId())),
+          result);
+    }
+  }
+
+  private static void assertAccepted(PostEntryResult result, String idempotencyKey) {
+    PostEntryResult.PreflightAccepted accepted =
+        assertInstanceOf(PostEntryResult.PreflightAccepted.class, result);
+    assertEquals(new IdempotencyKey(idempotencyKey), accepted.idempotencyKey());
+    assertEquals(LocalDate.parse("2026-04-07"), accepted.effectiveDate());
+    assertEquals(
+        LocalDate.parse("2026-04-07"), accepted.resolvedJournal().expandedLines().effectiveDate());
   }
 }

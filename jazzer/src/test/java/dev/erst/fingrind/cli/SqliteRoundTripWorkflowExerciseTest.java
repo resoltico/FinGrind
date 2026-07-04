@@ -19,11 +19,12 @@ class SqliteRoundTripWorkflowExerciseTest {
     PostEntryCommand command =
         new PostEntryCommand(
             new BookkeepingEntry.Reversal(
-                CliFuzzFixtures.journalEntry(baseCommand),
+                CliFuzzFixtures.journalEntry(baseCommand).effectiveDate(),
                 new PostingLineage.Reversal(
                     new ReversalReference(new PostingId("missing-posting")),
                     new ReversalReason("Missing prior posting")),
-                null),
+                null,
+                CliFuzzFixtures.journalEntry(baseCommand)),
             baseCommand.evidence(),
             baseCommand.requestProvenance(),
             baseCommand.sourceChannel());
@@ -33,8 +34,9 @@ class SqliteRoundTripWorkflowExerciseTest {
             command, "reversal-target-not-found".getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
     assertEquals(PostingLifecycleStatus.BOOK_NOT_INITIALIZED, snapshot.uninitializedCommitStatus());
-    assertEquals(PostingLifecycleStatus.UNKNOWN_ACCOUNT, snapshot.undeclaredCommitStatus());
-    assertEquals(PostingLifecycleStatus.INACTIVE_ACCOUNT, snapshot.inactiveCommitStatus());
+    assertEquals(
+        PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND, snapshot.undeclaredCommitStatus());
+    assertEquals(PostingLifecycleStatus.NOT_RUN, snapshot.inactiveCommitStatus());
     assertEquals(PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND, snapshot.finalCommitStatus());
     assertEquals(PostingLifecycleStatus.NOT_RUN, snapshot.reloadStatus());
     assertEquals(PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND, snapshot.duplicateStatus());

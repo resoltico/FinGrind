@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract;
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
@@ -26,17 +27,18 @@ import org.junit.jupiter.api.Test;
 class BookkeepingEntryTest {
   @Test
   void typedEntries_publishStableKindsAndRequirePositiveAmounts() {
-    BookkeepingEntry.Sale sale =
-        new BookkeepingEntry.Sale(
+    BookkeepingEntry.SaleSettled sale =
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "1000"),
             null,
             null,
+            null,
             null);
-    BookkeepingEntry.Expense expense =
-        new BookkeepingEntry.Expense(
+    BookkeepingEntry.ExpenseSettled expense =
+        new BookkeepingEntry.ExpenseSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("5000"),
             new AccountCode("1000"),
@@ -59,11 +61,11 @@ class BookkeepingEntryTest {
             new MonetaryAmount("EUR", "1000"),
             null);
 
-    assertEquals(BookkeepingEntryKind.SALE, sale.entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, sale.entryKind());
     assertEquals(new AccountCode("1000"), sale.cashAccountCode());
     assertEquals(new AccountCode("4000"), sale.revenueAccountCode());
     assertEquals(sale.journalEntry().lines(), sale.lines());
-    assertEquals(BookkeepingEntryKind.EXPENSE, expense.entryKind());
+    assertEquals(BookkeepingEntryKind.EXPENSE_SETTLED, expense.entryKind());
     assertEquals(new AccountCode("5000"), expense.expenseAccountCode());
     assertEquals(new AccountCode("1000"), expense.cashAccountCode());
     assertEquals(BookkeepingEntryKind.OWNER_CONTRIBUTION, ownerContribution.entryKind());
@@ -78,11 +80,12 @@ class BookkeepingEntryTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new BookkeepingEntry.Sale(
+                new BookkeepingEntry.SaleSettled(
                     LocalDate.parse("2026-04-25"),
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "0"),
+                    null,
                     null,
                     null,
                     null));
@@ -107,11 +110,12 @@ class BookkeepingEntryTest {
                     new MonetaryAmount("EUR", "1000"))));
     BookkeepingEntry.Reversal reversal =
         new BookkeepingEntry.Reversal(
-            journalEntry(),
+            LocalDate.parse("2026-04-07"),
             new PostingLineage.Reversal(
                 new dev.erst.fingrind.core.ReversalReference(
                     new dev.erst.fingrind.core.PostingId("posting-1")),
                 new dev.erst.fingrind.core.ReversalReason("operator reversal")),
+            null,
             null);
 
     assertEquals(BookkeepingEntryKind.DIRECT_JOURNAL, directJournal.entryKind());
@@ -121,7 +125,8 @@ class BookkeepingEntryTest {
     assertEquals(LocalDate.parse("2026-04-07"), openingPosition.effectiveDate());
     assertEquals(LocalDate.parse("2026-04-07"), reversal.effectiveDate());
     assertEquals(2, openingPosition.lines().size());
-    assertEquals(journalEntry().lines(), reversal.lines());
+    assertThrows(IllegalStateException.class, reversal::journalEntry);
+    assertThrows(IllegalStateException.class, reversal::lines);
     assertNull(openingPosition.foreignExchangeDetails());
     assertNull(reversal.foreignExchangeDetails());
   }
@@ -130,17 +135,18 @@ class BookkeepingEntryTest {
   void entries_publishCanonicalPostingMetadataAndJournalShapes() {
     BookkeepingEntry.DirectJournal directJournal =
         new BookkeepingEntry.DirectJournal(journalEntry(), null);
-    BookkeepingEntry.Sale sale =
-        new BookkeepingEntry.Sale(
+    BookkeepingEntry.SaleSettled sale =
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "1000"),
             null,
             null,
+            null,
             null);
-    BookkeepingEntry.Expense expense =
-        new BookkeepingEntry.Expense(
+    BookkeepingEntry.ExpenseSettled expense =
+        new BookkeepingEntry.ExpenseSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("5000"),
             new AccountCode("1000"),
@@ -176,11 +182,12 @@ class BookkeepingEntryTest {
                     new MonetaryAmount("EUR", "1000"))));
     BookkeepingEntry.Reversal reversal =
         new BookkeepingEntry.Reversal(
-            journalEntry(),
+            journalEntry().effectiveDate(),
             new PostingLineage.Reversal(
                 new ReversalReference(new PostingId("posting-1")),
                 new ReversalReason("operator reversal")),
-            null);
+            null,
+            journalEntry());
 
     assertEquals(LocalDate.parse("2026-04-07"), directJournal.effectiveDate());
     assertEquals(PostingKind.STANDARD, directJournal.postingKind());
@@ -188,11 +195,11 @@ class BookkeepingEntryTest {
     assertEquals(PostingLineage.direct(), directJournal.postingLineage());
 
     assertEquals(PostingKind.STANDARD, sale.postingKind());
-    assertEquals(PostingOriginKind.SALE, sale.postingOriginKind());
+    assertEquals(PostingOriginKind.SALE_SETTLED, sale.postingOriginKind());
     assertEquals(sale.journalEntry().lines(), sale.lines());
 
     assertEquals(PostingKind.STANDARD, expense.postingKind());
-    assertEquals(PostingOriginKind.EXPENSE, expense.postingOriginKind());
+    assertEquals(PostingOriginKind.EXPENSE_SETTLED, expense.postingOriginKind());
     assertEquals(expense.journalEntry().lines(), expense.lines());
 
     assertEquals(PostingKind.STANDARD, ownerContribution.postingKind());
@@ -219,7 +226,7 @@ class BookkeepingEntryTest {
     assertThrows(
         NullPointerException.class,
         () ->
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 nullOf(),
                 new AccountCode("5000"),
                 new AccountCode("1000"),
@@ -256,7 +263,7 @@ class BookkeepingEntryTest {
         () -> new BookkeepingEntry.OpeningPosition(LocalDate.parse("2026-04-25"), List.of()));
     assertThrows(
         NullPointerException.class,
-        () -> new BookkeepingEntry.Reversal(journalEntry(), nullOf(), null));
+        () -> new BookkeepingEntry.Reversal(LocalDate.parse("2026-04-25"), nullOf(), null, null));
   }
 
   @Test
@@ -270,6 +277,59 @@ class BookkeepingEntryTest {
                     JournalLine.EntrySide.DEBIT,
                     new MonetaryAmount("EUR", "0")));
     assertEquals("amount must carry one positive amount.", nonPositiveOpeningBalance.getMessage());
+  }
+
+  @Test
+  void reversalSurface_coversUnresolvedConstructorsInterfaceDispatchAndDateMismatch() {
+    JournalEntry resolvedJournal = journalEntry();
+    BookkeepingEntry.Reversal unresolvedWithoutForeignExchange =
+        new BookkeepingEntry.Reversal(
+            resolvedJournal.effectiveDate(),
+            new PostingLineage.Reversal(
+                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReason("operator reversal")),
+            null,
+            null);
+    BookkeepingEntry.Reversal unresolvedWithForeignExchange =
+        new BookkeepingEntry.Reversal(
+            resolvedJournal.effectiveDate(),
+            new PostingLineage.Reversal(
+                new ReversalReference(new PostingId("posting-2")),
+                new ReversalReason("operator reversal")),
+            null,
+            null);
+    BookkeepingEntry directJournal = new BookkeepingEntry.DirectJournal(resolvedJournal, null);
+    BookkeepingEntry reversal =
+        new BookkeepingEntry.Reversal(
+            resolvedJournal.effectiveDate(),
+            new PostingLineage.Reversal(
+                new ReversalReference(new PostingId("posting-3")),
+                new ReversalReason("operator reversal")),
+            null,
+            resolvedJournal);
+
+    assertNull(unresolvedWithoutForeignExchange.foreignExchangeDetails());
+    assertNull(unresolvedWithForeignExchange.foreignExchangeDetails());
+    assertThrows(IllegalStateException.class, unresolvedWithoutForeignExchange::journalEntry);
+    assertThrows(IllegalStateException.class, unresolvedWithForeignExchange::journalEntry);
+    assertSame(resolvedJournal, directJournal.journalEntry());
+    assertSame(resolvedJournal, reversal.journalEntry());
+    assertSame(resolvedJournal.lines(), reversal.lines());
+
+    IllegalArgumentException mismatchedEffectiveDate =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BookkeepingEntry.Reversal(
+                    resolvedJournal.effectiveDate().plusDays(1),
+                    new PostingLineage.Reversal(
+                        new ReversalReference(new PostingId("posting-4")),
+                        new ReversalReason("operator reversal")),
+                    null,
+                    resolvedJournal));
+    assertEquals(
+        "resolvedJournalEntry effectiveDate must match reversal effectiveDate.",
+        mismatchedEffectiveDate.getMessage());
   }
 
   private static JournalEntry journalEntry() {

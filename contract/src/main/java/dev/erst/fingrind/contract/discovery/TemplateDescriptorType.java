@@ -6,6 +6,8 @@ import java.util.List;
 public sealed interface TemplateDescriptorType
     permits ContractTemplates.PostingRequestTemplateDescriptor,
         ContractTemplates.TaxSelectionTemplateDescriptor,
+        ContractTemplates.SettlementAdjunctTemplateDescriptor,
+        InventoryReliefTemplateDescriptor,
         ForeignExchangeTemplateDescriptor,
         QuotedExchangeRateTemplateDescriptor,
         ContractTemplates.JournalLineTemplateDescriptor,

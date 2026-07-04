@@ -12,6 +12,7 @@ ACCOUNTING_KERNEL_PROFILE = "internal-management-bookkeeping-kernel"
 ACCOUNTING_FRAMEWORK_POSITION = "NON_STATUTORY_INTERNAL_MANAGEMENT"
 ENTITY_FORM = "OWNER_MANAGED_SINGLE_ENTITY"
 BOOK_TEMPLATE_ID = "OWNER_MANAGED_SERVICE"
+ACCOUNTING_BASIS = "CASH"
 FUNCTIONAL_CURRENCY = "EUR"
 FISCAL_YEAR_START = "01-01"
 STARTER_CASH_ACCOUNT_CODE = "cash"
@@ -104,6 +105,14 @@ def build_release_smoke_scenario(
             / "nested"
             / f"-entity restored [{normalized_scenario_id}].sqlite",
         ),
+        restored_book_key=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("restored odd")
+            / UNICODE_WORKSPACE_SEGMENT
+            / "nested"
+            / f"--entity restored [{normalized_scenario_id}].key",
+        ),
         replacement_book_key=smoke_path(
             work_root,
             normalized_path_mode,
@@ -135,6 +144,7 @@ def build_release_smoke_scenario(
         accounting_framework_position=ACCOUNTING_FRAMEWORK_POSITION,
         entity_form=ENTITY_FORM,
         book_template_id=BOOK_TEMPLATE_ID,
+        accounting_basis=ACCOUNTING_BASIS,
         functional_currency=FUNCTIONAL_CURRENCY,
         fiscal_year_start=FISCAL_YEAR_START,
         starter_cash_account_code=STARTER_CASH_ACCOUNT_CODE,

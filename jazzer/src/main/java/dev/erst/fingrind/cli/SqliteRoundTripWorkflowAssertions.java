@@ -91,29 +91,33 @@ public final class SqliteRoundTripWorkflowAssertions {
       CliFuzzWorkflowFixtures.openBook(
           administrationService, CliFuzzFixtures.journalEntry(command).currencyUnit());
 
+      CommitRejected postOpenRejected =
+          SqliteRoundTripWorkflowDecisionAssertions.requiredCommitRejected(
+              CliFuzzWorkflowFixtures.commit(applicationService, command));
       PostingLifecycleStatus undeclaredCommitStatus =
-          PostingLifecycleStatusMapper.forRejection(
-              SqliteRoundTripWorkflowDecisionAssertions.requiredCommitRejected(
-                      CliFuzzWorkflowFixtures.commit(applicationService, command))
-                  .rejection());
+          PostingLifecycleStatusMapper.forRejection(postOpenRejected.rejection());
 
-      var declaredAccounts =
-          CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
-      var listedAccounts = CliFuzzAccountFixtures.listAccounts(postingFactStore);
-      SqliteRoundTripWorkflowPersistenceAssertions.verifyDeclaredAccountListing(
-          listedAccounts, declaredAccounts);
-      DeclaredAccount primaryAccount = declaredAccounts.getFirst();
-      SqliteFuzzAssertions.deactivateAccount(bookPath, primaryAccount.accountCode().value());
+      PostingLifecycleStatus inactiveCommitStatus = PostingLifecycleStatus.NOT_RUN;
+      if (PostingWorkflowFuzzAssertions.isUnknownAccountPreDeclarationState(
+          postOpenRejected.rejection())) {
+        var declaredAccounts =
+            CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
+        var listedAccounts = CliFuzzAccountFixtures.listAccounts(postingFactStore);
+        SqliteRoundTripWorkflowPersistenceAssertions.verifyDeclaredAccountListing(
+            listedAccounts, declaredAccounts);
+        DeclaredAccount primaryAccount = declaredAccounts.getFirst();
+        SqliteFuzzAssertions.deactivateAccount(bookPath, primaryAccount.accountCode().value());
 
-      PostingLifecycleStatus inactiveCommitStatus =
-          PostingLifecycleStatusMapper.forRejection(
-              SqliteRoundTripWorkflowDecisionAssertions.requiredCommitRejected(
-                      CliFuzzWorkflowFixtures.commit(applicationService, command))
-                  .rejection());
+        inactiveCommitStatus =
+            PostingLifecycleStatusMapper.forRejection(
+                SqliteRoundTripWorkflowDecisionAssertions.requiredCommitRejected(
+                        CliFuzzWorkflowFixtures.commit(applicationService, command))
+                    .rejection());
 
-      CliFuzzAccountFixtures.reactivateAccount(administrationService, primaryAccount);
-      SqliteRoundTripWorkflowPersistenceAssertions.assertAccountReactivationPersisted(
-          postingFactStore, primaryAccount.accountCode());
+        CliFuzzAccountFixtures.reactivateAccount(administrationService, primaryAccount);
+        SqliteRoundTripWorkflowPersistenceAssertions.assertAccountReactivationPersisted(
+            postingFactStore, primaryAccount.accountCode());
+      }
 
       CommitEntryResult committedResult =
           CliFuzzWorkflowFixtures.commit(applicationService, command);

@@ -21,7 +21,7 @@ final class PdfStatementMetadataRows {
     statementRows.add(List.of("Entity", bookIdentity.entityName().value()));
     statementRows.add(
         List.of(
-            "Starter chart",
+            "Seed template",
             BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())));
     statementRows.add(
         List.of(

@@ -16,6 +16,7 @@ import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
@@ -167,7 +168,7 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
     PostEntryCommand cashExpenseCommand =
         withEntry(
             baseCommand,
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 LocalDate.parse("2026-04-08"),
                 new AccountCode("6100"),
                 new AccountCode("1000"),
@@ -215,6 +216,12 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
         withEntry(
             baseCommand,
             new BookkeepingEntry.Reversal(
+                LocalDate.parse("2026-04-08"),
+                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                    new dev.erst.fingrind.core.ReversalReference(
+                        new dev.erst.fingrind.core.PostingId("posting-2")),
+                    new dev.erst.fingrind.core.ReversalReason("reverse direct derivation target")),
+                null,
                 new JournalEntry(
                     LocalDate.parse("2026-04-08"),
                     List.of(
@@ -225,17 +232,31 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                         new JournalLine(
                             new AccountCode("2000"),
                             JournalLine.EntrySide.DEBIT,
-                            Money.parse("EUR", "10.00")))),
-                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new dev.erst.fingrind.core.ReversalReference(
-                        new dev.erst.fingrind.core.PostingId("posting-2")),
-                    new dev.erst.fingrind.core.ReversalReason("reverse direct derivation target")),
-                null));
+                            Money.parse("EUR", "10.00"))))));
     assertTrue(
         SqliteRoundTripWorkflowCommandDerivation.syntheticDirectCommand(
                     reversalCommand, "reversal-direct")
                 .entry()
             instanceof BookkeepingEntry.OpeningPosition);
+  }
+
+  @Test
+  void derivedReversalCommands_keep_the_already_admitted_effective_date() {
+    PostEntryCommand baseCommand = SqliteRoundTripWorkflowTestSupport.basicValidCommand();
+
+    PostEntryCommand exactReversal =
+        SqliteRoundTripWorkflowCommandDerivation.derivedExactReversalCommand(
+            baseCommand, new PostingId("posting-1"), "exact-reversal-date");
+    PostEntryCommand nearMissReversal =
+        SqliteRoundTripWorkflowCommandDerivation.derivedNearMissReversalCommand(
+            baseCommand, new PostingId("posting-1"), "near-miss-reversal-date");
+
+    assertEquals(
+        CliFuzzFixtures.journalEntry(baseCommand).effectiveDate(),
+        CliFuzzFixtures.journalEntry(exactReversal).effectiveDate());
+    assertEquals(
+        CliFuzzFixtures.journalEntry(baseCommand).effectiveDate(),
+        CliFuzzFixtures.journalEntry(nearMissReversal).effectiveDate());
   }
 
   private static PostEntryCommand withEntry(PostEntryCommand template, BookkeepingEntry entry) {

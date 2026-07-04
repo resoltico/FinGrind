@@ -21,17 +21,15 @@ public final class BookkeepingRequestPublishedLanguageTranslator {
   }
 
   /** Translates one public interim-result-sweep request into the local bookkeeping model. */
-  public static dev.erst.fingrind.core.ReportingPeriod fromPublished(
-      InterimResultSweepCommand command) {
+  public static java.time.LocalDate fromPublished(InterimResultSweepCommand command) {
     Objects.requireNonNull(command, "command");
-    return command.reportingPeriod();
+    return command.throughEffectiveDate();
   }
 
   /** Translates one public fiscal-year-close request into the local bookkeeping model. */
-  public static dev.erst.fingrind.core.ReportingPeriod fromPublished(
-      FiscalYearCloseCommand command) {
+  public static int fromPublished(FiscalYearCloseCommand command) {
     Objects.requireNonNull(command, "command");
-    return command.reportingPeriod();
+    return command.fiscalYearLabel();
   }
 
   /** Translates one public open-book request into the local identity model. */

@@ -14,7 +14,8 @@ class BookDoctrineDisplayTest {
         "Internal management bookkeeping",
         BookDoctrineDisplay.accountingKernel(
             AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL));
-    assertEquals("Cash basis", BookDoctrineDisplay.accountingBasis(AccountingBasis.CASH_BASIS));
+    assertEquals("Cash basis", BookDoctrineDisplay.accountingBasis(AccountingBasis.CASH));
+    assertEquals("Accrual basis", BookDoctrineDisplay.accountingBasis(AccountingBasis.ACCRUAL));
     assertEquals(
         "Non-statutory internal management",
         BookDoctrineDisplay.accountingFrameworkPosition(
@@ -23,8 +24,11 @@ class BookDoctrineDisplayTest {
         "Owner-managed single entity",
         BookDoctrineDisplay.entityForm(EntityForm.OWNER_MANAGED_SINGLE_ENTITY));
     assertEquals(
-        "Owner-managed service starter chart",
+        "Owner-managed service seed template",
         BookDoctrineDisplay.bookTemplate(BookTemplateId.OWNER_MANAGED_SERVICE));
+    assertEquals(
+        "Owner-managed trading seed template",
+        BookDoctrineDisplay.bookTemplate(BookTemplateId.OWNER_MANAGED_TRADING));
   }
 
   @Test

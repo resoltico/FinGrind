@@ -1,6 +1,6 @@
 {
-  "entryKind": "SALE",
-  "effectiveDate": "2026-06-12",
+  "entryKind": "SALE_SETTLED",
+  "effectiveDate": "2026-04-06",
   "cashAccountCode": "3110",
   "revenueAccountCode": "4110",
   "amount": {
@@ -12,7 +12,7 @@
       {
         "sourceDocumentId": "document-seed-posting-jpy-idem-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-06-12"
+        "documentDate": "2026-04-06"
       }
     ],
     "approvals": [

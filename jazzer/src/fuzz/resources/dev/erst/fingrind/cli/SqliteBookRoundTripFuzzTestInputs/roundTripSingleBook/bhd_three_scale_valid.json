@@ -1,6 +1,6 @@
 {
-  "entryKind": "SALE",
-  "effectiveDate": "2026-06-15",
+  "entryKind": "SALE_SETTLED",
+  "effectiveDate": "2026-04-07",
   "cashAccountCode": "5120",
   "revenueAccountCode": "6120",
   "amount": {
@@ -12,7 +12,7 @@
       {
         "sourceDocumentId": "document-seed-sqlite-bhd-idem-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-06-15"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": [

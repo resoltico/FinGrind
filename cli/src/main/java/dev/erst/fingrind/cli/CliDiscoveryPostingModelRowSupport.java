@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Optional;
 
@@ -110,6 +111,9 @@ final class CliDiscoveryPostingModelRowSupport {
     if (isAlwaysPublishedField(fieldName)) {
       return true;
     }
+    if (isConditionallyPublishedField(fieldName, selectedEntryKind.entryKind())) {
+      return true;
+    }
     if (!selectedEntryKind.requiredTopLevelFields().contains(fieldName)
         && !selectedEntryKind.optionalTopLevelFields().contains(fieldName)) {
       return false;
@@ -124,6 +128,13 @@ final class CliDiscoveryPostingModelRowSupport {
   private static boolean isAlwaysPublishedField(String fieldName) {
     return ProtocolPostEntryFields.TopLevel.ENTRY_KIND.equals(fieldName)
         || ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE.equals(fieldName);
+  }
+
+  private static boolean isConditionallyPublishedField(
+      String fieldName, BookkeepingEntryKind entryKind) {
+    return ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF.equals(fieldName)
+        && (entryKind == BookkeepingEntryKind.SALE_SETTLED
+            || entryKind == BookkeepingEntryKind.SALE_ON_CREDIT);
   }
 
   private static boolean templatePublishesField(

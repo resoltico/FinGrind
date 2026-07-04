@@ -175,7 +175,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
 
   private static void insertForeignExchangePosting(
       SqliteNativeDatabase database, String postingIdText) {
-    BookkeepingEntry.Sale entry = saleEntryWithForeignExchange();
+    BookkeepingEntry.SaleSettled entry = saleEntryWithForeignExchange();
     CommittedPosting posting =
         new CommittedPosting(
             new PostingId(postingIdText),
@@ -193,12 +193,13 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
     SqliteMutationWriter.insertJournalLines(database, posting, SqliteCommitFaultHook.NONE);
   }
 
-  private static BookkeepingEntry.Sale saleEntryWithForeignExchange() {
-    return new BookkeepingEntry.Sale(
+  private static BookkeepingEntry.SaleSettled saleEntryWithForeignExchange() {
+    return new BookkeepingEntry.SaleSettled(
         LocalDate.parse("2026-04-07"),
         new AccountCode("1000"),
         new AccountCode("4000"),
         new MonetaryAmount("EUR", "9200"),
+        null,
         new ForeignExchangeDetails(
             new MonetaryAmount("USD", "10000"),
             new MonetaryAmount("EUR", "9200"),

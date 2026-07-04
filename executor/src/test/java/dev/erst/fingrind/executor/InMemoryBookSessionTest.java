@@ -312,11 +312,22 @@ class InMemoryBookSessionTest {
       assertEquals(
           Optional.of(firstReversal),
           bookSession.findReversalFor(new PostingId("posting-idem-original")));
+      CommittedPosting reversalOfReversal =
+          reversalFact("idem-reversal-1b", firstReversal.postingId().value());
+      assertEquals(
+          new PostingCommitResult.Rejected(
+              new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
+                  firstReversal.postingId())),
+          bookSession.commit(reversalOfReversal));
       assertEquals(
           new PostingCommitResult.Rejected(
               new BookkeepingPostingRejection.ReversalAlreadyExists(
                   new PostingId("posting-idem-original"))),
           bookSession.commit(secondReversal));
+      assertEquals(
+          Optional.empty(),
+          bookSession.findExistingPosting(new IdempotencyKey("idem-reversal-1b")));
+      assertEquals(Optional.empty(), bookSession.findPosting(reversalOfReversal.postingId()));
       assertEquals(
           Optional.empty(), bookSession.findExistingPosting(new IdempotencyKey("idem-reversal-2")));
       assertEquals(Optional.empty(), bookSession.findPosting(secondReversal.postingId()));

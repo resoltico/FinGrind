@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.Function;
 
 /** Shared SQLite statement helpers for posting lookups, book identity, and scalar reads. */
 final class SqliteStatementQueries {
@@ -216,6 +217,12 @@ final class SqliteStatementQueries {
           return new SqliteOptionalTextRow(
               Optional.ofNullable(value), statement.step() == SqliteNativeResultCode.code("DONE"));
         });
+  }
+
+  static <T> T queryWithStatement(
+      SqliteNativeDatabase activeDatabase, String sql, Function<SqliteNativeStatement, T> query) {
+    Objects.requireNonNull(query, "query");
+    return withStatement(activeDatabase, sql, query::apply);
   }
 
   private static Optional<BookIdentityCoreRow> loadBookIdentityCore(

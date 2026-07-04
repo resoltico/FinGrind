@@ -10,6 +10,8 @@
       "kind": "ensure-book",
       "ensureBook": {
         "entityName": "Late Open Seed",
+        "bookTemplateId": "OWNER_MANAGED_SERVICE",
+        "accountingBasis": "CASH",
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01"
       }

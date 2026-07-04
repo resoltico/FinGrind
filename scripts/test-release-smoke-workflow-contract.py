@@ -50,6 +50,7 @@ def main(argv: list[str]) -> int:
     )
     from release_smoke_workflow.scenario_contract import (
         assert_fixture_generation,
+        assert_operation_id_references,
         assert_release_smoke_scenarios,
     )
 
@@ -65,6 +66,7 @@ def main(argv: list[str]) -> int:
         expected_source_document,
         ARGUMENT_PATH_MODE_ABSOLUTE,
     )
+    assert_operation_id_references(repo_root)
     assert_bridge_and_report_contracts(
         repo_root,
         run_cli_allow_failure,

@@ -13,8 +13,12 @@ final class CliDiscoveryCommandExamples {
       Set.of(
           OperationId.POST_ENTRY,
           OperationId.PREFLIGHT_ENTRY,
-          OperationId.RECORD_SALE,
-          OperationId.RECORD_EXPENSE,
+          OperationId.RECORD_SALE_SETTLED,
+          OperationId.RECORD_SALE_ON_CREDIT,
+          OperationId.RECORD_EXPENSE_SETTLED,
+          OperationId.RECORD_EXPENSE_ON_CREDIT,
+          OperationId.RECORD_RECEIPT,
+          OperationId.RECORD_PAYMENT,
           OperationId.RECORD_OWNER_CONTRIBUTION,
           OperationId.RECORD_OWNER_WITHDRAWAL,
           OperationId.RECORD_OPENING_POSITION,
@@ -36,7 +40,7 @@ final class CliDiscoveryCommandExamples {
 
   static String primaryStarterRequestCommand(OperationId operationId) {
     if (FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION.equals(FinGrindCli.runtimeDistribution())
-        && operationId == OperationId.RECORD_SALE) {
+        && operationId == OperationId.RECORD_SALE_SETTLED) {
       return "cp ./quick-start-request.json ./request.json";
     }
     return switch (operationId) {

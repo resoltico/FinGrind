@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
 import dev.erst.fingrind.contract.tax.TaxObligationQuery;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPageCursor;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ListIterator;
@@ -17,14 +18,15 @@ final class CliTaxQueryArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec LIST_TAX_REGISTRATIONS_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(ProtocolOptions.LIMIT, ProtocolOptions.CURSOR, ProtocolOptions.OUTPUT),
-          List.of());
+          List.of(ProtocolOptions.WITH_CONTEXT));
   private static final CliBookArgumentParser.CommandArgumentSpec TAX_OBLIGATION_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
               ProtocolOptions.TAX_REGISTRATION_ID,
               ProtocolOptions.PERIOD_START,
               ProtocolOptions.PERIOD_END,
-              ProtocolOptions.OUTPUT),
+              ProtocolOptions.OUTPUT,
+              ProtocolOptions.PDF_OUT),
           List.of());
 
   private CliTaxQueryArguments() {}
@@ -40,6 +42,7 @@ final class CliTaxQueryArguments {
     return new ListTaxRegistrations(
         parsedArguments.bookAccess(),
         new ListTaxRegistrationsQuery(parsedWindow.limit(), resolvedCursor),
+        parsedWindow.withContext(),
         parsedWindow.outputMode());
   }
 
@@ -50,6 +53,7 @@ final class CliTaxQueryArguments {
     @Nullable LocalDate effectiveDateFrom = null;
     @Nullable LocalDate effectiveDateTo = null;
     @Nullable OutputMode outputMode = null;
+    @Nullable Path pdfOutPath = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -71,12 +75,11 @@ final class CliTaxQueryArguments {
                 effectiveDateTo, ProtocolOptions.PERIOD_END, argumentIterator);
         continue;
       }
-      outputMode =
-          CliOptionModes.requireOutputMode(
-              outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
-              CliOptionModes.supportedOutputModes(
-                  OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
+      if (ProtocolOptions.OUTPUT.equals(argument)) {
+        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+        continue;
+      }
+      pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (taxRegistrationIdValue == null) {
       throw CliArgumentValueParser.invalid(
@@ -109,6 +112,6 @@ final class CliTaxQueryArguments {
                     new TaxRegistrationId(requiredTaxRegistrationIdValue),
                     requiredEffectiveDateFrom,
                     requiredEffectiveDateTo)),
-        CliOptionModes.resolvedOutputMode(outputMode));
+        CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath));
   }
 }

@@ -19,7 +19,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL",
+                  "entryKind": "DIRECT_JOURNAL",
                   "effectiveDate": "2026-04-07",
                   "lines": [
                     {
@@ -61,7 +61,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL",
+                  "entryKind": "DIRECT_JOURNAL",
                   "effectiveDate": "2026-04-07",
                   "provenance": {
                     "actorId": "actor-1",
@@ -89,7 +89,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL",
+                  "entryKind": "DIRECT_JOURNAL",
                   "effectiveDate": "2026-04-07",
                   "lines": "not-an-array",
                   "provenance": {
@@ -118,7 +118,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL",
+                  "entryKind": "DIRECT_JOURNAL",
                   "effectiveDate": "2026-04-07",
                   "lines": null,
                   "provenance": {

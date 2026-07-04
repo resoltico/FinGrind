@@ -83,6 +83,27 @@ interface SqliteReportingPeriodCloseCapabilityView
   }
 
   @Override
+  default InterimResultSweepOutcome interimResultSweep(
+      LocalDate throughEffectiveDate,
+      LocalDate bookStartDate,
+      BookIdentity bookIdentity,
+      InterimResultSweepPlanner planner,
+      LocalDate currentUtcDate,
+      Instant sweptAt,
+      PostingIdGenerator postingIdGenerator) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations()
+        .interimResultSweep(
+            throughEffectiveDate,
+            bookStartDate,
+            bookIdentity,
+            planner,
+            currentUtcDate,
+            sweptAt,
+            postingIdGenerator);
+  }
+
+  @Override
   default FiscalYearCloseOutcome fiscalYearClose(
       ReportingPeriod reportingPeriod,
       BookIdentity bookIdentity,

@@ -68,7 +68,7 @@ final class SqliteBookKeyFileSecurityPolicy {
                     SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
                         ownerOnlyMessage
                             + redactedPath(path)
-                            + " grants access to one non-owner principal."));
+                            + " grants access to a non-owner principal."));
     if (nonOwnerAccessFailure.isPresent()) {
       return ContractDecision.rejected(nonOwnerAccessFailure.orElseThrow());
     }

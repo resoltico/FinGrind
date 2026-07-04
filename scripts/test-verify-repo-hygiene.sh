@@ -128,6 +128,76 @@ EOF
 chmod +x "${shim_dir}/git"
 REAL_GIT_PATH="${real_git}" PATH="${shim_dir}:${PATH}" "${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should fall back when the local Git lacks git fsck --no-references"
+
+progress 'clean fixture root still uses --no-references when help text omits it'
+shim_supports_no_references_dir="${fixture_root}/tmp/git-supports-no-references-shim"
+mkdir -p "${shim_supports_no_references_dir}"
+cat > "${shim_supports_no_references_dir}/git" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly real_git="${REAL_GIT_PATH:?}"
+
+run_fsck() {
+    local -a forwarded_args=()
+    local has_no_references=false
+    local argument
+    for argument in "$@"; do
+        if [[ "${argument}" == '--no-references' ]]; then
+            has_no_references=true
+            continue
+        fi
+        forwarded_args+=("${argument}")
+    done
+
+    if [[ "${has_no_references}" != true ]]; then
+        printf '%s\n' 'error: missing required --no-references flag' >&2
+        exit 99
+    fi
+
+    exec "${real_git}" fsck "${forwarded_args[@]}"
+}
+
+if [[ "${1:-}" == '-C' && $# -ge 3 ]]; then
+    repo_path=$2
+    shift 2
+    if [[ "${1:-}" == 'fsck' ]]; then
+        shift
+        if [[ "${1:-}" == '-h' || "${1:-}" == '--help' ]]; then
+            cat >&2 <<'USAGE'
+usage: git fsck [--tags] [--root] [--unreachable] [--cache] [--no-reflogs]
+                [--[no-]full] [--strict] [--verbose] [--lost-found]
+                [--[no-]dangling] [--[no-]progress] [--connectivity-only]
+                [--[no-]name-objects] [<object>...]
+USAGE
+            exit 129
+        fi
+        cd -- "${repo_path}"
+        run_fsck "$@"
+    fi
+    exec "${real_git}" -C "${repo_path}" "$@"
+fi
+
+if [[ "${1:-}" == 'fsck' ]]; then
+    shift
+    if [[ "${1:-}" == '-h' || "${1:-}" == '--help' ]]; then
+        cat >&2 <<'USAGE'
+usage: git fsck [--tags] [--root] [--unreachable] [--cache] [--no-reflogs]
+                [--[no-]full] [--strict] [--verbose] [--lost-found]
+                [--[no-]dangling] [--[no-]progress] [--connectivity-only]
+                [--[no-]name-objects] [<object>...]
+USAGE
+        exit 129
+    fi
+    run_fsck "$@"
+fi
+
+exec "${real_git}" "$@"
+EOF
+chmod +x "${shim_supports_no_references_dir}/git"
+REAL_GIT_PATH="${real_git}" PATH="${shim_supports_no_references_dir}:${PATH}" "${verifier}" --repo-root "${fixture_root}" || die \
+    "repo hygiene verifier should prefer the executable --no-references probe over help text"
+
 progress 'local-state reporting stays available'
 report_started_at=$SECONDS
 report_output="$("${verifier}" --repo-root "${fixture_root}" --report-local-state)"

@@ -50,7 +50,26 @@ public final class FiscalYearClosePlanner {
   /** Returns the first deterministic fiscal-year-close rejection, if any. */
   public Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
       ReportingPeriod reportingPeriod, BookIdentity bookIdentity, LocalDate currentUtcDate) {
-    return FiscalYearCloseValidator.rejectionFor(reportingPeriod, bookIdentity, currentUtcDate);
+    return closeHorizonRejection(
+        reportingPeriod, bookIdentity, currentUtcDate, java.util.Optional.empty());
+  }
+
+  /** Returns the first deterministic close-horizon rejection for one fiscal-year close, if any. */
+  public Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
+      ReportingPeriod reportingPeriod,
+      BookIdentity bookIdentity,
+      LocalDate currentUtcDate,
+      Optional<LocalDate> transferredThroughEffectiveDate) {
+    return FiscalYearCloseValidator.rejectionFor(
+        reportingPeriod, bookIdentity, currentUtcDate, transferredThroughEffectiveDate);
+  }
+
+  /** Derives the reporting period for the fiscal year identified by the selected label. */
+  public ReportingPeriod reportingPeriod(BookIdentity bookIdentity, int fiscalYearLabel) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    return new ReportingPeriod(
+        bookIdentity.fiscalYearStart().labeledFiscalYearStart(fiscalYearLabel),
+        bookIdentity.fiscalYearStart().labeledFiscalYearEnd(fiscalYearLabel));
   }
 
   /** Plans one fiscal-year close, including any unswept remainder inside the selected year. */

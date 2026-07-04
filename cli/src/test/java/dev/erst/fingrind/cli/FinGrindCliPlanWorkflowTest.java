@@ -288,6 +288,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                   "kind": "ensure-book",
                   "ensureBook": {
                     "entityName": "Acme Studio",
+                    "bookTemplateId": "OWNER_MANAGED_SERVICE",
+                    "accountingBasis": "CASH",
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01"
                   }

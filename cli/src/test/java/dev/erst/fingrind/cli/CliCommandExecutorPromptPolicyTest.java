@@ -22,7 +22,6 @@ import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -58,7 +57,9 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
 
     assertPromptFailure(
         outputStream,
-        () -> executor.runOpenBookCommand(PROMPT_BOOK_ACCESS, openBookCommand(), OutputMode.JSON));
+        () ->
+            executor.runOpenBookCommand(
+                PROMPT_BOOK_ACCESS, openBookCommand(), false, OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () ->
@@ -94,16 +95,10 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runInterimResultSweepCommand(
-                PROMPT_BOOK_ACCESS,
-                new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-                OutputMode.JSON));
+                PROMPT_BOOK_ACCESS, LocalDate.parse("2026-04-30"), OutputMode.JSON));
     assertPromptFailure(
         outputStream,
-        () ->
-            executor.runFiscalYearCloseCommand(
-                PROMPT_BOOK_ACCESS,
-                new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")),
-                OutputMode.JSON));
+        () -> executor.runFiscalYearCloseCommand(PROMPT_BOOK_ACCESS, 2026, OutputMode.JSON));
   }
 
   @Test
@@ -122,18 +117,22 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runListAccountsCommand(
-                PROMPT_BOOK_ACCESS, new ListAccountsQuery(10, Optional.empty()), OutputMode.JSON));
+                PROMPT_BOOK_ACCESS,
+                new ListAccountsQuery(10, Optional.empty()),
+                false,
+                OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () ->
             executor.runGetPostingCommand(
-                PROMPT_BOOK_ACCESS, new PostingId("posting-1"), OutputMode.JSON));
+                PROMPT_BOOK_ACCESS, new PostingId("posting-1"), false, OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () ->
             executor.runListPostingsCommand(
                 PROMPT_BOOK_ACCESS,
                 new ListPostingsQuery(Optional.empty(), null, null, 10, Optional.empty()),
+                false,
                 OutputMode.JSON));
     assertPromptFailure(
         outputStream,
@@ -141,16 +140,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
             executor.runListTaxRegistrationsCommand(
                 PROMPT_BOOK_ACCESS,
                 new ListTaxRegistrationsQuery(10, Optional.empty()),
-                OutputMode.JSON));
-    assertPromptFailure(
-        outputStream,
-        () ->
-            executor.runTaxObligationCommand(
-                PROMPT_BOOK_ACCESS,
-                new TaxObligationQuery(
-                    new TaxRegistrationId("vat-lv"),
-                    LocalDate.parse("2026-04-01"),
-                    LocalDate.parse("2026-04-30")),
+                false,
                 OutputMode.JSON));
   }
 
@@ -183,7 +173,10 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runRecordEntryCommand(
-                PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON, OperationId.RECORD_SALE));
+                PROMPT_BOOK_ACCESS,
+                REQUEST_FILE,
+                OutputMode.JSON,
+                OperationId.RECORD_SALE_SETTLED));
   }
 
   @Test
@@ -260,6 +253,16 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
                     LocalDate.parse("2026-04-01"),
                     LocalDate.parse("2026-04-30"),
                     ComparativeSelection.none()),
+                jsonOutput));
+    assertPromptFailure(
+        outputStream,
+        () ->
+            executor.runTaxObligationCommand(
+                PROMPT_BOOK_ACCESS,
+                new TaxObligationQuery(
+                    new TaxRegistrationId("vat-lv"),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30")),
                 jsonOutput));
     assertEquals("", diagnosticsStream.toString(java.nio.charset.StandardCharsets.UTF_8));
   }

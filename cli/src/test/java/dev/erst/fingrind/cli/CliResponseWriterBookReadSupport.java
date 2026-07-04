@@ -6,7 +6,6 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
-import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import java.io.PrintStream;
 import java.nio.file.Path;
 
@@ -33,7 +32,12 @@ class CliResponseWriterBookReadSupport extends CliResponseWriterMutationSupport 
   }
 
   void writeListAccountsResult(ListAccountsResult result, OutputMode outputMode) {
-    bookReadWriter.writeListAccountsResult(result, outputMode);
+    writeListAccountsResult(result, false, outputMode);
+  }
+
+  void writeListAccountsResult(
+      ListAccountsResult result, boolean withContext, OutputMode outputMode) {
+    bookReadWriter.writeListAccountsResult(result, withContext, outputMode);
   }
 
   void writeGetPostingResult(GetPostingResult result) {
@@ -41,7 +45,11 @@ class CliResponseWriterBookReadSupport extends CliResponseWriterMutationSupport 
   }
 
   void writeGetPostingResult(GetPostingResult result, OutputMode outputMode) {
-    bookReadWriter.writeGetPostingResult(result, outputMode);
+    writeGetPostingResult(result, false, outputMode);
+  }
+
+  void writeGetPostingResult(GetPostingResult result, boolean withContext, OutputMode outputMode) {
+    bookReadWriter.writeGetPostingResult(result, withContext, outputMode);
   }
 
   void writeListPostingsResult(ListPostingsResult result) {
@@ -49,14 +57,20 @@ class CliResponseWriterBookReadSupport extends CliResponseWriterMutationSupport 
   }
 
   void writeListPostingsResult(ListPostingsResult result, OutputMode outputMode) {
-    bookReadWriter.writeListPostingsResult(result, outputMode);
+    writeListPostingsResult(result, false, outputMode);
+  }
+
+  void writeListPostingsResult(
+      ListPostingsResult result, boolean withContext, OutputMode outputMode) {
+    bookReadWriter.writeListPostingsResult(result, withContext, outputMode);
   }
 
   void writeListTaxRegistrationsResult(ListTaxRegistrationsResult result, OutputMode outputMode) {
-    bookReadWriter.writeListTaxRegistrationsResult(result, outputMode);
+    writeListTaxRegistrationsResult(result, false, outputMode);
   }
 
-  void writeTaxObligationResult(TaxObligationResult result, OutputMode outputMode) {
-    bookReadWriter.writeTaxObligationResult(result, outputMode);
+  void writeListTaxRegistrationsResult(
+      ListTaxRegistrationsResult result, boolean withContext, OutputMode outputMode) {
+    bookReadWriter.writeListTaxRegistrationsResult(result, withContext, outputMode);
   }
 }

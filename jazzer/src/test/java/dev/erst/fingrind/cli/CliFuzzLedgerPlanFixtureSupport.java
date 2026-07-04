@@ -47,7 +47,7 @@ public final class CliFuzzLedgerPlanFixtureSupport {
             %s,
             {
               "stepId": "post-jpy",
-              "kind": "record-sale",
+              "kind": "record-sale-settled",
               "posting": %s
             },
             {
@@ -112,7 +112,7 @@ public final class CliFuzzLedgerPlanFixtureSupport {
             %s,
             {
               "stepId": "post-bhd",
-              "kind": "record-sale",
+              "kind": "record-sale-settled",
               "posting": %s
             },
             {
@@ -167,6 +167,8 @@ public final class CliFuzzLedgerPlanFixtureSupport {
     return """
         {
           "entityName": "Acme Studio",
+          "bookTemplateId": "OWNER_MANAGED_SERVICE",
+          "accountingBasis": "CASH",
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01"
         }

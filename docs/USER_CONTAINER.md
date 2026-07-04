@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: USER_CONTAINER
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]
@@ -52,7 +52,9 @@ Create the key and book inside the mounted working directory:
 ```bash
 fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01
+  --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE \
+  --accounting-basis CASH \
+  --functional-currency EUR --fiscal-year-start 01-01
 ```
 
 Create the request scaffold locally:
@@ -64,12 +66,13 @@ fingrind print-request-template > ./request.json
 The scaffold emits one minimal sale request with placeholder evidence and provenance. The raw
 direct-journal boundary remains available through `print-request-template post-entry`, but that
 raw surface still has to move at least one declared cash-and-cash-equivalent asset account and the
-default mounted workflow teaches the primary business-event path first.
+default mounted workflow teaches the primary business-event path first. Use
+`--accounting-basis ACCRUAL` when you want the accrual owner-managed service chart.
 Replace the placeholder values in `./request.json`, then validate and commit:
 
 ```bash
 fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
-fingrind record-sale --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
+fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
 ```
 
 Read a report and export a PDF back into the mounted host directory:

@@ -19,6 +19,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and invariant tests for contract-owned template descriptors. */
@@ -86,7 +87,8 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "open",
               LedgerStepKind.ENSURE_BOOK,
-              new ContractPlanTemplates.EnsureBookTemplateDescriptor("Acme Studio", "EUR", "01-01"),
+              new ContractPlanTemplates.EnsureBookTemplateDescriptor(
+                  "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", "EUR", "01-01"),
               null,
               null,
               null,
@@ -291,9 +293,9 @@ class ContractTemplatesValidationTest {
         openingPositionPostingTemplate();
     ContractTemplates.PostingRequestTemplateDescriptor reversal = reversalPostingTemplate();
 
-    assertEquals(BookkeepingEntryKind.SALE, sale.entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, sale.entryKind());
     assertEquals("4000", sale.revenueAccountCode());
-    assertEquals(BookkeepingEntryKind.EXPENSE, expense.entryKind());
+    assertEquals(BookkeepingEntryKind.EXPENSE_SETTLED, expense.entryKind());
     assertEquals("5000", expense.expenseAccountCode());
     assertEquals(BookkeepingEntryKind.OWNER_CONTRIBUTION, ownerContribution.entryKind());
     assertEquals("3000", ownerContribution.equityAccountCode());
@@ -320,7 +322,7 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.DIRECT_JOURNAL,
                     "2026-04-25",
                     null,
@@ -328,13 +330,10 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    List.of(journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000")),
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(
+                        List.of(journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000")),
+                        null,
+                        null)));
 
     assertEquals(
         "lines must contain at least two journal lines for journal.", tooFewLines.getMessage());
@@ -346,42 +345,30 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.SALE,
+                postingTemplateDescriptor(
+                    BookkeepingEntryKind.SALE_SETTLED,
                     "2026-04-25",
                     null,
                     "4000",
                     null,
                     null,
                     new MonetaryAmount("EUR", "1000"),
-                    null,
-                    null,
-                    null,
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(null, null, null)));
     assertEquals("cashAccountCode must not be null.", missingCashAccount.getMessage());
 
     IllegalArgumentException forbiddenRevenueAccount =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.EXPENSE,
+                postingTemplateDescriptor(
+                    BookkeepingEntryKind.EXPENSE_SETTLED,
                     "2026-04-25",
                     "1000",
                     "4000",
                     "5000",
                     null,
                     new MonetaryAmount("EUR", "1000"),
-                    null,
-                    null,
-                    null,
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(null, null, null)));
     assertEquals(
         "revenueAccountCode must be absent for this entryKind.",
         forbiddenRevenueAccount.getMessage());
@@ -390,7 +377,7 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.OWNER_CONTRIBUTION,
                     "2026-04-25",
                     "1000",
@@ -398,20 +385,14 @@ class ContractTemplatesValidationTest {
                     null,
                     "3000",
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(null, null, null)));
     assertEquals("amount must not be null.", missingPositiveAmount.getMessage());
 
     IllegalArgumentException zeroAmount =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.OWNER_WITHDRAWAL,
                     "2026-04-25",
                     "1000",
@@ -419,56 +400,44 @@ class ContractTemplatesValidationTest {
                     null,
                     "3010",
                     new MonetaryAmount("EUR", "0"),
-                    null,
-                    null,
-                    null,
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(null, null, null)));
     assertEquals("amount must carry one positive minor-unit value.", zeroAmount.getMessage());
 
     IllegalArgumentException forbiddenLines =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.SALE,
+                postingTemplateDescriptor(
+                    BookkeepingEntryKind.SALE_SETTLED,
                     "2026-04-25",
                     "1000",
                     "4000",
                     null,
                     null,
                     new MonetaryAmount("EUR", "1000"),
-                    null,
-                    null,
-                    List.of(journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000")),
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(
+                        List.of(journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000")),
+                        null,
+                        null)));
     assertEquals("lines must be absent for this entryKind.", forbiddenLines.getMessage());
 
     IllegalArgumentException forbiddenReversal =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
-                    BookkeepingEntryKind.SALE,
+                postingTemplateDescriptor(
+                    BookkeepingEntryKind.SALE_SETTLED,
                     "2026-04-25",
                     "1000",
                     "4000",
                     null,
                     null,
                     new MonetaryAmount("EUR", "1000"),
-                    null,
-                    null,
-                    null,
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    new ContractTemplates.ReversalTemplateDescriptor(
-                        "posting-1", "manual-correction")));
+                    postingTemplateShape(
+                        null,
+                        null,
+                        new ContractTemplates.ReversalTemplateDescriptor(
+                            "posting-1", "manual-correction"))));
     assertEquals("reversal must be absent for this entryKind.", forbiddenReversal.getMessage());
   }
 
@@ -478,7 +447,7 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.OPENING_POSITION,
                     "2026-04-25",
                     null,
@@ -486,13 +455,11 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    null,
-                    List.of(openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000")),
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(
+                        null,
+                        List.of(
+                            openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000")),
+                        null)));
     assertEquals(
         "openingBalances must contain at least two opening balances for openingPosition.",
         tooFewOpeningBalanceLines.getMessage());
@@ -501,7 +468,7 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.OPENING_POSITION,
                     "2026-04-25",
                     null,
@@ -509,13 +476,7 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(null, null, null)));
     assertEquals(
         "openingBalances must contain at least two opening balances for openingPosition.",
         missingOpeningBalances.getMessage());
@@ -524,7 +485,7 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.OPENING_POSITION,
                     "2026-04-25",
                     null,
@@ -532,15 +493,12 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     new MonetaryAmount("EUR", "1000"),
-                    null,
-                    null,
-                    null,
-                    List.of(
-                        openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-                        openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(
+                        null,
+                        List.of(
+                            openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                            openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                        null)));
     assertEquals(
         "amount must be absent for openingPosition.", openingPositionForbidsAmount.getMessage());
 
@@ -548,7 +506,7 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.OPENING_POSITION,
                     "2026-04-25",
                     null,
@@ -556,17 +514,14 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    List.of(
-                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-                        journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-                    List.of(
-                        openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-                        openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(
+                        List.of(
+                            journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                            journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                        List.of(
+                            openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                            openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                        null)));
     assertEquals(
         "lines must be absent for this entryKind.", openingPositionForbidsLines.getMessage());
   }
@@ -577,7 +532,7 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL,
                     "2026-04-25",
                     null,
@@ -585,22 +540,14 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    List.of(
-                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-                        journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    null));
+                    postingTemplateShape(null, null, null)));
     assertEquals("reversal must be present for reversal.", missingReversalDescriptor.getMessage());
 
-    IllegalArgumentException reversalRequiresLines =
+    IllegalArgumentException reversalForbidsLines =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL,
                     "2026-04-25",
                     null,
@@ -608,23 +555,20 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    new ContractTemplates.ReversalTemplateDescriptor(
-                        "posting-1", "manual-correction")));
-    assertEquals(
-        "lines must contain at least two journal lines for reversal.",
-        reversalRequiresLines.getMessage());
+                    postingTemplateShape(
+                        List.of(
+                            journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                            journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                        null,
+                        new ContractTemplates.ReversalTemplateDescriptor(
+                            "posting-1", "manual-correction"))));
+    assertEquals("lines must be absent for this entryKind.", reversalForbidsLines.getMessage());
 
     IllegalArgumentException reversalForbidsOpeningBalances =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL,
                     "2026-04-25",
                     null,
@@ -632,18 +576,13 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     null,
-                    null,
-                    null,
-                    List.of(
-                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-                        journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-                    List.of(
-                        openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-                        openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    new ContractTemplates.ReversalTemplateDescriptor(
-                        "posting-1", "manual-correction")));
+                    postingTemplateShape(
+                        null,
+                        List.of(
+                            openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                            openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+                        new ContractTemplates.ReversalTemplateDescriptor(
+                            "posting-1", "manual-correction"))));
     assertEquals(
         "openingBalances must be absent for this entryKind.",
         reversalForbidsOpeningBalances.getMessage());
@@ -652,7 +591,7 @@ class ContractTemplatesValidationTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.PostingRequestTemplateDescriptor(
+                postingTemplateDescriptor(
                     BookkeepingEntryKind.REVERSAL,
                     "2026-04-25",
                     null,
@@ -660,16 +599,11 @@ class ContractTemplatesValidationTest {
                     null,
                     null,
                     new MonetaryAmount("EUR", "1000"),
-                    null,
-                    null,
-                    List.of(
-                        journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-                        journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-                    null,
-                    evidenceTemplate(List.of()),
-                    provenanceTemplate(),
-                    new ContractTemplates.ReversalTemplateDescriptor(
-                        "posting-1", "manual-correction")));
+                    postingTemplateShape(
+                        null,
+                        null,
+                        new ContractTemplates.ReversalTemplateDescriptor(
+                            "posting-1", "manual-correction"))));
     assertEquals("amount must be absent for reversal.", forbiddenManualAmount.getMessage());
   }
 
@@ -677,7 +611,7 @@ class ContractTemplatesValidationTest {
   void postingRequestTemplateValidator_rejectsNullEntryKindWhenCalledDirectly() {
     ContractPostingRequestTemplateValidators.PostingTemplateFields fields =
         new ContractPostingRequestTemplateValidators.PostingTemplateFields(
-            null, null, null, null, null, null, null, null, null);
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
     assertThrows(
         NullPointerException.class,
@@ -740,44 +674,32 @@ class ContractTemplatesValidationTest {
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor postingTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
-        BookkeepingEntryKind.SALE,
+    return postingTemplateDescriptor(
+        BookkeepingEntryKind.SALE_SETTLED,
         "2026-04-25",
         "1000",
         "4000",
         null,
         null,
         new MonetaryAmount("EUR", "1000"),
-        null,
-        null,
-        null,
-        null,
-        evidenceTemplate(List.of()),
-        provenanceTemplate(),
-        null);
+        postingTemplateShape(null, null, null));
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor expensePostingTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
-        BookkeepingEntryKind.EXPENSE,
+    return postingTemplateDescriptor(
+        BookkeepingEntryKind.EXPENSE_SETTLED,
         "2026-04-25",
         "1000",
         null,
         "5000",
         null,
         new MonetaryAmount("EUR", "1000"),
-        null,
-        null,
-        null,
-        null,
-        evidenceTemplate(List.of()),
-        provenanceTemplate(),
-        null);
+        postingTemplateShape(null, null, null));
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor
       ownerContributionPostingTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return postingTemplateDescriptor(
         BookkeepingEntryKind.OWNER_CONTRIBUTION,
         "2026-04-25",
         "1000",
@@ -785,18 +707,12 @@ class ContractTemplatesValidationTest {
         null,
         "3000",
         new MonetaryAmount("EUR", "1000"),
-        null,
-        null,
-        null,
-        null,
-        evidenceTemplate(List.of()),
-        provenanceTemplate(),
-        null);
+        postingTemplateShape(null, null, null));
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor
       ownerWithdrawalPostingTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return postingTemplateDescriptor(
         BookkeepingEntryKind.OWNER_WITHDRAWAL,
         "2026-04-25",
         "1000",
@@ -804,18 +720,12 @@ class ContractTemplatesValidationTest {
         null,
         "3010",
         new MonetaryAmount("EUR", "1000"),
-        null,
-        null,
-        null,
-        null,
-        evidenceTemplate(List.of()),
-        provenanceTemplate(),
-        null);
+        postingTemplateShape(null, null, null));
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor
       openingPositionPostingTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return postingTemplateDescriptor(
         BookkeepingEntryKind.OPENING_POSITION,
         "2026-04-25",
         null,
@@ -823,19 +733,16 @@ class ContractTemplatesValidationTest {
         null,
         null,
         null,
-        null,
-        null,
-        null,
-        List.of(
-            openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-            openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-        evidenceTemplate(List.of()),
-        provenanceTemplate(),
-        null);
+        postingTemplateShape(
+            null,
+            List.of(
+                openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+            null));
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor reversalPostingTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return postingTemplateDescriptor(
         BookkeepingEntryKind.REVERSAL,
         "2026-04-25",
         null,
@@ -843,19 +750,14 @@ class ContractTemplatesValidationTest {
         null,
         null,
         null,
-        null,
-        null,
-        List.of(
-            journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-            journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-        null,
-        evidenceTemplate(List.of()),
-        provenanceTemplate(),
-        new ContractTemplates.ReversalTemplateDescriptor("posting-1", "operator reversal"));
+        postingTemplateShape(
+            null,
+            null,
+            new ContractTemplates.ReversalTemplateDescriptor("posting-1", "operator reversal")));
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor directJournalPostingTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return postingTemplateDescriptor(
         BookkeepingEntryKind.DIRECT_JOURNAL,
         "2026-04-25",
         null,
@@ -863,15 +765,55 @@ class ContractTemplatesValidationTest {
         null,
         null,
         null,
+        postingTemplateShape(
+            List.of(
+                journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
+                journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+            null,
+            null));
+  }
+
+  private record PostingTemplateShape(
+      @Nullable List<ContractTemplates.JournalLineTemplateDescriptor> lines,
+      @Nullable List<ContractTemplates.OpeningBalanceTemplateDescriptor> openingBalances,
+      ContractTemplates.@Nullable ReversalTemplateDescriptor reversal) {}
+
+  private static PostingTemplateShape postingTemplateShape(
+      @Nullable List<ContractTemplates.JournalLineTemplateDescriptor> lines,
+      @Nullable List<ContractTemplates.OpeningBalanceTemplateDescriptor> openingBalances,
+      ContractTemplates.@Nullable ReversalTemplateDescriptor reversal) {
+    return new PostingTemplateShape(lines, openingBalances, reversal);
+  }
+
+  private static ContractTemplates.PostingRequestTemplateDescriptor postingTemplateDescriptor(
+      BookkeepingEntryKind entryKind,
+      String effectiveDate,
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      @Nullable String equityAccountCode,
+      @Nullable MonetaryAmount amount,
+      PostingTemplateShape shape) {
+    return new ContractTemplates.PostingRequestTemplateDescriptor(
+        entryKind,
+        effectiveDate,
+        cashAccountCode,
         null,
         null,
-        List.of(
-            journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
-            journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
+        revenueAccountCode,
         null,
+        expenseAccountCode,
+        equityAccountCode,
+        amount,
+        null,
+        null,
+        null,
+        null,
+        shape.lines(),
+        shape.openingBalances(),
         evidenceTemplate(List.of()),
         provenanceTemplate(),
-        null);
+        shape.reversal());
   }
 
   private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {

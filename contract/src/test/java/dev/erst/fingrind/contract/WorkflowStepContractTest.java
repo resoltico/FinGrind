@@ -38,6 +38,7 @@ class WorkflowStepContractTest {
     assertEquals(List.of("command", "edit", "note"), WireValue.wireValues(WorkflowStepKind.class));
     assertEquals(
         List.of(
+            "path-posix-shell",
             "bundle-posix-shell",
             "source-checkout-posix-shell",
             "source-checkout-windows-powershell",

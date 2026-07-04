@@ -28,6 +28,26 @@ class CliOptionValuesTest {
   }
 
   @Test
+  void parseBookTemplateIdOption_rejectsUnsupportedTemplateIds() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliOptionValues.parseBookTemplateIdOption("service", "--book-template-id"));
+
+    assertEquals("--book-template-id", exception.argument());
+  }
+
+  @Test
+  void parseAccountingBasisOption_rejectsUnsupportedBases() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliOptionValues.parseAccountingBasisOption("HYBRID", "--accounting-basis"));
+
+    assertEquals("--accounting-basis", exception.argument());
+  }
+
+  @Test
   void parseFiscalYearStartOption_rejectsInvalidMonthDayTokens() {
     CliArgumentsException exception =
         assertThrows(
@@ -35,5 +55,16 @@ class CliOptionValuesTest {
             () -> CliOptionValues.parseFiscalYearStartOption("13-40", "--fiscal-year-start"));
 
     assertEquals("--fiscal-year-start", exception.argument());
+  }
+
+  @Test
+  void parseYearOption_rejectsOutOfRangeYears() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliOptionValues.parseYearOption("1000000000", "--year"));
+
+    assertEquals("--year", exception.argument());
+    assertEquals("Option must be one canonical YYYY year: --year", exception.getMessage());
   }
 }

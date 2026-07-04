@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, declare-tax-registration, tax-obligation]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented", "where is the tax request surface documented"]
@@ -229,9 +229,9 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 ```
 
 - Purpose: advertise supported artifact outputs without ad hoc CLI strings
-- Current scope: report PDF export plus the generated/replacement book-key-file, backup-book,
-  backup-book-key-file, and rollback-book artifact families published through the uniform
-  `artifacts[]` response home
+- Current scope: report PDF export plus the generated/replacement book-key-file, restored
+  book-file, backup-file, backup-key-file, and rollback-book artifact families published through
+  the uniform `artifacts[]` response home
 
 ## `PublicCliBundleTarget`
 
@@ -473,11 +473,13 @@ public final class ProtocolLedgerPlanFields
   `fiscalYearStart` field names for explicit book initialization
 - `ProtocolTaxRegistrationFields` and nested `.TaxCode` own the canonical top-level and declared
   tax-code field names for `declare-tax-registration`
-- `ProtocolPostEntryFields.TopLevel`, `.ForeignExchange`, `.QuotedRate`, `.Tax`, `.JournalLine`,
-  `.Provenance`, and `.Reversal` group the canonical posting-request field families by JSON object
-  scope; foreign-currency business events now carry one nested `foreignExchange` object with one
-  nested `quotedRate` object, while mixed-currency journal lines remain unavailable and
-  journal-line `amount` remains one nested exact-money object keyed by `ProtocolMoneyFields`
+- `ProtocolPostEntryFields.TopLevel`, `.SettlementAdjunct`, `.ForeignExchange`, `.QuotedRate`,
+  `.InventoryRelief`, `.Tax`, `.JournalLine`, `.Provenance`, and `.Reversal` group the canonical
+  posting-request field families by JSON object scope; foreign-currency business events now carry
+  one nested `foreignExchange` object with one nested `quotedRate` object, receipt and payment
+  requests may carry one nested `settlementAdjunct` object, trading sale requests may carry one
+  nested `inventoryRelief` object, and journal-line `amount` remains one nested exact-money
+  object keyed by `ProtocolMoneyFields`
 - `ProtocolLedgerPlanFields.Plan`, `.Step`, `.Query`, and `.Assertion` group the canonical
   ledger-plan field families by JSON object scope; assertion `netAmount` is the same nested
   exact-money object shape
@@ -569,9 +571,9 @@ public final class ProtocolManagedSqliteCatalog
   reachability per declared-account classification cell, and those facts derive from the live
   current-kernel account-classification reachability owner instead of one hand-maintained discovery
   copy
-- `TemporalScopeArchetype` keeps ranged-filter, bounded-period, and as-of-date semantics explicit so
-  option names, labels, help-level boundary guidance, and empty-state wording derive from one
-  owned vocabulary instead of parallel literals
+- `TemporalScopeArchetype` keeps ranged-filter, bounded-period, through-date, fiscal-year-label,
+  and as-of-date semantics explicit so option names, labels, help-level boundary guidance, and
+  empty-state wording derive from one owned vocabulary instead of parallel literals
 - Boundary: each catalog owns one coherent slice of public protocol metadata and leaves field-level
   structure to the narrower protocol field owners above
 
@@ -709,10 +711,13 @@ public final class ContractTemplates
   `.LedgerPlanStepTemplateDescriptor`, `.LedgerPlanQueryTemplateDescriptor`, and
   `.LedgerAssertionTemplateDescriptor` are the nested typed ledger-plan template descriptors
 - `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
-  `.TaxSelectionTemplateDescriptor`, `.ProvenanceTemplateDescriptor`,
-  `.ReversalTemplateDescriptor`, `.DeclareAccountTemplateDescriptor`,
-  `.DeclareTaxRegistrationTemplateDescriptor`, `.DeclareTaxCodeTemplateDescriptor`, and related
-  evidence descriptors are the nested typed request template descriptors
+  `.SettlementAdjunctTemplateDescriptor`, `.TaxSelectionTemplateDescriptor`,
+  `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
+  `.DeclareAccountTemplateDescriptor`, `.DeclareTaxRegistrationTemplateDescriptor`,
+  `.DeclareTaxCodeTemplateDescriptor`, and related evidence descriptors are the nested typed
+  request template descriptors
+- `InventoryReliefTemplateDescriptor` is the top-level typed trading-sale relief descriptor
+  reused by posting request templates instead of remaining buried as an anonymous object shape
 - `ForeignExchangeTemplateDescriptor` and `QuotedExchangeRateTemplateDescriptor` are the
   top-level typed FX request template descriptors reused by posting request templates
 - Template descriptors keep actor type, account type, entry side, normal balance, step kind,
@@ -734,10 +739,10 @@ public final class ContractFailureException extends IllegalStateException
 
 - Purpose: distinguish malformed input and deterministic invocation failures from runtime failure
 - Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
-  `invalid-page-cursor`, `protected-book-verification-failed`, `internal-error`,
-  `managed-runtime-failure`, `storage-runtime-failure`, `pdf-export-failure`, and
-  `interactive-prompt-unavailable`, plus the published process `exitCode` for each deterministic
-  machine error
+  `invalid-page-cursor`, `protected-book-verification-failed`, `internal-defect`,
+  `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
+  `pdf-export-failure`, and `interactive-prompt-unavailable`, plus the published process
+  `exitCode` for each deterministic machine error
 - `invalid-request` now advertises structured `detailFields` when the malformed request reaches
   aggregated journal grammar validation, with `details.violations[]` carrying the full ordered
   set of detected issues
@@ -773,7 +778,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 33`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 38`
 
 ## `ProtectedBookFormatContract`
 

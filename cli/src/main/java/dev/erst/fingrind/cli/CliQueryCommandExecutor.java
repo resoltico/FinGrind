@@ -4,11 +4,14 @@ import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
-import dev.erst.fingrind.contract.tax.TaxObligationQuery;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
 /** Executes query-only CLI commands that read book state without producing PDF artifacts. */
 final class CliQueryCommandExecutor {
@@ -26,103 +29,74 @@ final class CliQueryCommandExecutor {
   }
 
   int runInspectBookCommand(BookAccess bookAccess, OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        readWorkflow.inspectBook(bookAccess),
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.inspectBook(bookAccess),
         inspection ->
             responseWriter.writeBookInspection(bookAccess.bookFilePath(), inspection, outputMode),
-        ignored -> 0,
-        failureWriter);
+        ignored -> 0);
   }
 
   int runListAccountsCommand(
-      BookAccess bookAccess, ListAccountsQuery query, OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        readWorkflow.listAccounts(bookAccess, query),
-        result -> responseWriter.writeListAccountsResult(result, outputMode),
-        CliBookQueryExitCodes::exitCodeFor,
-        failureWriter);
+      BookAccess bookAccess, ListAccountsQuery query, boolean withContext, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.listAccounts(bookAccess, query),
+        result -> responseWriter.writeListAccountsResult(result, withContext, outputMode),
+        CliBookQueryExitCodes::exitCodeFor);
   }
 
   int runListTaxRegistrationsCommand(
-      BookAccess bookAccess, ListTaxRegistrationsQuery query, OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        readWorkflow.listTaxRegistrations(bookAccess, query),
-        result -> responseWriter.writeListTaxRegistrationsResult(result, outputMode),
-        CliBookQueryExitCodes::exitCodeFor,
-        failureWriter);
+      BookAccess bookAccess,
+      ListTaxRegistrationsQuery query,
+      boolean withContext,
+      OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.listTaxRegistrations(bookAccess, query),
+        result -> responseWriter.writeListTaxRegistrationsResult(result, withContext, outputMode),
+        CliBookQueryExitCodes::exitCodeFor);
   }
 
-  int runGetPostingCommand(BookAccess bookAccess, PostingId postingId, OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        readWorkflow.getPosting(bookAccess, postingId),
-        result -> responseWriter.writeGetPostingResult(result, outputMode),
-        CliBookQueryExitCodes::exitCodeFor,
-        failureWriter);
+  int runGetPostingCommand(
+      BookAccess bookAccess, PostingId postingId, boolean withContext, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.getPosting(bookAccess, postingId),
+        result -> responseWriter.writeGetPostingResult(result, withContext, outputMode),
+        CliBookQueryExitCodes::exitCodeFor);
   }
 
   int runListPostingsCommand(
-      BookAccess bookAccess, ListPostingsQuery query, OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        readWorkflow.listPostings(bookAccess, query),
-        result -> responseWriter.writeListPostingsResult(result, outputMode),
-        CliBookQueryExitCodes::exitCodeFor,
-        failureWriter);
+      BookAccess bookAccess, ListPostingsQuery query, boolean withContext, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.listPostings(bookAccess, query),
+        result -> responseWriter.writeListPostingsResult(result, withContext, outputMode),
+        CliBookQueryExitCodes::exitCodeFor);
   }
 
-  int runTaxObligationCommand(
-      BookAccess bookAccess, TaxObligationQuery query, OutputMode outputMode) {
+  private <RESULT> int runPromptedQuery(
+      BookAccess bookAccess,
+      OutputMode outputMode,
+      Function<BookAccess, ContractDecision<RESULT>> queryRunner,
+      Consumer<RESULT> resultWriter,
+      ToIntFunction<RESULT> exitCodeProvider) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter));
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, failureWriter, outputMode));
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        readWorkflow.taxObligation(bookAccess, query),
-        result -> responseWriter.writeTaxObligationResult(result, outputMode),
-        CliBookQueryExitCodes::exitCodeFor,
-        failureWriter);
+        queryRunner.apply(bookAccess), resultWriter, exitCodeProvider, failureWriter, outputMode);
   }
 }

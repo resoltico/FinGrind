@@ -17,11 +17,6 @@ enum EntrySemanticsViolationOwner {
       "journal-lines",
       "The supplied raw journal reduces every referenced account to zero after debit-credit netting.",
       "Adjust the journal lines so at least one referenced account retains non-zero movement after debit-credit netting."),
-  CASH_BASIS_ACCOUNT_REQUIRED(
-      "cash-basis-account-required",
-      "cash-basis",
-      "One direct journal would bypass cash-basis truth because none of its referenced accounts are declared cash-and-cash-equivalent asset accounts.",
-      "Use at least one declared cash-and-cash-equivalent asset account in lines[].accountCode."),
   DISTINCT_ROLE_ACCOUNTS_REQUIRED(
       "distinct-role-accounts-required",
       "account-role-assignment",
@@ -42,6 +37,11 @@ enum EntrySemanticsViolationOwner {
       "financialPositionClassification",
       "One referenced account uses a declared financialPositionLineClassification that the selected entry kind does not accept.",
       "Use accounts whose declared financialPositionLineClassification matches the violated field requirement."),
+  ACCOUNT_ROLE_MISMATCH(
+      "account-role-mismatch",
+      "account-role",
+      "One referenced account resolves to an accountRole that the selected entry kind does not accept.",
+      "Use an account whose resolved accountRole matches the violated field requirement."),
   SOURCE_DOCUMENT_TYPE_NOT_ACCEPTED(
       "source-document-type-not-accepted",
       "source-document-type",
@@ -61,7 +61,57 @@ enum EntrySemanticsViolationOwner {
       "tax-application-kind-mismatch",
       "tax-application-kind",
       "One tax selector resolves to a tax applicationKind that the selected entry kind does not accept.",
-      "Use a taxCode whose declared applicationKind matches the selected entry kind.");
+      "Use a taxCode whose declared applicationKind matches the selected entry kind."),
+  VERB_REQUIRES_RECEIVABLE_ROLE(
+      "verb-requires-receivable-role",
+      "accounting-basis",
+      "The selected typed entry requires trade-receivable semantics that the current cash-basis book does not admit.",
+      "Use an accrual-basis book for this receivable-side event, or restate the business event as a cash-settled entry."),
+  VERB_REQUIRES_PAYABLE_ROLE(
+      "verb-requires-payable-role",
+      "accounting-basis",
+      "The selected typed entry requires trade-payable semantics that the current cash-basis book does not admit.",
+      "Use an accrual-basis book for this payable-side event, or restate the business event as a cash-settled entry."),
+  VERB_REQUIRES_TRADING_TEMPLATE(
+      "verb-requires-trading-template",
+      "book-template",
+      "The selected inventory-purchase verb is admitted only on trading-template books.",
+      "Use an OWNER_MANAGED_TRADING book for this inventory-purchase event, or restate the business event through a doctrine the current book admits."),
+  TRADING_SALE_REQUIRES_INVENTORY_RELIEF(
+      "trading-sale-requires-inventory-relief",
+      "trading-sale",
+      "A sale on a trading-template book must carry inventory relief so the same committed event recognizes both revenue and cost of sales.",
+      "Add inventoryRelief with declared non-cash inventory, cost-of-sales, and amount facts."),
+  INVENTORY_RELIEF_REQUIRES_TRADING_BOOK(
+      "inventory-relief-requires-trading-book",
+      "trading-sale",
+      "inventoryRelief is accepted only on trading-template sale requests.",
+      "Remove inventoryRelief, or initialize the book with the trading template when the sale must relieve inventory."),
+  EVIDENCE_CLASS_CONFLICT(
+      "evidence-class-conflict",
+      "evidence-class",
+      "The retained evidence class contradicts the event class resolved from the supplied journal.",
+      "Use evidence whose source-document types match the resolved event class."),
+  RAW_JOURNAL_SHADOWS_TYPED_EVENT(
+      "raw-journal-shadows-typed-event",
+      "raw-journal-admission",
+      "The supplied raw journal resolves to one published typed business event and therefore must not be admitted through the raw direct-journal path.",
+      "Submit the matching typed business-event command instead of the raw direct-journal path."),
+  RAW_JOURNAL_BUNDLES_OPERATIONAL_EVENTS(
+      "raw-journal-bundles-operational-events",
+      "raw-journal-admission",
+      "The supplied raw journal bundles multiple operational business events into one posting.",
+      "Split the request into the separate typed business events named by the violation message."),
+  RAW_JOURNAL_REQUIRES_CASH_LINE(
+      "raw-journal-requires-cash-line",
+      "raw-journal-admission",
+      "The supplied raw journal is an adjustment on a cash-basis book, but no journal line resolves to a declared cash account.",
+      "Add at least one declared cash account line, or use an accrual-basis book for this adjustment."),
+  OPENING_WINDOW_ACCOUNT_NOT_PERMITTED(
+      "opening-window-account-not-permitted",
+      "opening-window",
+      "The supplied opening-position request references an account that is not permitted during the adoption opening window.",
+      "Use only opening-window-permitted balance-sheet and equity accounts in openingBalances[].accountCode.");
 
   private static final Map<String, EntrySemanticsViolationOwner> BY_CODE =
       Arrays.stream(values())

@@ -14,8 +14,14 @@ class PostingOriginKindTest {
     assertEquals(
         List.of(
             "DIRECT_JOURNAL",
-            "SALE",
-            "EXPENSE",
+            "SALE_SETTLED",
+            "SALE_ON_CREDIT",
+            "PURCHASE_SETTLED",
+            "PURCHASE_ON_CREDIT",
+            "EXPENSE_SETTLED",
+            "EXPENSE_ON_CREDIT",
+            "RECEIPT",
+            "PAYMENT",
             "OWNER_CONTRIBUTION",
             "OWNER_WITHDRAWAL",
             "OPENING_POSITION",

@@ -179,7 +179,8 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         new BackupBookResult.BackedUp(hint(bookFile), hint(backupFile), hint(backupKeyFile));
     BackupBookResult.Rejected backupRejected = new BackupBookResult.Rejected(rejection);
     RestoreBookResult.Restored restored =
-        new RestoreBookResult.Restored(hint(bookFile), hint(backupFile), hint(backupKeyFile));
+        new RestoreBookResult.Restored(
+            hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")));
     RestoreBookResult.Rejected restoreRejected = new RestoreBookResult.Rejected(rejection);
     RekeyRollbackResult.Inspected inspected =
         new RekeyRollbackResult.Inspected(hint(bookFile), List.of(hint(rollbackArtifact)));
@@ -195,8 +196,8 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     assertEquals(hint(backupKeyFile), backedUp.backupBookKeyFilePath());
     assertEquals(rejection, backupRejected.rejection());
     assertEquals(hint(bookFile), restored.bookFilePath());
-    assertEquals(hint(backupFile), restored.backupFilePath());
-    assertEquals(hint(backupKeyFile), restored.backupBookKeyFilePath());
+    assertEquals(
+        hint(bookFile.resolveSibling("acme-restored.book-key")), restored.bookKeyFilePath());
     assertEquals(rejection, restoreRejected.rejection());
     assertEquals(hint(bookFile), inspected.bookFilePath());
     assertIterableEquals(List.of(hint(rollbackArtifact)), inspected.rollbackArtifactPaths());
@@ -223,13 +224,11 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     assertThrows(NullPointerException.class, () -> new BackupBookResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
-        () -> new RestoreBookResult.Restored(nullOf(), hint(backupFile), hint(backupKeyFile)));
+        () ->
+            new RestoreBookResult.Restored(
+                nullOf(), hint(bookFile.resolveSibling("acme-restored.book-key"))));
     assertThrows(
-        NullPointerException.class,
-        () -> new RestoreBookResult.Restored(hint(bookFile), nullOf(), hint(backupKeyFile)));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RestoreBookResult.Restored(hint(bookFile), hint(backupFile), nullOf()));
+        NullPointerException.class, () -> new RestoreBookResult.Restored(hint(bookFile), nullOf()));
     assertThrows(NullPointerException.class, () -> new RestoreBookResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,

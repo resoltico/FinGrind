@@ -397,6 +397,22 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
         lifecycleReader,
         new ReportingPeriodCloseStore() {
           @Override
+          public java.util.List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> postings(
+              dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+            return java.util.List.of();
+          }
+
+          @Override
+          public java.util.Optional<LocalDate> earliestPostingEffectiveDate() {
+            return java.util.Optional.of(PERIOD_DATE);
+          }
+
+          @Override
+          public java.util.Optional<LocalDate> transferredThroughEffectiveDate() {
+            return java.util.Optional.empty();
+          }
+
+          @Override
           public InterimResultSweepOutcome interimResultSweep(
               ReportingPeriod reportingPeriod,
               dev.erst.fingrind.core.BookIdentity bookIdentity,
@@ -406,6 +422,25 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
               PostingIdGenerator postingIdGenerator) {
             return transferInvocation.transfer(
                 reportingPeriod,
+                bookIdentity,
+                planner,
+                currentUtcDate,
+                sweptAt,
+                postingIdGenerator);
+          }
+
+          @Override
+          public InterimResultSweepOutcome interimResultSweep(
+              LocalDate throughEffectiveDate,
+              LocalDate bookStartDate,
+              dev.erst.fingrind.core.BookIdentity bookIdentity,
+              dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
+              LocalDate currentUtcDate,
+              Instant sweptAt,
+              PostingIdGenerator postingIdGenerator) {
+            return transferInvocation.transfer(
+                planner.reportingPeriod(
+                    throughEffectiveDate, bookStartDate, bookIdentity, java.util.Optional.empty()),
                 bookIdentity,
                 planner,
                 currentUtcDate,

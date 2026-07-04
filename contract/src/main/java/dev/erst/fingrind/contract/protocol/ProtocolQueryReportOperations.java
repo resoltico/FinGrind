@@ -33,6 +33,12 @@ final class ProtocolQueryReportOperations {
         example);
   }
 
+  static ProtocolOperation taxRegistrationPeriodReportOperation(
+      OperationId operationId, String title, String description, String example) {
+    return pdfQueryOperation(
+        operationId, title, taxRegistrationPeriodInvocationSyntax(), description, example);
+  }
+
   private static ProtocolOperation pdfQueryOperation(
       OperationId operationId,
       String title,
@@ -93,6 +99,17 @@ final class ProtocolQueryReportOperations {
     invocationSyntax.add(ProtocolOptions.optionalPdfOutSyntax());
     invocationSyntax.add(ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
     return List.copyOf(invocationSyntax);
+  }
+
+  private static List<String> taxRegistrationPeriodInvocationSyntax() {
+    return List.of(
+        ProtocolOptions.BOOK_FILE + " <path>",
+        ProtocolOptions.currentPassphraseSourceSyntax(),
+        ProtocolOptions.TAX_REGISTRATION_ID + " <tax-registration-id>",
+        ProtocolOptions.PERIOD_START + " <YYYY-MM-DD>",
+        ProtocolOptions.PERIOD_END + " <YYYY-MM-DD>",
+        ProtocolOptions.optionalPdfOutSyntax(),
+        ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
   }
 
   private static List<OutputMode> pdfOutputModes() {

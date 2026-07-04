@@ -204,11 +204,12 @@ final class LedgerPlanServiceTestSupport {
 
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.Sale(
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("2000"),
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
             null,
             null,
             null),
@@ -382,6 +383,25 @@ final class LedgerPlanServiceTestSupport {
         PostingIdGenerator postingIdGenerator) {
       return delegate.interimResultSweep(
           reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
+    }
+
+    @Override
+    public InterimResultSweepOutcome interimResultSweep(
+        LocalDate throughEffectiveDate,
+        LocalDate bookStartDate,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        InterimResultSweepPlanner planner,
+        LocalDate currentUtcDate,
+        Instant sweptAt,
+        PostingIdGenerator postingIdGenerator) {
+      return delegate.interimResultSweep(
+          throughEffectiveDate,
+          bookStartDate,
+          bookIdentity,
+          planner,
+          currentUtcDate,
+          sweptAt,
+          postingIdGenerator);
     }
 
     @Override

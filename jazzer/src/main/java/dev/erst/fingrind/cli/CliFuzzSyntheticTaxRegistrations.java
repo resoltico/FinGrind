@@ -30,14 +30,23 @@ final class CliFuzzSyntheticTaxRegistrations {
     Objects.requireNonNull(entry, "entry");
     Objects.requireNonNull(declaredAt, "declaredAt");
     return switch (entry) {
-      case BookkeepingEntry.Sale sale ->
+      case BookkeepingEntry.SaleSettled sale ->
           lookupStore(
               sale.taxSelection(), sale.appliedTax(), TaxApplicationKind.OUTPUT_SALE, declaredAt);
-      case BookkeepingEntry.Expense expense ->
+      case BookkeepingEntry.SaleOnCredit sale ->
+          lookupStore(
+              sale.taxSelection(), sale.appliedTax(), TaxApplicationKind.OUTPUT_SALE, declaredAt);
+      case BookkeepingEntry.ExpenseSettled expense ->
           lookupStore(
               expense.taxSelection(),
               expense.appliedTax(),
-              inferredExpenseApplicationKind(expense),
+              inferredExpenseApplicationKind(expense.taxSelection(), expense.appliedTax()),
+              declaredAt);
+      case BookkeepingEntry.ExpenseOnCredit expense ->
+          lookupStore(
+              expense.taxSelection(),
+              expense.appliedTax(),
+              inferredExpenseApplicationKind(expense.taxSelection(), expense.appliedTax()),
               declaredAt);
       default -> EMPTY_LOOKUP_STORE;
     };
@@ -62,14 +71,14 @@ final class CliFuzzSyntheticTaxRegistrations {
   }
 
   private static TaxApplicationKind inferredExpenseApplicationKind(
-      BookkeepingEntry.Expense expense) {
-    if (expense.appliedTax() != null) {
-      return expense.appliedTax().applicationKind();
+      @Nullable TaxSelection selection, @Nullable AppliedTax appliedTax) {
+    if (appliedTax != null) {
+      return appliedTax.applicationKind();
     }
-    if (expense.taxSelection() == null) {
+    if (selection == null) {
       return TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE;
     }
-    return expense.taxSelection().taxCode().value().contains("nonrecoverable")
+    return selection.taxCode().value().contains("nonrecoverable")
         ? TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE
         : TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE;
   }

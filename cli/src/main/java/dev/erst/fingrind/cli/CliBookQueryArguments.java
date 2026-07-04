@@ -21,11 +21,12 @@ final class CliBookQueryArguments {
       CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec GET_POSTING_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.POSTING_ID, ProtocolOptions.OUTPUT), List.of());
+          List.of(ProtocolOptions.POSTING_ID, ProtocolOptions.OUTPUT),
+          List.of(ProtocolOptions.WITH_CONTEXT));
   private static final CliBookArgumentParser.CommandArgumentSpec LIST_ACCOUNTS_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(ProtocolOptions.LIMIT, ProtocolOptions.CURSOR, ProtocolOptions.OUTPUT),
-          List.of());
+          List.of(ProtocolOptions.WITH_CONTEXT));
   private static final CliBookArgumentParser.CommandArgumentSpec LIST_POSTINGS_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
@@ -35,7 +36,7 @@ final class CliBookQueryArguments {
               ProtocolOptions.LIMIT,
               ProtocolOptions.CURSOR,
               ProtocolOptions.OUTPUT),
-          List.of());
+          List.of(ProtocolOptions.WITH_CONTEXT));
 
   private CliBookQueryArguments() {}
 
@@ -61,6 +62,7 @@ final class CliBookQueryArguments {
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, GET_POSTING_ARGUMENTS);
     @Nullable String postingIdValue = null;
     @Nullable OutputMode outputMode = null;
+    boolean withContext = false;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -70,6 +72,10 @@ final class CliBookQueryArguments {
               ProtocolOptions.POSTING_ID, "Duplicate argument: " + ProtocolOptions.POSTING_ID);
         }
         postingIdValue = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.POSTING_ID);
+        continue;
+      }
+      if (ProtocolOptions.WITH_CONTEXT.equals(argument)) {
+        withContext = true;
         continue;
       }
       outputMode =
@@ -87,6 +93,7 @@ final class CliBookQueryArguments {
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
             ProtocolOptions.POSTING_ID, () -> new PostingId(requiredPostingIdValue)),
+        withContext,
         CliOptionModes.resolvedOutputMode(outputMode));
   }
 
@@ -100,6 +107,7 @@ final class CliBookQueryArguments {
     return new ListAccounts(
         parsedArguments.bookAccess(),
         new ListAccountsQuery(parsedWindow.limit(), resolvedCursor),
+        parsedWindow.withContext(),
         parsedWindow.outputMode());
   }
 
@@ -141,6 +149,7 @@ final class CliBookQueryArguments {
             resolvedEffectiveDateRange,
             resolvedLimit,
             resolvedPostingPageCursor),
+        argumentValues.withContext,
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));
   }
 
@@ -180,6 +189,10 @@ final class CliBookQueryArguments {
               argumentValues.cursor, ProtocolOptions.CURSOR, argumentIterator);
       return;
     }
+    if (ProtocolOptions.WITH_CONTEXT.equals(argument)) {
+      argumentValues.withContext = true;
+      return;
+    }
     argumentValues.outputMode =
         CliOptionModes.requireOutputMode(
             argumentValues.outputMode,
@@ -195,5 +208,6 @@ final class CliBookQueryArguments {
     private @Nullable Integer limit;
     private @Nullable String cursor;
     private @Nullable OutputMode outputMode;
+    private boolean withContext;
   }
 }

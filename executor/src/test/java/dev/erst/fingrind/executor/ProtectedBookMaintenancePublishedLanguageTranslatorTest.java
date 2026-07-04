@@ -27,6 +27,7 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
   @Test
   void translator_projectsSuccessfulLocalMaintenanceOutcomes() {
     Path book = path("books/acme.sqlite");
+    Path bookKey = path("books/acme.book-key");
     Path backup = path("backup/acme.sqlite");
     Path backupKey = path("backup/acme.book-key");
     Path rollback = path("books/acme.rekey-rollback-1.sqlite");
@@ -44,10 +45,9 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
         assertInstanceOf(
             RestoreBookResult.Restored.class,
             ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookRestoreOutcome.Restored(book, backup, backupKey)));
+                new ProtectedBookRestoreOutcome.Restored(book, bookKey)));
     assertEquals(hint(book), restored.bookFilePath());
-    assertEquals(hint(backup), restored.backupFilePath());
-    assertEquals(hint(backupKey), restored.backupBookKeyFilePath());
+    assertEquals(hint(bookKey), restored.bookKeyFilePath());
 
     RekeyRollbackResult.Inspected inspected =
         assertInstanceOf(

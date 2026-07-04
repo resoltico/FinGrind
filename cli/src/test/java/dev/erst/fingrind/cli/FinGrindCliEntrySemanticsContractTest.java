@@ -107,7 +107,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
     declareAccount(bookFilePath, bookKeyFilePath, declareCashFile);
 
     String expectedMessage = null;
-    for (String commandName : List.of("preflight-entry", "record-sale")) {
+    for (String commandName : List.of("preflight-entry", "record-sale-settled")) {
       JsonNode rejectionEnvelope =
           runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
       String message = rejectionEnvelope.path("message").stringValue();
@@ -142,7 +142,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
     declareAccount(bookFilePath, bookKeyFilePath, declareCashFile);
 
     String expectedMessage = null;
-    for (String commandName : List.of("preflight-entry", "record-sale")) {
+    for (String commandName : List.of("preflight-entry", "record-sale-settled")) {
       JsonNode rejectionEnvelope =
           runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
       String message = rejectionEnvelope.path("message").stringValue();
@@ -161,6 +161,31 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
       } else {
         assertEquals(expectedMessage, message);
       }
+    }
+  }
+
+  @Test
+  void run_rejectsInventoryPurchaseVerbsOnServiceBooksWithTemplateOwnedSemantics()
+      throws IOException {
+    Path bookFilePath =
+        tempDirectory.resolve("purchase-service-template-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path requestFile =
+        writeNamedRequest("purchase-on-credit-service-book.json", purchaseOnCreditRequestJson());
+
+    openBook(bookFilePath, bookKeyFilePath);
+
+    for (String commandName : List.of("preflight-entry", "record-purchase-on-credit")) {
+      JsonNode rejectionEnvelope =
+          runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
+
+      assertTrue(
+          hasViolation(rejectionEnvelope, "verb-requires-trading-template"),
+          rejectionEnvelope.toPrettyString());
+      assertEquals(
+          "entryKind",
+          rejectionEnvelope.path("details").path("violations").get(0).path("field").stringValue());
+      assertFalse(rejectionEnvelope.toPrettyString().contains("\"unknown-account\""));
     }
   }
 
@@ -190,17 +215,18 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
       String message = rejectionEnvelope.path("message").stringValue();
 
       assertTrue(
-          hasViolation(rejectionEnvelope, "cash-basis-account-required"),
+          hasViolation(rejectionEnvelope, "raw-journal-requires-cash-line"),
           rejectionEnvelope.toPrettyString());
       assertEquals("Posting rejected with 1 entry-semantics issue.", message);
       assertTrue(
-          rejectionEnvelope
-              .path("details")
-              .path("violations")
-              .get(0)
-              .path("message")
-              .stringValue()
-              .contains("lines[].accountCode"),
+          "lines[].accountCode"
+              .equals(
+                  rejectionEnvelope
+                      .path("details")
+                      .path("violations")
+                      .get(0)
+                      .path("field")
+                      .stringValue()),
           rejectionEnvelope.toPrettyString());
     }
   }
@@ -383,7 +409,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
   private static String multiViolationTypedEntryRequestJson() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "1000",
@@ -459,7 +485,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
   private static String distinctRoleCollisionRequestJson() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "1000",
@@ -488,12 +514,52 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
         """;
   }
 
+  private static String purchaseOnCreditRequestJson() {
+    return """
+        {
+          "entryKind": "PURCHASE_ON_CREDIT",
+          "effectiveDate": "2026-04-07",
+          "inventoryAccountCode": "inventory",
+          "payableAccountCode": "accounts-payable",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-purchase-service-book",
+                "sourceDocumentType": "supplier-invoice",
+                "documentDate": "2026-04-07"
+              }
+            ],
+            "approvals": []
+          },
+          "provenance": {
+            "actorId": "actor-purchase-service-book",
+            "actorType": "AGENT",
+            "commandId": "command-purchase-service-book",
+            "idempotencyKey": "idem-purchase-service-book",
+            "causationId": "cause-purchase-service-book"
+          }
+        }
+        """;
+  }
+
   private static List<SameAccountCase> sameAccountCases() {
     return List.of(
         new SameAccountCase(
-            "cash-revenue", "SALE", "cashAccountCode", "revenueAccountCode", "cash-receipt"),
+            "cash-revenue",
+            "SALE_SETTLED",
+            "cashAccountCode",
+            "revenueAccountCode",
+            "cash-receipt"),
         new SameAccountCase(
-            "cash-expense", "EXPENSE", "expenseAccountCode", "cashAccountCode", "expense-receipt"),
+            "cash-expense",
+            "EXPENSE_SETTLED",
+            "expenseAccountCode",
+            "cashAccountCode",
+            "expense-receipt"),
         new SameAccountCase(
             "owner-contribution",
             "OWNER_CONTRIBUTION",
@@ -516,8 +582,8 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
       String sourceDocumentType) {
     private String commitCommandName() {
       return switch (entryKind) {
-        case "SALE" -> "record-sale";
-        case "EXPENSE" -> "record-expense";
+        case "SALE_SETTLED" -> "record-sale-settled";
+        case "EXPENSE_SETTLED" -> "record-expense-settled";
         case "OWNER_CONTRIBUTION" -> "record-owner-contribution";
         case "OWNER_WITHDRAWAL" -> "record-owner-withdrawal";
         default -> throw new IllegalStateException("Unsupported entry kind: " + entryKind);

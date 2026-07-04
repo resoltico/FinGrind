@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
@@ -27,8 +28,12 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
   void helpPayload_mapsPostingRequestGuidanceForPostingCommands() {
     assertPostingGuidance(OperationId.POST_ENTRY);
     assertPostingGuidance(OperationId.PREFLIGHT_ENTRY);
-    assertPostingGuidance(OperationId.RECORD_SALE);
-    assertPostingGuidance(OperationId.RECORD_EXPENSE);
+    assertPostingGuidance(OperationId.RECORD_SALE_SETTLED);
+    assertPostingGuidance(OperationId.RECORD_SALE_ON_CREDIT);
+    assertPostingGuidance(OperationId.RECORD_EXPENSE_SETTLED);
+    assertPostingGuidance(OperationId.RECORD_EXPENSE_ON_CREDIT);
+    assertPostingGuidance(OperationId.RECORD_RECEIPT);
+    assertPostingGuidance(OperationId.RECORD_PAYMENT);
     assertPostingGuidance(OperationId.RECORD_OWNER_CONTRIBUTION);
     assertPostingGuidance(OperationId.RECORD_OWNER_WITHDRAWAL);
     assertPostingGuidance(OperationId.RECORD_OPENING_POSITION);
@@ -89,6 +94,9 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertNotNull(declarePayload.requestFile());
     assertEquals(
         ProtocolCatalog.operation(OperationId.DECLARE_ACCOUNT).usage(), declarePayload.syntax());
+    assertEquals(
+        "Provide an account-declaration JSON document through --request-file <path|->.",
+        declarePayload.requestFile().description());
     assertNull(declarePayload.requestFile().postingTemplate());
     assertNotNull(declarePayload.requestFile().declareAccountTemplate());
     assertNull(declarePayload.requestFile().ledgerPlanTemplate());
@@ -96,6 +104,9 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         Objects.requireNonNull(declarePayload.requestFile().shortcutCommand())
             .contains("declare-account"));
     assertNotNull(compactDeclarePayload.requestFile());
+    assertEquals(
+        "Provide an account-declaration JSON document through --request-file <path|->.",
+        compactDeclarePayload.requestFile().description());
     assertNull(compactDeclarePayload.requestFile().postingTemplate());
     assertNull(compactDeclarePayload.requestFile().declareAccountTemplate());
     assertNull(compactDeclarePayload.requestFile().ledgerPlanTemplate());
@@ -108,6 +119,9 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertEquals(
         ProtocolCatalog.operation(OperationId.DECLARE_TAX_REGISTRATION).usage(),
         declareTaxRegistrationPayload.syntax());
+    assertEquals(
+        "Provide a tax-registration declaration JSON document through --request-file <path|->.",
+        declareTaxRegistrationPayload.requestFile().description());
     assertNull(declareTaxRegistrationPayload.requestFile().postingTemplate());
     assertNull(declareTaxRegistrationPayload.requestFile().declareAccountTemplate());
     assertNotNull(declareTaxRegistrationPayload.requestFile().declareTaxRegistrationTemplate());
@@ -121,6 +135,9 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
             .contains("declare-tax-registration"));
 
     assertNotNull(compactDeclareTaxRegistrationPayload.requestFile());
+    assertEquals(
+        "Provide a tax-registration declaration JSON document through --request-file <path|->.",
+        compactDeclareTaxRegistrationPayload.requestFile().description());
     assertNull(compactDeclareTaxRegistrationPayload.requestFile().postingTemplate());
     assertNull(compactDeclareTaxRegistrationPayload.requestFile().declareAccountTemplate());
     assertNull(compactDeclareTaxRegistrationPayload.requestFile().declareTaxRegistrationTemplate());
@@ -132,6 +149,9 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
 
     assertNotNull(planPayload.requestFile());
     assertEquals(ProtocolCatalog.operation(OperationId.EXECUTE_PLAN).usage(), planPayload.syntax());
+    assertEquals(
+        "Provide a ledger plan JSON document through --request-file <path|->.",
+        planPayload.requestFile().description());
     assertNull(planPayload.requestFile().postingTemplate());
     assertNull(planPayload.requestFile().declareAccountTemplate());
     assertNotNull(planPayload.requestFile().ledgerPlanTemplate());
@@ -139,6 +159,9 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
         planPayload.requestFile().shortcutCommand());
     assertNotNull(compactPlanPayload.requestFile());
+    assertEquals(
+        "Provide a ledger plan JSON document through --request-file <path|->.",
+        compactPlanPayload.requestFile().description());
     assertNull(compactPlanPayload.requestFile().postingTemplate());
     assertNull(compactPlanPayload.requestFile().declareAccountTemplate());
     assertNull(compactPlanPayload.requestFile().ledgerPlanTemplate());
@@ -278,7 +301,7 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         Objects.requireNonNull(payload.requestFile().ledgerPlanTemplate())
             .canonicalPostingScaffoldStep();
     assertEquals(
-        BookkeepingEntryKind.SALE,
+        BookkeepingEntryKind.SALE_SETTLED,
         Objects.requireNonNull(canonicalPostingStep.posting()).entryKind());
   }
 
@@ -293,6 +316,9 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                     operationId)));
 
     assertNotNull(payload.requestFile());
+    assertEquals(
+        "Provide a posting JSON document through --request-file <path|->.",
+        payload.requestFile().description());
     assertNotNull(payload.requestFile().postingTemplate());
     assertNull(payload.requestFile().declareAccountTemplate());
     assertNull(payload.requestFile().ledgerPlanTemplate());
@@ -322,15 +348,8 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
       return;
     }
     BookkeepingEntryKind expectedEntryKind =
-        switch (operationId) {
-          case RECORD_SALE -> BookkeepingEntryKind.SALE;
-          case RECORD_EXPENSE -> BookkeepingEntryKind.EXPENSE;
-          case RECORD_OWNER_CONTRIBUTION -> BookkeepingEntryKind.OWNER_CONTRIBUTION;
-          case RECORD_OWNER_WITHDRAWAL -> BookkeepingEntryKind.OWNER_WITHDRAWAL;
-          case RECORD_OPENING_POSITION -> BookkeepingEntryKind.OPENING_POSITION;
-          case RECORD_REVERSAL -> BookkeepingEntryKind.REVERSAL;
-          default -> throw new AssertionError("Unexpected posting topic " + operationId);
-        };
+        ProtocolPostingRequestTopics.requiredEntryKind(operationId)
+            .orElseThrow(() -> new AssertionError("Unexpected posting topic " + operationId));
     assertEquals(
         List.of(expectedEntryKind),
         postEntryShape.entryKindSemantics().stream()
@@ -405,6 +424,11 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.OPENING_POSITION,
         "2026-01-01",
+        null,
+        null,
+        null,
+        null,
+        null,
         null,
         null,
         null,

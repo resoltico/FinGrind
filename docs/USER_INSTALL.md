@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: USER_INSTALL
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, install, download, bundle, checksum, attestation, container, ghcr]
   questions: ["which fin grind download do i need", "how do i verify a fingrind download", "what container image does fingrind publish"]

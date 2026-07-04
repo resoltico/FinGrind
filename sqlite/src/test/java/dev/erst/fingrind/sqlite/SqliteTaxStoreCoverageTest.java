@@ -371,9 +371,10 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
                               recoverableExpenseTaxCode(),
                               nonrecoverableExpenseTaxCode())),
                       FIRST_DECLARED_AT));
-      BookkeepingEntry.Sale taxedSale = taxedSaleEntry();
-      BookkeepingEntry.Expense taxedNonrecoverableExpense = taxedNonrecoverableExpenseEntry();
-      BookkeepingEntry.Sale untaxedSale = untaxedSaleEntry();
+      BookkeepingEntry.SaleSettled taxedSale = taxedSaleEntry();
+      BookkeepingEntry.ExpenseSettled taxedNonrecoverableExpense =
+          taxedNonrecoverableExpenseEntry();
+      BookkeepingEntry.SaleSettled untaxedSale = untaxedSaleEntry();
 
       PostingCommitResult.Committed committedSale =
           assertInstanceOf(
@@ -695,12 +696,13 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
         SourceChannel.CLI);
   }
 
-  private static BookkeepingEntry.Sale taxedSaleEntry() {
-    return new BookkeepingEntry.Sale(
+  private static BookkeepingEntry.SaleSettled taxedSaleEntry() {
+    return new BookkeepingEntry.SaleSettled(
         EFFECTIVE_DATE,
         new AccountCode("1000"),
         new AccountCode("2000"),
         new MonetaryAmount("EUR", "10000"),
+        null,
         null,
         new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
         new AppliedTax(
@@ -716,8 +718,8 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
             new AccountCode("2100")));
   }
 
-  private static BookkeepingEntry.Expense taxedNonrecoverableExpenseEntry() {
-    return new BookkeepingEntry.Expense(
+  private static BookkeepingEntry.ExpenseSettled taxedNonrecoverableExpenseEntry() {
+    return new BookkeepingEntry.ExpenseSettled(
         EFFECTIVE_DATE.plusDays(1),
         new AccountCode("5010"),
         new AccountCode("1000"),
@@ -738,12 +740,13 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
             null));
   }
 
-  private static BookkeepingEntry.Sale untaxedSaleEntry() {
-    return new BookkeepingEntry.Sale(
+  private static BookkeepingEntry.SaleSettled untaxedSaleEntry() {
+    return new BookkeepingEntry.SaleSettled(
         EFFECTIVE_DATE.minusDays(1),
         new AccountCode("1000"),
         new AccountCode("2000"),
         new MonetaryAmount("EUR", "5000"),
+        null,
         null,
         null,
         null);

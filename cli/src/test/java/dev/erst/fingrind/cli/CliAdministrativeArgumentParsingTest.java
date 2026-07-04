@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -14,6 +15,45 @@ import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliArguments}. */
 class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport {
+
+  @Test
+  void parse_supportsTightenParentsForKeyGenerationAndBookOpening() {
+    GenerateBookKeyFile generateBookKeyFile =
+        assertInstanceOf(
+            GenerateBookKeyFile.class,
+            CliArguments.parse(
+                new String[] {
+                  "generate-book-key-file",
+                  "--book-key-file",
+                  "books/entity.book-key",
+                  "--tighten-parents"
+                }));
+    OpenBook openBook =
+        assertInstanceOf(
+            OpenBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "open-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--entity-name",
+                  "Acme Studio",
+                  "--book-template-id",
+                  "OWNER_MANAGED_SERVICE",
+                  "--accounting-basis",
+                  "CASH",
+                  "--functional-currency",
+                  "EUR",
+                  "--fiscal-year-start",
+                  "01-01",
+                  "--tighten-parents"
+                }));
+
+    assertTrue(generateBookKeyFile.tightenParents());
+    assertTrue(openBook.tightenParents());
+  }
 
   @Test
   void parse_returnsGenerateBookKeyFileForValidCommand() {
@@ -54,6 +94,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
+                  "--book-template-id",
+                  "OWNER_MANAGED_SERVICE",
+                  "--accounting-basis",
+                  "CASH",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -122,9 +166,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--period-start",
-                  "2026-04-01",
-                  "--period-end",
+                  "--through",
                   "2026-04-30",
                   "--output",
                   "text"
@@ -159,6 +201,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
+                      "--accounting-basis",
+                      "CASH",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -185,6 +231,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
+                  "--book-template-id",
+                  "OWNER_MANAGED_SERVICE",
+                  "--accounting-basis",
+                  "CASH",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -238,6 +288,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
+                      "--accounting-basis",
+                      "CASH",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -313,6 +367,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
+                  "--book-template-id",
+                  "OWNER_MANAGED_SERVICE",
+                  "--accounting-basis",
+                  "CASH",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -338,6 +396,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--entity-name",
                   "Acme Studio",
+                  "--book-template-id",
+                  "OWNER_MANAGED_SERVICE",
+                  "--accounting-basis",
+                  "CASH",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -346,6 +408,35 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
 
     assertEquals(
         dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
+        command.command().bookIdentity().bookDoctrine());
+  }
+
+  @Test
+  void parse_openBook_buildsAccrualDoctrineForExplicitBasis() {
+    OpenBook command =
+        assertInstanceOf(
+            OpenBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "open-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--entity-name",
+                  "Acme Studio",
+                  "--book-template-id",
+                  "OWNER_MANAGED_SERVICE",
+                  "--accounting-basis",
+                  "ACCRUAL",
+                  "--functional-currency",
+                  "EUR",
+                  "--fiscal-year-start",
+                  "01-01",
+                }));
+
+    assertEquals(
+        dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
         command.command().bookIdentity().bookDoctrine());
   }
 
@@ -413,6 +504,39 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
   }
 
   @Test
+  void parse_returnsRecordEntryForCreditAndSettlementRecordCommands() {
+    for (String commandName :
+        List.of(
+            "record-sale-on-credit",
+            "record-expense-on-credit",
+            "record-receipt",
+            "record-payment")) {
+      RecordEntry command = parseRecordEntry(commandName);
+
+      assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
+      assertEquals(
+          Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
+      assertEquals(Path.of("request.json"), command.requestFile());
+      assertEquals(OutputMode.TEXT, command.outputMode());
+    }
+  }
+
+  private static RecordEntry parseRecordEntry(String commandName) {
+    return assertInstanceOf(
+        RecordEntry.class,
+        CliArguments.parse(
+            new String[] {
+              commandName,
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--request-file",
+              "request.json"
+            }));
+  }
+
+  @Test
   void parse_returnsInterimResultSweepForValidAdministrativeCommand() {
     InterimResultSweep command =
         assertInstanceOf(
@@ -424,16 +548,13 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--period-start",
-                  "2026-04-01",
-                  "--period-end",
+                  "--through",
                   "2026-04-30"
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
     assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
-    assertEquals(LocalDate.parse("2026-04-01"), command.reportingPeriod().effectiveDateFrom());
-    assertEquals(LocalDate.parse("2026-04-30"), command.reportingPeriod().effectiveDateTo());
+    assertEquals(LocalDate.parse("2026-04-30"), command.throughEffectiveDate());
     assertEquals(OutputMode.TEXT, command.outputMode());
   }
 
@@ -448,9 +569,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-file",
                   "book.sqlite",
                   "--book-key-file",
-                  "book.key",
-                  "--period-end",
-                  "2026-04-30"
+                  "book.key"
                 }));
     assertThrows(
         CliArgumentsException.class,
@@ -462,8 +581,8 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--period-start",
-                  "2026-04-01"
+                  "--through",
+                  "not-a-date"
                 }));
     assertThrows(
         CliArgumentsException.class,
@@ -475,27 +594,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
+                  "--through",
+                  "2026-04-29",
                   "--result-holding-account",
                   "3200",
-                  "--period-start",
-                  "2026-04-01",
-                  "--period-end",
+                  "--through",
                   "2026-04-30"
-                }));
-    assertThrows(
-        CliArgumentsException.class,
-        () ->
-            CliArguments.parse(
-                new String[] {
-                  "interim-result-sweep",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-key-file",
-                  "book.key",
-                  "--period-start",
-                  "2026-04-30",
-                  "--period-end",
-                  "2026-04-01"
                 }));
     CliArgumentsException removedResultHoldingAccount =
         assertThrows(
@@ -508,12 +612,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.sqlite",
                       "--book-key-file",
                       "book.key",
+                      "--through",
+                      "2026-04-30",
                       "--result-holding-account",
-                      "3200",
-                      "--period-start",
-                      "2026-04-01",
-                      "--period-end",
-                      "2026-04-30"
+                      "3200"
                     }));
     assertEquals("--result-holding-account", removedResultHoldingAccount.argument());
   }
@@ -531,6 +633,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-passphrase-stdin",
                   "--entity-name",
                   "Acme Studio",
+                  "--book-template-id",
+                  "OWNER_MANAGED_SERVICE",
+                  "--accounting-basis",
+                  "CASH",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -555,16 +661,14 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--period-start",
-                  "2026-04-01",
-                  "--period-end",
+                  "--through",
                   "2026-04-30",
                   "--output",
                   "text"
                 }));
-    CliReportingPeriodCommandArguments.ParsedReportingPeriodCommandArguments parsedArguments =
+    CliInterimResultSweepArguments.ParsedInterimResultSweepArguments parsedArguments =
         CliInterimResultSweepArguments.parseInterimResultSweepArguments(
-            List.of("--period-start", "2026-04-01", "--period-end", "2026-04-30"));
+            List.of("--through", "2026-04-30"));
     CliArgumentsException unsupportedArgument =
         assertThrows(
             CliArgumentsException.class,
@@ -573,12 +677,35 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                     List.of("--unexpected", "value")));
 
     assertEquals(OutputMode.TEXT, transferPeriod.outputMode());
-    assertEquals(
-        new dev.erst.fingrind.core.ReportingPeriod(
-            LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-        parsedArguments.reportingPeriod());
+    assertEquals(LocalDate.parse("2026-04-30"), parsedArguments.throughEffectiveDate());
     assertEquals("--unexpected", unsupportedArgument.argument());
     assertEquals("Unsupported argument: --unexpected", unsupportedArgument.getMessage());
+  }
+
+  @Test
+  void parseInterimResultSweep_rejectsDuplicateThroughArgument() {
+    CliArgumentsException duplicateThrough =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliInterimResultSweepArguments.parseInterimResultSweepArguments(
+                    List.of("--through", "2026-04-29", "--through", "2026-04-30")));
+
+    assertEquals("--through", duplicateThrough.argument());
+    assertEquals("Duplicate argument: --through", duplicateThrough.getMessage());
+  }
+
+  @Test
+  void parseInterimResultSweep_rejectsRemovedPeriodBoundaryArguments() {
+    CliArgumentsException removedBoundary =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliInterimResultSweepArguments.parseInterimResultSweepArguments(
+                    List.of("--period-start", "2026-04-01", "--period-end", "2026-04-30")));
+
+    assertEquals("--period-start", removedBoundary.argument());
+    assertEquals("Unsupported argument: --period-start", removedBoundary.getMessage());
   }
 
   @Test
@@ -594,6 +721,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "--book-passphrase-prompt",
                   "--entity-name",
                   "Acme Studio",
+                  "--book-template-id",
+                  "OWNER_MANAGED_SERVICE",
+                  "--accounting-basis",
+                  "CASH",
                   "--functional-currency",
                   "EUR",
                   "--fiscal-year-start",
@@ -621,6 +752,10 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
+                      "--accounting-basis",
+                      "CASH",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
@@ -665,6 +800,48 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
+                      "--accounting-basis",
+                      "CASH",
+                      "--fiscal-year-start",
+                      "01-01"
+                    }));
+    CliArgumentsException missingAccountingBasis =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01"
+                    }));
+    CliArgumentsException missingBookTemplateId =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--functional-currency",
+                      "EUR",
                       "--fiscal-year-start",
                       "01-01"
                     }));
@@ -681,243 +858,25 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "book.key",
                       "--entity-name",
                       "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
+                      "--accounting-basis",
+                      "CASH",
                       "--functional-currency",
                       "EUR",
                     }));
     assertEquals("--entity-name", missingEntityName.argument());
     assertEquals("A --entity-name argument is required.", missingEntityName.getMessage());
+    assertEquals("--book-template-id", missingBookTemplateId.argument());
+    assertEquals("A --book-template-id argument is required.", missingBookTemplateId.getMessage());
     assertEquals("--functional-currency", missingFunctionalCurrency.argument());
     assertEquals(
         "A --functional-currency argument is required.", missingFunctionalCurrency.getMessage());
+    assertEquals("--accounting-basis", missingAccountingBasis.argument());
+    String missingAccountingBasisMessage = "A --accounting-basis argument is required.";
+    assertEquals(missingAccountingBasisMessage, missingAccountingBasis.getMessage());
     assertEquals("--fiscal-year-start", missingFiscalYearStart.argument());
     assertEquals(
         "A --fiscal-year-start argument is required.", missingFiscalYearStart.getMessage());
-  }
-
-  @Test
-  void parse_returnsMaintenanceCommandsForValidArguments() {
-    BackupBook backupBook =
-        assertInstanceOf(
-            BackupBook.class,
-            CliArguments.parse(
-                new String[] {
-                  "backup-book",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-key-file",
-                  "book.key",
-                  "--backup-book-file-out",
-                  "backup/entity.sqlite",
-                  "--backup-book-key-file-out",
-                  "backup/entity.key",
-                  "--output",
-                  "text"
-                }));
-    RestoreBook restoreBook =
-        assertInstanceOf(
-            RestoreBook.class,
-            CliArguments.parse(
-                new String[] {
-                  "restore-book",
-                  "--book-file",
-                  "book.sqlite",
-                  "--backup-book-file",
-                  "backup/entity.sqlite",
-                  "--backup-book-key-file",
-                  "backup/entity.key"
-                }));
-    RestoreRekeyRollback restoreRekeyRollback =
-        assertInstanceOf(
-            RestoreRekeyRollback.class,
-            CliArguments.parse(
-                new String[] {
-                  "restore-rekey-rollback",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-key-file",
-                  "book.key",
-                  "--rollback-book-file",
-                  "book.rekey-rollback.sqlite"
-                }));
-    DeleteRekeyRollback deleteRekeyRollback =
-        assertInstanceOf(
-            DeleteRekeyRollback.class,
-            CliArguments.parse(
-                new String[] {
-                  "delete-rekey-rollback",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-key-file",
-                  "book.key",
-                  "--rollback-book-file",
-                  "book.rekey-rollback.sqlite"
-                }));
-
-    assertEquals(Path.of("book.sqlite"), backupBook.bookAccess().bookFilePath());
-    assertEquals(Path.of("backup/entity.sqlite"), backupBook.backupFilePath());
-    assertEquals(Path.of("backup/entity.key"), backupBook.backupBookKeyFilePath());
-    assertEquals(OutputMode.TEXT, backupBook.outputMode());
-
-    assertEquals(Path.of("book.sqlite"), restoreBook.bookFilePath());
-    assertEquals(Path.of("backup/entity.sqlite"), restoreBook.backupFilePath());
-    assertEquals(Path.of("backup/entity.key"), restoreBook.backupBookKeyFilePath());
-    assertEquals(OutputMode.TEXT, restoreBook.outputMode());
-
-    assertEquals(Path.of("book.sqlite"), restoreRekeyRollback.bookFilePath());
-    assertEquals(
-        Path.of("book.rekey-rollback.sqlite"), restoreRekeyRollback.rollbackArtifactPath());
-    assertInstanceOf(
-        BookAccess.PassphraseSource.KeyFile.class, restoreRekeyRollback.expectedPassphraseSource());
-    assertEquals(OutputMode.TEXT, restoreRekeyRollback.outputMode());
-
-    assertEquals(Path.of("book.sqlite"), deleteRekeyRollback.bookAccess().bookFilePath());
-    assertEquals(Path.of("book.rekey-rollback.sqlite"), deleteRekeyRollback.rollbackArtifactPath());
-    assertInstanceOf(
-        BookAccess.PassphraseSource.KeyFile.class,
-        deleteRekeyRollback.bookAccess().passphraseSource());
-    assertEquals(OutputMode.TEXT, deleteRekeyRollback.outputMode());
-  }
-
-  @Test
-  void parse_restoreRekeyRollback_acceptsStandardInputAndPromptPassphraseSources() {
-    RestoreRekeyRollback standardInputRestore =
-        assertInstanceOf(
-            RestoreRekeyRollback.class,
-            CliArguments.parse(
-                new String[] {
-                  "restore-rekey-rollback", "--book-file", "book.sqlite", "--book-passphrase-stdin"
-                }));
-    RestoreRekeyRollback promptRestore =
-        assertInstanceOf(
-            RestoreRekeyRollback.class,
-            CliArguments.parse(
-                new String[] {
-                  "restore-rekey-rollback", "--book-file", "book.sqlite", "--book-passphrase-prompt"
-                }));
-
-    assertInstanceOf(
-        BookAccess.PassphraseSource.StandardInput.class,
-        standardInputRestore.expectedPassphraseSource());
-    assertInstanceOf(
-        BookAccess.PassphraseSource.InteractivePrompt.class,
-        promptRestore.expectedPassphraseSource());
-  }
-
-  @Test
-  void parse_restoreRekeyRollback_requiresOnePassphraseSource() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {"restore-rekey-rollback", "--book-file", "book.sqlite"}));
-
-    assertEquals("--book-key-file", exception.argument());
-    assertEquals(
-        "Restore rekey rollback requires exactly one book passphrase source: --book-key-file <path>, --book-passphrase-stdin, or --book-passphrase-prompt.",
-        exception.getMessage());
-  }
-
-  @Test
-  void parse_deleteRekeyRollback_acceptsStandardInputAndPromptPassphraseSources() {
-    DeleteRekeyRollback standardInputDelete =
-        assertInstanceOf(
-            DeleteRekeyRollback.class,
-            CliArguments.parse(
-                new String[] {
-                  "delete-rekey-rollback", "--book-file", "book.sqlite", "--book-passphrase-stdin"
-                }));
-    DeleteRekeyRollback promptDelete =
-        assertInstanceOf(
-            DeleteRekeyRollback.class,
-            CliArguments.parse(
-                new String[] {
-                  "delete-rekey-rollback", "--book-file", "book.sqlite", "--book-passphrase-prompt"
-                }));
-
-    assertInstanceOf(
-        BookAccess.PassphraseSource.StandardInput.class,
-        standardInputDelete.bookAccess().passphraseSource());
-    assertInstanceOf(
-        BookAccess.PassphraseSource.InteractivePrompt.class,
-        promptDelete.bookAccess().passphraseSource());
-  }
-
-  @Test
-  void parse_deleteRekeyRollback_requiresOnePassphraseSource() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {"delete-rekey-rollback", "--book-file", "book.sqlite"}));
-
-    assertEquals("--book-key-file", exception.argument());
-    assertEquals(
-        "Delete rekey rollback requires exactly one book passphrase source: --book-key-file <path>, --book-passphrase-stdin, or --book-passphrase-prompt.",
-        exception.getMessage());
-  }
-
-  @Test
-  void parse_inspectRekeyRollback_rejectsPassphraseSourceArguments() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "inspect-rekey-rollback",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-passphrase-stdin"
-                    }));
-
-    assertEquals("--book-key-file", exception.argument());
-    assertEquals(
-        "Book passphrase source arguments are accepted only when delete-rekey-rollback or restore-rekey-rollback is selected.",
-        exception.getMessage());
-  }
-
-  @Test
-  void parse_rejectsMaintenancePathCollisions() {
-    CliArgumentsException backupCollision =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "backup-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "book.key",
-                      "--backup-book-file-out",
-                      "book.sqlite",
-                      "--backup-book-key-file-out",
-                      "backup.key"
-                    }));
-    CliArgumentsException restoreCollision =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "restore-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--backup-book-file",
-                      "backup.sqlite",
-                      "--backup-book-key-file",
-                      "backup.sqlite"
-                    }));
-
-    assertEquals("--backup-book-file-out", backupCollision.argument());
-    assertEquals(
-        "--book-file and --backup-book-file-out must not point to the same path.",
-        backupCollision.getMessage());
-    assertEquals("--backup-book-key-file", restoreCollision.argument());
-    assertEquals(
-        "--backup-book-file and --backup-book-key-file must not point to the same path.",
-        restoreCollision.getMessage());
   }
 }

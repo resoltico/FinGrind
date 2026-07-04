@@ -30,7 +30,7 @@ final class CliFailureMapper {
       return new CliFailure(
           ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.code(),
           message(outputExistsException),
-          "Choose one missing "
+          "Choose a missing "
               + outputExistsException.artifactOptionName()
               + " destination or remove the existing artifact before rerunning the command.",
           outputExistsException.artifactOptionName());
@@ -77,17 +77,17 @@ final class CliFailureMapper {
     String normalizedErrorId = requireErrorId(errorId);
     return new CliFailure(
         ContractErrors.Descriptor.INTERNAL_ERROR.code(),
-        "FinGrind encountered an internal persistence-contract breach. One upstream invariant should have rejected this request before commit. Quote error id "
+        "FinGrind encountered an internal persistence-contract breach. An upstream invariant should have rejected this request before commit. Quote error id "
             + normalizedErrorId
             + " when reporting this defect.",
         internalErrorHint(
-            "This failure class means one deterministic invariant leaked past pre-commit validation into SQLite persistence."),
+            "This failure class means a deterministic invariant leaked past pre-commit validation into SQLite persistence."),
         null);
   }
 
   private static String internalErrorHint(@Nullable String additionalContext) {
     String baseHint =
-        "FinGrind preserved one machine-readable error envelope on stderr and omitted raw stack traces for this invocation. Quote the error id when reporting the defect; if you need crash details locally, reproduce the failure against a disposable copy under a debugger or test harness.";
+        "FinGrind preserved the machine-readable error envelope on stderr and omitted raw stack traces for this invocation. Quote the error id when reporting the defect; if you need crash details locally, reproduce the failure against a disposable copy under a debugger or test harness.";
     if (additionalContext == null) {
       return baseHint;
     }

@@ -10,13 +10,15 @@ import java.util.Objects;
 public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntryResult {
 
   /** Preflight-only success variant for a validated but not yet committed request. */
-  record PreflightAccepted(IdempotencyKey idempotencyKey, LocalDate effectiveDate)
+  record PreflightAccepted(
+      IdempotencyKey idempotencyKey, LocalDate effectiveDate, ResolvedJournal resolvedJournal)
       implements PreflightEntryResult {
 
     /** Validates the preflight-only success shape. */
     public PreflightAccepted {
       Objects.requireNonNull(idempotencyKey, "idempotencyKey");
       Objects.requireNonNull(effectiveDate, "effectiveDate");
+      Objects.requireNonNull(resolvedJournal, "resolvedJournal");
     }
   }
 
@@ -26,7 +28,8 @@ public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntr
       IdempotencyKey idempotencyKey,
       LocalDate effectiveDate,
       Instant recordedAt,
-      boolean idempotentReplay)
+      boolean idempotentReplay,
+      ResolvedJournal resolvedJournal)
       implements CommitEntryResult {
 
     /** Validates the committed success shape. */
@@ -35,6 +38,7 @@ public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntr
       Objects.requireNonNull(idempotencyKey, "idempotencyKey");
       Objects.requireNonNull(effectiveDate, "effectiveDate");
       Objects.requireNonNull(recordedAt, "recordedAt");
+      Objects.requireNonNull(resolvedJournal, "resolvedJournal");
     }
   }
 

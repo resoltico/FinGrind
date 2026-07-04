@@ -32,6 +32,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
+import dev.erst.fingrind.executor.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
@@ -211,9 +212,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       java.time.Clock.fixed(FIXED_INSTANT, java.time.ZoneOffset.UTC))
                   .interimResultSweep(new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE)));
 
-      assertInstanceOf(
-          BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing.class,
-          rejected.rejection());
+      assertInstanceOf(CloseTargetAccountCandidateMissing.class, rejected.rejection());
       assertEquals(
           0,
           queryInt(

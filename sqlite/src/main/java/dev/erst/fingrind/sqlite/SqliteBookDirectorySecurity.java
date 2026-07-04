@@ -84,7 +84,7 @@ final class SqliteBookDirectorySecurity {
       throw new SqliteCallerPathContractException(
           normalizedBookPath,
           SqliteCallerPathFailure.PARENT_PATH_COLLISION,
-          "The FinGrind SQLite book path requires one real parent directory: "
+          "The FinGrind SQLite book path requires a real parent directory: "
               + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
     }
     if (SqliteBookFilesystemSupport.supportsPosix(parentDirectory)) {
@@ -158,7 +158,7 @@ final class SqliteBookDirectorySecurity {
                   SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
                   "The FinGrind SQLite book parent directory ACL must grant book-directory access only to the directory owner: "
                       + SqliteBookFilesystemSupport.redactedPath(parentDirectory)
-                      + " grants access to one non-owner principal.");
+                      + " grants access to a non-owner principal.");
             });
   }
 }

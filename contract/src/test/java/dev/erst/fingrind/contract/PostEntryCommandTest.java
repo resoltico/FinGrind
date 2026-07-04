@@ -24,12 +24,14 @@ import org.junit.jupiter.api.Test;
 class PostEntryCommandTest {
   @Test
   void constructor_acceptsValidCommand() {
+    JournalEntry journalEntry = journalEntry();
     BookkeepingEntry.Reversal adjustment =
         new BookkeepingEntry.Reversal(
-            journalEntry(),
+            journalEntry.effectiveDate(),
             new PostingLineage.Reversal(
                 new ReversalReference(new PostingId("posting-1")),
                 new ReversalReason("operator reversal")),
+            null,
             null);
     PostEntryCommand command =
         new PostEntryCommand(
@@ -41,6 +43,7 @@ class PostEntryCommandTest {
     assertEquals(BookkeepingEntry.Reversal.class, command.entry().getClass());
     assertEquals(1, adjustment.reversal().reversalReference().stream().count());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
+    assertThrows(IllegalStateException.class, adjustment::journalEntry);
   }
 
   @Test

@@ -16,6 +16,11 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.contract.reportmodel.AccountBalanceReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.AccountLedgerReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.CashFlowStatementReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.PeriodSummaryReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.TrialBalanceReportModelBuilder;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
@@ -90,12 +95,18 @@ class CliPdfReportExporterTest {
     Path periodSummaryPdf = tempDirectory.resolve("summary.pdf");
     Path cashFlowPdf = tempDirectory.resolve("cash-flow.pdf");
 
-    exporter.exportAccountBalance(accountBalancePdf, accountBalanceSnapshot());
-    exporter.exportTrialBalance(trialBalancePdf, trialBalanceReport());
-    exporter.exportAccountLedger(accountLedgerPdf, accountLedgerReport());
-    exporter.exportPeriodSummary(periodSummaryPdf, periodSummaryReport());
-    exporter.exportCashFlowStatement(
-        cashFlowPdf, CliFixtureSupport.sampleCashFlowStatementReport());
+    exporter.export(
+        accountBalancePdf, AccountBalanceReportModelBuilder.buildModel(accountBalanceSnapshot()));
+    exporter.export(
+        trialBalancePdf, TrialBalanceReportModelBuilder.buildModel(trialBalanceReport()));
+    exporter.export(
+        accountLedgerPdf, AccountLedgerReportModelBuilder.buildModel(accountLedgerReport()));
+    exporter.export(
+        periodSummaryPdf, PeriodSummaryReportModelBuilder.buildModel(periodSummaryReport()));
+    exporter.export(
+        cashFlowPdf,
+        CashFlowStatementReportModelBuilder.buildModel(
+            CliFixtureSupport.sampleCashFlowStatementReport()));
 
     assertPdfFile(accountBalancePdf);
     assertPdfFile(trialBalancePdf);
@@ -115,7 +126,8 @@ class CliPdfReportExporterTest {
             java.net.URI.create("jar:" + archivePath.toUri()), Map.of("create", "true"))) {
       Path trialBalancePdf = zipFileSystem.getPath("/reports/trial-balance.pdf");
 
-      exporter.exportTrialBalance(trialBalancePdf, trialBalanceReport());
+      exporter.export(
+          trialBalancePdf, TrialBalanceReportModelBuilder.buildModel(trialBalanceReport()));
 
       assertPdfFile(trialBalancePdf);
     }
@@ -240,7 +252,9 @@ class CliPdfReportExporterTest {
     CliPdfExportException exception =
         assertThrows(
             CliPdfExportException.class,
-            () -> exporter.exportTrialBalance(outputPath, trialBalanceReport()));
+            () ->
+                exporter.export(
+                    outputPath, TrialBalanceReportModelBuilder.buildModel(trialBalanceReport())));
 
     assertEquals(outputPath.toAbsolutePath().normalize(), exception.outputPath());
   }
@@ -255,7 +269,9 @@ class CliPdfReportExporterTest {
     CliArtifactOutputExistsException exception =
         assertThrows(
             CliArtifactOutputExistsException.class,
-            () -> exporter.exportTrialBalance(outputPath, trialBalanceReport()));
+            () ->
+                exporter.export(
+                    outputPath, TrialBalanceReportModelBuilder.buildModel(trialBalanceReport())));
 
     assertEquals(outputPath.toAbsolutePath().normalize(), exception.outputPath());
     assertEquals("--pdf-out", exception.artifactOptionName());
@@ -267,7 +283,9 @@ class CliPdfReportExporterTest {
     CliPdfReportExporter exporter =
         new CliPdfReportExporter(new PdfReportService("FinGrind", "0.57.0", CLOCK), fileOperations);
 
-    exporter.exportTrialBalance(Path.of("trial-balance.pdf"), trialBalanceReport());
+    exporter.export(
+        Path.of("trial-balance.pdf"),
+        TrialBalanceReportModelBuilder.buildModel(trialBalanceReport()));
 
     assertTrue(fileOperations.atomicMoveAttempted);
     assertTrue(fileOperations.regularMovePerformed);
@@ -284,7 +302,10 @@ class CliPdfReportExporterTest {
     CliPdfExportException exception =
         assertThrows(
             CliPdfExportException.class,
-            () -> exporter.exportTrialBalance(Path.of("trial-balance.pdf"), trialBalanceReport()));
+            () ->
+                exporter.export(
+                    Path.of("trial-balance.pdf"),
+                    TrialBalanceReportModelBuilder.buildModel(trialBalanceReport())));
 
     assertEquals(Path.of("trial-balance.pdf").toAbsolutePath().normalize(), exception.outputPath());
     assertTrue(fileOperations.deleteAttempted);

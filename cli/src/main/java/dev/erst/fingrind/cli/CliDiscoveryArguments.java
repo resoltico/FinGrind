@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.BookTemplateId;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Optional;
@@ -136,17 +137,31 @@ final class CliDiscoveryArguments {
   }
 
   static CliCommand parsePrintRequestTemplate(List<String> arguments) {
-    if (arguments.size() == 1) {
-      return new PrintRequestTemplate(null);
+    @Nullable OperationId commandTopic = null;
+    @Nullable BookTemplateId bookTemplateId = null;
+    ListIterator<String> argumentIterator = arguments.listIterator(1);
+    while (argumentIterator.hasNext()) {
+      String argument = argumentIterator.next();
+      if (ProtocolOptions.BOOK_TEMPLATE_ID.equals(argument)) {
+        bookTemplateId =
+            CliOptionValues.parseBookTemplateIdOption(
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.BOOK_TEMPLATE_ID),
+                ProtocolOptions.BOOK_TEMPLATE_ID);
+        continue;
+      }
+      if (commandTopic != null) {
+        throw CliArgumentValueParser.invalid(
+            argument,
+            "%s accepts at most one optional request-bearing command topic."
+                .formatted(arguments.getFirst()));
+      }
+      if (argument.startsWith("-")) {
+        throw CliArgumentValueParser.unsupportedArgument(
+            argument, List.of(ProtocolOptions.BOOK_TEMPLATE_ID));
+      }
+      commandTopic = CliDiscoveryRequestTemplateTopics.requireTopic(argument);
     }
-    if (arguments.size() == 2) {
-      return new PrintRequestTemplate(requiredRequestTemplateTopic(arguments.get(1)));
-    }
-    String unsupportedArgument = arguments.get(2);
-    throw CliArgumentValueParser.invalid(
-        unsupportedArgument,
-        "%s accepts at most one optional request-bearing command topic."
-            .formatted(arguments.getFirst()));
+    return new PrintRequestTemplate(commandTopic, bookTemplateId);
   }
 
   static CliCommand parsePrintPlanTemplate(List<String> arguments) {
@@ -190,57 +205,6 @@ final class CliDiscoveryArguments {
           token, "Unsupported " + surfaceName + " topic: " + token);
     }
     return operation.orElseThrow().id();
-  }
-
-  private static OperationId requiredRequestTemplateTopic(String token) {
-    Optional<dev.erst.fingrind.contract.protocol.ProtocolOperation> operation =
-        ProtocolCatalog.findByToken(token);
-    if (operation.isEmpty()) {
-      throw CliArgumentValueParser.invalid(token, "Unsupported request-template topic: " + token);
-    }
-    OperationId topic = operation.orElseThrow().id();
-    if (isSupportedRequestTemplateTopic(topic)) {
-      return topic;
-    }
-    throw CliArgumentValueParser.invalid(
-        token,
-        "Unsupported request-template topic: "
-            + token
-            + ". Use "
-            + supportedRequestTemplateTopics()
-            + ".");
-  }
-
-  private static boolean isSupportedRequestTemplateTopic(OperationId topic) {
-    return switch (topic) {
-      case POST_ENTRY,
-          PREFLIGHT_ENTRY,
-          RECORD_SALE,
-          RECORD_EXPENSE,
-          RECORD_OWNER_CONTRIBUTION,
-          RECORD_OWNER_WITHDRAWAL,
-          RECORD_OPENING_POSITION,
-          RECORD_REVERSAL,
-          DECLARE_ACCOUNT,
-          DECLARE_TAX_REGISTRATION ->
-          true;
-      default -> false;
-    };
-  }
-
-  private static String supportedRequestTemplateTopics() {
-    return String.join(
-        ", ",
-        ProtocolCatalog.operationName(OperationId.POST_ENTRY),
-        ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY),
-        ProtocolCatalog.operationName(OperationId.RECORD_SALE),
-        ProtocolCatalog.operationName(OperationId.RECORD_EXPENSE),
-        ProtocolCatalog.operationName(OperationId.RECORD_OWNER_CONTRIBUTION),
-        ProtocolCatalog.operationName(OperationId.RECORD_OWNER_WITHDRAWAL),
-        ProtocolCatalog.operationName(OperationId.RECORD_OPENING_POSITION),
-        ProtocolCatalog.operationName(OperationId.RECORD_REVERSAL),
-        ProtocolCatalog.operationName(OperationId.DECLARE_ACCOUNT),
-        ProtocolCatalog.operationName(OperationId.DECLARE_TAX_REGISTRATION));
   }
 
   private static CapabilitiesOptionState parseCapabilitiesOptions(List<String> arguments) {

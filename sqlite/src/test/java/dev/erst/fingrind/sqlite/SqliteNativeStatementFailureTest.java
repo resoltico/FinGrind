@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 /** Direct proof for statement-scoped failure ownership and cleanup behavior. */
 class SqliteNativeStatementFailureTest extends SqliteNativeBridgeTestSupport {
   private static final int API_PREPARE_V2 = 14;
+  private static final int API_BIND_NULL = 15;
   private static final int API_BIND_INT = 16;
   private static final int API_BIND_INT64 = 17;
   private static final int API_BIND_TEXT = 18;
@@ -24,6 +25,13 @@ class SqliteNativeStatementFailureTest extends SqliteNativeBridgeTestSupport {
 
   @Test
   void bindAndReadOperations_recordFailuresBeforeRethrowing() {
+    assertStatementFailure(
+        API_BIND_NULL,
+        throwingMethodHandle(
+            new IllegalStateException("bind null boom"), int.class, MemorySegment.class, int.class),
+        statement -> statement.bindNull(1),
+        IllegalStateException.class,
+        "Failed to bind a SQLite null parameter.");
     assertStatementFailure(
         API_BIND_TEXT,
         throwingMethodHandle(

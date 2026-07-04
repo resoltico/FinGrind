@@ -63,7 +63,7 @@ def assert_request_template(
     if expected_entry_kind == "DIRECT_JOURNAL":
         assert_canonical_direct_journal_lines(document, label=label)
         return
-    if expected_entry_kind == "SALE":
+    if expected_entry_kind == "SALE_SETTLED":
         assert_canonical_sale_fields(document, label=label)
         return
     raise SystemExit(f"{label} requested unsupported entry-kind assertion {expected_entry_kind}")
@@ -75,12 +75,12 @@ def assert_plan_template(document: dict[str, object]) -> None:
         raise SystemExit(
             "source-checkout launcher plan template leaked retired business activity tags"
         )
-    if "accountingBasis" in ensure_book:
+    if ensure_book.get("accountingBasis") != "CASH":
         raise SystemExit(
-            "source-checkout launcher plan template leaked doctrine-owned identity fields into open-book input"
+            "source-checkout launcher plan template did not publish the canonical explicit accounting basis"
         )
     post_entry = document["steps"][1]["posting"]
-    if post_entry["entryKind"] != "SALE":
+    if post_entry["entryKind"] != "SALE_SETTLED":
         raise SystemExit(
             "source-checkout launcher plan template did not expose the canonical sale entry kind"
         )

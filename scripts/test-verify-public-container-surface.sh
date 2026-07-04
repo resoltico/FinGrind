@@ -24,8 +24,20 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly verifier="${script_dir}/verify-public-container-surface.sh"
+readonly verifier_support="${script_dir}/verify-public-container-book-surface-support.sh"
+readonly retired_context_label='Starter'" chart       :"
+readonly canonical_context_label='Seed'" template       :"
 
 [[ -f "${verifier}" ]] || die "missing public container surface verifier"
+[[ -f "${verifier_support}" ]] || die "missing public container surface verifier support"
+
+if grep -Fq "${retired_context_label}" "${verifier_support}" "${BASH_SOURCE[0]}"; then
+    die "public container verifier sources must not use the retired starter-chart label"
+fi
+
+if ! grep -Fq "${canonical_context_label}" "${verifier_support}" || ! grep -Fq "${canonical_context_label}" "${BASH_SOURCE[0]}"; then
+    die "public container verifier sources must publish the canonical seed-template label"
+fi
 
 fixture_root="$(mktemp -d)"
 cleanup() {
@@ -177,6 +189,8 @@ TEXT
                 ;;
             open-book)
                 entity_name=''
+                book_template_id=''
+                accounting_basis=''
                 functional_currency=''
                 fiscal_year_start=''
                 book_file=''
@@ -196,6 +210,14 @@ TEXT
                             entity_name="${2}"
                             shift 2
                             ;;
+                        --book-template-id)
+                            book_template_id="${2}"
+                            shift 2
+                            ;;
+                        --accounting-basis)
+                            accounting_basis="${2}"
+                            shift 2
+                            ;;
                         --functional-currency)
                             functional_currency="${2}"
                             shift 2
@@ -213,6 +235,8 @@ TEXT
                 [[ -n "${book_file}" ]] || exit 1
                 [[ -n "${book_key_file}" ]] || exit 1
                 [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
+                [[ "${book_template_id}" == 'OWNER_MANAGED_SERVICE' ]] || exit 1
+                [[ "${accounting_basis}" == 'CASH' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
                 printf '{"status":"ok"}\n'
@@ -245,7 +269,7 @@ TEXT
                     exit 1
                 fi
                 ;;
-            record-sale|post-entry)
+            record-sale-settled|post-entry)
                 request_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
@@ -263,8 +287,8 @@ TEXT
                     esac
                 done
                 [[ -n "${request_file}" ]] || exit 1
-                if [[ "${subcommand}" == 'record-sale' ]]; then
-                    grep -Fq '"entryKind": "SALE"' "${request_file}" || exit 1
+                if [[ "${subcommand}" == 'record-sale-settled' ]]; then
+                    grep -Fq '"entryKind": "SALE_SETTLED"' "${request_file}" || exit 1
                     grep -Fq '"cashAccountCode": "cash"' "${request_file}" || exit 1
                     grep -Fq '"revenueAccountCode": "service-revenue"' "${request_file}" || exit 1
                     grep -Fq '"sourceDocumentId": "release-protocol-cash-receipt-1"' "${request_file}" || exit 1
@@ -382,7 +406,7 @@ service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |     
 Context
 -------
 Entity              : Release Protocol Fixture
-Starter chart       : Owner-managed service starter chart
+Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
@@ -412,7 +436,7 @@ service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |     
 Context
 -------
 Entity              : Release Protocol Fixture
-Starter chart       : Owner-managed service starter chart
+Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01

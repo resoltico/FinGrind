@@ -14,6 +14,7 @@ final class CliPagedListWindowArguments {
     Integer limit = null;
     @Nullable String cursor = null;
     @Nullable OutputMode outputMode = null;
+    boolean withContext = false;
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       if (ProtocolOptions.LIMIT.equals(argument)) {
@@ -28,6 +29,10 @@ final class CliPagedListWindowArguments {
                 cursor, ProtocolOptions.CURSOR, argumentIterator);
         continue;
       }
+      if (ProtocolOptions.WITH_CONTEXT.equals(argument)) {
+        withContext = true;
+        continue;
+      }
       outputMode =
           CliOptionModes.requireOutputMode(
               outputMode,
@@ -40,8 +45,10 @@ final class CliPagedListWindowArguments {
             limit == null ? ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT : limit,
             ProtocolOptions.LIMIT),
         cursor,
-        CliOptionModes.resolvedOutputMode(outputMode));
+        CliOptionModes.resolvedOutputMode(outputMode),
+        withContext);
   }
 
-  record ParsedListWindow(int limit, @Nullable String cursor, OutputMode outputMode) {}
+  record ParsedListWindow(
+      int limit, @Nullable String cursor, OutputMode outputMode, boolean withContext) {}
 }

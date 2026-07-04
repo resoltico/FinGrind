@@ -31,7 +31,7 @@ class PdfStatementMetadataRowsTest {
             List.of(List.of("As of", "2026-04-30")));
 
     assertEquals("Entity", rows.get(0).getFirst());
-    assertEquals("Starter chart", rows.get(1).getFirst());
+    assertEquals("Seed template", rows.get(1).getFirst());
     assertEquals("Accounting basis", rows.get(2).getFirst());
     assertEquals("Posting coverage", rows.get(5).getFirst());
     assertTrue(rows.contains(List.of("As of", "2026-04-30")));

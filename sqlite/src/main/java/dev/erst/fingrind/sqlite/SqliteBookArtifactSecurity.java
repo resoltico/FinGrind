@@ -67,7 +67,7 @@ final class SqliteBookArtifactSecurity {
       throw new SqliteCallerPathContractException(
           normalizedBookPath,
           SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
-          "The FinGrind SQLite book path must resolve to one regular non-symlink file: "
+          "The FinGrind SQLite book path must resolve to a regular non-symlink file: "
               + SqliteBookFilesystemSupport.redactedPath(normalizedBookPath));
     }
   }

@@ -8,7 +8,7 @@
     "details": {
       "type": "POSTING_WORKFLOW",
       "request": {
-        "effectiveDate": "2026-04-08",
+        "effectiveDate": "2026-04-07",
         "idempotencyKey": "idem-5",
         "lineCount": 2,
         "reversalPresent": true
@@ -18,14 +18,14 @@
           "preflightStatus": "posting-book-not-initialized",
           "commitStatus": "posting-book-not-initialized"
         },
-        "undeclared": {
-          "preflightStatus": "unknown-account",
-          "commitStatus": "unknown-account"
-        },
-        "inactive": {
-          "preflightStatus": "inactive-account",
-          "commitStatus": "inactive-account"
-        }
+      "undeclared": {
+        "preflightStatus": "reversal-target-not-found",
+        "commitStatus": "reversal-target-not-found"
+      },
+      "inactive": {
+        "preflightStatus": "not-run",
+        "commitStatus": "not-run"
+      }
       },
       "outcome": {
         "finalPreflightStatus": "reversal-target-not-found",

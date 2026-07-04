@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.AccountClassificationReachability;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /** Current request-surface contract owner for posting semantics and temporal lexicon facts. */
 final class RequestSurfaceContracts {
@@ -14,11 +15,21 @@ final class RequestSurfaceContracts {
         bookkeepingEntryKinds(),
         reachabilityMatrix(),
         bookkeepingEntryEvidence(),
-        temporalScopes(),
-        commandTemporalScopes());
+        RequestSurfaceTemporalContracts.temporalScopes(),
+        RequestSurfaceTemporalContracts.commandTemporalScopes());
   }
 
   private static List<RequestSurfaceFacts.BookkeepingEntryKindFacts> bookkeepingEntryKinds() {
+    return Stream.of(
+            directAndSalesEntryKindFacts(),
+            expenseAndSettlementEntryKindFacts(),
+            ownerAndTerminalEntryKindFacts())
+        .flatMap(List::stream)
+        .toList();
+  }
+
+  private static List<RequestSurfaceFacts.BookkeepingEntryKindFacts>
+      directAndSalesEntryKindFacts() {
     return List.of(
         entryKindFacts(
             BookkeepingEntryKind.DIRECT_JOURNAL,
@@ -33,10 +44,10 @@ final class RequestSurfaceContracts {
                 SourceDocumentTypePolicyMode.PATTERN_ONLY,
                 List.of(),
                 "Source-document types remain caller-authored tokens constrained by the published token pattern for direct journals.",
-                "cash-receipt"),
-            "Direct journal writes accept caller-authored balanced lines when no typed business-event surface fits exactly. They are rejected when debit-credit netting reduces every referenced account to zero, they must move at least one declared cash-and-cash-equivalent asset account, and the reachability matrix publishes the exact writable account-classification cells after kernel reservations are applied."),
+                "journal-support"),
+            "Direct journal writes accept caller-authored balanced lines when no typed business-event surface fits exactly. Raw admission rejects journals that shadow one typed event exactly, rejects bundled operational compounds, preserves genuine adjustments, and requires one cash line only on cash-basis books."),
         entryKindFacts(
-            BookkeepingEntryKind.SALE,
+            BookkeepingEntryKind.SALE_SETTLED,
             Set.of(
                 ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
                 ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
@@ -51,11 +62,67 @@ final class RequestSurfaceContracts {
             sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.ENUMERATED,
                 List.of("cash-receipt", "bank-deposit", "card-settlement"),
-                "Accepted source-document types for sale requests.",
+                "Accepted source-document types for settled-sale requests.",
                 "cash-receipt"),
-            "Sale writes debit one cash-and-cash-equivalent asset account and credit one revenue account."),
+            "Settled-sale writes debit one cash-and-cash-equivalent asset account and credit one revenue account. Trading-template sale requests additionally carry inventoryRelief so the same event debits one cost-of-sales account and credits one non-cash inventory account, and the selected inventory account must remain non-negative after the request posts."),
         entryKindFacts(
-            BookkeepingEntryKind.EXPENSE,
+            BookkeepingEntryKind.SALE_ON_CREDIT,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(ProtocolPostEntryFields.TopLevel.TAX),
+            sourceDocumentTypes(
+                SourceDocumentTypePolicyMode.ENUMERATED,
+                List.of("invoice"),
+                "Accepted source-document types for sale-on-credit requests.",
+                "invoice"),
+            "Sale-on-credit writes debit one trade receivable account and credit one revenue account. Trading-template sale requests additionally carry inventoryRelief so the same event debits one cost-of-sales account and credits one non-cash inventory account, and the selected inventory account must remain non-negative after the request posts."));
+  }
+
+  private static List<RequestSurfaceFacts.BookkeepingEntryKindFacts>
+      expenseAndSettlementEntryKindFacts() {
+    return List.of(
+        entryKindFacts(
+            BookkeepingEntryKind.PURCHASE_SETTLED,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
+            sourceDocumentTypes(
+                SourceDocumentTypePolicyMode.ENUMERATED,
+                List.of("purchase-receipt", "cash-disbursement", "bank-payment-confirmation"),
+                "Accepted source-document types for settled-purchase requests.",
+                "purchase-receipt"),
+            "Settled-purchase writes debit one inventory asset account and credit one cash-and-cash-equivalent asset account on trading-template books, restoring carrying inventory only through non-negative balances."),
+        entryKindFacts(
+            BookkeepingEntryKind.PURCHASE_ON_CREDIT,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(),
+            sourceDocumentTypes(
+                SourceDocumentTypePolicyMode.ENUMERATED,
+                List.of("supplier-invoice"),
+                "Accepted source-document types for purchase-on-credit requests.",
+                "supplier-invoice"),
+            "Purchase-on-credit writes debit one inventory asset account and credit one trade payable account on trading-template books, restoring carrying inventory only through non-negative balances."),
+        entryKindFacts(
+            BookkeepingEntryKind.EXPENSE_SETTLED,
             Set.of(
                 ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
                 ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
@@ -70,9 +137,65 @@ final class RequestSurfaceContracts {
             sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.ENUMERATED,
                 List.of("expense-receipt", "cash-disbursement", "bank-payment-confirmation"),
-                "Accepted source-document types for expense requests.",
+                "Accepted source-document types for settled-expense requests.",
                 "expense-receipt"),
-            "Expense writes debit one expense account and credit one cash-and-cash-equivalent asset account."),
+            "Settled-expense writes debit one expense account and credit one cash-and-cash-equivalent asset account."),
+        entryKindFacts(
+            BookkeepingEntryKind.EXPENSE_ON_CREDIT,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(ProtocolPostEntryFields.TopLevel.TAX),
+            sourceDocumentTypes(
+                SourceDocumentTypePolicyMode.ENUMERATED,
+                List.of("bill"),
+                "Accepted source-document types for expense-on-credit requests.",
+                "bill"),
+            "Expense-on-credit writes debit one expense account and credit one trade payable account."),
+        entryKindFacts(
+            BookkeepingEntryKind.RECEIPT,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT),
+            sourceDocumentTypes(
+                SourceDocumentTypePolicyMode.ENUMERATED,
+                List.of("cash-receipt", "bank-deposit", "card-settlement"),
+                "Accepted source-document types for receipt requests.",
+                "cash-receipt"),
+            "Receipt writes credit one trade receivable account and debit one cash-and-cash-equivalent asset account, with one optional settlement adjunct."),
+        entryKindFacts(
+            BookkeepingEntryKind.PAYMENT,
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+                ProtocolPostEntryFields.TopLevel.AMOUNT,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE),
+            Set.of(ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT),
+            sourceDocumentTypes(
+                SourceDocumentTypePolicyMode.ENUMERATED,
+                List.of("cash-disbursement", "bank-payment-confirmation"),
+                "Accepted source-document types for payment requests.",
+                "cash-disbursement"),
+            "Payment writes debit one trade payable account and credit one cash-and-cash-equivalent asset account, with one optional settlement adjunct."));
+  }
+
+  private static List<RequestSurfaceFacts.BookkeepingEntryKindFacts>
+      ownerAndTerminalEntryKindFacts() {
+    return List.of(
         entryKindFacts(
             BookkeepingEntryKind.OWNER_CONTRIBUTION,
             Set.of(
@@ -122,7 +245,6 @@ final class RequestSurfaceContracts {
             Set.of(
                 ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
                 ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-                ProtocolPostEntryFields.TopLevel.LINES,
                 ProtocolPostEntryFields.TopLevel.EVIDENCE,
                 ProtocolPostEntryFields.TopLevel.PROVENANCE,
                 ProtocolPostEntryFields.TopLevel.REVERSAL),
@@ -132,81 +254,13 @@ final class RequestSurfaceContracts {
                 List.of(),
                 "Source-document types remain caller-authored tokens constrained by the published token pattern for reversal requests.",
                 "reversal-support"),
-            "Reversal writes are contingent cleanup paths that must negate one existing posting exactly and therefore are not substitutes for forward-originating operational entries."));
+            "Reversal writes are contingent cleanup paths that derive their journal lines from one existing posting and negate that target exactly, reject reversal targets that are themselves reversals, and are not substitutes for forward-originating operational entries."));
   }
 
   private static RequestSurfaceFacts.EvidenceRequirementFacts bookkeepingEntryEvidence() {
     return new RequestSurfaceFacts.EvidenceRequirementFacts(
         "Every posting request must retain at least one source document. Inspect the selected entry kind for the required source-document fields and source-document-type policy.",
         1);
-  }
-
-  private static List<RequestSurfaceFacts.TemporalScopeFacts> temporalScopes() {
-    return List.of(
-        new RequestSurfaceFacts.TemporalScopeFacts(
-            TemporalScopeArchetype.RANGED_FILTER,
-            List.of(ProtocolOptions.EFFECTIVE_DATE_FROM, ProtocolOptions.EFFECTIVE_DATE_TO),
-            "Effective date range",
-            "Effective date from",
-            "Effective date to",
-            "Optional lower and upper effective-date filters over committed postings. Omit the lower boundary to start at book start; omit the upper boundary to end at the current book horizon.",
-            "selected-date",
-            "book-start",
-            "current-book-horizon",
-            "latest-posting-effective-date",
-            "no-postings"),
-        new RequestSurfaceFacts.TemporalScopeFacts(
-            TemporalScopeArchetype.BOUNDED_PERIOD,
-            List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END),
-            "Reporting period",
-            "Period start",
-            "Period end",
-            "One explicit closed reporting window. Both boundaries must be supplied, and neither boundary falls back to book start or the current book horizon.",
-            "selected-date",
-            "selected-date",
-            "selected-date",
-            "selected-date",
-            "selected-date"),
-        new RequestSurfaceFacts.TemporalScopeFacts(
-            TemporalScopeArchetype.AS_OF_DATE,
-            List.of(ProtocolOptions.EFFECTIVE_DATE_AS_OF),
-            "As of",
-            "As of",
-            "As of",
-            "One point-in-time effective-date cutoff. Supply --effective-date-as-of to pin that cutoff explicitly, or omit it to resolve the current book horizon for the selected report.",
-            "selected-date",
-            "book-start",
-            "current-book-horizon",
-            "latest-posting-effective-date",
-            "no-postings"));
-  }
-
-  private static List<RequestSurfaceFacts.CommandTemporalScopeFacts> commandTemporalScopes() {
-    return List.of(
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.LIST_POSTINGS, TemporalScopeArchetype.RANGED_FILTER),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.ACCOUNT_LEDGER, TemporalScopeArchetype.RANGED_FILTER),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.ACCOUNT_BALANCE, TemporalScopeArchetype.RANGED_FILTER),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.INTERIM_RESULT_SWEEP, TemporalScopeArchetype.BOUNDED_PERIOD),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.FISCAL_YEAR_CLOSE, TemporalScopeArchetype.BOUNDED_PERIOD),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.PERIOD_SUMMARY, TemporalScopeArchetype.BOUNDED_PERIOD),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.INCOME_STATEMENT, TemporalScopeArchetype.BOUNDED_PERIOD),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.CASH_FLOW_STATEMENT, TemporalScopeArchetype.BOUNDED_PERIOD),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.CHANGES_IN_EQUITY, TemporalScopeArchetype.BOUNDED_PERIOD),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.TAX_OBLIGATION, TemporalScopeArchetype.BOUNDED_PERIOD),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.TRIAL_BALANCE, TemporalScopeArchetype.AS_OF_DATE),
-        new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.FINANCIAL_POSITION, TemporalScopeArchetype.AS_OF_DATE));
   }
 
   private static RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts(

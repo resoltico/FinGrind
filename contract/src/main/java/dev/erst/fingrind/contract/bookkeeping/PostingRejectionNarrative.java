@@ -25,6 +25,9 @@ final class PostingRejectionNarrative {
           EntrySemanticsViolationOwner.envelopeMessage(violations.violations());
       case PostingRejection.IdempotencyKeyConflict _ ->
           "This idempotency key is already bound to a different committed posting request in this book.";
+      case PostingRejection.PostingEffectiveDateInFuture futureDate ->
+          "Posting effective date '%s' is after current UTC date '%s'."
+              .formatted(futureDate.attemptedEffectiveDate(), futureDate.currentUtcDate());
       case PostingRejection.BookFunctionalCurrencyMismatch functionalCurrencyMismatch ->
           "Journal-line currency '%s' does not match this book's functional currency '%s'."
               .formatted(
@@ -53,6 +56,9 @@ final class PostingRejectionNarrative {
       case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
           "No committed posting exists for reversal target '%s'."
               .formatted(reversalTargetNotFound.priorPostingId().value());
+      case ReversalTargetIsReversal reversalTargetIsReversal ->
+          "Posting '%s' is already one reversal posting, so it cannot be reversed."
+              .formatted(reversalTargetIsReversal.priorPostingId().value());
       case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
           "Posting '%s' already has a full reversal."
               .formatted(reversalAlreadyExists.priorPostingId().value());
@@ -72,6 +78,8 @@ final class PostingRejectionNarrative {
       case PostingRejection.EntrySemanticsViolations _ -> null;
       case PostingRejection.IdempotencyKeyConflict _ ->
           "Retry only with the exact same normalized request to receive an idempotent replay, or submit the changed request with a fresh provenance.idempotencyKey.";
+      case PostingRejection.PostingEffectiveDateInFuture _ ->
+          "Use an effective date on or before the current UTC date.";
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           "Use the selected book's functional currency for every journal line in this request. If the business event happened in another currency, retain that transaction amount inside foreignExchange instead of changing the journal-line currency.";
       case PostingRejection.SweptInterimResultViolation _ ->
@@ -94,6 +102,8 @@ final class PostingRejectionNarrative {
               + " or "
               + LIST_POSTINGS_OPERATION
               + " to confirm the prior posting id before retrying the reversal.";
+      case ReversalTargetIsReversal _ ->
+          "Post one fresh operational entry with its own evidence to restore the business effect instead of reversing a reversal.";
       case PostingRejection.ReversalAlreadyExists _ ->
           "Inspect the existing reversal for the referenced posting instead of retrying another reversal.";
       case PostingRejection.ReversalDoesNotNegateTarget _ ->

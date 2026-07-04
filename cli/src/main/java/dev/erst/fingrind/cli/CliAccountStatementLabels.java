@@ -8,10 +8,49 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /** Shared operator-facing labels for account and statement vocabulary. */
 final class CliAccountStatementLabels {
+  private static final Map<FinancialPositionLineClassification, String>
+      FINANCIAL_POSITION_LINE_LABELS =
+          Map.ofEntries(
+              Map.entry(FinancialPositionLineClassification.CURRENT_ASSET, "Current asset"),
+              Map.entry(FinancialPositionLineClassification.INVENTORY, "Inventory"),
+              Map.entry(FinancialPositionLineClassification.NONCURRENT_ASSET, "Non-current asset"),
+              Map.entry(FinancialPositionLineClassification.TRADE_RECEIVABLE, "Trade receivable"),
+              Map.entry(FinancialPositionLineClassification.CURRENT_LIABILITY, "Current liability"),
+              Map.entry(
+                  FinancialPositionLineClassification.NONCURRENT_LIABILITY,
+                  "Non-current liability"),
+              Map.entry(FinancialPositionLineClassification.TRADE_PAYABLE, "Trade payable"),
+              Map.entry(
+                  FinancialPositionLineClassification.EQUITY_CONTRIBUTION, "Contributed capital"),
+              Map.entry(FinancialPositionLineClassification.EQUITY_WITHDRAWAL, "Distributions"),
+              Map.entry(FinancialPositionLineClassification.RESULT_HOLDING, "Accumulated result"),
+              Map.entry(
+                  FinancialPositionLineClassification.RETAINED_ACCUMULATED, "Retained accumulated"),
+              Map.entry(FinancialPositionLineClassification.RESERVE, "Reserve"),
+              Map.entry(FinancialPositionLineClassification.OTHER_EQUITY, "Other equity"));
+  private static final Map<ProfitAndLossLineClassification, String> PROFIT_AND_LOSS_LINE_LABELS =
+      Map.ofEntries(
+          Map.entry(ProfitAndLossLineClassification.OPERATING_REVENUE, "Operating revenue"),
+          Map.entry(
+              ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE, "Sales discount allowance"),
+          Map.entry(ProfitAndLossLineClassification.OTHER_REVENUE, "Other revenue"),
+          Map.entry(ProfitAndLossLineClassification.FINANCE_INCOME, "Finance income"),
+          Map.entry(ProfitAndLossLineClassification.COST_OF_SALES, "Cost of sales"),
+          Map.entry(ProfitAndLossLineClassification.OPERATING_EXPENSE, "Operating expense"),
+          Map.entry(
+              ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION,
+              "Depreciation and amortization"),
+          Map.entry(ProfitAndLossLineClassification.SETTLEMENT_FEE, "Settlement fee"),
+          Map.entry(ProfitAndLossLineClassification.BAD_DEBT_WRITE_OFF, "Bad debt write-off"),
+          Map.entry(ProfitAndLossLineClassification.FINANCE_EXPENSE, "Finance expense"),
+          Map.entry(ProfitAndLossLineClassification.OTHER_EXPENSE, "Other expense"));
+
   private CliAccountStatementLabels() {}
 
   static String displayAccountTypeSectionLabel(AccountType accountType) {
@@ -57,18 +96,8 @@ final class CliAccountStatementLabels {
 
   static String displayFinancialPositionLineClassification(
       FinancialPositionLineClassification lineClassification) {
-    return switch (lineClassification) {
-      case CURRENT_ASSET -> "Current asset";
-      case NONCURRENT_ASSET -> "Non-current asset";
-      case CURRENT_LIABILITY -> "Current liability";
-      case NONCURRENT_LIABILITY -> "Non-current liability";
-      case EQUITY_CONTRIBUTION -> "Contributed capital";
-      case EQUITY_WITHDRAWAL -> "Distributions";
-      case RESULT_HOLDING -> "Accumulated result";
-      case RETAINED_ACCUMULATED -> "Retained accumulated";
-      case RESERVE -> "Reserve";
-      case OTHER_EQUITY -> "Other equity";
-    };
+    return requireMappedLabel(
+        FINANCIAL_POSITION_LINE_LABELS, lineClassification, "financial position classification");
   }
 
   static String displayFinancialPositionLineClassification(
@@ -80,16 +109,8 @@ final class CliAccountStatementLabels {
 
   static String displayProfitAndLossLineClassification(
       ProfitAndLossLineClassification lineClassification) {
-    return switch (lineClassification) {
-      case OPERATING_REVENUE -> "Operating revenue";
-      case OTHER_REVENUE -> "Other revenue";
-      case FINANCE_INCOME -> "Finance income";
-      case COST_OF_SALES -> "Cost of sales";
-      case OPERATING_EXPENSE -> "Operating expense";
-      case DEPRECIATION_AND_AMORTIZATION -> "Depreciation and amortization";
-      case FINANCE_EXPENSE -> "Finance expense";
-      case OTHER_EXPENSE -> "Other expense";
-    };
+    return requireMappedLabel(
+        PROFIT_AND_LOSS_LINE_LABELS, lineClassification, "profit and loss classification");
   }
 
   static String displayCashFlowAssetClassification(
@@ -113,5 +134,10 @@ final class CliAccountStatementLabels {
       case DEBIT -> "Debit";
       case CREDIT -> "Credit";
     };
+  }
+
+  private static <K> String requireMappedLabel(Map<K, String> labels, K key, String labelFamily) {
+    Objects.requireNonNull(key, labelFamily);
+    return Objects.requireNonNull(labels.get(key));
   }
 }

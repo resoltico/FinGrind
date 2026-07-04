@@ -76,60 +76,6 @@ public interface CliTaxJsonModels {
     }
   }
 
-  record TaxObligationContextPayload(
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
-      DeclaredTaxRegistrationPayload registration,
-      String effectiveDateFrom,
-      String effectiveDateTo,
-      String dueDate) {
-    public TaxObligationContextPayload {
-      Objects.requireNonNull(bookIdentity, "bookIdentity");
-      Objects.requireNonNull(registration, "registration");
-      effectiveDateFrom = requireText(effectiveDateFrom, "effectiveDateFrom");
-      effectiveDateTo = requireText(effectiveDateTo, "effectiveDateTo");
-      dueDate = requireText(dueDate, "dueDate");
-    }
-  }
-
-  record TaxObligationCodeSummaryPayload(
-      String taxCode,
-      String taxCodeName,
-      String applicationKind,
-      int postingCount,
-      MonetaryAmount taxableAmount,
-      MonetaryAmount taxAmount,
-      MonetaryAmount grossAmount) {
-    public TaxObligationCodeSummaryPayload {
-      taxCode = requireText(taxCode, "taxCode");
-      taxCodeName = requireText(taxCodeName, "taxCodeName");
-      applicationKind = requireText(applicationKind, "applicationKind");
-      requirePositive(postingCount, "postingCount");
-      Objects.requireNonNull(taxableAmount, "taxableAmount");
-      Objects.requireNonNull(taxAmount, "taxAmount");
-      Objects.requireNonNull(grossAmount, "grossAmount");
-    }
-  }
-
-  record TaxObligationPayload(
-      TaxObligationContextPayload context,
-      List<TaxObligationCodeSummaryPayload> codeSummaries,
-      MonetaryAmount outputTax,
-      MonetaryAmount recoverableInputTax,
-      MonetaryAmount nonrecoverableInputTax,
-      MonetaryAmount netPayable,
-      MonetaryAmount netReceivable)
-      implements CliSuccessPayload {
-    public TaxObligationPayload {
-      Objects.requireNonNull(context, "context");
-      codeSummaries = copyList(codeSummaries, "codeSummaries");
-      Objects.requireNonNull(outputTax, "outputTax");
-      Objects.requireNonNull(recoverableInputTax, "recoverableInputTax");
-      Objects.requireNonNull(nonrecoverableInputTax, "nonrecoverableInputTax");
-      Objects.requireNonNull(netPayable, "netPayable");
-      Objects.requireNonNull(netReceivable, "netReceivable");
-    }
-  }
-
   record TaxSelectionPayload(String taxRegistrationId, String taxCode) {
     public TaxSelectionPayload {
       taxRegistrationId = requireText(taxRegistrationId, "taxRegistrationId");

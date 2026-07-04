@@ -4,62 +4,51 @@ import java.util.List;
 
 /** Canonical statement-of-financial-position taxonomy for one declared account. */
 public enum FinancialPositionLineClassification implements WireValue {
-  CURRENT_ASSET,
-  NONCURRENT_ASSET,
-  CURRENT_LIABILITY,
-  NONCURRENT_LIABILITY,
-  EQUITY_CONTRIBUTION,
-  EQUITY_WITHDRAWAL,
-  RESULT_HOLDING,
-  RETAINED_ACCUMULATED,
-  RESERVE,
-  OTHER_EQUITY;
+  CURRENT_ASSET(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.AUX, false),
+  INVENTORY(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.INVENTORY, false),
+  NONCURRENT_ASSET(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.AUX, false),
+  TRADE_RECEIVABLE(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.RECEIVABLE, false),
+  CURRENT_LIABILITY(AccountType.LIABILITY, NormalBalance.CREDIT, AccountRole.AUX, false),
+  NONCURRENT_LIABILITY(AccountType.LIABILITY, NormalBalance.CREDIT, AccountRole.AUX, false),
+  TRADE_PAYABLE(AccountType.LIABILITY, NormalBalance.CREDIT, AccountRole.PAYABLE, false),
+  EQUITY_CONTRIBUTION(
+      AccountType.EQUITY, NormalBalance.CREDIT, AccountRole.EQUITY_CONTRIBUTED, false),
+  EQUITY_WITHDRAWAL(AccountType.EQUITY, NormalBalance.DEBIT, AccountRole.EQUITY_DRAWS, false),
+  RESULT_HOLDING(AccountType.EQUITY, NormalBalance.CREDIT, AccountRole.AUX, true),
+  RETAINED_ACCUMULATED(AccountType.EQUITY, NormalBalance.CREDIT, AccountRole.AUX, true),
+  RESERVE(AccountType.EQUITY, NormalBalance.CREDIT, AccountRole.AUX, false),
+  OTHER_EQUITY(AccountType.EQUITY, NormalBalance.CREDIT, AccountRole.AUX, false);
+
+  private final AccountType accountType;
+  private final NormalBalance normalBalance;
+  private final AccountRole classifierRole;
+  private final boolean reservedForCloseOperations;
+
+  FinancialPositionLineClassification(
+      AccountType accountType,
+      NormalBalance normalBalance,
+      AccountRole classifierRole,
+      boolean reservedForCloseOperations) {
+    this.accountType = accountType;
+    this.normalBalance = normalBalance;
+    this.classifierRole = classifierRole;
+    this.reservedForCloseOperations = reservedForCloseOperations;
+  }
 
   /** Returns the canonical account type this classification belongs to. */
   public AccountType accountType() {
-    return switch (this) {
-      case CURRENT_ASSET, NONCURRENT_ASSET -> AccountType.ASSET;
-      case CURRENT_LIABILITY, NONCURRENT_LIABILITY -> AccountType.LIABILITY;
-      case EQUITY_CONTRIBUTION,
-          EQUITY_WITHDRAWAL,
-          RESULT_HOLDING,
-          RETAINED_ACCUMULATED,
-          RESERVE,
-          OTHER_EQUITY ->
-          AccountType.EQUITY;
-    };
+    return accountType;
   }
 
   /** Returns the normal balance implied by this declared financial-position classification. */
   public NormalBalance normalBalance() {
-    return switch (this) {
-      case CURRENT_ASSET, NONCURRENT_ASSET, EQUITY_WITHDRAWAL -> NormalBalance.DEBIT;
-      case CURRENT_LIABILITY,
-          NONCURRENT_LIABILITY,
-          EQUITY_CONTRIBUTION,
-          RESULT_HOLDING,
-          RETAINED_ACCUMULATED,
-          RESERVE,
-          OTHER_EQUITY ->
-          NormalBalance.CREDIT;
-    };
+    return normalBalance;
   }
 
   /** Returns the stable public wire value for this classification. */
   @Override
   public String wireValue() {
-    return switch (this) {
-      case CURRENT_ASSET -> "CURRENT_ASSET";
-      case NONCURRENT_ASSET -> "NONCURRENT_ASSET";
-      case CURRENT_LIABILITY -> "CURRENT_LIABILITY";
-      case NONCURRENT_LIABILITY -> "NONCURRENT_LIABILITY";
-      case EQUITY_CONTRIBUTION -> "EQUITY_CONTRIBUTION";
-      case EQUITY_WITHDRAWAL -> "EQUITY_WITHDRAWAL";
-      case RESULT_HOLDING -> "RESULT_HOLDING";
-      case RETAINED_ACCUMULATED -> "RETAINED_ACCUMULATED";
-      case RESERVE -> "RESERVE";
-      case OTHER_EQUITY -> "OTHER_EQUITY";
-    };
+    return name();
   }
 
   /** Returns every stable public wire value in declaration order. */
@@ -78,5 +67,13 @@ public enum FinancialPositionLineClassification implements WireValue {
         FinancialPositionLineClassification.class,
         wireValue,
         "Unsupported financialPositionLineClassification");
+  }
+
+  AccountRole classifierRole() {
+    return classifierRole;
+  }
+
+  boolean reservedForCloseOperations() {
+    return reservedForCloseOperations;
   }
 }

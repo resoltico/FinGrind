@@ -13,7 +13,7 @@ class RejectedInterimResultTargetSelectionTest {
   void candidateAccountCodes_exposesMissingAndAmbiguousCandidates() {
     RejectedInterimResultTargetSelection missingSelection =
         new RejectedInterimResultTargetSelection(
-            new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+            new CloseTargetAccountCandidateMissing(
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200"))));
     RejectedInterimResultTargetSelection ambiguousSelection =

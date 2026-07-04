@@ -186,7 +186,7 @@ class SqliteBookKeyFileGeneratorTest {
                     .requireAccepted());
 
     assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
-    assertTrue(exception.failure().message().contains("requires one owner-only parent directory"));
+    assertTrue(exception.failure().message().contains("requires an owner-only parent directory"));
     assertFalse(Files.exists(keyFile));
   }
 

@@ -11,30 +11,42 @@ final class MachineContractPostEntryComponentSchemas {
 
   static Map<String, Object> lineSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "One balanced journal line.", MachineContractPostEntryFieldSpecs.lineFields());
+        "Balanced journal line.", MachineContractPostEntryFieldSpecs.lineFields());
   }
 
   static Map<String, Object> openingBalanceSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "One opening balance inside the initial accounting position.",
+        "Opening balance inside the initial accounting position.",
         MachineContractPostEntryFieldSpecs.openingBalanceFields());
   }
 
   static Map<String, Object> taxSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Optional declared tax selector resolved through one owned tax registration.",
+        "Optional declared tax selector resolved through an owned tax registration.",
         MachineContractPostEntryFieldSpecs.taxFields());
+  }
+
+  static Map<String, Object> settlementAdjunctSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Optional settlement-side adjunct carried by receipt and payment requests.",
+        MachineContractPostEntryFieldSpecs.settlementAdjunctFields());
+  }
+
+  static Map<String, Object> inventoryReliefSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Optional trading-sale inventory-relief facts that debit cost of sales and credit inventory as part of the same sale entry.",
+        MachineContractPostEntryFieldSpecs.inventoryReliefFields());
   }
 
   static Map<String, Object> foreignExchangeSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Optional owned foreign-exchange facts for one transaction-currency event translated into book functional currency.",
+        "Optional owned foreign-exchange facts for a transaction-currency event translated into book functional currency.",
         MachineContractPostEntryForeignExchangeFieldSpecs.foreignExchangeFields());
   }
 
   static Map<String, Object> quotedRateSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Owned exact quoted exchange-rate facts linking one transaction-currency amount to one functional amount.",
+        "Owned exact quoted exchange-rate facts linking a transaction-currency amount to a functional amount.",
         MachineContractPostEntryForeignExchangeFieldSpecs.quotedRateFields());
   }
 
@@ -71,20 +83,20 @@ final class MachineContractPostEntryComponentSchemas {
 
   static Map<String, Object> sourceDocumentSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "One retained source document linked to this posting.",
+        "Retained source document linked to this posting.",
         MachineContractPostEntryFieldSpecs.sourceDocumentFields());
   }
 
   static Map<String, Object> sourceDocumentSchema(
       RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts) {
     return MachineContractSchemaSupport.objectSchema(
-        "One retained source document linked to this posting.",
+        "Retained source document linked to this posting.",
         MachineContractPostEntryFieldSpecs.sourceDocumentFields(entryKindFacts));
   }
 
   static Map<String, Object> approvalSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "One retained approval linked to this posting.",
+        "Retained approval linked to this posting.",
         MachineContractPostEntryFieldSpecs.approvalFields());
   }
 

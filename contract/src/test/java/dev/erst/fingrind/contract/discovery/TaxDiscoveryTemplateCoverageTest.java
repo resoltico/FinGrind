@@ -25,19 +25,22 @@ class TaxDiscoveryTemplateCoverageTest {
     ContractTemplates.DeclareTaxRegistrationTemplateDescriptor template =
         MachineContractTemplatesCatalog.declareTaxRegistrationTemplate();
     ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE));
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
 
-    assertEquals("vat-lv", template.taxRegistrationId());
-    assertEquals("Latvia VAT", template.taxRegistrationName());
-    assertEquals("LV", template.jurisdiction().value());
-    assertEquals("LV40000000000", template.registrationNumber());
+    assertEquals("replace-before-commit-tax-registration-id", template.taxRegistrationId());
+    assertEquals("Replace Before Commit Tax Registration", template.taxRegistrationName());
+    assertEquals("<ISO-3166-alpha-2>", template.jurisdiction().value());
+    assertEquals("replace-before-commit-registration-number", template.registrationNumber());
     assertEquals("tax-payable-vat", template.payableAccountCode());
     assertEquals("tax-recoverable-vat", template.recoverableAccountCode());
     assertEquals(TaxObligationFrequency.MONTHLY, template.obligationFrequency());
     assertEquals(20, template.dueDaysAfterPeriodEnd());
     assertEquals(2, template.taxCodes().size());
-    assertEquals("vat-standard-sale", template.taxCodes().getFirst().taxCode());
+    assertEquals("replace-before-commit-output-tax-code", template.taxCodes().getFirst().taxCode());
+    assertEquals(0, template.taxCodes().getFirst().ratePartsPerMillion());
     assertEquals(TaxApplicationKind.OUTPUT_SALE, template.taxCodes().getFirst().applicationKind());
+    assertEquals("replace-before-commit-input-tax-code", template.taxCodes().getLast().taxCode());
+    assertEquals(0, template.taxCodes().getLast().ratePartsPerMillion());
     assertEquals(
         TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
         template.taxCodes().getLast().applicationKind());
@@ -62,7 +65,7 @@ class TaxDiscoveryTemplateCoverageTest {
     assertNull(registrationShapes.bookkeepingEntry());
 
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor saleDescriptor =
-        MachineContractPostEntrySchemas.descriptor(BookkeepingEntryKind.SALE);
+        MachineContractPostEntrySchemas.descriptor(BookkeepingEntryKind.SALE_SETTLED);
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor ownerContributionDescriptor =
         MachineContractPostEntrySchemas.descriptor(BookkeepingEntryKind.OWNER_CONTRIBUTION);
     assertEquals(

@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
-import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
@@ -106,21 +105,5 @@ final class CliBookQueryPayloadMapper {
         page.limit(),
         page.nextCursor().map(AccountPageCursor::wireValue).orElse(null),
         page.accounts().stream().map(CliBookQueryPayloadMapper::accountPayload).toList());
-  }
-
-  static CliBookQueryJsonModels.AccountBalancePayload accountBalancePayload(
-      AccountBalanceSnapshot snapshot) {
-    return new CliBookQueryJsonModels.AccountBalancePayload(
-        CliReportPayloadMapper.reportContextPayload(
-            snapshot.bookIdentity(), snapshot.postingCoverage()),
-        snapshot.account().accountCode().value(),
-        snapshot.account().accountName().value(),
-        snapshot.account().accountType().wireValue(),
-        snapshot.account().normalBalance().wireValue(),
-        snapshot.account().active(),
-        snapshot.account().declaredAt().toString(),
-        snapshot.effectiveDateFrom().map(Object::toString).orElse(null),
-        snapshot.effectiveDateTo().map(Object::toString).orElse(null),
-        snapshot.balances().stream().map(CliPayloadAssembler::balancePayload).toList());
   }
 }

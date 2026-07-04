@@ -1,144 +1,119 @@
-# FinGrind — command-line double-entry bookkeeping with one protected book per accounting entity
+# FinGrind — protected-book CLI bookkeeping for one accounting entity per SQLite file
 
-FinGrind is a command-line bookkeeping tool for one accounting entity per protected SQLite book.
-The current public kernel is one narrow cash-basis internal-management profile with one seeded
-owner-managed service starter chart. You initialize the book explicitly, extend that chart when
-needed, seed first balances through one structured opening-position flow, commit typed business
-events such as sales, expenses, owner contributions, owner withdrawals, reversals, and explicit
-opening positions with retained evidence plus optional tax and foreign-exchange facts, drop to one
-direct balanced journal only when you intentionally need the lower-level path, run one ordered
-AI-agent ledger plan, manage the same protected book through explicit rekey and backup-recovery
-commands plus reporting-period close commands, and query that file for balances, ledgers, tax
-obligations, and built-in statements including cash receipts and payments. Humans use the task
-guide in `help`; automation uses `capabilities --output json`. Invalid writes and invalid
-maintenance mutations are rejected before they change the selected book.
+FinGrind is a command-line bookkeeping tool that keeps one accounting entity in one protected SQLite book. You open a book explicitly, choose either `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING` on `CASH` or `ACCRUAL`, post typed business events first, drop to the direct balanced journal only when you intentionally need the lower-level path, and read back balances, tax obligations, and built-in statements from the same protected file. Invalid writes and invalid maintenance mutations are rejected before they change the selected book.
 
-- Open one encrypted book per accounting entity, protected by a generated key file
-- Start from one seeded owner-managed service starter chart, then declare supplemental accounts
-  and chart nodes when the built-in template is not enough
-- Post typed business-event commands with retained evidence, provenance, idempotency keys, typed
-  tax selection, and optional foreign-exchange facts, or run one ordered AI-agent ledger plan; use
-  direct balanced journals only when you intentionally need the lower-level path
-- Rekey protected books, export verified encrypted backup pairs, and inspect, restore, or delete
-  interrupted rekey rollback artifacts through explicit maintenance commands
-- Declare and query per-book tax registrations, compute bounded tax obligations, and sweep or close
-  reporting periods with explicit commands
-- Scaffold placeholder-first request and plan documents with `print-request-template` and
-  `print-plan-template`
-- Read back account balances, trial balances with totals and balanced verdicts, account ledgers,
-  period summaries, tax obligations, and the built-in financial position, income statement,
-  cash-flow, and changes in equity reports
-- Export any report as operator-readable text tables, JSON, CSV, or PDF
+- One protected SQLite book plus one generated key file per accounting entity
+- Typed sales, purchases, expenses, receipts, payments, owner contributions, owner withdrawals, opening positions, and reversals with retained evidence, provenance, and idempotency
+- Per-book tax registrations, bounded tax-obligation reporting, optional foreign-exchange facts, and reporting-period close commands
+- Trial balance, account balance, account ledger, period summary, financial position, income statement, cash-flow statement, changes in equity, and tax-obligation outputs in text, JSON, CSV, or PDF
+- Explicit maintenance commands for backup, restore, rekey, and interrupted rekey rollback inspection
 
-**Project status: Alpha.** FinGrind is under active development and is not yet production-ready.
-Public self-contained downloads are published for macOS (Apple Silicon and Intel), Linux
-(`x86_64` and `aarch64`, glibc `2.34+`), and Windows `x86_64`. `windows-aarch64` remains on the
-container or source-checkout path.
+**Status:** Alpha. FinGrind is under active development and is not yet production-ready.
+
+Published runtime surfaces currently include public self-contained bundles for macOS (Apple Silicon and Intel), Linux (`x86_64` and `aarch64`, glibc `2.34+`), and Windows `x86_64`, plus one published container image. `windows-aarch64` remains on the container or source-checkout path. Use [docs/USER_INSTALL.md](docs/USER_INSTALL.md) for the live package matrix, checksum verification, and attestation flow.
 
 ## Quick Start
 
-Every command reads from or writes to the same protected file. The key file is required every
-time. If the key is lost, the book cannot be opened. Keep the key outside the book directory so a
-copy of the book does not automatically include the unlocking key. If `./secrets/` or `./books/`
-does not exist, FinGrind creates it with owner-only permissions. If either directory already
-exists, keep it owner-only before you ask FinGrind to write a key or book there.
-
-The example below is launcher-neutral and bundle-safe: it creates the request JSON locally from
-the live CLI instead of depending on repository fixtures. The seeded starter chart created by
-`open-book` already includes `cash` and `service-revenue`, so the first posting does not need
-supplemental chart setup. For the host-specific bundle walkthrough and the exact public package
-matrix, use
-[docs/USER_QUICK_START.md](docs/USER_QUICK_START.md) and [docs/USER_INSTALL.md](docs/USER_INSTALL.md).
+The example below is launcher-neutral: it works with the public bundle launcher, the container-mounted launcher, or the source-checkout launcher as long as `fingrind` resolves to the CLI entrypoint in your shell.
 
 ```bash
-# Create one protected book
 fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --entity-name "Acme Studio" --functional-currency EUR \
+  --entity-name "Acme Studio" \
+  --book-template-id OWNER_MANAGED_SERVICE \
+  --accounting-basis CASH \
+  --functional-currency EUR \
   --fiscal-year-start 01-01
 
-# Review the seeded starter chart
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --limit 10
 
-# Copy the concrete first-post sample that ships with public bundles when you want a runnable
-# starting point.
-cp ./quick-start-request.json ./request.json
-# Or emit the canonical placeholder-first minimal sale scaffold when you want the live contract shape:
 fingrind print-request-template > ./request.json
 
-# The bundled sample is concrete; the generated scaffold is placeholder-first. Both follow the
-# same minimal sale request contract. In either case, replace every replace-before-commit token
-# with real evidence and provenance values, then commit the first sale
-fingrind record-sale --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
+fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --request-file ./request.json
 
-# Read the trial balance back
+fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
+  --request-file ./request.json
+
 fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --effective-date-as-of 2026-04-08 --output text
+  --output text
 ```
 
-The interface is layered: `help` is the operator guide, `print-request-template` and
-`print-plan-template` emit placeholder-first scaffold documents, and `capabilities --output json`
-exposes the machine-readable discovery surface. The default JSON discovery detail is compact; rerun
-with `--detail minimal` for the terse overview or `--detail full` for the exhaustive embedded
-schemas, evidence profiles, accepted source-document vocabularies, temporal-scope facts,
-account-reachability doctrine, and repairable rejection catalogs. For shell automation or agent
-sessions that prefer structured stdout
-by default, set `FINGRIND_DEFAULT_OUTPUT=json`; an explicit per-command `--output ...` flag still
-wins when you need a one-off text or CSV result.
+`print-request-template` emits a placeholder-first request document. Replace every `replace-before-commit` value before committing a real entry. If you want the host-specific bundle walkthrough, the shipped quick-start sample, or the container-mounted flow, start with [docs/USER_QUICK_START.md](docs/USER_QUICK_START.md) and [docs/USER_CONTAINER.md](docs/USER_CONTAINER.md).
 
-```bash
-fingrind help record-sale
-fingrind print-request-template > request.json
-fingrind print-plan-template > plan.json
-fingrind capabilities --output json
-```
+Humans should start with `fingrind help`. Automation and agent callers should start with `fingrind capabilities --output json`.
 
 ```
 Trial Balance
 =============
 
-As of         : 2026-04-08
+As of         : 2026-04-07
 Balance state : Balanced
+
+Accounts
+--------
+cash | Cash
+-----------
+Type         : Asset
+Normal       : Debit
+Active       : Yes
+Currency     : EUR
+Debit total  : EUR 10.00
+Credit total : EUR 0.00
+Net amount   : EUR 10.00
+Balance side : Debit
+
+service-revenue | Service Revenue
+---------------------------------
+Type         : Revenue
+Normal       : Credit
+Active       : Yes
+Currency     : EUR
+Debit total  : EUR 0.00
+Credit total : EUR 10.00
+Net amount   : EUR 10.00
+Balance side : Credit
 
 Current totals
 --------------
 Currency | Debit total | Credit total | Net amount | Balance side
 ---------+-------------+--------------+------------+-------------
-EUR      |       10.00 |        10.00 |       0.00 | Zero
-
-Accounts
---------
-Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
-----------------+-----------------+----------+-------------+--------------+------------+-------------
-cash            | Cash            | EUR      |       10.00 |         0.00 |      10.00 | Debit
-service-revenue | Service Revenue | EUR      |        0.00 |        10.00 |      10.00 | Credit
+EUR      |   EUR 10.00 |    EUR 10.00 |   EUR 0.00 | Zero
 
 Context
 -------
 Entity              : Acme Studio
-Starter chart       : Owner-managed service starter chart
+Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
 Posting coverage    : All posting kinds
+As of               : 2026-04-07
 ```
 
-Invalid entries are rejected before commit. The CLI reports specific causes such as unbalanced
-lines, undeclared accounts, invalid evidence metadata, or duplicate idempotency keys.
+## Current Public Scope
+
+The current public bookkeeping kernel is owner-managed internal-management bookkeeping with two built-in starting charts:
+
+- `OWNER_MANAGED_SERVICE` for service books
+- `OWNER_MANAGED_TRADING` for goods-trading books
+
+Trading books keep sales and purchases on typed business-event commands. Trading sales carry `inventoryRelief` so one committed event records both revenue and cost-of-sales relief without falling back to the raw journal path.
 
 ## Documentation
 
-Start with the docs index: [docs/README.md](docs/README.md)
-
-For deep API and symbol routing, use: [docs/DOC_00_Index.md](docs/DOC_00_Index.md)
+- [docs/USER_INSTALL.md](docs/USER_INSTALL.md) for package selection, checksums, and attestation
+- [docs/USER_QUICK_START.md](docs/USER_QUICK_START.md) for the fastest first-run path
+- [docs/USER_CONTAINER.md](docs/USER_CONTAINER.md) for the published container workflow
+- [docs/USER_CLI.md](docs/USER_CLI.md) for the command surface and exit behavior
+- [docs/USER_REQUESTS.md](docs/USER_REQUESTS.md) for request shapes
+- [docs/USER_RESPONSES.md](docs/USER_RESPONSES.md) for response envelopes and deterministic failures
+- [docs/USER_EXAMPLES.md](docs/USER_EXAMPLES.md) for longer workflows
+- [docs/README.md](docs/README.md) for the full docs index
 
 ## Legal
 
-FinGrind is MIT-licensed. Its self-contained bundle vendors Jackson and Apache PDFBox (Apache 2.0),
-Noto Sans (SIL OFL 1.1), and SQLite3 Multiple Ciphers with SQLite (MIT / public domain).
-See [NOTICE](NOTICE) for the complete attribution list and [PATENTS.md](PATENTS.md) for
-patent considerations.
+FinGrind is MIT-licensed. Its self-contained bundles vendor Jackson and Apache PDFBox (Apache 2.0), Noto Sans (SIL OFL 1.1), and SQLite3 Multiple Ciphers with SQLite (MIT / public domain). See [NOTICE](NOTICE) for the complete attribution list and [PATENTS.md](PATENTS.md) for patent considerations.
 
 [LICENSE](LICENSE) | [NOTICE](NOTICE) | [PATENTS.md](PATENTS.md) | [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0) | [LICENSE-SIL-OFL-1.1](LICENSE-SIL-OFL-1.1) | [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS)

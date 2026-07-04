@@ -1,46 +1,60 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.account;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.accrualBookIdentity;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.cashExpense;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.cashRevenue;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.costOfSalesAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.creditExpense;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.creditSale;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.duplicateCashExpense;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.duplicateCashRevenue;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.duplicateEquityContribution;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.duplicateEquityWithdrawal;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.equityAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.equityContribution;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.equityWithdrawal;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.inventoryAssetAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.operatingExpenseAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.payableAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.payment;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.paymentWithoutAdjunct;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.receipt;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.receiptWithoutAdjunct;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.receivableAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.settlementAdjunctAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.tradingAccrualBookIdentity;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.tradingCashBookIdentity;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.command;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.requestProvenance;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.PostingValidationStoreDouble;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.StoredRequestPosting;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Direct coverage for typed-entry semantics validation at the application boundary. */
 class PostEntrySemanticsPolicyTest {
-  private static final Instant DECLARED_AT = Instant.parse("2026-04-07T10:15:30Z");
-
   @Test
   void rejectionFor_acceptsAllSupportedTypedKernelEntriesWhenAccountsAndEvidenceMatch() {
     PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
@@ -114,9 +128,128 @@ class PostEntrySemanticsPolicyTest {
   }
 
   @Test
+  void rejectionFor_enforcesTradingSaleInventoryReliefByBookTemplate() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    InventoryRelief inventoryRelief =
+        new InventoryRelief(
+            new AccountCode("1400"),
+            new AccountCode("5000"),
+            MonetaryAmount.of(Money.parse("EUR", "4.00")));
+    BookkeepingEntry.SaleSettled saleWithInventoryRelief =
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            inventoryRelief,
+            null,
+            null,
+            null);
+    BookkeepingEntry.SaleSettled saleWithoutInventoryRelief =
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null,
+            null,
+            null);
+    BookkeepingEntry.SaleOnCredit creditSaleWithInventoryRelief =
+        new BookkeepingEntry.SaleOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1100"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            inventoryRelief,
+            null,
+            null);
+    BookkeepingEntry.SaleOnCredit creditSaleWithoutInventoryRelief =
+        new BookkeepingEntry.SaleOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1100"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null,
+            null);
+    Map<AccountCode, RegisteredAccount> tradingAccounts =
+        Map.of(
+            new AccountCode("1000"), account("1000", AccountType.ASSET),
+            new AccountCode("1100"), receivableAccount("1100"),
+            new AccountCode("1400"), inventoryAssetAccount("1400"),
+            new AccountCode("2000"), account("2000", AccountType.REVENUE),
+            new AccountCode("5000"), costOfSalesAccount("5000"));
+
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                saleWithInventoryRelief,
+                generatedEvidence("service-sale-with-relief", "cash-receipt"),
+                requestProvenance("service-sale-with-relief"),
+                SourceChannel.CLI),
+            new PostingValidationStoreDouble(tradingAccounts)),
+        "inventory-relief-requires-trading-book");
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                saleWithoutInventoryRelief,
+                generatedEvidence("trading-sale-without-relief", "cash-receipt"),
+                requestProvenance("trading-sale-without-relief"),
+                SourceChannel.CLI),
+            new PostingValidationStoreDouble(tradingCashBookIdentity(), tradingAccounts)),
+        "trading-sale-requires-inventory-relief");
+    assertTrue(
+        policy
+            .rejectionFor(
+                new PostEntryCommand(
+                    saleWithInventoryRelief,
+                    generatedEvidence("trading-sale-with-relief", "cash-receipt"),
+                    requestProvenance("trading-sale-with-relief"),
+                    SourceChannel.CLI),
+                new PostingValidationStoreDouble(tradingCashBookIdentity(), tradingAccounts))
+            .isEmpty());
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                creditSaleWithInventoryRelief,
+                generatedEvidence("service-credit-sale-with-relief", "invoice"),
+                requestProvenance("service-credit-sale-with-relief"),
+                SourceChannel.CLI),
+            new PostingValidationStoreDouble(accrualBookIdentity(), tradingAccounts)),
+        "inventory-relief-requires-trading-book");
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                creditSaleWithoutInventoryRelief,
+                generatedEvidence("trading-credit-sale-without-relief", "invoice"),
+                requestProvenance("trading-credit-sale-without-relief"),
+                SourceChannel.CLI),
+            new PostingValidationStoreDouble(tradingAccrualBookIdentity(), tradingAccounts)),
+        "trading-sale-requires-inventory-relief");
+    assertTrue(
+        policy
+            .rejectionFor(
+                new PostEntryCommand(
+                    creditSaleWithInventoryRelief,
+                    generatedEvidence("trading-credit-sale-with-relief", "invoice"),
+                    requestProvenance("trading-credit-sale-with-relief"),
+                    SourceChannel.CLI),
+                new PostingValidationStoreDouble(tradingAccrualBookIdentity(), tradingAccounts))
+            .isEmpty());
+  }
+
+  @Test
   void rejectionFor_skipsSemanticsChecksForAdministrativeEntriesOutsideTypedKernelEvents() {
     PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
     PostingValidationStoreDouble emptyBook = new PostingValidationStoreDouble(Map.of());
+    PostingValidationStoreDouble reversalBook =
+        new PostingValidationStoreDouble(
+            ExecutorAccountingTestSupport.bookIdentity(),
+            Map.of(),
+            Map.of(
+                new dev.erst.fingrind.core.PostingId("posting-1"),
+                PostingApplicationServiceTestSupport.existingPosting("posting-1", "prior")));
 
     assertTrue(
         policy
@@ -146,7 +279,7 @@ class PostEntrySemanticsPolicyTest {
                     PostingApplicationServiceTestSupport.reversalReference("posting-1"),
                     Optional.of(new dev.erst.fingrind.core.ReversalReason("full reversal")),
                     PostingApplicationServiceTestSupport.reversalJournalEntry()),
-                emptyBook)
+                reversalBook)
             .isEmpty());
   }
 
@@ -166,6 +299,13 @@ class PostEntrySemanticsPolicyTest {
   void rejectionFor_acceptsCallerAuthoredSourceDocumentTypesForPatternOnlyEntries() {
     PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
     PostingValidationStoreDouble emptyBook = new PostingValidationStoreDouble(Map.of());
+    PostingValidationStoreDouble reversalBook =
+        new PostingValidationStoreDouble(
+            ExecutorAccountingTestSupport.bookIdentity(),
+            Map.of(),
+            Map.of(
+                new dev.erst.fingrind.core.PostingId("posting-1"),
+                PostingApplicationServiceTestSupport.existingPosting("posting-1", "prior")));
 
     assertTrue(
         policy
@@ -192,16 +332,17 @@ class PostEntrySemanticsPolicyTest {
             .rejectionFor(
                 new PostEntryCommand(
                     new BookkeepingEntry.Reversal(
-                        PostingApplicationServiceTestSupport.reversalJournalEntry(),
+                        LocalDate.parse("2026-04-07"),
                         new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                             PostingApplicationServiceTestSupport.reversalReference("posting-1")
                                 .orElseThrow(),
                             new dev.erst.fingrind.core.ReversalReason("full reversal")),
+                        null,
                         null),
                     generatedEvidence("reversal-pattern", "operator-annotation"),
                     requestProvenance("reversal-pattern"),
                     SourceChannel.CLI),
-                emptyBook)
+                reversalBook)
             .isEmpty());
   }
 
@@ -229,10 +370,11 @@ class PostEntrySemanticsPolicyTest {
         violations,
         Map.of(),
         new BookkeepingEntry.Reversal(
-            PostingApplicationServiceTestSupport.reversalJournalEntry(),
+            LocalDate.parse("2026-04-07"),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                 PostingApplicationServiceTestSupport.reversalReference("posting-1").orElseThrow(),
                 new dev.erst.fingrind.core.ReversalReason("full reversal")),
+            null,
             null),
         "entryKind",
         "REVERSAL");
@@ -356,7 +498,416 @@ class PostEntrySemanticsPolicyTest {
             requestProvenance("non-cash-direct-journal"),
             SourceChannel.CLI);
 
-    assertSingleViolation(policy.rejectionFor(command, book), "cash-basis-account-required");
+    assertViolationCodes(policy.rejectionFor(command, book), "raw-journal-requires-cash-line");
+  }
+
+  @Test
+  void rejectionFor_reportsEvidenceClassConflictsForSettledAndCreditEventFamilies() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble settledBook =
+        new PostingValidationStoreDouble(
+            accrualBookIdentity(),
+            Map.of(
+                new AccountCode("1000"),
+                account("1000", AccountType.ASSET),
+                new AccountCode("2000"),
+                account("2000", AccountType.REVENUE)));
+    PostingValidationStoreDouble creditBook =
+        new PostingValidationStoreDouble(
+            accrualBookIdentity(),
+            Map.of(
+                new AccountCode("1100"),
+                receivableAccount("1100"),
+                new AccountCode("2000"),
+                account("2000", AccountType.REVENUE)));
+
+    assertContainsViolationCode(
+        policy.rejectionFor(cashRevenue("settled-invoice-conflict", "invoice"), settledBook),
+        "evidence-class-conflict");
+    assertContainsViolationCode(
+        policy.rejectionFor(creditSale("credit-cash-conflict", "cash-receipt"), creditBook),
+        "evidence-class-conflict");
+  }
+
+  @Test
+  void rejectionFor_preservesTaxSemanticsFailuresWithoutResolvingTheJournal() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble book =
+        new PostingValidationStoreDouble(
+            accrualBookIdentity(),
+            Map.of(
+                new AccountCode("1000"),
+                account("1000", AccountType.ASSET),
+                new AccountCode("2000"),
+                account("2000", AccountType.REVENUE)));
+
+    assertContainsViolationCode(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                new BookkeepingEntry.SaleSettled(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("1000"),
+                    new AccountCode("2000"),
+                    MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                    null,
+                    null,
+                    new dev.erst.fingrind.contract.tax.TaxSelection(
+                        new dev.erst.fingrind.contract.tax.TaxRegistrationId("vat-lv"),
+                        new dev.erst.fingrind.contract.tax.TaxCode("missing-code")),
+                    null),
+                generatedEvidence("tax-semantic-failure", "cash-receipt"),
+                requestProvenance("tax-semantic-failure"),
+                SourceChannel.CLI),
+            book),
+        "unknown-tax-registration");
+  }
+
+  @Test
+  void rejectionFor_acceptsCreditAndSettlementEntriesWhenAccrualDoctrineAndRolesMatch() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble book =
+        new PostingValidationStoreDouble(
+            accrualBookIdentity(),
+            Map.of(
+                new AccountCode("1000"),
+                account("1000", AccountType.ASSET),
+                new AccountCode("1100"),
+                receivableAccount("1100"),
+                new AccountCode("2000"),
+                account("2000", AccountType.REVENUE),
+                new AccountCode("2100"),
+                payableAccount("2100"),
+                new AccountCode("3000"),
+                account("3000", AccountType.EXPENSE),
+                new AccountCode("5600"),
+                settlementAdjunctAccount("5600")));
+
+    assertTrue(policy.rejectionFor(creditSale("credit-sale-ok", "invoice"), book).isEmpty());
+    assertTrue(policy.rejectionFor(creditExpense("credit-expense-ok", "bill"), book).isEmpty());
+    assertTrue(
+        policy
+            .rejectionFor(receipt("receipt-ok", "bank-deposit", new AccountCode("5600")), book)
+            .isEmpty());
+    assertTrue(
+        policy
+            .rejectionFor(
+                payment("payment-ok", "bank-payment-confirmation", new AccountCode("5600")), book)
+            .isEmpty());
+  }
+
+  @Test
+  void rejectionFor_cashDoctrineRejectsAccrualOnlyCreditAndSettlementVerbs() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble book =
+        new PostingValidationStoreDouble(
+            Map.of(
+                new AccountCode("1000"),
+                account("1000", AccountType.ASSET),
+                new AccountCode("1100"),
+                receivableAccount("1100"),
+                new AccountCode("2000"),
+                account("2000", AccountType.REVENUE),
+                new AccountCode("2100"),
+                payableAccount("2100"),
+                new AccountCode("3000"),
+                account("3000", AccountType.EXPENSE)));
+
+    assertSingleViolation(
+        policy.rejectionFor(creditSale("credit-sale-cash-basis", "invoice"), book),
+        "verb-requires-receivable-role");
+    assertSingleViolation(
+        policy.rejectionFor(receiptWithoutAdjunct("receipt-cash-basis", "bank-deposit"), book),
+        "verb-requires-receivable-role");
+    assertSingleViolation(
+        policy.rejectionFor(creditExpense("credit-expense-cash-basis", "bill"), book),
+        "verb-requires-payable-role");
+    assertSingleViolation(
+        policy.rejectionFor(
+            paymentWithoutAdjunct("payment-cash-basis", "bank-payment-confirmation"), book),
+        "verb-requires-payable-role");
+  }
+
+  @Test
+  void rejectionFor_rejectsOpeningWindowBlockedAccountsAndSettlementAdjunctRoleMismatches() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble openingWindowBook =
+        new PostingValidationStoreDouble(
+            accrualBookIdentity(),
+            Map.of(
+                new AccountCode("1000"),
+                account("1000", AccountType.ASSET),
+                new AccountCode("2000"),
+                account("2000", AccountType.REVENUE)));
+    PostingValidationStoreDouble wrongSettlementRoleBook =
+        new PostingValidationStoreDouble(
+            accrualBookIdentity(),
+            Map.of(
+                new AccountCode("1000"),
+                account("1000", AccountType.ASSET),
+                new AccountCode("1100"),
+                receivableAccount("1100"),
+                new AccountCode("5601"),
+                operatingExpenseAccount("5601")));
+
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                new BookkeepingEntry.OpeningPosition(
+                    LocalDate.parse("2026-04-07"),
+                    List.of(
+                        new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                            new AccountCode("1000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                        new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                            new AccountCode("2000"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                generatedEvidence("opening-window-blocked", "opening-balance"),
+                requestProvenance("opening-window-blocked"),
+                SourceChannel.CLI),
+            openingWindowBook),
+        "opening-window-account-not-permitted");
+    assertSingleViolation(
+        policy.rejectionFor(
+            receipt("receipt-adjunct-mismatch", "bank-deposit", new AccountCode("5601")),
+            wrongSettlementRoleBook),
+        "account-role-mismatch");
+  }
+
+  @Test
+  void rejectionFor_rejectsRawJournalsThatShadowTypedEventsAndBundleOperationalEvents() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble book =
+        new PostingValidationStoreDouble(
+            accrualBookIdentity(),
+            Map.of(
+                new AccountCode("1000"),
+                account("1000", AccountType.ASSET),
+                new AccountCode("1100"),
+                receivableAccount("1100"),
+                new AccountCode("2000"),
+                account("2000", AccountType.REVENUE)));
+
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                new BookkeepingEntry.DirectJournal(
+                    new dev.erst.fingrind.core.JournalEntry(
+                        LocalDate.parse("2026-04-07"),
+                        List.of(
+                            new dev.erst.fingrind.core.JournalLine(
+                                new AccountCode("1000"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                                Money.parse("EUR", "10.00")),
+                            new dev.erst.fingrind.core.JournalLine(
+                                new AccountCode("2000"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                                Money.parse("EUR", "10.00")))),
+                    null),
+                generatedEvidence("shadow-typed-event", "cash-receipt"),
+                requestProvenance("shadow-typed-event"),
+                SourceChannel.CLI),
+            book),
+        "raw-journal-shadows-typed-event");
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                new BookkeepingEntry.DirectJournal(
+                    new dev.erst.fingrind.core.JournalEntry(
+                        LocalDate.parse("2026-04-07"),
+                        List.of(
+                            new dev.erst.fingrind.core.JournalLine(
+                                new AccountCode("1000"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                                Money.parse("EUR", "150.00")),
+                            new dev.erst.fingrind.core.JournalLine(
+                                new AccountCode("1100"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                                Money.parse("EUR", "100.00")),
+                            new dev.erst.fingrind.core.JournalLine(
+                                new AccountCode("2000"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                                Money.parse("EUR", "50.00")))),
+                    null),
+                generatedEvidence("compound-operational", "cash-receipt"),
+                requestProvenance("compound-operational"),
+                SourceChannel.CLI),
+            book),
+        "raw-journal-bundles-operational-events");
+  }
+
+  @Test
+  void roleSemanticsValidate_coversAllBranchesAndIgnoresMissingSettlementAdjunctAccounts() {
+    List<BookkeepingPostingRejection.EntrySemanticsViolation> violations = new ArrayList<>();
+    Map<AccountCode, RegisteredAccount> accounts =
+        Map.of(
+            new AccountCode("1000"),
+            account("1000", AccountType.ASSET),
+            new AccountCode("1100"),
+            receivableAccount("1100"),
+            new AccountCode("2000"),
+            account("2000", AccountType.REVENUE),
+            new AccountCode("2100"),
+            payableAccount("2100"),
+            new AccountCode("3000"),
+            account("3000", AccountType.EXPENSE),
+            new AccountCode("3200"),
+            equityAccount("3200", FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+            new AccountCode("3210"),
+            equityAccount("3210", FinancialPositionLineClassification.EQUITY_WITHDRAWAL));
+
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.DirectJournal(
+            new dev.erst.fingrind.core.JournalEntry(
+                LocalDate.parse("2026-04-07"),
+                List.of(
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("1000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                        Money.parse("EUR", "10.00")),
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("2000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                        Money.parse("EUR", "10.00")))),
+            null),
+        "entryKind",
+        "DIRECT_JOURNAL");
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null,
+            null,
+            null),
+        "entryKind",
+        "SALE_SETTLED");
+
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.SaleOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1100"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null,
+            null),
+        "entryKind",
+        "SALE_ON_CREDIT");
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.ExpenseOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("3000"),
+            new AccountCode("2100"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null),
+        "entryKind",
+        "EXPENSE_ON_CREDIT");
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.OwnerContribution(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("3200"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null),
+        "entryKind",
+        "OWNER_CONTRIBUTION");
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.OwnerWithdrawal(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("3210"),
+            new AccountCode("1000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null),
+        "entryKind",
+        "OWNER_WITHDRAWAL");
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.Receipt(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("1100"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            new SettlementAdjunct(
+                new AccountCode("9999"), MonetaryAmount.of(Money.parse("EUR", "1.00")))),
+        "entryKind",
+        "RECEIPT");
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.Payment(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("2100"),
+            new AccountCode("1000"),
+            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null),
+        "entryKind",
+        "PAYMENT");
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.OpeningPosition(
+            LocalDate.parse("2026-04-07"),
+            List.of(
+                new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                    new AccountCode("1000"),
+                    dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                    MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+        "entryKind",
+        "OPENING_POSITION");
+    PostEntryRoleAccountSemantics.validate(
+        violations,
+        accounts,
+        new BookkeepingEntry.Reversal(
+            LocalDate.parse("2026-04-07"),
+            new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                PostingApplicationServiceTestSupport.reversalReference("posting-1").orElseThrow(),
+                new dev.erst.fingrind.core.ReversalReason("full reversal")),
+            null,
+            null),
+        "entryKind",
+        "REVERSAL");
+
+    assertTrue(violations.isEmpty());
+  }
+
+  @Test
+  void resolvedJournalSupport_rejectsMissingDeclaredAccounts() {
+    NullPointerException failure =
+        assertThrows(
+            NullPointerException.class,
+            () ->
+                ResolvedJournalSupport.resolve(
+                    new BookkeepingEntry.SaleSettled(
+                        LocalDate.parse("2026-04-07"),
+                        new AccountCode("1000"),
+                        new AccountCode("2000"),
+                        MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                        null,
+                        null,
+                        null,
+                        null),
+                    generatedEvidence("missing-account", "cash-receipt"),
+                    Map.of()));
+
+    assertEquals("Missing declared account for 1000", failure.getMessage());
   }
 
   private static void assertViolationCodes(
@@ -379,200 +930,14 @@ class PostEntrySemanticsPolicyTest {
     assertEquals(expectedCode, violations.violations().getFirst().code());
   }
 
-  private static PostEntryCommand cashRevenue(String token, String sourceDocumentType) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.Sale(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("1000"),
-            new AccountCode("2000"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00")),
-            null,
-            null,
-            null),
-        generatedEvidence(token, sourceDocumentType),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  private static PostEntryCommand cashExpense(String token, String sourceDocumentType) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.Expense(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("3000"),
-            new AccountCode("1000"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00")),
-            null,
-            null,
-            null),
-        generatedEvidence(token, sourceDocumentType),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  private static PostEntryCommand equityContribution(String token, String sourceDocumentType) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.OwnerContribution(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("1000"),
-            new AccountCode("3200"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00")),
-            null),
-        generatedEvidence(token, sourceDocumentType),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  private static PostEntryCommand equityWithdrawal(String token, String sourceDocumentType) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.OwnerWithdrawal(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("3210"),
-            new AccountCode("1000"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00")),
-            null),
-        generatedEvidence(token, sourceDocumentType),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  private static PostEntryCommand duplicateCashRevenue(String token) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.Sale(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("9999"),
-            new AccountCode("9999"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00")),
-            null,
-            null,
-            null),
-        generatedEvidence(token, "cash-receipt"),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  private static PostEntryCommand duplicateCashExpense(String token) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.Expense(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("9999"),
-            new AccountCode("9999"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00")),
-            null,
-            null,
-            null),
-        generatedEvidence(token, "expense-receipt"),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  private static PostEntryCommand duplicateEquityContribution(String token) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.OwnerContribution(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("9999"),
-            new AccountCode("9999"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00")),
-            null),
-        generatedEvidence(token, "owner-contribution"),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  private static PostEntryCommand duplicateEquityWithdrawal(String token) {
-    return new PostEntryCommand(
-        new BookkeepingEntry.OwnerWithdrawal(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("9999"),
-            new AccountCode("9999"),
-            MonetaryAmount.of(Money.parse("EUR", "10.00")),
-            null),
-        generatedEvidence(token, "owner-withdrawal"),
-        requestProvenance(token),
-        SourceChannel.CLI);
-  }
-
-  private static RegisteredAccount account(String code, AccountType accountType) {
-    return registeredAccount(
-        new AccountCode(code),
-        new AccountName("Account " + code),
-        accountType,
-        accountTaxonomy(accountType),
-        true,
-        DECLARED_AT);
-  }
-
-  private static RegisteredAccount equityAccount(
-      String code, FinancialPositionLineClassification lineClassification) {
-    return registeredAccount(
-        new AccountCode(code),
-        new AccountName("Account " + code),
-        AccountType.EQUITY,
-        financialPositionTaxonomy(lineClassification),
-        true,
-        DECLARED_AT);
-  }
-
-  /** Minimal validation-store double for account-role and evidence semantics tests. */
-  private static final class PostingValidationStoreDouble implements PostingValidationStore {
-    private final Map<AccountCode, RegisteredAccount> accounts;
-
-    private PostingValidationStoreDouble(Map<AccountCode, RegisteredAccount> accounts) {
-      this.accounts = accounts;
-    }
-
-    @Override
-    public BookLifecycleInspection inspectBook() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public java.util.Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
-      return java.util.Optional.ofNullable(accounts.get(accountCode));
-    }
-
-    @Override
-    public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
-        dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
-      return Optional.empty();
-    }
-
-    @Override
-    public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
-      return accounts.entrySet().stream()
-          .filter(entry -> accountCodes.contains(entry.getKey()))
-          .collect(
-              java.util.stream.Collectors.toUnmodifiableMap(
-                  Map.Entry::getKey, Map.Entry::getValue));
-    }
-
-    @Override
-    public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
-      return Optional.empty();
-    }
-
-    @Override
-    public Optional<CommittedPosting> findPosting(PostingId postingId) {
-      return Optional.empty();
-    }
-
-    @Override
-    public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
-      return Optional.empty();
-    }
-
-    @Override
-    public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
-      return List.of();
-    }
-
-    @Override
-    public Optional<LocalDate> earliestPostingEffectiveDate() {
-      return Optional.empty();
-    }
-
-    @Override
-    public Optional<LocalDate> transferredThroughEffectiveDate() {
-      return Optional.empty();
-    }
+  private static void assertContainsViolationCode(
+      Optional<BookkeepingPostingRejection> rejection, String expectedCode) {
+    BookkeepingPostingRejection.EntrySemanticsViolations violations =
+        assertInstanceOf(
+            BookkeepingPostingRejection.EntrySemanticsViolations.class, rejection.orElseThrow());
+    assertTrue(
+        violations.violations().stream()
+            .anyMatch(violation -> expectedCode.equals(violation.code())),
+        expectedCode);
   }
 }

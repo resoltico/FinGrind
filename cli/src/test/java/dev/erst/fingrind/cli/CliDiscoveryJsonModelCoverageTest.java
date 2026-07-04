@@ -362,7 +362,7 @@ class CliDiscoveryJsonModelCoverageTest {
   void requestFileGuidancePayload_allowsDeclareTaxRegistrationTemplateAsTheOnlyArtifact() {
     CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-            "Provide one tax-registration declaration JSON object through --request-file <path|->.",
+            "Provide a tax-registration declaration JSON document through --request-file <path|->.",
             DiscoveryDetail.FULL,
             null,
             null,

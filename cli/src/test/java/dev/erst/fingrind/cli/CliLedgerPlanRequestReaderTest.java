@@ -160,7 +160,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                   "steps": [
                     {
                       "stepId": "step-1",
-                      "kind": "record-sale",
+                      "kind": "record-sale-settled",
                       "effectiveDate": "2026-04-07"
                     }
                   ]
@@ -172,7 +172,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
     assertEquals(
-        "Field effectiveDate must be nested under posting for record-sale ledger plan steps.",
+        "Field effectiveDate must be nested under posting for record-sale-settled ledger plan steps.",
         exception.getMessage());
   }
 
@@ -608,6 +608,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "ensure-book",
                       "ensureBook": {
                         "entityName": "Acme Studio",
+                        "bookTemplateId": "OWNER_MANAGED_SERVICE",
+                        "accountingBasis": "CASH",
                         "functionalCurrency": "EUR",
                         "fiscalYearStart": "01-01"
                       }

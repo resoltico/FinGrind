@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.nio.file.Path;
-import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -25,10 +24,8 @@ class CliFiscalYearCloseArgumentParsingTest extends CliArgumentParsingTestSuppor
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--period-start",
-                  "2026-01-01",
-                  "--period-end",
-                  "2026-12-31",
+                  "--year",
+                  "2026",
                   "--output",
                   "text"
                 }));
@@ -48,16 +45,13 @@ class CliFiscalYearCloseArgumentParsingTest extends CliArgumentParsingTestSuppor
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--period-start",
-                  "2026-01-01",
-                  "--period-end",
-                  "2026-12-31"
+                  "--year",
+                  "2026"
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
     assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
-    assertEquals(LocalDate.parse("2026-01-01"), command.reportingPeriod().effectiveDateFrom());
-    assertEquals(LocalDate.parse("2026-12-31"), command.reportingPeriod().effectiveDateTo());
+    assertEquals(2026, command.fiscalYearLabel());
     assertEquals(OutputMode.TEXT, command.outputMode());
   }
 
@@ -73,16 +67,13 @@ class CliFiscalYearCloseArgumentParsingTest extends CliArgumentParsingTestSuppor
                   "book.sqlite",
                   "--book-key-file",
                   "book.key",
-                  "--period-start",
-                  "2026-01-01",
-                  "--period-end",
-                  "2026-12-31",
+                  "--year",
+                  "2026",
                   "--output",
                   "text"
                 }));
-    CliReportingPeriodCommandArguments.ParsedReportingPeriodCommandArguments parsedArguments =
-        CliFiscalYearCloseArguments.parseFiscalYearCloseArguments(
-            List.of("--period-start", "2026-01-01", "--period-end", "2026-12-31"));
+    CliFiscalYearCloseArguments.ParsedFiscalYearCloseArguments parsedArguments =
+        CliFiscalYearCloseArguments.parseFiscalYearCloseArguments(List.of("--year", "2026"));
     CliArgumentsException unsupportedArgument =
         assertThrows(
             CliArgumentsException.class,
@@ -91,11 +82,34 @@ class CliFiscalYearCloseArgumentParsingTest extends CliArgumentParsingTestSuppor
                     List.of("--unexpected", "value")));
 
     assertEquals(OutputMode.TEXT, command.outputMode());
-    assertEquals(
-        new dev.erst.fingrind.core.ReportingPeriod(
-            LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")),
-        parsedArguments.reportingPeriod());
+    assertEquals(2026, parsedArguments.fiscalYearLabel());
     assertEquals("--unexpected", unsupportedArgument.argument());
     assertEquals("Unsupported argument: --unexpected", unsupportedArgument.getMessage());
+  }
+
+  @Test
+  void parseFiscalYearClose_rejectsDuplicateYearArgument() {
+    CliArgumentsException duplicateYear =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliFiscalYearCloseArguments.parseFiscalYearCloseArguments(
+                    List.of("--year", "2026", "--year", "2027")));
+
+    assertEquals("--year", duplicateYear.argument());
+    assertEquals("Duplicate argument: --year", duplicateYear.getMessage());
+  }
+
+  @Test
+  void parseFiscalYearClose_rejectsRemovedPeriodBoundaryArguments() {
+    CliArgumentsException removedBoundary =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliFiscalYearCloseArguments.parseFiscalYearCloseArguments(
+                    List.of("--period-start", "2026-01-01", "--period-end", "2026-12-31")));
+
+    assertEquals("--period-start", removedBoundary.argument());
+    assertEquals("Unsupported argument: --period-start", removedBoundary.getMessage());
   }
 }

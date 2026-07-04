@@ -3,12 +3,11 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.core.ReportingPeriod;
 import java.nio.file.Path;
 import java.util.Objects;
 
 /** Administrative CLI commands that create or reconfigure book state. */
-record GenerateBookKeyFile(Path bookKeyFilePath, OutputMode outputMode)
+record GenerateBookKeyFile(Path bookKeyFilePath, boolean tightenParents, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   GenerateBookKeyFile {
     Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
@@ -19,12 +18,13 @@ record GenerateBookKeyFile(Path bookKeyFilePath, OutputMode outputMode)
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runGenerateBookKeyFileCommand(bookKeyFilePath, outputMode);
+        .runGenerateBookKeyFileCommand(bookKeyFilePath, tightenParents, outputMode);
   }
 }
 
 /** Administrative CLI commands that create or reconfigure book state. */
-record OpenBook(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode)
+record OpenBook(
+    BookAccess bookAccess, OpenBookCommand command, boolean tightenParents, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   OpenBook {
     Objects.requireNonNull(bookAccess, "bookAccess");
@@ -36,7 +36,7 @@ record OpenBook(BookAccess bookAccess, OpenBookCommand command, OutputMode outpu
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runOpenBookCommand(bookAccess, command, outputMode);
+        .runOpenBookCommand(bookAccess, command, tightenParents, outputMode);
   }
 }
 
@@ -81,12 +81,17 @@ record BackupBook(
 
 /** Administrative CLI command that restores one encrypted-book backup pair. */
 record RestoreBook(
-    Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath, OutputMode outputMode)
+    Path bookFilePath,
+    Path bookKeyFilePath,
+    Path backupFilePath,
+    Path backupKeyFilePath,
+    OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   RestoreBook {
     Objects.requireNonNull(bookFilePath, "bookFilePath");
+    Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
     Objects.requireNonNull(backupFilePath, "backupFilePath");
-    Objects.requireNonNull(backupBookKeyFilePath, "backupBookKeyFilePath");
+    Objects.requireNonNull(backupKeyFilePath, "backupKeyFilePath");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -94,7 +99,8 @@ record RestoreBook(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runRestoreBookCommand(bookFilePath, backupFilePath, backupBookKeyFilePath, outputMode);
+        .runRestoreBookCommand(
+            bookFilePath, bookKeyFilePath, backupFilePath, backupKeyFilePath, outputMode);
   }
 }
 
@@ -195,11 +201,11 @@ final class DeclareTaxRegistration extends CliBookRequestOutputModeCommand {
 
 /** Administrative CLI command that closes one contiguous reporting period. */
 record InterimResultSweep(
-    BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
+    BookAccess bookAccess, java.time.LocalDate throughEffectiveDate, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   InterimResultSweep {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(reportingPeriod, "reportingPeriod");
+    Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -207,17 +213,15 @@ record InterimResultSweep(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runInterimResultSweepCommand(bookAccess, reportingPeriod, outputMode);
+        .runInterimResultSweepCommand(bookAccess, throughEffectiveDate, outputMode);
   }
 }
 
 /** Administrative CLI command that closes one fiscal year. */
-record FiscalYearClose(
-    BookAccess bookAccess, ReportingPeriod reportingPeriod, OutputMode outputMode)
+record FiscalYearClose(BookAccess bookAccess, int fiscalYearLabel, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   FiscalYearClose {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -225,6 +229,6 @@ record FiscalYearClose(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runFiscalYearCloseCommand(bookAccess, reportingPeriod, outputMode);
+        .runFiscalYearCloseCommand(bookAccess, fiscalYearLabel, outputMode);
   }
 }

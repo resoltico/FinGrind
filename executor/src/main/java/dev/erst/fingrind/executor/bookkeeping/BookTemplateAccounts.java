@@ -1,99 +1,86 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountTaxonomy;
-import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.BookTemplateId;
-import dev.erst.fingrind.core.CashFlowAssetClassification;
-import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.BookDoctrine;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
-/** Canonical starter chart declarations for built-in book templates. */
+/** Canonical account declarations for built-in book templates. */
 public final class BookTemplateAccounts {
   private BookTemplateAccounts() {}
 
-  /** Returns the canonical starter chart for the supplied built-in template. */
-  public static List<AccountDeclaration> declarations(BookTemplateId bookTemplateId) {
-    Objects.requireNonNull(bookTemplateId, "bookTemplateId");
-    return switch (bookTemplateId) {
-      case OWNER_MANAGED_SERVICE -> ownerManagedService();
+  /** Returns the canonical account set for the supplied built-in doctrine. */
+  public static List<AccountDeclaration> declarations(BookDoctrine bookDoctrine) {
+    BookDoctrine doctrine = Objects.requireNonNull(bookDoctrine, "bookDoctrine");
+    return switch (doctrine.bookTemplateId()) {
+      case OWNER_MANAGED_SERVICE ->
+          switch (doctrine.accountingBasis()) {
+            case CASH -> ownerManagedServiceCash();
+            case ACCRUAL -> ownerManagedServiceAccrual();
+          };
+      case OWNER_MANAGED_TRADING ->
+          switch (doctrine.accountingBasis()) {
+            case CASH -> ownerManagedTradingCash();
+            case ACCRUAL -> ownerManagedTradingAccrual();
+          };
     };
   }
 
-  private static List<AccountDeclaration> ownerManagedService() {
+  private static List<AccountDeclaration> ownerManagedServiceCash() {
     return List.of(
-        account(
-            "cash",
-            "Cash",
-            AccountType.ASSET,
-            Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-            Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT),
-            Optional.empty()),
-        account(
-            "owner-capital",
-            "Owner Capital",
-            AccountType.EQUITY,
-            Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
-            Optional.empty(),
-            Optional.empty()),
-        account(
-            "owner-draws",
-            "Owner Draws",
-            AccountType.EQUITY,
-            Optional.of(FinancialPositionLineClassification.EQUITY_WITHDRAWAL),
-            Optional.empty(),
-            Optional.empty()),
-        account(
-            "result-holding",
-            "Result Holding",
-            AccountType.EQUITY,
-            Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
-            Optional.empty(),
-            Optional.empty()),
-        account(
-            "retained-accumulated",
-            "Retained Accumulated",
-            AccountType.EQUITY,
-            Optional.of(FinancialPositionLineClassification.RETAINED_ACCUMULATED),
-            Optional.empty(),
-            Optional.empty()),
-        account(
-            "service-revenue",
-            "Service Revenue",
-            AccountType.REVENUE,
-            Optional.empty(),
-            Optional.empty(),
-            Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE)),
-        account(
-            "operating-expense",
-            "Operating Expense",
-            AccountType.EXPENSE,
-            Optional.empty(),
-            Optional.empty(),
-            Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE)));
+        BookTemplateSeedAccounts.cashAccount(),
+        BookTemplateSeedAccounts.ownerCapitalAccount(),
+        BookTemplateSeedAccounts.ownerDrawsAccount(),
+        BookTemplateSeedAccounts.resultHoldingAccount(),
+        BookTemplateSeedAccounts.retainedAccumulatedAccount(),
+        BookTemplateSeedAccounts.serviceRevenueAccount(),
+        BookTemplateSeedAccounts.operatingExpenseAccount());
   }
 
-  private static AccountDeclaration account(
-      String code,
-      String name,
-      AccountType accountType,
-      Optional<FinancialPositionLineClassification> financialPositionLineClassification,
-      Optional<CashFlowAssetClassification> cashFlowAssetClassification,
-      Optional<ProfitAndLossLineClassification> profitAndLossLineClassification) {
-    return new AccountDeclaration(
-        new AccountCode(code),
-        new AccountName(name),
-        accountType,
-        new AccountTaxonomy(
-            AccountNodeKind.POSTABLE,
-            Optional.empty(),
-            financialPositionLineClassification,
-            profitAndLossLineClassification,
-            cashFlowAssetClassification));
+  private static List<AccountDeclaration> ownerManagedServiceAccrual() {
+    return List.of(
+        BookTemplateSeedAccounts.cashAccount(),
+        BookTemplateSeedAccounts.accountsReceivableAccount(),
+        BookTemplateSeedAccounts.accountsPayableAccount(),
+        BookTemplateSeedAccounts.ownerCapitalAccount(),
+        BookTemplateSeedAccounts.ownerDrawsAccount(),
+        BookTemplateSeedAccounts.resultHoldingAccount(),
+        BookTemplateSeedAccounts.retainedAccumulatedAccount(),
+        BookTemplateSeedAccounts.serviceRevenueAccount(),
+        BookTemplateSeedAccounts.salesDiscountAllowanceAccount(),
+        BookTemplateSeedAccounts.operatingExpenseAccount(),
+        BookTemplateSeedAccounts.settlementFeeAccount(),
+        BookTemplateSeedAccounts.badDebtWriteOffAccount());
+  }
+
+  private static List<AccountDeclaration> ownerManagedTradingCash() {
+    return List.of(
+        BookTemplateSeedAccounts.cashAccount(),
+        BookTemplateSeedAccounts.inventoryAccount(),
+        BookTemplateSeedAccounts.ownerCapitalAccount(),
+        BookTemplateSeedAccounts.ownerDrawsAccount(),
+        BookTemplateSeedAccounts.resultHoldingAccount(),
+        BookTemplateSeedAccounts.retainedAccumulatedAccount(),
+        BookTemplateSeedAccounts.salesRevenueAccount(),
+        BookTemplateSeedAccounts.salesDiscountAllowanceAccount(),
+        BookTemplateSeedAccounts.costOfSalesAccount(),
+        BookTemplateSeedAccounts.operatingExpenseAccount());
+  }
+
+  private static List<AccountDeclaration> ownerManagedTradingAccrual() {
+    return List.of(
+        BookTemplateSeedAccounts.cashAccount(),
+        BookTemplateSeedAccounts.inventoryAccount(),
+        BookTemplateSeedAccounts.accountsReceivableAccount(),
+        BookTemplateSeedAccounts.accountsPayableAccount(),
+        BookTemplateSeedAccounts.ownerCapitalAccount(),
+        BookTemplateSeedAccounts.ownerDrawsAccount(),
+        BookTemplateSeedAccounts.resultHoldingAccount(),
+        BookTemplateSeedAccounts.retainedAccumulatedAccount(),
+        BookTemplateSeedAccounts.salesRevenueAccount(),
+        BookTemplateSeedAccounts.salesDiscountAllowanceAccount(),
+        BookTemplateSeedAccounts.costOfSalesAccount(),
+        BookTemplateSeedAccounts.operatingExpenseAccount(),
+        BookTemplateSeedAccounts.settlementFeeAccount(),
+        BookTemplateSeedAccounts.badDebtWriteOffAccount());
   }
 }

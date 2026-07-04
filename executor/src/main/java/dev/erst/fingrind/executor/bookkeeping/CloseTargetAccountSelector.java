@@ -32,7 +32,7 @@ public final class CloseTargetAccountSelector {
         matchingCandidates.stream().filter(RegisteredAccount::active).toList();
     if (activeCandidates.isEmpty()) {
       return new RejectedCloseTargetSelection(
-          new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+          new CloseTargetAccountCandidateMissing(
               requiredClassification,
               matchingCandidates.stream().map(RegisteredAccount::accountCode).toList()));
     }

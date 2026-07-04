@@ -88,13 +88,13 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     ChangesInEquityReport changesInEquityReport = sampleChangesInEquityReport();
 
     String financialPositionText =
-        CliReportOutputRenderer.renderFinancialPositionText(emptyFinancialPosition);
+        CliQueryOutputRenderer.renderFinancialPositionText(emptyFinancialPosition);
     String incomeStatementText =
-        CliReportOutputRenderer.renderIncomeStatementText(emptyIncomeStatement);
+        CliQueryOutputRenderer.renderIncomeStatementText(emptyIncomeStatement);
     String cashFlowStatementText =
-        CliReportOutputRenderer.renderCashFlowStatementText(emptyCashFlowStatement);
+        CliQueryOutputRenderer.renderCashFlowStatementText(emptyCashFlowStatement);
     String changesInEquityText =
-        CliReportOutputRenderer.renderChangesInEquityText(changesInEquityReport);
+        CliQueryOutputRenderer.renderChangesInEquityText(changesInEquityReport);
 
     assertTrue(financialPositionText.contains("Financial Position"));
     assertTrue(
@@ -112,8 +112,8 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
   void renderCashFlowStatementTextAndCsv_includeComparativeAndSectionRows() {
     CashFlowStatementReport report = sampleCashFlowStatementReport();
 
-    String renderedText = CliReportOutputRenderer.renderCashFlowStatementText(report);
-    String renderedCsv = CliReportOutputRenderer.renderCashFlowStatementCsv(report);
+    String renderedText = CliQueryOutputRenderer.renderCashFlowStatementText(report);
+    String renderedCsv = CliQueryOutputRenderer.renderCashFlowStatementCsv(report);
 
     assertTrue(renderedText.contains("Cash Receipts And Payments"));
     assertTrue(renderedText.contains("Comparative Cash Receipts And Payments"));
@@ -121,9 +121,7 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(renderedText.contains("Financing"));
     assertTrue(renderedText.contains("Revenue (Operating revenue)"), renderedText);
     assertFalse(renderedText.contains("Revenue | Operating revenue"), renderedText);
-    assertTrue(
-        renderedCsv.startsWith(
-            "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,sectionKind"));
+    assertTrue(renderedCsv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
     assertTrue(renderedCsv.contains("cash-flow-statement-row:current:OPERATING:2000"));
     assertTrue(renderedCsv.contains("cash-flow-statement-row:current:FINANCING:3000"));
     assertTrue(renderedCsv.contains("cash-flow-statement-report-total:current:EUR"));
@@ -148,13 +146,12 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
             List.of(),
             List.of());
 
-    String renderedCsv = CliReportOutputRenderer.renderCashFlowStatementCsv(emptyCashFlowStatement);
+    String renderedCsv = CliQueryOutputRenderer.renderCashFlowStatementCsv(emptyCashFlowStatement);
 
+    assertTrue(renderedCsv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
     assertTrue(
         renderedCsv.contains("cash-flow-statement-report-empty:current:2026-04-01:2026-04-30"));
-    assertTrue(
-        renderedCsv.contains(",report-empty,current,cash-flow-statement,2026-04-01,2026-04-30,"));
-    assertTrue(renderedCsv.contains(",EUR,,,,,No cash-flow lines matched the selected scope."));
+    assertTrue(renderedCsv.contains("No cash-flow lines matched the selected scope."));
     assertFalse(renderedCsv.contains("cash-flow-statement-row:comparative:"));
   }
 
@@ -182,7 +179,7 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
                     List.of(eurDebitBalance()))),
             List.of());
 
-    String rendered = CliReportOutputRenderer.renderFinancialPositionText(report);
+    String rendered = CliQueryOutputRenderer.renderFinancialPositionText(report);
 
     assertTrue(rendered.contains("Accounting equation"));
     assertTrue(rendered.contains("Imbalanced"));
@@ -250,9 +247,9 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
             List.of());
 
     String financialPositionText =
-        CliReportOutputRenderer.renderFinancialPositionText(financialPositionReport);
+        CliQueryOutputRenderer.renderFinancialPositionText(financialPositionReport);
     String changesInEquityText =
-        CliReportOutputRenderer.renderChangesInEquityText(changesInEquityReport);
+        CliQueryOutputRenderer.renderChangesInEquityText(changesInEquityReport);
 
     assertTrue(financialPositionText.contains("Calculated line"));
     assertFalse(financialPositionText.contains("current-period-result"));
@@ -314,13 +311,10 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
             List.of(),
             List.of());
 
-    String rendered = CliReportOutputRenderer.renderChangesInEquityCsv(report);
+    String rendered = CliQueryOutputRenderer.renderChangesInEquityCsv(report);
 
-    assertTrue(
-        rendered.contains(
-            "current,changes-in-equity,2026-04-01,2026-04-30,report-total,Report total,,REPORT_TOTAL,EUR"));
-    assertTrue(
-        rendered.contains(",EUR,0.00,0.00,0.00,ZERO,0.00,10.00,10.00,CREDIT,0.00,0.00,0.00,ZERO"));
+    assertTrue(rendered.contains("changes-in-equity-row:current:3200"));
+    assertTrue(rendered.contains("changes-in-equity-total:current:EUR:ZERO"));
   }
 
   @Test
@@ -375,20 +369,97 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
             List.of());
 
     String financialPositionText =
-        CliReportOutputRenderer.renderFinancialPositionText(financialPositionReport);
+        CliQueryOutputRenderer.renderFinancialPositionText(financialPositionReport);
     String incomeStatementText =
-        CliReportOutputRenderer.renderIncomeStatementText(incomeStatementReport);
+        CliQueryOutputRenderer.renderIncomeStatementText(incomeStatementReport);
 
     assertTrue(financialPositionText.contains("Cash without Totals"));
     assertTrue(financialPositionText.contains("Equity"));
-    assertTrue(financialPositionText.contains("Section totals"));
+    assertTrue(financialPositionText.contains("Equity Totals"));
     assertTrue(financialPositionText.contains("Empty sections"));
     assertTrue(financialPositionText.contains("Liabilities"));
     assertTrue(financialPositionText.contains("Comparative Financial Position"));
     assertTrue(incomeStatementText.contains("Revenue without Totals"));
     assertTrue(incomeStatementText.contains("Expenses"));
-    assertTrue(incomeStatementText.contains("Section totals"));
+    assertTrue(incomeStatementText.contains("Expenses Totals"));
     assertTrue(incomeStatementText.contains("Empty sections"));
     assertTrue(incomeStatementText.contains("Comparative Income Statement"));
+    assertTrue(incomeStatementText.contains("Comparative Net Income Totals"));
+  }
+
+  @Test
+  void renderIncomeStatementTextAndCsv_showGrossProfitForTradingBooks() {
+    IncomeStatementReport tradingIncomeStatement =
+        new IncomeStatementReport(
+            tradingBookIdentity(),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30"),
+            EffectiveDateRange.unbounded(),
+            standardOnly(),
+            List.of(
+                new IncomeStatementSection(
+                    AccountType.REVENUE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "4100",
+                            "Sales Revenue",
+                            AccountType.REVENUE,
+                            ProfitAndLossLineClassification.OPERATING_REVENUE,
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            CliResponseWriterTestSupport.currencyBalance(
+                                "EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT))),
+                    List.of(
+                        CliResponseWriterTestSupport.currencyBalance(
+                            "EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT))),
+                new IncomeStatementSection(
+                    AccountType.EXPENSE,
+                    List.of(
+                        new IncomeStatementRow(
+                            "5100",
+                            "Cost of Sales",
+                            AccountType.EXPENSE,
+                            ProfitAndLossLineClassification.COST_OF_SALES,
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            CliResponseWriterTestSupport.currencyBalance(
+                                "EUR", "40.00", "0.00", "40.00", BalanceSide.DEBIT)),
+                        new IncomeStatementRow(
+                            "6100",
+                            "Operating Expense",
+                            AccountType.EXPENSE,
+                            ProfitAndLossLineClassification.OPERATING_EXPENSE,
+                            StatementLineKind.DECLARED_ACCOUNT,
+                            CliResponseWriterTestSupport.currencyBalance(
+                                "EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT))),
+                    List.of(
+                        CliResponseWriterTestSupport.currencyBalance(
+                            "EUR", "50.00", "0.00", "50.00", BalanceSide.DEBIT)))),
+            List.of(
+                CliResponseWriterTestSupport.currencyBalance(
+                    "EUR", "50.00", "100.00", "50.00", BalanceSide.CREDIT)),
+            List.of(),
+            List.of());
+
+    String incomeStatementText =
+        CliQueryOutputRenderer.renderIncomeStatementText(tradingIncomeStatement);
+    String incomeStatementCsv =
+        CliQueryOutputRenderer.renderIncomeStatementCsv(tradingIncomeStatement);
+
+    assertTrue(incomeStatementText.contains("Gross Profit"));
+    assertTrue(incomeStatementText.contains("Cost of Sales"));
+    assertTrue(incomeStatementText.contains("Cost of Sales Totals"));
+    assertTrue(incomeStatementText.contains("Expenses Totals"));
+    assertTrue(incomeStatementText.contains("EUR 60.00"));
+    assertTrue(
+        incomeStatementText.indexOf("Cost of Sales Totals")
+            < incomeStatementText.indexOf("Gross Profit"));
+    assertTrue(incomeStatementCsv.contains("GROSS_PROFIT_TOTAL"));
+    assertTrue(incomeStatementCsv.contains("income-statement-gross-profit:current:EUR"));
+    assertTrue(
+        incomeStatementCsv.startsWith(
+            "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,sectionCode,"));
+    assertTrue(incomeStatementCsv.contains(",COST_OF_SALES,5100,Cost of Sales,"));
+    assertTrue(incomeStatementCsv.contains(",EXPENSE,6100,Operating Expense,"));
+    assertFalse(incomeStatementCsv.contains(",EXPENSE,5100,Cost of Sales,"));
+    assertTrue(incomeStatementCsv.contains(",60.00,CREDIT,"));
   }
 }

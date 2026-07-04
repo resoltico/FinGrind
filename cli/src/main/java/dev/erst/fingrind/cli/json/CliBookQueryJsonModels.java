@@ -227,31 +227,6 @@ public interface CliBookQueryJsonModels {
     }
   }
 
-  record AccountBalancePayload(
-      CliReportSupportJsonModels.ReportContextPayload context,
-      String accountCode,
-      String accountName,
-      String accountType,
-      String normalBalance,
-      boolean active,
-      String declaredAt,
-      @Nullable String effectiveDateFrom,
-      @Nullable String effectiveDateTo,
-      List<BalanceBucketPayload> balances)
-      implements CliSuccessPayload {
-    public AccountBalancePayload {
-      Objects.requireNonNull(context, "context");
-      accountCode = requireText(accountCode, "accountCode");
-      accountName = requireText(accountName, "accountName");
-      accountType = requireText(accountType, "accountType");
-      normalBalance = requireText(normalBalance, "normalBalance");
-      declaredAt = requireText(declaredAt, "declaredAt");
-      effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
-      effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
-      balances = copyList(balances, "balances");
-    }
-  }
-
   record BalanceBucketPayload(
       MonetaryAmount debitTotal,
       MonetaryAmount creditTotal,

@@ -37,7 +37,7 @@ class TaxProtocolSurfaceTest {
                 IllegalArgumentException.class,
                 () ->
                     new RequestSurfaceFacts.BookkeepingEntryKindFacts(
-                        BookkeepingEntryKind.SALE,
+                        BookkeepingEntryKind.SALE_SETTLED,
                         List.of("effectiveDate"),
                         List.of("effectiveDate"),
                         List.of("lines"),
@@ -51,7 +51,7 @@ class TaxProtocolSurfaceTest {
                 IllegalArgumentException.class,
                 () ->
                     new RequestSurfaceFacts.BookkeepingEntryKindFacts(
-                        BookkeepingEntryKind.SALE,
+                        BookkeepingEntryKind.SALE_SETTLED,
                         List.of("effectiveDate"),
                         List.of(),
                         List.of("effectiveDate"),
@@ -65,7 +65,7 @@ class TaxProtocolSurfaceTest {
                 IllegalArgumentException.class,
                 () ->
                     new RequestSurfaceFacts.BookkeepingEntryKindFacts(
-                        BookkeepingEntryKind.SALE,
+                        BookkeepingEntryKind.SALE_SETTLED,
                         List.of("effectiveDate"),
                         List.of("tax"),
                         List.of("tax"),
@@ -84,7 +84,7 @@ class TaxProtocolSurfaceTest {
                 RequestSurfaceFactsValidation.requireUniqueEntryKinds(
                     List.of(
                         new RequestSurfaceFacts.BookkeepingEntryKindFacts(
-                            BookkeepingEntryKind.SALE,
+                            BookkeepingEntryKind.SALE_SETTLED,
                             List.of("effectiveDate"),
                             List.of("tax", "tax"),
                             List.of("lines"),
@@ -93,7 +93,7 @@ class TaxProtocolSurfaceTest {
                             "Sale semantics."))));
 
     assertEquals(
-        "Entry kind SALE repeats accepted top-level field tax.",
+        "Entry kind SALE_SETTLED repeats accepted top-level field tax.",
         repeatedAcceptedField.getMessage());
   }
 

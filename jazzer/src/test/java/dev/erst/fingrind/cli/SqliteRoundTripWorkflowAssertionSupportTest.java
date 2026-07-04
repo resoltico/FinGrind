@@ -23,8 +23,11 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
+import dev.erst.fingrind.jazzer.support.JazzerPostEntryResultFixtures;
 import dev.erst.fingrind.jazzer.support.PostingLifecycleStatusMapper;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -216,6 +219,11 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
         PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
         PostingLifecycleStatusMapper.forRejection(new PostingRejection.IdempotencyKeyConflict()));
     assertEquals(
+        PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE,
+        PostingLifecycleStatusMapper.forRejection(
+            new PostingRejection.PostingEffectiveDateInFuture(
+                java.time.LocalDate.parse("2026-07-01"), java.time.LocalDate.parse("2026-06-30"))));
+    assertEquals(
         PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
         PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.BookFunctionalCurrencyMismatch(
@@ -247,6 +255,11 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
         PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))));
     assertEquals(
+        PostingLifecycleStatus.REVERSAL_TARGET_IS_REVERSAL,
+        PostingLifecycleStatusMapper.forRejection(
+            new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+                new PostingId("posting-1a"))));
+    assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))));
@@ -254,6 +267,23 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
         PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET,
         PostingLifecycleStatusMapper.forRejection(
             new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))));
+  }
+
+  @Test
+  void rejection_status_helpers_reject_detail_dispatch_for_top_level_owned_families()
+      throws Exception {
+    Method detailedStatus =
+        PostingLifecycleStatusMapper.class.getDeclaredMethod(
+            "detailedStatus", PostingRejection.class);
+    detailedStatus.setAccessible(true);
+
+    InvocationTargetException exception =
+        assertThrows(
+            InvocationTargetException.class,
+            () -> detailedStatus.invoke(null, new PostingRejection.BookNotInitialized()));
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(
+        java.util.Objects.requireNonNull(exception.getCause(), "expected reflective cause"),
+        "owned elsewhere");
   }
 
   @Test
@@ -287,7 +317,9 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     new IdempotencyKey("idem-1"),
                     java.time.LocalDate.parse("2026-04-07"),
                     java.time.Instant.parse("2026-04-07T12:00:00Z"),
-                    true),
+                    true,
+                    JazzerPostEntryResultFixtures.resolvedJournal(
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,
@@ -298,7 +330,9 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     new IdempotencyKey("idem-2"),
                     java.time.LocalDate.parse("2026-04-07"),
                     java.time.Instant.parse("2026-04-07T12:00:00Z"),
-                    true),
+                    true,
+                    JazzerPostEntryResultFixtures.resolvedJournal(
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,
@@ -309,7 +343,9 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     new IdempotencyKey("idem-1"),
                     java.time.LocalDate.parse("2026-04-08"),
                     java.time.Instant.parse("2026-04-07T12:00:00Z"),
-                    true),
+                    true,
+                    JazzerPostEntryResultFixtures.resolvedJournal(
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,
@@ -320,7 +356,9 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     new IdempotencyKey("idem-1"),
                     java.time.LocalDate.parse("2026-04-07"),
                     java.time.Instant.parse("2026-04-07T12:00:01Z"),
-                    true),
+                    true,
+                    JazzerPostEntryResultFixtures.resolvedJournal(
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,

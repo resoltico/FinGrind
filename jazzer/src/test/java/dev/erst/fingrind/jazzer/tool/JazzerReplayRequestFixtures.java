@@ -28,7 +28,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidForbiddenRecordedAtRequest() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -56,7 +56,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidMissingProvenanceRequest() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -97,7 +97,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidDuplicateIdempotencyKeyRequest() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -125,7 +125,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidUnexpectedTopLevelFieldRequest() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -153,7 +153,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidForbiddenSourceChannelRequest() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "2026-04-07",
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",
@@ -201,31 +201,11 @@ final class JazzerReplayRequestFixtures {
   static String reversalTargetMissingRequest() {
     return CliFuzzHarnessTestSupport.reversalAdjustmentRequestJson(
         new CliFuzzHarnessTestSupport.ReversalAdjustmentRequestInput(
-            "2026-04-08",
-            """
-            [
-              {
-                "accountCode": "5000",
-                "side": "CREDIT",
-                "amount": {
-                  "currencyCode": "GBP",
-                  "minorUnits": "12345"
-                }
-              },
-              {
-                "accountCode": "6000",
-                "side": "DEBIT",
-                "amount": {
-                  "currencyCode": "GBP",
-                  "minorUnits": "12345"
-                }
-              }
-            ]
-            """,
+            "2026-04-07",
             new CliFuzzHarnessTestSupport.RequestContext(
                 "document-idem-5",
                 "credit-note",
-                "2026-04-08",
+                "2026-04-07",
                 "actor-5",
                 "PERSON",
                 "command-5",
@@ -239,31 +219,11 @@ final class JazzerReplayRequestFixtures {
   static String missingReversalReasonRequest() {
     return CliFuzzHarnessTestSupport.reversalAdjustmentRequestJson(
         new CliFuzzHarnessTestSupport.ReversalAdjustmentRequestInput(
-            "2026-04-08",
-            """
-            [
-              {
-                "accountCode": "3000",
-                "side": "CREDIT",
-                "amount": {
-                  "currencyCode": "USD",
-                  "minorUnits": "9995"
-                }
-              },
-              {
-                "accountCode": "4000",
-                "side": "DEBIT",
-                "amount": {
-                  "currencyCode": "USD",
-                  "minorUnits": "9995"
-                }
-              }
-            ]
-            """,
+            "2026-04-07",
             new CliFuzzHarnessTestSupport.RequestContext(
                 "document-idem-6",
                 "credit-note",
-                "2026-04-08",
+                "2026-04-07",
                 "actor-6",
                 "SYSTEM",
                 "command-6",
@@ -277,7 +237,7 @@ final class JazzerReplayRequestFixtures {
   static String invalidWrongTypeRequest() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": 1,
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",

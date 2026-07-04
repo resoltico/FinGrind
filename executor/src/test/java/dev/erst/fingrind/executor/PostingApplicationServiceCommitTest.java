@@ -9,14 +9,20 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.co
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.commitRejected;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.conflictingStoredPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareDefaultAccounts;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareLatviaVatRegistration;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareNonCashDirectJournalAccounts;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareTaxAccounts;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.existingPosting;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.mappedOutcomeBookSession;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.requestProvenance;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalJournalEntry;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalReference;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.taxedSaleCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
@@ -25,15 +31,18 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
+import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import dev.erst.fingrind.core.EconomicEventClass;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -53,14 +62,32 @@ class PostingApplicationServiceCommitTest {
 
       PostEntryResult result = applicationService.commit(command("idem-1"));
 
+      assertCommitted(result, "posting-new", "idem-1");
+    }
+  }
+
+  @Test
+  void commit_returnsResolvedJournalForTaxedSettledSale() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      declareTaxAccounts(bookSession);
+      declareLatviaVatRegistration(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+
+      PostEntryResult result = applicationService.commit(taxedSaleCommand("idem-taxed-sale"));
+
+      PostEntryResult.Committed committed =
+          assertInstanceOf(PostEntryResult.Committed.class, result);
+      var appliedTax = committed.resolvedJournal().appliedTax();
+      assertNotNull(appliedTax);
+      assertEquals(new PostingId("posting-new"), committed.postingId());
       assertEquals(
-          new PostEntryResult.Committed(
-              new PostingId("posting-new"),
-              new IdempotencyKey("idem-1"),
-              LocalDate.parse("2026-04-07"),
-              FIXED_CLOCK.instant(),
-              false),
-          result);
+          EconomicEventClass.SETTLED_SALE,
+          committed.resolvedJournal().classification().eventClass());
+      assertEquals("2100", appliedTax.taxAmount().minorUnits());
+      assertEquals(
+          new AccountCode("2100"),
+          committed.resolvedJournal().expandedLines().lines().get(2).accountCode());
     }
   }
 
@@ -99,14 +126,7 @@ class PostingApplicationServiceCommitTest {
                   Optional.of(new ReversalReason("full reversal")),
                   reversalJournalEntry()));
 
-      assertEquals(
-          new PostEntryResult.Committed(
-              new PostingId("posting-new"),
-              new IdempotencyKey("idem-1"),
-              LocalDate.parse("2026-04-07"),
-              FIXED_CLOCK.instant(),
-              false),
-          result);
+      assertCommitted(result, "posting-new", "idem-1");
     }
   }
 
@@ -117,11 +137,12 @@ class PostingApplicationServiceCommitTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryCommand command =
           new PostEntryCommand(
-              new BookkeepingEntry.Sale(
+              new BookkeepingEntry.SaleSettled(
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("2000"),
                   new AccountCode("1000"),
                   MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
                   null,
                   null,
                   null),
@@ -137,30 +158,26 @@ class PostingApplicationServiceCommitTest {
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
                       PostingRejectionSemantics.accountTypeMismatch(
-                          "entryKind",
-                          BookkeepingEntryKind.SALE.wireValue(),
+                          BookkeepingEntryKind.SALE_SETTLED.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           AccountType.ASSET,
                           AccountType.REVENUE),
                       PostingRejectionSemantics.cashFlowAssetClassificationMismatch(
-                          "entryKind",
-                          BookkeepingEntryKind.SALE.wireValue(),
+                          BookkeepingEntryKind.SALE_SETTLED.wireValue(),
                           "cashAccountCode",
                           new AccountCode("2000"),
                           dev.erst.fingrind.core.CashFlowAssetClassification
                               .CASH_AND_CASH_EQUIVALENT,
                           null),
                       PostingRejectionSemantics.accountTypeMismatch(
-                          "entryKind",
-                          BookkeepingEntryKind.SALE.wireValue(),
+                          BookkeepingEntryKind.SALE_SETTLED.wireValue(),
                           "revenueAccountCode",
                           new AccountCode("1000"),
                           AccountType.REVENUE,
                           AccountType.ASSET),
                       PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-                          "entryKind",
-                          BookkeepingEntryKind.SALE.wireValue(),
+                          BookkeepingEntryKind.SALE_SETTLED.wireValue(),
                           new dev.erst.fingrind.core.SourceDocumentType("invoice"),
                           List.of("cash-receipt", "bank-deposit", "card-settlement"))))),
           result);
@@ -243,9 +260,8 @@ class PostingApplicationServiceCommitTest {
               new IdempotencyKey("idem-non-cash-direct-journal"),
               new PostingRejection.EntrySemanticsViolations(
                   List.of(
-                      PostingRejectionSemantics.cashBasisAccountRequired(
-                          BookkeepingEntryKind.DIRECT_JOURNAL.wireValue(),
-                          List.of(new AccountCode("3000"), new AccountCode("3200")))))),
+                      PostingRejectionSemantics.rawJournalRequiresCashLine(
+                          BookkeepingEntryKind.DIRECT_JOURNAL.wireValue())))),
           result);
     }
   }
@@ -287,6 +303,51 @@ class PostingApplicationServiceCommitTest {
                 reversalReference("posting-1"),
                 Optional.of(new ReversalReason("full reversal")),
                 reversalJournalEntry())));
+    assertEquals(
+        commitRejected(
+            new IdempotencyKey("idem-reversal-target-is-reversal"),
+            new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+                new PostingId("posting-2"))),
+        applicationService.commit(
+            command(
+                "idem-reversal-target-is-reversal",
+                reversalReference("posting-1"),
+                Optional.of(new ReversalReason("full reversal")),
+                reversalJournalEntry())));
+  }
+
+  @Test
+  void commit_rejectsReversalOfReversalAgainstLiveBookState() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryResult.Committed originalCommitted =
+          assertInstanceOf(
+              PostEntryResult.Committed.class, applicationService.commit(command("idem-original")));
+      PostEntryResult.Committed reversalCommitted =
+          assertInstanceOf(
+              PostEntryResult.Committed.class,
+              applicationService.commit(
+                  command(
+                      "idem-reversal",
+                      Optional.of(new ReversalReference(originalCommitted.postingId())),
+                      Optional.of(new ReversalReason("full reversal")),
+                      reversalJournalEntry())));
+
+      PostEntryResult result =
+          applicationService.commit(
+              command(
+                  "idem-reversal-of-reversal",
+                  Optional.of(new ReversalReference(reversalCommitted.postingId())),
+                  Optional.of(new ReversalReason("redo by reversal")),
+                  originalCommitted.resolvedJournal().expandedLines()));
+
+      assertEquals(
+          commitRejected(
+              new IdempotencyKey("idem-reversal-of-reversal"),
+              new ReversalTargetIsReversal(reversalCommitted.postingId())),
+          result);
+    }
   }
 
   @Test
@@ -369,5 +430,17 @@ class PostingApplicationServiceCommitTest {
             IllegalStateException.class, () -> applicationService.commit(command("idem-1")));
 
     assertEquals("boom", thrown.getMessage());
+  }
+
+  private static void assertCommitted(
+      PostEntryResult result, String postingId, String idempotencyKey) {
+    PostEntryResult.Committed committed = assertInstanceOf(PostEntryResult.Committed.class, result);
+    assertEquals(new PostingId(postingId), committed.postingId());
+    assertEquals(new IdempotencyKey(idempotencyKey), committed.idempotencyKey());
+    assertEquals(LocalDate.parse("2026-04-07"), committed.effectiveDate());
+    assertEquals(FIXED_CLOCK.instant(), committed.recordedAt());
+    assertFalse(committed.idempotentReplay());
+    assertEquals(
+        LocalDate.parse("2026-04-07"), committed.resolvedJournal().expandedLines().effectiveDate());
   }
 }

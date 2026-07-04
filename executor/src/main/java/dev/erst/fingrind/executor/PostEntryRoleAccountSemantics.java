@@ -1,15 +1,26 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.cash;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.distinct;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.equityContribution;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.equityWithdrawal;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.expense;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.inventory;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.payable;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.receivable;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.revenue;
+import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.settlementAdjunct;
+
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
+import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.CashFlowAssetClassification;
-import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingEntrySemanticsViolationFactory;
+import dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.AccountExpectation;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /** Event-role account semantics for the published business-event posting surface. */
 final class PostEntryRoleAccountSemantics {
@@ -21,286 +32,250 @@ final class PostEntryRoleAccountSemantics {
       BookkeepingEntry entry,
       String selectorField,
       String selectorValue) {
-    if (entry instanceof BookkeepingEntry.OpeningPosition
-        || entry instanceof BookkeepingEntry.Reversal) {
-      return;
+    switch (entry) {
+      case BookkeepingEntry.DirectJournal journal ->
+          DirectJournalEntrySemantics.validate(
+              violations, accounts, selectorField, selectorValue, journal.lines());
+      case BookkeepingEntry.SaleSettled sale ->
+          validateSaleSettled(violations, accounts, sale, selectorField, selectorValue);
+      case BookkeepingEntry.SaleOnCredit sale ->
+          validateSaleOnCredit(violations, accounts, sale, selectorField, selectorValue);
+      case BookkeepingEntry.PurchaseSettled purchase ->
+          validatePurchaseSettled(violations, accounts, purchase, selectorField, selectorValue);
+      case BookkeepingEntry.PurchaseOnCredit purchase ->
+          validatePurchaseOnCredit(violations, accounts, purchase, selectorField, selectorValue);
+      case BookkeepingEntry.ExpenseSettled expense ->
+          validateExpenseSettled(violations, accounts, expense, selectorField, selectorValue);
+      case BookkeepingEntry.ExpenseOnCredit expense ->
+          validateExpenseOnCredit(violations, accounts, expense, selectorField, selectorValue);
+      case BookkeepingEntry.Receipt receipt ->
+          validateReceipt(violations, accounts, receipt, selectorField, selectorValue);
+      case BookkeepingEntry.Payment payment ->
+          validatePayment(violations, accounts, payment, selectorField, selectorValue);
+      case BookkeepingEntry.OwnerContribution contribution ->
+          validateOwnerContribution(
+              violations, accounts, contribution, selectorField, selectorValue);
+      case BookkeepingEntry.OwnerWithdrawal withdrawal ->
+          validateOwnerWithdrawal(violations, accounts, withdrawal, selectorField, selectorValue);
+      case BookkeepingEntry.OpeningPosition _ -> {}
+      case BookkeepingEntry.Reversal _ -> {}
     }
-    if (entry instanceof BookkeepingEntry.DirectJournal journal) {
-      DirectJournalEntrySemantics.validate(
-          violations, accounts, selectorField, selectorValue, journal.lines());
-      return;
-    }
-    if (entry instanceof BookkeepingEntry.Sale event) {
-      validateSale(violations, accounts, event, selectorField, selectorValue);
-      return;
-    }
-    if (entry instanceof BookkeepingEntry.Expense event) {
-      validateExpense(violations, accounts, event, selectorField, selectorValue);
-      return;
-    }
-    if (entry instanceof BookkeepingEntry.OwnerContribution event) {
-      validateOwnerContribution(violations, accounts, event, selectorField, selectorValue);
-      return;
-    }
-    BookkeepingEntry.OwnerWithdrawal event = (BookkeepingEntry.OwnerWithdrawal) entry;
-    validateOwnerWithdrawal(violations, accounts, event, selectorField, selectorValue);
   }
 
-  private static void validateSale(
+  private static void validateSaleSettled(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       Map<AccountCode, RegisteredAccount> accounts,
-      BookkeepingEntry.Sale event,
+      BookkeepingEntry.SaleSettled sale,
       String selectorField,
       String selectorValue) {
-    requireDistinctRoleAccounts(
+    validatePair(
         violations,
-        selectorField,
-        selectorValue,
-        event.cashAccountCode(),
-        "cashAccountCode",
-        event.revenueAccountCode(),
-        "revenueAccountCode");
-    requireAccountType(
-        violations,
-        selectorField,
-        selectorValue,
         accounts,
-        event.cashAccountCode(),
-        "cashAccountCode",
-        AccountType.ASSET);
-    requireCashAndCashEquivalent(
-        violations,
         selectorField,
         selectorValue,
-        accounts,
-        event.cashAccountCode(),
-        "cashAccountCode");
-    requireAccountType(
-        violations,
-        selectorField,
-        selectorValue,
-        accounts,
-        event.revenueAccountCode(),
-        "revenueAccountCode",
-        AccountType.REVENUE);
+        cash(sale.cashAccountCode(), "cashAccountCode"),
+        revenue(sale.revenueAccountCode(), "revenueAccountCode"));
+    validateOptionalInventoryRelief(
+        violations, accounts, sale.inventoryRelief(), selectorField, selectorValue);
   }
 
-  private static void validateExpense(
+  private static void validateSaleOnCredit(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       Map<AccountCode, RegisteredAccount> accounts,
-      BookkeepingEntry.Expense event,
+      BookkeepingEntry.SaleOnCredit sale,
       String selectorField,
       String selectorValue) {
-    requireDistinctRoleAccounts(
+    validatePair(
         violations,
-        selectorField,
-        selectorValue,
-        event.expenseAccountCode(),
-        "expenseAccountCode",
-        event.cashAccountCode(),
-        "cashAccountCode");
-    requireAccountType(
-        violations,
-        selectorField,
-        selectorValue,
         accounts,
-        event.expenseAccountCode(),
-        "expenseAccountCode",
-        AccountType.EXPENSE);
-    requireAccountType(
-        violations,
         selectorField,
         selectorValue,
-        accounts,
-        event.cashAccountCode(),
-        "cashAccountCode",
-        AccountType.ASSET);
-    requireCashAndCashEquivalent(
+        receivable(sale.receivableAccountCode(), "receivableAccountCode"),
+        revenue(sale.revenueAccountCode(), "revenueAccountCode"));
+    validateOptionalInventoryRelief(
+        violations, accounts, sale.inventoryRelief(), selectorField, selectorValue);
+  }
+
+  private static void validatePurchaseSettled(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
+      BookkeepingEntry.PurchaseSettled purchase,
+      String selectorField,
+      String selectorValue) {
+    validatePair(
         violations,
+        accounts,
         selectorField,
         selectorValue,
+        inventory(purchase.inventoryAccountCode(), "inventoryAccountCode"),
+        cash(purchase.cashAccountCode(), "cashAccountCode"));
+  }
+
+  private static void validatePurchaseOnCredit(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
+      BookkeepingEntry.PurchaseOnCredit purchase,
+      String selectorField,
+      String selectorValue) {
+    validatePair(
+        violations,
         accounts,
-        event.cashAccountCode(),
-        "cashAccountCode");
+        selectorField,
+        selectorValue,
+        inventory(purchase.inventoryAccountCode(), "inventoryAccountCode"),
+        payable(purchase.payableAccountCode(), "payableAccountCode"));
+  }
+
+  private static void validateExpenseSettled(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
+      BookkeepingEntry.ExpenseSettled expenseEntry,
+      String selectorField,
+      String selectorValue) {
+    validatePair(
+        violations,
+        accounts,
+        selectorField,
+        selectorValue,
+        expense(expenseEntry.expenseAccountCode(), "expenseAccountCode"),
+        cash(expenseEntry.cashAccountCode(), "cashAccountCode"));
+  }
+
+  private static void validateExpenseOnCredit(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
+      BookkeepingEntry.ExpenseOnCredit expenseEntry,
+      String selectorField,
+      String selectorValue) {
+    validatePair(
+        violations,
+        accounts,
+        selectorField,
+        selectorValue,
+        expense(expenseEntry.expenseAccountCode(), "expenseAccountCode"),
+        payable(expenseEntry.payableAccountCode(), "payableAccountCode"));
+  }
+
+  private static void validateReceipt(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
+      BookkeepingEntry.Receipt receipt,
+      String selectorField,
+      String selectorValue) {
+    validatePairWithOptionalAdjunct(
+        violations,
+        accounts,
+        selectorField,
+        selectorValue,
+        cash(receipt.cashAccountCode(), "cashAccountCode"),
+        receivable(receipt.receivableAccountCode(), "receivableAccountCode"),
+        receipt.settlementAdjunct());
+  }
+
+  private static void validatePayment(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
+      BookkeepingEntry.Payment payment,
+      String selectorField,
+      String selectorValue) {
+    validatePairWithOptionalAdjunct(
+        violations,
+        accounts,
+        selectorField,
+        selectorValue,
+        payable(payment.payableAccountCode(), "payableAccountCode"),
+        cash(payment.cashAccountCode(), "cashAccountCode"),
+        payment.settlementAdjunct());
   }
 
   private static void validateOwnerContribution(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       Map<AccountCode, RegisteredAccount> accounts,
-      BookkeepingEntry.OwnerContribution event,
+      BookkeepingEntry.OwnerContribution contribution,
       String selectorField,
       String selectorValue) {
-    requireDistinctRoleAccounts(
+    validatePair(
         violations,
-        selectorField,
-        selectorValue,
-        event.cashAccountCode(),
-        "cashAccountCode",
-        event.equityAccountCode(),
-        "equityAccountCode");
-    requireAccountType(
-        violations,
-        selectorField,
-        selectorValue,
         accounts,
-        event.cashAccountCode(),
-        "cashAccountCode",
-        AccountType.ASSET);
-    requireCashAndCashEquivalent(
-        violations,
         selectorField,
         selectorValue,
-        accounts,
-        event.cashAccountCode(),
-        "cashAccountCode");
-    requireAccountType(
-        violations,
-        selectorField,
-        selectorValue,
-        accounts,
-        event.equityAccountCode(),
-        "equityAccountCode",
-        AccountType.EQUITY);
-    requireFinancialPositionClassification(
-        violations,
-        selectorField,
-        selectorValue,
-        accounts,
-        event.equityAccountCode(),
-        "equityAccountCode",
-        FinancialPositionLineClassification.EQUITY_CONTRIBUTION);
+        cash(contribution.cashAccountCode(), "cashAccountCode"),
+        equityContribution(contribution.equityAccountCode(), "equityAccountCode"));
   }
 
   private static void validateOwnerWithdrawal(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       Map<AccountCode, RegisteredAccount> accounts,
-      BookkeepingEntry.OwnerWithdrawal event,
+      BookkeepingEntry.OwnerWithdrawal withdrawal,
       String selectorField,
       String selectorValue) {
-    requireDistinctRoleAccounts(
+    validatePair(
         violations,
-        selectorField,
-        selectorValue,
-        event.equityAccountCode(),
-        "equityAccountCode",
-        event.cashAccountCode(),
-        "cashAccountCode");
-    requireAccountType(
-        violations,
-        selectorField,
-        selectorValue,
         accounts,
-        event.equityAccountCode(),
-        "equityAccountCode",
-        AccountType.EQUITY);
-    requireFinancialPositionClassification(
-        violations,
         selectorField,
         selectorValue,
-        accounts,
-        event.equityAccountCode(),
-        "equityAccountCode",
-        FinancialPositionLineClassification.EQUITY_WITHDRAWAL);
-    requireAccountType(
-        violations,
-        selectorField,
-        selectorValue,
-        accounts,
-        event.cashAccountCode(),
-        "cashAccountCode",
-        AccountType.ASSET);
-    requireCashAndCashEquivalent(
-        violations,
-        selectorField,
-        selectorValue,
-        accounts,
-        event.cashAccountCode(),
-        "cashAccountCode");
+        equityWithdrawal(withdrawal.equityAccountCode(), "equityAccountCode"),
+        cash(withdrawal.cashAccountCode(), "cashAccountCode"));
   }
 
-  private static void requireDistinctRoleAccounts(
+  private static void validatePair(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      String selectorField,
-      String selectorValue,
-      AccountCode firstAccountCode,
-      String firstField,
-      AccountCode secondAccountCode,
-      String secondField) {
-    if (!firstAccountCode.equals(secondAccountCode)) {
-      return;
-    }
-    violations.add(
-        BookkeepingEntrySemanticsViolationFactory.distinctRoleAccountsRequired(
-            selectorField, selectorValue, firstField, secondField, firstAccountCode));
-  }
-
-  private static void requireAccountType(
-      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      String selectorField,
-      String selectorValue,
       Map<AccountCode, RegisteredAccount> accounts,
-      AccountCode accountCode,
-      String field,
-      AccountType expectedAccountType) {
-    RegisteredAccount account = accounts.get(accountCode);
-    if (account == null || account.accountType() == expectedAccountType) {
-      return;
-    }
-    violations.add(
-        BookkeepingEntrySemanticsViolationFactory.accountTypeMismatch(
-            selectorField,
-            selectorValue,
-            field,
-            accountCode,
-            expectedAccountType,
-            account.accountType()));
-  }
-
-  private static void requireFinancialPositionClassification(
-      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       String selectorField,
       String selectorValue,
-      Map<AccountCode, RegisteredAccount> accounts,
-      AccountCode accountCode,
-      String field,
-      FinancialPositionLineClassification expectedClassification) {
-    RegisteredAccount account = accounts.get(accountCode);
-    if (account == null) {
-      return;
-    }
-    FinancialPositionLineClassification actualClassification =
-        account.accountTaxonomy().financialPositionLineClassification().orElse(null);
-    if (actualClassification == expectedClassification) {
-      return;
-    }
-    violations.add(
-        BookkeepingEntrySemanticsViolationFactory.financialPositionClassificationMismatch(
-            selectorField,
-            selectorValue,
-            field,
-            accountCode,
-            expectedClassification,
-            actualClassification));
+      AccountExpectation firstExpectation,
+      AccountExpectation secondExpectation) {
+    PostEntryRoleAccountValidationSupport.validate(
+        violations,
+        accounts,
+        selectorField,
+        selectorValue,
+        distinct(firstExpectation, secondExpectation),
+        firstExpectation,
+        secondExpectation);
   }
 
-  private static void requireCashAndCashEquivalent(
+  private static void validatePairWithOptionalAdjunct(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
       String selectorField,
       String selectorValue,
+      AccountExpectation firstExpectation,
+      AccountExpectation secondExpectation,
+      @Nullable SettlementAdjunct settlementAdjunct) {
+    validatePair(
+        violations, accounts, selectorField, selectorValue, firstExpectation, secondExpectation);
+    PostEntryRoleAccountValidationSupport.validateOptional(
+        violations,
+        accounts,
+        selectorField,
+        selectorValue,
+        settlementAdjunct == null
+            ? null
+            : settlementAdjunct(settlementAdjunct.accountCode(), "settlementAdjunct.accountCode"));
+  }
+
+  private static void validateOptionalInventoryRelief(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       Map<AccountCode, RegisteredAccount> accounts,
-      AccountCode accountCode,
-      String field) {
-    RegisteredAccount account = accounts.get(accountCode);
-    if (account == null || account.cashAndCashEquivalent()) {
+      @Nullable InventoryRelief inventoryRelief,
+      String selectorField,
+      String selectorValue) {
+    if (inventoryRelief == null) {
       return;
     }
-    violations.add(
-        BookkeepingEntrySemanticsViolationFactory.cashFlowAssetClassificationMismatch(
-            selectorField,
-            selectorValue,
-            field,
-            accountCode,
-            CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT,
-            account.accountTaxonomy().cashFlowAssetClassification().orElse(null)));
+    PostEntryRoleAccountValidationSupport.validate(
+        violations,
+        accounts,
+        selectorField,
+        selectorValue,
+        distinct(
+            inventoryRelief.inventoryAccountCode(),
+            "inventoryRelief.inventoryAccountCode",
+            inventoryRelief.costOfSalesAccountCode(),
+            "inventoryRelief.costOfSalesAccountCode"),
+        inventory(inventoryRelief.inventoryAccountCode(), "inventoryRelief.inventoryAccountCode"),
+        expense(
+            inventoryRelief.costOfSalesAccountCode(), "inventoryRelief.costOfSalesAccountCode"));
   }
 }

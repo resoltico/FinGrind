@@ -103,9 +103,7 @@ final class FinGrindArchitectureTest {
                     "CliFailureOutputRenderer",
                     "CliMutationOutputRenderer",
                     "CliPostingOutputRenderer",
-                    "CliReportOutputRenderer",
                     "CliBookInspectionOutputRenderer",
-                    "CliAccountBalanceOutputRenderer",
                     "CliAccountPageOutputRenderer",
                     "CliFailureResponseWriter",
                     "CliDiscoveryResponseWriter",
@@ -174,14 +172,12 @@ final class FinGrindArchitectureTest {
                     "CliLedgerPlanParser",
                     "CliPostEntryRequestParser",
                     "CliPostingRequestParser",
-                    "CliAccountBalanceOutputRenderer",
                     "CliAccountPageOutputRenderer",
                     "CliBookInspectionOutputRenderer",
                     "CliDiscoveryOutputRenderer",
                     "CliFailureOutputRenderer",
                     "CliMutationOutputRenderer",
-                    "CliPostingOutputRenderer",
-                    "CliReportOutputRenderer")));
+                    "CliPostingOutputRenderer")));
   }
 
   @Test

@@ -35,6 +35,14 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         FiscalYearStart.parse("01-01"));
   }
 
+  protected static BookIdentity tradingBookIdentity() {
+    return new BookIdentity(
+        new EntityProfile(new BookEntityName("Acme Studio")),
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
+        CurrencyUnit.of("EUR"),
+        FiscalYearStart.parse("01-01"));
+  }
+
   protected static OpenBookCommand openBookCommand() {
     return new OpenBookCommand(bookIdentity());
   }
@@ -48,6 +56,10 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       bookKeyFilePath.toString(),
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
+      ProtocolOptions.BOOK_TEMPLATE_ID,
+      bookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+      ProtocolOptions.ACCOUNTING_BASIS,
+      bookIdentity().bookDoctrine().accountingBasis().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -63,6 +75,10 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BOOK_PASSPHRASE_STDIN,
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
+      ProtocolOptions.BOOK_TEMPLATE_ID,
+      bookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+      ProtocolOptions.ACCOUNTING_BASIS,
+      bookIdentity().bookDoctrine().accountingBasis().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,
@@ -80,6 +96,10 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       "text",
       ProtocolOptions.ENTITY_NAME,
       bookIdentity().entityName().value(),
+      ProtocolOptions.BOOK_TEMPLATE_ID,
+      bookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+      ProtocolOptions.ACCOUNTING_BASIS,
+      bookIdentity().bookDoctrine().accountingBasis().wireValue(),
       ProtocolOptions.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.FISCAL_YEAR_START,

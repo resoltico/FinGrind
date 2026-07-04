@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 33;
+pragma user_version = 38;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -72,7 +72,7 @@ create table if not exists book_identity (
         and accounting_kernel_profile not like '%--%'
     ),
     accounting_basis text not null check (
-        accounting_basis in ('CASH_BASIS')
+        accounting_basis in ('CASH', 'ACCRUAL')
     ),
     accounting_framework_position text not null check (
         accounting_framework_position in ('NON_STATUTORY_INTERNAL_MANAGEMENT')
@@ -81,7 +81,7 @@ create table if not exists book_identity (
         entity_form in ('OWNER_MANAGED_SINGLE_ENTITY')
     ),
     book_template_id text not null check (
-        book_template_id in ('OWNER_MANAGED_SERVICE')
+        book_template_id in ('OWNER_MANAGED_SERVICE', 'OWNER_MANAGED_TRADING')
     ),
     functional_currency_code text not null check (
         length(functional_currency_code) = 3
@@ -127,9 +127,12 @@ create table if not exists account (
         financial_position_line_classification is null
         or financial_position_line_classification in (
             'CURRENT_ASSET',
+            'INVENTORY',
             'NONCURRENT_ASSET',
+            'TRADE_RECEIVABLE',
             'CURRENT_LIABILITY',
             'NONCURRENT_LIABILITY',
+            'TRADE_PAYABLE',
             'EQUITY_CONTRIBUTION',
             'EQUITY_WITHDRAWAL',
             'RESULT_HOLDING',
@@ -148,11 +151,14 @@ create table if not exists account (
     profit_and_loss_line_classification text check (
         profit_and_loss_line_classification is null or profit_and_loss_line_classification in (
             'OPERATING_REVENUE',
+            'SALES_DISCOUNT_ALLOWANCE',
             'OTHER_REVENUE',
             'FINANCE_INCOME',
             'COST_OF_SALES',
             'OPERATING_EXPENSE',
             'DEPRECIATION_AND_AMORTIZATION',
+            'SETTLEMENT_FEE',
+            'BAD_DEBT_WRITE_OFF',
             'FINANCE_EXPENSE',
             'OTHER_EXPENSE'
         )
@@ -209,7 +215,9 @@ create table if not exists account (
     check (
         (
             account_type = 'ASSET'
-            and financial_position_line_classification in ('CURRENT_ASSET', 'NONCURRENT_ASSET')
+            and financial_position_line_classification in (
+                'CURRENT_ASSET', 'INVENTORY', 'NONCURRENT_ASSET', 'TRADE_RECEIVABLE'
+            )
             and cash_flow_asset_classification in ('CASH_AND_CASH_EQUIVALENT', 'NON_CASH')
             and profit_and_loss_line_classification is null
         )
@@ -217,7 +225,7 @@ create table if not exists account (
         (
             account_type = 'LIABILITY'
             and financial_position_line_classification in (
-                'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY'
+                'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'TRADE_PAYABLE'
             )
             and cash_flow_asset_classification is null
             and profit_and_loss_line_classification is null
@@ -243,6 +251,7 @@ create table if not exists account (
             and cash_flow_asset_classification is null
             and profit_and_loss_line_classification in (
                 'OPERATING_REVENUE',
+                'SALES_DISCOUNT_ALLOWANCE',
                 'OTHER_REVENUE',
                 'FINANCE_INCOME'
             )
@@ -256,6 +265,8 @@ create table if not exists account (
                 'COST_OF_SALES',
                 'OPERATING_EXPENSE',
                 'DEPRECIATION_AND_AMORTIZATION',
+                'SETTLEMENT_FEE',
+                'BAD_DEBT_WRITE_OFF',
                 'FINANCE_EXPENSE',
                 'OTHER_EXPENSE'
             )
@@ -518,8 +529,14 @@ create table if not exists posting_fact (
     posting_origin_kind text not null check (
         posting_origin_kind in (
             'DIRECT_JOURNAL',
-            'SALE',
-            'EXPENSE',
+            'SALE_SETTLED',
+            'SALE_ON_CREDIT',
+            'PURCHASE_SETTLED',
+            'PURCHASE_ON_CREDIT',
+            'EXPENSE_SETTLED',
+            'EXPENSE_ON_CREDIT',
+            'RECEIPT',
+            'PAYMENT',
             'OWNER_CONTRIBUTION',
             'OWNER_WITHDRAWAL',
             'OPENING_POSITION',
@@ -528,16 +545,18 @@ create table if not exists posting_fact (
             'FISCAL_YEAR_CLOSE'
         )
     ),
-    entry_cash_account_code text,
-    entry_revenue_account_code text,
-    entry_expense_account_code text,
-    entry_equity_account_code text,
+    entry_primary_debit_account_code text,
+    entry_primary_credit_account_code text,
+    entry_adjunct_account_code text,
     entry_amount_currency_code text check (
         entry_amount_currency_code is null
         or entry_amount_currency_code glob '[A-Z][A-Z][A-Z]'
     ),
     entry_amount_minor integer check (
         entry_amount_minor is null or entry_amount_minor > 0
+    ),
+    entry_adjunct_amount_minor integer check (
+        entry_adjunct_amount_minor is null or entry_adjunct_amount_minor > 0
     ),
     effective_date text not null check (
         effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
@@ -634,10 +653,9 @@ create table if not exists posting_fact (
         and request_fingerprint_sha256 not glob '*[^0-9a-f]*'
     ),
     unique (idempotency_key),
-    foreign key (entry_cash_account_code) references account (account_code),
-    foreign key (entry_revenue_account_code) references account (account_code),
-    foreign key (entry_expense_account_code) references account (account_code),
-    foreign key (entry_equity_account_code) references account (account_code),
+    foreign key (entry_primary_debit_account_code) references account (account_code),
+    foreign key (entry_primary_credit_account_code) references account (account_code),
+    foreign key (entry_adjunct_account_code) references account (account_code),
     foreign key (prior_posting_id) references posting_fact (posting_id),
     check (
         (prior_posting_id is null and reason is null)
@@ -646,40 +664,39 @@ create table if not exists posting_fact (
     ),
     check (
         (
-            posting_origin_kind = 'SALE'
-            and entry_cash_account_code is not null
-            and entry_revenue_account_code is not null
-            and entry_expense_account_code is null
-            and entry_equity_account_code is null
+            posting_origin_kind in (
+                'SALE_SETTLED',
+                'SALE_ON_CREDIT',
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'EXPENSE_SETTLED',
+                'EXPENSE_ON_CREDIT',
+                'OWNER_CONTRIBUTION',
+                'OWNER_WITHDRAWAL'
+            )
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
+            and entry_adjunct_account_code is null
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
+            and entry_adjunct_amount_minor is null
         )
         or (
-            posting_origin_kind = 'EXPENSE'
-            and entry_cash_account_code is not null
-            and entry_revenue_account_code is null
-            and entry_expense_account_code is not null
-            and entry_equity_account_code is null
+            posting_origin_kind in ('RECEIPT', 'PAYMENT')
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
-        )
-        or (
-            posting_origin_kind = 'OWNER_CONTRIBUTION'
-            and entry_cash_account_code is not null
-            and entry_revenue_account_code is null
-            and entry_expense_account_code is null
-            and entry_equity_account_code is not null
-            and entry_amount_currency_code is not null
-            and entry_amount_minor is not null
-        )
-        or (
-            posting_origin_kind = 'OWNER_WITHDRAWAL'
-            and entry_cash_account_code is not null
-            and entry_revenue_account_code is null
-            and entry_expense_account_code is null
-            and entry_equity_account_code is not null
-            and entry_amount_currency_code is not null
-            and entry_amount_minor is not null
+            and (
+                (
+                    entry_adjunct_account_code is null
+                    and entry_adjunct_amount_minor is null
+                )
+                or (
+                    entry_adjunct_account_code is not null
+                    and entry_adjunct_amount_minor is not null
+                )
+            )
         )
         or (
             posting_origin_kind in (
@@ -689,12 +706,12 @@ create table if not exists posting_fact (
                 'INTERIM_RESULT_SWEEP',
                 'FISCAL_YEAR_CLOSE'
             )
-            and entry_cash_account_code is null
-            and entry_revenue_account_code is null
-            and entry_expense_account_code is null
-            and entry_equity_account_code is null
+            and entry_primary_debit_account_code is null
+            and entry_primary_credit_account_code is null
+            and entry_adjunct_account_code is null
             and entry_amount_currency_code is null
             and entry_amount_minor is null
+            and entry_adjunct_amount_minor is null
         )
     )
 ) strict;
@@ -887,13 +904,18 @@ create table if not exists posting_applied_tax (
 create trigger if not exists posting_applied_tax_validate_origin_on_insert
 before insert on posting_applied_tax
 begin
-    select raise(fail, 'posting_applied_tax requires SALE or EXPENSE posting origin.')
+    select raise(fail, 'posting_applied_tax requires sale or expense posting origin.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.posting_origin_kind not in ('SALE', 'EXPENSE')
+            and posting_fact.posting_origin_kind not in (
+                'SALE_SETTLED',
+                'SALE_ON_CREDIT',
+                'EXPENSE_SETTLED',
+                'EXPENSE_ON_CREDIT'
+            )
     );
     select raise(fail, 'sale tax application must use OUTPUT_SALE.')
     where exists (
@@ -901,7 +923,7 @@ begin
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.posting_origin_kind = 'SALE'
+            and posting_fact.posting_origin_kind in ('SALE_SETTLED', 'SALE_ON_CREDIT')
             and new.application_kind <> 'OUTPUT_SALE'
     );
     select raise(fail, 'expense tax application cannot use OUTPUT_SALE.')
@@ -910,7 +932,10 @@ begin
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.posting_origin_kind = 'EXPENSE'
+            and posting_fact.posting_origin_kind in (
+                'EXPENSE_SETTLED',
+                'EXPENSE_ON_CREDIT'
+            )
             and new.application_kind = 'OUTPUT_SALE'
     );
 end;
@@ -985,7 +1010,7 @@ create table if not exists posting_foreign_exchange (
 create trigger if not exists posting_foreign_exchange_validate_origin_on_insert
 before insert on posting_foreign_exchange
 begin
-    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE, EXPENSE, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
+    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE_SETTLED, EXPENSE_SETTLED, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
     where exists (
         select 1
         from posting_fact
@@ -993,8 +1018,8 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_origin_kind not in (
                 'DIRECT_JOURNAL',
-                'SALE',
-                'EXPENSE',
+                'SALE_SETTLED',
+                'EXPENSE_SETTLED',
                 'OWNER_CONTRIBUTION',
                 'OWNER_WITHDRAWAL',
                 'REVERSAL'
@@ -1210,7 +1235,8 @@ create table if not exists interim_result_sweep (
         and substr(swept_at, 15, 2) between '00' and '59'
         and substr(swept_at, 18, 2) between '00' and '59'
     ),
-    check (effective_date_from <= effective_date_to)
+    check (effective_date_from <= effective_date_to),
+    unique (effective_date_from, effective_date_to)
 ) strict;
 
 create trigger if not exists interim_result_sweep_validate_result_holding_account_on_insert

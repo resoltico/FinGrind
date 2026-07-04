@@ -28,6 +28,7 @@ class CliFailureMapperTest {
     assertTrue(failure.message().contains("reports/out.pdf"));
     assertEquals("--pdf-out", failure.argument());
     assertNotNull(failure.hint());
+    assertTrue(failure.hint().contains("Choose a missing --pdf-out destination"));
     assertTrue(failure.hint().contains("remove the existing artifact"));
   }
 
@@ -104,8 +105,9 @@ class CliFailureMapperTest {
     assertNotNull(failure);
     assertEquals("internal-error", failure.code());
     assertTrue(failure.message().contains("fg-internal-123"));
-    assertTrue(failure.message().contains("One upstream invariant should have rejected"));
+    assertTrue(failure.message().contains("An upstream invariant should have rejected"));
     assertNotNull(failure.hint());
+    assertTrue(failure.hint().contains("a deterministic invariant leaked"));
     assertTrue(failure.hint().contains("pre-commit validation"));
   }
 
@@ -133,6 +135,6 @@ class CliFailureMapperTest {
 
     assertEquals("internal-error", failure.code());
     assertNotNull(failure.hint());
-    assertTrue(failure.hint().contains("machine-readable error envelope on stderr"));
+    assertTrue(failure.hint().contains("the machine-readable error envelope on stderr"));
   }
 }

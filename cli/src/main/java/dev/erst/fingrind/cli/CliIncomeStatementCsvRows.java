@@ -1,13 +1,12 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementPresentationSupport.PresentationSection;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementPresentationSupport.SectionCode;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
-import dev.erst.fingrind.contract.bookkeeping.IncomeStatementSection;
 import dev.erst.fingrind.core.CurrencyBalance;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 
 /** Builds CSV row families for the income-statement report surface. */
@@ -19,42 +18,61 @@ final class CliIncomeStatementCsvRows {
   static Stream<List<String>> rows(
       IncomeStatementReport report,
       String reportBasis,
-      List<IncomeStatementSection> sections,
+      List<PresentationSection> sections,
+      List<CurrencyBalance> grossProfitTotals,
       List<CurrencyBalance> netIncomeTotals) {
-    String effectiveDateFrom = effectiveDateFrom(report, reportBasis);
-    String effectiveDateTo = effectiveDateTo(report, reportBasis);
+    String effectiveDateFrom =
+        CliIncomeStatementCsvRowSupport.effectiveDateFrom(report, reportBasis);
+    String effectiveDateTo = CliIncomeStatementCsvRowSupport.effectiveDateTo(report, reportBasis);
     List<List<String>> rows = new ArrayList<>();
-    sections.forEach(
-        section ->
-            rows.addAll(
-                sectionRows(report, reportBasis, effectiveDateFrom, effectiveDateTo, section)));
+    boolean grossProfitInserted = false;
+    boolean hasCostOfSalesSection =
+        sections.stream()
+            .anyMatch(
+                section ->
+                    section.sectionCode() == SectionCode.COST_OF_SALES
+                        && section.hasRenderableContent());
+    for (PresentationSection section : sections) {
+      rows.addAll(sectionRows(report, reportBasis, effectiveDateFrom, effectiveDateTo, section));
+      if (!grossProfitInserted
+          && section.hasRenderableContent()
+          && section.sectionCode() == SectionCode.COST_OF_SALES) {
+        grossProfitTotals.forEach(
+            total ->
+                rows.add(
+                    CliIncomeStatementCsvRowSupport.grossProfitTotalRow(
+                        reportBasis, effectiveDateFrom, effectiveDateTo, total)));
+        grossProfitInserted = true;
+      } else if (!grossProfitInserted
+          && !hasCostOfSalesSection
+          && section.hasRenderableContent()
+          && section.sectionCode() == SectionCode.REVENUE) {
+        grossProfitTotals.forEach(
+            total ->
+                rows.add(
+                    CliIncomeStatementCsvRowSupport.grossProfitTotalRow(
+                        reportBasis, effectiveDateFrom, effectiveDateTo, total)));
+        grossProfitInserted = true;
+      }
+    }
+    if (!grossProfitInserted && !grossProfitTotals.isEmpty()) {
+      grossProfitTotals.forEach(
+          total ->
+              rows.add(
+                  CliIncomeStatementCsvRowSupport.grossProfitTotalRow(
+                      reportBasis, effectiveDateFrom, effectiveDateTo, total)));
+    }
     netIncomeTotals.forEach(
         total ->
-            rows.add(netIncomeTotalRow(reportBasis, effectiveDateFrom, effectiveDateTo, total)));
+            rows.add(
+                CliIncomeStatementCsvRowSupport.netIncomeTotalRow(
+                    reportBasis, effectiveDateFrom, effectiveDateTo, total)));
     if (!rows.isEmpty()) {
       return rows.stream();
     }
-    return Stream.of(reportEmptyRow(report, reportBasis, effectiveDateFrom, effectiveDateTo));
-  }
-
-  private static String effectiveDateFrom(IncomeStatementReport report, String reportBasis) {
-    return "comparative".equals(reportBasis)
-        ? report
-            .comparativeEffectiveDateRange()
-            .effectiveDateFrom()
-            .map(LocalDate::toString)
-            .orElse("")
-        : report.effectiveDateFrom().toString();
-  }
-
-  private static String effectiveDateTo(IncomeStatementReport report, String reportBasis) {
-    return "comparative".equals(reportBasis)
-        ? report
-            .comparativeEffectiveDateRange()
-            .effectiveDateTo()
-            .map(LocalDate::toString)
-            .orElse("")
-        : report.effectiveDateTo().toString();
+    return Stream.of(
+        CliIncomeStatementCsvRowSupport.reportEmptyRow(
+            report, reportBasis, effectiveDateFrom, effectiveDateTo));
   }
 
   private static List<List<String>> sectionRows(
@@ -62,7 +80,7 @@ final class CliIncomeStatementCsvRows {
       String reportBasis,
       String effectiveDateFrom,
       String effectiveDateTo,
-      IncomeStatementSection section) {
+      PresentationSection section) {
     List<List<String>> rows = new ArrayList<>();
     section
         .rows()
@@ -86,7 +104,7 @@ final class CliIncomeStatementCsvRows {
       String reportBasis,
       String effectiveDateFrom,
       String effectiveDateTo,
-      IncomeStatementSection section,
+      PresentationSection section,
       IncomeStatementRow row) {
     String rowId = "income-statement-row:" + reportBasis + ":" + row.lineCode();
     return CliStatementCsvSectionRowSupport.valuedRow(
@@ -108,11 +126,11 @@ final class CliIncomeStatementCsvRows {
       String reportBasis,
       String effectiveDateFrom,
       String effectiveDateTo,
-      IncomeStatementSection section,
+      PresentationSection section,
       CurrencyBalance total) {
-    String lineCode = section.accountType().wireValue().toLowerCase(Locale.ROOT) + "-total";
-    String lineName =
-        CliAccountStatementLabels.displayAccountTypeSectionLabel(section.accountType()) + " total";
+    String lineCode =
+        CliIncomeStatementCsvRowSupport.sectionCodeSlug(section.sectionCode()) + "-total";
+    String lineName = section.title() + " total";
     return CliStatementCsvSectionRowSupport.valuedRow(
         rowSpec(
             reportBasis,
@@ -121,7 +139,7 @@ final class CliIncomeStatementCsvRows {
             section,
             lineCode,
             lineName,
-            totalRowId(reportBasis, section, total),
+            CliIncomeStatementCsvRowSupport.totalRowId(reportBasis, section, total),
             totalDetailColumns()),
         "section-total",
         "SECTION_TOTAL",
@@ -133,7 +151,7 @@ final class CliIncomeStatementCsvRows {
       String reportBasis,
       String effectiveDateFrom,
       String effectiveDateTo,
-      IncomeStatementSection section) {
+      PresentationSection section) {
     return CliStatementCsvSectionRowSupport.emptyRow(
         rowSpec(
             reportBasis,
@@ -142,18 +160,17 @@ final class CliIncomeStatementCsvRows {
             section,
             "",
             "",
-            emptyRowId(reportBasis, section),
+            CliIncomeStatementCsvRowSupport.emptyRowId(reportBasis, section),
             totalDetailColumns()),
         report.bookIdentity().functionalCurrency().code(),
-        CliReportRenderSupport.emptySectionLinesMessage(
-            CliAccountStatementLabels.displayAccountTypeSectionLabel(section.accountType())));
+        CliReportRenderSupport.emptySectionLinesMessage(section.title()));
   }
 
   private static CliStatementCsvSectionRowSupport.StatementRowSpec rowSpec(
       String reportBasis,
       String effectiveDateFrom,
       String effectiveDateTo,
-      IncomeStatementSection section,
+      PresentationSection section,
       String lineCode,
       String lineName,
       String rowId,
@@ -161,12 +178,12 @@ final class CliIncomeStatementCsvRows {
     return new CliStatementCsvSectionRowSupport.StatementRowSpec(
         CliCsvExportFamilies.INCOME_STATEMENT,
         rowId,
-        sectionRowId(reportBasis, section),
+        CliIncomeStatementCsvRowSupport.sectionRowId(reportBasis, section),
         reportBasis,
         RECORD_KIND,
         effectiveDateFrom,
         effectiveDateTo,
-        section.accountType().wireValue(),
+        section.sectionCode().wireValue(),
         lineCode,
         lineName,
         detailColumns);
@@ -178,84 +195,5 @@ final class CliIncomeStatementCsvRows {
 
   private static List<String> totalDetailColumns() {
     return List.of("", "");
-  }
-
-  private static String totalRowId(
-      String reportBasis, IncomeStatementSection section, CurrencyBalance total) {
-    return "income-statement-section-total:"
-        + reportBasis
-        + ":"
-        + section.accountType().wireValue()
-        + ":"
-        + total.netAmount().currencyUnit().code();
-  }
-
-  private static String emptyRowId(String reportBasis, IncomeStatementSection section) {
-    return "income-statement-section-empty:"
-        + reportBasis
-        + ":"
-        + section.accountType().wireValue();
-  }
-
-  private static List<String> netIncomeTotalRow(
-      String reportBasis, String effectiveDateFrom, String effectiveDateTo, CurrencyBalance total) {
-    return List.of(
-        CliCsvExportFamilies.INCOME_STATEMENT,
-        "income-statement-total:" + reportBasis + ":" + total.netAmount().currencyUnit().code(),
-        "",
-        "report-total",
-        reportBasis,
-        RECORD_KIND,
-        effectiveDateFrom,
-        effectiveDateTo,
-        "",
-        "",
-        "",
-        "",
-        "",
-        "NET_INCOME_TOTAL",
-        total.netAmount().currencyUnit().code(),
-        CliQueryScopeText.displayMoney(total.debitTotal()),
-        CliQueryScopeText.displayMoney(total.creditTotal()),
-        CliQueryScopeText.displayMoney(total.netAmount()),
-        total.balanceSide().wireValue(),
-        "");
-  }
-
-  private static List<String> reportEmptyRow(
-      IncomeStatementReport report,
-      String reportBasis,
-      String effectiveDateFrom,
-      String effectiveDateTo) {
-    return List.of(
-        CliCsvExportFamilies.INCOME_STATEMENT,
-        "income-statement-report-empty:"
-            + reportBasis
-            + ":"
-            + effectiveDateFrom
-            + ":"
-            + effectiveDateTo,
-        "",
-        "report-empty",
-        reportBasis,
-        RECORD_KIND,
-        effectiveDateFrom,
-        effectiveDateTo,
-        "",
-        "",
-        "",
-        "",
-        "",
-        "",
-        report.bookIdentity().functionalCurrency().code(),
-        "",
-        "",
-        "",
-        "",
-        CliQueryScopeText.noMatchesLabel("income statement lines"));
-  }
-
-  private static String sectionRowId(String reportBasis, IncomeStatementSection section) {
-    return "income-statement-section:" + reportBasis + ":" + section.accountType().wireValue();
   }
 }

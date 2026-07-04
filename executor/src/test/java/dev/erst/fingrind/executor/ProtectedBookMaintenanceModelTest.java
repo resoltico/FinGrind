@@ -28,6 +28,7 @@ class ProtectedBookMaintenanceModelTest {
   @Test
   void localMaintenanceTypes_validateConstructorStateAndExposeFields() {
     Path book = path("books/acme.sqlite");
+    Path bookKey = path("books/acme.book-key");
     Path backup = path("backup/acme.sqlite");
     Path backupKey = path("backup/acme.book-key");
     Path rollback = path("books/acme.rekey-rollback-1.sqlite");
@@ -42,7 +43,7 @@ class ProtectedBookMaintenanceModelTest {
         book, new ProtectedBookBackupOutcome.BackedUp(book, backup, backupKey).bookFilePath());
     assertEquals(rejection, new ProtectedBookBackupOutcome.Rejected(rejection).rejection());
     assertEquals(
-        backup, new ProtectedBookRestoreOutcome.Restored(book, backup, backupKey).backupFilePath());
+        bookKey, new ProtectedBookRestoreOutcome.Restored(book, bookKey).bookKeyFilePath());
     assertEquals(rejection, new ProtectedBookRestoreOutcome.Rejected(rejection).rejection());
     assertIterableEquals(
         List.of(rollback),

@@ -22,16 +22,29 @@ STANDARD_ACCOUNT_BALANCE_TEXT = (
     "Context\n"
     "-------\n"
     "Entity              : Acme Studio\n"
-    "Starter chart       : Owner-managed service starter chart\n"
+    "Seed template       : Owner-managed service seed template\n"
+    "Accounting basis    : Cash basis\n"
     "Functional currency : EUR\n"
     "Fiscal year start   : 01-01\n"
     "Posting coverage    : All posting kinds\n"
+    "Account             : Cash [cash]\n"
     "Account type        : Asset\n"
-    "Account role        : Ordinary\n"
     "Normal balance      : Debit\n"
     "Active              : Yes\n"
 )
-STANDARD_TRIAL_BALANCE_TEXT = "Trial Balance\nAs of : 2026-04-08\ncash | 6.00\n"
+STANDARD_TRIAL_BALANCE_TEXT = (
+    "Trial Balance\n"
+    "As of : 2026-04-08\n"
+    "cash | 6.00\n"
+    "Context\n"
+    "-------\n"
+    "Entity              : Acme Studio\n"
+    "Seed template       : Owner-managed service seed template\n"
+    "Accounting basis    : Cash basis\n"
+    "Functional currency : EUR\n"
+    "Fiscal year start   : 01-01\n"
+    "Posting coverage    : All posting kinds\n"
+)
 STANDARD_PERIOD_SUMMARY_TEXT = "Period Summary\nPosting count : 2\n"
 
 

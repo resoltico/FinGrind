@@ -39,4 +39,23 @@ public final class FiscalYearCloseService {
                 KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
         closeStore::fiscalYearClose);
   }
+
+  /** Closes the fiscal year identified by the selected label. */
+  public FiscalYearCloseOutcome fiscalYearClose(int fiscalYearLabel) {
+    return executionSupport.execute(
+        () ->
+            new FiscalYearCloseOutcome.Rejected(
+                new BookkeepingAdministrationRejection.BookNotInitialized()),
+        bookIdentity ->
+            new FiscalYearClosePlanner(
+                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
+        (bookIdentity, bookStartDate, planner, currentUtcDate, closedAt, postingIdGenerator) ->
+            closeStore.fiscalYearClose(
+                planner.reportingPeriod(bookIdentity, fiscalYearLabel),
+                bookIdentity,
+                planner,
+                currentUtcDate,
+                closedAt,
+                postingIdGenerator));
+  }
 }

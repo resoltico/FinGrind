@@ -11,11 +11,21 @@ import dev.erst.fingrind.cli.json.CliForeignExchangeJsonModels;
 import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
 import dev.erst.fingrind.cli.json.CliTaxJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
+import dev.erst.fingrind.contract.tax.AppliedTax;
+import dev.erst.fingrind.contract.tax.TaxApplicationKind;
+import dev.erst.fingrind.contract.tax.TaxCode;
+import dev.erst.fingrind.contract.tax.TaxCodeName;
+import dev.erst.fingrind.contract.tax.TaxInclusionMode;
+import dev.erst.fingrind.contract.tax.TaxRate;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
+import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -43,14 +53,28 @@ class CliPostingEntryPayloadSupportTest {
 
     CliPostingEntryPayload salePayload = CliPostingEntryPayloadSupport.entryPayload(saleEntry());
     assertNotNull(salePayload);
-    assertEquals("SALE", salePayload.entryKind());
+    assertEquals("SALE_SETTLED", salePayload.entryKind());
     assertEquals("1000", salePayload.cashAccountCode());
     assertEquals("4000", salePayload.revenueAccountCode());
+
+    CliPostingEntryPayload purchaseSettledPayload =
+        CliPostingEntryPayloadSupport.entryPayload(purchaseSettledEntry());
+    assertNotNull(purchaseSettledPayload);
+    assertEquals("PURCHASE_SETTLED", purchaseSettledPayload.entryKind());
+    assertEquals("1000", purchaseSettledPayload.cashAccountCode());
+    assertEquals("1400", purchaseSettledPayload.inventoryAccountCode());
+
+    CliPostingEntryPayload purchaseOnCreditPayload =
+        CliPostingEntryPayloadSupport.entryPayload(purchaseOnCreditEntry());
+    assertNotNull(purchaseOnCreditPayload);
+    assertEquals("PURCHASE_ON_CREDIT", purchaseOnCreditPayload.entryKind());
+    assertEquals("2100", purchaseOnCreditPayload.payableAccountCode());
+    assertEquals("1400", purchaseOnCreditPayload.inventoryAccountCode());
 
     CliPostingEntryPayload expensePayload =
         CliPostingEntryPayloadSupport.entryPayload(expenseEntry());
     assertNotNull(expensePayload);
-    assertEquals("EXPENSE", expensePayload.entryKind());
+    assertEquals("EXPENSE_SETTLED", expensePayload.entryKind());
     assertEquals("5000", expensePayload.expenseAccountCode());
     assertEquals("1000", expensePayload.cashAccountCode());
 
@@ -123,12 +147,17 @@ class CliPostingEntryPayloadSupportTest {
     String rendered =
         CliPostingEntryPayloadSupport.renderEntryFacts(
             new CliPostingEntryPayload(
-                "EXPENSE",
+                "EXPENSE_SETTLED",
                 "1000",
+                NullTestSupport.nullOf(String.class),
+                NullTestSupport.nullOf(String.class),
+                NullTestSupport.nullOf(String.class),
                 NullTestSupport.nullOf(String.class),
                 "5600",
                 NullTestSupport.nullOf(String.class),
                 new MonetaryAmount("EUR", "11200"),
+                NullTestSupport.nullOf(CliPostingEntryPayload.InventoryReliefPayload.class),
+                NullTestSupport.nullOf(CliPostingEntryPayload.SettlementAdjunctPayload.class),
                 NullTestSupport.nullOf(CliForeignExchangeJsonModels.ForeignExchangePayload.class),
                 new CliTaxJsonModels.TaxSelectionPayload("vat-lv", "vat-nonrecoverable-expense"),
                 new CliTaxJsonModels.AppliedTaxPayload(
@@ -165,6 +194,11 @@ class CliPostingEntryPayloadSupportTest {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
+                NullTestSupport.nullOf(CliPostingEntryPayload.InventoryReliefPayload.class),
+                NullTestSupport.nullOf(CliPostingEntryPayload.SettlementAdjunctPayload.class),
                 NullTestSupport.nullOf(CliForeignExchangeJsonModels.ForeignExchangePayload.class),
                 NullTestSupport.nullOf(CliTaxJsonModels.TaxSelectionPayload.class),
                 NullTestSupport.nullOf(CliTaxJsonModels.AppliedTaxPayload.class),
@@ -179,14 +213,125 @@ class CliPostingEntryPayloadSupportTest {
   }
 
   @Test
+  void entryPayload_mapsCreditAndSettlementVariantsWithOwnedNestedFacts() {
+    CliPostingEntryPayload creditSalePayload = entryPayload(saleOnCreditEntry());
+    CliPostingEntryPayload creditExpensePayload = entryPayload(expenseOnCreditEntry());
+    CliPostingEntryPayload receiptPayload = entryPayload(receiptEntry());
+    CliPostingEntryPayload paymentPayload = entryPayload(paymentEntry());
+    var creditSaleTaxSelection = Objects.requireNonNull(creditSalePayload.taxSelection());
+    var creditSaleAppliedTax = Objects.requireNonNull(creditSalePayload.appliedTax());
+    var creditExpenseTaxSelection = Objects.requireNonNull(creditExpensePayload.taxSelection());
+    var creditExpenseAppliedTax = Objects.requireNonNull(creditExpensePayload.appliedTax());
+    var receiptAdjunct = Objects.requireNonNull(receiptPayload.settlementAdjunct());
+    var paymentAdjunct = Objects.requireNonNull(paymentPayload.settlementAdjunct());
+
+    assertEquals("1100", creditSalePayload.receivableAccountCode());
+    assertEquals("vat-standard-sale", creditSaleTaxSelection.taxCode());
+    assertEquals("vat-standard-sale", creditSaleAppliedTax.taxCode());
+    assertEquals("2100", creditExpensePayload.payableAccountCode());
+    assertEquals("vat-standard-expense", creditExpenseTaxSelection.taxCode());
+    assertEquals("vat-standard-expense", creditExpenseAppliedTax.taxCode());
+    assertEquals("6100", receiptAdjunct.accountCode());
+    assertEquals("50", receiptAdjunct.amount().minorUnits());
+    assertEquals("6200", paymentAdjunct.accountCode());
+    assertEquals("75", paymentAdjunct.amount().minorUnits());
+  }
+
+  @Test
+  void renderEntryFacts_rendersSettlementAdjunctAndTaxSelectionFacts() {
+    String creditSaleFacts =
+        CliPostingEntryPayloadSupport.renderEntryFacts(entryPayload(saleOnCreditEntry()));
+    String receiptFacts =
+        CliPostingEntryPayloadSupport.renderEntryFacts(entryPayload(receiptEntry()));
+    String paymentFacts =
+        CliPostingEntryPayloadSupport.renderEntryFacts(entryPayload(paymentEntry()));
+
+    assertTrue(creditSaleFacts.contains("Receivable account"));
+    assertTrue(creditSaleFacts.contains("Tax registration id"));
+    assertTrue(creditSaleFacts.contains("vat-lv"));
+    assertTrue(creditSaleFacts.contains("Tax code"));
+    assertTrue(creditSaleFacts.contains("vat-standard-sale"));
+    assertTrue(receiptFacts.contains("Settlement adjunct account"));
+    assertTrue(receiptFacts.contains("6100"));
+    assertTrue(receiptFacts.contains("Settlement adjunct amount"));
+    assertTrue(receiptFacts.contains("0.50"));
+    assertTrue(paymentFacts.contains("Settlement adjunct account"));
+    assertTrue(paymentFacts.contains("6200"));
+    assertTrue(paymentFacts.contains("Settlement adjunct amount"));
+    assertTrue(paymentFacts.contains("0.75"));
+  }
+
+  @Test
+  void renderEntryFacts_rendersInventoryReliefFacts() {
+    CliPostingEntryPayload payload = entryPayload(saleEntryWithInventoryRelief());
+
+    assertNotNull(payload.inventoryRelief());
+    String rendered = CliPostingEntryPayloadSupport.renderEntryFacts(payload);
+
+    assertTrue(rendered.contains("Inventory account"));
+    assertTrue(rendered.contains("1400"));
+    assertTrue(rendered.contains("Cost of sales account"));
+    assertTrue(rendered.contains("5000"));
+    assertTrue(rendered.contains("Inventory relief amount"));
+    assertTrue(rendered.contains("4.00"));
+  }
+
+  @Test
+  void entryPayload_preservesNullOptionalTaxAndSettlementFacts() {
+    CliPostingEntryPayload creditSalePayload =
+        entryPayload(
+            new BookkeepingEntry.SaleOnCredit(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1100"),
+                new AccountCode("4000"),
+                new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
+                null));
+    CliPostingEntryPayload creditExpensePayload =
+        entryPayload(
+            new BookkeepingEntry.ExpenseOnCredit(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("5000"),
+                new AccountCode("2100"),
+                new MonetaryAmount("EUR", "1210"),
+                null,
+                null));
+    CliPostingEntryPayload receiptPayload =
+        entryPayload(
+            new BookkeepingEntry.Receipt(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1000"),
+                new AccountCode("1100"),
+                new MonetaryAmount("EUR", "1250"),
+                null));
+    CliPostingEntryPayload paymentPayload =
+        entryPayload(
+            new BookkeepingEntry.Payment(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("2100"),
+                new AccountCode("1000"),
+                new MonetaryAmount("EUR", "1250"),
+                null));
+
+    assertNull(creditSalePayload.taxSelection());
+    assertNull(creditSalePayload.appliedTax());
+    assertNull(creditExpensePayload.taxSelection());
+    assertNull(creditExpensePayload.appliedTax());
+    assertNull(receiptPayload.settlementAdjunct());
+    assertNull(paymentPayload.settlementAdjunct());
+  }
+
+  @Test
   void entryPayload_andRenderedFacts_includeOwnedForeignExchangeDetails() {
     CliPostingEntryPayload payload =
         entryPayload(
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "9200"),
+                null,
                 foreignExchangeDetails(),
                 null,
                 null));
@@ -219,18 +364,32 @@ class CliPostingEntryPayloadSupportTest {
   }
 
   private static BookkeepingEntry saleEntry() {
-    return new BookkeepingEntry.Sale(
+    return new BookkeepingEntry.SaleSettled(
         LocalDate.parse("2026-04-07"),
         new AccountCode("1000"),
         new AccountCode("4000"),
         new MonetaryAmount("EUR", "1250"),
         null,
         null,
+        null,
+        null);
+  }
+
+  private static BookkeepingEntry saleEntryWithInventoryRelief() {
+    return new BookkeepingEntry.SaleSettled(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("1000"),
+        new AccountCode("4000"),
+        new MonetaryAmount("EUR", "1250"),
+        new InventoryRelief(
+            new AccountCode("1400"), new AccountCode("5000"), new MonetaryAmount("EUR", "400")),
+        null,
+        null,
         null);
   }
 
   private static BookkeepingEntry expenseEntry() {
-    return new BookkeepingEntry.Expense(
+    return new BookkeepingEntry.ExpenseSettled(
         LocalDate.parse("2026-04-07"),
         new AccountCode("5000"),
         new AccountCode("1000"),
@@ -238,6 +397,62 @@ class CliPostingEntryPayloadSupportTest {
         null,
         null,
         null);
+  }
+
+  private static BookkeepingEntry purchaseSettledEntry() {
+    return new BookkeepingEntry.PurchaseSettled(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("1400"),
+        new AccountCode("1000"),
+        new MonetaryAmount("EUR", "1250"),
+        null);
+  }
+
+  private static BookkeepingEntry purchaseOnCreditEntry() {
+    return new BookkeepingEntry.PurchaseOnCredit(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("1400"),
+        new AccountCode("2100"),
+        new MonetaryAmount("EUR", "1250"));
+  }
+
+  private static BookkeepingEntry saleOnCreditEntry() {
+    return new BookkeepingEntry.SaleOnCredit(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("1100"),
+        new AccountCode("4000"),
+        new MonetaryAmount("EUR", "1000"),
+        null,
+        taxSelection("vat-standard-sale"),
+        appliedSaleTax("vat-standard-sale", "2100"));
+  }
+
+  private static BookkeepingEntry expenseOnCreditEntry() {
+    return new BookkeepingEntry.ExpenseOnCredit(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("5000"),
+        new AccountCode("2100"),
+        new MonetaryAmount("EUR", "1210"),
+        taxSelection("vat-standard-expense"),
+        appliedExpenseTax("vat-standard-expense", "1300"));
+  }
+
+  private static BookkeepingEntry receiptEntry() {
+    return new BookkeepingEntry.Receipt(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("1000"),
+        new AccountCode("1100"),
+        new MonetaryAmount("EUR", "1250"),
+        new SettlementAdjunct(new AccountCode("6100"), new MonetaryAmount("EUR", "50")));
+  }
+
+  private static BookkeepingEntry paymentEntry() {
+    return new BookkeepingEntry.Payment(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("2100"),
+        new AccountCode("1000"),
+        new MonetaryAmount("EUR", "1250"),
+        new SettlementAdjunct(new AccountCode("6200"), new MonetaryAmount("EUR", "75")));
   }
 
   private static BookkeepingEntry ownerContributionEntry() {
@@ -273,17 +488,20 @@ class CliPostingEntryPayloadSupportTest {
   }
 
   private static BookkeepingEntry reversalEntry() {
-    return new BookkeepingEntry.Reversal(
+    JournalEntry journalEntry =
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
                 new JournalLine(
                     new AccountCode("1000"), JournalLine.EntrySide.DEBIT, money("12.50")),
                 new JournalLine(
-                    new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("12.50")))),
+                    new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("12.50"))));
+    return new BookkeepingEntry.Reversal(
+        journalEntry.effectiveDate(),
         new PostingLineage.Reversal(
             new ReversalReference(new PostingId("posting-1")), new ReversalReason("Correction")),
-        null);
+        null,
+        journalEntry);
   }
 
   private static dev.erst.fingrind.core.Money money(String amount) {
@@ -304,5 +522,37 @@ class CliPostingEntryPayloadSupportTest {
             LocalDate.parse("2026-04-06"),
             "ecb-spot"),
         ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+  }
+
+  private static TaxSelection taxSelection(String taxCode) {
+    return new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode(taxCode));
+  }
+
+  private static AppliedTax appliedSaleTax(String taxCode, String taxAccountCode) {
+    return new AppliedTax(
+        new TaxRegistrationId("vat-lv"),
+        new TaxCode(taxCode),
+        new TaxCodeName("VAT Standard Sale"),
+        new TaxRate(210_000),
+        TaxInclusionMode.EXCLUSIVE,
+        TaxApplicationKind.OUTPUT_SALE,
+        new MonetaryAmount("EUR", "1000"),
+        new MonetaryAmount("EUR", "210"),
+        new MonetaryAmount("EUR", "1210"),
+        new AccountCode(taxAccountCode));
+  }
+
+  private static AppliedTax appliedExpenseTax(String taxCode, String taxAccountCode) {
+    return new AppliedTax(
+        new TaxRegistrationId("vat-lv"),
+        new TaxCode(taxCode),
+        new TaxCodeName("VAT Standard Expense"),
+        new TaxRate(210_000),
+        TaxInclusionMode.INCLUSIVE,
+        TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+        new MonetaryAmount("EUR", "1000"),
+        new MonetaryAmount("EUR", "210"),
+        new MonetaryAmount("EUR", "1210"),
+        new AccountCode(taxAccountCode));
   }
 }

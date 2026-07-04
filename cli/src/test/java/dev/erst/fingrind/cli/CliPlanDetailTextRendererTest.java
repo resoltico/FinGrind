@@ -89,9 +89,6 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
             cashAccount,
             CliResponseWriterTestSupport.currencyBalance(
                 "EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT));
-    CliBookQueryJsonModels.AccountBalancePayload balancePayload =
-        CliBookPayloadMapper.accountBalancePayload(snapshot);
-
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
             new CliPlanJsonModels.AccountPageStepDataPayload(
@@ -140,10 +137,10 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
         CliPlanDetailTextRenderer.renderStepData(
             new CliPlanJsonModels.AccountBalanceStepDataPayload(
                 accountPayload,
-                balancePayload.effectiveDateFrom(),
-                balancePayload.effectiveDateTo(),
-                balancePayload.balances().size(),
-                balancePayload.balances())),
+                snapshot.effectiveDateFrom().map(Object::toString).orElse(null),
+                snapshot.effectiveDateTo().map(Object::toString).orElse(null),
+                snapshot.balances().size(),
+                snapshot.balances().stream().map(CliPayloadAssembler::balancePayload).toList())),
         "Balances",
         "Debit total",
         "6.00");

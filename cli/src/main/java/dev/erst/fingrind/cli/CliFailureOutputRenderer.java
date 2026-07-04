@@ -224,6 +224,10 @@ final class CliFailureOutputRenderer {
           rows.add(List.of("Required start date", details.requiredEffectiveDateFrom()));
       case CliRejectionJsonModels.FiscalYearCloseEndDetails details ->
           rows.add(List.of("Required end date", details.requiredEffectiveDateTo()));
+      case CliRejectionJsonModels.FiscalYearCloseTransferredThroughDetails details -> {
+        rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
+        rows.add(List.of("Transferred-through date", details.transferredThroughEffectiveDate()));
+      }
       case CliRejectionJsonModels.FiscalYearCloseFutureDateDetails details ->
           rows.add(List.of("Attempted end date", details.attemptedEffectiveDateTo()));
     }

@@ -8,11 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
-import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -43,9 +43,10 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     assertTrue(help.contains("list-accounts"));
     assertTrue(help.contains("Command Catalog"));
     assertTrue(help.contains("Quick Start"));
-    assertTrue(help.contains("Generate one key file"));
-    assertTrue(help.contains("Review the seeded starter chart"));
-    assertTrue(help.contains("Create the first sale request"));
+    assertTrue(help.contains("Generate a key file"));
+    assertFalse(help.contains("Generate one key file"));
+    assertTrue(help.contains("Review the seeded accounts"));
+    assertTrue(help.contains("Create the first settled-sale request"));
     assertTrue(
         containsCollapsedText(
             help,
@@ -99,13 +100,20 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
 
   @Test
   void run_recordSaleHelpPublishesOnlySalePostingFields() {
-    String help = runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.RECORD_SALE);
+    String help =
+        runCommandHelpText(dev.erst.fingrind.contract.protocol.OperationId.RECORD_SALE_SETTLED);
 
     assertTrue(help.contains("Posting model"), help);
-    assertTrue(containsCollapsedText(help, "Canonical scaffold value: SALE."), help);
+    assertTrue(containsCollapsedText(help, "Canonical scaffold value: SALE_SETTLED."), help);
     assertTrue(help.contains("cashAccountCode"), help);
     assertTrue(help.contains("revenueAccountCode"), help);
     assertTrue(help.contains("amount"), help);
+    assertTrue(help.contains("inventoryRelief"), help);
+    assertTrue(
+        containsCollapsedText(
+            help,
+            "Trading-template sale requests require this object so one committed sale can carry both revenue recognition and cost-of-sales relief."),
+        help);
     assertTrue(help.contains("sourceDocumentType"), help);
     assertTrue(
         containsCollapsedText(
@@ -297,6 +305,29 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
   }
 
   @Test
+  void run_recordSaleHelpFullJsonPublishesConditionalInventoryRelief() {
+    JsonNode postingShape =
+        runCommandHelpPayloadJson(
+                dev.erst.fingrind.contract.protocol.OperationId.RECORD_SALE_SETTLED)
+            .path("requestFile")
+            .path("requestShapes")
+            .path("bookkeepingEntry");
+
+    JsonNode inventoryRelief =
+        descriptorByName(postingShape.path("topLevelFields"), "inventoryRelief");
+
+    assertEquals(
+        RequestFieldPresence.CONDITIONAL.wireValue(),
+        inventoryRelief.path("presence").stringValue());
+    assertTrue(
+        inventoryRelief
+            .path("description")
+            .stringValue()
+            .contains("Trading-template sale requests require this object"),
+        inventoryRelief.toPrettyString());
+  }
+
+  @Test
   void renderRequestGuidance_rejectsMissingPostingModelFieldDescriptors() {
     HelpDescriptor baseHelp =
         MachineContract.help(
@@ -424,12 +455,12 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     int exitCode = cli.run(new String[] {"help", "--output", "text", "--detail", "full"});
 
     assertEquals(1, exitCode);
-    JsonNode output =
-        assertDoesNotThrow(() -> new ObjectMapper().readTree(outputStream.toByteArray()));
-    assertEquals("error", output.path("status").stringValue());
-    assertEquals("invalid-request", output.path("code").stringValue());
-    assertEquals("--output", output.path("argument").stringValue());
-    assertTrue(output.path("message").stringValue().contains("resolved output mode is json"));
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(output.contains("Error"), output);
+    assertTrue(output.contains("invalid-request"), output);
+    assertTrue(output.contains("Argument"), output);
+    assertTrue(output.contains("--output"), output);
+    assertTrue(output.contains("resolved output mode is json"), output);
   }
 
   @Test
@@ -441,12 +472,12 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     int exitCode = cli.run(new String[] {"capabilities", "--output", "text", "--detail", "full"});
 
     assertEquals(1, exitCode);
-    JsonNode output =
-        assertDoesNotThrow(() -> new ObjectMapper().readTree(outputStream.toByteArray()));
-    assertEquals("error", output.path("status").stringValue());
-    assertEquals("invalid-request", output.path("code").stringValue());
-    assertEquals("--output", output.path("argument").stringValue());
-    assertTrue(output.path("message").stringValue().contains("resolved output mode is json"));
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(output.contains("Error"), output);
+    assertTrue(output.contains("invalid-request"), output);
+    assertTrue(output.contains("Argument"), output);
+    assertTrue(output.contains("--output"), output);
+    assertTrue(output.contains("resolved output mode is json"), output);
   }
 
   @Test
@@ -602,9 +633,9 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(java.util.List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),

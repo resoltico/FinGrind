@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented"]
@@ -39,9 +39,10 @@ public enum BookkeepingEntryKind
 
 - Direct journal: `DirectJournal` carries one caller-authored `JournalEntry` for the raw escape
   hatch
-- Typed business events: `Sale`, `Expense`, `OwnerContribution`, `OwnerWithdrawal`,
-  `OpeningPosition`, and `Reversal` preserve the caller-authored event facts that FinGrind
-  translates into one canonical journal entry
+- Typed business events: `SaleSettled`, `SaleOnCredit`, `ExpenseSettled`, `ExpenseOnCredit`,
+  `Receipt`, `Payment`, `OwnerContribution`, `OwnerWithdrawal`, `OpeningPosition`, and
+  `Reversal` preserve the caller-authored event facts that FinGrind translates into one canonical
+  journal entry
 - Purpose: keep the business-event-first write language explicit without introducing a second write
   kernel
 
@@ -86,6 +87,40 @@ public record AppliedTax(...)
 - Boundary: request-side selectors stay on the published write DTOs, while `AppliedTax` travels on
   committed posting and reporting surfaces after translation and validation
 
+## `SettlementAdjunct`
+
+`SettlementAdjunct` is the optional request-side settlement fact carried by receipt and payment
+entries.
+
+```java
+public record SettlementAdjunct(AccountCode accountCode, MonetaryAmount amount)
+```
+
+- Purpose: keep settlement discounts, fees, and write-offs as one explicit owned nested fact
+  instead of burying them inside ad hoc extra lines or free-form notes
+- Validation: requires one positive amount and one declared adjunct account code
+- Boundary: this request-side fact is distinct from the core classifier's derived
+  `AccountRole.SETTLEMENT_ADJUNCT`
+
+## `InventoryRelief`
+
+`InventoryRelief` is the optional request-side goods-relief fact carried only by trading-book sale
+entries.
+
+```java
+public record InventoryRelief(
+    AccountCode inventoryAccountCode,
+    AccountCode costOfSalesAccountCode,
+    MonetaryAmount amount)
+```
+
+- Purpose: keep inventory depletion and cost-of-sales recognition on the typed sale path instead
+  of forcing goods-trading books back to raw journals
+- Validation: trading books require it on sale requests, non-trading books reject it, and the
+  amount must stay consistent with the caller-authored sale event it annotates
+- Boundary: this request-side fact remains distinct from the translated journal lines that debit
+  cost-of-sales and credit inventory after posting translation
+
 ## `PostEntryCommandTranslator`
 
 `PostEntryCommandTranslator` maps one published `PostEntryCommand` into the local posting command
@@ -97,9 +132,29 @@ public final class PostEntryCommandTranslator
 
 - Purpose: keep business-event-to-posting translation owned at the application boundary instead of
   leaking it into the CLI, request loaders, or posting service
-- Current scope: direct journals pass through unchanged, while `Sale`, `Expense`,
-  `OwnerContribution`, `OwnerWithdrawal`, `OpeningPosition`, and `Reversal` translate into the
-  exact canonical journal and durable posting origin they claim
+- Current scope: direct journals pass through unchanged, while the settled sale, sale-on-credit,
+  settled expense, expense-on-credit, receipt, payment, owner contribution, owner withdrawal,
+  opening-position, and reversal families translate into the exact canonical journal and durable
+  posting origin they claim
+
+## `ResolvedJournal`
+
+`ResolvedJournal` is the success-side semantic payload that records the fully expanded journal and
+its classification.
+
+```java
+public record ResolvedJournal(
+    JournalEntry expandedLines,
+    @Nullable AppliedTax appliedTax,
+    @Nullable ForeignExchangeDetails foreignExchangeDetails,
+    ClassificationResult classification)
+```
+
+- Purpose: keep success-side preflight and commit feedback truthful about the exact expanded
+  journal, resolved tax, retained foreign-exchange facts, and semantic classification that
+  FinGrind will validate and commit
+- Boundary: raw-admission, evidence validation, and typed-verb self-consistency consume this full
+  object instead of recomputing reduced tuples from individual success fields
 
 ## `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult`
 
@@ -114,6 +169,8 @@ public sealed interface CommitEntryResult extends PostEntryResult
 
 - Purpose: make `preflight-entry` unable to return `Committed` and `post-entry` unable to return
   `PreflightAccepted` at compile time
+- Success payload: both `PreflightAccepted` and `Committed` now carry one `resolvedJournal` so the
+  public success surface can publish the exact expanded journal and its semantic classification
 
 ## `PostingDraft`
 
@@ -189,6 +246,9 @@ public final class BookkeepingPublishedLanguageTranslator
   bookkeeping policy code
 - `BookkeepingPostingRejection`: local refusal family for posting validation and reversal
   admissibility before translation into public `PostingRejection`
+- `InventoryBalanceBelowZeroViolation`: local account-state subtype for one inventory decrease
+  that would create or deepen a credit carrying balance before publication translates it into
+  public `InventoryBalanceBelowZero`
 - `BookkeepingRequestPublishedLanguageTranslator`: translates `OpenBookCommand`,
   `DeclareAccountCommand`, and explicit close commands into the local working model before any
   bookkeeping rule evaluates them
@@ -196,22 +256,32 @@ public final class BookkeepingPublishedLanguageTranslator
   and local rejection families back into the published protocol surface instead of letting
   transport DTOs become the local working model
 
-## `BookkeepingEntrySemanticsViolationFactory`
+## `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations`
 
-`BookkeepingEntrySemanticsViolationFactory` centralizes the bookkeeping-owned construction of
-entry-semantics violations so selector field names, selector values, stable codes, and operator
-repair text stay aligned across every bounded write profile.
+These four bookkeeping-owned namespaces split entry-semantics violations by account doctrine,
+evidence truthfulness, direct-journal and basis admission, and tax-selection semantics so each
+validator emits one local refusal from the owner of that meaning.
 
 ```java
-public final class BookkeepingEntrySemanticsViolationFactory
+public final class BookkeepingAccountSemanticsViolations
+public final class BookkeepingEvidenceSemanticsViolations
+public final class BookkeepingEntryModeSemanticsViolations
+public final class BookkeepingTaxSemanticsViolations
 ```
 
 - Purpose: keep request-truthful violation prose and stable codes compiler-owned instead of
-  scattering string assembly across posting validators
-- Surface: `accountTypeMismatch(...)`, `financialPositionClassificationMismatch(...)`,
-  `sourceDocumentTypeNotAccepted(...)`, `distinctRoleAccountsRequired(...)`,
-  `economicNullJournal(...)`, and `referencedAccountSet(...)`
-- Boundary: the factory stays inside local bookkeeping validation and emits local
+  scattering string assembly across posting validators while still making semantic ownership
+  explicit at the call site
+- Surface:
+  `BookkeepingAccountSemanticsViolations` owns account-type, cash-classification, financial-position,
+  distinct-role, and resolved-role refusals plus referenced-account set assembly;
+  `BookkeepingEvidenceSemanticsViolations` owns source-document acceptance and evidence-class
+  conflict refusals;
+  `BookkeepingEntryModeSemanticsViolations` owns economic-null, verb-versus-basis, raw-journal
+  shadowing, bundled-event, cash-line, and opening-window refusals;
+  `BookkeepingTaxSemanticsViolations` owns unknown registration, unknown code, and
+  application-kind refusals
+- Boundary: these helpers stay inside local bookkeeping validation and emit local
   `BookkeepingPostingRejection.EntrySemanticsViolation` records before the published
   `PostingRejection` surface is assembled
 
@@ -504,9 +574,18 @@ public final class PostingRejectionSemantics
   `IdempotencyKeyConflict`, `BookFunctionalCurrencyMismatch`,
   `SweptInterimResultViolation`, `OpeningPositionWindowClosed`,
   `OpeningPositionTouchesNominalAccount`, `ReservedResultClassification`,
-  `ReversalTargetNotFound`, `ReversalAlreadyExists`, `ReversalDoesNotNegateTarget`
+  `ReversalTargetNotFound`, `ReversalTargetIsReversal`, `ReversalAlreadyExists`,
+  `ReversalDoesNotNegateTarget`
+- `AccountStateViolationDetail`: stable top-level detail payload for one aggregated
+  `AccountStateViolations` issue, kept separate from the closed rejection family so the family
+  stays focused on refusal variants while adapters still receive one typed detail shape
+- `InventoryBalanceBelowZero`: published account-state subtype for one inventory decrease that
+  would create or deepen a credit carrying balance, including the exact request field,
+  effective date, current balance, requested decrease, and resulting credit balance
 - `PostingRejection`: keep validly parsed but inadmissible postings machine-distinguishable
 - `ReservedResultClassification`: names both the blocked account code and the close-reserved
   classification, covering both `RESULT_HOLDING` and `RETAINED_ACCUMULATED`
+- `ReversalTargetIsReversal`: makes reversal lineage terminal, so restoring business effect after
+  one reversal requires one fresh operational entry instead of a reversal-of-reversal redo
 - `PostingRejectionSemantics`: build canonical account-type, classification, evidence, and
   economic-nullity violations plus the referenced-account set used to evaluate them

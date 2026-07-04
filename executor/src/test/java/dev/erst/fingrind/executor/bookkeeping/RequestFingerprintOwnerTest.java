@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
@@ -89,7 +90,7 @@ class RequestFingerprintOwnerTest {
     List<RequestFingerprint> fingerprints =
         List.of(
                 new BookkeepingEntry.DirectJournal(testJournalEntry(), null),
-                new BookkeepingEntry.Expense(
+                new BookkeepingEntry.ExpenseSettled(
                     LocalDate.parse("2026-04-07"),
                     new AccountCode("5000"),
                     new AccountCode("1000"),
@@ -121,11 +122,12 @@ class RequestFingerprintOwnerTest {
                             JournalLine.EntrySide.CREDIT,
                             new MonetaryAmount("EUR", "1000")))),
                 new BookkeepingEntry.Reversal(
-                    testJournalEntry(),
+                    testJournalEntry().effectiveDate(),
                     new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                         new ReversalReference(new PostingId("prior-posting")),
                         new ReversalReason("operator reversal")),
-                    null))
+                    null,
+                    testJournalEntry()))
             .stream()
             .map(RequestFingerprintOwnerTest::postingCommand)
             .map(RequestFingerprintOwner::fingerprint)
@@ -199,11 +201,12 @@ class RequestFingerprintOwnerTest {
             postingDraft(saleEntry, accountingEvidence("different-evidence"), saleEntry));
     BookkeepingEntry reversalEntry =
         new BookkeepingEntry.Reversal(
-            testJournalEntry(),
+            testJournalEntry().effectiveDate(),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                 new ReversalReference(new PostingId("prior-posting-2")),
                 new ReversalReason("operator reversal 2")),
-            null);
+            null,
+            testJournalEntry());
     RequestFingerprint directDraftFingerprint =
         RequestFingerprintOwner.fingerprint(
             postingDraft(
@@ -259,28 +262,43 @@ class RequestFingerprintOwnerTest {
     RequestFingerprint ecbQuoteFingerprint =
         RequestFingerprintOwner.fingerprint(
             postingCommand(
-                new BookkeepingEntry.Sale(
+                new BookkeepingEntry.SaleSettled(
                     LocalDate.parse("2026-04-07"),
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "9200"),
+                    null,
                     foreignExchangeDetails("ecb-spot"),
                     null,
                     null)));
     RequestFingerprint bankQuoteFingerprint =
         RequestFingerprintOwner.fingerprint(
             postingCommand(
-                new BookkeepingEntry.Sale(
+                new BookkeepingEntry.SaleSettled(
                     LocalDate.parse("2026-04-07"),
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "9200"),
+                    null,
                     foreignExchangeDetails("bank-close"),
                     null,
                     null)));
 
     assertNotEquals(noForeignExchangeFingerprint, ecbQuoteFingerprint);
     assertNotEquals(ecbQuoteFingerprint, bankQuoteFingerprint);
+  }
+
+  @Test
+  void fingerprint_distinguishesTradingSaleInventoryReliefFacts() {
+    RequestFingerprint noInventoryReliefFingerprint =
+        RequestFingerprintOwner.fingerprint(postingCommand(sale(null, null)));
+    RequestFingerprint inventoryReliefFingerprint =
+        RequestFingerprintOwner.fingerprint(postingCommand(saleWithInventoryRelief("400")));
+    RequestFingerprint differentInventoryReliefFingerprint =
+        RequestFingerprintOwner.fingerprint(postingCommand(saleWithInventoryRelief("450")));
+
+    assertNotEquals(noInventoryReliefFingerprint, inventoryReliefFingerprint);
+    assertNotEquals(inventoryReliefFingerprint, differentInventoryReliefFingerprint);
   }
 
   private static PostingCommand postingCommand(
@@ -364,21 +382,37 @@ class RequestFingerprintOwnerTest {
         retainedEntry);
   }
 
-  private static BookkeepingEntry.Sale sale(
+  private static BookkeepingEntry.SaleSettled sale(
       @Nullable TaxSelection taxSelection, @Nullable AppliedTax appliedTax) {
-    return new BookkeepingEntry.Sale(
+    return new BookkeepingEntry.SaleSettled(
         LocalDate.parse("2026-04-07"),
         new AccountCode("1000"),
         new AccountCode("4000"),
         new MonetaryAmount("EUR", "1000"),
         null,
+        null,
         taxSelection,
         appliedTax);
   }
 
-  private static BookkeepingEntry.Expense expense(
+  private static BookkeepingEntry.SaleSettled saleWithInventoryRelief(String inventoryMinorUnits) {
+    return new BookkeepingEntry.SaleSettled(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("1000"),
+        new AccountCode("4000"),
+        new MonetaryAmount("EUR", "1000"),
+        new InventoryRelief(
+            new AccountCode("1400"),
+            new AccountCode("5000"),
+            new MonetaryAmount("EUR", inventoryMinorUnits)),
+        null,
+        null,
+        null);
+  }
+
+  private static BookkeepingEntry.ExpenseSettled expense(
       @Nullable TaxSelection taxSelection, @Nullable AppliedTax appliedTax) {
-    return new BookkeepingEntry.Expense(
+    return new BookkeepingEntry.ExpenseSettled(
         LocalDate.parse("2026-04-07"),
         new AccountCode("5000"),
         new AccountCode("1000"),

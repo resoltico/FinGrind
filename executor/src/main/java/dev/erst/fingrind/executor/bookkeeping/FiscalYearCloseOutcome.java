@@ -7,7 +7,8 @@ public sealed interface FiscalYearCloseOutcome
     permits FiscalYearCloseOutcome.Closed, FiscalYearCloseOutcome.Rejected {
 
   /** Successful durable fiscal-year-close outcome carrying the stored close fact. */
-  record Closed(ClosedFiscalYearRecord closedFiscalYear) implements FiscalYearCloseOutcome {
+  record Closed(ClosedFiscalYearRecord closedFiscalYear, boolean idempotentReplay)
+      implements FiscalYearCloseOutcome {
     public Closed {
       Objects.requireNonNull(closedFiscalYear, "closedFiscalYear");
     }

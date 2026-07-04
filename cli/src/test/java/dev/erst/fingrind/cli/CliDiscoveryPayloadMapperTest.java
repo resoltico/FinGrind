@@ -835,7 +835,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
   void requestFileGuidancePayload_allowsSingleTemplateArtifactWithoutRequestShapes() {
     CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-            "Provide one posting JSON object through --request-file <path|->.",
+            "Provide a posting JSON document through --request-file <path|->.",
             DiscoveryDetail.COMPACT,
             MachineContract.requestTemplate(),
             null,
@@ -857,7 +857,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         requestShapes = Objects.requireNonNull(postEntry.requestShapes());
     CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-            "Provide one posting JSON object through --request-file <path|->.",
+            "Provide a posting JSON document through --request-file <path|->.",
             DiscoveryDetail.COMPACT,
             null,
             null,

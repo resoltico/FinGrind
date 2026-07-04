@@ -22,7 +22,7 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
     )
     commit_sale_output = run_cli(
         config,
-        operation_ids["recordSale"],
+        operation_ids["recordSaleSettled"],
         "--book-file",
         config.book.argument,
         "--book-key-file",
@@ -34,7 +34,7 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
     )
     commit_expense_output = run_cli(
         config,
-        operation_ids["recordExpense"],
+        operation_ids["recordExpenseSettled"],
         "--book-file",
         config.book.argument,
         "--book-key-file",

@@ -3,16 +3,31 @@ package dev.erst.fingrind.report.pdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
+import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
+import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
+import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.contract.reportmodel.AccountBalanceReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.AccountLedgerReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.CashFlowStatementReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.ChangesInEquityReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.FinancialPositionReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.IncomeStatementReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.PeriodSummaryReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.TrialBalanceReportModelBuilder;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
@@ -107,6 +122,38 @@ final class PdfReportFixtureSupport {
     try (PDDocument document = Loader.loadPDF(pdfBytes)) {
       return new PDFTextStripper().getText(document);
     }
+  }
+
+  static byte[] render(PdfReportService service, AccountBalanceSnapshot snapshot) {
+    return service.render(AccountBalanceReportModelBuilder.buildModel(snapshot));
+  }
+
+  static byte[] render(PdfReportService service, TrialBalanceReport report) {
+    return service.render(TrialBalanceReportModelBuilder.buildModel(report));
+  }
+
+  static byte[] render(PdfReportService service, AccountLedgerReport report) {
+    return service.render(AccountLedgerReportModelBuilder.buildModel(report));
+  }
+
+  static byte[] render(PdfReportService service, PeriodSummaryReport report) {
+    return service.render(PeriodSummaryReportModelBuilder.buildModel(report));
+  }
+
+  static byte[] render(PdfReportService service, FinancialPositionReport report) {
+    return service.render(FinancialPositionReportModelBuilder.buildModel(report));
+  }
+
+  static byte[] render(PdfReportService service, IncomeStatementReport report) {
+    return service.render(IncomeStatementReportModelBuilder.buildModel(report));
+  }
+
+  static byte[] render(PdfReportService service, CashFlowStatementReport report) {
+    return service.render(CashFlowStatementReportModelBuilder.buildModel(report));
+  }
+
+  static byte[] render(PdfReportService service, ChangesInEquityReport report) {
+    return service.render(ChangesInEquityReportModelBuilder.buildModel(report));
   }
 
   static List<AccountLedgerEntry> ledgerEntries(int count) {

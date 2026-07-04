@@ -43,7 +43,8 @@ final class CliPeriodCloseOutputRenderer {
         "Interim Result Swept", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderClosedFiscalYearText(ClosedFiscalYear closedFiscalYear) {
+  static String renderClosedFiscalYearText(
+      ClosedFiscalYear closedFiscalYear, boolean idempotentReplay) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Close order", Integer.toString(closedFiscalYear.closeOrder())));
     rows.add(
@@ -68,8 +69,10 @@ final class CliPeriodCloseOutputRenderer {
                 : closedFiscalYear.closePostingIds().stream()
                     .map(dev.erst.fingrind.core.PostingId::value)
                     .collect(java.util.stream.Collectors.joining(", "))));
+    rows.add(List.of("Idempotent replay", CliQueryScopeText.displayBooleanLabel(idempotentReplay)));
     return CliTextFormat.renderTitledBlock(
-        "Fiscal Year Closed", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
+        idempotentReplay ? "Fiscal Year Already Closed" : "Fiscal Year Closed",
+        CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
   private static String generatedPostingLabel(OperationId operationId) {

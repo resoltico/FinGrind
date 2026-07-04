@@ -42,6 +42,7 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
+import dev.erst.fingrind.jazzer.support.JazzerPostEntryResultFixtures;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
 import java.util.Objects;
 import java.util.Optional;
@@ -59,12 +60,7 @@ final class SqliteRoundTripWorkflowTestSupport {
 
   static Committed committed(String postingId, boolean idempotentReplay) {
     PostEntryCommand command = basicValidCommand();
-    return new Committed(
-        new PostingId(postingId),
-        command.requestProvenance().idempotencyKey(),
-        CliFuzzFixtures.journalEntry(command).effectiveDate(),
-        CliFuzzFixtures.fixedClock().instant(),
-        idempotentReplay);
+    return JazzerPostEntryResultFixtures.committed(command, postingId, idempotentReplay);
   }
 
   static CommitRejected commitRejected(PostingRejection rejection) {

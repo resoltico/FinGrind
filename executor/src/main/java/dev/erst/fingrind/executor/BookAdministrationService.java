@@ -39,7 +39,7 @@ public final class BookAdministrationService {
     return bookStore.openBook(
         clock.instant(),
         bookIdentity,
-        BookTemplateAccounts.declarations(bookIdentity.bookDoctrine().bookTemplateId()));
+        BookTemplateAccounts.declarations(bookIdentity.bookDoctrine()));
   }
 
   /** Declares or reactivates one account in the selected book. */

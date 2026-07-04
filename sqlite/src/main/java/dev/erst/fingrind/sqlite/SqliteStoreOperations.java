@@ -51,7 +51,7 @@ final class SqliteStoreOperations {
     String resultName = exception.resultName();
     if (SqliteNativeResultCode.matchesAny(exception.resultCode(), "CONSTRAINT_CHECK")) {
       return new SqlitePersistenceInvariantException(
-          message + " One upstream invariant should have rejected this request before commit.",
+          message + " An upstream invariant should have rejected this request before commit.",
           exception);
     }
     String detail =

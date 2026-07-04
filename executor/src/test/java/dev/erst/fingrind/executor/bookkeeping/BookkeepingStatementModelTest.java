@@ -140,13 +140,13 @@ class BookkeepingStatementModelTest {
   void administrationRejections_requireTheirMandatoryFields() {
     assertEquals(
         FinancialPositionLineClassification.RESULT_HOLDING,
-        new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+        new CloseTargetAccountCandidateMissing(
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))
             .requiredFinancialPositionLineClassification());
     assertEquals(
         List.of(new AccountCode("3200")),
-        new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+        new CloseTargetAccountCandidateMissing(
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))
             .inactiveCandidateAccountCodes());
@@ -168,7 +168,7 @@ class BookkeepingStatementModelTest {
         assertThrows(
                 NullPointerException.class,
                 () ->
-                    new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+                    new CloseTargetAccountCandidateMissing(
                         nullOf(FinancialPositionLineClassification.class), List.of()))
             .getMessage());
     assertEquals(

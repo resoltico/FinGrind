@@ -21,7 +21,6 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 {
                   "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -31,8 +30,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   },
                   "reversal": "posting-0"
                 }
-                """
-                            .formatted(standardBalancedLinesJson()))
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -50,7 +48,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -99,7 +97,6 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 {
                   "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
                   "reversal": {
                     "kind": "REVERSAL",
                     "priorPostingId": "posting-0"
@@ -112,8 +109,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                     "causationId": "cause-1"
                   }
                 }
-                """
-                            .formatted(standardBalancedLinesJson()))
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -131,7 +127,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -164,7 +160,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -197,7 +193,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -230,7 +226,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -263,7 +259,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "posting": {
-                    "entryKind": "SALE",
+                    "entryKind": "SALE_SETTLED",
                     "effectiveDate": "2026-04-07",
                     "cashAccountCode": "1000",
                     "revenueAccountCode": "2000",
@@ -298,7 +294,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -311,7 +307,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                     "causationId": "cause-1"
                   },
                   "posting": {
-                    "entryKind": "SALE",
+                    "entryKind": "SALE_SETTLED",
                     "effectiveDate": "2026-04-07",
                     "cashAccountCode": "1000",
                     "revenueAccountCode": "2000",
@@ -382,7 +378,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                 """
                 {
                   "posting": {
-                    "entryKind": "SALE",
+                    "entryKind": "SALE_SETTLED",
                     "effectiveDate": "2026-04-07",
                     "cashAccountCode": "1000",
                     "revenueAccountCode": "2000",

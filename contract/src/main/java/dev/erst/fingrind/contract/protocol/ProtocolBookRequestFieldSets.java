@@ -28,6 +28,8 @@ public final class ProtocolBookRequestFieldSets {
   private static final Set<String> OPEN_BOOK_FIELDS =
       Set.of(
           ProtocolOpenBookFields.ENTITY_NAME,
+          ProtocolOpenBookFields.BOOK_TEMPLATE_ID,
+          ProtocolOpenBookFields.ACCOUNTING_BASIS,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
           ProtocolOpenBookFields.FISCAL_YEAR_START);
 

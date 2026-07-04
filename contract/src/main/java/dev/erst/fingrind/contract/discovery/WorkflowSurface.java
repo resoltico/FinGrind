@@ -6,6 +6,7 @@ import java.util.Objects;
 
 /** Stable workflow surfaces published by the help quick-start contract. */
 public enum WorkflowSurface implements WireValue {
+  PATH_POSIX_SHELL("path-posix-shell"),
   BUNDLE_POSIX_SHELL("bundle-posix-shell"),
   SOURCE_CHECKOUT_POSIX_SHELL("source-checkout-posix-shell"),
   SOURCE_CHECKOUT_WINDOWS_POWERSHELL("source-checkout-windows-powershell"),

@@ -1,10 +1,33 @@
 package dev.erst.fingrind.report.pdf;
 
+import dev.erst.fingrind.contract.reportmodel.ReportColumn;
 import java.util.List;
 
 /** Shared PDF table layouts for bookkeeping reports. */
 final class PdfReportTableLayouts {
   private PdfReportTableLayouts() {}
+
+  static List<PdfTableColumn> reportColumns(List<ReportColumn> columns) {
+    return columns.stream()
+        .map(
+            column -> {
+              float widthWeight =
+                  switch (column.key()) {
+                    case "accountName" -> 2.6f;
+                    case "lineName", "counterparts" -> 1.9f;
+                    case "classification" -> 1.5f;
+                    case "lineKind", "accountType", "normalBalance", "active" -> 0.85f;
+                    default -> column.alignment() == ReportColumn.Alignment.RIGHT ? 0.95f : 1.2f;
+                  };
+              return new PdfTableColumn(
+                  column.title(),
+                  widthWeight,
+                  column.alignment() == ReportColumn.Alignment.RIGHT
+                      ? PdfTableColumn.CellAlignment.RIGHT
+                      : PdfTableColumn.CellAlignment.LEFT);
+            })
+        .toList();
+  }
 
   static List<PdfTableColumn> statementBalanceColumns() {
     return statementColumns(1.7f, 1.1f, balanceAmountColumns("Debit", "Credit", "Net", "Side"));

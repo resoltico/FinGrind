@@ -36,6 +36,7 @@ class ReleaseSmokeConfig:
     backup_book: SmokePath
     backup_book_key: SmokePath
     restored_book: SmokePath
+    restored_book_key: SmokePath
     replacement_book_key: SmokePath
     prompt_failure_book: SmokePath
     trial_balance_pdf: SmokePath
@@ -48,6 +49,7 @@ class ReleaseSmokeConfig:
     accounting_framework_position: str
     entity_form: str
     book_template_id: str
+    accounting_basis: str
     functional_currency: str
     fiscal_year_start: str
     starter_cash_account_code: str
@@ -73,6 +75,7 @@ class ReleaseSmokeScenario:
     backup_book: SmokePath
     backup_book_key: SmokePath
     restored_book: SmokePath
+    restored_book_key: SmokePath
     replacement_book_key: SmokePath
     prompt_failure_book: SmokePath
     trial_balance_pdf: SmokePath
@@ -84,6 +87,7 @@ class ReleaseSmokeScenario:
     accounting_framework_position: str
     entity_form: str
     book_template_id: str
+    accounting_basis: str
     functional_currency: str
     fiscal_year_start: str
     starter_cash_account_code: str

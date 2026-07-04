@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 
@@ -12,6 +13,18 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.TaxApplicationKind;
+import dev.erst.fingrind.contract.tax.TaxCode;
+import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
+import dev.erst.fingrind.contract.tax.TaxCodeName;
+import dev.erst.fingrind.contract.tax.TaxInclusionMode;
+import dev.erst.fingrind.contract.tax.TaxJurisdiction;
+import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
+import dev.erst.fingrind.contract.tax.TaxRate;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
+import dev.erst.fingrind.contract.tax.TaxRegistrationName;
+import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
@@ -22,6 +35,7 @@ import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -81,6 +95,55 @@ final class PostingApplicationServiceTestSupport {
         FIXED_CLOCK.instant());
   }
 
+  static void declareTaxAccounts(InMemoryBookSession bookSession) {
+    bookSession.declareAccount(
+        new AccountCode("1300"),
+        new AccountName("VAT Recoverable"),
+        AccountType.ASSET,
+        financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET),
+        FIXED_CLOCK.instant());
+    bookSession.declareAccount(
+        new AccountCode("2100"),
+        new AccountName("VAT Payable"),
+        AccountType.LIABILITY,
+        financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_LIABILITY),
+        FIXED_CLOCK.instant());
+  }
+
+  static void declareLatviaVatRegistration(InMemoryBookSession bookSession) {
+    bookSession.taxRegistrationsById.put(
+        new TaxRegistrationId("vat-lv"),
+        new DeclaredTaxRegistration(
+            new TaxRegistrationId("vat-lv"),
+            new TaxRegistrationName("Latvia VAT"),
+            new TaxJurisdiction("LV"),
+            null,
+            new AccountCode("2100"),
+            new AccountCode("1300"),
+            TaxObligationFrequency.MONTHLY,
+            20,
+            List.of(
+                new TaxCodeDefinition(
+                    new TaxCode("vat-standard-sale"),
+                    new TaxCodeName("VAT Standard Sale"),
+                    new TaxRate(210_000),
+                    TaxInclusionMode.EXCLUSIVE,
+                    TaxApplicationKind.OUTPUT_SALE),
+                new TaxCodeDefinition(
+                    new TaxCode("vat-standard-expense"),
+                    new TaxCodeName("VAT Standard Expense"),
+                    new TaxRate(210_000),
+                    TaxInclusionMode.INCLUSIVE,
+                    TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE),
+                new TaxCodeDefinition(
+                    new TaxCode("vat-nonrecoverable-expense"),
+                    new TaxCodeName("VAT Nonrecoverable Expense"),
+                    new TaxRate(120_000),
+                    TaxInclusionMode.INCLUSIVE,
+                    TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE)),
+            FIXED_CLOCK.instant()));
+  }
+
   static void declareNonCashDirectJournalAccounts(InMemoryBookSession bookSession) {
     bookSession.declareAccount(
         new AccountCode("3000"),
@@ -104,13 +167,30 @@ final class PostingApplicationServiceTestSupport {
 
   static PostEntryCommand command(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.Sale(
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("2000"),
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
             null,
             null,
+            null,
+            null),
+        accountingEvidence(idempotencyKey),
+        requestProvenance(idempotencyKey),
+        SourceChannel.CLI);
+  }
+
+  static PostEntryCommand taxedSaleCommand(String idempotencyKey) {
+    return new PostEntryCommand(
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("2000"),
+            MonetaryAmount.of(Money.parse("EUR", "100.00")),
+            null,
+            null,
+            new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
             null),
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
@@ -142,8 +222,9 @@ final class PostingApplicationServiceTestSupport {
     BookkeepingEntry entry =
         reversalReference.isPresent()
             ? new BookkeepingEntry.Reversal(
-                journalEntry,
+                journalEntry.effectiveDate(),
                 new PostingLineage.Reversal(reversalReference.orElseThrow(), reason.orElseThrow()),
+                null,
                 null)
             : new BookkeepingEntry.OpeningPosition(
                 journalEntry.effectiveDate(), openingBalances(journalEntry));
@@ -185,7 +266,7 @@ final class PostingApplicationServiceTestSupport {
         journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.SALE,
+        dev.erst.fingrind.core.PostingOriginKind.SALE_SETTLED,
         accountingEvidence(idempotencyKey),
         committedProvenance(idempotencyKey));
   }
@@ -227,6 +308,16 @@ final class PostingApplicationServiceTestSupport {
         List.of(
             line("1000", JournalLine.EntrySide.CREDIT, "10.00"),
             line("2000", JournalLine.EntrySide.DEBIT, "10.00")));
+  }
+
+  static BookkeepingEntry.Reversal resolvedReversalEntry(
+      String priorPostingId, String reason, JournalEntry journalEntry) {
+    return new BookkeepingEntry.Reversal(
+        journalEntry.effectiveDate(),
+        new PostingLineage.Reversal(
+            new ReversalReference(new PostingId(priorPostingId)), new ReversalReason(reason)),
+        null,
+        journalEntry);
   }
 
   static JournalEntry conflictingJournalEntry() {
@@ -302,6 +393,10 @@ final class PostingApplicationServiceTestSupport {
               new PostingCommitResult.Rejected(
                   new BookkeepingPostingRejection.ReversalAlreadyExists(
                       new PostingId("posting-1")));
+          case "idem-reversal-target-is-reversal" ->
+              new PostingCommitResult.Rejected(
+                  new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
+                      new PostingId("posting-2")));
           default -> throw new AssertionError("Unexpected test idempotency key: " + idempotencyKey);
         };
       }

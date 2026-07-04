@@ -24,7 +24,7 @@ final class BookAdministrationRejectionNarrative {
   }
 
   private static boolean isCloseWindowRejection(BookAdministrationRejection rejection) {
-    return rejection instanceof BookAdministrationRejection.CloseTargetAccountCandidateMissing
+    return rejection instanceof CloseTargetAccountCandidateMissing
         || rejection instanceof CloseTargetAccountCandidateAmbiguous
         || rejection instanceof BookAdministrationRejection.InterimResultSweepMustStartAt
         || rejection instanceof BookAdministrationRejection.InterimResultSweepFutureDate
@@ -32,6 +32,8 @@ final class BookAdministrationRejectionNarrative {
             instanceof BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustStartAt
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustEndAt
+        || rejection
+            instanceof BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate;
   }
 
@@ -99,7 +101,7 @@ final class BookAdministrationRejectionNarrative {
 
   static String closeWindowMessage(BookAdministrationRejection rejection) {
     return switch (rejection) {
-      case BookAdministrationRejection.CloseTargetAccountCandidateMissing rejectionMissing ->
+      case CloseTargetAccountCandidateMissing rejectionMissing ->
           rejectionMissing.inactiveCandidateAccountCodes().isEmpty()
               ? "No active declared close target satisfies required classification '%s'."
                   .formatted(
@@ -136,6 +138,12 @@ final class BookAdministrationRejectionNarrative {
       case BookAdministrationRejection.FiscalYearCloseMustEndAt rejectionEndAt ->
           "Fiscal-year close must end at '%s' to cover one full fiscal year."
               .formatted(rejectionEndAt.requiredEffectiveDateTo());
+      case BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
+              rejectionHorizon ->
+          "Fiscal-year close ending '%s' precedes the live transferred-through horizon '%s'."
+              .formatted(
+                  rejectionHorizon.attemptedEffectiveDateTo(),
+                  rejectionHorizon.transferredThroughEffectiveDate());
       case BookAdministrationRejection.FiscalYearCloseFutureDate rejectionFutureDate ->
           "Fiscal-year close cannot end after the current UTC date; requested '%s'."
               .formatted(rejectionFutureDate.attemptedEffectiveDateTo());

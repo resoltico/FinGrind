@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -117,7 +116,10 @@ public final class LedgerPlanFactMapper {
     facts.add(BookWorkflowFact.group("evidence", evidenceFacts(postingFact.evidence())));
     postingFact
         .callerAuthoredEntry()
-        .ifPresent(entry -> facts.add(BookWorkflowFact.group("entry", entryFacts(entry))));
+        .ifPresent(
+            entry ->
+                facts.add(
+                    BookWorkflowFact.group("entry", LedgerPlanEntryFactMapper.entryFacts(entry))));
     postingFact
         .journalEntry()
         .lines()
@@ -250,59 +252,5 @@ public final class LedgerPlanFactMapper {
         BookWorkflowFact.text("accountCode", line.accountCode().value()),
         BookWorkflowFact.text("side", line.side().wireValue()),
         BookWorkflowFact.money("amount", MonetaryAmount.of(line.amount().money())));
-  }
-
-  private static List<BookWorkflowFact> entryFacts(BookkeepingEntry entry) {
-    List<BookWorkflowFact> facts = new ArrayList<>();
-    facts.add(BookWorkflowFact.text("entryKind", entry.entryKind().wireValue()));
-    switch (entry) {
-      case BookkeepingEntry.DirectJournal _ -> {}
-      case BookkeepingEntry.Sale sale -> {
-        facts.add(BookWorkflowFact.text("cashAccountCode", sale.cashAccountCode().value()));
-        facts.add(BookWorkflowFact.text("revenueAccountCode", sale.revenueAccountCode().value()));
-        facts.add(BookWorkflowFact.money("amount", sale.amount()));
-      }
-      case BookkeepingEntry.Expense expense -> {
-        facts.add(
-            BookWorkflowFact.text("expenseAccountCode", expense.expenseAccountCode().value()));
-        facts.add(BookWorkflowFact.text("cashAccountCode", expense.cashAccountCode().value()));
-        facts.add(BookWorkflowFact.money("amount", expense.amount()));
-      }
-      case BookkeepingEntry.OwnerContribution contribution -> {
-        facts.add(BookWorkflowFact.text("cashAccountCode", contribution.cashAccountCode().value()));
-        facts.add(
-            BookWorkflowFact.text("equityAccountCode", contribution.equityAccountCode().value()));
-        facts.add(BookWorkflowFact.money("amount", contribution.amount()));
-      }
-      case BookkeepingEntry.OwnerWithdrawal withdrawal -> {
-        facts.add(
-            BookWorkflowFact.text("equityAccountCode", withdrawal.equityAccountCode().value()));
-        facts.add(BookWorkflowFact.text("cashAccountCode", withdrawal.cashAccountCode().value()));
-        facts.add(BookWorkflowFact.money("amount", withdrawal.amount()));
-      }
-      case BookkeepingEntry.OpeningPosition openingPosition ->
-          openingPosition
-              .balances()
-              .forEach(
-                  balance ->
-                      facts.add(
-                          BookWorkflowFact.group(
-                              "openingBalance",
-                              List.of(
-                                  BookWorkflowFact.text(
-                                      "accountCode", balance.accountCode().value()),
-                                  BookWorkflowFact.text("side", balance.side().wireValue()),
-                                  BookWorkflowFact.money("amount", balance.amount())))));
-      case BookkeepingEntry.Reversal reversal ->
-          facts.add(
-              BookWorkflowFact.group(
-                  "reversal",
-                  List.of(
-                      BookWorkflowFact.text(
-                          "priorPostingId",
-                          reversal.reversal().reference().priorPostingId().value()),
-                      BookWorkflowFact.text("reason", reversal.reversal().reason().value()))));
-    }
-    return List.copyOf(facts);
   }
 }

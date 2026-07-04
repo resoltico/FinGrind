@@ -40,7 +40,7 @@ def _verify_quick_start_request(bundle_root: Path) -> None:
         (bundle_root / "quick-start-request.json").read_text(encoding="utf-8")
     )
     require(
-        quick_start_request.get("entryKind") == "SALE",
+        quick_start_request.get("entryKind") == "SALE_SETTLED",
         "bundled quick-start request did not publish the canonical sale entry kind",
     )
     require(

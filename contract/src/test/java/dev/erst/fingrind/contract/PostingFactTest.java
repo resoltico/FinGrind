@@ -81,11 +81,12 @@ class PostingFactTest {
   @Test
   void constructor_retainsMatchingCallerAuthoredEntryFacts() {
     BookkeepingEntry sale =
-        new BookkeepingEntry.Sale(
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "1000"),
+            null,
             null,
             null,
             null);
@@ -107,11 +108,12 @@ class PostingFactTest {
   @Test
   void constructor_rejectsOriginatingEntryMetadataMismatches() {
     BookkeepingEntry sale =
-        new BookkeepingEntry.Sale(
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "1000"),
+            null,
             null,
             null,
             null);
@@ -142,7 +144,7 @@ class PostingFactTest {
                     sale.journalEntry(),
                     sale.postingLineage(),
                     sale.postingKind(),
-                    PostingOriginKind.EXPENSE,
+                    PostingOriginKind.EXPENSE_SETTLED,
                     ContractFixtures.accountingEvidence("idem-1"),
                     provenance("idem-1"),
                     sale));

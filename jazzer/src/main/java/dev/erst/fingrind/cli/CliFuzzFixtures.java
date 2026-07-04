@@ -36,7 +36,7 @@ public final class CliFuzzFixtures {
     Objects.requireNonNull(command, "command must not be null");
     return PostEntryCommandTranslator.toPostingCommand(
         command,
-        CliFuzzSyntheticTaxRegistrations.lookupStore(command.entry(), FIXED_CLOCK.instant()));
+        CliFuzzSyntheticValidationStore.validationStore(command.entry(), FIXED_CLOCK.instant()));
   }
 
   /** Returns the derived journal entry carried by one published command. */

@@ -28,10 +28,15 @@ public interface ContractTemplates {
       BookkeepingEntryKind entryKind,
       String effectiveDate,
       @Nullable String cashAccountCode,
+      @Nullable String receivableAccountCode,
+      @Nullable String payableAccountCode,
       @Nullable String revenueAccountCode,
+      @Nullable String inventoryAccountCode,
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
+      @Nullable InventoryReliefTemplateDescriptor inventoryRelief,
+      @Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct,
       @Nullable ForeignExchangeTemplateDescriptor foreignExchange,
       @Nullable TaxSelectionTemplateDescriptor tax,
       @Nullable List<JournalLineTemplateDescriptor> lines,
@@ -42,42 +47,62 @@ public interface ContractTemplates {
       implements TemplateDescriptorType {
     /** Validates one posting-request template descriptor payload. */
     public PostingRequestTemplateDescriptor {
-      entryKind = ContractDescriptorValidation.requireValue(entryKind, "entryKind");
-      effectiveDate = ContractDescriptorValidation.requireText(effectiveDate, "effectiveDate");
-      cashAccountCode =
-          ContractDescriptorValidation.requireOptionalText(cashAccountCode, "cashAccountCode");
-      revenueAccountCode =
-          ContractDescriptorValidation.requireOptionalText(
-              revenueAccountCode, "revenueAccountCode");
-      expenseAccountCode =
-          ContractDescriptorValidation.requireOptionalText(
-              expenseAccountCode, "expenseAccountCode");
-      equityAccountCode =
-          ContractDescriptorValidation.requireOptionalText(equityAccountCode, "equityAccountCode");
-      amount = ContractDescriptorValidation.requireOptionalValue(amount, "amount");
-      foreignExchange =
-          ContractDescriptorValidation.requireOptionalValue(foreignExchange, "foreignExchange");
-      tax = ContractDescriptorValidation.requireOptionalValue(tax, "tax");
-      lines = lines == null ? null : ContractDescriptorValidation.copyList(lines, "lines");
-      openingBalances =
-          openingBalances == null
-              ? null
-              : ContractDescriptorValidation.copyList(openingBalances, "openingBalances");
-      evidence = ContractDescriptorValidation.requireValue(evidence, "evidence");
-      provenance = ContractDescriptorValidation.requireValue(provenance, "provenance");
-      ContractPostingRequestTemplateValidators.validate(
-          entryKind,
-          new ContractPostingRequestTemplateValidators.PostingTemplateFields(
-              cashAccountCode,
-              revenueAccountCode,
-              expenseAccountCode,
-              equityAccountCode,
-              amount,
-              foreignExchange,
-              tax,
-              lines,
-              openingBalances),
-          reversal);
+      var validated =
+          ContractPostingRequestTemplateDescriptorValidationSupport.validate(
+              new ContractPostingRequestTemplateDescriptorValidationSupport
+                  .PostingRequestTemplateDraft(
+                  entryKind,
+                  effectiveDate,
+                  cashAccountCode,
+                  receivableAccountCode,
+                  payableAccountCode,
+                  revenueAccountCode,
+                  inventoryAccountCode,
+                  expenseAccountCode,
+                  equityAccountCode,
+                  amount,
+                  inventoryRelief,
+                  settlementAdjunct,
+                  foreignExchange,
+                  tax,
+                  lines,
+                  openingBalances,
+                  evidence,
+                  provenance,
+                  reversal));
+      entryKind = validated.entryKind();
+      effectiveDate = validated.effectiveDate();
+      cashAccountCode = validated.cashAccountCode();
+      receivableAccountCode = validated.receivableAccountCode();
+      payableAccountCode = validated.payableAccountCode();
+      revenueAccountCode = validated.revenueAccountCode();
+      inventoryAccountCode = validated.inventoryAccountCode();
+      expenseAccountCode = validated.expenseAccountCode();
+      equityAccountCode = validated.equityAccountCode();
+      amount = validated.amount();
+      inventoryRelief = validated.inventoryRelief();
+      settlementAdjunct = validated.settlementAdjunct();
+      foreignExchange = validated.foreignExchange();
+      tax = validated.tax();
+      lines = validated.lines();
+      openingBalances = validated.openingBalances();
+      evidence = validated.evidence();
+      provenance = validated.provenance();
+      reversal = validated.reversal();
+    }
+  }
+
+  /** Canonical settlement-adjunct template nested inside receipt and payment requests. */
+  public record SettlementAdjunctTemplateDescriptor(String accountCode, MonetaryAmount amount)
+      implements TemplateDescriptorType {
+    /** Validates one settlement-adjunct template descriptor payload. */
+    public SettlementAdjunctTemplateDescriptor {
+      accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
+      new AccountCode(accountCode);
+      amount = ContractDescriptorValidation.requireValue(amount, "amount");
+      if (!amount.toMoney().isPositive()) {
+        throw new IllegalArgumentException("amount must carry one positive minor-unit value.");
+      }
     }
   }
 

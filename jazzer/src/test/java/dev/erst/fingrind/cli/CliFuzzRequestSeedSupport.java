@@ -12,7 +12,7 @@ public final class CliFuzzRequestSeedSupport {
   static byte[] validJpyRequestBytes() {
     return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
             new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
-                "2026-06-01",
+                "2026-04-06",
                 "1100",
                 "2100",
                 "JPY",
@@ -20,7 +20,7 @@ public final class CliFuzzRequestSeedSupport {
                 new CliFuzzHarnessTestSupport.RequestContext(
                     "document-idem-jpy-1",
                     "cash-receipt",
-                    "2026-06-01",
+                    "2026-04-06",
                     "actor-jpy-1",
                     "AGENT",
                     "command-jpy-1",
@@ -33,7 +33,7 @@ public final class CliFuzzRequestSeedSupport {
   static byte[] validBhdRequestBytes() {
     return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
             new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
-                "2026-06-02",
+                "2026-04-07",
                 "1200",
                 "2200",
                 "BHD",
@@ -41,7 +41,7 @@ public final class CliFuzzRequestSeedSupport {
                 new CliFuzzHarnessTestSupport.RequestContext(
                     "document-idem-bhd-1",
                     "cash-receipt",
-                    "2026-06-02",
+                    "2026-04-07",
                     "actor-bhd-1",
                     "AGENT",
                     "command-bhd-1",
@@ -96,7 +96,7 @@ public final class CliFuzzRequestSeedSupport {
   static byte[] sameAccountCashRevenueRequestBytes() {
     return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
             new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
-                "2026-04-09",
+                "2026-04-07",
                 "1000",
                 "1000",
                 "EUR",
@@ -104,7 +104,7 @@ public final class CliFuzzRequestSeedSupport {
                 new CliFuzzHarnessTestSupport.RequestContext(
                     "document-idem-same-account-1",
                     "cash-receipt",
-                    "2026-04-09",
+                    "2026-04-07",
                     "actor-same-account-1",
                     "AGENT",
                     "command-same-account-1",
@@ -117,31 +117,11 @@ public final class CliFuzzRequestSeedSupport {
   static byte[] missingReversalReasonRequestBytes() {
     return CliFuzzHarnessTestSupport.reversalAdjustmentRequestJson(
             new CliFuzzHarnessTestSupport.ReversalAdjustmentRequestInput(
-                "2026-04-08",
-                """
-                [
-                  {
-                    "accountCode": "5000",
-                    "side": "CREDIT",
-                    "amount": {
-                      "currencyCode": "GBP",
-                      "minorUnits": "12345"
-                    }
-                  },
-                  {
-                    "accountCode": "6000",
-                    "side": "DEBIT",
-                    "amount": {
-                      "currencyCode": "GBP",
-                      "minorUnits": "12345"
-                    }
-                  }
-                ]
-                """,
+                "2026-04-07",
                 new CliFuzzHarnessTestSupport.RequestContext(
                     "document-idem-2",
                     "credit-note",
-                    "2026-04-08",
+                    "2026-04-07",
                     "actor-2",
                     "PERSON",
                     "command-2",
@@ -156,31 +136,11 @@ public final class CliFuzzRequestSeedSupport {
   static String reversalTargetMissingRequest() {
     return CliFuzzHarnessTestSupport.reversalAdjustmentRequestJson(
         new CliFuzzHarnessTestSupport.ReversalAdjustmentRequestInput(
-            "2026-04-08",
-            """
-            [
-              {
-                "accountCode": "5000",
-                "side": "CREDIT",
-                "amount": {
-                  "currencyCode": "GBP",
-                  "minorUnits": "12345"
-                }
-              },
-              {
-                "accountCode": "6000",
-                "side": "DEBIT",
-                "amount": {
-                  "currencyCode": "GBP",
-                  "minorUnits": "12345"
-                }
-              }
-            ]
-            """,
+            "2026-04-07",
             new CliFuzzHarnessTestSupport.RequestContext(
                 "document-idem-5",
                 "credit-note",
-                "2026-04-08",
+                "2026-04-07",
                 "actor-5",
                 "PERSON",
                 "command-5",
@@ -198,7 +158,7 @@ public final class CliFuzzRequestSeedSupport {
   static byte[] invalidWrongTypeRequestBytes() {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": 1,
           "cashAccountCode": "1000",
           "revenueAccountCode": "2000",

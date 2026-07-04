@@ -109,10 +109,12 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     Path declareCashFile =
         writeNamedRequest("write-declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
-    Path declareRevenueFile =
+    Path declareBankFile =
         writeNamedRequest(
-            "write-declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
-    Path requestFile = writeRequest(validRawJournalRequestJson());
+            "write-declare-bank.json",
+            declareAccountJson(
+                "operating-bank", "Operating Bank", "ASSET", "CURRENT_ASSET", null, "NON_CASH"));
+    Path requestFile = writeRequest(validAdmissibleRawJournalRequestJson());
     Path malformedRequestFile = writeNamedRequest("write-malformed.json", "{");
 
     runJsonCommand(openBookKeyFileArguments(bookFilePath, bookKeyFilePath));
@@ -131,7 +133,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
         "--book-key-file",
         bookKeyFilePath.toString(),
         "--request-file",
-        declareRevenueFile.toString());
+        declareBankFile.toString());
 
     JsonNode success =
         runJsonCommand(
@@ -144,6 +146,14 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             requestFile.toString());
     assertSuccessEnvelope(success);
     assertTrue(success.path("payload").path("postingId").isTextual());
+    assertTrue(success.path("payload").path("resolvedJournal").isObject());
+    assertTrue(
+        success
+            .path("payload")
+            .path("resolvedJournal")
+            .path("classification")
+            .path("eventClass")
+            .isTextual());
 
     Path missingBookFilePath = tempDirectory.resolve("write-contract").resolve("missing.sqlite");
     Path missingBookKeyFilePath = writeBookKey(missingBookFilePath);
@@ -280,6 +290,68 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
   @Test
   void realCliSuccessSweep_coversRemainingEnvelopeCommandsAndArtifactHomes() throws IOException {
     Path root = tempDirectory.resolve("success-sweep");
+    Path bookFilePath = root.resolve("books").resolve("entity.sqlite");
+    Path currentBookKeyFilePath = writeBookKey(bookFilePath);
+    Path declareCashFile =
+        writeNamedRequest("sweep-declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
+    Path declareBankFile =
+        writeNamedRequest(
+            "sweep-declare-bank.json",
+            declareAccountJson(
+                "operating-bank", "Operating Bank", "ASSET", "CURRENT_ASSET", null, "NON_CASH"));
+    Path requestFile = writeRequest(validAdmissibleRawJournalRequestJson());
+
+    assertGeneratedBookKeyArtifact(root);
+    String postingId =
+        runSuccessSweepBookLifecycle(
+            bookFilePath, currentBookKeyFilePath, declareCashFile, declareBankFile, requestFile);
+    assertSuccessSweepReadCommands(bookFilePath, currentBookKeyFilePath, postingId);
+    Path replacementBookKeyFilePath = runSuccessSweepRekey(bookFilePath, currentBookKeyFilePath);
+
+    Path backupBookFilePath = root.resolve("backup").resolve("entity.sqlite");
+    Path backupBookKeyFilePath = root.resolve("backup").resolve("entity.book-key");
+    JsonNode backupBook =
+        runJsonCommand(
+            "backup-book",
+            "--book-file",
+            bookFilePath.toString(),
+            "--book-key-file",
+            replacementBookKeyFilePath.toString(),
+            "--backup-file",
+            backupBookFilePath.toString(),
+            "--backup-key-file",
+            backupBookKeyFilePath.toString());
+    assertSuccessEnvelope(backupBook);
+    assertArtifactList(
+        backupBook,
+        List.of(
+            artifactExpectation(ProtocolArtifactOutput.backupFileFormat(), backupBookFilePath),
+            artifactExpectation(
+                ProtocolArtifactOutput.backupKeyFileFormat(), backupBookKeyFilePath)));
+
+    Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
+    JsonNode restoredBook =
+        runJsonCommand(
+            "restore-book",
+            "--book-file",
+            restoredBookFilePath.toString(),
+            "--book-key-file",
+            root.resolve("restored").resolve("entity.book-key").toString(),
+            "--backup-file",
+            backupBookFilePath.toString(),
+            "--backup-key-file",
+            backupBookKeyFilePath.toString());
+    assertSuccessEnvelope(restoredBook);
+    assertArtifactList(
+        restoredBook,
+        List.of(
+            artifactExpectation(ProtocolArtifactOutput.bookFileFormat(), restoredBookFilePath),
+            artifactExpectation(
+                ProtocolArtifactOutput.bookKeyFileFormat(),
+                root.resolve("restored").resolve("entity.book-key"))));
+  }
+
+  private void assertGeneratedBookKeyArtifact(Path root) throws IOException {
     Path generatedBookKeyPath = root.resolve("secrets").resolve("generated.book-key");
     JsonNode generatedBookKey =
         runJsonCommand(
@@ -287,39 +359,19 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
     assertSuccessEnvelope(generatedBookKey);
     assertSingleArtifact(
         generatedBookKey, ProtocolArtifactOutput.bookKeyFileFormat(), generatedBookKeyPath);
+  }
 
-    Path bookFilePath = root.resolve("books").resolve("entity.sqlite");
-    Path currentBookKeyFilePath = writeBookKey(bookFilePath);
-    Path declareCashFile =
-        writeNamedRequest("sweep-declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
-    Path declareRevenueFile =
-        writeNamedRequest(
-            "sweep-declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
-    Path requestFile = writeRequest(validRawJournalRequestJson());
-
-    JsonNode openBook =
-        runJsonCommand(openBookKeyFileArguments(bookFilePath, currentBookKeyFilePath));
-    assertNonArtifactSuccess(openBook);
-
+  private String runSuccessSweepBookLifecycle(
+      Path bookFilePath,
+      Path currentBookKeyFilePath,
+      Path declareCashFile,
+      Path declareBankFile,
+      Path requestFile)
+      throws IOException {
     assertNonArtifactSuccess(
-        runJsonCommand(
-            "declare-account",
-            "--book-file",
-            bookFilePath.toString(),
-            "--book-key-file",
-            currentBookKeyFilePath.toString(),
-            "--request-file",
-            declareCashFile.toString()));
-    assertNonArtifactSuccess(
-        runJsonCommand(
-            "declare-account",
-            "--book-file",
-            bookFilePath.toString(),
-            "--book-key-file",
-            currentBookKeyFilePath.toString(),
-            "--request-file",
-            declareRevenueFile.toString()));
-
+        runJsonCommand(openBookKeyFileArguments(bookFilePath, currentBookKeyFilePath)));
+    assertDeclareAccountSuccess(bookFilePath, currentBookKeyFilePath, declareCashFile);
+    assertDeclareAccountSuccess(bookFilePath, currentBookKeyFilePath, declareBankFile);
     assertNonArtifactSuccess(
         runJsonCommand(
             "preflight-entry",
@@ -329,7 +381,6 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             currentBookKeyFilePath.toString(),
             "--request-file",
             requestFile.toString()));
-
     JsonNode committedEntry =
         runJsonCommand(
             "post-entry",
@@ -340,8 +391,11 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             "--request-file",
             requestFile.toString());
     assertNonArtifactSuccess(committedEntry);
-    String postingId = committedEntry.path("payload").path("postingId").stringValue();
+    return committedEntry.path("payload").path("postingId").stringValue();
+  }
 
+  private void assertSuccessSweepReadCommands(
+      Path bookFilePath, Path currentBookKeyFilePath, String postingId) throws IOException {
     assertNonArtifactSuccess(
         runJsonCommand(
             "inspect-book",
@@ -421,9 +475,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             bookFilePath.toString(),
             "--book-key-file",
             currentBookKeyFilePath.toString(),
-            "--period-start",
-            "2026-04-07",
-            "--period-end",
+            "--through",
             "2026-04-07"));
     assertNonArtifactSuccess(
         runJsonCommand(
@@ -456,7 +508,10 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             "2026-04-07",
             "--period-end",
             "2026-04-07"));
+  }
 
+  private Path runSuccessSweepRekey(Path bookFilePath, Path currentBookKeyFilePath)
+      throws IOException {
     Path replacementBookKeyFilePath = writeNamedBookKey("success-sweep-rotated.key", "rotated-key");
     JsonNode rekeyedBook =
         runJsonCommand(
@@ -470,50 +525,24 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
     assertSuccessEnvelope(rekeyedBook);
     assertSingleArtifact(
         rekeyedBook, ProtocolArtifactOutput.bookKeyFileFormat(), replacementBookKeyFilePath);
-
     JsonNode inspectRollback =
         runJsonCommand("inspect-rekey-rollback", "--book-file", bookFilePath.toString());
     assertSuccessEnvelope(inspectRollback);
     assertTrue(inspectRollback.path("artifacts").isMissingNode());
+    return replacementBookKeyFilePath;
+  }
 
-    Path backupBookFilePath = root.resolve("backup").resolve("entity.sqlite");
-    Path backupBookKeyFilePath = root.resolve("backup").resolve("entity.book-key");
-    JsonNode backupBook =
+  private void assertDeclareAccountSuccess(
+      Path bookFilePath, Path currentBookKeyFilePath, Path requestFile) throws IOException {
+    assertNonArtifactSuccess(
         runJsonCommand(
-            "backup-book",
+            "declare-account",
             "--book-file",
             bookFilePath.toString(),
             "--book-key-file",
-            replacementBookKeyFilePath.toString(),
-            "--backup-book-file-out",
-            backupBookFilePath.toString(),
-            "--backup-book-key-file-out",
-            backupBookKeyFilePath.toString());
-    assertSuccessEnvelope(backupBook);
-    assertArtifactList(
-        backupBook,
-        List.of(
-            artifactExpectation(ProtocolArtifactOutput.backupBookFileFormat(), backupBookFilePath),
-            artifactExpectation(
-                ProtocolArtifactOutput.backupBookKeyFileFormat(), backupBookKeyFilePath)));
-
-    Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
-    JsonNode restoredBook =
-        runJsonCommand(
-            "restore-book",
-            "--book-file",
-            restoredBookFilePath.toString(),
-            "--backup-book-file",
-            backupBookFilePath.toString(),
-            "--backup-book-key-file",
-            backupBookKeyFilePath.toString());
-    assertSuccessEnvelope(restoredBook);
-    assertArtifactList(
-        restoredBook,
-        List.of(
-            artifactExpectation(ProtocolArtifactOutput.backupBookFileFormat(), backupBookFilePath),
-            artifactExpectation(
-                ProtocolArtifactOutput.backupBookKeyFileFormat(), backupBookKeyFilePath)));
+            currentBookKeyFilePath.toString(),
+            "--request-file",
+            requestFile.toString()));
   }
 
   @Test
@@ -609,8 +638,14 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             OperationId.CHANGES_IN_EQUITY,
             OperationId.EXECUTE_PLAN,
             OperationId.PREFLIGHT_ENTRY,
-            OperationId.RECORD_SALE,
-            OperationId.RECORD_EXPENSE,
+            OperationId.RECORD_SALE_SETTLED,
+            OperationId.RECORD_SALE_ON_CREDIT,
+            OperationId.RECORD_PURCHASE_SETTLED,
+            OperationId.RECORD_PURCHASE_ON_CREDIT,
+            OperationId.RECORD_EXPENSE_SETTLED,
+            OperationId.RECORD_EXPENSE_ON_CREDIT,
+            OperationId.RECORD_RECEIPT,
+            OperationId.RECORD_PAYMENT,
             OperationId.RECORD_OWNER_CONTRIBUTION,
             OperationId.RECORD_OWNER_WITHDRAWAL,
             OperationId.RECORD_OPENING_POSITION,
@@ -701,9 +736,9 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
                 Instant.parse("2026-04-07T12:00:00Z"))),
         new dev.erst.fingrind.contract.bookkeeping.ListAccountsResult.Listed(
             accountPage(List.of(), 50, java.util.Optional.empty())),
-        new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted(
+        CliPostEntryResultFixtures.preflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-        new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed(
+        CliPostEntryResultFixtures.committed(
             new PostingId("posting-1"),
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),
@@ -747,6 +782,8 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
                   "kind": "ensure-book",
                   "ensureBook": {
                     "entityName": "Acme Studio",
+                    "bookTemplateId": "OWNER_MANAGED_SERVICE",
+                    "accountingBasis": "CASH",
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01"
                   }

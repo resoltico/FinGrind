@@ -8,15 +8,11 @@ public sealed interface RestoreBookResult
     permits RestoreBookResult.Restored, RestoreBookResult.Rejected {
 
   /** Successful restore outcome. */
-  record Restored(
-      PublicPathHint bookFilePath,
-      PublicPathHint backupFilePath,
-      PublicPathHint backupBookKeyFilePath)
+  record Restored(PublicPathHint bookFilePath, PublicPathHint bookKeyFilePath)
       implements RestoreBookResult {
     public Restored {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
-      Objects.requireNonNull(backupFilePath, "backupFilePath");
-      Objects.requireNonNull(backupBookKeyFilePath, "backupBookKeyFilePath");
+      Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
     }
   }
 

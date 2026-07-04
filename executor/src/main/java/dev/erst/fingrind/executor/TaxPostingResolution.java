@@ -20,14 +20,16 @@ final class TaxPostingResolution {
     Objects.requireNonNull(entry, "entry");
     Objects.requireNonNull(store, "store");
     return switch (entry) {
-      case BookkeepingEntry.Sale sale -> resolveSale(sale, store);
-      case BookkeepingEntry.Expense expense -> resolveExpense(expense, store);
+      case BookkeepingEntry.SaleSettled sale -> resolveSaleSettled(sale, store);
+      case BookkeepingEntry.SaleOnCredit sale -> resolveSaleOnCredit(sale, store);
+      case BookkeepingEntry.ExpenseSettled expense -> resolveExpenseSettled(expense, store);
+      case BookkeepingEntry.ExpenseOnCredit expense -> resolveExpenseOnCredit(expense, store);
       default -> entry;
     };
   }
 
-  private static BookkeepingEntry.Sale resolveSale(
-      BookkeepingEntry.Sale sale, TaxRegistrationLookupStore store) {
+  private static BookkeepingEntry.SaleSettled resolveSaleSettled(
+      BookkeepingEntry.SaleSettled sale, TaxRegistrationLookupStore store) {
     if (sale.taxSelection() == null || sale.appliedTax() != null) {
       return sale;
     }
@@ -37,18 +39,40 @@ final class TaxPostingResolution {
       throw new IllegalArgumentException(
           "Sale taxSelection must resolve to applicationKind OUTPUT_SALE.");
     }
-    return new BookkeepingEntry.Sale(
+    return new BookkeepingEntry.SaleSettled(
         sale.effectiveDate(),
         sale.cashAccountCode(),
         sale.revenueAccountCode(),
         sale.amount(),
+        sale.inventoryRelief(),
         sale.foreignExchangeDetails(),
         sale.taxSelection(),
         appliedTax(sale.taxSelection(), registration, code, sale.amount()));
   }
 
-  private static BookkeepingEntry.Expense resolveExpense(
-      BookkeepingEntry.Expense expense, TaxRegistrationLookupStore store) {
+  private static BookkeepingEntry.SaleOnCredit resolveSaleOnCredit(
+      BookkeepingEntry.SaleOnCredit sale, TaxRegistrationLookupStore store) {
+    if (sale.taxSelection() == null || sale.appliedTax() != null) {
+      return sale;
+    }
+    DeclaredTaxRegistration registration = requireRegistration(sale.taxSelection(), store);
+    TaxCodeDefinition code = requireCode(registration, sale.taxSelection());
+    if (code.applicationKind() != TaxApplicationKind.OUTPUT_SALE) {
+      throw new IllegalArgumentException(
+          "Sale taxSelection must resolve to applicationKind OUTPUT_SALE.");
+    }
+    return new BookkeepingEntry.SaleOnCredit(
+        sale.effectiveDate(),
+        sale.receivableAccountCode(),
+        sale.revenueAccountCode(),
+        sale.amount(),
+        sale.inventoryRelief(),
+        sale.taxSelection(),
+        appliedTax(sale.taxSelection(), registration, code, sale.amount()));
+  }
+
+  private static BookkeepingEntry.ExpenseSettled resolveExpenseSettled(
+      BookkeepingEntry.ExpenseSettled expense, TaxRegistrationLookupStore store) {
     if (expense.taxSelection() == null || expense.appliedTax() != null) {
       return expense;
     }
@@ -58,12 +82,32 @@ final class TaxPostingResolution {
       throw new IllegalArgumentException(
           "Expense taxSelection cannot resolve to applicationKind OUTPUT_SALE.");
     }
-    return new BookkeepingEntry.Expense(
+    return new BookkeepingEntry.ExpenseSettled(
         expense.effectiveDate(),
         expense.expenseAccountCode(),
         expense.cashAccountCode(),
         expense.amount(),
         expense.foreignExchangeDetails(),
+        expense.taxSelection(),
+        appliedTax(expense.taxSelection(), registration, code, expense.amount()));
+  }
+
+  private static BookkeepingEntry.ExpenseOnCredit resolveExpenseOnCredit(
+      BookkeepingEntry.ExpenseOnCredit expense, TaxRegistrationLookupStore store) {
+    if (expense.taxSelection() == null || expense.appliedTax() != null) {
+      return expense;
+    }
+    DeclaredTaxRegistration registration = requireRegistration(expense.taxSelection(), store);
+    TaxCodeDefinition code = requireCode(registration, expense.taxSelection());
+    if (code.applicationKind() == TaxApplicationKind.OUTPUT_SALE) {
+      throw new IllegalArgumentException(
+          "Expense taxSelection cannot resolve to applicationKind OUTPUT_SALE.");
+    }
+    return new BookkeepingEntry.ExpenseOnCredit(
+        expense.effectiveDate(),
+        expense.expenseAccountCode(),
+        expense.payableAccountCode(),
+        expense.amount(),
         expense.taxSelection(),
         appliedTax(expense.taxSelection(), registration, code, expense.amount()));
   }

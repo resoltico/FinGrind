@@ -26,26 +26,27 @@ class CliDiscoveryCommandExecutorTest {
 
     assertEquals(0, exitCode);
     assertEquals(
-        CliWireJson.prettyJsonText(CliDiscoveryCommandExecutor.requestTemplateFor(null)),
+        CliWireJson.prettyJsonText(CliDiscoveryCommandExecutor.requestTemplateFor(null, null)),
         outputStream.toString(StandardCharsets.UTF_8).trim());
   }
 
   @Test
   void requestTemplateFor_supportsPostingAndAdministrativeTopics() {
     String postingTemplate =
-        CliWireJson.prettyJsonText(CliDiscoveryCommandExecutor.requestTemplateFor(null));
+        CliWireJson.prettyJsonText(CliDiscoveryCommandExecutor.requestTemplateFor(null, null));
     String postEntryTemplate =
         CliWireJson.prettyJsonText(
-            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.POST_ENTRY));
+            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.POST_ENTRY, null));
     String preflightTemplate =
         CliWireJson.prettyJsonText(
-            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.PREFLIGHT_ENTRY));
+            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.PREFLIGHT_ENTRY, null));
     String declareAccountTemplate =
         CliWireJson.prettyJsonText(
-            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.DECLARE_ACCOUNT));
+            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.DECLARE_ACCOUNT, null));
     String declareTaxRegistrationTemplate =
         CliWireJson.prettyJsonText(
-            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.DECLARE_TAX_REGISTRATION));
+            CliDiscoveryCommandExecutor.requestTemplateFor(
+                OperationId.DECLARE_TAX_REGISTRATION, null));
 
     assertTrue(postingTemplate.contains("\"entryKind\""));
     assertTrue(postEntryTemplate.contains("\"entryKind\""));
@@ -54,7 +55,8 @@ class CliDiscoveryCommandExecutorTest {
     assertTrue(declareAccountTemplate.contains("\"accountNodeKind\""));
     assertTrue(declareTaxRegistrationTemplate.contains("\"taxRegistrationId\""));
     assertTrue(declareTaxRegistrationTemplate.contains("\"obligationFrequency\""));
-    assertTrue(declareTaxRegistrationTemplate.contains("\"jurisdiction\" : \"LV\""));
+    assertTrue(
+        declareTaxRegistrationTemplate.contains("\"jurisdiction\" : \"<ISO-3166-alpha-2>\""));
     assertFalse(declareTaxRegistrationTemplate.contains("\"jurisdiction\" : {"));
   }
 
@@ -62,8 +64,8 @@ class CliDiscoveryCommandExecutorTest {
   void requestTemplateFor_supportsEveryTypedEntryTopic() {
     Map<OperationId, String> topicMarkers =
         Map.of(
-            OperationId.RECORD_SALE, "\"revenueAccountCode\"",
-            OperationId.RECORD_EXPENSE, "\"expenseAccountCode\"",
+            OperationId.RECORD_SALE_SETTLED, "\"revenueAccountCode\"",
+            OperationId.RECORD_EXPENSE_SETTLED, "\"expenseAccountCode\"",
             OperationId.RECORD_OWNER_CONTRIBUTION, "\"equityAccountCode\"",
             OperationId.RECORD_OWNER_WITHDRAWAL, "\"equityAccountCode\"",
             OperationId.RECORD_OPENING_POSITION, "\"openingBalances\"",
@@ -73,7 +75,7 @@ class CliDiscoveryCommandExecutorTest {
         (operationId, marker) ->
             assertTrue(
                 CliWireJson.prettyJsonText(
-                        CliDiscoveryCommandExecutor.requestTemplateFor(operationId))
+                        CliDiscoveryCommandExecutor.requestTemplateFor(operationId, null))
                     .contains(marker),
                 operationId.wireName()));
   }
@@ -83,7 +85,7 @@ class CliDiscoveryCommandExecutorTest {
     IllegalArgumentException failure =
         assertThrows(
             IllegalArgumentException.class,
-            () -> CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.EXECUTE_PLAN));
+            () -> CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.EXECUTE_PLAN, null));
 
     String message = Objects.requireNonNull(failure.getMessage());
     assertTrue(message.contains("Request templates are available only for"));

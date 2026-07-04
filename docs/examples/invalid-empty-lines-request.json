@@ -1,6 +1,6 @@
 {
-  "entryKind": "REVERSAL",
-  "effectiveDate": "2026-04-08",
+  "entryKind": "DIRECT_JOURNAL",
+  "effectiveDate": "2026-04-07",
   "lines": [
 
   ],
@@ -9,7 +9,7 @@
       {
         "sourceDocumentId": "document-invalid-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-08"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": [

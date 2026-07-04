@@ -18,21 +18,22 @@ class RequestSurfaceFactsTest {
 
     assertEquals(List.of("enumerated", "pattern-only"), SourceDocumentTypePolicyMode.wireValues());
     assertEquals(
-        List.of("ranged-filter", "bounded-period", "as-of-date"),
+        List.of(
+            "ranged-filter", "bounded-period", "through-date", "fiscal-year-label", "as-of-date"),
         TemporalScopeArchetype.wireValues());
     assertEquals(
         SourceDocumentTypePolicyMode.ENUMERATED,
-        facts.bookkeepingEntryKind(BookkeepingEntryKind.SALE).sourceDocumentTypes().mode());
+        facts.bookkeepingEntryKind(BookkeepingEntryKind.SALE_SETTLED).sourceDocumentTypes().mode());
     assertEquals(
         List.of("cash-receipt", "bank-deposit", "card-settlement"),
         facts
-            .bookkeepingEntryKind(BookkeepingEntryKind.SALE)
+            .bookkeepingEntryKind(BookkeepingEntryKind.SALE_SETTLED)
             .sourceDocumentTypes()
             .acceptedValues());
     assertEquals(
         "cash-receipt",
         facts
-            .bookkeepingEntryKind(BookkeepingEntryKind.SALE)
+            .bookkeepingEntryKind(BookkeepingEntryKind.SALE_SETTLED)
             .sourceDocumentTypes()
             .scaffoldValue());
     assertEquals(
@@ -57,8 +58,14 @@ class RequestSurfaceFactsTest {
         List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END),
         facts.temporalScope(TemporalScopeArchetype.BOUNDED_PERIOD).optionNames());
     assertEquals(
-        TemporalScopeArchetype.BOUNDED_PERIOD,
+        TemporalScopeArchetype.THROUGH_DATE,
         facts.temporalScopeFor(OperationId.INTERIM_RESULT_SWEEP).archetype());
+    assertEquals(
+        TemporalScopeArchetype.FISCAL_YEAR_LABEL,
+        facts.temporalScopeFor(OperationId.FISCAL_YEAR_CLOSE).archetype());
+    assertEquals(
+        "Inclusive through date. FinGrind derives the contiguous sweep window from book start in the selected book or, after a sweep is recorded, from the live transferred-through horizon.",
+        facts.temporalScopeFor(OperationId.INTERIM_RESULT_SWEEP).boundarySemantics());
     assertEquals("As of", facts.temporalScopeFor(OperationId.FINANCIAL_POSITION).summaryLabel());
     assertEquals(
         AccountClassificationReachability.currentKernel().stream()
@@ -109,7 +116,7 @@ class RequestSurfaceFactsTest {
             IllegalArgumentException.class,
             () ->
                 new RequestSurfaceFacts.BookkeepingEntryKindFacts(
-                    BookkeepingEntryKind.SALE,
+                    BookkeepingEntryKind.SALE_SETTLED,
                     List.of("effectiveDate"),
                     List.of(),
                     List.of("lines"),
@@ -142,7 +149,7 @@ class RequestSurfaceFactsTest {
                     "As of",
                     "As of",
                     "As of",
-                    "One point-in-time effective-date cutoff.",
+                    "Point-in-time effective-date cutoff.",
                     "selected-date",
                     "book-start",
                     "current-book-horizon",
@@ -208,8 +215,8 @@ class RequestSurfaceFactsTest {
             () ->
                 new RequestSurfaceFacts(
                     List.of(
-                        postEntryKindFacts(BookkeepingEntryKind.SALE),
-                        postEntryKindFacts(BookkeepingEntryKind.SALE)),
+                        postEntryKindFacts(BookkeepingEntryKind.SALE_SETTLED),
+                        postEntryKindFacts(BookkeepingEntryKind.SALE_SETTLED)),
                     List.of(),
                     evidenceFacts(),
                     List.of(temporalScopeFacts(TemporalScopeArchetype.AS_OF_DATE)),
@@ -217,14 +224,15 @@ class RequestSurfaceFactsTest {
                         commandTemporalScopeFacts(
                             OperationId.ACCOUNT_BALANCE, TemporalScopeArchetype.AS_OF_DATE))));
     assertEquals(
-        "Duplicate request-surface facts for entryKind SALE.", duplicateEntryKinds.getMessage());
+        "Duplicate request-surface facts for entryKind SALE_SETTLED.",
+        duplicateEntryKinds.getMessage());
 
     IllegalArgumentException duplicateTemporalScopes =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new RequestSurfaceFacts(
-                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE)),
+                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE_SETTLED)),
                     List.of(),
                     evidenceFacts(),
                     List.of(
@@ -242,7 +250,7 @@ class RequestSurfaceFactsTest {
             IllegalArgumentException.class,
             () ->
                 new RequestSurfaceFacts(
-                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE)),
+                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE_SETTLED)),
                     List.of(
                         new RequestSurfaceFacts.ReachabilityCellFacts(
                             "financial-position",
@@ -274,7 +282,7 @@ class RequestSurfaceFactsTest {
             IllegalArgumentException.class,
             () ->
                 new RequestSurfaceFacts(
-                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE)),
+                    List.of(postEntryKindFacts(BookkeepingEntryKind.SALE_SETTLED)),
                     List.of(),
                     evidenceFacts(),
                     List.of(temporalScopeFacts(TemporalScopeArchetype.AS_OF_DATE)),
@@ -289,7 +297,7 @@ class RequestSurfaceFactsTest {
 
     RequestSurfaceFacts limitedFacts =
         new RequestSurfaceFacts(
-            List.of(postEntryKindFacts(BookkeepingEntryKind.SALE)),
+            List.of(postEntryKindFacts(BookkeepingEntryKind.SALE_SETTLED)),
             List.of(),
             evidenceFacts(),
             List.of(temporalScopeFacts(TemporalScopeArchetype.AS_OF_DATE)),
@@ -350,7 +358,7 @@ class RequestSurfaceFactsTest {
         "As of",
         "As of",
         "As of",
-        "One point-in-time effective-date cutoff.",
+        "Point-in-time effective-date cutoff.",
         "selected-date",
         "book-start",
         "current-book-horizon",

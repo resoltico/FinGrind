@@ -53,21 +53,21 @@ final class SqliteCallerPathFailureMapper {
     String pathHint = PublicPathHint.fromPath(requestedPath).value();
     return switch (pathFailure) {
       case MISSING_PARENT_DIRECTORY ->
-          "The FinGrind protected-book path requires one parent directory: " + pathHint + ".";
+          "The FinGrind protected-book path requires a parent directory: " + pathHint + ".";
       case PARENT_PATH_COLLISION ->
           "The FinGrind protected-book path cannot use a parent path that already exists as a non-directory entry or symlink: "
               + pathHint
               + ".";
       case PARENT_OWNER_ACCESS_REQUIRED ->
-          "The FinGrind protected-book path requires one parent directory that the owner can traverse and write: "
+          "The FinGrind protected-book path requires a parent directory that the owner can traverse and write: "
               + pathHint
               + ".";
       case PARENT_OWNER_ONLY_REQUIRED ->
-          "The FinGrind protected-book path requires one owner-only parent directory: "
+          "The FinGrind protected-book path requires an owner-only parent directory: "
               + pathHint
               + ".";
       case TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE ->
-          "The FinGrind protected-book path must resolve to one regular non-symlink file: "
+          "The FinGrind protected-book path must resolve to a regular non-symlink file: "
               + pathHint
               + ".";
       case UNSUPPORTED_SECURE_FILESYSTEM ->
@@ -82,21 +82,21 @@ final class SqliteCallerPathFailureMapper {
     String pathHint = PublicPathHint.fromPath(requestedPath).value();
     return switch (pathFailure) {
       case MISSING_PARENT_DIRECTORY ->
-          "The FinGrind book key file path requires one parent directory: " + pathHint + ".";
+          "The FinGrind book key file path requires a parent directory: " + pathHint + ".";
       case PARENT_PATH_COLLISION ->
           "The FinGrind book key file path cannot use a parent path that already exists as a non-directory entry or symlink: "
               + pathHint
               + ".";
       case PARENT_OWNER_ACCESS_REQUIRED ->
-          "The FinGrind book key file path requires one parent directory that the owner can traverse and write: "
+          "The FinGrind book key file path requires a parent directory that the owner can traverse and write: "
               + pathHint
               + ".";
       case PARENT_OWNER_ONLY_REQUIRED ->
-          "The FinGrind book key file path requires one owner-only parent directory: "
+          "The FinGrind book key file path requires an owner-only parent directory: "
               + pathHint
               + ".";
       case TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE ->
-          "The FinGrind book key file path must resolve to one regular non-symlink file: "
+          "The FinGrind book key file path must resolve to a regular non-symlink file: "
               + pathHint
               + ".";
       case UNSUPPORTED_SECURE_FILESYSTEM ->

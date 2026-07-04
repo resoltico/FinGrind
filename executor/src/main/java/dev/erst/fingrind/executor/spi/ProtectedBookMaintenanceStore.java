@@ -43,6 +43,13 @@ public interface ProtectedBookMaintenanceStore {
       VerifiedBook sourceBook, Path normalizedBackupFilePath, Path normalizedBackupBookKeyFilePath);
 
   /**
+   * Stages one restored live-book pair by re-encrypting the verified backup under one new
+   * destination key file before publication.
+   */
+  MaintenanceDecision<StagedRestoredBookPair> stageRestoredBookPair(
+      VerifiedBook sourceBook, Path normalizedBookFilePath, Path normalizedBookKeyFilePath);
+
+  /**
    * Verifies that the supplied replicated book path opens with the same secret material as the
    * already verified source book.
    */

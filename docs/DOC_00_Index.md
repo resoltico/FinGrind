@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: INDEX
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, journal, money, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface"]
@@ -17,6 +17,10 @@ route:
 - Public bookkeeping protocol:
   use [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md) for
   administration, inspection, queries, reports, and read-side rejections; use
+  [DOC_02_IncomeStatementPresentation.md](./DOC_02_IncomeStatementPresentation.md) for trading
+  income-statement gross-profit and multi-step presentation helpers; use
+  [DOC_02_SharedReportModel.md](./DOC_02_SharedReportModel.md) for the shared report content
+  model and family builders; use
   [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md) for posting commands,
   posting results, and write-side rejections.
 - Public workflow protocol:
@@ -56,6 +60,8 @@ route:
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, discovery namespaces, request/response descriptors, deterministic contract errors, and workflow/discovery owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
+| `DOC_02_IncomeStatementPresentation.md` | exported trading income-statement presentation helpers that keep gross-profit and multi-step section semantics truthful across projections |
+| `DOC_02_SharedReportModel.md` | exported shared report content types plus the family-specific builders that feed every public report projection |
 | `DOC_02_PostingAndLedgerPlans.md` | exported posting, rejection, lineage, ledger-plan, and plan-journal models plus exported `executor` write services |
 | `DOC_03_BookSessionsAndAdapters.md` | explicit book-access tuples, committed facts, executor-owned seams, and exported SQLite adapter/runtime types |
 | `DOC_04_CliAndPdfAdapters.md` | public CLI process entrypoint and exported PDF-report adapter |
@@ -77,12 +83,15 @@ route:
 | `AccountTaxonomyDoctrine` | `DOC_01_Core.md` | `AccountTaxonomyDoctrine` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
 | `AccountingBasis` | `DOC_01_Core.md` | `AccountingBasis` |
+| `AccountRole` | `DOC_01_Core_LedgerAndPosting.md` | `AccountRole` |
+| `AccountStateViolationDetail` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` And `PostingRejectionSemantics` |
 | `AccountingEvidence` | `DOC_01_Core.md` | `AccountingEvidence` |
 | `AccountingFrameworkPosition` | `DOC_01_Core.md` | `AccountingFrameworkPosition` |
 | `AccountingKernelProfileId` | `DOC_01_Core.md` | `AccountingKernelProfileId` |
 | `AccountingKernelProfiles` | `DOC_01_Core.md` | `AccountingKernelProfiles` |
 | `ActorId` | `DOC_01_Core.md` | `ActorId` |
 | `ActorType` | `DOC_01_Core.md` | `ActorType` |
+| `AnchorEntry` | `DOC_01_Core_LedgerAndPosting.md` | `AnchorEntry` |
 | `ApprovalDecision` | `DOC_01_Core.md` | `ApprovalDecision` |
 | `ApprovalId` | `DOC_01_Core.md` | `ApprovalId` |
 | `ApprovalReference` | `DOC_01_Core.md` | `ApprovalReference` |
@@ -102,17 +111,23 @@ route:
 | `ComparativeMode` | `DOC_02_AdministrationAndReports.md` | `ComparativeRangeResolver` |
 | `ComparativeRangeResolver` | `DOC_02_AdministrationAndReports.md` | `ComparativeRangeResolver` |
 | `ComparativeSelection` | `DOC_02_AdministrationAndReports.md` | `ComparativeRangeResolver` |
+| `ClassificationResult` | `DOC_01_Core_LedgerAndPosting.md` | `ClassificationResult` |
 | `CorrelationId` | `DOC_01_Core.md` | `CorrelationId` |
 | `CurrencyBalance` | `DOC_01_Core_LedgerAndPosting.md` | `CurrencyBalance` |
 | `CurrencyUnit` | `DOC_01_Core.md` | `CurrencyUnit` |
 | `EffectiveDateRange` | `DOC_01_Core.md` | `EffectiveDateRange` |
+| `EffectiveDateHorizonPolicy` | `DOC_01_Core.md` | `EffectiveDateHorizonPolicy` |
+| `EffectiveDateHorizonPolicy.FutureEffectiveDateException` | `DOC_01_Core.md` | `EffectiveDateHorizonPolicy` |
 | `EntityProfile` | `DOC_01_Core.md` | `EntityProfile` |
 | `EntityForm` | `DOC_01_Core.md` | `EntityForm` |
+| `EconomicEventClass` | `DOC_01_Core_LedgerAndPosting.md` | `EconomicEventClass` |
 | `ForeignExchangeDetails` | `DOC_02_ProtocolAndDiscovery.md` | `ForeignExchangeDetails`, `ForeignExchangeTreatmentKind`, And `QuotedExchangeRate` |
 | `ForeignExchangeTreatmentKind` | `DOC_02_ProtocolAndDiscovery.md` | `ForeignExchangeDetails`, `ForeignExchangeTreatmentKind`, And `QuotedExchangeRate` |
 | `FinancialPositionLineClassification` | `DOC_01_Core.md` | `FinancialPositionLineClassification` |
 | `FiscalYearStart` | `DOC_01_Core.md` | `FiscalYearStart` |
 | `IdempotencyKey` | `DOC_01_Core.md` | `IdempotencyKey` |
+| `JournalClassifier` | `DOC_01_Core_LedgerAndPosting.md` | `JournalClassifier` |
+| `JournalClassifier.AccountRoleLookup` | `DOC_01_Core_LedgerAndPosting.md` | `JournalClassifier` |
 | `RequestFingerprint` | `DOC_01_Core.md` | `RequestFingerprint` |
 | `JournalEntry` | `DOC_01_Core_LedgerAndPosting.md` | `JournalEntry` |
 | `JournalEntryValidationException` | `DOC_01_Core_LedgerAndPosting.md` | `JournalEntryValidationException` |
@@ -131,6 +146,7 @@ route:
 | `RequestProvenance` | `DOC_01_Core_LedgerAndPosting.md` | `RequestProvenance` |
 | `ReversalReason` | `DOC_01_Core_EvidenceAndWire.md` | `ReversalReason` |
 | `ReversalReference` | `DOC_01_Core_EvidenceAndWire.md` | `ReversalReference` |
+| `ReversalTargetIsReversal` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` And `PostingRejectionSemantics` |
 | `SourceChannel` | `DOC_01_Core_EvidenceAndWire.md` | `SourceChannel` |
 | `SourceDocumentId` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentId` |
 | `SourceDocumentReference` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentReference` |
@@ -175,6 +191,7 @@ route:
 | `ContractFailure` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `ContractFailureException` | `DOC_02_ProtocolAndDiscovery.md` | `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException` |
 | `DiscoveryFocus` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryFocus` |
+| `EvidenceClass` | `DOC_01_Core_LedgerAndPosting.md` | `EvidenceClass` |
 | `ContractRequestShapes` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.DeclareAccountRequestShapeDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.DeclareTaxRegistrationRequestShapeDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -210,8 +227,10 @@ route:
 | `ContractTemplates.DeclareAccountTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.DeclareTaxCodeTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.DeclareTaxRegistrationTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `InventoryReliefTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ForeignExchangeTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.JournalLineTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractTemplates.SettlementAdjunctTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractPlanTemplates` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractPlanTemplates.LedgerAssertionTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -276,11 +295,13 @@ route:
 | `ProtocolPostEntryFields.Approval` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Evidence` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.ForeignExchange` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.InventoryRelief` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.JournalLine` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.OpeningBalance` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Provenance` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.QuotedRate` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Reversal` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolPostEntryFields.SettlementAdjunct` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.SourceDocument` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Tax` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.TopLevel` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
@@ -312,9 +333,14 @@ route:
 | `RequestSurfaceFacts.ReachabilityCellFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `RequestSurfaceFacts.SourceDocumentTypeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `RequestSurfaceFacts.TemporalScopeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `ResolvedJournal` | `DOC_02_PostingAndLedgerPlans.md` | `ResolvedJournal` |
 | `RuntimeDistribution` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `ScaffoldPlaceholders` | `DOC_02_ProtocolAndDiscovery.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
 | `SelectableOutputDefaultsDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `InventoryBalanceBelowZero` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` And `PostingRejectionSemantics` |
+| `InventoryBalanceBelowZeroViolation` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
+| `InventoryRelief` | `DOC_02_PostingAndLedgerPlans.md` | `InventoryRelief` |
+| `SettlementAdjunct` | `DOC_02_PostingAndLedgerPlans.md` | `SettlementAdjunct` |
 | `SqliteCompileOptionsVerificationStatus` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `SqliteLibraryMode` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `SqliteRuntimeArtifactEvidence` | `DOC_02_ProtocolAndDiscovery.md` | `SqliteRuntimeArtifactEvidence` |
@@ -325,6 +351,7 @@ route:
 | `StorageDriver` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `StorageEngine` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `StorageSurfaceDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `StructuralContext` | `DOC_01_Core_LedgerAndPosting.md` | `StructuralContext` |
 | `VersionDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `WorkflowDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
 | `WorkflowStepDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
@@ -341,6 +368,7 @@ route:
 | `AccountPageCursor` | `DOC_02_AdministrationAndReports.md` | `AccountPageCursor` |
 | `BackupBookResult` | `DOC_02_AdministrationAndReports.md` | `BackupBookResult` |
 | `BookAdministrationRejection` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
+| `CloseTargetAccountCandidateMissing` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `CloseTargetAccountCandidateAmbiguous` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |
 | `BookInspection` | `DOC_02_AdministrationAndReports.md` | `BookInspection` |
@@ -363,6 +391,25 @@ route:
 | `ChangesInEquityRow` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityQuery`, `ChangesInEquityRow`, `ChangesInEquityReport`, And `ChangesInEquityResult` |
 | `ChangesInEquityRowView` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView` |
 | `ChangesInEquityView` | `DOC_02_AdministrationAndReports.md` | `ChangesInEquityCriteria`, `ChangesInEquityRowView`, And `ChangesInEquityView` |
+| `AccountBalanceReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
+| `AccountLedgerReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
+| `CashFlowStatementReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
+| `ChangesInEquityReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
+| `FinancialPositionReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
+| `IncomeStatementReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
+| `PeriodSummaryReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
+| `ReportColumn` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportColumn.Alignment` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportContext` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportModel` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportModel.Orientation` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportModelBuilder` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportRow` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportSection` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportTotals` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportVerdict` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `TaxObligationReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
+| `TrialBalanceReportModelBuilder` | `DOC_02_SharedReportModel.md` | `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder` |
 | `ClosedFiscalYear` | `DOC_02_AdministrationAndReports.md` | `InterimResultSweepCommand`, `InterimResultSweepResult`, `FiscalYearCloseCommand`, `FiscalYearCloseResult`, `SweptInterimResult`, And `ClosedFiscalYear` |
 | `CloseTargetAccountSelector` | `DOC_02_AdministrationAndReports.md` | `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService` |
 | `CloseTargetSelection` | `DOC_02_AdministrationAndReports.md` | `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService` |
@@ -389,6 +436,10 @@ route:
 | `FiscalYearCloseService` | `DOC_02_AdministrationAndReports.md` | `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService` |
 | `GetPostingResult` | `DOC_02_AdministrationAndReports.md` | `GetPostingResult` |
 | `IncomeStatementCriteria` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementCriteria`, `IncomeStatementRowView`, `IncomeStatementSectionView`, And `IncomeStatementView` |
+| `IncomeStatementGrossProfitSupport` | `DOC_02_IncomeStatementPresentation.md` | `IncomeStatementGrossProfitSupport` |
+| `IncomeStatementPresentationSupport` | `DOC_02_IncomeStatementPresentation.md` | `IncomeStatementPresentationSupport`, `IncomeStatementPresentationSupport.SectionCode`, And `IncomeStatementPresentationSupport.PresentationSection` |
+| `IncomeStatementPresentationSupport.PresentationSection` | `DOC_02_IncomeStatementPresentation.md` | `IncomeStatementPresentationSupport`, `IncomeStatementPresentationSupport.SectionCode`, And `IncomeStatementPresentationSupport.PresentationSection` |
+| `IncomeStatementPresentationSupport.SectionCode` | `DOC_02_IncomeStatementPresentation.md` | `IncomeStatementPresentationSupport`, `IncomeStatementPresentationSupport.SectionCode`, And `IncomeStatementPresentationSupport.PresentationSection` |
 | `IncomeStatementQuery` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult` |
 | `IncomeStatementReport` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult` |
 | `IncomeStatementResult` | `DOC_02_AdministrationAndReports.md` | `IncomeStatementQuery`, `IncomeStatementRow`, `IncomeStatementSection`, `IncomeStatementReport`, And `IncomeStatementResult` |
@@ -464,10 +515,13 @@ route:
 | `BookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
 | `BookkeepingEntryKind` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
 | `BookkeepingEntry.OpeningAccountBalance` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
-| `BookkeepingEntrySemanticsViolationFactory` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntrySemanticsViolationFactory` |
+| `BookkeepingAccountSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
+| `BookkeepingEvidenceSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
+| `BookkeepingEntryModeSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
 | `BookkeepingPostingRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
 | `BookkeepingRequestPublishedLanguageTranslator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
 | `BookkeepingPublishedLanguageTranslator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
+| `BookkeepingTaxSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
 | `CommitEntryResult` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
 | `LedgerAssertion` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerAssertion` |
 | `LedgerAssertionKind` | `DOC_02_PostingAndLedgerPlans.md` | `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryCheckpoint`, `LedgerStepStatus`, And `LedgerPlanStatus` |
@@ -561,8 +615,8 @@ route:
 | `ProtectedBookMaintenancePublishedLanguageTranslator` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenancePublishedLanguageTranslator` And `ProtectedBookVerificationFailure` |
 | `ProtectedBookMaintenanceRejection` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow` |
 | `ProtectedBookMaintenanceRejectionException` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow` |
-| `ProtectedBookMaintenanceService` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
-| `ProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
+| `ProtectedBookMaintenanceService` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
+| `ProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
 | `ProtectedBookMaintenanceWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow` |
 | `ProtectedBookPassphraseSource` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookAccess` And `ProtectedBookPassphraseSource` |
 | `ProtectedBookRecoveryOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome` |
@@ -572,6 +626,7 @@ route:
 | `SqliteAdministrationSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `SqliteAdministrationSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `GeneratedBookKeyFile` | `DOC_03_BookSessionsAndAdapters.md` | `GeneratedBookKeyFile`, `SqliteBookKeyFile`, And `SqliteBookKeyFileGenerator` |
+| `SqliteCallerPathSecurity` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteCallerPathSecurity` |
 | `SqliteBookKeyFile` | `DOC_03_BookSessionsAndAdapters.md` | `GeneratedBookKeyFile`, `SqliteBookKeyFile`, And `SqliteBookKeyFileGenerator` |
 | `SqliteBookKeyFileGenerator` | `DOC_03_BookSessionsAndAdapters.md` | `GeneratedBookKeyFile`, `SqliteBookKeyFile`, And `SqliteBookKeyFileGenerator` |
 | `SqliteBookPassphrase` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteBookPassphrase` |
@@ -590,10 +645,11 @@ route:
 | `SqlitePersistenceInvariantException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, And `SqliteStorageFailureException` |
 | `SqlitePostingSession` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
 | `SqlitePostingSessions` | `DOC_03_BookSessionsAndAdapters.md` | `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions` |
-| `SqliteProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
-| `StagedBackupPair` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
-| `StagedBookReplacement` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
-| `StagedRollbackArtifactDeletion` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
+| `SqliteProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
+| `StagedBackupPair` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
+| `StagedBookReplacement` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
+| `StagedRestoredBookPair` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
+| `StagedRollbackArtifactDeletion` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore` |
 | `StoredRequestPosting` | `DOC_03_BookSessionsAndAdapters.md` | `PostingDraft`, `PostingCommitResult`, `PostingIdGenerator`, And `StoredRequestPosting` |
 | `SweptInterimResult` | `DOC_02_AdministrationAndReports.md` | `InterimResultSweepCommand`, `InterimResultSweepResult`, `FiscalYearCloseCommand`, `FiscalYearCloseResult`, `SweptInterimResult`, And `ClosedFiscalYear` |
 | `AcceptedCloseTargetSelection` | `DOC_02_AdministrationAndReports.md` | `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService` |

@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import java.nio.file.Path;
 
 /** Thin CLI workflow fixture layer that exposes focused workflow doubles to test suites. */
@@ -57,6 +58,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     return reportingWorkflow(
         new AccountBalanceResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
+        rejectedTaxObligationResult(),
         trialBalanceResult,
         new AccountLedgerResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.BookQueryRejection.BookNotInitialized()),
@@ -74,11 +76,13 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
   protected static CliBookWorkflow reportingWorkflow(
       AccountBalanceResult accountBalanceResult,
+      TaxObligationResult taxObligationResult,
       TrialBalanceResult trialBalanceResult,
       AccountLedgerResult accountLedgerResult,
       PeriodSummaryResult periodSummaryResult) {
     return reportingWorkflow(
         accountBalanceResult,
+        taxObligationResult,
         trialBalanceResult,
         accountLedgerResult,
         periodSummaryResult,
@@ -94,6 +98,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
   protected static CliBookWorkflow reportingWorkflow(
       AccountBalanceResult accountBalanceResult,
+      TaxObligationResult taxObligationResult,
       TrialBalanceResult trialBalanceResult,
       AccountLedgerResult accountLedgerResult,
       PeriodSummaryResult periodSummaryResult,
@@ -102,6 +107,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       ChangesInEquityResult changesInEquityResult) {
     return reportingWorkflow(
         accountBalanceResult,
+        taxObligationResult,
         trialBalanceResult,
         accountLedgerResult,
         periodSummaryResult,
@@ -114,6 +120,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
 
   protected static CliBookWorkflow reportingWorkflow(
       AccountBalanceResult accountBalanceResult,
+      TaxObligationResult taxObligationResult,
       TrialBalanceResult trialBalanceResult,
       AccountLedgerResult accountLedgerResult,
       PeriodSummaryResult periodSummaryResult,
@@ -123,6 +130,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
       ChangesInEquityResult changesInEquityResult) {
     return new CliReportingWorkflow(
         accountBalanceResult,
+        taxObligationResult,
         trialBalanceResult,
         accountLedgerResult,
         periodSummaryResult,
@@ -130,6 +138,11 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
         incomeStatementResult,
         cashFlowStatementResult,
         changesInEquityResult);
+  }
+
+  protected static TaxObligationResult rejectedTaxObligationResult() {
+    return new TaxObligationResult.Rejected(
+        new dev.erst.fingrind.contract.tax.TaxQueryRejection.BookNotInitialized());
   }
 
   protected static <T> ContractDecision<T> accepted(T value) {

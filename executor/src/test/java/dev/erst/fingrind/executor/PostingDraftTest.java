@@ -78,16 +78,17 @@ class PostingDraftTest {
                     journalEntry(),
                     PostingLineageModel.direct(),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.SALE,
+                    dev.erst.fingrind.core.PostingOriginKind.SALE_SETTLED,
                     accountingEvidence("idem-2"),
                     new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
                     committedProvenance("idem-2"),
-                    new BookkeepingEntry.Sale(
+                    new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-08"),
                         new AccountCode("1000"),
                         new AccountCode("2000"),
                         dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(
                             Money.parse("EUR", "10.00")),
+                        null,
                         null,
                         null,
                         null)));

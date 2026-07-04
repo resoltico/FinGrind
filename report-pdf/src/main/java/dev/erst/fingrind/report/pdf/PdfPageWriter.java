@@ -91,6 +91,7 @@ final class PdfPageWriter implements AutoCloseable {
           PdfReportTheme.spacing().keyValueCellPadding());
       cursorY -= rowHeight;
     }
+    strokeHorizontalRule(cursorY, 0);
     cursorY -= PdfReportTheme.spacing().sectionAfterTableSpacing();
   }
 
@@ -109,10 +110,6 @@ final class PdfPageWriter implements AutoCloseable {
       drawTableRow(row, columns, columnWidths, rowHeight, false);
     }
     cursorY -= PdfReportTheme.spacing().sectionAfterTableSpacing();
-  }
-
-  void writeHeading(String heading) throws IOException {
-    writeSectionHeading(heading);
   }
 
   @Override
@@ -153,6 +150,8 @@ final class PdfPageWriter implements AutoCloseable {
   }
 
   private void writeSectionHeading(String heading) throws IOException {
+    float sectionTitleAscent =
+        fontAscent(fonts.bold(), PdfReportTheme.typography().sectionTitleSize());
     ensureSpace(
         PdfReportTheme.typography().lineHeight() * 2f
             + PdfReportTheme.spacing().sectionTopMargin()
@@ -163,9 +162,15 @@ final class PdfPageWriter implements AutoCloseable {
         fonts.bold(),
         PdfReportTheme.typography().sectionTitleSize(),
         PdfReportTheme.spacing().pageMargin(),
-        cursorY);
+        cursorY - sectionTitleAscent);
     cursorY -=
         PdfReportTheme.typography().lineHeight() + PdfReportTheme.spacing().sectionBottomMargin();
+  }
+
+  private static float fontAscent(PDFont font, float fontSize) {
+    var descriptor = Objects.requireNonNull(font, "font").getFontDescriptor();
+    float ascent = descriptor == null ? 750f : descriptor.getAscent();
+    return (ascent / 1000f) * fontSize;
   }
 
   private void drawTableHeader(List<PdfTableColumn> columns, float[] columnWidths)

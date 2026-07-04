@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -36,6 +37,7 @@ class BookAdministrationRejectionTest {
             "interim-result-sweep-crosses-fiscal-year-boundary",
             "fiscal-year-close-must-start-at",
             "fiscal-year-close-must-end-at",
+            "fiscal-year-close-precedes-transferred-through-horizon",
             "fiscal-year-close-future-date"),
         List.of(
             BookAdministrationRejection.wireCode(
@@ -102,7 +104,7 @@ class BookAdministrationRejectionTest {
                     new dev.erst.fingrind.core.AccountCode("1100"),
                     new dev.erst.fingrind.core.AccountCode("1100"))),
             BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+                new CloseTargetAccountCandidateMissing(
                     FinancialPositionLineClassification.RESULT_HOLDING,
                     List.of(new dev.erst.fingrind.core.AccountCode("3000")))),
             BookAdministrationRejection.wireCode(
@@ -128,6 +130,10 @@ class BookAdministrationRejectionTest {
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.FiscalYearCloseMustEndAt(
                     java.time.LocalDate.parse("2026-12-31"))),
+            BookAdministrationRejection.wireCode(
+                new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+                    java.time.LocalDate.parse("2025-12-31"),
+                    java.time.LocalDate.parse("2026-03-31"))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.FiscalYearCloseFutureDate(
                     java.time.LocalDate.parse("2027-01-01")))));
@@ -155,6 +161,7 @@ class BookAdministrationRejectionTest {
             "interim-result-sweep-crosses-fiscal-year-boundary",
             "fiscal-year-close-must-start-at",
             "fiscal-year-close-must-end-at",
+            "fiscal-year-close-precedes-transferred-through-horizon",
             "fiscal-year-close-future-date"),
         BookAdministrationRejection.descriptors().stream()
             .map(ContractResponse.RejectionDescriptor::code)

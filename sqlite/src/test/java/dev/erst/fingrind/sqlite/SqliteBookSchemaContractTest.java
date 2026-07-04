@@ -74,7 +74,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
           Instant.parse("2026-04-07T10:15:30Z"),
           bookIdentity(),
           dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-              bookIdentity().bookDoctrine().bookTemplateId()));
+              bookIdentity().bookDoctrine()));
       assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma foreign_keys"));
       assertEquals(
           "delete", queryText(requireStoreDatabase(postingFactStore), "pragma journal_mode"));
@@ -155,7 +155,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
           Instant.parse("2026-04-07T10:15:30Z"),
           bookIdentity(),
           dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-              bookIdentity().bookDoctrine().bookTemplateId()));
+              bookIdentity().bookDoctrine()));
     }
     if (!databasePath.getFileSystem().supportedFileAttributeViews().contains("posix")) {
       return;
@@ -264,7 +264,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                       Instant.parse("2026-04-07T10:15:30Z"),
                       bookIdentity(),
                       dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                          bookIdentity().bookDoctrine().bookTemplateId())));
+                          bookIdentity().bookDoctrine())));
       assertTrue(
           NullTestSupport.messageOf(openException)
               .contains("format version " + unsupportedVersion + " is unsupported"));
@@ -316,7 +316,18 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     for (ContractRequestShapes.EntryKindSemanticsDescriptor semantics :
         postEntryShape.entryKindSemantics()) {
       switch (semantics.entryKind()) {
-        case DIRECT_JOURNAL, SALE, EXPENSE, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, REVERSAL ->
+        case DIRECT_JOURNAL,
+            SALE_SETTLED,
+            SALE_ON_CREDIT,
+            PURCHASE_SETTLED,
+            PURCHASE_ON_CREDIT,
+            EXPENSE_SETTLED,
+            EXPENSE_ON_CREDIT,
+            RECEIPT,
+            PAYMENT,
+            OWNER_CONTRIBUTION,
+            OWNER_WITHDRAWAL,
+            REVERSAL ->
             publishedValues.add(PostingKind.STANDARD.wireValue());
         case OPENING_POSITION -> publishedValues.add(PostingKind.OPENING_BALANCE.wireValue());
       }
@@ -349,8 +360,14 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   private static PostingOriginKind postingOriginKindFor(BookkeepingEntryKind entryKind) {
     return switch (entryKind) {
       case DIRECT_JOURNAL -> PostingOriginKind.DIRECT_JOURNAL;
-      case SALE -> PostingOriginKind.SALE;
-      case EXPENSE -> PostingOriginKind.EXPENSE;
+      case SALE_SETTLED -> PostingOriginKind.SALE_SETTLED;
+      case SALE_ON_CREDIT -> PostingOriginKind.SALE_ON_CREDIT;
+      case PURCHASE_SETTLED -> PostingOriginKind.PURCHASE_SETTLED;
+      case PURCHASE_ON_CREDIT -> PostingOriginKind.PURCHASE_ON_CREDIT;
+      case EXPENSE_SETTLED -> PostingOriginKind.EXPENSE_SETTLED;
+      case EXPENSE_ON_CREDIT -> PostingOriginKind.EXPENSE_ON_CREDIT;
+      case RECEIPT -> PostingOriginKind.RECEIPT;
+      case PAYMENT -> PostingOriginKind.PAYMENT;
       case OWNER_CONTRIBUTION -> PostingOriginKind.OWNER_CONTRIBUTION;
       case OWNER_WITHDRAWAL -> PostingOriginKind.OWNER_WITHDRAWAL;
       case OPENING_POSITION -> PostingOriginKind.OPENING_POSITION;
@@ -368,7 +385,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
               Instant.parse("2026-04-07T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())));
+                  bookIdentity().bookDoctrine())));
       assertTrue(postingFactStore.inspectBook().initialized());
     }
     withStandaloneDatabase(
@@ -407,7 +424,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
               Instant.parse("2026-04-07T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())));
+                  bookIdentity().bookDoctrine())));
     }
     withStandaloneDatabase(
         bookAccess(databasePath),
@@ -433,7 +450,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
               Instant.parse("2026-04-07T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())));
+                  bookIdentity().bookDoctrine())));
     }
     withStandaloneDatabase(
         bookAccess(databasePath),
@@ -457,7 +474,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
           Instant.parse("2026-04-07T10:15:30Z"),
           bookIdentity(),
           dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-              bookIdentity().bookDoctrine().bookTemplateId()));
+              bookIdentity().bookDoctrine()));
       assertEquals(1, queryInt(requireStoreDatabase(postingFactStore), "pragma foreign_keys"));
       assertEquals(
           "delete", queryText(requireStoreDatabase(postingFactStore), "pragma journal_mode"));

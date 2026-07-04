@@ -56,13 +56,11 @@ public final class CliFuzzHarnessTestSupport {
 
   public record ReversalAdjustmentRequestInput(
       String effectiveDate,
-      String linesJson,
       RequestContext context,
       String priorPostingId,
       @Nullable String reversalReason) {
     public ReversalAdjustmentRequestInput {
       Objects.requireNonNull(effectiveDate, "effectiveDate");
-      Objects.requireNonNull(linesJson, "linesJson");
       Objects.requireNonNull(context, "context");
       Objects.requireNonNull(priorPostingId, "priorPostingId");
     }
@@ -71,7 +69,7 @@ public final class CliFuzzHarnessTestSupport {
   public static String cashRevenueRequestJson(CashRevenueRequestInput request) {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "%s",
           "cashAccountCode": "%s",
           "revenueAccountCode": "%s",
@@ -137,7 +135,6 @@ public final class CliFuzzHarnessTestSupport {
         {
           "entryKind": "REVERSAL",
           "effectiveDate": "%s",
-          "lines": %s,
           "reversal": %s,
           "evidence": %s,
           "provenance": %s
@@ -145,7 +142,6 @@ public final class CliFuzzHarnessTestSupport {
         """
         .formatted(
             request.effectiveDate(),
-            request.linesJson().strip(),
             reversalJson.indent(10).stripLeading(),
             evidenceJson(
                     request.context().sourceDocumentId(),

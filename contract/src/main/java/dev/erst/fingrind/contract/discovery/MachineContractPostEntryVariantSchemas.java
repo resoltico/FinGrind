@@ -1,8 +1,10 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /** Variant schema builders for post-entry request shapes. */
 final class MachineContractPostEntryVariantSchemas {
@@ -18,7 +20,12 @@ final class MachineContractPostEntryVariantSchemas {
 
   static ContractTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind) {
-    return MachineContractPostEntryVariantTemplates.template(entryKind);
+    return template(entryKind, null);
+  }
+
+  static ContractTemplates.PostingRequestTemplateDescriptor template(
+      BookkeepingEntryKind entryKind, @Nullable BookTemplateId bookTemplateId) {
+    return MachineContractPostEntryVariantTemplates.template(entryKind, bookTemplateId);
   }
 
   static Map<String, Object> lineSchema() {

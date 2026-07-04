@@ -20,12 +20,14 @@ public sealed interface PostingRejection
         PostingRejection.AccountStateViolations,
         PostingRejection.EntrySemanticsViolations,
         PostingRejection.IdempotencyKeyConflict,
+        PostingRejection.PostingEffectiveDateInFuture,
         PostingRejection.BookFunctionalCurrencyMismatch,
         PostingRejection.SweptInterimResultViolation,
         PostingRejection.OpeningPositionWindowClosed,
         PostingRejection.OpeningPositionTouchesNominalAccount,
         PostingRejection.ReservedResultClassification,
         PostingRejection.ReversalTargetNotFound,
+        ReversalTargetIsReversal,
         PostingRejection.ReversalAlreadyExists,
         PostingRejection.ReversalDoesNotNegateTarget {
 
@@ -70,7 +72,8 @@ public sealed interface PostingRejection
   sealed interface AccountStateViolation
       permits PostingRejection.UnknownAccount,
           PostingRejection.InactiveAccount,
-          PostingRejection.NonPostableAccount {}
+          PostingRejection.NonPostableAccount,
+          InventoryBalanceBelowZero {}
 
   /** Rejection for a posting request with one or more account-state violations. */
   record AccountStateViolations(List<AccountStateViolation> violations)
@@ -82,27 +85,6 @@ public sealed interface PostingRejection
         throw new IllegalArgumentException(
             "Posting account-state violations must contain at least one issue.");
       }
-    }
-  }
-
-  /** Stable structured account-state issue emitted for one rejected posting line. */
-  record AccountStateViolationDetail(
-      String code,
-      String field,
-      String message,
-      String category,
-      String repair,
-      String accountCode,
-      @Nullable String accountNodeKind) {
-    public AccountStateViolationDetail {
-      code = ContractDescriptorValidation.requireText(code, "code");
-      field = ContractDescriptorValidation.requireText(field, "field");
-      message = ContractDescriptorValidation.requireText(message, "message");
-      category = ContractDescriptorValidation.requireText(category, "category");
-      repair = ContractDescriptorValidation.requireText(repair, "repair");
-      accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
-      accountNodeKind =
-          ContractDescriptorValidation.requireOptionalText(accountNodeKind, "accountNodeKind");
     }
   }
 
@@ -168,6 +150,15 @@ public sealed interface PostingRejection
 
   /** Rejection for one reused idempotency key whose semantic request differs. */
   record IdempotencyKeyConflict() implements PostingRejection {}
+
+  /** Rejection for a posting attempt whose effective date falls after the current UTC date. */
+  record PostingEffectiveDateInFuture(LocalDate attemptedEffectiveDate, LocalDate currentUtcDate)
+      implements PostingRejection {
+    public PostingEffectiveDateInFuture {
+      Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
+      Objects.requireNonNull(currentUtcDate, "currentUtcDate");
+    }
+  }
 
   /** Rejection for a posting whose entry currency diverges from the book functional currency. */
   record BookFunctionalCurrencyMismatch(

@@ -32,6 +32,11 @@ public record FiscalYearStart(int month, int day) {
         : anchorInSameYear;
   }
 
+  /** Returns the fiscal-year start date for the fiscal year identified by the selected label. */
+  public LocalDate labeledFiscalYearStart(int fiscalYearLabel) {
+    return resolvedStartDate(fiscalYearLabel);
+  }
+
   /** Returns whether the bounded period lies wholly inside one fiscal year. */
   public boolean containsSingleFiscalYear(LocalDate effectiveDateFrom, LocalDate effectiveDateTo) {
     Objects.requireNonNull(effectiveDateFrom, "effectiveDateFrom");
@@ -45,6 +50,11 @@ public record FiscalYearStart(int month, int day) {
     Objects.requireNonNull(date, "date");
     LocalDate fiscalYearStartDate = containingFiscalYearStart(date);
     return resolvedStartDate(fiscalYearStartDate.getYear() + 1).minusDays(1);
+  }
+
+  /** Returns the fiscal-year end date for the fiscal year identified by the selected label. */
+  public LocalDate labeledFiscalYearEnd(int fiscalYearLabel) {
+    return resolvedStartDate(fiscalYearLabel + 1).minusDays(1);
   }
 
   private LocalDate resolvedStartDate(int year) {

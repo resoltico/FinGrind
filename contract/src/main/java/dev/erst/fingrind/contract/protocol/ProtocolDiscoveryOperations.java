@@ -22,11 +22,16 @@ final class ProtocolDiscoveryOperations {
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print command usage, examples, and workflow guidance.",
             List.of(
-                ProtocolExampleStep.command("fingrind help record-sale"),
-                ProtocolExampleStep.command("fingrind record-sale --help"),
-                ProtocolExampleStep.command("fingrind help record-sale --output json"),
                 ProtocolExampleStep.command(
-                    "fingrind help record-sale --output json --detail full"))),
+                    "fingrind help %s".formatted(OperationId.RECORD_SALE_SETTLED.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind %s --help".formatted(OperationId.RECORD_SALE_SETTLED.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind help %s --output json"
+                        .formatted(OperationId.RECORD_SALE_SETTLED.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind help %s --output json --detail full"
+                        .formatted(OperationId.RECORD_SALE_SETTLED.wireName())))),
         ProtocolOperationDefinitions.operation(
             OperationId.VERSION,
             OperationCategory.DISCOVERY,
@@ -71,16 +76,30 @@ final class ProtocolDiscoveryOperations {
             OperationCategory.DISCOVERY,
             "Print Request Template",
             List.of("--print-request-template"),
-            List.of(ProtocolRequestTemplateTopics.syntax()),
+            List.of(
+                ProtocolRequestTemplateTopics.syntax(),
+                "["
+                    + ProtocolOptions.BOOK_TEMPLATE_ID
+                    + " <"
+                    + String.join("|", dev.erst.fingrind.core.BookTemplateId.wireValues())
+                    + ">]"),
             ExecutionMode.RAW_JSON,
-            "Print the canonical minimal request scaffold JSON document for one request-file command.",
+            "Print the canonical minimal request scaffold JSON document for a request-file command.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s > request.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
                 ProtocolExampleStep.command(
-                    "fingrind %s record-sale > sale.json"
-                        .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
+                    "fingrind %s %s > sale.json"
+                        .formatted(
+                            OperationId.PRINT_REQUEST_TEMPLATE.wireName(),
+                            OperationId.RECORD_SALE_SETTLED.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind %s %s %s OWNER_MANAGED_TRADING > trading-sale.json"
+                        .formatted(
+                            OperationId.PRINT_REQUEST_TEMPLATE.wireName(),
+                            OperationId.RECORD_SALE_SETTLED.wireName(),
+                            ProtocolOptions.BOOK_TEMPLATE_ID)),
                 ProtocolExampleStep.command(
                     "fingrind %s declare-account > declare-account.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),

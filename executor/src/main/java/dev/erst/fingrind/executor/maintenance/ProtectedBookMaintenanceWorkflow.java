@@ -30,8 +30,9 @@ public final class ProtectedBookMaintenanceWorkflow {
 
   /** Restores one verified encrypted backup pair over the selected live book path. */
   public MaintenanceDecision<ProtectedBookRestoreOutcome> restoreBook(
-      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
-    return restoreWorkflow.restoreBook(bookFilePath, backupFilePath, backupBookKeyFilePath);
+      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
+    return restoreWorkflow.restoreBook(
+        bookFilePath, bookKeyFilePath, backupFilePath, backupKeyFilePath);
   }
 
   /** Lists every sibling rollback artifact for the selected live book without mutating state. */

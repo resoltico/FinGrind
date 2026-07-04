@@ -1,13 +1,13 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.directJournalCommand;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.openingPositionCommand;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.priorPosting;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.reversalCommand;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.accrualBookIdentity;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.candidateAccount;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.cellToken;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.counterAssetAccount;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.counterAuxiliaryAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
@@ -57,33 +58,40 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
   @Override
   public void assertOpeningPositionReachability(RequestSurfaceFacts.ReachabilityCellFacts cell) {
     ReachabilityValidationBook book =
-        new ReachabilityValidationBook(candidateAccount(cell), counterAssetAccount());
+        new ReachabilityValidationBook(candidateAccount(cell), counterAuxiliaryAccount());
     PostEntryCommand command = openingPositionCommand("opening-" + cellToken(cell));
-
-    Optional<BookkeepingPostingRejection> rejection =
-        POSTING_ACCEPTANCE.rejectionFor(
-            PostEntryCommandTranslator.toPostingCommand(command, book), book);
+    Optional<BookkeepingPostingRejection> semanticRejection =
+        ENTRY_SEMANTICS.rejectionFor(command, book);
 
     if (cell.openingReachable()) {
+      assertEquals(Optional.empty(), semanticRejection, "opening semantics should accept " + cell);
+      Optional<BookkeepingPostingRejection> rejection =
+          POSTING_ACCEPTANCE.rejectionFor(
+              PostEntryCommandTranslator.toPostingCommand(command, book), book);
       assertEquals(Optional.empty(), rejection, "opening route should accept " + cell);
       return;
     }
-    BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount nominalRejection =
+    BookkeepingPostingRejection.EntrySemanticsViolations semanticViolations =
         assertInstanceOf(
-            BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount.class,
-            rejection.orElseThrow(),
-            "opening route should reject non-opening cell " + cell);
+            BookkeepingPostingRejection.EntrySemanticsViolations.class,
+            semanticRejection.orElseThrow(),
+            "opening semantics should reject non-opening cell " + cell);
     assertEquals(
-        PostingRouteReachabilityTestSupport.CANDIDATE_ACCOUNT_CODE.value(),
-        nominalRejection.accountCode().value());
-    assertEquals(cell.accountType(), nominalRejection.accountType());
+        "opening-window-account-not-permitted", semanticViolations.violations().getFirst().code());
+    assertEquals(
+        "entryKind '"
+            + BookkeepingEntryKind.OPENING_POSITION.wireValue()
+            + "' uses openingBalances[].accountCode '"
+            + PostingRouteReachabilityTestSupport.CANDIDATE_ACCOUNT_CODE.value()
+            + "', which is not permitted in the adoption opening window.",
+        semanticViolations.violations().getFirst().message());
   }
 
   @Override
   public void assertDirectJournalReachability(RequestSurfaceFacts.ReachabilityCellFacts cell) {
     ReachabilityValidationBook book =
-        new ReachabilityValidationBook(candidateAccount(cell), counterAssetAccount());
-    PostEntryCommand command = directJournalCommand("journal-" + cellToken(cell));
+        new ReachabilityValidationBook(candidateAccount(cell), counterAuxiliaryAccount());
+    PostEntryCommand command = directJournalCommand(cell, "journal-" + cellToken(cell));
 
     assertTrue(
         ENTRY_SEMANTICS.rejectionFor(command, book).isEmpty(),
@@ -116,9 +124,10 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
             "prior-" + cellToken(cell),
             new PostingId("posting-" + cellToken(cell).toLowerCase(java.util.Locale.ROOT)));
     ReachabilityValidationBook book =
-        new ReachabilityValidationBook(candidateAccount(cell), counterAssetAccount(), priorPosting);
+        new ReachabilityValidationBook(
+            candidateAccount(cell), counterAuxiliaryAccount(), priorPosting);
     PostEntryCommand command =
-        reversalCommand("reversal-" + cellToken(cell), priorPosting.postingId());
+        reversalCommand(cell, "reversal-" + cellToken(cell), priorPosting.postingId());
 
     assertTrue(
         ENTRY_SEMANTICS.rejectionFor(command, book).isEmpty(),
@@ -180,8 +189,8 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
 
     @Override
     public BookLifecycleInspection inspectBook() {
-      return initializedLifecycleInspection(
-          1001, 1, 1, PostingRouteReachabilityTestSupport.DECLARED_AT);
+      return new BookLifecycleInspection.Initialized(
+          1001, 1, 1, PostingRouteReachabilityTestSupport.DECLARED_AT, accrualBookIdentity());
     }
 
     @Override

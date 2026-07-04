@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: CORE
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, core, journal, money, positive-money, posting-kind, posting-origin-kind, posting-coverage, reporting-period, request-provenance, currency-balance, normal-balance]
   questions: ["how does a journal entry work in fingrind", "where are money and posting primitives documented", "which doc file covers RequestProvenance", "what ledger primitives are in the fingrind core module"]
@@ -72,6 +72,131 @@ public enum EntrySide implements WireValue {
 - Purpose: make line polarity explicit in the type system and wire vocabulary
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
+
+## `AccountRole`
+
+`AccountRole` is the classifier-owned role vocabulary derived from one declared account's type and
+taxonomy.
+
+```java
+public enum AccountRole implements WireValue
+```
+
+- Purpose: distinguish anchor roles such as `CASH`, `RECEIVABLE`, `PAYABLE`, `REVENUE`,
+  `EXPENSE`, `EQUITY_CONTRIBUTED`, and `EQUITY_DRAWS` from tolerated adjunct roles such as
+  `SETTLEMENT_ADJUNCT` and `AUX`
+- Derivation: `from(AccountType, AccountTaxonomy)` is the canonical owner that maps declared
+  account truth onto classifier semantics
+- Current doctrine: `SETTLEMENT_ADJUNCT` covers settlement-only lines such as sales discounts,
+  settlement fees, and bad-debt write-offs, while `AUX` covers non-trade balance-sheet lines and
+  finance-income or finance-expense lines such as FX gains and losses so those accounts cannot
+  anchor a typed operational event by themselves
+- Surface: `anchorRole()` exposes whether the role participates in typed-event anchoring, and
+  `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable wire vocabulary
+
+## `AnchorEntry`
+
+`AnchorEntry` is one direction-aware anchor-role incidence inside the journal classifier's
+signature.
+
+```java
+public record AnchorEntry(AccountRole role, EntrySide side)
+```
+
+- Purpose: capture the role-plus-side fact that lets the classifier distinguish settled sales,
+  credit sales, receipts, payments, and other typed business-event signatures
+- Validation: rejects non-anchor roles such as `SETTLEMENT_ADJUNCT` and `AUX`
+
+## `EvidenceClass`
+
+`EvidenceClass` is the coarse retained-evidence vocabulary carried into resolved-journal
+semantics.
+
+```java
+public enum EvidenceClass implements WireValue {
+  CASH_SETTLEMENT,
+  INVOICE,
+  OTHER
+}
+```
+
+- Purpose: keep evidence-class validation typed and closed instead of re-deriving it from
+  source-document text at every semantic rule
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `EconomicEventClass`
+
+`EconomicEventClass` is the total classifier outcome vocabulary for one resolved journal.
+
+```java
+public enum EconomicEventClass implements WireValue
+```
+
+- Members: `SETTLED_SALE`, `CREDIT_SALE`, `SETTLED_EXPENSE`, `CREDIT_EXPENSE`,
+  `AR_SETTLEMENT`, `AP_SETTLEMENT`, `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, `OPENING`,
+  `REVERSAL`, `COMPOUND_OPERATIONAL`, and `ADJUSTMENT`
+- Purpose: keep the event-class decision explicit after FinGrind expands one caller-authored
+  business entry or raw direct journal into the canonical journal boundary
+- Surface: `typedSingleton()` distinguishes published singleton events from
+  `COMPOUND_OPERATIONAL` and `ADJUSTMENT`, while `wireValue()`, `wireValues()`, and
+  `fromWireValue(...)` own the stable wire vocabulary
+
+## `StructuralContext`
+
+`StructuralContext` carries the non-account-shape facts that win journal classification outright.
+
+```java
+public record StructuralContext(
+    Optional<PostingId> reversesPriorPosting, boolean adoptionOpeningEntry)
+```
+
+- Purpose: keep reversal lineage and the opening-only adoption window explicit instead of
+  inferring them from journal lines
+- Surface: `ordinary()` returns the default non-structural context used by ordinary operational
+  and adjustment entries
+
+## `ClassificationResult`
+
+`ClassificationResult` is the total classifier outcome retained for one resolved journal.
+
+```java
+public record ClassificationResult(
+    EconomicEventClass eventClass,
+    Set<AnchorEntry> anchorSignature,
+    Set<EconomicEventClass> containedTypedEvents,
+    boolean hasCashLine,
+    EvidenceClass evidenceClass,
+    StructuralContext structural)
+```
+
+- Purpose: preserve the final event class together with the exact anchor signature, any contained
+  typed events, cash-line presence, evidence class, and structural context that produced it
+- Boundary: this is the semantic classification fact consumed by raw-admission, evidence, and
+  typed-verb validation; callers do not recompute the classifier from projected payload fragments
+
+## `JournalClassifier`
+
+`JournalClassifier` is the total semantic classifier over anchor-role incidence, retained evidence,
+and structural context.
+
+```java
+public final class JournalClassifier
+```
+
+- Purpose: classify one resolved journal into a structural singleton, exact typed singleton,
+  `COMPOUND_OPERATIONAL`, or `ADJUSTMENT` from one canonical owner
+- Ownership: `classify(...)` derives the anchor signature and cash-line fact from the supplied
+  journal lines through the owning account-role resolution path instead of accepting those semantic
+  fragments from an external helper
+- Public seam: `JournalClassifier.AccountRoleLookup` is the narrow role-resolution callback that
+  callers provide so classifier ownership stays inside `JournalClassifier` instead of duplicating
+  anchor-signature or cash-line derivation elsewhere
+- Current doctrine: exact typed signatures admit settled sale, credit sale, settled expense,
+  credit expense, accounts-receivable settlement, accounts-payable settlement, owner
+  contribution, and owner withdrawal; non-exact signatures that still contain one or more typed
+  pairs become `COMPOUND_OPERATIONAL`
+- Output: `classify(...)` returns one full `ClassificationResult`, not just one bare enum
 
 ## `Money`
 
@@ -153,8 +278,12 @@ surface.
 ```java
 public enum BookkeepingEntryKind implements WireValue {
   DIRECT_JOURNAL,
-  SALE,
-  EXPENSE,
+  SALE_SETTLED,
+  SALE_ON_CREDIT,
+  EXPENSE_SETTLED,
+  EXPENSE_ON_CREDIT,
+  RECEIPT,
+  PAYMENT,
   OWNER_CONTRIBUTION,
   OWNER_WITHDRAWAL,
   OPENING_POSITION,
@@ -180,12 +309,16 @@ public sealed interface BookkeepingEntry
 
 - Purpose: model the typed business-event families and the raw direct-journal fallback without a
   second write kernel
-- Current variants: `DirectJournal`, `Sale`, `Expense`, `OwnerContribution`, `OwnerWithdrawal`,
+- Current variants: `DirectJournal`, `SaleSettled`, `SaleOnCredit`, `ExpenseSettled`,
+  `ExpenseOnCredit`, `Receipt`, `Payment`, `OwnerContribution`, `OwnerWithdrawal`,
   `OpeningPosition`, and `Reversal`
 - Surface: `entryKind()` exposes the caller-authored public variant and `journalEntry()` derives
   the exact `JournalEntry` that the write kernel validates and commits
 - Boundary: callers may bypass the typed business-event commands only through `DirectJournal`; no
   parallel recipe taxonomy survives on the public write surface
+- Adjuncts: `Receipt` and `Payment` may carry one optional settlement-side adjunct, while typed
+  sale and expense variants may carry owned tax and eligible foreign-exchange facts before
+  FinGrind expands the canonical journal
 
 ## `PostingKind`
 
@@ -221,8 +354,12 @@ FinGrind has projected a published bookkeeping entry into canonical journal line
 ```java
 public enum PostingOriginKind implements WireValue {
   DIRECT_JOURNAL,
-  SALE,
-  EXPENSE,
+  SALE_SETTLED,
+  SALE_ON_CREDIT,
+  EXPENSE_SETTLED,
+  EXPENSE_ON_CREDIT,
+  RECEIPT,
+  PAYMENT,
   OWNER_CONTRIBUTION,
   OWNER_WITHDRAWAL,
   OPENING_POSITION,
@@ -236,6 +373,9 @@ public enum PostingOriginKind implements WireValue {
   business-entry requests have converged into `PostingKind.STANDARD`
 - Surface: committed postings and adapter projections expose `postingOriginKind` as a durable fact
   for auditing, analytics, and future adjacent-context integration
+- Scope: settled sale, sale on credit, settled expense, expense on credit, receipt, payment,
+  owner contribution, owner withdrawal, opening position, reversal, interim-result sweep, and
+  fiscal-year close each retain one distinct durable origin kind
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 

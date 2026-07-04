@@ -115,7 +115,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
 
     JsonNode committed =
         runJsonCommand(
-            "record-sale",
+            "record-sale-settled",
             "--book-file",
             bookFile.toString(),
             "--book-key-file",

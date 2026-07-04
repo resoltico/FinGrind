@@ -66,8 +66,10 @@ final class TaxValidationSupport {
       return null;
     }
     return switch (entry) {
-      case BookkeepingEntry.Sale sale -> sale.appliedTax();
-      case BookkeepingEntry.Expense expense -> expense.appliedTax();
+      case BookkeepingEntry.SaleSettled sale -> sale.appliedTax();
+      case BookkeepingEntry.SaleOnCredit sale -> sale.appliedTax();
+      case BookkeepingEntry.ExpenseSettled expense -> expense.appliedTax();
+      case BookkeepingEntry.ExpenseOnCredit expense -> expense.appliedTax();
       default -> null;
     };
   }

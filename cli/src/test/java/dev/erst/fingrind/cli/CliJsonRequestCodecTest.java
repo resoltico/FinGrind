@@ -104,7 +104,7 @@ class CliJsonRequestCodecTest {
     assertEquals("Failed to read request JSON from standard input.", exception.getMessage());
     assertTrue(
         Objects.requireNonNull(exception.failure().hint())
-            .contains("Provide one readable JSON document on standard input"));
+            .contains("Provide a readable JSON document on standard input"));
   }
 
   @Test

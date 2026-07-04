@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from .account_ledger_csv_contract import ACCOUNT_LEDGER_CSV_HEADER
 from .account_ledger_row_assertions import (
-    assert_counterpart_rows,
+    assert_counterpart_row,
     assert_entry_row,
-    assert_source_document_rows,
-    assert_summary_row,
+    assert_source_document_row,
 )
 from .csv_support import parse_csv_rows
 from .models import ReleaseSmokeConfig
@@ -21,67 +20,96 @@ def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_out
         header == ACCOUNT_LEDGER_CSV_HEADER,
         f"{config.label} account-ledger CSV output did not render the expected header",
     )
-    row_groups = _group_rows(config, rows)
-    assert_summary_row(config, row_groups["summary"][0])
-    opening_entry = next(row for row in row_groups["entry"] if row["postingOriginKind"] == "SALE")
-    expense_entry = next(
-        row for row in row_groups["entry"] if row["postingOriginKind"] == "EXPENSE"
+    require(
+        rows
+        and all(
+            row["exportFamily"] == "account-ledger"
+            and row["recordKind"] == "account-ledger"
+            and row["accountCode"] == config.starter_cash_account_code
+            and row["accountName"] == config.starter_cash_account_name
+            and row["accountType"] == "ASSET"
+            and row["normalBalance"] == "DEBIT"
+            and row["active"] == "true"
+            for row in rows
+        ),
+        f"{config.label} account-ledger CSV output did not stay anchored to the shared report family",
     )
+    summary_rows = [row for row in rows if row["relationKind"] == "ledger-summary"]
+    require(
+        len(summary_rows) == 1,
+        f"{config.label} account-ledger CSV output did not render exactly one summary row",
+    )
+    summary = summary_rows[0]
+    require(
+        summary["rowId"] == f"ledger-summary:{config.starter_cash_account_code}:EUR"
+        and summary["parentRowId"] == ""
+        and summary["effectiveDateFrom"] == "2026-04-07"
+        and summary["effectiveDateTo"] == "2026-04-08"
+        and summary["currencyCode"] == config.functional_currency
+        and summary["openingDebitTotal"] == "0.00"
+        and summary["openingCreditTotal"] == "0.00"
+        and summary["openingNetAmount"] == "0.00"
+        and summary["openingBalanceSide"] == "ZERO"
+        and summary["closingDebitTotal"] == "10.00"
+        and summary["closingCreditTotal"] == "4.00"
+        and summary["closingNetAmount"] == "6.00"
+        and summary["closingBalanceSide"] == "DEBIT",
+        f"{config.label} account-ledger CSV summary row did not render the expected horizon and balances",
+    )
+    entry_rows = [row for row in rows if row["relationKind"] == "entry"]
+    require(
+        len(entry_rows) == 2,
+        f"{config.label} account-ledger CSV output did not render exactly two ledger entry rows",
+    )
+    sale_entry = next(row for row in entry_rows if row["postingOriginKind"] == "SALE_SETTLED")
+    expense_entry = next(row for row in entry_rows if row["postingOriginKind"] == "EXPENSE_SETTLED")
     assert_entry_row(
         config,
-        opening_entry,
+        sale_entry,
         effective_date="2026-04-07",
-        posting_origin_kind="SALE",
         debit_amount="10.00",
         credit_amount="0.00",
         running_net_amount="10.00",
-        row_name="opening ledger movement row",
+        running_balance_side="DEBIT",
+        row_name="sale ledger entry row",
     )
     assert_entry_row(
         config,
         expense_entry,
         effective_date="2026-04-08",
-        posting_origin_kind="EXPENSE",
         debit_amount="0.00",
         credit_amount="4.00",
         running_net_amount="6.00",
-        row_name="running-balance expense row",
+        running_balance_side="DEBIT",
+        row_name="expense ledger entry row",
     )
-    assert_counterpart_rows(config, row_groups["counterpart-account"], opening_entry, expense_entry)
-    assert_source_document_rows(
+    assert_counterpart_row(
         config,
-        row_groups["source-document"],
-        opening_entry,
+        rows,
+        sale_entry,
+        expected_counterpart=config.starter_revenue_account_code,
+        row_name="sale counterpart row",
+    )
+    assert_counterpart_row(
+        config,
+        rows,
         expense_entry,
+        expected_counterpart=config.expense_supplement_account_code,
+        row_name="expense counterpart row",
     )
-
-
-def _group_rows(
-    config: ReleaseSmokeConfig, rows: list[dict[str, str]]
-) -> dict[str, list[dict[str, str]]]:
-    require(
-        len(rows) == 7,
-        f"{config.label} account-ledger CSV output did not render the expected normalized row count",
+    assert_source_document_row(
+        config,
+        rows,
+        sale_entry,
+        expected_source_document_id=f"{config.actor_prefix}-sale-document-1",
+        expected_source_document_type="cash-receipt",
+        row_name="sale source-document row",
     )
-    require(
-        all(row["recordKind"] == "account-ledger" for row in rows),
-        f"{config.label} account-ledger CSV output did not keep recordKind anchored to account-ledger",
+    assert_source_document_row(
+        config,
+        rows,
+        expense_entry,
+        expected_source_document_id=f"{config.actor_prefix}-expense-document-1",
+        expected_source_document_type="expense-receipt",
+        row_name="expense source-document row",
     )
-    grouped = {
-        "summary": [row for row in rows if row["relationKind"] == "ledger-summary"],
-        "entry": [row for row in rows if row["relationKind"] == "entry"],
-        "counterpart-account": [
-            row for row in rows if row["relationKind"] == "counterpart-account"
-        ],
-        "source-document": [row for row in rows if row["relationKind"] == "source-document"],
-        "approval": [row for row in rows if row["relationKind"] == "approval"],
-    }
-    require(
-        len(grouped["summary"]) == 1
-        and len(grouped["entry"]) == 2
-        and len(grouped["counterpart-account"]) == 2
-        and len(grouped["source-document"]) == 2
-        and len(grouped["approval"]) == 0,
-        f"{config.label} account-ledger CSV output did not render the expected row kinds",
-    )
-    return grouped

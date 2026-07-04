@@ -43,4 +43,25 @@ public final class InterimResultSweepService {
                 KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
         reportingPeriodCloseStore::interimResultSweep);
   }
+
+  /** Sweeps the only admissible contiguous window ending at the selected through date. */
+  public InterimResultSweepOutcome interimResultSweep(java.time.LocalDate throughEffectiveDate) {
+    Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
+    return executionSupport.execute(
+        () ->
+            new InterimResultSweepOutcome.Rejected(
+                new BookkeepingAdministrationRejection.BookNotInitialized()),
+        bookIdentity ->
+            new InterimResultSweepPlanner(
+                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
+        (bookIdentity, bookStartDate, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
+            reportingPeriodCloseStore.interimResultSweep(
+                throughEffectiveDate,
+                bookStartDate,
+                bookIdentity,
+                planner,
+                currentUtcDate,
+                sweptAt,
+                postingIdGenerator));
+  }
 }

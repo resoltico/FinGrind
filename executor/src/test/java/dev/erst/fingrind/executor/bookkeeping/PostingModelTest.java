@@ -111,7 +111,7 @@ class PostingModelTest {
             () ->
                 new PostingCommand(
                     PostingKind.OPENING_BALANCE,
-                    dev.erst.fingrind.core.PostingOriginKind.SALE,
+                    dev.erst.fingrind.core.PostingOriginKind.SALE_SETTLED,
                     testJournalEntry(),
                     PostingLineageModel.direct(),
                     accountingEvidence("idem-kind-drift"),
@@ -136,7 +136,7 @@ class PostingModelTest {
                         new ReversalReference(postingId("posting-2")),
                         new ReversalReason("refund correction")),
                     PostingKind.STANDARD,
-                    dev.erst.fingrind.core.PostingOriginKind.SALE,
+                    dev.erst.fingrind.core.PostingOriginKind.SALE_SETTLED,
                     accountingEvidence("idem-3"),
                     committedProvenance("idem-3"),
                     saleEntry()));
@@ -260,12 +260,13 @@ class PostingModelTest {
     }
   }
 
-  private static BookkeepingEntry.Sale saleEntry() {
-    return new BookkeepingEntry.Sale(
+  private static BookkeepingEntry.SaleSettled saleEntry() {
+    return new BookkeepingEntry.SaleSettled(
         LocalDate.parse("2026-05-05"),
         new AccountCode("1000"),
         new AccountCode("2000"),
         dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(Money.parse("EUR", "10.00")),
+        null,
         null,
         null,
         null);
@@ -273,10 +274,11 @@ class PostingModelTest {
 
   private static BookkeepingEntry.Reversal reversalEntry() {
     return new BookkeepingEntry.Reversal(
-        testJournalEntry(),
+        testJournalEntry().effectiveDate(),
         new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
             new ReversalReference(postingId("posting-1")), new ReversalReason("refund correction")),
-        null);
+        null,
+        testJournalEntry());
   }
 
   private static JournalEntry testJournalEntry() {

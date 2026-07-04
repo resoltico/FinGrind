@@ -26,8 +26,7 @@ final class CliBookMaintenanceOutputRenderer {
         CliTextFormat.renderKeyValueBlock(
             List.of(
                 List.of("Book file", CliTextDisplay.path(restored.bookFilePath())),
-                List.of("Backup file", CliTextDisplay.path(restored.backupFilePath())),
-                List.of("Book key file", CliTextDisplay.path(restored.backupBookKeyFilePath())))));
+                List.of("Book key file", CliTextDisplay.path(restored.bookKeyFilePath())))));
   }
 
   static String renderInspectRekeyRollbackText(RekeyRollbackResult.Inspected inspected) {

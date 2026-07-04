@@ -138,7 +138,7 @@ class SqliteBookSessionLifecycleTest extends SqlitePostingFactStoreTestSupport {
           Instant.parse("2026-04-07T10:15:30Z"),
           bookIdentity(),
           dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-              bookIdentity().bookDoctrine().bookTemplateId()));
+              bookIdentity().bookDoctrine()));
       assertTrue(storeBooleanField(postingFactStore, "ledgerPlanTransactionBegunInDatabase"));
       assertDoesNotThrow(
           () ->

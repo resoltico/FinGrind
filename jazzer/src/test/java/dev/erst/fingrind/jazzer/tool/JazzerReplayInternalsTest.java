@@ -35,6 +35,7 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.jazzer.support.JazzerPostEntryResultFixtures;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -240,6 +241,11 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
         JazzerReplayOutcomeSupport.rejectionStatus(new PostingRejection.IdempotencyKeyConflict()));
     assertEquals(
+        PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE,
+        JazzerReplayOutcomeSupport.rejectionStatus(
+            new PostingRejection.PostingEffectiveDateInFuture(
+                java.time.LocalDate.parse("2026-07-01"), java.time.LocalDate.parse("2026-06-30"))));
+    assertEquals(
         PostingLifecycleStatus.BOOK_FUNCTIONAL_CURRENCY_MISMATCH,
         JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.BookFunctionalCurrencyMismatch(
@@ -265,6 +271,11 @@ class JazzerReplayInternalsTest {
         JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.ReservedResultClassification(
                 accountCode, FinancialPositionLineClassification.RESULT_HOLDING)));
+    assertEquals(
+        PostingLifecycleStatus.REVERSAL_TARGET_IS_REVERSAL,
+        JazzerReplayOutcomeSupport.rejectionStatus(
+            new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+                new PostingId("posting-1a"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         JazzerReplayOutcomeSupport.rejectionStatus(
@@ -300,7 +311,8 @@ class JazzerReplayInternalsTest {
             JazzerReplayOutcomeSupport.requiredPreflightRejected(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
-                    CliFuzzFixtures.journalEntry(command).effectiveDate())));
+                    CliFuzzFixtures.journalEntry(command).effectiveDate(),
+                    JazzerPostEntryResultFixtures.resolvedJournal(command))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -310,7 +322,8 @@ class JazzerReplayInternalsTest {
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant(),
-                    false)));
+                    false,
+                    JazzerPostEntryResultFixtures.resolvedJournal(command))));
   }
 
   @Test
@@ -399,6 +412,7 @@ class JazzerReplayInternalsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(reversalCommand),
+                    command.entry().postingOriginKind(),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -413,6 +427,7 @@ class JazzerReplayInternalsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(command),
+                    command.entry().postingOriginKind(),
                     mismatchedEvidence(command),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -427,6 +442,7 @@ class JazzerReplayInternalsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(command),
+                    command.entry().postingOriginKind(),
                     command.evidence(),
                     reversalCommand.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -441,6 +457,7 @@ class JazzerReplayInternalsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(command),
+                    command.entry().postingOriginKind(),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
@@ -515,9 +532,11 @@ class JazzerReplayInternalsTest {
     assertTrue(PostingLifecycleStatus.wireValues().contains("idempotent-replay"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("entry-semantics-violations"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("posting-effective-date-in-future"));
     assertTrue(
         PostingLifecycleStatus.wireValues().contains("open-accounting-position-window-closed"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("reserved-result-classification"));
+    assertTrue(PostingLifecycleStatus.wireValues().contains("reversal-target-is-reversal"));
     assertEquals(
         PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
         PostingLifecycleStatus.fromWireValue("idempotency-key-conflict"));
@@ -531,11 +550,17 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
         PostingLifecycleStatus.fromWireValue("entry-semantics-violations"));
     assertEquals(
+        PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE,
+        PostingLifecycleStatus.fromWireValue("posting-effective-date-in-future"));
+    assertEquals(
         PostingLifecycleStatus.OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED,
         PostingLifecycleStatus.fromWireValue("open-accounting-position-window-closed"));
     assertEquals(
         PostingLifecycleStatus.RESERVED_RESULT_CLASSIFICATION,
         PostingLifecycleStatus.fromWireValue("reserved-result-classification"));
+    assertEquals(
+        PostingLifecycleStatus.REVERSAL_TARGET_IS_REVERSAL,
+        PostingLifecycleStatus.fromWireValue("reversal-target-is-reversal"));
     assertEquals(
         Path.of("/tmp/project/src/fuzz/resources/example.json"),
         metadata.inputPath(Path.of("/tmp/project")));
@@ -569,6 +594,27 @@ class JazzerReplayInternalsTest {
         new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false).reversalPresent());
   }
 
+  @Test
+  void postingWorkflowReplay_unknownAccountPreDeclarationClassifier_acceptsOnlyPureUnknowns()
+      throws ReflectiveOperationException {
+    var helper =
+        JazzerPostingWorkflowReplay.class.getDeclaredMethod(
+            "isUnknownAccountPreDeclarationState", PostingRejection.class);
+    helper.setAccessible(true);
+    PostingRejection unknownOnly =
+        new PostingRejection.AccountStateViolations(
+            List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))));
+    PostingRejection mixed =
+        new PostingRejection.AccountStateViolations(
+            List.of(
+                new PostingRejection.UnknownAccount(new AccountCode("1000")),
+                new PostingRejection.InactiveAccount(new AccountCode("2000"))));
+
+    assertTrue((boolean) helper.invoke(null, unknownOnly));
+    assertFalse((boolean) helper.invoke(null, mixed));
+    assertFalse((boolean) helper.invoke(null, new PostingRejection.BookNotInitialized()));
+  }
+
   private static PostEntryCommand parsedCommand() {
     return CliFuzzFixtures.readPostEntryCommand(
         JazzerReplayRequestFixtures.basicValidRequest().getBytes(UTF_8));
@@ -584,6 +630,7 @@ class JazzerReplayInternalsTest {
         postingId,
         CliFuzzFixtures.journalEntry(command),
         CliFuzzFixtures.postingLineage(command),
+        command.entry().postingOriginKind(),
         command.evidence(),
         command.requestProvenance(),
         CliFuzzFixtures.fixedClock().instant(),
@@ -594,6 +641,7 @@ class JazzerReplayInternalsTest {
       String postingId,
       dev.erst.fingrind.core.JournalEntry journalEntry,
       PostingLineage postingLineage,
+      dev.erst.fingrind.core.PostingOriginKind postingOriginKind,
       dev.erst.fingrind.core.AccountingEvidence evidence,
       dev.erst.fingrind.core.RequestProvenance requestProvenance,
       java.time.Instant recordedAt,
@@ -605,7 +653,7 @@ class JazzerReplayInternalsTest {
         PostingKind.STANDARD,
         postingLineage.reversalReference().isPresent()
             ? dev.erst.fingrind.core.PostingOriginKind.REVERSAL
-            : dev.erst.fingrind.core.PostingOriginKind.SALE,
+            : postingOriginKind,
         evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }
@@ -616,12 +664,7 @@ class JazzerReplayInternalsTest {
 
   private static Committed committed(
       PostEntryCommand command, String postingId, boolean idempotentReplay) {
-    return new Committed(
-        new PostingId(postingId),
-        command.requestProvenance().idempotencyKey(),
-        CliFuzzFixtures.journalEntry(command).effectiveDate(),
-        CliFuzzFixtures.fixedClock().instant(),
-        idempotentReplay);
+    return JazzerPostEntryResultFixtures.committed(command, postingId, idempotentReplay);
   }
 
   private static AccountingEvidence mismatchedEvidence(PostEntryCommand command) {

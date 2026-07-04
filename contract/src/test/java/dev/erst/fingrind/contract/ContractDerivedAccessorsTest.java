@@ -62,7 +62,10 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
     dev.erst.fingrind.core.JournalEntry requestJournalEntry = journalEntry();
     BookkeepingEntry.Reversal reversalAdjustment =
         new BookkeepingEntry.Reversal(
-            requestJournalEntry, (PostingLineage.Reversal) reversal, null);
+            requestJournalEntry.effectiveDate(),
+            (PostingLineage.Reversal) reversal,
+            null,
+            requestJournalEntry);
     PostEntryCommand command =
         new PostEntryCommand(
             reversalAdjustment,

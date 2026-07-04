@@ -13,18 +13,21 @@ final class CliCommandOutcomeWriter {
       ContractDecision<T> decision,
       Consumer<T> successWriter,
       ToIntFunction<T> successExitCode,
-      CliFailureResponseWriter failureWriter) {
+      CliFailureResponseWriter failureWriter,
+      dev.erst.fingrind.contract.protocol.OutputMode outputMode) {
     return decision.fold(
         result -> {
           successWriter.accept(result);
           return successExitCode.applyAsInt(result);
         },
-        failure -> writeDeterministicFailure(failure, failureWriter));
+        failure -> writeDeterministicFailure(failure, failureWriter, outputMode));
   }
 
   static int writeDeterministicFailure(
-      ContractFailure failure, CliFailureResponseWriter failureWriter) {
-    failureWriter.writeDeterministicFailure(CliFailureMapper.contractFailure(failure));
+      ContractFailure failure,
+      CliFailureResponseWriter failureWriter,
+      dev.erst.fingrind.contract.protocol.OutputMode outputMode) {
+    failureWriter.writeFailure(CliFailureMapper.contractFailure(failure), outputMode);
     return CliExecutionPolicy.contractFailureExitCode(failure);
   }
 }

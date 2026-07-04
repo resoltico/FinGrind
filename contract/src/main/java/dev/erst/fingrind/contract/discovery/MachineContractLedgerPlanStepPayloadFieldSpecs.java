@@ -3,6 +3,8 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolOpenBookFields;
+import dev.erst.fingrind.core.AccountingBasis;
+import dev.erst.fingrind.core.BookTemplateId;
 import java.util.List;
 import java.util.Map;
 
@@ -28,9 +30,17 @@ final class MachineContractLedgerPlanStepPayloadFieldSpecs {
         "Posting request payload for "
             + MachineContractLedgerPlanFieldSupport.operation(OperationId.PREFLIGHT_ENTRY)
             + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_SALE)
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_SALE_SETTLED)
             + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_EXPENSE)
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_SALE_ON_CREDIT)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_EXPENSE_SETTLED)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_EXPENSE_ON_CREDIT)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_RECEIPT)
+            + ", "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_PAYMENT)
             + ", "
             + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_OWNER_CONTRIBUTION)
             + ", "
@@ -136,6 +146,18 @@ final class MachineContractLedgerPlanStepPayloadFieldSpecs {
                 "Accounting entity name for the selected protected book.",
                 MachineContractScalarSchemas.nonBlankStringSchema(
                     "Accounting entity name for the selected protected book.")),
+            MachineContractFieldSpec.required(
+                ProtocolOpenBookFields.BOOK_TEMPLATE_ID,
+                "Seed template persisted on the selected protected book.",
+                MachineContractScalarSchemas.enumStringSchema(
+                    "Seed template persisted on the selected protected book.",
+                    BookTemplateId.wireValues())),
+            MachineContractFieldSpec.required(
+                ProtocolOpenBookFields.ACCOUNTING_BASIS,
+                "Accounting basis persisted on the selected protected book.",
+                MachineContractScalarSchemas.enumStringSchema(
+                    "Accounting basis persisted on the selected protected book.",
+                    AccountingBasis.wireValues())),
             MachineContractFieldSpec.required(
                 ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
                 "Three-letter ISO functional currency code for the selected book.",

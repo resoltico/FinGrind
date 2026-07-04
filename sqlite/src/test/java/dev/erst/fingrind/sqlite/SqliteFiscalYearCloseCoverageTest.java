@@ -56,8 +56,39 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                               Instant.parse("2026-04-07T10:15:30Z")),
                       new ReportingPeriodCloseStore() {
                         @Override
+                        public java.util.List<
+                                dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
+                            postings(dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+                          return java.util.List.of();
+                        }
+
+                        @Override
+                        public java.util.Optional<LocalDate> earliestPostingEffectiveDate() {
+                          return java.util.Optional.empty();
+                        }
+
+                        @Override
+                        public java.util.Optional<LocalDate> transferredThroughEffectiveDate() {
+                          return java.util.Optional.empty();
+                        }
+
+                        @Override
                         public InterimResultSweepOutcome interimResultSweep(
                             ReportingPeriod reportingPeriod,
+                            dev.erst.fingrind.core.BookIdentity bookIdentity,
+                            dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner
+                                planner,
+                            LocalDate currentUtcDate,
+                            Instant sweptAt,
+                            PostingIdGenerator postingIdGenerator) {
+                          throw new UnsupportedOperationException(
+                              "Interim-result sweep is not under test here.");
+                        }
+
+                        @Override
+                        public InterimResultSweepOutcome interimResultSweep(
+                            LocalDate throughEffectiveDate,
+                            LocalDate bookStartDate,
                             dev.erst.fingrind.core.BookIdentity bookIdentity,
                             dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner
                                 planner,

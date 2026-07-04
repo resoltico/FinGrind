@@ -263,7 +263,7 @@ class SqliteBookFileSecurityTest {
     assertPathFailure(
         nestedBookPath,
         SqliteCallerPathFailure.PARENT_PATH_COLLISION,
-        "requires one real parent directory",
+        "requires a real parent directory",
         () -> SqliteBookFileSecurity.hardenBookArtifacts(nestedBookPath));
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath bookPath = fileSystem.path("\\books\\acme.sqlite");

@@ -67,7 +67,7 @@ class LedgerPlanFuzzAssertionsTest {
                 %s,
                 {
                   "stepId": "post-sale",
-                  "kind": "record-sale",
+                  "kind": "record-sale-settled",
                   "posting": %s
                 },
                 {
@@ -344,7 +344,7 @@ class LedgerPlanFuzzAssertionsTest {
                     succeededEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()),
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
-                    succeededEntry("post-sale", LedgerStepKind.RECORD_SALE, List.of()),
+                    succeededEntry("post-sale", LedgerStepKind.RECORD_SALE_SETTLED, List.of()),
                     succeededEntry(
                         "page-accounts",
                         LedgerStepKind.LIST_ACCOUNTS,
@@ -387,7 +387,7 @@ class LedgerPlanFuzzAssertionsTest {
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("preflight-sale", LedgerStepKind.PREFLIGHT_ENTRY, List.of()),
-                    succeededEntry("post-sale", LedgerStepKind.RECORD_SALE, List.of()),
+                    succeededEntry("post-sale", LedgerStepKind.RECORD_SALE_SETTLED, List.of()),
                     succeededEntry("inspect-book", LedgerStepKind.INSPECT_BOOK, List.of()),
                     succeededEntry(
                         "page-accounts",
@@ -625,7 +625,7 @@ class LedgerPlanFuzzAssertionsTest {
             %s,
             {
               "stepId": "post-sale",
-              "kind": "record-sale",
+              "kind": "record-sale-settled",
               "posting": %s
             },
             {
@@ -694,7 +694,7 @@ class LedgerPlanFuzzAssertionsTest {
             },
             {
               "stepId": "post-sale",
-              "kind": "record-sale",
+              "kind": "record-sale-settled",
               "posting": %s
             },
             {
@@ -814,6 +814,8 @@ class LedgerPlanFuzzAssertionsTest {
     return """
         {
           "entityName": "Acme Studio",
+          "bookTemplateId": "OWNER_MANAGED_SERVICE",
+          "accountingBasis": "CASH",
           "functionalCurrency": "%s",
           "fiscalYearStart": "01-01"
         }

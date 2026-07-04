@@ -5,8 +5,14 @@ import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
+import dev.erst.fingrind.core.BookDoctrines;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Clock;
@@ -33,6 +39,15 @@ public final class PostingRouteReachabilityTestSupport {
     return ProtocolCatalog.domain().requestSurface().reachabilityMatrix();
   }
 
+  /** Returns the accrual-basis book identity used to probe basis-neutral reachability doctrine. */
+  public static BookIdentity accrualBookIdentity() {
+    return new BookIdentity(
+        new EntityProfile(new BookEntityName("Acme Studio")),
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
+        CurrencyUnit.of("EUR"),
+        FiscalYearStart.parse("01-01"));
+  }
+
   /** Produces a stable scenario token for one matrix cell. */
   public static String cellToken(RequestSurfaceFacts.ReachabilityCellFacts cell) {
     return cell.classificationFamily()
@@ -53,18 +68,18 @@ public final class PostingRouteReachabilityTestSupport {
         DECLARED_AT);
   }
 
-  /** Declares the balancing asset account shared by every reachability scenario. */
-  public static RegisteredAccount counterAssetAccount() {
+  /** Declares the auxiliary counter-account shared by every reachability scenario. */
+  public static RegisteredAccount counterAuxiliaryAccount() {
     return new RegisteredAccount(
         COUNTER_ACCOUNT_CODE,
-        new AccountName("Cash"),
+        new AccountName("Counterparty"),
         dev.erst.fingrind.core.AccountType.ASSET,
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
-            Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
+            Optional.of(CashFlowAssetClassification.NON_CASH)),
         true,
         DECLARED_AT);
   }
@@ -93,18 +108,9 @@ public final class PostingRouteReachabilityTestSupport {
 
   private static Optional<CashFlowAssetClassification> assetCashFlowClassification(
       FinancialPositionLineClassification classification) {
-    return switch (classification) {
-      case CURRENT_ASSET, NONCURRENT_ASSET -> Optional.of(CashFlowAssetClassification.NON_CASH);
-      case CURRENT_LIABILITY,
-          NONCURRENT_LIABILITY,
-          EQUITY_CONTRIBUTION,
-          EQUITY_WITHDRAWAL,
-          RESULT_HOLDING,
-          RETAINED_ACCUMULATED,
-          RESERVE,
-          OTHER_EQUITY ->
-          Optional.empty();
-    };
+    return classification.accountType() == dev.erst.fingrind.core.AccountType.ASSET
+        ? Optional.of(CashFlowAssetClassification.NON_CASH)
+        : Optional.empty();
   }
 
   private static AccountTaxonomy profitAndLossTaxonomy(String classificationWireValue) {

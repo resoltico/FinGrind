@@ -38,6 +38,7 @@ import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
+import dev.erst.fingrind.executor.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
@@ -51,6 +52,7 @@ import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -62,14 +64,29 @@ import org.junit.jupiter.api.Test;
 class InterimResultSweepServiceTest {
   private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
   private static final LocalDate OPENING_DATE = LocalDate.parse("2026-04-01");
+  private static final LocalDate BOOK_START_DATE = LocalDate.parse("2026-01-01");
   private static final LocalDate PERIOD_DATE = LocalDate.parse("2026-04-07");
   private static final ReportingPeriod PERIOD = new ReportingPeriod(PERIOD_DATE, PERIOD_DATE);
-  private static final ReportingPeriod FULL_PERIOD = new ReportingPeriod(OPENING_DATE, PERIOD_DATE);
+  private static final ReportingPeriod FULL_PERIOD =
+      new ReportingPeriod(BOOK_START_DATE, PERIOD_DATE);
 
   @Test
   void interimResultSweep_rejectsUninitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       InterimResultSweepOutcome outcome = interimResultSweep(bookSession, PERIOD);
+
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          outcome);
+    }
+  }
+
+  @Test
+  void interimResultSweep_throughDateOverloadRejectsUninitializedBook() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      InterimResultSweepOutcome outcome =
+          service(bookSession, FIXED_CLOCK).interimResultSweep(PERIOD_DATE);
 
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
@@ -91,7 +108,7 @@ class InterimResultSweepServiceTest {
 
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
-              new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+              new CloseTargetAccountCandidateMissing(
                   FinancialPositionLineClassification.RESULT_HOLDING, List.of())),
           outcome);
     }
@@ -108,7 +125,7 @@ class InterimResultSweepServiceTest {
 
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
-              new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+              new CloseTargetAccountCandidateMissing(
                   FinancialPositionLineClassification.RESULT_HOLDING,
                   List.of(new AccountCode("3200")))),
           outcome);
@@ -221,6 +238,23 @@ class InterimResultSweepServiceTest {
               new BookkeepingAdministrationRejection.InterimResultSweepMustStartAt(
                   PERIOD_DATE.plusDays(1))),
           outcome);
+    }
+  }
+
+  @Test
+  void interimResultSweep_throughDateOverloadDerivesTheContiguousWindow() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.openBook(Instant.parse("2026-04-01T10:15:30Z"), bookIdentity(), List.of());
+      declareRetainedEarningsFixture(bookSession);
+      seedProfitAndLossPosting(bookSession);
+
+      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+          assertInstanceOf(
+                  InterimResultSweepOutcome.Transferred.class,
+                  service(bookSession, FIXED_CLOCK).interimResultSweep(PERIOD_DATE))
+              .sweptInterimResult();
+
+      assertEquals(FULL_PERIOD, sweptInterimResult.reportingPeriod());
     }
   }
 
@@ -684,6 +718,26 @@ class InterimResultSweepServiceTest {
     }
 
     @Override
+    public List<CommittedPosting> postings(
+        dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+      return postings.stream()
+          .filter(posting -> effectiveDateRange.contains(posting.journalEntry().effectiveDate()))
+          .toList();
+    }
+
+    @Override
+    public Optional<LocalDate> earliestPostingEffectiveDate() {
+      return postings.stream()
+          .map(posting -> posting.journalEntry().effectiveDate())
+          .min(LocalDate::compareTo);
+    }
+
+    @Override
+    public Optional<LocalDate> transferredThroughEffectiveDate() {
+      return Optional.empty();
+    }
+
+    @Override
     public InterimResultSweepOutcome interimResultSweep(
         ReportingPeriod reportingPeriod,
         dev.erst.fingrind.core.BookIdentity bookIdentity,
@@ -730,6 +784,25 @@ class InterimResultSweepServiceTest {
               interimResultSweepDraft.sweptTotals(),
               interimResultSweepDraft.sweptAt(),
               generatedPostingIds));
+    }
+
+    @Override
+    public InterimResultSweepOutcome interimResultSweep(
+        LocalDate throughEffectiveDate,
+        LocalDate bookStartDate,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
+        LocalDate currentUtcDate,
+        java.time.Instant sweptAt,
+        PostingIdGenerator postingIdGenerator) {
+      return interimResultSweep(
+          planner.reportingPeriod(
+              throughEffectiveDate, bookStartDate, bookIdentity, Optional.empty()),
+          bookIdentity,
+          planner,
+          currentUtcDate,
+          sweptAt,
+          postingIdGenerator);
     }
 
     @Override

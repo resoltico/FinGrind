@@ -13,8 +13,9 @@ final class CliPostingOutputRenderer {
 
   private CliPostingOutputRenderer() {}
 
-  static String renderPostingText(BookIdentity bookIdentity, PostingFact postingFact) {
-    List<List<String>> header = new ArrayList<>(CliBookIdentityDisplay.summaryRows(bookIdentity));
+  static String renderPostingText(
+      BookIdentity bookIdentity, PostingFact postingFact, boolean withContext) {
+    List<List<String>> header = new ArrayList<>();
     header.add(List.of("Posting id", postingFact.postingId().value()));
     header.add(
         List.of("Posting kind", CliPostingLabels.displayPostingKind(postingFact.postingKind())));
@@ -60,18 +61,7 @@ final class CliPostingOutputRenderer {
             "Reversal reason",
             postingFact.reversalReason().map(reason -> reason.value()).orElse("(none)")));
     String journalLines =
-        CliTextFormat.renderTable(
-            List.of("Account", "Side", "Currency", "Amount"),
-            postingFact.journalEntry().lines().stream()
-                .map(
-                    line ->
-                        List.of(
-                            line.accountCode().value(),
-                            displayWireLabel(line.side().wireValue()),
-                            line.amount().currencyUnit().code(),
-                            CliTextFormat.displayMoney(line.amount().money())))
-                .toList(),
-            3);
+        CliJournalLineTextRenderer.renderLines(postingFact.journalEntry().lines());
     List<String> sections = new ArrayList<>();
     sections.add(CliTextFormat.renderKeyValueBlock(header));
     postingFact
@@ -83,11 +73,16 @@ final class CliPostingOutputRenderer {
                     CliReportRenderSupport.section(
                         "Entry facts", CliPostingEntryPayloadSupport.renderEntryFacts(entry))));
     sections.add(CliReportRenderSupport.section("Journal lines", journalLines));
+    if (withContext) {
+      sections.add(
+          CliReportRenderSupport.keyValueSection(
+              "Context", CliBookIdentityDisplay.contextRows(bookIdentity)));
+    }
     return CliTextFormat.renderTitledBlock(
         "Posting", CliReportRenderSupport.joinSections(sections.toArray(String[]::new)));
   }
 
-  static String renderPostingRegisterText(PostingPage page) {
+  static String renderPostingRegisterText(PostingPage page, boolean withContext) {
     String summary =
         CliTextFormat.renderKeyValueBlock(
             page.postings().isEmpty()
@@ -137,7 +132,9 @@ final class CliPostingOutputRenderer {
     return CliTextFormat.renderTitledBlock(
         "Postings",
         CliReportRenderSupport.joinSections(
-            summary, postings, CliReportRenderSupport.section("Context", context)));
+            summary,
+            postings,
+            withContext ? CliReportRenderSupport.section("Context", context) : ""));
   }
 
   static String renderPostingRegisterCsv(PostingPage page) {

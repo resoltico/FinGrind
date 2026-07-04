@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
@@ -19,6 +20,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PositiveMoney;
 import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -26,6 +28,36 @@ import org.junit.jupiter.api.Test;
 
 /** Direct branch coverage for bookkeeping-entry tax support rules. */
 class BookkeepingEntrySupportTest {
+  @Test
+  void journalEntryDispatch_coversDirectJournalAndResolvedReversalBranches() {
+    JournalEntry directJournalEntry =
+        new JournalEntry(
+            LocalDate.parse("2026-04-25"),
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "10.00"))));
+    BookkeepingEntry.DirectJournal directJournal =
+        new BookkeepingEntry.DirectJournal(directJournalEntry, null);
+    BookkeepingEntry.Reversal reversal =
+        new BookkeepingEntry.Reversal(
+            directJournalEntry.effectiveDate(),
+            new PostingLineage.Reversal(
+                new dev.erst.fingrind.core.ReversalReference(
+                    new dev.erst.fingrind.core.PostingId("posting-1")),
+                new dev.erst.fingrind.core.ReversalReason("operator reversal")),
+            null,
+            directJournalEntry);
+
+    assertSame(directJournalEntry, BookkeepingEntrySurfaceSupport.journalEntry(directJournal));
+    assertSame(directJournalEntry, BookkeepingEntrySurfaceSupport.journalEntry(reversal));
+  }
+
   @Test
   void saleEntry_enforcesOutputSale_andTaxAccountOnlyWhenTaxIsPositive() {
     var zeroTaxSale =
@@ -130,7 +162,6 @@ class BookkeepingEntrySupportTest {
                 LocalDate.parse("2026-04-25"),
                 new AccountCode("5000"),
                 new AccountCode("1000"),
-                new MonetaryAmount("EUR", "10000"),
                 recoverableZeroTax)
             .lines()
             .size());
@@ -140,7 +171,6 @@ class BookkeepingEntrySupportTest {
                 LocalDate.parse("2026-04-25"),
                 new AccountCode("5000"),
                 new AccountCode("1000"),
-                new MonetaryAmount("EUR", "11200"),
                 nonrecoverable)
             .lines()
             .size());
@@ -153,7 +183,6 @@ class BookkeepingEntrySupportTest {
                         LocalDate.parse("2026-04-25"),
                         new AccountCode("5000"),
                         new AccountCode("1000"),
-                        new MonetaryAmount("EUR", "12100"),
                         recoverableMissingTaxAccount))
             .getMessage());
     assertEquals(
@@ -165,9 +194,63 @@ class BookkeepingEntrySupportTest {
                         LocalDate.parse("2026-04-25"),
                         new AccountCode("5000"),
                         new AccountCode("1000"),
-                        new MonetaryAmount("EUR", "10000"),
                         wrongKind))
             .getMessage());
+  }
+
+  @Test
+  void inventoryRelief_supportsSaleJournalExpansionAndCurrencyValidation() {
+    InventoryRelief inventoryRelief =
+        new InventoryRelief(
+            new AccountCode("1400"), new AccountCode("5100"), new MonetaryAmount("EUR", "2500"));
+    InventoryRelief acceptedInventoryRelief =
+        BookkeepingEntryValidationSupport.requireOptionalInventoryRelief(
+            inventoryRelief, new MonetaryAmount("EUR", "10000"), "inventoryRelief");
+    JournalEntry journalEntry =
+        BookkeepingEntrySupport.saleEntry(
+            LocalDate.parse("2026-04-25"),
+            new AccountCode("1000"),
+            new AccountCode("4000"),
+            new MonetaryAmount("EUR", "10000"),
+            inventoryRelief);
+
+    assertSame(inventoryRelief, acceptedInventoryRelief);
+    assertEquals(4, journalEntry.lines().size());
+    assertEquals(new AccountCode("5100"), journalEntry.lines().get(2).accountCode());
+    assertEquals(JournalLine.EntrySide.DEBIT, journalEntry.lines().get(2).side());
+    assertEquals(
+        PositiveMoney.of(Money.parse("EUR", "25.00")), journalEntry.lines().get(2).amount());
+    assertEquals(new AccountCode("1400"), journalEntry.lines().get(3).accountCode());
+    assertEquals(JournalLine.EntrySide.CREDIT, journalEntry.lines().get(3).side());
+    assertEquals(
+        PositiveMoney.of(Money.parse("EUR", "25.00")), journalEntry.lines().get(3).amount());
+    assertEquals(
+        "inventoryRelief.amount currencyCode must match the entry amount currencyCode.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    BookkeepingEntryValidationSupport.requireOptionalInventoryRelief(
+                        new InventoryRelief(
+                            new AccountCode("1400"),
+                            new AccountCode("5100"),
+                            new MonetaryAmount("USD", "2500")),
+                        new MonetaryAmount("EUR", "10000"),
+                        "inventoryRelief"))
+            .getMessage());
+  }
+
+  @Test
+  void inventoryRelief_requiresPositiveAmount() {
+    IllegalArgumentException rejection =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new InventoryRelief(
+                    new AccountCode("1400"),
+                    new AccountCode("5100"),
+                    new MonetaryAmount("EUR", "0")));
+
+    assertEquals("inventoryRelief.amount must carry one positive amount.", rejection.getMessage());
   }
 
   @Test
@@ -192,7 +275,7 @@ class BookkeepingEntrySupportTest {
 
     assertDoesNotThrow(
         () ->
-            BookkeepingEntrySupport.requireTaxSelectionState(
+            BookkeepingEntryValidationSupport.requireTaxSelectionState(
                 new MonetaryAmount("EUR", "10000"),
                 selection,
                 null,
@@ -202,7 +285,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntrySupport.requireTaxSelectionState(
+                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "10000"),
                         null,
                         exclusiveSaleTax,
@@ -213,7 +296,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntrySupport.requireTaxSelectionState(
+                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "10000"),
                         selection,
                         new AppliedTax(
@@ -234,7 +317,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntrySupport.requireTaxSelectionState(
+                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "10000"),
                         selection,
                         new AppliedTax(
@@ -255,7 +338,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntrySupport.requireTaxSelectionState(
+                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "12100"),
                         selection,
                         inclusiveExpenseTax,
@@ -266,7 +349,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntrySupport.requireTaxSelectionState(
+                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "10000"),
                         selection,
                         inclusiveExpenseTax,
@@ -276,14 +359,14 @@ class BookkeepingEntrySupportTest {
         "sale tax selection requires executor-owned tax resolution before journalEntry() can be derived.",
         assertThrows(
                 IllegalStateException.class,
-                () -> BookkeepingEntrySupport.requireResolvedAppliedTax(null, "sale"))
+                () -> BookkeepingEntryValidationSupport.requireResolvedAppliedTax(null, "sale"))
             .getMessage());
     assertEquals(
         "appliedTax taxableAmount currencyCode must match the entry amount currencyCode.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntrySupport.requireTaxSelectionState(
+                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("USD", "10000"),
                         selection,
                         exclusiveSaleTax,
@@ -294,7 +377,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntrySupport.requireTaxSelectionState(
+                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "12100"),
                         selection,
                         exclusiveSaleTax,
@@ -313,11 +396,12 @@ class BookkeepingEntrySupportTest {
 
     assertDoesNotThrow(
         () ->
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-25"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "9200"),
+                null,
                 matchingSpot,
                 null,
                 null));
@@ -326,11 +410,12 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    new BookkeepingEntry.Sale(
+                    new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-25"),
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "9200"),
+                        null,
                         realizedSettlement,
                         null,
                         null))
@@ -340,7 +425,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    new BookkeepingEntry.Expense(
+                    new BookkeepingEntry.ExpenseSettled(
                         LocalDate.parse("2026-04-25"),
                         new AccountCode("5000"),
                         new AccountCode("1000"),

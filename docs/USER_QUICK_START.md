@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: USER_QUICK_START
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
-  keywords: [fingrind, quick start, first run, open book, starter chart, post entry, trial balance]
+  keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
 ---
 
@@ -97,16 +97,17 @@ directory already exists, keep it owner-only before you reuse that path.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01
 ```
 
 If you accidentally rerun `open-book` against the same initialized file, the command is rejected
 deterministically instead of mutating the existing book.
 
-## 5. Review The Starter Chart
+## 5. Review The Seed Template
 
-`open-book` seeds the built-in starter chart for the current owner-managed service template. The
-first run includes these postable accounts:
+This quick start chooses `OWNER_MANAGED_SERVICE` with `--accounting-basis CASH`. Use
+`--accounting-basis ACCRUAL` when you want the accrual owner-managed service chart. The
+cash-basis service chart includes these postable accounts:
 
 - `cash`
 - `owner-capital`
@@ -115,7 +116,7 @@ first run includes these postable accounts:
 - `service-revenue`
 - `operating-expense`
 
-Inspect that chart directly:
+Inspect those seeded accounts directly:
 
 ```bash
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --limit 10
@@ -135,13 +136,13 @@ book is rejected. The bundled quick-start sample follows the minimal sale reques
 raw direct-journal scaffold remains available through `print-request-template post-entry` and
 still has to move at least one declared cash-and-cash-equivalent asset account.
 
-`./quick-start-request.json` already contains one sale entry that uses the seeded starter
+`./quick-start-request.json` already contains one sale entry that uses the seeded
 accounts:
 
 ```json
 {
-  "entryKind": "SALE",
-  "effectiveDate": "2026-04-08",
+  "entryKind": "SALE_SETTLED",
+  "effectiveDate": "2026-04-07",
   "cashAccountCode": "cash",
   "revenueAccountCode": "service-revenue",
   "amount": {
@@ -153,7 +154,7 @@ accounts:
       {
         "sourceDocumentId": "quick-start-cash-receipt-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-08"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": []
@@ -161,7 +162,7 @@ accounts:
   "provenance": {
     "actorId": "quick-start-operator",
     "actorType": "PERSON",
-    "commandId": "quick-start-record-sale",
+    "commandId": "quick-start-record-sale-settled",
     "idempotencyKey": "quick-start-idem-1",
     "causationId": "quick-start-sale-cause-1"
   }
@@ -177,7 +178,7 @@ fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secre
 Then commit it:
 
 ```bash
-fingrind record-sale --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
+fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
 ```
 
 ## 7. Read The Result Back

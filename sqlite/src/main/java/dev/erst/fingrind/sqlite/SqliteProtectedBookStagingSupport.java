@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
+import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
@@ -46,12 +47,63 @@ final class SqliteProtectedBookStagingSupport {
     }
   }
 
+  static MaintenanceDecision<StagedRestoredBookPair> stageResolvedRestoredBookPair(
+      Path normalizedSourceBookPath,
+      Path normalizedBookFilePath,
+      Path normalizedBookKeyFilePath,
+      SqliteBookPassphrase sourcePassphrase,
+      SqliteProtectedBookVerificationSupport verificationSupport) {
+    @Nullable Path stagedBookFilePath = null;
+    @Nullable Path stagedBookKeyFilePath = null;
+    try (SqliteBookPassphrase ignoredSource = sourcePassphrase) {
+      SqliteBookFileSecurity.requireSupportedSecureFilesystem(normalizedBookFilePath);
+      SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedBookKeyFilePath);
+      ensureSecureBackupFileParentDirectory(normalizedBookFilePath);
+      ensureSecureBackupKeyFileParentDirectory(normalizedBookKeyFilePath);
+      SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(normalizedBookFilePath);
+      SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(normalizedBookKeyFilePath);
+      stagedBookFilePath = createStagedSibling(normalizedBookFilePath, ".restore-", ".tmp");
+      stagedBookKeyFilePath =
+          createStagedSibling(normalizedBookKeyFilePath, ".restore-key-", ".tmp");
+      Files.copy(
+          normalizedSourceBookPath,
+          stagedBookFilePath,
+          StandardCopyOption.REPLACE_EXISTING,
+          StandardCopyOption.COPY_ATTRIBUTES);
+      hardenBookArtifacts(stagedBookFilePath);
+      Files.deleteIfExists(stagedBookKeyFilePath);
+      SqliteBookKeyFileGenerator.generate(stagedBookKeyFilePath);
+      SqliteBookPassphrase restoredPassphrase = SqliteBookKeyFile.load(stagedBookKeyFilePath);
+      rekeyBookCopy(stagedBookFilePath, sourcePassphrase.copy(), restoredPassphrase.copy());
+      return MaintenanceDecision.accepted(
+          SqliteStagedRestoredBookPair.create(
+              stagedBookFilePath,
+              normalizedBookFilePath,
+              stagedBookKeyFilePath,
+              normalizedBookKeyFilePath,
+              restoredPassphrase,
+              verificationSupport));
+    } catch (IOException exception) {
+      deleteQuietlyIfPresent(stagedBookFilePath);
+      deleteQuietlyIfPresent(stagedBookKeyFilePath);
+      throw new IllegalStateException(
+          "Failed to stage the restored FinGrind live-book pair for "
+              + PublicPathHint.fromPath(normalizedBookFilePath).value()
+              + ".",
+          exception);
+    } catch (RuntimeException exception) {
+      deleteQuietlyIfPresent(stagedBookFilePath);
+      deleteQuietlyIfPresent(stagedBookKeyFilePath);
+      throw exception;
+    }
+  }
+
   static void requireRegularNonSymlinkFile(Path normalizedPath) {
     if (!Files.isRegularFile(normalizedPath, LinkOption.NOFOLLOW_LINKS)) {
       throw new SqliteCallerPathContractException(
           normalizedPath,
           SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
-          "The FinGrind protected book path must resolve to one regular non-symlink file: "
+          "The FinGrind protected book path must resolve to a regular non-symlink file: "
               + PublicPathHint.fromPath(normalizedPath).value());
     }
   }
@@ -81,6 +133,24 @@ final class SqliteProtectedBookStagingSupport {
       sourceDatabase.executeStatement(
           "vacuum into '" + escapeSqlLiteral(stagedBackupFilePath.toString()) + "'");
       hardenBookArtifacts(stagedBackupFilePath);
+    }
+  }
+
+  static void rekeyBookCopy(
+      Path normalizedBookPath,
+      SqliteBookPassphrase sourcePassphrase,
+      SqliteBookPassphrase replacementPassphrase) {
+    try (SqliteBookPassphrase ignoredSource = sourcePassphrase;
+        SqliteBookPassphrase ignoredReplacement = replacementPassphrase;
+        SqliteBookPassphrase resolvedSourcePassphrase = sourcePassphrase.copy();
+        SqliteBookPassphrase resolvedReplacementPassphrase = replacementPassphrase.copy();
+        SqliteNativeDatabase sourceDatabase =
+            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                normalizedBookPath,
+                resolvedSourcePassphrase,
+                SqliteNativeOpenMode.READ_WRITE_EXISTING)) {
+      SqliteNativeKeyConfiguration.rekey(sourceDatabase, resolvedReplacementPassphrase);
+      hardenBookArtifacts(normalizedBookPath);
     }
   }
 

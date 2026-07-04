@@ -9,7 +9,7 @@ final class CliAccountPageOutputRenderer {
 
   private CliAccountPageOutputRenderer() {}
 
-  static String renderText(AccountPage page) {
+  static String renderText(AccountPage page, boolean withContext) {
     String nextCursor =
         page.nextCursor().isPresent() ? page.nextCursor().orElseThrow().wireValue() : "(none)";
     String summary =
@@ -80,8 +80,10 @@ final class CliAccountPageOutputRenderer {
         CliReportRenderSupport.joinSections(
             summary,
             accounts,
-            CliReportRenderSupport.keyValueSection(
-                "Context", CliBookIdentityDisplay.contextRows(page.bookIdentity()))));
+            withContext
+                ? CliReportRenderSupport.keyValueSection(
+                    "Context", CliBookIdentityDisplay.contextRows(page.bookIdentity()))
+                : ""));
   }
 
   static String renderCsv(AccountPage page) {

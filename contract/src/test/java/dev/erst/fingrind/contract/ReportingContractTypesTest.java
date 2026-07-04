@@ -371,7 +371,7 @@ class ReportingContractTypesTest {
             "Wrong key", "Use the correct key file.", "--book-key-file");
     ContractDecision<String> accepted = ContractDecision.accepted("ok");
     ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
-    assertEquals(17, descriptors.size());
+    assertEquals(18, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
         descriptors.stream()
@@ -379,6 +379,8 @@ class ReportingContractTypesTest {
     assertTrue(
         descriptors.stream()
             .anyMatch(descriptor -> "unsupported-output-selection".equals(descriptor.code())));
+    assertTrue(
+        descriptors.stream().anyMatch(descriptor -> "internal-defect".equals(descriptor.code())));
     assertTrue(
         descriptors.stream().anyMatch(descriptor -> "internal-error".equals(descriptor.code())));
     assertTrue(

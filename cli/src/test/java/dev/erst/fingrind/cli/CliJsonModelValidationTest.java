@@ -838,7 +838,7 @@ class CliJsonModelValidationTest {
     return new CliBookQueryJsonModels.PostingSummaryPayload(
         postingId,
         "STANDARD",
-        "SALE",
+        "SALE_SETTLED",
         "ACTIVE",
         null,
         null,

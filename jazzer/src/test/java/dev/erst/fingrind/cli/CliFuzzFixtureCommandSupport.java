@@ -59,14 +59,17 @@ final class CliFuzzFixtureCommandSupport {
                   : dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
               dev.erst.fingrind.core.Money.parse("EUR", "1.00")));
     }
+    dev.erst.fingrind.core.JournalEntry journalEntry =
+        new dev.erst.fingrind.core.JournalEntry(LocalDate.parse("2026-04-14"), lines);
     return withEntry(
         CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8)),
         new BookkeepingEntry.Reversal(
-            new dev.erst.fingrind.core.JournalEntry(LocalDate.parse("2026-04-14"), lines),
+            journalEntry.effectiveDate(),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                 new dev.erst.fingrind.core.ReversalReference(
                     new dev.erst.fingrind.core.PostingId("posting-admin-test")),
                 new dev.erst.fingrind.core.ReversalReason("administrative fixture")),
-            null));
+            null,
+            journalEntry));
   }
 }

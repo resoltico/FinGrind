@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
@@ -38,6 +39,37 @@ import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliResponseWriter}. */
 class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSupport {
+  @Test
+  void writeAdministrativeSuccesses_publishTightenedParentDirectoriesWhenPresent()
+      throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    CliAdministrativeMutationResponseWriter responseWriter =
+        new CliAdministrativeMutationResponseWriter(outputChannel(outputStream));
+    Path tightenedKeyParent = Path.of("keys");
+    Path tightenedBookParent = Path.of("books");
+
+    responseWriter.writeGenerateBookKeyFileResult(
+        new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
+            Path.of("keys/book.key"), "base64url-no-padding", 256, "0600"),
+        List.of(tightenedKeyParent),
+        OutputMode.JSON);
+    var generatedEnvelope = readJson(outputStream);
+    assertEquals(
+        CliPublicPaths.redactedValue(tightenedKeyParent),
+        generatedEnvelope.path("payload").path("tightenedParentDirectories").get(0).stringValue());
+
+    outputStream.reset();
+    responseWriter.writeOpenBookResult(
+        Path.of("books/book.sqlite"),
+        List.of(tightenedBookParent),
+        openedBookResult(Instant.parse("2026-04-17T10:15:30Z")),
+        OutputMode.TEXT);
+    String openBookText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(openBookText.contains("Tightened parent directory"), openBookText);
+    assertTrue(
+        openBookText.contains(CliPublicPaths.redactedValue(tightenedBookParent)), openBookText);
+  }
+
   @Test
   void writeAdministrativeAndWriteSuccesses_supportTextOutput() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -89,7 +121,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(periodClosedText.contains("Reporting period"));
     outputStream.reset();
     responseWriter.writeFiscalYearCloseResult(
-        new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear()),
+        new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear(), false),
         OutputMode.TEXT);
     String fiscalYearCloseText = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(fiscalYearCloseText.contains("Fiscal Year Closed"));
@@ -97,20 +129,30 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertTrue(fiscalYearCloseText.contains("Retained accumulated account"));
     outputStream.reset();
     responseWriter.writePostEntryResult(
-        new PostEntryResult.PreflightAccepted(
+        CliPostEntryResultFixtures.preflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-17")),
         OutputMode.TEXT);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Entry Preflight Passed"));
+    String preflightText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(preflightText.contains("Entry Preflight Passed"));
+    assertTrue(preflightText.contains("Event class"));
+    assertTrue(preflightText.contains("SETTLED_SALE"));
+    assertTrue(preflightText.contains("Journal lines"));
+    assertTrue(preflightText.contains("2100"));
     outputStream.reset();
     responseWriter.writePostEntryResult(
-        new PostEntryResult.Committed(
+        CliPostEntryResultFixtures.committed(
             new PostingId("posting-1"),
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-17"),
             Instant.parse("2026-04-17T10:15:31Z"),
             false),
         OutputMode.TEXT);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("Entry Committed"));
+    String committedText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(committedText.contains("Entry Committed"));
+    assertTrue(committedText.contains("SETTLED_SALE"));
+    assertTrue(committedText.contains("Journal lines"));
+    assertTrue(committedText.contains("12.10"));
+    assertFalse(committedText.contains("Contained typed events"));
   }
 
   @Test
@@ -272,7 +314,8 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
                 new AccountCode("3200"),
                 new AccountCode("3300"),
                 Instant.parse("2026-12-31T12:00:00Z"),
-                List.of())),
+                List.of()),
+            false),
         OutputMode.TEXT);
 
     String text = outputStream.toString(StandardCharsets.UTF_8);
@@ -328,20 +371,20 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         IllegalArgumentException.class,
         () ->
             responseWriter.writeFiscalYearCloseResult(
-                new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear()),
+                new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear(), false),
                 OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             responseWriter.writePostEntryResult(
-                new PostEntryResult.PreflightAccepted(
+                CliPostEntryResultFixtures.preflightAccepted(
                     new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-17")),
                 OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             responseWriter.writePostEntryResult(
-                new PostEntryResult.Committed(
+                CliPostEntryResultFixtures.committed(
                     new PostingId("posting-1"),
                     new IdempotencyKey("idem-1"),
                     LocalDate.parse("2026-04-17"),
@@ -373,7 +416,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     outputStream.reset();
     responseWriter.writeInterimResultSweepResult(
         new InterimResultSweepResult.Rejected(
-            new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+            new CloseTargetAccountCandidateMissing(
                 dev.erst.fingrind.core.FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of())),
         OutputMode.TEXT);
@@ -510,9 +553,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
 
     responseWriter.writeRestoreBookResult(
         new RestoreBookResult.Restored(
-            hint(Path.of("books/entity.sqlite")),
-            hint(Path.of("backup/entity.sqlite")),
-            hint(Path.of("backup/entity.key"))),
+            hint(Path.of("books/entity.sqlite")), hint(Path.of("books/entity.book-key"))),
         OutputMode.TEXT);
     String restoreText = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(restoreText.contains("Book Restored"));
@@ -800,7 +841,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     CliResponseWriter missingWriter = new CliResponseWriter(utf8PrintStream(missingOutput));
     missingWriter.writeInterimResultSweepResult(
         new InterimResultSweepResult.Rejected(
-            new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+            new CloseTargetAccountCandidateMissing(
                 dev.erst.fingrind.core.FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))),
         OutputMode.JSON);
@@ -846,7 +887,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         2,
         CliAdministrativeExitCodes.exitCodeFor(
             new InterimResultSweepResult.Rejected(
-                new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+                new CloseTargetAccountCandidateMissing(
                     dev.erst.fingrind.core.FinancialPositionLineClassification.RESULT_HOLDING,
                     List.of()))));
   }
@@ -856,7 +897,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     ByteArrayOutputStream successOutput = new ByteArrayOutputStream();
     CliResponseWriter successWriter = new CliResponseWriter(utf8PrintStream(successOutput));
     successWriter.writeFiscalYearCloseResult(
-        new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear()),
+        new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear(), false),
         OutputMode.JSON);
     String successJson = successOutput.toString(StandardCharsets.UTF_8);
     assertJsonContains(successJson, "\"status\":\"ok\"");
@@ -891,7 +932,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
-            new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear())));
+            new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear(), false)));
     assertEquals(
         2,
         CliAdministrativeExitCodes.exitCodeFor(
@@ -920,6 +961,12 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     String missingPriorPostingJson =
         rejectedJson(new PostingRejection.ReversalTargetNotFound(new PostingId("posting-9")));
     assertJsonContains(missingPriorPostingJson, "\"priorPostingId\":\"posting-9\"");
+
+    String reversalTargetIsReversalJson =
+        rejectedJson(
+            new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+                new PostingId("posting-8a")));
+    assertJsonContains(reversalTargetIsReversalJson, "\"priorPostingId\":\"posting-8a\"");
 
     String existingReversalJson =
         rejectedJson(new PostingRejection.ReversalAlreadyExists(new PostingId("posting-8")));

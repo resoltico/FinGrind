@@ -74,11 +74,7 @@ class CliResponseWriterDiscoverySupport extends CliResponseWriterBaseSupport {
   }
 
   void writeFailure(CliFailure failure) {
-    failureWriter.writeFailure(failure);
-  }
-
-  void writeDeterministicFailure(CliFailure failure) {
-    failureWriter.writeDeterministicFailure(failure);
+    failureWriter.writeFailure(failure, OutputMode.JSON);
   }
 
   void writeFailure(String code, String message) {

@@ -46,13 +46,13 @@ final class CliMaintenanceRejectionPayloadMapper {
               + INSPECT_BOOK_OPERATION
               + " and "
               + INSPECT_REKEY_ROLLBACK_OPERATION
-              + " confirm one clean closed-copy state.";
+              + " confirm a clean closed-copy state.";
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts _ ->
-          "Choose one encrypted backup copy with no sibling SQLite sidecars or rollback artifacts, or recreate the backup with "
+          "Choose an encrypted backup copy with no sibling SQLite sidecars or rollback artifacts, or recreate the backup with "
               + BACKUP_BOOK_OPERATION
               + ".";
       case BookMaintenanceRejection.BackupSourceMatchesLiveBook _ ->
-          "Choose one backup copy path that differs from the selected --book-file path, then rerun "
+          "Choose a backup copy path that differs from the selected --book-file path, then rerun "
               + RESTORE_BOOK_OPERATION
               + ".";
       case BookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
@@ -62,15 +62,15 @@ final class CliMaintenanceRejectionPayloadMapper {
               + artifactBusy.artifactRole().wireValue()
               + " artifact, wait for the active maintenance workflow to finish, then rerun the command.";
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
-          "Choose a new --backup-book-file-out path or remove the existing encrypted backup copy yourself before rerunning "
+          "Choose a new --backup-file path or remove the existing encrypted backup copy yourself before rerunning "
               + BACKUP_BOOK_OPERATION
               + ".";
       case BookMaintenanceRejection.BackupKeyFileAlreadyExists _ ->
-          "Choose a new --backup-book-key-file-out path or remove the existing key file yourself before rerunning "
+          "Choose a new --backup-key-file path or remove the existing key file yourself before rerunning "
               + BACKUP_BOOK_OPERATION
               + ".";
       case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
-          "Use an artifact that opens as one initialized FinGrind protected book for role "
+          "Use an artifact that opens as an initialized FinGrind protected book for role "
               + verificationFailed.artifactRole().wireValue()
               + ", with the matching passphrase source for that artifact, then rerun the maintenance command.";
       case BookMaintenanceRejection.NoRollbackArtifactsFound _ ->
@@ -82,13 +82,13 @@ final class CliMaintenanceRejectionPayloadMapper {
               + RESTORE_REKEY_ROLLBACK_OPERATION
               + " or "
               + DELETE_REKEY_ROLLBACK_OPERATION
-              + " with one explicit --rollback-book-file path from details.rollbackArtifacts.";
+              + " with an explicit --rollback-book-file path from details.rollbackArtifacts.";
       case BookMaintenanceRejection.RollbackArtifactNotFound _ ->
           "Choose an existing rollback artifact path returned by "
               + INSPECT_REKEY_ROLLBACK_OPERATION
               + " inspection output and rerun the command.";
       case BookMaintenanceRejection.RollbackArtifactNotForBook _ ->
-          "Choose one rollback artifact that lives beside the selected --book-file and matches FinGrind's canonical rollback naming.";
+          "Choose a rollback artifact that lives beside the selected --book-file and matches FinGrind's canonical rollback naming.";
     };
   }
 
@@ -158,7 +158,7 @@ final class CliMaintenanceRejectionPayloadMapper {
       case PARENT_OWNER_ACCESS_REQUIRED ->
           "Choose a path beneath a parent directory that the owner can traverse and write, then rerun the maintenance command.";
       case PARENT_OWNER_ONLY_REQUIRED ->
-          "Choose a path beneath one owner-only parent directory, or tighten the existing parent directory first, then rerun the maintenance command.";
+          "Choose a path beneath an owner-only parent directory, or tighten the existing parent directory first, then rerun the maintenance command.";
       case TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE ->
           "Choose a regular non-symlink artifact path for this maintenance workflow, then rerun the command.";
       case UNSUPPORTED_SECURE_FILESYSTEM ->

@@ -26,6 +26,10 @@ internal fun productionDesignBundle() =
             structuralBaseDesignExclusions() +
                 listOf(
                     excludedRule(
+                        "ExcessivePublicCount",
+                        "Canonical protocol vocabularies legitimately publish many public constants and are governed by contract review rather than ambient member-count heuristics.",
+                    ),
+                    excludedRule(
                         "ExcessiveImports",
                         "FinGrind bans wildcard imports through a dedicated source-policy gate. Retaining ExcessiveImports here would push developers back toward forbidden wildcard imports instead of enforcing the real rule we care about.",
                     ),

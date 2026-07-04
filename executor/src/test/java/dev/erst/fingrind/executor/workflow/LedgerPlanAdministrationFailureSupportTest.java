@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
@@ -102,6 +103,13 @@ class LedgerPlanAdministrationFailureSupportTest {
         LedgerPlanAdministrationFailureSupport.facts(
             new BookAdministrationRejection.FiscalYearCloseMustEndAt(
                 LocalDate.parse("2026-12-31"))));
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("attemptedEffectiveDateTo", "2025-12-31"),
+            BookWorkflowFact.text("transferredThroughEffectiveDate", "2026-03-31")),
+        LedgerPlanAdministrationFailureSupport.facts(
+            new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+                LocalDate.parse("2025-12-31"), LocalDate.parse("2026-03-31"))));
     assertEquals(
         List.of(BookWorkflowFact.text("attemptedEffectiveDateTo", "2027-01-01")),
         LedgerPlanAdministrationFailureSupport.facts(
@@ -233,7 +241,7 @@ class LedgerPlanAdministrationFailureSupportTest {
             BookWorkflowFact.text("requiredFinancialPositionLineClassification", "RESULT_HOLDING"),
             BookWorkflowFact.count("inactiveCandidateAccountCount", 2)),
         LedgerPlanAdministrationFailureSupport.facts(
-            new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+            new CloseTargetAccountCandidateMissing(
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200"), new AccountCode("3210")))));
     assertEquals(
@@ -273,6 +281,10 @@ class LedgerPlanAdministrationFailureSupportTest {
                 LocalDate.parse("2026-12-31"))));
     assertTrue(
         isPublishedCloseWindowRejection(
+            new BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+                LocalDate.parse("2025-12-31"), LocalDate.parse("2026-03-31"))));
+    assertTrue(
+        isPublishedCloseWindowRejection(
             new BookkeepingAdministrationRejection.FiscalYearCloseFutureDate(
                 LocalDate.parse("2027-01-01"))));
     assertTrue(
@@ -297,6 +309,10 @@ class LedgerPlanAdministrationFailureSupportTest {
         isPublishedCloseWindowRejection(
             new BookAdministrationRejection.FiscalYearCloseMustEndAt(
                 LocalDate.parse("2026-12-31"))));
+    assertTrue(
+        isPublishedCloseWindowRejection(
+            new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+                LocalDate.parse("2025-12-31"), LocalDate.parse("2026-03-31"))));
     assertTrue(
         isPublishedCloseWindowRejection(
             new BookAdministrationRejection.FiscalYearCloseFutureDate(

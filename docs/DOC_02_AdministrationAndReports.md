@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, interim-result-sweep, fiscal-year-close, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is interim-result-sweep documented", "where is fiscal-year-close documented", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
@@ -30,19 +30,24 @@ public final class BookAdministrationService
 
 ## `BookTemplateAccounts`
 
-`BookTemplateAccounts` publishes the canonical starter-chart declarations for each built-in book
+`BookTemplateAccounts` publishes the canonical account declarations for each built-in book
 template.
 
 ```java
 public final class BookTemplateAccounts
 ```
 
-- Purpose: keep seeded starter-chart ownership explicit instead of scattering those declarations
+- Purpose: keep seeded template ownership explicit instead of scattering those declarations
   across CLI scaffolds, setup guides, or storage fixtures
-- Surface: `declarations(BookTemplateId)` returns the typed `AccountDeclaration` list for one
-  built-in template
-- Current template line: `OWNER_MANAGED_SERVICE` seeds `cash`, `owner-capital`,
-  `owner-draws`, `result-holding`, `service-revenue`, and `operating-expense`
+- Surface: `declarations(BookDoctrine)` returns the typed `AccountDeclaration` list for the
+  selected built-in doctrine
+- Current template lines: `OWNER_MANAGED_SERVICE` with cash basis seeds cash, owner-capital,
+  owner-draws, result-holding, retained-accumulated, service-revenue, and operating-expense;
+  the accrual variant of that same service template adds accounts-receivable,
+  accounts-payable, sales-discount-allowance, settlement-fee, and bad-debt-write-off; and
+  `OWNER_MANAGED_TRADING`, whose cash basis seeds inventory, sales-revenue, sales-discount-allowance,
+  cost-of-sales, and the same owner-equity close targets, while the accrual trading variant adds
+  accounts-receivable, accounts-payable, settlement-fee, and bad-debt-write-off
 
 ## `BookReadService`
 
@@ -133,17 +138,17 @@ public record DeclaredAccount(
 These types own the public close-command administration surface.
 
 ```java
-public record InterimResultSweepCommand(ReportingPeriod reportingPeriod)
+public record InterimResultSweepCommand(LocalDate throughEffectiveDate)
 public sealed interface InterimResultSweepResult
 public record SweptInterimResult(...)
-public record FiscalYearCloseCommand(ReportingPeriod reportingPeriod)
+public record FiscalYearCloseCommand(int fiscalYearLabel)
 public sealed interface FiscalYearCloseResult
 public record ClosedFiscalYear(...)
 ```
 
-- Purpose: request and describe the two explicit generated close operations: one contiguous
-  interim-result sweep into the built-in `RESULT_HOLDING` target, and one fiscal-year close that
-  finalizes the year into `RETAINED_ACCUMULATED`
+- Purpose: request and describe the two explicit generated close operations: one interim-result
+  sweep through one inclusive effective date into the built-in `RESULT_HOLDING` target, and one
+  fiscal-year close selected by fiscal-year label and derived from the initialized book identity
 - Result variants: each command publishes `...`/`Rejected`
 - Durable facts: `SweptInterimResult` carries `sweepOrder`, the inclusive `ReportingPeriod`, the
   selected result-holding account code, the per-currency swept totals, the sweep timestamp, and
@@ -246,7 +251,7 @@ public sealed interface RestoreBookResult
 
 - Variants: `Restored`, `Rejected`
 - Purpose: verify one supplied encrypted backup pair before replacing the target live book path,
-  with the restored live book then reopened by the supplied backup key file
+  while re-encrypting the restored live book under the selected destination key file
 
 ## `RekeyRollbackResult`
 
@@ -604,7 +609,8 @@ public sealed interface IncomeStatementResult
 
 - Purpose: request and carry one bounded income statement grouped by nominal account type
 - Result variants: `Reported`, `Rejected`
-- Totals: the report includes per-section totals plus book-wide `netIncomeTotals`
+- Totals: the report includes per-section totals plus book-wide `netIncomeTotals`; trading books
+  also publish one explicit gross-profit section between revenue and operating expense
 - Comparative semantics: the report carries fiscal-year-anchored comparative sections and
   `comparativeNetIncomeTotals` only when the caller opts into one non-`none` comparative
   selection
@@ -759,8 +765,10 @@ public final class InterimResultSweepService
 - `InterimResultSweepPlan`: generated interim-result-sweep posting drafts plus the transferred
   totals that the published sweep result projects afterward
 - `InterimResultSweepPlanner`: bookkeeping-domain planner that selects the policy-owned result-holding
-  account, validates close-horizon rules, and generates the `PostingKind.INTERIM_RESULT_SWEEP`
-  drafts plus published transferred totals for one contiguous reporting period
+  account, derives the inclusive reporting period from the selected through date plus the earliest
+  committed posting date in the selected book or the prior transferred-through horizon, validates
+  close-horizon rules, and generates the
+  `PostingKind.INTERIM_RESULT_SWEEP` drafts plus published transferred totals
 - `InterimResultSweepService`: application service that coordinates lifecycle inspection, account
   catalog/store access, planner output, and durable interim-result-sweep persistence instead of
   owning the close recipe itself
@@ -792,8 +800,9 @@ public final class FiscalYearCloseService
 - `ClosedFiscalYearRecord`: durably stored local close fact carrying close order, selected close
   targets, and generated posting ids
 - `FiscalYearCloseOutcome`: closed family of accepted-versus-rejected fiscal-year close outcomes
-- `FiscalYearClosePlanner`: bookkeeping-domain planner for fiscal-year boundary validation,
-  close-target selection, and generated year-end postings
+- `FiscalYearClosePlanner`: bookkeeping-domain planner for fiscal-year boundary derivation from
+  the initialized book identity plus selected fiscal-year label, close-target selection, and
+  generated year-end postings
 - `FiscalYearCloseService`: application service that coordinates lifecycle inspection, planner
   output, and durable fiscal-year close persistence
 

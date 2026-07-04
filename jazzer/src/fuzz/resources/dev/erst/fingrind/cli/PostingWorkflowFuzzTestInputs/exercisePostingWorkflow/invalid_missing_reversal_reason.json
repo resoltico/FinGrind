@@ -1,24 +1,6 @@
 {
   "entryKind": "REVERSAL",
-  "effectiveDate": "2026-04-08",
-  "lines": [
-    {
-      "accountCode": "5000",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "GBP",
-        "minorUnits": "12345"
-      }
-    },
-    {
-      "accountCode": "6000",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "GBP",
-        "minorUnits": "12345"
-      }
-    }
-  ],
+  "effectiveDate": "2026-04-07",
   "reversal": {
     "priorPostingId": "posting-old"
   },
@@ -27,7 +9,7 @@
       {
         "sourceDocumentId": "document-idem-2",
         "sourceDocumentType": "credit-note",
-        "documentDate": "2026-04-08"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": [

@@ -195,7 +195,7 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       1,
                                       'Acme Studio',
                                       'internal-management-bookkeeping-kernel',
-                                      'CASH_BASIS',
+                                      'CASH',
                                       'NON_STATUTORY_INTERNAL_MANAGEMENT',
                                       'OWNER_MANAGED_SINGLE_ENTITY',
                                       'OWNER_MANAGED_SERVICE',
@@ -349,6 +349,46 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                       taxonomyMismatch.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", taxonomyMismatch.resultName());
                   assertEquals(2, queryInt(database, "select count(*) from account"));
+                }));
+  }
+
+  @Test
+  void canonicalStrictSchema_acceptsInventoryAssetAccounts() {
+    Path bookPath = tempDirectory.resolve("inventory-account-contract.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(bookPath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  database.executeStatement(
+                      """
+                      insert into account (
+                          account_code,
+                          account_name,
+                          account_type,
+                          account_node_kind,
+                          parent_account_code,
+                          financial_position_line_classification,
+                          cash_flow_asset_classification,
+                          profit_and_loss_line_classification,
+                          active,
+                          declared_at
+                      ) values (
+                          '1400',
+                          'Inventory',
+                          'ASSET',
+                          'POSTABLE',
+                          null,
+                          'INVENTORY',
+                          'NON_CASH',
+                          null,
+                          1,
+                          '2026-04-07T10:15:30Z'
+                      )
+                      """);
+                  assertEquals(1, queryInt(database, "select count(*) from account"));
                 }));
   }
 

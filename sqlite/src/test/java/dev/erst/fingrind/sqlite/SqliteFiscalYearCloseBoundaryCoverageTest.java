@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,10 +13,13 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.FiscalYearCloseService;
+import dev.erst.fingrind.executor.InterimResultSweepService;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
+import dev.erst.fingrind.executor.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.lang.reflect.Proxy;
@@ -110,7 +114,7 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
               FiscalYearCloseOutcome.Rejected.class,
               closeService(closeSession, "unused-1", "unused-2").fiscalYearClose(FISCAL_YEAR));
       assertEquals(
-          new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+          new CloseTargetAccountCandidateMissing(
               FinancialPositionLineClassification.EQUITY_CONTRIBUTION, List.of()),
           rejected.rejection());
     }
@@ -139,7 +143,7 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
               FiscalYearCloseOutcome.Rejected.class,
               closeService(closeSession, "unused-1", "unused-2").fiscalYearClose(FISCAL_YEAR));
       assertEquals(
-          new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+          new CloseTargetAccountCandidateMissing(
               FinancialPositionLineClassification.RESULT_HOLDING, List.of()),
           rejected.rejection());
     }
@@ -168,7 +172,7 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
               FiscalYearCloseOutcome.Rejected.class,
               closeService(closeSession, "unused-1", "unused-2").fiscalYearClose(FISCAL_YEAR));
       assertEquals(
-          new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+          new CloseTargetAccountCandidateMissing(
               FinancialPositionLineClassification.RETAINED_ACCUMULATED, List.of()),
           rejected.rejection());
     }
@@ -191,6 +195,74 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
               .fiscalYearClose(
                   new ReportingPeriod(
                       LocalDate.parse("2026-01-02"), LocalDate.parse("2026-12-31"))));
+    }
+  }
+
+  @Test
+  void fiscalYearClose_rejectsYearsThatEndBeforeTheLiveTransferredThroughHorizon() {
+    Path bookPath = tempDirectory.resolve("fiscal-year-close-precedes-horizon.sqlite");
+    ReportingPeriod earlierFiscalYear =
+        new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31"));
+    ReportingPeriod firstQuarter2026 =
+        new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-03-31"));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
+        SqliteReportingPeriodCloseSession closeSession =
+            SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      declareAllCloseTargets(postingFactStore);
+
+      assertInstanceOf(
+          InterimResultSweepOutcome.Transferred.class,
+          new InterimResultSweepService(
+                  closeSession, closeSession, new SequencePostingIdGenerator(), CLOSED_CLOCK)
+              .interimResultSweep(firstQuarter2026));
+
+      FiscalYearCloseOutcome.Rejected rejected =
+          assertInstanceOf(
+              FiscalYearCloseOutcome.Rejected.class,
+              closeService(closeSession, "unused-close-1", "unused-close-2")
+                  .fiscalYearClose(earlierFiscalYear));
+
+      assertEquals(
+          new BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+              LocalDate.parse("2025-12-31"), LocalDate.parse("2026-03-31")),
+          rejected.rejection());
+      assertEquals(0, countRows(requireStoreDatabase(postingFactStore), "fiscal_year_close"));
+    }
+  }
+
+  @Test
+  void fiscalYearClose_replaysExistingClosedYearWithoutPersistingAnotherCloseRow() {
+    Path bookPath = tempDirectory.resolve("fiscal-year-close-replay.sqlite");
+    ReportingPeriod fiscalYear2025 =
+        new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31"));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
+        SqliteReportingPeriodCloseSession closeSession =
+            SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      declareAllCloseTargets(postingFactStore);
+
+      FiscalYearCloseOutcome.Closed firstClose =
+          assertInstanceOf(
+              FiscalYearCloseOutcome.Closed.class,
+              closeService(closeSession).fiscalYearClose(fiscalYear2025));
+      FiscalYearCloseOutcome.Closed replay =
+          assertInstanceOf(
+              FiscalYearCloseOutcome.Closed.class,
+              closeService(closeSession, "unused-replay-1", "unused-replay-2")
+                  .fiscalYearClose(fiscalYear2025));
+
+      assertFalse(firstClose.idempotentReplay());
+      assertTrue(replay.idempotentReplay());
+      assertEquals(firstClose.closedFiscalYear(), replay.closedFiscalYear());
+      assertEquals(1, countRows(requireStoreDatabase(postingFactStore), "fiscal_year_close"));
+      assertEquals(
+          1,
+          countRowsWhereTextEquals(
+              requireStoreDatabase(postingFactStore),
+              "audit_event",
+              "event_kind",
+              "FISCAL_YEAR_CLOSED"));
     }
   }
 

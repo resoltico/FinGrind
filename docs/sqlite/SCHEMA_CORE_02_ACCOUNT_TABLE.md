@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: SQLITE_SCHEMA_CORE_ACCOUNT_TABLE
-updated: "2026-06-29"
+updated: "2026-07-04"
 ---
 
 # SQLite Schema: Account Table
@@ -29,8 +29,10 @@ create table if not exists account (
         or financial_position_line_classification in (
             'CURRENT_ASSET',
             'NONCURRENT_ASSET',
+            'TRADE_RECEIVABLE',
             'CURRENT_LIABILITY',
             'NONCURRENT_LIABILITY',
+            'TRADE_PAYABLE',
             'EQUITY_CONTRIBUTION',
             'EQUITY_WITHDRAWAL',
             'RESULT_HOLDING',
@@ -49,11 +51,14 @@ create table if not exists account (
     profit_and_loss_line_classification text check (
         profit_and_loss_line_classification is null or profit_and_loss_line_classification in (
             'OPERATING_REVENUE',
+            'SALES_DISCOUNT_ALLOWANCE',
             'OTHER_REVENUE',
             'FINANCE_INCOME',
             'COST_OF_SALES',
             'OPERATING_EXPENSE',
             'DEPRECIATION_AND_AMORTIZATION',
+            'SETTLEMENT_FEE',
+            'BAD_DEBT_WRITE_OFF',
             'FINANCE_EXPENSE',
             'OTHER_EXPENSE'
         )
@@ -110,7 +115,9 @@ create table if not exists account (
     check (
         (
             account_type = 'ASSET'
-            and financial_position_line_classification in ('CURRENT_ASSET', 'NONCURRENT_ASSET')
+            and financial_position_line_classification in (
+                'CURRENT_ASSET', 'NONCURRENT_ASSET', 'TRADE_RECEIVABLE'
+            )
             and cash_flow_asset_classification in ('CASH_AND_CASH_EQUIVALENT', 'NON_CASH')
             and profit_and_loss_line_classification is null
         )
@@ -118,7 +125,7 @@ create table if not exists account (
         (
             account_type = 'LIABILITY'
             and financial_position_line_classification in (
-                'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY'
+                'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'TRADE_PAYABLE'
             )
             and cash_flow_asset_classification is null
             and profit_and_loss_line_classification is null
@@ -144,6 +151,7 @@ create table if not exists account (
             and cash_flow_asset_classification is null
             and profit_and_loss_line_classification in (
                 'OPERATING_REVENUE',
+                'SALES_DISCOUNT_ALLOWANCE',
                 'OTHER_REVENUE',
                 'FINANCE_INCOME'
             )
@@ -157,6 +165,8 @@ create table if not exists account (
                 'COST_OF_SALES',
                 'OPERATING_EXPENSE',
                 'DEPRECIATION_AND_AMORTIZATION',
+                'SETTLEMENT_FEE',
+                'BAD_DEBT_WRITE_OFF',
                 'FINANCE_EXPENSE',
                 'OTHER_EXPENSE'
             )

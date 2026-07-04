@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBalanceBelowZero;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
@@ -111,7 +112,8 @@ public final class BookkeepingPublishedLanguageTranslator {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
       case FiscalYearCloseOutcome.Closed closed ->
-          new FiscalYearCloseResult.Closed(toPublished(closed.closedFiscalYear()));
+          new FiscalYearCloseResult.Closed(
+              toPublished(closed.closedFiscalYear()), closed.idempotentReplay());
       case FiscalYearCloseOutcome.Rejected rejected ->
           new FiscalYearCloseResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -141,6 +143,9 @@ public final class BookkeepingPublishedLanguageTranslator {
                   .toList());
       case BookkeepingPostingRejection.IdempotencyKeyConflict _ ->
           new PostingRejection.IdempotencyKeyConflict();
+      case BookkeepingPostingRejection.PostingEffectiveDateInFuture futureDate ->
+          new PostingRejection.PostingEffectiveDateInFuture(
+              futureDate.attemptedEffectiveDate(), futureDate.currentUtcDate());
       case BookkeepingPostingRejection.BookFunctionalCurrencyMismatch currencyMismatch ->
           new PostingRejection.BookFunctionalCurrencyMismatch(
               currencyMismatch.functionalCurrency(), currencyMismatch.attemptedCurrency());
@@ -161,6 +166,9 @@ public final class BookkeepingPublishedLanguageTranslator {
               rejectionReserved.financialPositionLineClassification());
       case BookkeepingPostingRejection.ReversalTargetNotFound rejectionTarget ->
           new PostingRejection.ReversalTargetNotFound(rejectionTarget.priorPostingId());
+      case ReversalTargetIsReversal rejectionTarget ->
+          new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+              rejectionTarget.priorPostingId());
       case BookkeepingPostingRejection.ReversalAlreadyExists rejectionExists ->
           new PostingRejection.ReversalAlreadyExists(rejectionExists.priorPostingId());
       case BookkeepingPostingRejection.ReversalDoesNotNegateTarget rejectionMismatch ->
@@ -179,6 +187,15 @@ public final class BookkeepingPublishedLanguageTranslator {
       case BookkeepingPostingRejection.NonPostableAccount nonPostableAccount ->
           new PostingRejection.NonPostableAccount(
               nonPostableAccount.accountCode(), nonPostableAccount.accountNodeKind());
+      case InventoryBalanceBelowZeroViolation inventoryBalanceBelowZero ->
+          new InventoryBalanceBelowZero(
+              inventoryBalanceBelowZero.accountCode(),
+              inventoryBalanceBelowZero.field(),
+              inventoryBalanceBelowZero.effectiveDate(),
+              inventoryBalanceBelowZero.currentBalanceSide(),
+              inventoryBalanceBelowZero.currentNetAmount(),
+              inventoryBalanceBelowZero.requestedDecreaseAmount(),
+              inventoryBalanceBelowZero.resultingCreditBalance());
     };
   }
 

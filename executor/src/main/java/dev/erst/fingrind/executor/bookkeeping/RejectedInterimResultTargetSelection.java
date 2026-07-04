@@ -10,8 +10,7 @@ public final class RejectedInterimResultTargetSelection implements InterimResult
   private final List<AccountCode> candidateAccountCodes;
 
   /** Creates one rejected selection for missing active result-holding candidates. */
-  public RejectedInterimResultTargetSelection(
-      BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing rejection) {
+  public RejectedInterimResultTargetSelection(CloseTargetAccountCandidateMissing rejection) {
     this.rejection = Objects.requireNonNull(rejection, "rejection");
     this.candidateAccountCodes = rejection.inactiveCandidateAccountCodes();
   }

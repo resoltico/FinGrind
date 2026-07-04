@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: CORE
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, idempotency, temporal-text, fiscal-year-start, reachability]
   questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module"]
@@ -131,9 +131,9 @@ public enum EntityForm implements WireValue
 public enum BookTemplateId implements WireValue
 ```
 
-- Purpose: make the seeded starter-chart family explicit instead of hiding it in executor setup
+- Purpose: make the seeded template family explicit instead of hiding it in executor setup
   code
-- Current contract: `OWNER_MANAGED_SERVICE`
+- Current contract: `OWNER_MANAGED_SERVICE`, `OWNER_MANAGED_TRADING`
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
@@ -164,8 +164,15 @@ public final class BookDoctrines
 
 - Purpose: centralize the current built-in doctrine so open-book, discovery, SQLite, CLI, and
   tests all speak one doctrine bundle
-- Current built-in doctrine: `INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE`, which is cash-basis,
-  non-statutory internal management, owner-managed single entity, and owner-managed service
+- Current built-in doctrines:
+  `INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE`, which is cash-basis, non-statutory internal
+  management, owner-managed single entity, and owner-managed service; and
+  `INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL`, which is accrual-basis, non-statutory
+  internal management, owner-managed single entity, and owner-managed service; plus
+  `INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING`, which is cash-basis, non-statutory internal
+  management, owner-managed single entity, and owner-managed trading; and
+  `INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL`, which is accrual-basis, non-statutory
+  internal management, owner-managed single entity, and owner-managed trading
 
 ## `BookDoctrineDisplay`
 
@@ -178,7 +185,7 @@ public final class BookDoctrineDisplay
 - Purpose: translate persisted doctrine identifiers into stable human-facing labels for CLI, PDF,
   and other operator surfaces
 - Current label families: accounting kernel, accounting basis, framework posture, entity form,
-  and starter chart
+  and seed template
 - Boundary: this is a presentation helper over persisted doctrine values, not a second doctrine
   source
 
@@ -661,6 +668,22 @@ public sealed interface EffectiveDateRange
   contract-owned DTO shape
 - Variants: `unbounded`, `from`, `to`, and `bounded`
 - Validation: bounded ranges reject a lower bound after the upper bound
+
+## `EffectiveDateHorizonPolicy`
+
+`EffectiveDateHorizonPolicy` is the shared UTC-date horizon owner for write and close workflows.
+
+```java
+public final class EffectiveDateHorizonPolicy
+public static final class FutureEffectiveDateException
+```
+
+- Purpose: keep "effective date must not fall after current UTC date" doctrine owned by one
+  executable policy instead of re-deriving that rule in each posting, sweep, and close workflow
+- Surface: `requireNotAfterToday(LocalDate, Clock)` compares against the current UTC date derived
+  from the supplied clock
+- Failure: `FutureEffectiveDateException` publishes both the attempted effective date and the
+  current UTC date so higher layers can render deterministic rejections and repair hints
 
 ## `ReportingPeriod`
 

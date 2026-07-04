@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: USER_CLI
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind"]
@@ -48,14 +48,15 @@ JSON discovery output defaults to `minimal`; use `--detail compact` for stable u
 and output-contract descriptors, `--detail full` when you need embedded templates, schemas, enum
 vocabularies, or doctrine bodies, and `--focus` / `--category` when you want one machine-retrieval
 slice instead of the full catalog family.
-Request-file commands such as `declare-account`, `record-sale`, `record-expense`,
-`record-owner-contribution`, `record-owner-withdrawal`, `record-opening-position`,
-`record-reversal`, `post-entry`, `preflight-entry`, `declare-tax-registration`, and
-`execute-plan` also inline the accepted request shape, one canonical template, and the relevant
-enum vocabulary so an operator or agent can form a valid payload from the CLI alone. Text help
-publishes the caller-submittable fields only; machine help keeps the full presence-marked request
-shape, including forbidden fields that remain part of the truthful contract metadata. On
-`execute-plan`, both help surfaces keep the posting contract nested under the ledger-plan request
+Request-file commands such as `declare-account`, `record-sale-settled`,
+`record-purchase-settled`, `record-expense-settled`, `record-owner-contribution`,
+`record-owner-withdrawal`, `record-opening-position`, `record-reversal`, `post-entry`,
+`preflight-entry`, `declare-tax-registration`, and `execute-plan` also inline the accepted
+request shape, one canonical template, and the relevant enum vocabulary so an operator or agent
+can form a valid payload from the CLI alone. Text help publishes the caller-submittable fields
+only; machine help keeps the full presence-marked request shape, including forbidden fields that
+remain part of the truthful contract metadata. On `execute-plan`, both help surfaces keep the
+posting contract nested under the ledger-plan request
 shape at `steps[].posting`, instead of reappearing as a second top-level accepted posting
 document.
 `print-request-template` returns one raw JSON scaffold document so it can be redirected into a file
@@ -68,22 +69,25 @@ caller-submittable posting shape.
 `DIRECT_JOURNAL` scaffold only, and that raw path still has to move at least one declared
 cash-and-cash-equivalent asset account.
 `print-plan-template` returns one raw JSON ledger-plan scaffold that already includes
-`ensure-book`, one minimal sale posting step, and one balance assertion.
+`ensure-book` with explicit `bookTemplateId`, one minimal sale posting step, and one balance
+assertion.
 Both scaffold commands emit placeholder-first sample documents. Replace every scaffold evidence and
 provenance token before real-world use. Idempotency keys are single-use per book once one posting
 commits successfully.
 `generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
 The easiest path is one missing private parent directory that FinGrind can create securely, or one
 existing parent directory that you have already tightened to owner-only permissions.
-`open-book` explicitly initializes one new protected book.
+`open-book` explicitly initializes a new protected book from the selected built-in seed template
+and explicit accounting basis.
 `rekey-book` rotates the passphrase that protects one existing initialized book and restores the
 pre-rekey file automatically if new-passphrase verification fails.
 `backup-book` exports one verified encrypted backup pair for a closed book, `restore-book`
-verifies that pair before replacing the live book path and leaves the restored live book protected
-by that backup key file, `inspect-rekey-rollback` reports stale same-directory rollback artifacts,
-`restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact, and
-`delete-rekey-rollback` removes one stale rollback artifact without touching the live book path
-after verifying one initialized live book through one explicit passphrase source.
+verifies that pair before replacing the live book path and re-encrypts the restored live book
+under the selected `--book-key-file`, `inspect-rekey-rollback` reports stale same-directory
+rollback artifacts, `restore-rekey-rollback` rewinds one interrupted rekey from one selected
+rollback artifact, and `delete-rekey-rollback` removes one stale rollback artifact without
+touching the live book path after verifying one initialized live book through one explicit
+passphrase source.
 `declare-account` inserts or reactivates one account in the selected book, with immutable
 `accountType`, immutable declared taxonomy, and derived `normalBalance`. Asset accounts also
 declare `cashFlowAssetClassification` so FinGrind can distinguish cash and cash-equivalent assets
@@ -91,14 +95,16 @@ from non-cash assets.
 `declare-tax-registration` declares or updates one owned tax registration in the selected book,
 including its payable and recoverable tax accounts, filing frequency, due offset, and declared tax
 code catalog.
-`interim-result-sweep` sweeps one contiguous reporting period into one policy-selected active
-declared result-holding account, and successful results surface that selected result-holding
-account code plus the per-currency swept totals that moved into equity. The first sweep may
-begin before the earliest posting date; after one sweep is recorded, later sweeps must start on
-the day after the transferred-through horizon and remain inside one fiscal year. Declare exactly
-one active and postable `EQUITY` account classified as `RESULT_HOLDING` before sweeping one
-reporting period.
-`fiscal-year-close` closes one full fiscal year by sweeping any unswept remaining profit-and-loss
+`interim-result-sweep` sweeps all unswept profit-and-loss movement through one inclusive effective
+date selected with `--through` into one policy-selected active declared result-holding account,
+and successful results surface the derived reporting period, the selected result-holding account
+code, and the per-currency swept totals that moved into equity. The first sweep derives its start
+from book start in the selected book; after one sweep is recorded, later sweeps derive their
+start from the day after the transferred-through horizon and must remain inside one fiscal year.
+Declare
+exactly one active and postable `EQUITY` account classified as `RESULT_HOLDING` before sweeping.
+`fiscal-year-close` closes the fiscal year selected with `--year` by deriving that year's
+boundaries from the initialized book identity, sweeping any unswept remaining profit-and-loss
 movement into `RESULT_HOLDING`, settling owner withdrawals into capital, and accumulating current
 year result into one active `RETAINED_ACCUMULATED` equity account. Declare exactly one active
 `EQUITY` account for each required close target: `EQUITY_CONTRIBUTION`, `RESULT_HOLDING`, and
@@ -107,12 +113,11 @@ year result into one active `RETAINED_ACCUMULATED` equity account. Declare exact
 migration policy for one selected book.
 `list-accounts` returns one stable page of the current account registry, and
 `list-tax-registrations` returns one stable page of the current tax-registration registry.
-`get-posting`, `list-postings`, and `account-balance` expose read/query access to committed
-history, while `tax-obligation` computes one filing-period tax obligation report for one declared
-tax registration.
-`trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`,
-`cash-flow-statement`, and `changes-in-equity` answer standard office-worker reporting questions
-in one command.
+`get-posting` and `list-postings` expose read/query access to committed history.
+`account-balance` and `tax-obligation` answer one focused account or filing-period report
+question, while `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
+`income-statement`, `cash-flow-statement`, and `changes-in-equity` answer broader
+office-worker reporting questions in one command.
 `trial-balance`, `financial-position`, `income-statement`, `cash-flow-statement`, and
 `changes-in-equity` also accept one opt-in `--comparative` selector so operators can request
 `none`, one fiscal-year-anchored prior period, or one explicit comparison window.
@@ -122,15 +127,18 @@ summary or one JSON execution-journal envelope on stdout. Built-in default outpu
 journal in either surface.
 `preflight-entry`, the typed `record-*` commit commands, and raw `post-entry` all require an
 already initialized book plus declared active accounts for every referenced account, and they
-surface those failures as `account-state-violations` with structured `details.violations`.
-Sale and expense request documents may also carry one nested `tax` selector naming one declared
-tax registration and one declared tax code. FinGrind does not expose one neutral free-form tax
-payload on the other entry families.
-`DIRECT_JOURNAL`, `SALE`, `EXPENSE`, `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, and `REVERSAL`
-request documents may also carry one nested `foreignExchange` object when the business event
-happened in another currency. That object retains the transaction amount, translated functional
-amount, quoted-rate evidence, and treatment kind, while every journal line still stays in the
-selected book functional currency.
+surface those failures as `account-state-violations` with structured `details.violations`. That
+same rejection family also owns inventory-carrying-balance protection: any request that would
+create or deepen a credit inventory balance is rejected before commit, including trading-sale
+`inventoryRelief` and raw direct-journal inventory credits.
+Settled-sale, sale-on-credit, settled-expense, and expense-on-credit request documents may also
+carry one nested `tax` selector naming one declared tax registration and one declared tax code.
+FinGrind does not expose one neutral free-form tax payload on the other entry families.
+`DIRECT_JOURNAL`, `SALE_SETTLED`, `EXPENSE_SETTLED`, `OWNER_CONTRIBUTION`,
+`OWNER_WITHDRAWAL`, and `REVERSAL` request documents may also carry one nested
+`foreignExchange` object when the business event happened in another currency. That object
+retains the transaction amount, translated functional amount, quoted-rate evidence, and treatment
+kind, while every journal line still stays in the selected book functional currency.
 `preflight-entry` is advisory only: FinGrind re-checks commit-time durability rules inside
 the write transaction before any committing write command succeeds.
 Every journal line and every typed entry amount still use the selected book functional currency.
@@ -147,7 +155,7 @@ contract, so automation can read the per-command
 `executionMode`, `outputModes`, `artifactOutputs`, aliases, options, and summary directly
 instead of inferring stdout behavior from one global mode list.
 Discovery JSON payloads from `help`, `capabilities`, and `version` also publish one
-`protocolVersion` field. The current hard-break line is `"12"`.
+`protocolVersion` field. The current hard-break line is `"20"`.
 Commands that advertise `--output` default successful stdout to text unless you set
 `FINGRIND_DEFAULT_OUTPUT=json` for the current session. `FINGRIND_DEFAULT_OUTPUT=text` restores the
 text default explicitly, and per-command `--output ...` always wins over the session default.
@@ -156,7 +164,7 @@ Discovery, administration, write, and query/report commands can render operator-
 stdout uses one compact canonical layout across discovery, query, administration, and write
 surfaces, including raw request or plan template emission where applicable. The report commands
 `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
-`income-statement`, and `changes-in-equity` can additionally write one PDF artifact through
+`income-statement`, `cash-flow-statement`, and `changes-in-equity` can additionally write one PDF artifact through
 `--pdf-out <path>`. Successful exports publish one PDF artifact hint beside the primary result.
 When the primary stdout result is JSON, the success envelope also carries one `artifacts[]` entry
 with `format: "pdf"` plus one redacted public-path hint in `path`; when `--output text` is
@@ -188,43 +196,49 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>version</code></td><td><code>--version</code></td><td><code>[--output &lt;json|text&gt;]</code></td><td>Print application identity, version, and description.</td></tr>
     <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code><br><code>[--detail &lt;minimal|compact|full&gt; (json only)]</code><br><code>[--focus &lt;overview|commands|storage|request-input|currency-model|bookkeeping-kernel|response-contract&gt; (json only)]</code><br><code>[--category &lt;discovery|administration|query|write&gt; (json only)]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
     <tr><td><code>environment</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code></td><td>Print live runtime, distribution, and SQLite provenance facts for this launcher instance.</td></tr>
-    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|record-sale|record-expense|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|declare-tax-registration]</code></td><td>Print the canonical minimal request scaffold JSON document for one request-file command.</td></tr>
+    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|declare-tax-registration]</code><br><code>[--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;]</code></td><td>Print the canonical minimal request scaffold JSON document for a request-file command.</td></tr>
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
-    <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Create one new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
-    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Initialize a new book file with the canonical schema.</td></tr>
-    <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--new-book-key-file &lt;existing-path&gt; | --new-book-passphrase-stdin | --new-book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Rotate the passphrase that protects one existing book.</td></tr>
-    <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-book-file-out &lt;path&gt;</code><br><code>--backup-book-key-file-out &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Export one closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
-    <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--backup-book-file &lt;path&gt;</code><br><code>--backup-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore one verified encrypted-book backup pair onto the selected live book path.</td></tr>
+    <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--tighten-parents]</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Create a new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
+    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;</code><br><code>--accounting-basis &lt;CASH|ACCRUAL&gt;</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>[--tighten-parents]</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Initialize a new book file with the canonical schema, selected seed template, and explicit accounting basis.</td></tr>
+    <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--new-book-key-file &lt;existing-path&gt; | --new-book-passphrase-stdin | --new-book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Rotate the passphrase that protects an existing book.</td></tr>
+    <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Export a closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
+    <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt;</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore a verified encrypted-book backup pair onto the selected live book path.</td></tr>
     <tr><td><code>inspect-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Inspect stale sibling rekey rollback artifacts for the selected book path.</td></tr>
-    <tr><td><code>delete-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-book-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Delete one selected stale sibling rekey rollback artifact.</td></tr>
-    <tr><td><code>restore-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-book-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore one selected stale sibling rekey rollback artifact onto the live book path.</td></tr>
-    <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Declare or reactivate one account in the selected book.</td></tr>
-    <tr><td><code>declare-tax-registration</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Declare or update one owned tax registration in the selected book.</td></tr>
-    <tr><td><code>interim-result-sweep</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Sweep one contiguous reporting period into one policy-selected result-holding account.</td></tr>
-    <tr><td><code>fiscal-year-close</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Close one fiscal year by settling owner withdrawals into capital and accumulating current-year result into retained accumulated equity.</td></tr>
-    <tr><td><code>inspect-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Inspect one selected book for lifecycle state, format version, and compatibility.</td></tr>
-    <tr><td><code>list-accounts</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>List one stable page of declared accounts in the selected book using keyset pagination.</td></tr>
-    <tr><td><code>list-tax-registrations</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>List one stable page of declared tax registrations in the selected book using keyset pagination.</td></tr>
-    <tr><td><code>tax-obligation</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--tax-registration-id &lt;tax-registration-id&gt;</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded tax-obligation report for the selected declared tax registration.</td></tr>
-    <tr><td><code>get-posting</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--posting-id &lt;posting-id&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Return one committed posting by durable posting identifier.</td></tr>
-    <tr><td><code>list-postings</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--account-code &lt;account-code&gt;]</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>List one filtered page of committed postings in stable reverse-chronological order using keyset pagination.</td></tr>
-    <tr><td><code>account-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute grouped per-currency balances for one declared account.</td></tr>
-    <tr><td><code>trial-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--comparative &lt;none|prior-period|..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one book-wide trial balance as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.</td></tr>
-    <tr><td><code>account-ledger</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.</td></tr>
-    <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.</td></tr>
-    <tr><td><code>financial-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--comparative &lt;none|prior-period|..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.</td></tr>
-    <tr><td><code>income-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded income statement for the selected reporting period.</td></tr>
-    <tr><td><code>cash-flow-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded statement of cash receipts and payments for the selected reporting period.</td></tr>
-    <tr><td><code>changes-in-equity</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute one bounded statement of changes in equity for the selected reporting period.</td></tr>
-    <tr><td><code>execute-plan</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code><br><code>[--result-detail &lt;summary|full&gt;]</code></td><td>Execute one ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.</td></tr>
-    <tr><td><code>preflight-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Validate one posting request from the typed business-entry family or the raw direct-journal path without committing it.</td></tr>
-    <tr><td><code>record-sale</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit one sale entry into the selected SQLite book.</td></tr>
-    <tr><td><code>record-expense</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit one expense entry into the selected SQLite book.</td></tr>
-    <tr><td><code>record-owner-contribution</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit one owner-contribution entry into the selected SQLite book.</td></tr>
-    <tr><td><code>record-owner-withdrawal</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit one owner-withdrawal entry into the selected SQLite book.</td></tr>
-    <tr><td><code>record-opening-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit one opening-position entry into the selected SQLite book.</td></tr>
-    <tr><td><code>record-reversal</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit one reversal entry into the selected SQLite book.</td></tr>
-    <tr><td><code>post-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit one raw direct-journal posting request into the selected SQLite book. Prefer the record-* commands when one typed business-entry command matches the operator's intent.</td></tr>
+    <tr><td><code>delete-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-book-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Delete a selected stale sibling rekey rollback artifact.</td></tr>
+    <tr><td><code>restore-rekey-rollback</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>[--rollback-book-file &lt;path&gt;]</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore a selected stale sibling rekey rollback artifact onto the live book path.</td></tr>
+    <tr><td><code>declare-account</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Declare or reactivate an account in the selected book.</td></tr>
+    <tr><td><code>declare-tax-registration</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Declare or update an owned tax registration in the selected book.</td></tr>
+    <tr><td><code>interim-result-sweep</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--through &lt;YYYY-MM-DD&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Sweep the derived contiguous reporting window into the policy-selected result-holding account.</td></tr>
+    <tr><td><code>fiscal-year-close</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--year &lt;YYYY&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Close the fiscal year by settling owner withdrawals into capital and accumulating current-year result into retained accumulated equity.</td></tr>
+    <tr><td><code>inspect-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Inspect the selected book for lifecycle state, format version, and compatibility.</td></tr>
+    <tr><td><code>list-accounts</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--with-context]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>List a stable page of declared accounts in the selected book using keyset pagination.</td></tr>
+    <tr><td><code>list-tax-registrations</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--with-context]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>List a stable page of declared tax registrations in the selected book using keyset pagination.</td></tr>
+    <tr><td><code>tax-obligation</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--tax-registration-id &lt;tax-registration-id&gt;</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded tax-obligation report for the selected declared tax registration.</td></tr>
+    <tr><td><code>get-posting</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--posting-id &lt;posting-id&gt;</code><br><code>[--with-context]</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Return a committed posting by durable posting identifier.</td></tr>
+    <tr><td><code>list-postings</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--account-code &lt;account-code&gt;]</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--limit &lt;1-200&gt;]</code><br><code>[--cursor &lt;cursor&gt;]</code><br><code>[--with-context]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>List a filtered page of committed postings in stable reverse-chronological order using keyset pagination.</td></tr>
+    <tr><td><code>account-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute grouped per-currency balances for a declared account.</td></tr>
+    <tr><td><code>trial-balance</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--comparative &lt;none|prior-period|..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a book-wide trial balance as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.</td></tr>
+    <tr><td><code>account-ledger</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute the running ledger for an account, including opening balances, per-posting movement, and closing balances.</td></tr>
+    <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded accounting-period summary with posting totals, currency totals, and per-account activity.</td></tr>
+    <tr><td><code>financial-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--comparative &lt;none|prior-period|..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.</td></tr>
+    <tr><td><code>income-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded income statement for the selected reporting period.</td></tr>
+    <tr><td><code>cash-flow-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded statement of cash receipts and payments for the selected reporting period.</td></tr>
+    <tr><td><code>changes-in-equity</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded statement of changes in equity for the selected reporting period.</td></tr>
+    <tr><td><code>execute-plan</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code><br><code>[--result-detail &lt;summary|full&gt;]</code></td><td>Execute an ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.</td></tr>
+    <tr><td><code>preflight-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Validate a posting request from the typed business-entry family or the raw direct-journal path without committing it.</td></tr>
+    <tr><td><code>record-sale-settled</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a settled sale entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-sale-on-credit</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a sale-on-credit entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-purchase-settled</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a settled inventory purchase entry into the selected trading-template SQLite book.</td></tr>
+    <tr><td><code>record-purchase-on-credit</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a purchase-on-credit inventory entry into the selected trading-template SQLite book.</td></tr>
+    <tr><td><code>record-expense-settled</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a settled expense entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-expense-on-credit</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit an expense-on-credit entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-receipt</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a trade-receivable settlement entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-payment</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a trade-payable settlement entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-owner-contribution</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit an owner-contribution entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-owner-withdrawal</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit an owner-withdrawal entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-opening-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit an opening-position entry into the selected SQLite book.</td></tr>
+    <tr><td><code>record-reversal</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a reversal entry into the selected SQLite book.</td></tr>
+    <tr><td><code>post-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a raw direct-journal posting request into the selected SQLite book. Prefer the record-* commands when a typed business-entry command matches the operator's intent.</td></tr>
   </tbody>
 </table>
 <!-- END GENERATED USER_CLI COMMAND TABLE -->
@@ -278,8 +292,12 @@ cp "./${bundle_root}/quick-start-request.json" ./request.json
 ```
 
 Edit `./request.json` and replace the placeholder evidence and provenance values before using it with
-`preflight-entry` or `record-sale`. Run `print-request-template post-entry` when you explicitly need
-the raw direct-journal scaffold.
+`preflight-entry` or `record-sale-settled`. Run `print-request-template post-entry` when you explicitly need
+the raw direct-journal scaffold. When the selected book doctrine is `OWNER_MANAGED_TRADING`, sale
+help and request templates surface the owned `inventoryRelief` block before first rejection, the
+typed sale requires it so one committed event carries both revenue and cost-of-sales relief, and
+purchase workflows stay on the typed surface through `record-purchase-settled` and
+`record-purchase-on-credit` only on trading-template books.
 
 In the examples below, `fingrind` means the extracted Linux bundle launcher.
 Command-scoped help and repair hints emitted from a self-contained bundle use that same launcher
@@ -361,7 +379,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | `5` | interactive prompt or managed runtime environment precondition failure | `error` with code `interactive-prompt-unavailable`, `interactive-prompt-failed`, or `managed-runtime-failure` |
 | `6` | protected-book passphrase, key-file, or verification failure | `error` with code `protected-book-verification-failed`, `invalid-book-key-file`, or `invalid-book-passphrase-source` |
 | `7` | protected-book maintenance precondition or destination-collision failure | `rejected` with code `backup-destination-already-exists`, `backup-key-file-already-exists`, `book-has-blocking-artifacts`, `backup-source-has-blocking-artifacts`, or `artifact-busy`; also `error` with code `book-key-file-already-exists`, `artifact-output-already-exists`, or `book-maintenance-in-progress` |
-| `70` | internal software defect or leaked persistence invariant outside the published runtime families | `error` with code `internal-error` plus one opaque error id and one parseable diagnostics envelope |
+| `70` | internal software defect, deterministic internal contract defect, or leaked persistence invariant outside the published runtime families | `error` with code `internal-defect` or `internal-error`, depending on which internal failure family fired |
 
 ## Common Failures
 
@@ -395,6 +413,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | requested PDF artifact cannot be written for one report command that requested `--pdf-out` | `4` | `pdf-export-failure` | the command fails atomically because the requested PDF artifact was not produced |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `5` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |
+| one typed bookkeeping command builds a journal that resolves to a different published event class than the command contract promised | `70` | `internal-defect` | the failure message names the mismatched typed command and resolved event class so the defect is truthful without pretending the caller can repair it |
 | SQLite persistence rejects one write through `CONSTRAINT_CHECK` after FinGrind accepted the request | `70` | `internal-error` | opaque public failure stating that one upstream invariant should have rejected the request before commit |
 | other unexpected software defect outside the managed-runtime and storage families | `70` | `internal-error` | opaque public failure carrying one error id in one JSON diagnostics envelope without a raw stack trace |
 
@@ -416,12 +435,13 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   owner-only protection; when the parent already exists, FinGrind requires it to remain
   owner-only. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on
   Windows.
-- `backup-book` creates missing parent directories for nested `--backup-book-file-out` and
-  `--backup-book-key-file-out` paths with owner-only protection. When either parent directory
+- `backup-book` creates missing parent directories for nested `--backup-file` and
+  `--backup-key-file` paths with owner-only protection. When either parent directory
   already exists, FinGrind requires it to remain owner-only before the backup pair is published.
-- `restore-book` creates missing parent directories for nested `--book-file` targets with
-  owner-only protection. When the selected parent directory already exists, FinGrind requires it
-  to remain owner-only before the restored live book is published.
+- `restore-book` creates missing parent directories for nested `--book-file` and
+  `--book-key-file` targets with owner-only protection. When either selected parent directory
+  already exists, FinGrind requires it to remain owner-only before the restored live pair is
+  published.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than
   4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters
   are rejected.
@@ -456,8 +476,9 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   replacement. Do not copy a book while FinGrind is actively mutating it, and keep the copied
   `.sqlite` file under the same protected filesystem stance as the live book while storing key
   material separately from the copied book tree.
-- `restore-book` reuses the supplied backup key file as the secret for the restored live book, so
-  reopen the restored `--book-file` path with that same key file after the restore completes.
+- `restore-book` uses `--backup-key-file` only to open the backup source and then re-encrypts the
+  restored live book under the selected `--book-key-file`, so reopen the restored `--book-file`
+  path with that destination key file after the restore completes.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
 - The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.2 /

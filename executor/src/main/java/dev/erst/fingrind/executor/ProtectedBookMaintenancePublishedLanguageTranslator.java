@@ -46,11 +46,8 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     return switch (outcome) {
       case ProtectedBookRestoreOutcome.Restored restored -> {
         List<PublicPathHint> hints =
-            publicHints(
-                restored.bookFilePath(),
-                restored.backupFilePath(),
-                restored.backupBookKeyFilePath());
-        yield new RestoreBookResult.Restored(hints.get(0), hints.get(1), hints.get(2));
+            publicHints(restored.bookFilePath(), restored.bookKeyFilePath());
+        yield new RestoreBookResult.Restored(hints.get(0), hints.get(1));
       }
       case ProtectedBookRestoreOutcome.Rejected rejected ->
           new RestoreBookResult.Rejected(toPublished(rejected.rejection()));

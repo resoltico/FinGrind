@@ -80,8 +80,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_emitsCanonicalJsonForDeterministicWorkflowContractFailuresInTextMode()
-      throws IOException {
+  void run_emitsTextForDeterministicWorkflowContractFailuresInTextMode() throws IOException {
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("book.key");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -110,16 +109,11 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             });
 
     assertEquals(6, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("error", failureEnvelope.path("status").stringValue());
-    assertEquals(
-        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
-        failureEnvelope.path("code").stringValue());
+    String failureText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(failureText.contains("Error"));
     assertTrue(
-        failureEnvelope
-            .path("hint")
-            .stringValue()
-            .contains("Verify the book passphrase source and try again."));
+        failureText.contains(ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code()));
+    assertTrue(failureText.contains("Verify the book passphrase source and try again."));
   }
 
   @Test
@@ -168,7 +162,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             fixedClock(),
             new ExplodingWorkflow(
                 new SqlitePersistenceInvariantException(
-                    "Failed to commit SQLite posting fact. One upstream invariant should have rejected this request before commit.")));
+                    "Failed to commit SQLite posting fact. An upstream invariant should have rejected this request before commit.")));
 
     int exitCode =
         cli.run(
@@ -190,7 +184,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
         failureEnvelope
             .path("message")
             .stringValue()
-            .contains("One upstream invariant should have rejected this request before commit."));
+            .contains("An upstream invariant should have rejected this request before commit."));
     assertTrue(diagnosticsText.contains("fg-internal-"));
     assertFalse(diagnosticsText.contains("storage-runtime-failure"));
     assertFalse(diagnosticsText.contains("book file path"));
@@ -375,9 +369,50 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
         failureEnvelope
             .path("hint")
             .stringValue()
-            .contains("preserved one machine-readable error envelope on stderr"));
+            .contains("preserved the machine-readable error envelope on stderr"));
     assertFalse(
         diagnosticsOutput.toString(StandardCharsets.UTF_8).contains("IllegalStateException"));
+  }
+
+  @Test
+  void run_preservesInternalDefectContractFailureWithDedicatedExit70Envelope() throws IOException {
+    Path requestFile = writeRequest(validRequestJson());
+    Path bookFilePath = tempDirectory.resolve("book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsOutput = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsOutput),
+            fixedClock(),
+            new ExplodingWorkflow(
+                new ContractFailureException(
+                    ContractErrors.Descriptor.INTERNAL_DEFECT.failure(
+                        "Typed entry kind SALE_SETTLED resolved to CREDIT_SALE instead of SETTLED_SALE.",
+                        "One typed bookkeeping command built a journal that resolved to a different published event class than the command contract promised. Report the defect; rerunning the same request will not repair it.",
+                        null))));
+    int exitCode =
+        cli.run(
+            jsonArguments(
+                "preflight-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
+    assertEquals(70, exitCode);
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsOutput.toByteArray());
+    assertEquals("internal-defect", failureEnvelope.path("code").stringValue());
+    assertEquals(
+        "Typed entry kind SALE_SETTLED resolved to CREDIT_SALE instead of SETTLED_SALE.",
+        failureEnvelope.path("message").stringValue());
+    assertTrue(
+        failureEnvelope.path("hint").stringValue().contains("different published event class"));
+    assertFalse(failureEnvelope.path("message").stringValue().contains("fg-internal-"));
   }
 
   @Test
@@ -440,16 +475,11 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
 
     assertEquals(70, exitCode);
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
-    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsOutput.toByteArray());
-    assertEquals("error", failureEnvelope.path("status").stringValue());
-    assertEquals("internal-error", failureEnvelope.path("code").stringValue());
-    assertTrue(failureEnvelope.path("message").stringValue().contains("fg-internal-"));
-    assertTrue(
-        failureEnvelope
-            .path("hint")
-            .stringValue()
-            .contains("preserved one machine-readable error envelope on stderr"));
     String diagnosticsText = diagnosticsOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(diagnosticsText.contains("Error"));
+    assertTrue(diagnosticsText.contains("internal-error"));
+    assertTrue(diagnosticsText.contains("fg-internal-"));
+    assertTrue(diagnosticsText.contains("preserved the machine-readable error envelope on stderr"));
     assertFalse(diagnosticsText.contains("IllegalStateException"));
     assertFalse(diagnosticsText.contains("boom"));
   }

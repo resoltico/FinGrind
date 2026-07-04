@@ -65,7 +65,7 @@ final class SqliteBookKeyFileSecuritySupport {
   }
 
   static String generalKeyFileHint() {
-    return "Choose one regular non-symlink key file path beneath one private owner-only parent directory. If the parent directory already exists, tighten it first; otherwise target one missing private directory so FinGrind can create it securely, then rerun the command.";
+    return "Choose a regular non-symlink key file path beneath a private owner-only parent directory. If the parent directory already exists, tighten it first; otherwise target a missing private directory so FinGrind can create it securely, then rerun the command.";
   }
 
   static ContractFailure unsupportedSecureFilesystem(Path path, RuntimeException cause) {
@@ -91,7 +91,7 @@ final class SqliteBookKeyFileSecuritySupport {
       throw new SqliteCallerPathContractException(
           bookKeyFilePath,
           SqliteCallerPathFailure.PARENT_PATH_COLLISION,
-          "The FinGrind book key file must resolve beneath one real parent directory: "
+          "The FinGrind book key file must resolve beneath a real parent directory: "
               + redactedPath(bookKeyFilePath));
     }
     return parentDirectory;

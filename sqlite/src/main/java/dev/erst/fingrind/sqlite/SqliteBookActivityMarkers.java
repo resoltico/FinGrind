@@ -149,7 +149,7 @@ final class SqliteBookActivityMarkers {
     Path parentDirectory = normalizedBookPath.getParent();
     if (parentDirectory == null) {
       throw new IllegalArgumentException(
-          "The FinGrind SQLite book path must resolve beneath one parent directory: "
+          "The FinGrind SQLite book path must resolve beneath a parent directory: "
               + normalizedBookPath);
     }
     return parentDirectory;

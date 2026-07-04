@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
-import dev.erst.fingrind.executor.spi.TaxRegistrationLookupStore;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import java.util.Objects;
 
 /** Application-boundary translator from published entry commands into internal posting commands. */
@@ -13,87 +13,30 @@ public final class PostEntryCommandTranslator {
 
   /** Translates one published post-entry command into one internal posting command. */
   public static PostingCommand toPostingCommand(
-      PostEntryCommand command, TaxRegistrationLookupStore taxRegistrationLookupStore) {
+      PostEntryCommand command, PostingValidationStore validationStore) {
     Objects.requireNonNull(command, "command");
-    Objects.requireNonNull(taxRegistrationLookupStore, "taxRegistrationLookupStore");
+    Objects.requireNonNull(validationStore, "validationStore");
     return toInternalManagementSingleEntity(
-        command, TaxPostingResolution.resolve(command.entry(), taxRegistrationLookupStore));
+        command,
+        ReversalResolutionSupport.resolve(
+            TaxPostingResolution.resolve(command.entry(), validationStore), validationStore));
   }
 
   private static PostingCommand toInternalManagementSingleEntity(
       PostEntryCommand command, BookkeepingEntry resolvedEntry) {
-    return switch (resolvedEntry) {
-      case BookkeepingEntry.DirectJournal journal ->
-          new PostingCommand(
-              journal.postingKind(),
-              journal.postingOriginKind(),
-              journal.journalEntry(),
-              PostingLineageModel.direct(),
-              command.evidence(),
-              command.requestProvenance(),
-              command.sourceChannel(),
-              resolvedEntry);
-      case BookkeepingEntry.Sale sale ->
-          new PostingCommand(
-              sale.postingKind(),
-              sale.postingOriginKind(),
-              sale.journalEntry(),
-              PostingLineageModel.direct(),
-              command.evidence(),
-              command.requestProvenance(),
-              command.sourceChannel(),
-              resolvedEntry);
-      case BookkeepingEntry.Expense expense ->
-          new PostingCommand(
-              expense.postingKind(),
-              expense.postingOriginKind(),
-              expense.journalEntry(),
-              PostingLineageModel.direct(),
-              command.evidence(),
-              command.requestProvenance(),
-              command.sourceChannel(),
-              resolvedEntry);
-      case BookkeepingEntry.OwnerContribution ownerContribution ->
-          new PostingCommand(
-              ownerContribution.postingKind(),
-              ownerContribution.postingOriginKind(),
-              ownerContribution.journalEntry(),
-              PostingLineageModel.direct(),
-              command.evidence(),
-              command.requestProvenance(),
-              command.sourceChannel(),
-              resolvedEntry);
-      case BookkeepingEntry.OwnerWithdrawal ownerWithdrawal ->
-          new PostingCommand(
-              ownerWithdrawal.postingKind(),
-              ownerWithdrawal.postingOriginKind(),
-              ownerWithdrawal.journalEntry(),
-              PostingLineageModel.direct(),
-              command.evidence(),
-              command.requestProvenance(),
-              command.sourceChannel(),
-              resolvedEntry);
-      case BookkeepingEntry.OpeningPosition openingPosition ->
-          new PostingCommand(
-              openingPosition.postingKind(),
-              openingPosition.postingOriginKind(),
-              openingPosition.journalEntry(),
-              PostingLineageModel.direct(),
-              command.evidence(),
-              command.requestProvenance(),
-              command.sourceChannel(),
-              resolvedEntry);
-      case BookkeepingEntry.Reversal reversal ->
-          new PostingCommand(
-              reversal.postingKind(),
-              reversal.postingOriginKind(),
-              reversal.journalEntry(),
-              toReversalPostingLineageModel(reversal.reversal()),
-              command.evidence(),
-              command.requestProvenance(),
-              command.sourceChannel(),
-              resolvedEntry);
-    };
+    PostingLineageModel postingLineage =
+        resolvedEntry instanceof BookkeepingEntry.Reversal reversal
+            ? toReversalPostingLineageModel(reversal.reversal())
+            : PostingLineageModel.direct();
+    return new PostingCommand(
+        resolvedEntry.postingKind(),
+        resolvedEntry.postingOriginKind(),
+        resolvedEntry.journalEntry(),
+        postingLineage,
+        command.evidence(),
+        command.requestProvenance(),
+        command.sourceChannel(),
+        resolvedEntry);
   }
 
   private static PostingLineageModel toReversalPostingLineageModel(

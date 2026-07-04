@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
@@ -37,7 +38,7 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
         ContractDecision.accepted(result),
         outputMode,
         (writers, accepted, mode) ->
-            writers.mutation().writeOpenBookResult(bookPath, accepted, mode),
+            writers.mutation().writeOpenBookResult(bookPath, List.of(), accepted, mode),
         requiredFragment);
   }
 
@@ -104,7 +105,7 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliCoverageResponseWriters writers =
         coverageResponseWriters(new PrintStream(outputStream, false, StandardCharsets.UTF_8));
-    writers.failure().writeFailure(CliFailureMapper.contractFailure(failure));
+    writers.failure().writeFailure(CliFailureMapper.contractFailure(failure), outputMode);
     assertRenderedDocument(
         outputStream.toString(StandardCharsets.UTF_8), outputMode, requiredFragment);
   }
@@ -120,7 +121,7 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
         runtimeFailure != null
             ? runtimeFailure
             : CliFailureMapper.internalError("fg-jazzer-rendering-internal");
-    writers.failure().writeFailure(failure);
+    writers.failure().writeFailure(failure, outputMode);
     assertRenderedDocument(
         outputStream.toString(StandardCharsets.UTF_8), outputMode, requiredFragment);
   }
@@ -174,15 +175,15 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
     }
 
     void writeListAccountsResult(ListAccountsResult result, OutputMode outputMode) {
-      bookReadWriter.writeListAccountsResult(result, outputMode);
+      bookReadWriter.writeListAccountsResult(result, false, outputMode);
     }
 
     void writeGetPostingResult(GetPostingResult result, OutputMode outputMode) {
-      bookReadWriter.writeGetPostingResult(result, outputMode);
+      bookReadWriter.writeGetPostingResult(result, false, outputMode);
     }
 
     void writeListPostingsResult(ListPostingsResult result, OutputMode outputMode) {
-      bookReadWriter.writeListPostingsResult(result, outputMode);
+      bookReadWriter.writeListPostingsResult(result, false, outputMode);
     }
 
     void writeAccountBalanceResult(

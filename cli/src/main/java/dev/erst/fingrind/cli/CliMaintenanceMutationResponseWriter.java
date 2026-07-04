@@ -31,10 +31,10 @@ final class CliMaintenanceMutationResponseWriter {
                               absolutePath(backedUp.bookFilePath())),
                           CliEnvelopeMapper.successArtifacts(
                               CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.backupBookFileFormat(),
+                                  ProtocolArtifactOutput.backupFileFormat(),
                                   backedUp.backupFilePath()),
                               CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.backupBookKeyFileFormat(),
+                                  ProtocolArtifactOutput.backupKeyFileFormat(),
                                   backedUp.backupBookKeyFilePath())))),
               () ->
                   outputChannel.writeText(
@@ -58,14 +58,14 @@ final class CliMaintenanceMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.RestoreBookPayload(
-                              absolutePath(restored.bookFilePath())),
+                              absolutePath(restored.bookFilePath()),
+                              absolutePath(restored.bookKeyFilePath())),
                           CliEnvelopeMapper.successArtifacts(
                               CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.backupBookFileFormat(),
-                                  restored.backupFilePath()),
+                                  ProtocolArtifactOutput.bookFileFormat(), restored.bookFilePath()),
                               CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.backupBookKeyFileFormat(),
-                                  restored.backupBookKeyFilePath())))),
+                                  ProtocolArtifactOutput.bookKeyFileFormat(),
+                                  restored.bookKeyFilePath())))),
               () ->
                   outputChannel.writeText(
                       CliBookMaintenanceOutputRenderer.renderRestoreBookText(restored)),

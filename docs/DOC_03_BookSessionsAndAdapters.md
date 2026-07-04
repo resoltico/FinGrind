@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: ADAPTERS
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -499,6 +499,23 @@ public final class SqliteBookKeyFileGenerator
 - Contract: generated key files are base64url-no-padding, 256 bits of entropy, and never
   overwritten in place
 
+## `SqliteCallerPathSecurity`
+
+`SqliteCallerPathSecurity` is the public SQLite adapter owner for opt-in tightening of existing
+book-file and key-file parent directories.
+
+```java
+public final class SqliteCallerPathSecurity
+```
+
+- Purpose: harden an already-existing caller-named parent directory only when the command surface
+  explicitly opts in through `--tighten-parents`
+- Surface: `tightenExistingBookParentDirectory(Path)` and
+  `tightenExistingBookKeyParentDirectory(Path)` return the tightened directory when they had to
+  harden it and return empty when there was nothing to change
+- Contract: never widens permissions, never follows symlink parents, and silently no-ops when the
+  parent is absent or the filesystem cannot express owner-only security semantics
+
 ## `SqliteRuntime`, `SqliteRuntime.Probe`, And `SqliteRuntime.Status`
 
 `SqliteRuntime` is the public runtime metadata owner for the packaged SQLite adapter.
@@ -642,7 +659,7 @@ public enum ProtectedBookMaintenanceAuditCompensationKind
 - Boundary: compensation facts exist only when a previously published maintenance fact must be
   durably retracted after later failure cleanup
 
-## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore`
+## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore`
 
 Protected-book maintenance now belongs to one executor-owned maintenance boundary with one narrow
 SQLite store SPI and one encrypted in-book maintenance audit stream.
@@ -652,6 +669,7 @@ public final class ProtectedBookMaintenanceService
 public interface ProtectedBookMaintenanceStore
 public interface StagedBackupPair
 public interface StagedBookReplacement
+public interface StagedRestoredBookPair
 public interface StagedRollbackArtifactDeletion
 public final class SqliteProtectedBookMaintenanceStore
 ```
@@ -663,6 +681,8 @@ public final class SqliteProtectedBookMaintenanceStore
 - `StagedBackupPair`: reversible staged backup publication that can verify the staged backup
   before final publish
 - `StagedBookReplacement`: reversible staged replacement prepared for restore-style workflows
+- `StagedRestoredBookPair`: reversible staged restored-book publication that verifies the staged
+  restored book already opens with the staged destination key file before final publish
 - `StagedRollbackArtifactDeletion`: reversible staged deletion prepared for rollback-artifact
   cleanup
 - `SqliteProtectedBookMaintenanceStore`: verifies protected-book artifacts through SQLite, rejects

@@ -20,6 +20,7 @@ import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -135,12 +136,13 @@ class LedgerPlanFactMapperTest {
 
   @Test
   void postingFacts_includeCallerAuthoredSaleEntryGroup() {
-    BookkeepingEntry.Sale sale =
-        new BookkeepingEntry.Sale(
+    BookkeepingEntry.SaleSettled sale =
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-23"),
             new AccountCode("cash"),
             new AccountCode("service-revenue"),
             new MonetaryAmount("EUR", "1000"),
+            null,
             null,
             null,
             null);
@@ -184,7 +186,9 @@ class LedgerPlanFactMapperTest {
                                 nested ->
                                     nested instanceof BookWorkflowFact.Text text
                                         && "entryKind".equals(text.name())
-                                        && "SALE".equals(text.value()))));
+                                        && BookkeepingEntryKind.SALE_SETTLED
+                                            .wireValue()
+                                            .equals(text.value()))));
     assertTrue(
         facts.stream()
             .anyMatch(
@@ -215,7 +219,7 @@ class LedgerPlanFactMapperTest {
                 "entryKind",
                 dev.erst.fingrind.core.BookkeepingEntryKind.DIRECT_JOURNAL.wireValue()));
     assertEntryFacts(
-        new BookkeepingEntry.Expense(
+        new BookkeepingEntry.ExpenseSettled(
             LocalDate.parse("2026-04-23"),
             new AccountCode("5000"),
             new AccountCode("1000"),
@@ -255,14 +259,11 @@ class LedgerPlanFactMapperTest {
         facts -> assertEntryGroupContainsText(facts, "openingBalance", "accountCode", "1000"));
     assertEntryFacts(
         new BookkeepingEntry.Reversal(
-            new JournalEntry(
-                LocalDate.parse("2026-04-23"),
-                List.of(
-                    line("1000", JournalLine.EntrySide.CREDIT, "10.00"),
-                    line("4000", JournalLine.EntrySide.DEBIT, "10.00"))),
+            LocalDate.parse("2026-04-23"),
             new PostingLineage.Reversal(
                 new ReversalReference(new PostingId("prior-posting")),
                 new ReversalReason("operator reversal")),
+            null,
             null),
         facts -> assertEntryGroupContainsText(facts, "reversal", "reason", "operator reversal"));
   }
@@ -399,22 +400,23 @@ class LedgerPlanFactMapperTest {
 
   private static void assertEntryFacts(
       BookkeepingEntry entry, java.util.function.Consumer<List<BookWorkflowFact>> assertion) {
+    BookkeepingEntry persistedEntry = persistedEntry(entry);
     List<BookWorkflowFact> facts =
         LedgerPlanFactMapper.postingFacts(
             BookkeepingPublishedLanguageTranslator.fromPublished(
                 new PostingFact(
                     new PostingId(
                         "posting-" + entry.entryKind().wireValue().toLowerCase(Locale.ROOT)),
-                    entry.journalEntry(),
-                    entry.postingLineage(),
-                    entry.postingKind(),
-                    entry.postingOriginKind(),
+                    persistedEntry.journalEntry(),
+                    persistedEntry.postingLineage(),
+                    persistedEntry.postingKind(),
+                    persistedEntry.postingOriginKind(),
                     new AccountingEvidence(
                         List.of(
                             new SourceDocumentReference(
                                 new SourceDocumentId("document-entry"),
                                 new SourceDocumentType("source-document"),
-                                entry.effectiveDate())),
+                                persistedEntry.effectiveDate())),
                         List.of()),
                     new CommittedProvenance(
                         new RequestProvenance(
@@ -426,7 +428,7 @@ class LedgerPlanFactMapperTest {
                             Optional.empty()),
                         FIXED_INSTANT,
                         SourceChannel.CLI),
-                    entry)));
+                    persistedEntry)));
     BookWorkflowFact.Group entryGroup =
         facts.stream()
             .filter(
@@ -436,6 +438,23 @@ class LedgerPlanFactMapperTest {
             .findFirst()
             .orElseThrow();
     assertion.accept(entryGroup.facts());
+  }
+
+  private static BookkeepingEntry persistedEntry(BookkeepingEntry entry) {
+    if (entry instanceof BookkeepingEntry.Reversal reversal) {
+      return reversal.resolvedJournalEntry() == null
+          ? new BookkeepingEntry.Reversal(
+              reversal.effectiveDate(),
+              reversal.reversal(),
+              reversal.foreignExchangeDetails(),
+              new JournalEntry(
+                  reversal.effectiveDate(),
+                  List.of(
+                      line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
+                      line("4000", JournalLine.EntrySide.CREDIT, "10.00"))))
+          : reversal;
+    }
+    return entry;
   }
 
   private static void assertEntryText(

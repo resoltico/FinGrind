@@ -1,16 +1,17 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import java.time.LocalDate;
 import java.util.List;
 
 /** Parses CLI arguments for `interim-result-sweep`. */
 final class CliInterimResultSweepArguments {
   private static final List<String> INTERIM_RESULT_SWEEP_OPTIONS =
-      List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END, ProtocolOptions.OUTPUT);
+      List.of(ProtocolOptions.THROUGH, ProtocolOptions.OUTPUT);
   private static final CliBookArgumentParser.CommandArgumentSpec INTERIM_RESULT_SWEEP_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END, ProtocolOptions.OUTPUT),
-          List.of());
+          List.of(ProtocolOptions.THROUGH, ProtocolOptions.OUTPUT), List.of());
 
   private CliInterimResultSweepArguments() {}
 
@@ -18,17 +19,26 @@ final class CliInterimResultSweepArguments {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(
             arguments, INTERIM_RESULT_SWEEP_ARGUMENTS);
-    CliReportingPeriodCommandArguments.ParsedReportingPeriodCommandArguments
-        parsedInterimResultSweepArguments =
-            parseInterimResultSweepArguments(parsedArguments.commandArguments());
+    ParsedInterimResultSweepArguments parsedInterimResultSweepArguments =
+        parseInterimResultSweepArguments(parsedArguments.commandArguments());
     return new InterimResultSweep(
         parsedArguments.bookAccess(),
-        parsedInterimResultSweepArguments.reportingPeriod(),
+        parsedInterimResultSweepArguments.throughEffectiveDate(),
         CliOptionModes.resolvedOutputMode(parsedInterimResultSweepArguments.outputMode()));
   }
 
-  static CliReportingPeriodCommandArguments.ParsedReportingPeriodCommandArguments
-      parseInterimResultSweepArguments(List<String> commandArguments) {
-    return CliReportingPeriodCommandArguments.parse(commandArguments, INTERIM_RESULT_SWEEP_OPTIONS);
+  static ParsedInterimResultSweepArguments parseInterimResultSweepArguments(
+      List<String> commandArguments) {
+    CliCloseCommandArgumentSupport.ParsedCloseArgument<LocalDate> parsedArgument =
+        CliCloseCommandArgumentSupport.parseSingleRequiredOption(
+            commandArguments,
+            ProtocolOptions.THROUGH,
+            INTERIM_RESULT_SWEEP_OPTIONS,
+            CliOptionValues::parseLocalDateOption);
+    return new ParsedInterimResultSweepArguments(
+        parsedArgument.requiredValue(), parsedArgument.outputMode());
   }
+
+  record ParsedInterimResultSweepArguments(
+      LocalDate throughEffectiveDate, @org.jspecify.annotations.Nullable OutputMode outputMode) {}
 }

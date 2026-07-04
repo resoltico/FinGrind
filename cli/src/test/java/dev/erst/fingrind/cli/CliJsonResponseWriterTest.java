@@ -73,7 +73,7 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
 
-    responseWriter.writeDeterministicFailure(
+    responseWriter.writeFailure(
         new CliFailure(
             "protected-book-verification-failed",
             "FinGrind could not verify the selected protected book with the supplied passphrase source.",

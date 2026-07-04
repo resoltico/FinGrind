@@ -2,13 +2,19 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingOriginKind;
+import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.Arena;
@@ -263,13 +269,13 @@ class SqliteNativeInteropTest {
               select
                   'posting-1',
                   'STANDARD',
-                  'SALE',
+                  'SALE_SETTLED',
                   '1000',
                   '2000',
                   null,
-                  null,
                   'EUR',
                   1000,
+                  null,
                   '2026-05-05',
                   '2026-05-05T09:15:30Z',
                   'actor-1',
@@ -312,6 +318,102 @@ class SqliteNativeInteropTest {
                         SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
                         null,
                         null)));
+      }
+    }
+  }
+
+  @Test
+  void committedPosting_saleSettledFallsBackWhenInventoryReliefSideCountsDoNotMatch()
+      throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(
+            bookAccess(tempDirectory.resolve("posting-fact-relief-counts.sqlite")))) {
+      try (SqliteNativeStatement postingRow =
+          SqliteNativeStatements.prepare(database, saleSettledProjectionSql())) {
+        assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
+        List<JournalLine> lines =
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("5000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "6.00")),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("1400"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "4.00")),
+                new JournalLine(
+                    new AccountCode("1410"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "2.00")));
+        JournalEntry journalEntry =
+            new JournalEntry(java.time.LocalDate.parse("2026-05-05"), lines);
+
+        BookkeepingEntry.SaleSettled saleSettled =
+            assertInstanceOf(
+                BookkeepingEntry.SaleSettled.class,
+                SqlitePostingOriginatingEntryMapper.originatingEntry(
+                    postingRow,
+                    journalEntry,
+                    PostingLineageModel.direct(),
+                    PostingOriginKind.SALE_SETTLED,
+                    null,
+                    null));
+
+        assertNull(saleSettled.inventoryRelief());
+      }
+    }
+  }
+
+  @Test
+  void committedPosting_saleSettledFallsBackWhenInventoryReliefAmountsDoNotMatch()
+      throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(
+            bookAccess(tempDirectory.resolve("posting-fact-relief-amount-mismatch.sqlite")))) {
+      try (SqliteNativeStatement postingRow =
+          SqliteNativeStatements.prepare(database, saleSettledProjectionSql())) {
+        assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
+        List<JournalLine> lines =
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "11.00")),
+                new JournalLine(
+                    new AccountCode("5000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "6.00")),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("1400"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "7.00")));
+        JournalEntry journalEntry =
+            new JournalEntry(java.time.LocalDate.parse("2026-05-05"), lines);
+
+        BookkeepingEntry.SaleSettled saleSettled =
+            assertInstanceOf(
+                BookkeepingEntry.SaleSettled.class,
+                SqlitePostingOriginatingEntryMapper.originatingEntry(
+                    postingRow,
+                    journalEntry,
+                    PostingLineageModel.direct(),
+                    PostingOriginKind.SALE_SETTLED,
+                    null,
+                    null));
+
+        assertNull(saleSettled.inventoryRelief());
       }
     }
   }
@@ -580,6 +682,34 @@ class SqliteNativeInteropTest {
             null
         """
         .formatted(reasonSqlLiteral, priorPostingIdSqlLiteral);
+  }
+
+  private static String saleSettledProjectionSql() {
+    return """
+        select
+            'posting-1',
+            'STANDARD',
+            'SALE_SETTLED',
+            '1000',
+            '2000',
+            null,
+            'EUR',
+            1000,
+            null,
+            '2026-05-05',
+            '2026-05-05T09:15:30Z',
+            'actor-1',
+            'AGENT',
+            'command-1',
+            'idem-1',
+            'cause-1',
+            'corr-1',
+            null,
+            'CLI',
+            null,
+            null,
+            null
+        """;
   }
 
   private static long strlen(MemorySegment pointer) {

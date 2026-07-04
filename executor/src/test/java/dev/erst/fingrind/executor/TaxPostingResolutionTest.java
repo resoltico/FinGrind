@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 /** Direct coverage for tax-resolution semantics on typed sale and expense events. */
 class TaxPostingResolutionTest {
@@ -42,15 +44,16 @@ class TaxPostingResolutionTest {
 
   @Test
   void resolveSale_appliesExclusiveOutputTaxToGrossCashAndPayable() {
-    BookkeepingEntry.Sale resolved =
+    BookkeepingEntry.SaleSettled resolved =
         assertInstanceOf(
-            BookkeepingEntry.Sale.class,
+            BookkeepingEntry.SaleSettled.class,
             TaxPostingResolution.resolve(
-                new BookkeepingEntry.Sale(
+                new BookkeepingEntry.SaleSettled(
                     LocalDate.parse("2026-04-07"),
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "10000"),
+                    null,
                     null,
                     new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                     null),
@@ -78,11 +81,11 @@ class TaxPostingResolutionTest {
 
   @Test
   void resolveExpense_appliesInclusiveRecoverableTax() {
-    BookkeepingEntry.Expense resolved =
+    BookkeepingEntry.ExpenseSettled resolved =
         assertInstanceOf(
-            BookkeepingEntry.Expense.class,
+            BookkeepingEntry.ExpenseSettled.class,
             TaxPostingResolution.resolve(
-                new BookkeepingEntry.Expense(
+                new BookkeepingEntry.ExpenseSettled(
                     LocalDate.parse("2026-04-07"),
                     new AccountCode("5000"),
                     new AccountCode("1000"),
@@ -114,11 +117,11 @@ class TaxPostingResolutionTest {
 
   @Test
   void resolveExpense_appliesInclusiveNonrecoverableTaxWithoutSeparateTaxAccount() {
-    BookkeepingEntry.Expense resolved =
+    BookkeepingEntry.ExpenseSettled resolved =
         assertInstanceOf(
-            BookkeepingEntry.Expense.class,
+            BookkeepingEntry.ExpenseSettled.class,
             TaxPostingResolution.resolve(
-                new BookkeepingEntry.Expense(
+                new BookkeepingEntry.ExpenseSettled(
                     LocalDate.parse("2026-04-07"),
                     new AccountCode("5010"),
                     new AccountCode("1000"),
@@ -146,21 +149,23 @@ class TaxPostingResolutionTest {
 
   @Test
   void resolve_returnsOriginalEntriesWhenTaxIsAbsentOrAlreadyResolved() {
-    BookkeepingEntry.Sale noTaxSale =
-        new BookkeepingEntry.Sale(
+    BookkeepingEntry.SaleSettled noTaxSale =
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "10000"),
             null,
             null,
+            null,
             null);
-    BookkeepingEntry.Sale resolvedSale =
-        new BookkeepingEntry.Sale(
+    BookkeepingEntry.SaleSettled resolvedSale =
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-07"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "12100"),
+            null,
             null,
             new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
             new AppliedTax(
@@ -174,8 +179,8 @@ class TaxPostingResolutionTest {
                 new MonetaryAmount("EUR", "2100"),
                 new MonetaryAmount("EUR", "12100"),
                 new AccountCode("2100")));
-    BookkeepingEntry.Expense resolvedExpense =
-        new BookkeepingEntry.Expense(
+    BookkeepingEntry.ExpenseSettled resolvedExpense =
+        new BookkeepingEntry.ExpenseSettled(
             LocalDate.parse("2026-04-07"),
             new AccountCode("5000"),
             new AccountCode("1000"),
@@ -200,6 +205,16 @@ class TaxPostingResolutionTest {
     assertSame(
         resolvedExpense,
         TaxPostingResolution.resolve(resolvedExpense, lookupStore(registration())));
+    BookkeepingEntry.OwnerContribution contribution =
+        new BookkeepingEntry.OwnerContribution(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("3000"),
+            new MonetaryAmount("EUR", "10000"),
+            null);
+
+    assertSame(
+        contribution, TaxPostingResolution.resolve(contribution, lookupStore(registration())));
   }
 
   @Test
@@ -209,11 +224,12 @@ class TaxPostingResolutionTest {
             IllegalArgumentException.class,
             () ->
                 TaxPostingResolution.resolve(
-                    new BookkeepingEntry.Sale(
+                    new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-07"),
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
+                        null,
                         null,
                         new TaxSelection(
                             new TaxRegistrationId("missing-tax"), new TaxCode("vat-standard-sale")),
@@ -226,11 +242,12 @@ class TaxPostingResolutionTest {
             IllegalArgumentException.class,
             () ->
                 TaxPostingResolution.resolve(
-                    new BookkeepingEntry.Sale(
+                    new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-07"),
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
+                        null,
                         null,
                         new TaxSelection(REGISTRATION_ID, new TaxCode("missing-code")),
                         null),
@@ -243,11 +260,12 @@ class TaxPostingResolutionTest {
             IllegalArgumentException.class,
             () ->
                 TaxPostingResolution.resolve(
-                    new BookkeepingEntry.Sale(
+                    new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-07"),
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
+                        null,
                         null,
                         new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
                         null),
@@ -261,7 +279,7 @@ class TaxPostingResolutionTest {
             IllegalArgumentException.class,
             () ->
                 TaxPostingResolution.resolve(
-                    new BookkeepingEntry.Expense(
+                    new BookkeepingEntry.ExpenseSettled(
                         LocalDate.parse("2026-04-07"),
                         new AccountCode("5000"),
                         new AccountCode("1000"),
@@ -277,15 +295,16 @@ class TaxPostingResolutionTest {
 
   @Test
   void resolve_roundsHalfUpWhenTaxMinorUnitsReachHalf() {
-    BookkeepingEntry.Sale resolved =
+    BookkeepingEntry.SaleSettled resolved =
         assertInstanceOf(
-            BookkeepingEntry.Sale.class,
+            BookkeepingEntry.SaleSettled.class,
             TaxPostingResolution.resolve(
-                new BookkeepingEntry.Sale(
+                new BookkeepingEntry.SaleSettled(
                     LocalDate.parse("2026-04-07"),
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "1"),
+                    null,
                     null,
                     new TaxSelection(REGISTRATION_ID, new TaxCode("half-up-sale")),
                     null),
@@ -309,21 +328,172 @@ class TaxPostingResolutionTest {
                 "ecb-spot"),
             ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
 
-    BookkeepingEntry.Sale resolved =
+    BookkeepingEntry.SaleSettled resolved =
         assertInstanceOf(
-            BookkeepingEntry.Sale.class,
+            BookkeepingEntry.SaleSettled.class,
             TaxPostingResolution.resolve(
-                new BookkeepingEntry.Sale(
+                new BookkeepingEntry.SaleSettled(
                     LocalDate.parse("2026-04-07"),
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "10000"),
+                    null,
                     foreignExchangeDetails,
                     new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                     null),
                 lookupStore(registration())));
 
     assertEquals(foreignExchangeDetails, resolved.foreignExchangeDetails());
+  }
+
+  @Test
+  void resolve_creditVariants_applyResolvedTaxFacts() {
+    BookkeepingEntry.SaleOnCredit resolvedSale =
+        assertInstanceOf(
+            BookkeepingEntry.SaleOnCredit.class,
+            TaxPostingResolution.resolve(
+                new BookkeepingEntry.SaleOnCredit(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("1100"),
+                    new AccountCode("4000"),
+                    new MonetaryAmount("EUR", "10000"),
+                    null,
+                    new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
+                    null),
+                lookupStore(registration())));
+    BookkeepingEntry.ExpenseOnCredit resolvedExpense =
+        assertInstanceOf(
+            BookkeepingEntry.ExpenseOnCredit.class,
+            TaxPostingResolution.resolve(
+                new BookkeepingEntry.ExpenseOnCredit(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("5000"),
+                    new AccountCode("2100"),
+                    new MonetaryAmount("EUR", "12100"),
+                    new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
+                    null),
+                lookupStore(registration())));
+
+    assertEquals(
+        "2100", Objects.requireNonNull(resolvedSale.appliedTax()).taxAmount().minorUnits());
+    assertEquals(
+        new AccountCode("2100"),
+        Objects.requireNonNull(resolvedSale.appliedTax()).taxAccountCode());
+    assertEquals(
+        "2100", Objects.requireNonNull(resolvedExpense.appliedTax()).taxAmount().minorUnits());
+    assertEquals(
+        new AccountCode("1300"),
+        Objects.requireNonNull(resolvedExpense.appliedTax()).taxAccountCode());
+  }
+
+  @Test
+  void resolve_creditVariants_returnOriginalEntriesWhenAlreadyResolvedAndRejectKindMismatches() {
+    BookkeepingEntry.SaleOnCredit noTaxSale =
+        new BookkeepingEntry.SaleOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1100"),
+            new AccountCode("4000"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            null,
+            null);
+    BookkeepingEntry.SaleOnCredit resolvedSale =
+        new BookkeepingEntry.SaleOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1100"),
+            new AccountCode("4000"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
+            new AppliedTax(
+                REGISTRATION_ID,
+                new TaxCode("vat-standard-sale"),
+                new TaxCodeName("VAT Standard Sale"),
+                new TaxRate(210_000),
+                TaxInclusionMode.EXCLUSIVE,
+                TaxApplicationKind.OUTPUT_SALE,
+                new MonetaryAmount("EUR", "10000"),
+                new MonetaryAmount("EUR", "2100"),
+                new MonetaryAmount("EUR", "12100"),
+                new AccountCode("2100")));
+    BookkeepingEntry.ExpenseOnCredit resolvedExpense =
+        new BookkeepingEntry.ExpenseOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("5000"),
+            new AccountCode("2100"),
+            new MonetaryAmount("EUR", "12100"),
+            new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
+            new AppliedTax(
+                REGISTRATION_ID,
+                new TaxCode("vat-standard-expense"),
+                new TaxCodeName("VAT Standard Expense"),
+                new TaxRate(210_000),
+                TaxInclusionMode.INCLUSIVE,
+                TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+                new MonetaryAmount("EUR", "10000"),
+                new MonetaryAmount("EUR", "2100"),
+                new MonetaryAmount("EUR", "12100"),
+                new AccountCode("1300")));
+
+    assertSame(noTaxSale, TaxPostingResolution.resolve(noTaxSale, lookupStore(registration())));
+    assertSame(
+        resolvedSale, TaxPostingResolution.resolve(resolvedSale, lookupStore(registration())));
+    assertSame(
+        resolvedExpense,
+        TaxPostingResolution.resolve(resolvedExpense, lookupStore(registration())));
+    assertEquals(
+        "Sale taxSelection must resolve to applicationKind OUTPUT_SALE.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    TaxPostingResolution.resolve(
+                        new BookkeepingEntry.SaleOnCredit(
+                            LocalDate.parse("2026-04-07"),
+                            new AccountCode("1100"),
+                            new AccountCode("4000"),
+                            new MonetaryAmount("EUR", "10000"),
+                            null,
+                            new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
+                            null),
+                        lookupStore(registration())))
+            .getMessage());
+    assertEquals(
+        "Expense taxSelection cannot resolve to applicationKind OUTPUT_SALE.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    TaxPostingResolution.resolve(
+                        new BookkeepingEntry.ExpenseOnCredit(
+                            LocalDate.parse("2026-04-07"),
+                            new AccountCode("5000"),
+                            new AccountCode("2100"),
+                            new MonetaryAmount("EUR", "12100"),
+                            new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
+                            null),
+                        lookupStore(registration())))
+            .getMessage());
+  }
+
+  @Test
+  void resolve_rejectsNullEntryAndLookupStore() {
+    BookkeepingEntry.SaleSettled sale =
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1000"),
+            new AccountCode("4000"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            null,
+            null,
+            null);
+
+    assertNullPointer(
+        "entry", () -> TaxPostingResolution.resolve(nullOf(), lookupStore(registration())));
+    assertNullPointer("store", () -> TaxPostingResolution.resolve(sale, nullOf()));
+  }
+
+  private static void assertNullPointer(String message, Executable executable) {
+    assertEquals(message, assertThrows(NullPointerException.class, executable).getMessage());
   }
 
   private static TaxRegistrationLookupStore lookupStore(DeclaredTaxRegistration registration) {

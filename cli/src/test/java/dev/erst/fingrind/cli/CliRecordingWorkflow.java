@@ -34,6 +34,7 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
   private final List<Path> backupFilePaths = new ArrayList<>();
   private final List<Path> backupBookKeyFilePaths = new ArrayList<>();
   private final List<Path> restoreBookFilePaths = new ArrayList<>();
+  private final List<Path> restoreBookKeyFilePaths = new ArrayList<>();
   private final List<Path> restoreBackupFilePaths = new ArrayList<>();
   private final List<Path> restoreBackupBookKeyFilePaths = new ArrayList<>();
   private final List<Path> inspectRekeyRollbackBookFilePaths = new ArrayList<>();
@@ -63,8 +64,7 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
   private RestoreBookResult restoreBookResult =
       new RestoreBookResult.Restored(
           CliWorkflowDoubleSupport.hint(Path.of("books/unused.sqlite")),
-          CliWorkflowDoubleSupport.hint(Path.of("books/unused.backup.sqlite")),
-          CliWorkflowDoubleSupport.hint(Path.of("keys/unused.backup.key")));
+          CliWorkflowDoubleSupport.hint(Path.of("keys/unused-restored.key")));
   private RekeyRollbackResult recoverRekeyResult =
       new RekeyRollbackResult.Inspected(
           CliWorkflowDoubleSupport.hint(Path.of("books/unused.sqlite")), List.of());
@@ -111,8 +111,9 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
 
   @Override
   public ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
     restoreBookFilePaths.add(bookFilePath);
+    restoreBookKeyFilePaths.add(bookKeyFilePath);
     restoreBackupFilePaths.add(backupFilePath);
     restoreBackupBookKeyFilePaths.add(backupBookKeyFilePath);
     return CliWorkflowDoubleSupport.accepted(restoreBookResult);

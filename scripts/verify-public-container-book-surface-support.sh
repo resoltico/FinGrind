@@ -32,7 +32,7 @@ TEXT
 Context
 -------
 Entity              : Release Protocol Fixture
-Starter chart       : Owner-managed service starter chart
+Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
@@ -119,6 +119,8 @@ verify_mounted_book_surface() {
         --book-file /work/book.sqlite \
         --book-key-file /work/book.key \
         --entity-name "${fixture_entity_name}" \
+        --book-template-id OWNER_MANAGED_SERVICE \
+        --accounting-basis CASH \
         --functional-currency "${fixture_functional_currency}" \
         --fiscal-year-start "${fixture_fiscal_year_start}" >/dev/null
     mounted_container_run "${image_ref}" \
@@ -126,7 +128,7 @@ verify_mounted_book_surface() {
     mounted_container_run "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-revenue.json >/dev/null
     mounted_container_run "${image_ref}" \
-        record-sale --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json >/dev/null
+        record-sale-settled --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json >/dev/null
 
     text_output="$(
         mounted_container_run "${image_ref}" \

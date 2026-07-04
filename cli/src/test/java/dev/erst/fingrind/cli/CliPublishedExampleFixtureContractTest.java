@@ -60,7 +60,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
       Map<String, String> recordedFixtures, PublishedFixtureScenario scenario) throws IOException {
     JsonNode committed =
         runJsonCommand(
-            "record-sale",
+            "record-sale-settled",
             "--book-file",
             scenario.bookFile().toString(),
             "--book-key-file",
@@ -115,7 +115,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--book-key-file",
             scenario.bookKeyFile().toString(),
             "--effective-date-as-of",
-            "2026-04-08"));
+            "2026-04-07"));
     recordTextFixture(
         recordedFixtures,
         "trial-balance-text.txt",
@@ -126,7 +126,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--book-key-file",
             scenario.bookKeyFile().toString(),
             "--effective-date-as-of",
-            "2026-04-08",
+            "2026-04-07",
             "--output",
             "text"));
     recordJsonFixture(
@@ -141,7 +141,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--account-code",
             "cash",
             "--effective-date-to",
-            "2026-04-08"));
+            "2026-04-07"));
     recordTextFixture(
         recordedFixtures,
         "account-ledger.csv",
@@ -154,7 +154,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--account-code",
             "cash",
             "--effective-date-to",
-            "2026-04-08",
+            "2026-04-07",
             "--output",
             "csv"));
     recordJsonFixture(
@@ -169,7 +169,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--period-start",
             "2026-04-07",
             "--period-end",
-            "2026-04-08"));
+            "2026-04-07"));
     recordTextFixture(
         recordedFixtures,
         "period-summary-text.txt",
@@ -182,7 +182,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--period-start",
             "2026-04-07",
             "--period-end",
-            "2026-04-08",
+            "2026-04-07",
             "--output",
             "text"));
   }
@@ -263,10 +263,10 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             scenario.brokenBookFile().toString(),
             "--book-key-file",
             scenario.brokenBookKeyFile().toString()));
-    recordJsonFixture(
+    recordTextFixture(
         recordedFixtures,
-        "interactive-prompt-unavailable-error.json",
-        runJsonDiagnosticsCommandExpectingExit(
+        "interactive-prompt-unavailable-error.txt",
+        runDiagnosticsCommand(
             5,
             "inspect-book",
             "--book-file",

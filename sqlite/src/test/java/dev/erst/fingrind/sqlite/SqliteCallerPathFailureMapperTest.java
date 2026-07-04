@@ -17,17 +17,17 @@ class SqliteCallerPathFailureMapperTest {
   @Test
   void invalidBookFilePath_mapsEveryCallerPathFailure() {
     assertBookFileMapping(
-        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, "requires one parent directory");
+        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, "requires a parent directory");
     assertBookFileMapping(
         SqliteCallerPathFailure.PARENT_PATH_COLLISION, "already exists as a non-directory");
     assertBookFileMapping(
         SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED, "owner can traverse and write");
     assertBookFileMapping(
         SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
-        "requires one owner-only parent directory");
+        "requires an owner-only parent directory");
     assertBookFileMapping(
         SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
-        "regular non-symlink file");
+        "a regular non-symlink file");
     assertBookFileMapping(
         SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
         "supports POSIX owner-only permissions or Windows owner-only ACLs");
@@ -36,17 +36,17 @@ class SqliteCallerPathFailureMapperTest {
   @Test
   void invalidBookKeyFile_mapsEveryCallerPathFailure() {
     assertBookKeyFileMapping(
-        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, "requires one parent directory");
+        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, "requires a parent directory");
     assertBookKeyFileMapping(
         SqliteCallerPathFailure.PARENT_PATH_COLLISION, "already exists as a non-directory");
     assertBookKeyFileMapping(
         SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED, "owner can traverse and write");
     assertBookKeyFileMapping(
         SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
-        "requires one owner-only parent directory");
+        "requires an owner-only parent directory");
     assertBookKeyFileMapping(
         SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
-        "regular non-symlink file");
+        "a regular non-symlink file");
     assertBookKeyFileMapping(
         SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
         "supports POSIX owner-only permissions or Windows owner-only ACLs");
@@ -72,6 +72,16 @@ class SqliteCallerPathFailureMapperTest {
     assertMaintenanceMapping(
         SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
         ProtectedBookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM);
+  }
+
+  @Test
+  void publicPathRepairHints_useFinalOperatorFacingArticles() {
+    assertEquals(
+        "Choose a regular non-symlink protected-book path beneath a private owner-only parent directory. If the parent directory already exists, tighten it first; otherwise target a missing private directory so FinGrind can create it securely, then rerun the command.",
+        SqliteBookFileSecuritySupport.invalidBookFilePathHint());
+    assertEquals(
+        "Choose a regular non-symlink key file path beneath a private owner-only parent directory. If the parent directory already exists, tighten it first; otherwise target a missing private directory so FinGrind can create it securely, then rerun the command.",
+        SqliteBookKeyFileSecuritySupport.generalKeyFileHint());
   }
 
   private static void assertBookFileMapping(

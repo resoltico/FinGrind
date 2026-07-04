@@ -263,7 +263,9 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_acceptsRemainingTypedRecordCommands() {
-    assertRecordEntry("record-expense");
+    assertRecordEntry("record-purchase-settled");
+    assertRecordEntry("record-purchase-on-credit");
+    assertRecordEntry("record-expense-settled");
     assertRecordEntry("record-owner-contribution");
     assertRecordEntry("record-owner-withdrawal");
     assertRecordEntry("record-opening-position");
@@ -373,6 +375,8 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
                       "shared.path",
                       "--entity-name",
                       "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",

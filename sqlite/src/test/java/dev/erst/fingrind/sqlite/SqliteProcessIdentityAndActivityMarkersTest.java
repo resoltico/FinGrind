@@ -227,8 +227,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
             IllegalArgumentException.class,
             () -> SqliteBookActivityMarkers.hasExternalLiveMarker(Path.of("book.sqlite")));
     assertTrue(
-        Objects.requireNonNull(parentlessPath.getMessage())
-            .contains("beneath one parent directory"));
+        Objects.requireNonNull(parentlessPath.getMessage()).contains("beneath a parent directory"));
   }
 
   @Test

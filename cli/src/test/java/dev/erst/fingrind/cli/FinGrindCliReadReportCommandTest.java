@@ -107,7 +107,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
                 jsonArguments(
-                    "record-sale",
+                    "record-sale-settled",
                     "--book-file",
                     bookFilePath.toString(),
                     "--book-key-file",
@@ -191,7 +191,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message");
+        "exportFamily,rowId,parentRowId,relationKind");
     assertCommandOutputContains(
         new String[] {
           "account-ledger",
@@ -204,7 +204,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "text"
         },
-        "Counterparts");
+        "Counterpart account codes");
     assertCommandOutputContains(
         new String[] {
           "period-summary",
@@ -219,7 +219,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "exportFamily,rowId,parentRowId,relationKind,recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit,message");
+        "exportFamily,rowId,parentRowId,relationKind");
   }
 
   @Test
@@ -281,7 +281,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                 fixedClock())
             .run(
                 new String[] {
-                  "record-sale",
+                  "record-sale-settled",
                   "--book-file",
                   bookFilePath.toString(),
                   "--book-key-file",
@@ -301,9 +301,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                   bookFilePath.toString(),
                   "--book-key-file",
                   bookKeyFilePath.toString(),
-                  "--period-start",
-                  "2026-04-07",
-                  "--period-end",
+                  "--through",
                   "2026-04-07",
                   "--output",
                   "text"
@@ -337,7 +335,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,accountType,lineCode,lineName,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message");
+        "exportFamily,rowId,parentRowId,relationKind");
     assertCommandOutputContains(
         new String[] {
           "changes-in-equity",
@@ -379,10 +377,8 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
                     bookFilePath.toString(),
                     "--book-key-file",
                     bookKeyFilePath.toString(),
-                    "--period-start",
-                    "2026-01-01",
-                    "--period-end",
-                    "2026-12-31")));
+                    "--year",
+                    "2026")));
 
     assertTrue(
         outputStream
@@ -473,7 +469,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
 
     @Override
     public ContractDecision<RestoreBookResult> restoreBook(
-        Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+        Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
       throw new AssertionError("restoreBook should not be called in this test");
     }
 

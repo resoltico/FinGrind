@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, request-json, provenance, reversal, idempotency, ledger-plan, execute-plan, posting-shape, account-declaration]
   questions: ["what request json does fingrind accept", "what ledger plan shape does execute-plan accept", "what posting request fields does fingrind accept"]
@@ -58,20 +58,31 @@ The scaffold is intentionally a placeholder-first sample: `provenance.actorType`
 emitted document carries explicit `replace-before-commit-*` evidence and provenance tokens, and
 those placeholder values must be replaced before real-world use. On one book, an `idempotencyKey`
 becomes single-use per book after the first committed posting.
-The default posting scaffold uses the minimal `SALE` path with `cashAccountCode`,
-`revenueAccountCode`, and `amount`. The raw direct-journal boundary stays available through
+The default posting scaffold uses the minimal `SALE_SETTLED` path with `cashAccountCode`,
+`revenueAccountCode`, and `amount`. On `OWNER_MANAGED_TRADING` books, sale requests additionally
+carry `inventoryRelief.inventoryAccountCode`, `inventoryRelief.costOfSalesAccountCode`, and
+`inventoryRelief.amount` so one typed sale records the inventory relief and cost-of-sales side of
+the same business event. Trading inventory acquisitions stay on the typed path through
+`print-request-template record-purchase-settled` and
+`print-request-template record-purchase-on-credit`, which publish `inventoryAccountCode` plus the
+matching cash or payable role fields and purchase-specific source-document defaults. The raw
+direct-journal boundary stays available through
 `print-request-template post-entry`, but it still has to move at least one declared
 cash-and-cash-equivalent asset account.
 
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
-`help record-sale`, `help post-entry`, `help declare-account`, and `help execute-plan` inline one
+`help record-sale-settled`, `help post-entry`, `help declare-account`, and `help execute-plan` inline one
 canonical template plus the accepted fields and enum vocabularies for their `--request-file`
-payloads. On `execute-plan`, the posting model remains nested under the ledger-plan request shape
-rather than surfacing as a second top-level posting document. When you need the raw scaffold bytes
-directly, `print-request-template` accepts `declare-account` plus every posting-shaped topic:
-`post-entry`, `preflight-entry`, `record-sale`, `record-expense`,
-`record-owner-contribution`, `record-owner-withdrawal`, `record-opening-position`, and
-`record-reversal`.
+payloads. On trading-template sale commands, that help also publishes `inventoryRelief` as a
+conditional field whose description explains when it becomes required. On `execute-plan`, the
+posting model remains nested under the ledger-plan request shape rather than surfacing as a second
+top-level posting document. When you need the raw scaffold bytes directly, `print-request-template`
+accepts `declare-account` plus every posting-shaped topic:
+`post-entry`, `preflight-entry`, `record-sale-settled`, `record-sale-on-credit`,
+`record-purchase-settled`, `record-purchase-on-credit`, `record-expense-settled`,
+`record-expense-on-credit`, `record-receipt`, `record-payment`, `record-owner-contribution`,
+`record-owner-withdrawal`, `record-opening-position`, `record-reversal`, and
+`declare-tax-registration`.
 
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
@@ -87,15 +98,24 @@ Current posting-request rules:
 - `DIRECT_JOURNAL` requires balanced `lines`
 - `DIRECT_JOURNAL` is rejected unless at least one `lines[].accountCode` references a declared
   `CASH_AND_CASH_EQUIVALENT` asset account
-- `SALE` requires `cashAccountCode`, `revenueAccountCode`, and `amount`
-- `EXPENSE` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
+- `SALE_SETTLED` requires `cashAccountCode`, `revenueAccountCode`, and `amount`; on `OWNER_MANAGED_TRADING` books it also requires `inventoryRelief`
+- `SALE_ON_CREDIT` requires `receivableAccountCode`, `revenueAccountCode`, and `amount`; on `OWNER_MANAGED_TRADING` books it also requires `inventoryRelief`
+- `PURCHASE_SETTLED` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `cashAccountCode`, and `amount`
+- `PURCHASE_ON_CREDIT` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `payableAccountCode`, and `amount`
+- `EXPENSE_SETTLED` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
+- `EXPENSE_ON_CREDIT` requires `expenseAccountCode`, `payableAccountCode`, and `amount`
+- `RECEIPT` requires `cashAccountCode`, `receivableAccountCode`, and `amount`
+- `PAYMENT` requires `payableAccountCode`, `cashAccountCode`, and `amount`
 - `OWNER_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
 - `OWNER_WITHDRAWAL` requires `equityAccountCode`, `cashAccountCode`, and `amount`
 - `OPENING_POSITION` requires `openingBalances`
-- `REVERSAL` requires `lines` plus `reversal`
-- every direct `DIRECT_JOURNAL` or `REVERSAL` entry must contain at least two journal lines
+- `REVERSAL` requires `reversal`, derives its journal lines from `reversal.priorPostingId`, and rejects targets that are themselves reversals
 - `evidence.sourceDocuments` must contain at least one source-document object
 - every `evidence.sourceDocuments[]` entry requires `sourceDocumentId`, `sourceDocumentType`, and `documentDate`
+- `inventoryRelief` is admitted only on `SALE_SETTLED` and `SALE_ON_CREDIT`
+- `inventoryRelief` requires `inventoryAccountCode`, `costOfSalesAccountCode`, and `amount`
+- `inventoryRelief.inventoryAccountCode` and `inventoryRelief.costOfSalesAccountCode` must name distinct declared accounts
+- every inventory-account decrease, including `inventoryRelief.amount`, is rejected when it would create or deepen a credit inventory balance; record the missing inventory acquisition first or reduce the requested decrease
 - on command-scoped `requestShapes.bookkeepingEntry` payloads, the selected `sourceDocumentType`
   policy is published directly on `sourceDocumentFields[]` and on the embedded executable schema;
   the full-family descriptor also keeps `sourceDocumentTypeMode`,
@@ -104,13 +124,14 @@ Current posting-request rules:
 - `evidence.approvals` is required as an array and may be empty
 - every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverId`, `approverType`, `decision`, and `approvedAt`
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
-- every direct `DIRECT_JOURNAL` or `REVERSAL` entry must contain at least one `DEBIT` line and at least one `CREDIT` line
-- every line inside one direct `DIRECT_JOURNAL` or `REVERSAL` entry must share the same `lines[].amount.currencyCode`
+- every direct `DIRECT_JOURNAL` entry must contain at least two journal lines
+- every direct `DIRECT_JOURNAL` entry must contain at least one `DEBIT` line and at least one `CREDIT` line
+- every line inside one direct `DIRECT_JOURNAL` entry must share the same `lines[].amount.currencyCode`
 - every direct `DIRECT_JOURNAL` entry is rejected when debit-credit netting reduces every referenced account to zero, because that request would record no durable account movement
 - every journal-line amount, every top-level `amount`, and every `openingBalances[].amount` must use the selected book's functional currency
-- `foreignExchange` is optional for `DIRECT_JOURNAL`, `SALE`, `EXPENSE`,
+- `foreignExchange` is optional for `DIRECT_JOURNAL`, `SALE_SETTLED`, `EXPENSE_SETTLED`,
   `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, and `REVERSAL`, and must be absent for
-  `OPENING_POSITION`
+  `SALE_ON_CREDIT`, `EXPENSE_ON_CREDIT`, `RECEIPT`, `PAYMENT`, and `OPENING_POSITION`
 - `foreignExchange` requires `transactionAmount`, `functionalAmount`, `quotedRate`, and
   `treatmentKind`
 - `foreignExchange.quotedRate` requires `transactionCurrencyAmount`,
@@ -121,9 +142,9 @@ Current posting-request rules:
 - `foreignExchange.functionalAmount` and
   `foreignExchange.quotedRate.functionalCurrencyAmount` must use the selected book's functional
   currency
-- typed `SALE`, `EXPENSE`, `OWNER_CONTRIBUTION`, and `OWNER_WITHDRAWAL` requests currently require
-  `foreignExchange.treatmentKind: "SPOT_SETTLEMENT"`; direct `DIRECT_JOURNAL` and `REVERSAL`
-  requests accept the broader published treatment vocabulary
+- typed `SALE_SETTLED`, `EXPENSE_SETTLED`, `OWNER_CONTRIBUTION`, and `OWNER_WITHDRAWAL`
+  requests currently require `foreignExchange.treatmentKind: "SPOT_SETTLEMENT"`; direct
+  `DIRECT_JOURNAL` and `REVERSAL` requests accept the broader published treatment vocabulary
 - `foreignExchange` records foreign transaction facts without changing the journal-line currency,
   so mixed-currency journal lines remain rejected
 - `reversal` is required only for `REVERSAL` and must be absent for every other `entryKind`
@@ -134,6 +155,7 @@ Current posting-request rules:
 - `provenance.recordedAt` and `provenance.sourceChannel` are not accepted
 - optional fields may be omitted; `null` is accepted for `reversal` and `correlationId`
 - `reversal.priorPostingId` must already exist in the selected book
+- `reversal.priorPostingId` must not identify one posting whose own lineage is already `REVERSAL`
 - a reversal requires one exact line-by-line negation of the target posting and only one reversal is allowed per target
 - `OPENING_POSITION` may touch only `ASSET`, `LIABILITY`, or `EQUITY` accounts
 - `OPENING_POSITION` is accepted only before the first committed posting exists in the selected book, so all adoption balances must be seeded inside one opening-only window
@@ -196,9 +218,9 @@ Or, in a source checkout, inspect the checked-in runnable example:
 cat docs/examples/ledger-plan-request.json
 ```
 
-The default ledger-plan scaffold and the primary runnable plan example both use a typed `SALE`
-posting step. Raw direct-journal plans remain available when a caller needs full line-level
-control.
+The default ledger-plan scaffold and the primary runnable plan example both use a typed
+`SALE_SETTLED` posting step. Raw direct-journal plans remain available when a caller needs full
+line-level control.
 
 Current ledger-plan rules:
 - top-level fields are `planId` and `steps`
@@ -206,8 +228,10 @@ Current ledger-plan rules:
 - `steps` must contain at least one object and every `stepId` must be unique
 - `ensure-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
-- `ensure-book` uses nested `ensureBook`, which requires `entityName`, `functionalCurrency`, and
-  `fiscalYearStart`; the runtime persists the built-in doctrine facts and echoes them back in
+- `ensure-book` uses nested `ensureBook`, which requires `entityName`, `bookTemplateId`,
+  `accountingBasis`, `functionalCurrency`, and `fiscalYearStart`; `bookTemplateId` currently
+  accepts `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING`, `accountingBasis` accepts `CASH`
+  or `ACCRUAL`, and the runtime persists the built-in doctrine facts and echoes them back in
   response payloads
 - `declare-account` uses nested `declareAccount`
 - `preflight-entry`, every committed `record-*` step, and raw `post-entry` use nested `posting`,
@@ -228,8 +252,8 @@ Current ledger-plan rules:
   optional `effectiveDateTo`, typed `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
 - `print-plan-template` emits the canonical `execute-plan` scaffold shape as one placeholder-first
-  workflow with one minimal sale posting step; replace the placeholder evidence and provenance
-  values before real-world use
+  workflow with one minimal settled-sale posting step; replace the placeholder evidence and
+  provenance values before real-world use
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, return
   one bounded aggregate summary by default, and return one complete journal when
   `--result-detail full` is selected; ordinary business steps keep their canonical `kind`,
@@ -266,8 +290,8 @@ exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result env
 | `provenance.actorType` | `PERSON`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
 | `accountNodeKind` | `POSTABLE`, `HEADER` |
-| `financialPositionLineClassification` | `CURRENT_ASSET`, `NONCURRENT_ASSET`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RETAINED_ACCUMULATED`, `RESERVE`, `OTHER_EQUITY` |
-| `profitAndLossLineClassification` | `OPERATING_REVENUE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `FINANCE_EXPENSE`, `OTHER_EXPENSE` |
+| `financialPositionLineClassification` | `CURRENT_ASSET`, `INVENTORY`, `NONCURRENT_ASSET`, `TRADE_RECEIVABLE`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `TRADE_PAYABLE`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RETAINED_ACCUMULATED`, `RESERVE`, `OTHER_EQUITY` |
+| `profitAndLossLineClassification` | `OPERATING_REVENUE`, `SALES_DISCOUNT_ALLOWANCE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `SETTLEMENT_FEE`, `BAD_DEBT_WRITE_OFF`, `FINANCE_EXPENSE`, `OTHER_EXPENSE` |
 
 `lines[].side` is input polarity for one journal line. Response-side `balanceSide` is a derived net orientation for grouped balances, running balances, and report totals; it is not a second writable posting-line field.
 

@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import java.io.PrintStream;
 import java.nio.file.Path;
+import java.util.List;
 
 /** Mutation portion of the split test-only response writer compatibility chain. */
 class CliResponseWriterMutationSupport extends CliResponseWriterDiscoverySupport {
@@ -39,7 +40,7 @@ class CliResponseWriterMutationSupport extends CliResponseWriterDiscoverySupport
   }
 
   void writeOpenBookResult(Path bookFilePath, OpenBookResult result, OutputMode outputMode) {
-    mutationWriter.writeOpenBookResult(bookFilePath, result, outputMode);
+    mutationWriter.writeOpenBookResult(bookFilePath, List.of(), result, outputMode);
   }
 
   void writeGenerateBookKeyFileResult(GeneratedBookKeyFile generatedKeyFile) {
@@ -48,7 +49,7 @@ class CliResponseWriterMutationSupport extends CliResponseWriterDiscoverySupport
 
   void writeGenerateBookKeyFileResult(
       GeneratedBookKeyFile generatedKeyFile, OutputMode outputMode) {
-    mutationWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
+    mutationWriter.writeGenerateBookKeyFileResult(generatedKeyFile, List.of(), outputMode);
   }
 
   void writeRekeyBookResult(

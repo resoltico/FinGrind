@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejectionPublishedMapper;
@@ -38,6 +39,9 @@ final class LedgerPlanAdministrationFailureSupport {
             BookkeepingAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary
         || rejection instanceof BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt
         || rejection instanceof BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt
+        || rejection
+            instanceof
+            BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
         || rejection instanceof BookkeepingAdministrationRejection.FiscalYearCloseFutureDate
         || rejection instanceof BookAdministrationRejection.InterimResultSweepMustStartAt
         || rejection instanceof BookAdministrationRejection.InterimResultSweepFutureDate
@@ -45,6 +49,8 @@ final class LedgerPlanAdministrationFailureSupport {
             instanceof BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustStartAt
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustEndAt
+        || rejection
+            instanceof BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate;
   }
 
@@ -73,6 +79,13 @@ final class LedgerPlanAdministrationFailureSupport {
           List.of(
               BookWorkflowFact.text(
                   "requiredEffectiveDateTo", conflict.requiredEffectiveDateTo().toString()));
+      case BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon conflict ->
+          List.of(
+              BookWorkflowFact.text(
+                  "attemptedEffectiveDateTo", conflict.attemptedEffectiveDateTo().toString()),
+              BookWorkflowFact.text(
+                  "transferredThroughEffectiveDate",
+                  conflict.transferredThroughEffectiveDate().toString()));
       case BookAdministrationRejection.FiscalYearCloseFutureDate conflict ->
           List.of(
               BookWorkflowFact.text(
@@ -136,7 +149,7 @@ final class LedgerPlanAdministrationFailureSupport {
           List.of(
               BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
               BookWorkflowFact.text("parentAccountCode", conflict.parentAccountCode().value()));
-      case BookAdministrationRejection.CloseTargetAccountCandidateMissing conflict ->
+      case CloseTargetAccountCandidateMissing conflict ->
           List.of(
               BookWorkflowFact.text(
                   "requiredFinancialPositionLineClassification",

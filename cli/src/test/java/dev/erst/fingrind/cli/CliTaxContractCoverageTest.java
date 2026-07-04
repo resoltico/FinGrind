@@ -161,8 +161,8 @@ class CliTaxContractCoverageTest extends CliResponseWriterTestSupport {
             bookIdentity(), List.of(registrationWithNumber), 1, Optional.of(listedCursor));
     String fallbackMutationText =
         CliTaxOutputRenderer.renderTaxRegistrationMutationText("surprise", registrationWithNumber);
-    String emptyListText = CliTaxOutputRenderer.renderTaxRegistrationListText(emptyPage);
-    String listedText = CliTaxOutputRenderer.renderTaxRegistrationListText(listedPage);
+    String emptyListText = CliTaxOutputRenderer.renderTaxRegistrationListText(emptyPage, false);
+    String listedText = CliTaxOutputRenderer.renderTaxRegistrationListText(listedPage, false);
 
     assertNull(withoutNumberPayload.registrationNumber());
     assertEquals("LV40001234567", withNumberPayload.registrationNumber());

@@ -16,7 +16,7 @@ class ForeignExchangeDiscoveryTemplateCoverageTest {
   @Test
   void foreignExchangeTemplatesAndRequestShapes_publishCanonicalFxSurface() {
     ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE));
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
     ContractTemplates.PostingRequestTemplateDescriptor openingPositionTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_OPENING_POSITION));
@@ -25,7 +25,7 @@ class ForeignExchangeDiscoveryTemplateCoverageTest {
     assertNull(openingPositionTemplate.foreignExchange());
 
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor saleDescriptor =
-        MachineContractPostEntrySchemas.descriptor(BookkeepingEntryKind.SALE);
+        MachineContractPostEntrySchemas.descriptor(BookkeepingEntryKind.SALE_SETTLED);
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor openingPositionDescriptor =
         MachineContractPostEntrySchemas.descriptor(BookkeepingEntryKind.OPENING_POSITION);
 

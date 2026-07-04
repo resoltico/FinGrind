@@ -8,7 +8,7 @@
     "details": {
       "type": "SQLITE_BOOK_ROUND_TRIP",
       "request": {
-        "effectiveDate": "2026-06-14",
+        "effectiveDate": "2026-04-06",
         "idempotencyKey": "seed-sqlite-jpy-idem-1",
         "lineCount": 2,
         "reversalPresent": false
