@@ -99,6 +99,42 @@ bash "${reconcile_script}" "${success_primary}" "${success_release}" "9.9.9" >/d
 [[ ! -f "${success_primary}/BROKEN.txt" ]] || die \
     "displaced primary placeholder file survived the replacement reconciliation"
 
+self_hosted_root="${temp_parent}/self-hosted"
+mkdir -p "${self_hosted_root}"
+self_hosted_release="$(create_release_checkout "${self_hosted_root}" "7.7.7")"
+self_hosted_primary="${self_hosted_root}/primary"
+mkdir -p "${self_hosted_primary}"
+printf 'corrupt placeholder\n' > "${self_hosted_primary}/BROKEN.txt"
+mkdir -p "${self_hosted_release}/scripts"
+cp "${reconcile_script}" "${self_hosted_release}/scripts/reconcile-release-primary-checkout.sh"
+cp "${verify_script}" "${self_hosted_release}/scripts/verify-release-primary-checkout.sh"
+chmod +x "${self_hosted_release}/scripts/reconcile-release-primary-checkout.sh" \
+    "${self_hosted_release}/scripts/verify-release-primary-checkout.sh"
+(
+    cd "${self_hosted_release}"
+    git checkout main >/dev/null 2>&1
+    git add scripts/reconcile-release-primary-checkout.sh scripts/verify-release-primary-checkout.sh
+    git commit -m "Add release helpers" >/dev/null
+    git push origin main >/dev/null 2>&1
+    git checkout -B "release/7.7.7" main >/dev/null 2>&1
+)
+bash "${self_hosted_release}/scripts/reconcile-release-primary-checkout.sh" \
+    "${self_hosted_primary}" \
+    "${self_hosted_release}" \
+    "7.7.7" >/dev/null
+[[ ! -e "${self_hosted_release}" ]] || die \
+    "self-hosted replacement checkout path still exists after reconciliation"
+[[ -d "${self_hosted_primary}/.git" ]] || die \
+    "self-hosted primary checkout was not replaced with the Git checkout"
+[[ "$(git -C "${self_hosted_primary}" branch --show-current)" == 'main' ]] || die \
+    "self-hosted reconciled primary checkout is not on main"
+bash "${self_hosted_primary}/scripts/verify-release-primary-checkout.sh" \
+    "${self_hosted_primary}" \
+    "7.7.7" >/dev/null || die \
+    "self-hosted reconciled primary checkout did not satisfy the canonical verifier"
+[[ ! -f "${self_hosted_primary}/BROKEN.txt" ]] || die \
+    "self-hosted displaced primary placeholder file survived the replacement reconciliation"
+
 failure_root="${temp_parent}/failure"
 mkdir -p "${failure_root}"
 failure_release="$(create_release_checkout "${failure_root}" "8.8.8")"
