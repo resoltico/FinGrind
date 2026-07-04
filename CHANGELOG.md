@@ -12,7 +12,7 @@ Historical release notes older than `0.31.0` live in:
 ### Fixed
 
 - Fixed the post-tag public-container publication verifier so the anonymous mounted-book proof now expects the live per-account `trial-balance --output text` layout, the currency-formatted totals row, and the resolved `As of` context line instead of the retired compact account-table rendering that falsely failed the `0.59.0` staging-container publication rerun path after the image itself had already published correctly.
-- Fixed the replacement-based release closeout helper so `reconcile-release-primary-checkout.sh` now stages its verifier outside the replacement checkout before moving that tree into place, which keeps the scripted primary-checkout reconciliation path working when the release is being driven from the replacement checkout itself and locks that behavior with a self-hosted regression case.
+- Fixed the replacement-based release closeout helper so `reconcile-release-primary-checkout.sh` now stages its verifier outside the replacement checkout before moving that tree into place and treats the verified replacement as authoritative before deleting the displaced backup, which keeps the scripted primary-checkout reconciliation path working when the release is being driven from the replacement checkout itself and prevents an interrupted backup cleanup from rolling the repository back to the stale primary tree.
 
 ## [0.59.0] - 2026-07-04
 
