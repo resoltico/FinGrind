@@ -145,8 +145,8 @@ restore_state='replacement-installed'
 
 "${verify_script}" "${primary_checkout}" "${expected_version}" "${default_branch}" >/dev/null
 
-rm -rf "${backup_checkout}" || die "failed to remove displaced primary checkout backup ${backup_checkout}"
 restore_state='done'
+rm -rf "${backup_checkout}" || die "failed to remove displaced primary checkout backup ${backup_checkout}"
 cleanup_verify_script_staging_dir
 trap - EXIT
 

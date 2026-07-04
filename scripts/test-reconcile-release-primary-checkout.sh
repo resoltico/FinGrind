@@ -135,6 +135,50 @@ bash "${self_hosted_primary}/scripts/verify-release-primary-checkout.sh" \
 [[ ! -f "${self_hosted_primary}/BROKEN.txt" ]] || die \
     "self-hosted displaced primary placeholder file survived the replacement reconciliation"
 
+cleanup_failure_root="${temp_parent}/cleanup-failure"
+mkdir -p "${cleanup_failure_root}"
+cleanup_failure_release="$(create_release_checkout "${cleanup_failure_root}" "6.6.6")"
+cleanup_failure_primary="${cleanup_failure_root}/primary"
+cleanup_failure_root_resolved="$(cd -P -- "${cleanup_failure_root}" && pwd)"
+cleanup_failure_backup="${cleanup_failure_root_resolved}/.primary.pre-release-backup"
+cleanup_failure_fake_bin="${cleanup_failure_root}/fake-bin"
+mkdir -p "${cleanup_failure_primary}" "${cleanup_failure_fake_bin}"
+printf 'corrupt placeholder\n' > "${cleanup_failure_primary}/BROKEN.txt"
+cat > "${cleanup_failure_fake_bin}/rm" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+blocked_path="${FINGRIND_TEST_BLOCKED_RM_PATH:-}"
+for argument in "$@"; do
+    if [[ -n "${blocked_path}" && "${argument}" == "${blocked_path}" ]]; then
+        exit 1
+    fi
+done
+
+exec /bin/rm "$@"
+EOF
+chmod +x "${cleanup_failure_fake_bin}/rm"
+if PATH="${cleanup_failure_fake_bin}:${PATH}" \
+    FINGRIND_TEST_BLOCKED_RM_PATH="${cleanup_failure_backup}" \
+    bash "${reconcile_script}" "${cleanup_failure_primary}" "${cleanup_failure_release}" "6.6.6" \
+        >/dev/null 2>&1; then
+    die "cleanup-failure reconciliation unexpectedly succeeded"
+fi
+[[ ! -e "${cleanup_failure_release}" ]] || die \
+    "cleanup-failure replacement checkout path still exists after replacement installation"
+[[ -d "${cleanup_failure_primary}/.git" ]] || die \
+    "cleanup-failure primary checkout was not replaced with the Git checkout"
+[[ "$(git -C "${cleanup_failure_primary}" branch --show-current)" == 'main' ]] || die \
+    "cleanup-failure reconciled primary checkout is not on main"
+"${verify_script}" "${cleanup_failure_primary}" "6.6.6" >/dev/null || die \
+    "cleanup-failure reconciled primary checkout did not satisfy the canonical verifier"
+[[ -d "${cleanup_failure_backup}" ]] || die \
+    "cleanup-failure displaced primary checkout backup was not preserved for follow-up cleanup"
+[[ ! -f "${cleanup_failure_primary}/BROKEN.txt" ]] || die \
+    "cleanup-failure primary checkout still exposes the displaced placeholder file"
+[[ -f "${cleanup_failure_backup}/BROKEN.txt" ]] || die \
+    "cleanup-failure displaced placeholder file was not preserved in the backup tree"
+
 failure_root="${temp_parent}/failure"
 mkdir -p "${failure_root}"
 failure_release="$(create_release_checkout "${failure_root}" "8.8.8")"
