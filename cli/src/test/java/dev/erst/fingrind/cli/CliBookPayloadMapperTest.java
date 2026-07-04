@@ -38,7 +38,7 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
     assertEquals(
         "internal-management-bookkeeping-kernel",
         bookContext.bookIdentity().accountingKernelProfile());
-    assertEquals("CASH_BASIS", bookContext.bookIdentity().accountingBasis());
+    assertEquals("CASH", bookContext.bookIdentity().accountingBasis());
     assertEquals(
         "NON_STATUTORY_INTERNAL_MANAGEMENT",
         bookContext.bookIdentity().accountingFrameworkPosition());
@@ -68,7 +68,7 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
     var payload = CliBookPayloadMapper.bookIdentityPayload(doctrinalIdentity);
 
     assertEquals("internal-management-bookkeeping-kernel", payload.accountingKernelProfile());
-    assertEquals("CASH_BASIS", payload.accountingBasis());
+    assertEquals("CASH", payload.accountingBasis());
     assertEquals("NON_STATUTORY_INTERNAL_MANAGEMENT", payload.accountingFrameworkPosition());
     assertEquals("OWNER_MANAGED_SINGLE_ENTITY", payload.entityForm());
     assertEquals("OWNER_MANAGED_SERVICE", payload.bookTemplateId());
@@ -106,7 +106,7 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
     var amount = entry.amount();
     assertNotNull(amount);
 
-    assertEquals("SALE", entry.entryKind());
+    assertEquals("SALE_SETTLED", entry.entryKind());
     assertEquals("cash", entry.cashAccountCode());
     assertEquals("service-revenue", entry.revenueAccountCode());
     assertEquals("1000", amount.minorUnits());

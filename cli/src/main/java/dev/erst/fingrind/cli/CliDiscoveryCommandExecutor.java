@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolRequestTemplateTopics;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.util.List;
 import java.util.Objects;
@@ -65,11 +66,12 @@ final class CliDiscoveryCommandExecutor {
   }
 
   int writeRequestTemplate() {
-    return writeRequestTemplate(null);
+    return writeRequestTemplate(null, null);
   }
 
-  int writeRequestTemplate(@Nullable OperationId commandTopic) {
-    responseWriter.writeRawTemplate(requestTemplateFor(commandTopic));
+  int writeRequestTemplate(
+      @Nullable OperationId commandTopic, @Nullable BookTemplateId bookTemplateId) {
+    responseWriter.writeRawTemplate(requestTemplateFor(commandTopic, bookTemplateId));
     return 0;
   }
 
@@ -119,9 +121,10 @@ final class CliDiscoveryCommandExecutor {
         FinGrindCli.runtimeBundleTarget());
   }
 
-  static Object requestTemplateFor(@Nullable OperationId commandTopic) {
+  static Object requestTemplateFor(
+      @Nullable OperationId commandTopic, @Nullable BookTemplateId bookTemplateId) {
     if (commandTopic == null) {
-      return MachineContract.requestTemplate();
+      return MachineContract.requestTemplate(bookTemplateId);
     }
     if (commandTopic == OperationId.DECLARE_TAX_REGISTRATION) {
       return MachineContract.declareTaxRegistrationTemplate();
@@ -129,7 +132,7 @@ final class CliDiscoveryCommandExecutor {
     if (ProtocolRequestTemplateTopics.supports(commandTopic)
         && commandTopic != OperationId.DECLARE_ACCOUNT) {
       return Objects.requireNonNull(
-          MachineContract.requestTemplate(commandTopic),
+          MachineContract.requestTemplate(commandTopic, bookTemplateId),
           "Missing request template for " + commandTopic.wireName() + ".");
     }
     if (commandTopic == OperationId.DECLARE_ACCOUNT) {

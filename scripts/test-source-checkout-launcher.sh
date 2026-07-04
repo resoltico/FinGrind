@@ -158,6 +158,8 @@ stale_runtime_probe="${tmp_dir}/stale-runtime-probe"
 readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
 readonly entity_name='Launcher Smoke Co'
+readonly book_template_id='OWNER_MANAGED_SERVICE'
+readonly accounting_basis='CASH'
 readonly functional_currency='EUR'
 readonly fiscal_year_start='01-01'
 [[ ! -e "$(dirname "${book_file}")" ]] || die "source-checkout launcher book parent started pre-created"
@@ -170,6 +172,10 @@ progress 'source-checkout help surface'
 [[ ! -s "${help_stderr}" ]] || die "source-checkout launcher help wrote diagnostics"
 grep -Fq 'Quick Start' "${help_stdout}" ||
     die "source-checkout launcher help did not render the front-door guidance section"
+grep -Fq 'Generate a key file' "${help_stdout}" ||
+    die "source-checkout launcher help did not lead with key generation as the first operator action"
+grep -Fq 'Open a protected book' "${help_stdout}" ||
+    die "source-checkout launcher help did not publish the protected-book opening path"
 grep -Fq 'Command Catalog' "${help_stdout}" ||
     die "source-checkout launcher help did not render the grouped command catalog"
 if grep -Fq 'Unsupported runtime distribution: null' "${help_stdout}"; then
@@ -212,7 +218,7 @@ python3 "${launcher_contract_test_support}" \
     assert-request-template \
     --document "${template_request_stdout}" \
     --label 'source-checkout launcher' \
-    --expected-entry-kind SALE \
+    --expected-entry-kind SALE_SETTLED \
     --require-evidence-fields
 
 progress 'source-checkout post-entry request template'
@@ -247,7 +253,7 @@ python3 "${launcher_contract_test_support}" \
     assert-request-template \
     --document "${raw_template_request_stdout}" \
     --label 'developer direct-Java' \
-    --expected-entry-kind SALE
+    --expected-entry-kind SALE_SETTLED
 
 progress 'direct-java post-entry request template'
 "${raw_java_wrapper}" print-request-template post-entry \
@@ -277,7 +283,7 @@ python3 "${launcher_contract_test_support}" \
     assert-request-template \
     --document "${healed_template_request_stdout}" \
     --label 'source-checkout launcher self-refresh' \
-    --expected-entry-kind SALE
+    --expected-entry-kind SALE_SETTLED
 
 touch -t 200001010000 "${source_checkout_runtime_manifest}"
 : >"${stale_runtime_probe}"
@@ -314,6 +320,8 @@ progress 'source-checkout open-book'
     --book-file "${book_file}" \
     --book-key-file "${key_file}" \
     --entity-name "${entity_name}" \
+    --book-template-id "${book_template_id}" \
+    --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
     --output json >"${open_stdout}" 2>"${open_stderr}" ||
@@ -329,6 +337,7 @@ python3 "${launcher_contract_test_support}" \
     --document "${open_stdout}" \
     --label 'source-checkout launcher' \
     --entity-name "${entity_name}" \
+    --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}"
 
@@ -341,6 +350,10 @@ progress 'direct-java help surface'
 [[ ! -s "${raw_help_stderr}" ]] || die "developer direct-Java help wrote diagnostics"
 grep -Fq 'Quick Start' "${raw_help_stdout}" ||
     die "developer direct-Java help did not render the front-door guidance section"
+grep -Fq 'Generate a key file' "${raw_help_stdout}" ||
+    die "developer direct-Java help did not lead with key generation as the first operator action"
+grep -Fq 'Open a protected book' "${raw_help_stdout}" ||
+    die "developer direct-Java help did not publish the protected-book opening path"
 if grep -Fq 'Developer Raw JAR' "${raw_help_stdout}"; then
     die "developer direct-Java help regressed back to the retired runtime-specific quick-start block"
 fi
@@ -378,6 +391,8 @@ progress 'direct-java open-book'
     --book-file "${tmp_dir}/raw-jar.sqlite" \
     --book-key-file "${key_file}" \
     --entity-name "${entity_name}" \
+    --book-template-id "${book_template_id}" \
+    --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
     --output json >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
@@ -389,6 +404,7 @@ python3 "${launcher_contract_test_support}" \
     --document "${raw_open_stdout}" \
     --label 'developer direct-Java' \
     --entity-name "${entity_name}" \
+    --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}"
 
@@ -428,6 +444,8 @@ java -jar "${raw_jar}" \
     --book-file "${tmp_dir}/raw-jar-direct.sqlite" \
     --book-key-file "${key_file}" \
     --entity-name "${entity_name}" \
+    --book-template-id "${book_template_id}" \
+    --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" \
     --output json >"${raw_jar_open_stdout}" 2>"${raw_jar_open_stderr}"

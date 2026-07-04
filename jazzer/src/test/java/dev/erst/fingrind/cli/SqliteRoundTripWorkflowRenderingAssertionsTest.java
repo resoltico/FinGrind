@@ -22,6 +22,7 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.jazzer.support.JazzerPostEntryResultFixtures;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -160,7 +161,10 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
         SqliteRoundTripWorkflowDecisionAssertions.requirePreflightAccepted(
             ContractDecision.accepted(
                 new PreflightAccepted(
-                    new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")))));
+                    new IdempotencyKey("idem-1"),
+                    LocalDate.parse("2026-04-07"),
+                    JazzerPostEntryResultFixtures.resolvedJournal(
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())))));
     assertThrows(
         IllegalStateException.class,
         () ->

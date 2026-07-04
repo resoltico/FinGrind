@@ -2,7 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingEntrySemanticsViolationFactory;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingEntryModeSemanticsViolations;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.List;
@@ -19,7 +19,6 @@ final class DirectJournalEntrySemantics {
       String selectorValue,
       List<JournalLine> lines) {
     requireEconomicAccountMovement(violations, selectorField, selectorValue, lines);
-    requireCashBasisAccountMovement(violations, accounts, selectorField, selectorValue, lines);
   }
 
   private static void requireEconomicAccountMovement(
@@ -31,30 +30,6 @@ final class DirectJournalEntrySemantics {
       return;
     }
     violations.add(
-        BookkeepingEntrySemanticsViolationFactory.economicNullJournal(
-            selectorField, selectorValue));
-  }
-
-  private static void requireCashBasisAccountMovement(
-      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      Map<AccountCode, RegisteredAccount> accounts,
-      String selectorField,
-      String selectorValue,
-      List<JournalLine> lines) {
-    List<AccountCode> referencedAccountCodes =
-        lines.stream().map(JournalLine::accountCode).distinct().toList();
-    if (accounts.size() != referencedAccountCodes.size()) {
-      return;
-    }
-    boolean hasCashAccount =
-        referencedAccountCodes.stream()
-            .map(accounts::get)
-            .anyMatch(RegisteredAccount::cashAndCashEquivalent);
-    if (hasCashAccount) {
-      return;
-    }
-    violations.add(
-        BookkeepingEntrySemanticsViolationFactory.cashBasisAccountRequired(
-            selectorField, selectorValue, referencedAccountCodes));
+        BookkeepingEntryModeSemanticsViolations.economicNullJournal(selectorField, selectorValue));
   }
 }

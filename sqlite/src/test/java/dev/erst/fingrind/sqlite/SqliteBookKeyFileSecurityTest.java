@@ -380,7 +380,7 @@ class SqliteBookKeyFileSecurityTest {
       assertPathFailure(
           keyPath,
           SqliteCallerPathFailure.PARENT_PATH_COLLISION,
-          "resolve beneath one real parent directory",
+          "resolve beneath a real parent directory",
           () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
     }
   }

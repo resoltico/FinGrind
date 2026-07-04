@@ -28,7 +28,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
         CliFuzzFixtures.readPostEntryCommand(
             CliFuzzFixtureCommandSupport.basicValidRequest().getBytes(UTF_8));
     BookkeepingEntry expenseWithoutTax =
-        new BookkeepingEntry.Expense(
+        new BookkeepingEntry.ExpenseSettled(
             LocalDate.parse("2026-04-09"),
             new AccountCode("6100"),
             new AccountCode("1100"),
@@ -56,11 +56,12 @@ class CliFuzzSyntheticTaxRegistrationsTest {
         CliFuzzSyntheticTaxRegistrations.lookupStore(
             CliFuzzFixtureCommandSupport.withEntry(
                     template,
-                    new BookkeepingEntry.Sale(
+                    new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-10"),
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
+                        null,
                         null,
                         taxSelection("vat-lv", "vat-standard-sale"),
                         null))
@@ -82,7 +83,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
         CliFuzzSyntheticTaxRegistrations.lookupStore(
             CliFuzzFixtureCommandSupport.withEntry(
                     template,
-                    new BookkeepingEntry.Expense(
+                    new BookkeepingEntry.ExpenseSettled(
                         LocalDate.parse("2026-04-11"),
                         new AccountCode("6100"),
                         new AccountCode("1100"),
@@ -105,7 +106,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
         CliFuzzSyntheticTaxRegistrations.lookupStore(
             CliFuzzFixtureCommandSupport.withEntry(
                     template,
-                    new BookkeepingEntry.Expense(
+                    new BookkeepingEntry.ExpenseSettled(
                         LocalDate.parse("2026-04-12"),
                         new AccountCode("6100"),
                         new AccountCode("1100"),
@@ -129,11 +130,12 @@ class CliFuzzSyntheticTaxRegistrationsTest {
         CliFuzzSyntheticTaxRegistrations.lookupStore(
             CliFuzzFixtureCommandSupport.withEntry(
                     template,
-                    new BookkeepingEntry.Sale(
+                    new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-13"),
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
+                        null,
                         null,
                         taxSelection("vat-lv", "vat-standard-sale"),
                         appliedTax(
@@ -159,7 +161,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
         CliFuzzSyntheticTaxRegistrations.lookupStore(
             CliFuzzFixtureCommandSupport.withEntry(
                     template,
-                    new BookkeepingEntry.Expense(
+                    new BookkeepingEntry.ExpenseSettled(
                         LocalDate.parse("2026-04-14"),
                         new AccountCode("6100"),
                         new AccountCode("1100"),
@@ -190,11 +192,12 @@ class CliFuzzSyntheticTaxRegistrationsTest {
         CliFuzzSyntheticTaxRegistrations.lookupStore(
             CliFuzzFixtureCommandSupport.withEntry(
                     template,
-                    new BookkeepingEntry.Sale(
+                    new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-15"),
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
+                        null,
                         null,
                         taxSelection("vat-lv", "vat-standard-sale"),
                         appliedTax(
@@ -221,7 +224,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
         CliFuzzSyntheticTaxRegistrations.lookupStore(
             CliFuzzFixtureCommandSupport.withEntry(
                     template,
-                    new BookkeepingEntry.Expense(
+                    new BookkeepingEntry.ExpenseSettled(
                         LocalDate.parse("2026-04-16"),
                         new AccountCode("6100"),
                         new AccountCode("1100"),
@@ -250,6 +253,75 @@ class CliFuzzSyntheticTaxRegistrationsTest {
   }
 
   @Test
+  void lookupStore_supports_credit_variants_and_non_taxable_defaults() {
+    PostEntryCommand template =
+        CliFuzzFixtures.readPostEntryCommand(
+            CliFuzzFixtureCommandSupport.basicValidRequest().getBytes(UTF_8));
+
+    var creditSaleStore =
+        CliFuzzSyntheticTaxRegistrations.lookupStore(
+            CliFuzzFixtureCommandSupport.withEntry(
+                    template,
+                    new BookkeepingEntry.SaleOnCredit(
+                        LocalDate.parse("2026-04-17"),
+                        new AccountCode("1100"),
+                        new AccountCode("4000"),
+                        new MonetaryAmount("EUR", "10000"),
+                        null,
+                        taxSelection("vat-lv", "vat-standard-sale"),
+                        null))
+                .entry(),
+            CliFuzzFixtures.fixedClock().instant());
+    assertEquals(
+        TaxApplicationKind.OUTPUT_SALE,
+        creditSaleStore
+            .findTaxRegistration(new TaxRegistrationId("vat-lv"))
+            .orElseThrow()
+            .taxCodes()
+            .getFirst()
+            .applicationKind());
+
+    var creditExpenseStore =
+        CliFuzzSyntheticTaxRegistrations.lookupStore(
+            CliFuzzFixtureCommandSupport.withEntry(
+                    template,
+                    new BookkeepingEntry.ExpenseOnCredit(
+                        LocalDate.parse("2026-04-18"),
+                        new AccountCode("6100"),
+                        new AccountCode("2100"),
+                        new MonetaryAmount("EUR", "11200"),
+                        taxSelection("vat-lv", "vat-nonrecoverable-expense"),
+                        null))
+                .entry(),
+            CliFuzzFixtures.fixedClock().instant());
+    assertEquals(
+        TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE,
+        creditExpenseStore
+            .findTaxRegistration(new TaxRegistrationId("vat-lv"))
+            .orElseThrow()
+            .taxCodes()
+            .getFirst()
+            .applicationKind());
+
+    var nonTaxableOwnerContributionStore =
+        CliFuzzSyntheticTaxRegistrations.lookupStore(
+            CliFuzzFixtureCommandSupport.withEntry(
+                    template,
+                    new BookkeepingEntry.OwnerContribution(
+                        LocalDate.parse("2026-04-19"),
+                        new AccountCode("1000"),
+                        new AccountCode("3100"),
+                        new MonetaryAmount("EUR", "500"),
+                        null))
+                .entry(),
+            CliFuzzFixtures.fixedClock().instant());
+    assertTrue(
+        nonTaxableOwnerContributionStore
+            .findTaxRegistration(new TaxRegistrationId("vat-lv"))
+            .isEmpty());
+  }
+
+  @Test
   void bookkeepingCommand_preserves_nonrecoverable_expense_tax_account_nullability() {
     PostEntryCommand template =
         CliFuzzFixtures.readPostEntryCommand(
@@ -257,7 +329,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
     PostEntryCommand nonrecoverableExpense =
         CliFuzzFixtureCommandSupport.withEntry(
             template,
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 LocalDate.parse("2026-04-15"),
                 new AccountCode("6100"),
                 new AccountCode("1100"),
@@ -266,8 +338,8 @@ class CliFuzzSyntheticTaxRegistrationsTest {
                 taxSelection("vat-lv", "vat-nonrecoverable-expense"),
                 null));
 
-    BookkeepingEntry.Expense resolvedExpense =
-        (BookkeepingEntry.Expense)
+    BookkeepingEntry.ExpenseSettled resolvedExpense =
+        (BookkeepingEntry.ExpenseSettled)
             CliFuzzFixtures.bookkeepingCommand(nonrecoverableExpense)
                 .callerAuthoredEntry()
                 .orElseThrow();

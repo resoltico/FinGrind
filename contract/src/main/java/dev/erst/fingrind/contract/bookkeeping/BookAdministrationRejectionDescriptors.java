@@ -44,7 +44,7 @@ final class BookAdministrationRejectionDescriptors {
                   BookAdministrationRejection.AccountHierarchyCycle.class,
                   Descriptor.ACCOUNT_HIERARCHY_CYCLE),
               Map.entry(
-                  BookAdministrationRejection.CloseTargetAccountCandidateMissing.class,
+                  CloseTargetAccountCandidateMissing.class,
                   Descriptor.CLOSING_EQUITY_ACCOUNT_CANDIDATE_MISSING),
               Map.entry(
                   CloseTargetAccountCandidateAmbiguous.class,
@@ -64,6 +64,10 @@ final class BookAdministrationRejectionDescriptors {
               Map.entry(
                   BookAdministrationRejection.FiscalYearCloseMustEndAt.class,
                   Descriptor.FISCAL_YEAR_CLOSE_MUST_END_AT),
+              Map.entry(
+                  BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
+                      .class,
+                  Descriptor.FISCAL_YEAR_CLOSE_PRECEDES_TRANSFERRED_THROUGH_HORIZON),
               Map.entry(
                   BookAdministrationRejection.FiscalYearCloseFutureDate.class,
                   Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE));
@@ -129,6 +133,8 @@ final class BookAdministrationRejectionDescriptors {
     FISCAL_YEAR_CLOSE_MUST_START_AT,
     /** Descriptor for fiscal-year closes that miss the required year end. */
     FISCAL_YEAR_CLOSE_MUST_END_AT,
+    /** Descriptor for fiscal-year closes that precede the live transferred-through horizon. */
+    FISCAL_YEAR_CLOSE_PRECEDES_TRANSFERRED_THROUGH_HORIZON,
     /** Descriptor for fiscal-year closes that target a future date. */
     FISCAL_YEAR_CLOSE_FUTURE_DATE;
 

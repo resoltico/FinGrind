@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows publication lane, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did the windows publication lane expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]

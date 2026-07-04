@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.InventoryBalanceBelowZero;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
@@ -16,9 +17,13 @@ import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EconomicEventClass;
+import dev.erst.fingrind.core.EvidenceClass;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
@@ -33,20 +38,32 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link PostingRejection}. */
 class PostingRejectionTest {
   private static final List<String> ENTRY_SEMANTICS_FACTORY_NAMES =
       List.of(
+          "accountRoleMismatch",
           "accountTypeMismatch",
-          "cashBasisAccountRequired",
           "cashFlowAssetClassificationMismatch",
           "distinctRoleAccountsRequired",
           "economicNullJournal",
+          "evidenceClassConflict",
           "financialPositionClassificationMismatch",
-          "sourceDocumentTypeNotAccepted");
+          "inventoryReliefRequiresTradingBook",
+          "openingWindowAccountNotPermitted",
+          "rawJournalBundlesOperationalEvents",
+          "rawJournalRequiresCashLine",
+          "rawJournalShadowsTypedEvent",
+          "sourceDocumentTypeNotAccepted",
+          "tradingSaleRequiresInventoryRelief",
+          "verbRequiresRole",
+          "verbRequiresTradingTemplate");
 
   private static final List<String> TAX_ENTRY_SEMANTICS_FACTORY_NAMES =
       List.of("taxApplicationKindMismatch", "unknownTaxCode", "unknownTaxRegistration");
@@ -54,17 +71,31 @@ class PostingRejectionTest {
   private static final List<String> ENTRY_SEMANTICS_CANONICAL_CODES =
       List.of(
           "economic-null-journal",
-          "cash-basis-account-required",
           "distinct-role-accounts-required",
           "account-type-mismatch",
           "cash-flow-asset-classification-mismatch",
           "financial-position-classification-mismatch",
+          "account-role-mismatch",
           "source-document-type-not-accepted",
           "unknown-tax-registration",
           "unknown-tax-code",
-          "tax-application-kind-mismatch");
+          "tax-application-kind-mismatch",
+          "verb-requires-receivable-role",
+          "verb-requires-payable-role",
+          "verb-requires-trading-template",
+          "trading-sale-requires-inventory-relief",
+          "inventory-relief-requires-trading-book",
+          "evidence-class-conflict",
+          "raw-journal-shadows-typed-event",
+          "raw-journal-bundles-operational-events",
+          "raw-journal-requires-cash-line",
+          "opening-window-account-not-permitted");
   private static final List<String> ACCOUNT_STATE_CANONICAL_CODES =
-      List.of("unknown-account", "inactive-account", "non-postable-account");
+      List.of(
+          "unknown-account",
+          "inactive-account",
+          "non-postable-account",
+          "inventory-balance-below-zero");
 
   private static final List<String> ENTRY_SEMANTICS_DETAIL_FIELD_NAMES =
       List.of("code", "field", "message", "category", "repair");
@@ -77,12 +108,14 @@ class PostingRejectionTest {
             "entry-semantics-violations",
             "account-state-violations",
             "idempotency-key-conflict",
+            "posting-effective-date-in-future",
             "book-functional-currency-mismatch",
             "closed-period-violation",
             "opening-position-window-closed",
             "opening-position-touches-nominal-account",
             "reserved-result-classification",
             "reversal-target-not-found",
+            "reversal-target-is-reversal",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
         List.of(
@@ -100,6 +133,10 @@ class PostingRejectionTest {
                 new PostingRejection.AccountStateViolations(
                     List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
             PostingRejection.wireCode(new PostingRejection.IdempotencyKeyConflict()),
+            PostingRejection.wireCode(
+                new PostingRejection.PostingEffectiveDateInFuture(
+                    java.time.LocalDate.parse("2026-05-02"),
+                    java.time.LocalDate.parse("2026-05-01"))),
             PostingRejection.wireCode(
                 new PostingRejection.BookFunctionalCurrencyMismatch(
                     CurrencyUnit.of("EUR"), CurrencyUnit.of("USD"))),
@@ -119,6 +156,9 @@ class PostingRejectionTest {
             PostingRejection.wireCode(
                 new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))),
             PostingRejection.wireCode(
+                new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+                    new PostingId("posting-1b"))),
+            PostingRejection.wireCode(
                 new PostingRejection.ReversalAlreadyExists(new PostingId("posting-2"))),
             PostingRejection.wireCode(
                 new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-3")))));
@@ -127,14 +167,27 @@ class PostingRejectionTest {
   @Test
   void accountStateViolationWireCode_isStableForEverySubtype() {
     assertEquals(
-        List.of("unknown-account", "inactive-account", "non-postable-account"),
+        List.of(
+            "unknown-account",
+            "inactive-account",
+            "non-postable-account",
+            "inventory-balance-below-zero"),
         List.of(
             PostingRejection.wireCode(new PostingRejection.UnknownAccount(new AccountCode("1000"))),
             PostingRejection.wireCode(
                 new PostingRejection.InactiveAccount(new AccountCode("2000"))),
             PostingRejection.wireCode(
                 new PostingRejection.NonPostableAccount(
-                    new AccountCode("3000"), dev.erst.fingrind.core.AccountNodeKind.HEADER))));
+                    new AccountCode("3000"), dev.erst.fingrind.core.AccountNodeKind.HEADER)),
+            PostingRejection.wireCode(
+                new InventoryBalanceBelowZero(
+                    new AccountCode("1400"),
+                    "inventoryRelief.amount",
+                    java.time.LocalDate.parse("2026-04-07"),
+                    dev.erst.fingrind.core.BalanceSide.DEBIT,
+                    dev.erst.fingrind.core.Money.parse("EUR", "10.00"),
+                    dev.erst.fingrind.core.Money.parse("EUR", "50.00"),
+                    dev.erst.fingrind.core.Money.parse("EUR", "40.00")))));
   }
 
   @Test
@@ -145,12 +198,14 @@ class PostingRejectionTest {
             "entry-semantics-violations",
             "account-state-violations",
             "idempotency-key-conflict",
+            "posting-effective-date-in-future",
             "book-functional-currency-mismatch",
             "closed-period-violation",
             "opening-position-window-closed",
             "opening-position-touches-nominal-account",
             "reserved-result-classification",
             "reversal-target-not-found",
+            "reversal-target-is-reversal",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
         PostingRejection.descriptors().stream()
@@ -307,9 +362,18 @@ class PostingRejectionTest {
             CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT,
             null);
     PostingRejection.EntrySemanticsViolation presentCashFlowClassification =
-        PostingRejectionSemantics.cashFlowAssetClassificationMismatch(
+        invokeAccountEntrySemantics(
+            "cashFlowAssetClassificationMismatch",
+            new Class<?>[] {
+              String.class,
+              String.class,
+              String.class,
+              AccountCode.class,
+              CashFlowAssetClassification.class,
+              CashFlowAssetClassification.class
+            },
             "requestType",
-            "record-sale",
+            "record-sale-settled",
             "cashAccountCode",
             new AccountCode("1000"),
             CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT,
@@ -321,7 +385,8 @@ class PostingRejectionTest {
         presentCashFlowClassification
             .message()
             .contains(CashFlowAssetClassification.NON_CASH.wireValue()));
-    assertTrue(presentCashFlowClassification.message().contains("requestType 'record-sale'"));
+    assertTrue(
+        presentCashFlowClassification.message().contains("requestType 'record-sale-settled'"));
 
     PostingRejection.EntrySemanticsViolation evidenceViolation =
         PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
@@ -373,9 +438,40 @@ class PostingRejectionTest {
             "SALE", "cashAccountCode", "revenueAccountCode", new AccountCode("1000"));
     PostingRejection.EntrySemanticsViolation economicNullJournal =
         PostingRejectionSemantics.economicNullJournal("DIRECT_JOURNAL");
-    PostingRejection.EntrySemanticsViolation cashBasisAccountRequired =
-        PostingRejectionSemantics.cashBasisAccountRequired(
-            "DIRECT_JOURNAL", List.of(new AccountCode("3000"), new AccountCode("3200")));
+    PostingRejection.EntrySemanticsViolation rawJournalRequiresCashLine =
+        PostingRejectionSemantics.rawJournalRequiresCashLine("DIRECT_JOURNAL");
+    PostingRejection.EntrySemanticsViolation accountRoleMismatch =
+        PostingRejectionSemantics.accountRoleMismatch(
+            "RECEIPT",
+            "settlementAdjunct.accountCode",
+            new AccountCode("6100"),
+            AccountRole.SETTLEMENT_ADJUNCT,
+            AccountRole.EXPENSE);
+    PostingRejection.EntrySemanticsViolation verbRequiresReceivableRole =
+        PostingRejectionSemantics.verbRequiresRole("SALE_ON_CREDIT", AccountRole.RECEIVABLE);
+    PostingRejection.EntrySemanticsViolation verbRequiresPayableRole =
+        PostingRejectionSemantics.verbRequiresRole("EXPENSE_ON_CREDIT", AccountRole.PAYABLE);
+    PostingRejection.EntrySemanticsViolation verbRequiresTradingTemplate =
+        PostingRejectionSemantics.verbRequiresTradingTemplate(
+            "PURCHASE_ON_CREDIT", BookTemplateId.OWNER_MANAGED_SERVICE);
+    PostingRejection.EntrySemanticsViolation tradingSaleRequiresInventoryRelief =
+        PostingRejectionSemantics.tradingSaleRequiresInventoryRelief("SALE_SETTLED");
+    PostingRejection.EntrySemanticsViolation inventoryReliefRequiresTradingBook =
+        PostingRejectionSemantics.inventoryReliefRequiresTradingBook(
+            "SALE_SETTLED", BookTemplateId.OWNER_MANAGED_SERVICE);
+    PostingRejection.EntrySemanticsViolation evidenceClassConflict =
+        PostingRejectionSemantics.evidenceClassConflict(
+            "SALE_SETTLED", EvidenceClass.INVOICE, EconomicEventClass.SETTLED_SALE);
+    PostingRejection.EntrySemanticsViolation rawJournalShadowsTypedEvent =
+        PostingRejectionSemantics.rawJournalShadowsTypedEvent(
+            "DIRECT_JOURNAL", EconomicEventClass.CREDIT_SALE, "record-sale-on-credit");
+    PostingRejection.EntrySemanticsViolation rawJournalBundlesOperationalEvents =
+        PostingRejectionSemantics.rawJournalBundlesOperationalEvents(
+            "DIRECT_JOURNAL",
+            java.util.Set.of(EconomicEventClass.CREDIT_SALE, EconomicEventClass.AP_SETTLEMENT));
+    PostingRejection.EntrySemanticsViolation openingWindowAccountNotPermitted =
+        PostingRejectionSemantics.openingWindowAccountNotPermitted(
+            "OPENING_POSITION", new AccountCode("4100"));
     assertEquals("distinct-role-accounts-required", distinctRoleAccountsViolation.code());
     assertEquals(null, distinctRoleAccountsViolation.field());
     assertTrue(distinctRoleAccountsViolation.message().contains("cashAccountCode"));
@@ -385,37 +481,78 @@ class PostingRejectionTest {
     assertEquals("lines", economicNullJournal.field());
     assertTrue(economicNullJournal.message().contains("reduces every referenced account to zero"));
     assertTrue(economicNullJournal.message().contains("DIRECT_JOURNAL"));
-    assertEquals("cash-basis-account-required", cashBasisAccountRequired.code());
-    assertEquals("lines[].accountCode", cashBasisAccountRequired.field());
+    assertEquals("raw-journal-requires-cash-line", rawJournalRequiresCashLine.code());
+    assertEquals("lines[].accountCode", rawJournalRequiresCashLine.field());
     assertTrue(
-        cashBasisAccountRequired.message().contains("at least one lines[].accountCode"),
-        cashBasisAccountRequired.message());
-    assertTrue(cashBasisAccountRequired.message().contains("'3000'"));
-    assertTrue(cashBasisAccountRequired.message().contains("'3200'"));
+        rawJournalRequiresCashLine.message().contains("declared cash account"),
+        rawJournalRequiresCashLine.message());
+    assertEquals("account-role-mismatch", accountRoleMismatch.code());
+    assertEquals("settlementAdjunct.accountCode", accountRoleMismatch.field());
+    assertTrue(accountRoleMismatch.message().contains("SETTLEMENT_ADJUNCT"));
+    assertTrue(accountRoleMismatch.message().contains("EXPENSE"));
+    assertEquals("verb-requires-receivable-role", verbRequiresReceivableRole.code());
+    assertEquals("entryKind", verbRequiresReceivableRole.field());
+    assertTrue(verbRequiresReceivableRole.message().contains("trade-receivable semantics"));
+    assertTrue(verbRequiresReceivableRole.message().contains("SALE_ON_CREDIT"));
+    assertEquals("verb-requires-payable-role", verbRequiresPayableRole.code());
+    assertEquals("entryKind", verbRequiresPayableRole.field());
+    assertTrue(verbRequiresPayableRole.message().contains("trade-payable semantics"));
+    assertTrue(verbRequiresPayableRole.message().contains("EXPENSE_ON_CREDIT"));
+    assertEquals("verb-requires-trading-template", verbRequiresTradingTemplate.code());
+    assertEquals("entryKind", verbRequiresTradingTemplate.field());
+    assertTrue(verbRequiresTradingTemplate.message().contains("PURCHASE_ON_CREDIT"));
+    assertTrue(
+        verbRequiresTradingTemplate
+            .message()
+            .contains(BookTemplateId.OWNER_MANAGED_SERVICE.wireValue()));
+    assertEquals(
+        "requiredRole must be RECEIVABLE or PAYABLE.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> PostingRejectionSemantics.verbRequiresRole("SALE_SETTLED", AccountRole.CASH))
+            .getMessage());
+    assertEquals(
+        "trading-sale-requires-inventory-relief", tradingSaleRequiresInventoryRelief.code());
+    assertEquals("inventoryRelief", tradingSaleRequiresInventoryRelief.field());
+    assertTrue(tradingSaleRequiresInventoryRelief.message().contains("trading-template book"));
+    assertEquals(
+        "inventory-relief-requires-trading-book", inventoryReliefRequiresTradingBook.code());
+    assertEquals("inventoryRelief", inventoryReliefRequiresTradingBook.field());
+    assertTrue(
+        inventoryReliefRequiresTradingBook
+            .message()
+            .contains(BookTemplateId.OWNER_MANAGED_SERVICE.wireValue()));
+    assertEquals("evidence-class-conflict", evidenceClassConflict.code());
+    assertEquals("evidence.sourceDocuments[].sourceDocumentType", evidenceClassConflict.field());
+    assertTrue(evidenceClassConflict.message().contains("SETTLED_SALE"));
+    assertTrue(evidenceClassConflict.message().contains("INVOICE"));
+    assertEquals("raw-journal-shadows-typed-event", rawJournalShadowsTypedEvent.code());
+    assertEquals("lines", rawJournalShadowsTypedEvent.field());
+    assertTrue(rawJournalShadowsTypedEvent.message().contains("CREDIT_SALE"));
+    assertTrue(rawJournalShadowsTypedEvent.message().contains("record-sale-on-credit"));
+    assertEquals(
+        "raw-journal-bundles-operational-events", rawJournalBundlesOperationalEvents.code());
+    assertEquals("lines", rawJournalBundlesOperationalEvents.field());
+    assertTrue(
+        rawJournalBundlesOperationalEvents
+            .message()
+            .contains("multiple operational event classes"));
+    assertTrue(rawJournalBundlesOperationalEvents.message().contains("Split it into"));
+    assertEquals("opening-window-account-not-permitted", openingWindowAccountNotPermitted.code());
+    assertEquals("openingBalances[].accountCode", openingWindowAccountNotPermitted.field());
+    assertTrue(openingWindowAccountNotPermitted.message().contains("OPENING_POSITION"));
+    assertTrue(openingWindowAccountNotPermitted.message().contains("4100"));
 
     assertIterableEquals(
         List.of(new AccountCode("1000"), new AccountCode("2000")),
         List.copyOf(
-            PostingRejectionSemantics.referencedAccountSet(
+            referencedAccountSet(
                 new AccountCode("1000"), new AccountCode("1000"), new AccountCode("2000"))));
     assertThrows(
-        NullPointerException.class,
-        () -> PostingRejectionSemantics.referencedAccountSet(new AccountCode("1000"), nullOf()));
+        NullPointerException.class, () -> referencedAccountSet(new AccountCode("1000"), nullOf()));
     assertThrows(
         NullPointerException.class,
-        () ->
-            PostingRejectionSemantics.referencedAccountSet(
-                NullTestSupport.<AccountCode[]>nullOf()));
-  }
-
-  @Test
-  void cashBasisAccountRequired_rejectsEmptyReferencedAccountLists() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> PostingRejectionSemantics.cashBasisAccountRequired("DIRECT_JOURNAL", List.of()));
-
-    assertEquals("referencedAccountCodes must contain at least one item.", exception.getMessage());
+        () -> referencedAccountSet(NullTestSupport.<AccountCode[]>nullOf()));
   }
 
   @Test
@@ -522,6 +659,13 @@ class PostingRejectionTest {
         () -> Class.forName("dev.erst.fingrind.contract.bookkeeping.PostingRejectionTaxSemantics"));
   }
 
+  private static Class<?> postingAccountRejectionSemanticsType() {
+    return assertDoesNotThrow(
+        () ->
+            Class.forName(
+                "dev.erst.fingrind.contract.bookkeeping.PostingAccountRejectionSemantics"));
+  }
+
   private static PostingRejection.EntrySemanticsViolation invokeTaxEntrySemantics(
       String methodName, Class<?>[] parameterTypes, Object... arguments) {
     MethodType methodType =
@@ -535,6 +679,24 @@ class PostingRejectionTest {
                 MethodHandles.privateLookupIn(
                         postingRejectionTaxSemanticsType(), MethodHandles.lookup())
                     .findStatic(postingRejectionTaxSemanticsType(), methodName, methodType));
+    return assertDoesNotThrow(
+        () ->
+            (PostingRejection.EntrySemanticsViolation) methodHandle.invokeWithArguments(arguments));
+  }
+
+  private static PostingRejection.EntrySemanticsViolation invokeAccountEntrySemantics(
+      String methodName, Class<?>[] parameterTypes, Object... arguments) {
+    MethodType methodType =
+        assertDoesNotThrow(
+            () ->
+                MethodType.methodType(
+                    PostingRejection.EntrySemanticsViolation.class, parameterTypes));
+    MethodHandle methodHandle =
+        assertDoesNotThrow(
+            () ->
+                MethodHandles.privateLookupIn(
+                        postingAccountRejectionSemanticsType(), MethodHandles.lookup())
+                    .findStatic(postingAccountRejectionSemanticsType(), methodName, methodType));
     return assertDoesNotThrow(
         () ->
             (PostingRejection.EntrySemanticsViolation) methodHandle.invokeWithArguments(arguments));
@@ -556,5 +718,14 @@ class PostingRejectionTest {
             InvocationTargetException.class,
             () -> constructor.newInstance(code, field, message, category, repair));
     return assertInstanceOf(IllegalArgumentException.class, invocationTargetException.getCause());
+  }
+
+  private static Set<AccountCode> referencedAccountSet(AccountCode... accountCodes) {
+    Objects.requireNonNull(accountCodes, "accountCodes");
+    Set<AccountCode> referencedAccounts = new LinkedHashSet<>();
+    for (AccountCode accountCode : accountCodes) {
+      referencedAccounts.add(Objects.requireNonNull(accountCode, "accountCode"));
+    }
+    return referencedAccounts;
   }
 }

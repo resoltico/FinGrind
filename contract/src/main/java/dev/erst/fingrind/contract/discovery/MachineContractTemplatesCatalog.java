@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -50,8 +51,10 @@ final class MachineContractTemplatesCatalog {
     return DECLARE_ACCOUNT_REVENUE_JSON;
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
-    return MachineContractPostEntryVariantSchemas.template(BookkeepingEntryKind.SALE);
+  static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate(
+      @Nullable BookTemplateId bookTemplateId) {
+    return MachineContractPostEntryVariantSchemas.template(
+        BookkeepingEntryKind.SALE_SETTLED, bookTemplateId);
   }
 
   static ContractTemplates.DeclareAccountTemplateDescriptor declareAccountTemplate() {
@@ -69,25 +72,25 @@ final class MachineContractTemplatesCatalog {
   static ContractTemplates.DeclareTaxRegistrationTemplateDescriptor
       declareTaxRegistrationTemplate() {
     return new ContractTemplates.DeclareTaxRegistrationTemplateDescriptor(
-        "vat-lv",
-        "Latvia VAT",
-        new dev.erst.fingrind.contract.tax.TaxJurisdiction("LV"),
-        "LV40000000000",
+        "replace-before-commit-tax-registration-id",
+        "Replace Before Commit Tax Registration",
+        new dev.erst.fingrind.contract.tax.TaxJurisdiction("<ISO-3166-alpha-2>"),
+        "replace-before-commit-registration-number",
         "tax-payable-vat",
         "tax-recoverable-vat",
         dev.erst.fingrind.contract.tax.TaxObligationFrequency.MONTHLY,
         20,
         List.of(
             new ContractTemplates.DeclareTaxCodeTemplateDescriptor(
-                "vat-standard-sale",
-                "VAT Standard Sale",
-                210_000,
+                "replace-before-commit-output-tax-code",
+                "Replace Before Commit Output Tax Code",
+                0,
                 dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE,
                 dev.erst.fingrind.contract.tax.TaxApplicationKind.OUTPUT_SALE),
             new ContractTemplates.DeclareTaxCodeTemplateDescriptor(
-                "vat-standard-expense",
-                "VAT Standard Expense",
-                210_000,
+                "replace-before-commit-input-tax-code",
+                "Replace Before Commit Input Tax Code",
+                0,
                 dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE,
                 dev.erst.fingrind.contract.tax.TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE)));
   }
@@ -100,17 +103,17 @@ final class MachineContractTemplatesCatalog {
                 "ensure-book",
                 LedgerStepKind.ENSURE_BOOK,
                 new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-                    "Acme Studio", "EUR", "01-01"),
+                    "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", "EUR", "01-01"),
                 null,
                 null,
                 null,
                 null,
                 null),
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                OperationId.RECORD_SALE.wireName(),
-                LedgerStepKind.RECORD_SALE,
+                OperationId.RECORD_SALE_SETTLED.wireName(),
+                LedgerStepKind.RECORD_SALE_SETTLED,
                 null,
-                MachineContractPostEntryVariantSchemas.template(BookkeepingEntryKind.SALE),
+                MachineContractPostEntryVariantSchemas.template(BookkeepingEntryKind.SALE_SETTLED),
                 null,
                 null,
                 null,
@@ -138,82 +141,37 @@ final class MachineContractTemplatesCatalog {
     if (selectedOperation == null) {
       return null;
     }
-    return switch (selectedOperation.id()) {
-      case POST_ENTRY ->
-          new ContractRequestShapes.RequestShapesDescriptor(
-              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
-              MachineContractPostEntrySchemas.descriptor(
-                  ProtocolPostingRequestTopics.requiredEntryKind(selectedOperation.id())
-                      .orElseThrow()),
-              null,
-              null,
-              null);
-      case PREFLIGHT_ENTRY ->
-          new ContractRequestShapes.RequestShapesDescriptor(
-              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
-              MachineContractPostEntrySchemas.descriptor(),
-              null,
-              null,
-              null);
-      case RECORD_SALE,
-          RECORD_EXPENSE,
-          RECORD_OWNER_CONTRIBUTION,
-          RECORD_OWNER_WITHDRAWAL,
-          RECORD_OPENING_POSITION,
-          RECORD_REVERSAL ->
-          new ContractRequestShapes.RequestShapesDescriptor(
-              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
-              MachineContractPostEntrySchemas.descriptor(
-                  requiredPostingEntryKind(selectedOperation)),
-              null,
-              null,
-              null);
-      case DECLARE_ACCOUNT ->
-          new ContractRequestShapes.RequestShapesDescriptor(
-              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
-              null,
-              MachineContractDeclareAccountSchemas.descriptor(),
-              null,
-              null);
+    OperationId operationId = selectedOperation.id();
+    if (operationId == OperationId.PREFLIGHT_ENTRY) {
+      return MachineContractRequestShapesCatalog.preflightRequestShapes();
+    }
+    if (ProtocolPostingRequestTopics.requiredEntryKind(operationId).isPresent()) {
+      return MachineContractRequestShapesCatalog.postingRequestShapes(
+          requiredPostingEntryKind(selectedOperation));
+    }
+    return switch (operationId) {
+      case DECLARE_ACCOUNT -> MachineContractRequestShapesCatalog.declareAccountRequestShapes();
       case DECLARE_TAX_REGISTRATION ->
-          new ContractRequestShapes.RequestShapesDescriptor(
-              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
-              null,
-              null,
-              MachineContractDeclareTaxRegistrationSchemas.descriptor(),
-              null);
-      case EXECUTE_PLAN ->
-          new ContractRequestShapes.RequestShapesDescriptor(
-              MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
-              null,
-              null,
-              null,
-              MachineContractLedgerPlanSchemas.descriptor(
-                  planTemplate().canonicalPostingTemplate().entryKind()));
+          MachineContractRequestShapesCatalog.declareTaxRegistrationRequestShapes();
+      case EXECUTE_PLAN -> MachineContractRequestShapesCatalog.ledgerPlanRequestShapes();
       default -> null;
     };
   }
 
   static ContractTemplates.@Nullable PostingRequestTemplateDescriptor postingRequestTemplateFor(
-      @Nullable ProtocolOperation selectedOperation) {
+      @Nullable ProtocolOperation selectedOperation, @Nullable BookTemplateId bookTemplateId) {
     if (selectedOperation == null) {
       return null;
     }
-    return switch (selectedOperation.id()) {
-      case POST_ENTRY ->
-          MachineContractPostEntryVariantSchemas.template(
-              ProtocolPostingRequestTopics.scaffoldEntryKind(selectedOperation.id()));
-      case PREFLIGHT_ENTRY -> requestTemplate();
-      case RECORD_SALE,
-          RECORD_EXPENSE,
-          RECORD_OWNER_CONTRIBUTION,
-          RECORD_OWNER_WITHDRAWAL,
-          RECORD_OPENING_POSITION,
-          RECORD_REVERSAL ->
-          MachineContractPostEntryVariantSchemas.template(
-              ProtocolPostingRequestTopics.scaffoldEntryKind(selectedOperation.id()));
-      default -> null;
-    };
+    OperationId operationId = selectedOperation.id();
+    if (operationId == OperationId.PREFLIGHT_ENTRY) {
+      return requestTemplate(bookTemplateId);
+    }
+    if (!ProtocolPostingRequestTopics.requiredEntryKind(operationId).isPresent()) {
+      return null;
+    }
+    return MachineContractPostEntryVariantSchemas.template(
+        ProtocolPostingRequestTopics.scaffoldEntryKind(operationId), bookTemplateId);
   }
 
   static ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccountTemplateFor(
@@ -249,6 +207,6 @@ final class MachineContractTemplatesCatalog {
                 new IllegalArgumentException(
                     "Operation "
                         + selectedOperation.id().wireName()
-                        + " does not own one typed posting template."));
+                        + " does not own a typed posting template."));
   }
 }

@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
-import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import dev.erst.fingrind.contract.tax.TaxQueryRejection;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import java.nio.file.Path;
@@ -39,24 +38,27 @@ final class CliBookReadResponseWriter {
         });
   }
 
-  void writeListAccountsResult(ListAccountsResult result, OutputMode outputMode) {
+  void writeListAccountsResult(
+      ListAccountsResult result, boolean withContext, OutputMode outputMode) {
     switch (result) {
-      case ListAccountsResult.Listed listed -> writeAccountPage(listed.page(), outputMode);
+      case ListAccountsResult.Listed listed ->
+          writeAccountPage(listed.page(), withContext, outputMode);
       case ListAccountsResult.Rejected rejected ->
           writeQueryRejection(rejected.rejection(), outputMode);
     }
   }
 
-  void writeListTaxRegistrationsResult(ListTaxRegistrationsResult result, OutputMode outputMode) {
+  void writeListTaxRegistrationsResult(
+      ListTaxRegistrationsResult result, boolean withContext, OutputMode outputMode) {
     switch (result) {
       case ListTaxRegistrationsResult.Listed listed ->
-          writeTaxRegistrationPage(listed.page(), outputMode);
+          writeTaxRegistrationPage(listed.page(), withContext, outputMode);
       case ListTaxRegistrationsResult.Rejected rejected ->
           writeTaxQueryRejection(rejected.rejection(), outputMode);
     }
   }
 
-  void writeGetPostingResult(GetPostingResult result, OutputMode outputMode) {
+  void writeGetPostingResult(GetPostingResult result, boolean withContext, OutputMode outputMode) {
     switch (result) {
       case GetPostingResult.Found found ->
           outputMode.run(
@@ -67,7 +69,7 @@ final class CliBookReadResponseWriter {
               () ->
                   outputChannel.writeText(
                       CliPostingOutputRenderer.renderPostingText(
-                          found.bookIdentity(), found.postingFact())),
+                          found.bookIdentity(), found.postingFact(), withContext)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.GET_POSTING));
@@ -78,7 +80,8 @@ final class CliBookReadResponseWriter {
     }
   }
 
-  void writeListPostingsResult(ListPostingsResult result, OutputMode outputMode) {
+  void writeListPostingsResult(
+      ListPostingsResult result, boolean withContext, OutputMode outputMode) {
     switch (result) {
       case ListPostingsResult.Listed listed ->
           writeListedResult(
@@ -88,7 +91,8 @@ final class CliBookReadResponseWriter {
                           CliBookQueryPayloadMapper.postingPagePayload(listed.page()))),
               () ->
                   outputChannel.writeText(
-                      CliPostingOutputRenderer.renderPostingRegisterText(listed.page())),
+                      CliPostingOutputRenderer.renderPostingRegisterText(
+                          listed.page(), withContext)),
               () ->
                   outputChannel.writeText(
                       CliPostingOutputRenderer.renderPostingRegisterCsv(listed.page())),
@@ -98,51 +102,32 @@ final class CliBookReadResponseWriter {
     }
   }
 
-  void writeTaxObligationResult(TaxObligationResult result, OutputMode outputMode) {
-    switch (result) {
-      case TaxObligationResult.Reported reported ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          CliTaxPayloadMapper.taxObligationPayload(reported.report()))),
-              () ->
-                  outputChannel.writeText(
-                      CliTaxOutputRenderer.renderTaxObligationText(reported.report())),
-              () ->
-                  outputChannel.writeText(
-                      CliTaxOutputRenderer.renderTaxObligationCsv(reported.report())));
-      case TaxObligationResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.taxQueryRejectedEnvelope(
-                  OperationId.TAX_OBLIGATION, rejected.rejection()),
-              outputMode);
-    }
-  }
-
   private void writeListedResult(
       Runnable jsonWriter, Runnable textWriter, Runnable csvWriter, OutputMode outputMode) {
     outputMode.run(jsonWriter, textWriter, csvWriter);
   }
 
-  private void writeAccountPage(AccountPage page, OutputMode outputMode) {
+  private void writeAccountPage(AccountPage page, boolean withContext, OutputMode outputMode) {
     writeListedResult(
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(
                     CliBookQueryPayloadMapper.accountPagePayload(page))),
-        () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderText(page)),
+        () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderText(page, withContext)),
         () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderCsv(page)),
         outputMode);
   }
 
-  private void writeTaxRegistrationPage(TaxRegistrationPage page, OutputMode outputMode) {
+  private void writeTaxRegistrationPage(
+      TaxRegistrationPage page, boolean withContext, OutputMode outputMode) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(
                     CliTaxPayloadMapper.taxRegistrationPagePayload(page))),
-        () -> outputChannel.writeText(CliTaxOutputRenderer.renderTaxRegistrationListText(page)),
+        () ->
+            outputChannel.writeText(
+                CliTaxOutputRenderer.renderTaxRegistrationListText(page, withContext)),
         () -> outputChannel.writeText(CliTaxOutputRenderer.renderTaxRegistrationListCsv(page)));
   }
 

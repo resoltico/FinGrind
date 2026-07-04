@@ -3,6 +3,7 @@ module dev.erst.fingrind.contract {
   exports dev.erst.fingrind.contract.discovery;
   exports dev.erst.fingrind.contract.fx;
   exports dev.erst.fingrind.contract.protocol;
+  exports dev.erst.fingrind.contract.reportmodel;
   exports dev.erst.fingrind.contract.runtime;
   exports dev.erst.fingrind.contract.tax;
   exports dev.erst.fingrind.contract.workflow;

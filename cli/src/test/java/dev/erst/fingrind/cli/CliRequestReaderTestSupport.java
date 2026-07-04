@@ -31,18 +31,6 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               {
                 "entryKind": "REVERSAL",
                 "effectiveDate": "2026-04-07",
-                "lines": [
-                  {
-                    "accountCode": "1000",
-                    "side": "DEBIT",
-                    "amount": %s
-                  },
-                  {
-                    "accountCode": "2000",
-                    "side": "CREDIT",
-                    "amount": %s
-                  }
-                ],
                 "evidence": %s,
                 "provenance": {
                   "actorId": "actor-1",
@@ -58,12 +46,11 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 }
               }
               """
-          .formatted(
-              eurMoneyJson("1000"), eurMoneyJson("1000"), evidenceJson().indent(14).stripLeading());
+          .formatted(evidenceJson().indent(14).stripLeading());
     }
     return """
             {
-              "entryKind": "SALE",
+              "entryKind": "SALE_SETTLED",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "revenueAccountCode": "2000",
@@ -87,18 +74,6 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
         {
           "entryKind": "REVERSAL",
           "effectiveDate": "2026-04-07",
-          "lines": [
-            {
-              "accountCode": "1000",
-              "side": "DEBIT",
-              "amount": %s
-            },
-            {
-              "accountCode": "2000",
-              "side": "CREDIT",
-              "amount": %s
-            }
-          ],
           "evidence": %s,
           "correction": {
             "kind": "AMENDMENT",
@@ -114,8 +89,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
           }
         }
         """
-        .formatted(
-            eurMoneyJson("1000"), eurMoneyJson("1000"), evidenceJson().indent(10).stripLeading());
+        .formatted(evidenceJson().indent(10).stripLeading());
   }
 
   static String withEvidence(String json) {
@@ -158,6 +132,8 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "kind": "ensure-book",
               "ensureBook": {
                 "entityName": "Acme Studio",
+                "bookTemplateId": "OWNER_MANAGED_SERVICE",
+                "accountingBasis": "CASH",
                 "functionalCurrency": "EUR",
                 "fiscalYearStart": "01-01"
               }
@@ -181,7 +157,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             },
             {
               "stepId": "post",
-              "kind": "record-sale",
+              "kind": "record-sale-settled",
               "posting": %s
             },
             {

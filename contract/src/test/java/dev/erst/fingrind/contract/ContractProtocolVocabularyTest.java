@@ -18,15 +18,22 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.discovery.ForeignExchangeTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.InventoryReliefTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.discovery.QuotedExchangeRateTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.discovery.TemplateDescriptorType;
+import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
+import dev.erst.fingrind.contract.discovery.WorkflowSurface;
 import dev.erst.fingrind.contract.protocol.BookCipher;
 import dev.erst.fingrind.contract.protocol.BookProtectionMode;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.protocol.PublicCliDistribution;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.protocol.SqliteLibraryMode;
@@ -54,10 +61,22 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for protocol vocabulary helpers and descriptor namespaces. */
 class ContractProtocolVocabularyTest {
+  private static final ApplicationIdentity IDENTITY =
+      new ApplicationIdentity("FinGrind", "0.57.0", "Protected bookkeeping kernel");
+  private static final Pattern ORNAMENTAL_ONE_PATTERN = Pattern.compile("\\bone\\b");
+  private static final List<String> ALLOWED_ONE_PHRASES =
+      List.of(
+          "exactly one active EQUITY account classified as RESULT_HOLDING",
+          "exactly one active and postable EQUITY account classified as RESULT_HOLDING",
+          "exactly one active EQUITY account for each required close target");
+  private static final List<String> FORBIDDEN_COUNTRY_SPECIFIC_TAX_EXAMPLE_TOKENS =
+      List.of("vat-lv", "Latvia VAT", "LV40001234567");
+
   @Test
   void protocolVocabularyHelpersParseWireValuesAndRejectUnknownValues() {
     assertEquals(
@@ -76,16 +95,23 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         List.of(
             "DIRECT_JOURNAL",
-            "SALE",
-            "EXPENSE",
+            "SALE_SETTLED",
+            "SALE_ON_CREDIT",
+            "PURCHASE_SETTLED",
+            "PURCHASE_ON_CREDIT",
+            "EXPENSE_SETTLED",
+            "EXPENSE_ON_CREDIT",
+            "RECEIPT",
+            "PAYMENT",
             "OWNER_CONTRIBUTION",
             "OWNER_WITHDRAWAL",
             "OPENING_POSITION",
             "REVERSAL"),
         BookkeepingEntryKind.wireValues());
-    assertEquals(BookkeepingEntryKind.SALE, BookkeepingEntryKind.fromWireValue("SALE"));
+    assertEquals(
+        BookkeepingEntryKind.SALE_SETTLED, BookkeepingEntryKind.fromWireValue("SALE_SETTLED"));
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(33, BookFormatContract.FORMAT_VERSION);
+    assertEquals(38, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -215,6 +241,8 @@ class ContractProtocolVocabularyTest {
         List.of(
             ContractTemplates.PostingRequestTemplateDescriptor.class,
             ContractTemplates.TaxSelectionTemplateDescriptor.class,
+            ContractTemplates.SettlementAdjunctTemplateDescriptor.class,
+            InventoryReliefTemplateDescriptor.class,
             ForeignExchangeTemplateDescriptor.class,
             QuotedExchangeRateTemplateDescriptor.class,
             ContractTemplates.JournalLineTemplateDescriptor.class,
@@ -296,13 +324,18 @@ class ContractProtocolVocabularyTest {
         IllegalArgumentException.class,
         () ->
             new ContractTemplates.PostingRequestTemplateDescriptor(
-                BookkeepingEntryKind.SALE,
+                BookkeepingEntryKind.SALE_SETTLED,
                 "2026-04-25",
                 "1000",
+                null,
+                null,
                 "4000",
                 null,
                 null,
+                null,
                 new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
                 null,
                 null,
                 List.of(
@@ -319,6 +352,11 @@ class ContractProtocolVocabularyTest {
             new ContractTemplates.PostingRequestTemplateDescriptor(
                 BookkeepingEntryKind.REVERSAL,
                 "2026-04-25",
+                null,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -368,11 +406,93 @@ class ContractProtocolVocabularyTest {
                 null, null, null, 999, null));
   }
 
+  @Test
+  void publicOperationDescriptionsAndNotes_avoidOrnamentalOneLanguage() {
+    for (var operation : ProtocolCatalog.operations()) {
+      assertNoOrnamentalOne(operation.analysisSummary(), operation.id() + " description");
+      for (ProtocolExampleStep exampleStep : operation.exampleSteps()) {
+        if (exampleStep instanceof ProtocolExampleStep.Note note) {
+          assertNoOrnamentalOne(note.text(), operation.id() + " note");
+        }
+      }
+    }
+  }
+
+  @Test
+  void publicOperationExamples_avoidCountrySpecificTaxScaffoldLiterals() {
+    for (var operation : ProtocolCatalog.operations()) {
+      for (ProtocolExampleStep exampleStep : operation.exampleSteps()) {
+        if (exampleStep instanceof ProtocolExampleStep.Command command) {
+          assertNoCountrySpecificTaxLiteral(command.text(), operation.id() + " command");
+        }
+        if (exampleStep instanceof ProtocolExampleStep.Note note) {
+          assertNoCountrySpecificTaxLiteral(note.text(), operation.id() + " note");
+        }
+      }
+    }
+  }
+
+  @Test
+  void publicArtifactOutputDescriptions_avoidOrnamentalOneLanguage() {
+    List.of(
+            ProtocolArtifactOutput.pdf(),
+            ProtocolArtifactOutput.bookFile(),
+            ProtocolArtifactOutput.generatedBookKeyFile(),
+            ProtocolArtifactOutput.replacementBookKeyFile(),
+            ProtocolArtifactOutput.bookKeyFile(),
+            ProtocolArtifactOutput.backupFile(),
+            ProtocolArtifactOutput.backupKeyFile(),
+            ProtocolArtifactOutput.rollbackBookFile(),
+            ProtocolArtifactOutput.discoveredRollbackBookFile())
+        .forEach(
+            artifactOutput ->
+                assertNoOrnamentalOne(
+                    artifactOutput.description(),
+                    artifactOutput.format() + " artifact description"));
+  }
+
+  @Test
+  void publicDiscoveryNarrativeSurfaces_avoidOrnamentalOneLanguage() {
+    CapabilitiesDescriptor capabilities = MachineContract.capabilities(IDENTITY);
+
+    assertNoOrnamentalOne(
+        capabilities.bookkeepingKernel().description(), "bookkeeping-kernel description");
+    capabilities
+        .bookkeepingKernel()
+        .reportCapabilities()
+        .forEach(
+            reportCapability ->
+                assertNoOrnamentalOne(
+                    reportCapability.description(),
+                    reportCapability.statementId() + " capability description"));
+
+    WorkflowStepDescriptor.Note introNote =
+        org.junit.jupiter.api.Assertions.assertInstanceOf(
+            WorkflowStepDescriptor.Note.class,
+            MachineContract.quickStart(WorkflowSurface.CONTAINER_DOCKER).steps().getFirst());
+    assertNoOrnamentalOne(introNote.text(), "container quick-start intro note");
+  }
+
   private static ContractTemplates.AccountingEvidenceTemplateDescriptor evidenceTemplate() {
     return new ContractTemplates.AccountingEvidenceTemplateDescriptor(
         List.of(
             new ContractTemplates.SourceDocumentTemplateDescriptor(
                 "document-idem-1", "cash-receipt", "2026-04-25")),
         List.of());
+  }
+
+  private static void assertNoOrnamentalOne(String text, String label) {
+    if (!ORNAMENTAL_ONE_PATTERN.matcher(text).find()) {
+      return;
+    }
+    org.junit.jupiter.api.Assertions.assertTrue(
+        ALLOWED_ONE_PHRASES.stream().anyMatch(text::contains),
+        () -> "Unexpected ornamental 'one' in " + label + ": " + text);
+  }
+
+  private static void assertNoCountrySpecificTaxLiteral(String text, String label) {
+    org.junit.jupiter.api.Assertions.assertTrue(
+        FORBIDDEN_COUNTRY_SPECIFIC_TAX_EXAMPLE_TOKENS.stream().noneMatch(text::contains),
+        () -> "Unexpected country-specific tax scaffold literal in " + label + ": " + text);
   }
 }

@@ -11,6 +11,7 @@ import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.changesInEqui
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.extractedText;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.financialPositionRow;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.incomeStatementRow;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.render;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.trialBalanceReport;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,7 +50,8 @@ class PdfReportServiceTest {
   @Test
   void renderAccountBalanceAndTrialBalanceIncludeMetadataAndExpectedText() throws IOException {
     byte[] accountBalancePdf =
-        PDF_REPORT_SERVICE.renderAccountBalance(
+        render(
+            PDF_REPORT_SERVICE,
             new AccountBalanceSnapshot(
                 BOOK_IDENTITY,
                 CASH_ACCOUNT,
@@ -60,7 +62,8 @@ class PdfReportServiceTest {
                     balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT),
                     balance("USD", "500.00", "100.00", "400.00", BalanceSide.DEBIT))));
     byte[] trialBalancePdf =
-        PDF_REPORT_SERVICE.renderTrialBalance(
+        render(
+            PDF_REPORT_SERVICE,
             trialBalanceReport(
                 BOOK_IDENTITY,
                 Optional.of(LocalDate.parse("2026-04-30")),
@@ -145,9 +148,8 @@ class PdfReportServiceTest {
             List.of());
 
     String financialPositionText =
-        extractedText(PDF_REPORT_SERVICE.renderFinancialPosition(financialPositionReport));
-    String changesInEquityText =
-        extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(changesInEquityReport));
+        extractedText(render(PDF_REPORT_SERVICE, financialPositionReport));
+    String changesInEquityText = extractedText(render(PDF_REPORT_SERVICE, changesInEquityReport));
 
     assertTrue(financialPositionText.contains("Calculated line"));
     assertFalse(financialPositionText.contains("current-period-result"));
@@ -248,10 +250,9 @@ class PdfReportServiceTest {
             List.of(balance("EUR", "0.00", "200.00", "200.00", BalanceSide.CREDIT)),
             List.of(balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT)));
 
-    byte[] financialPositionPdf =
-        PDF_REPORT_SERVICE.renderFinancialPosition(financialPositionReport);
-    byte[] incomeStatementPdf = PDF_REPORT_SERVICE.renderIncomeStatement(incomeStatementReport);
-    byte[] changesInEquityPdf = PDF_REPORT_SERVICE.renderChangesInEquity(changesInEquityReport);
+    byte[] financialPositionPdf = render(PDF_REPORT_SERVICE, financialPositionReport);
+    byte[] incomeStatementPdf = render(PDF_REPORT_SERVICE, incomeStatementReport);
+    byte[] changesInEquityPdf = render(PDF_REPORT_SERVICE, changesInEquityReport);
 
     assertPdfMetadata(financialPositionPdf, "Financial Position", false);
     assertPdfMetadata(incomeStatementPdf, "Income Statement", false);
@@ -344,7 +345,7 @@ class PdfReportServiceTest {
             List.of(balance("EUR", "20.00", "0.00", "20.00", BalanceSide.DEBIT)),
             List.of(balance("EUR", "28.00", "0.00", "28.00", BalanceSide.DEBIT)));
 
-    byte[] pdf = PDF_REPORT_SERVICE.renderCashFlowStatement(report);
+    byte[] pdf = render(PDF_REPORT_SERVICE, report);
 
     assertPdfMetadata(pdf, "Cash Receipts And Payments", false);
     String text = extractedText(pdf);
@@ -405,7 +406,7 @@ class PdfReportServiceTest {
             List.of(),
             List.of());
 
-    byte[] pdf = PDF_REPORT_SERVICE.renderCashFlowStatement(report);
+    byte[] pdf = render(PDF_REPORT_SERVICE, report);
 
     assertPdfMetadata(pdf, "Cash Receipts And Payments", false);
     String text = extractedText(pdf);
@@ -453,10 +454,10 @@ class PdfReportServiceTest {
             List.of(),
             List.of());
 
-    String text = extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(report));
+    String text = extractedText(render(PDF_REPORT_SERVICE, report));
 
     assertTrue(text.contains("Comparative Cash Receipts And Payments"));
-    assertTrue(text.contains("Comparative range"));
+    assertTrue(text.contains("Comparative reference"));
     assertTrue(text.contains("2025-04-01 to 2025-04-30"));
     assertTrue(text.contains("No cash-flow lines matched the selected scope."));
     assertTrue(text.contains("Empty sections"));
@@ -589,20 +590,19 @@ class PdfReportServiceTest {
             List.of(),
             List.of());
 
-    String noComparativeText =
-        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(noComparativeRequested));
+    String noComparativeText = extractedText(render(PDF_REPORT_SERVICE, noComparativeRequested));
     String lowerBoundComparativeText =
-        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(lowerBoundOnlyComparative));
+        extractedText(render(PDF_REPORT_SERVICE, lowerBoundOnlyComparative));
     String upperBoundComparativeText =
-        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(upperBoundOnlyComparative));
+        extractedText(render(PDF_REPORT_SERVICE, upperBoundOnlyComparative));
     String openingOnlyComparativeText =
-        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(openingOnlyComparative));
+        extractedText(render(PDF_REPORT_SERVICE, openingOnlyComparative));
     String movementOnlyComparativeText =
-        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(movementOnlyComparative));
+        extractedText(render(PDF_REPORT_SERVICE, movementOnlyComparative));
     String closingOnlyComparativeText =
-        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(closingOnlyComparative));
+        extractedText(render(PDF_REPORT_SERVICE, closingOnlyComparative));
     String totalsOnlySectionComparativeText =
-        extractedText(PDF_REPORT_SERVICE.renderCashFlowStatement(totalsOnlySectionComparative));
+        extractedText(render(PDF_REPORT_SERVICE, totalsOnlySectionComparative));
 
     assertFalse(noComparativeText.contains("Comparative Cash Receipts And Payments"));
 
@@ -643,8 +643,7 @@ class PdfReportServiceTest {
                     List.of(balance("EUR", "1250.00", "10.00", "1240.00", BalanceSide.DEBIT)))),
             List.of());
 
-    String financialPositionText =
-        extractedText(PDF_REPORT_SERVICE.renderFinancialPosition(imbalancedReport));
+    String financialPositionText = extractedText(render(PDF_REPORT_SERVICE, imbalancedReport));
 
     assertTrue(financialPositionText.contains("Accounting equation"));
     assertTrue(financialPositionText.contains("Imbalanced"));
@@ -686,13 +685,13 @@ class PdfReportServiceTest {
             List.of());
 
     String trialBalanceText =
-        extractedText(PDF_REPORT_SERVICE.renderTrialBalance(trialBalanceWithoutComparatives));
+        extractedText(render(PDF_REPORT_SERVICE, trialBalanceWithoutComparatives));
     String incomeStatementText =
-        extractedText(
-            PDF_REPORT_SERVICE.renderIncomeStatement(incomeStatementWithoutComparativeTotals));
+        extractedText(render(PDF_REPORT_SERVICE, incomeStatementWithoutComparativeTotals));
 
     assertFalse(trialBalanceText.contains("Comparative Trial Balance"));
-    assertFalse(incomeStatementText.contains("Comparative Net Income Totals"));
+    assertTrue(incomeStatementText.contains("Comparative Income Statement"));
+    assertTrue(incomeStatementText.contains("Comparative Net Income Totals"));
 
     ChangesInEquityReport noComparativeEquity =
         new ChangesInEquityReport(
@@ -747,14 +746,13 @@ class PdfReportServiceTest {
             List.of(),
             List.of(balance("EUR", "0.00", "1000.00", "1000.00", BalanceSide.CREDIT)));
 
-    String noComparativeEquityText =
-        extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(noComparativeEquity));
+    String noComparativeEquityText = extractedText(render(PDF_REPORT_SERVICE, noComparativeEquity));
     String movementOnlyComparativeEquityText =
-        extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(movementOnlyComparativeEquity));
+        extractedText(render(PDF_REPORT_SERVICE, movementOnlyComparativeEquity));
     String closingOnlyComparativeEquityText =
-        extractedText(PDF_REPORT_SERVICE.renderChangesInEquity(closingOnlyComparativeEquity));
+        extractedText(render(PDF_REPORT_SERVICE, closingOnlyComparativeEquity));
 
-    assertFalse(noComparativeEquityText.contains("Comparative Changes In Equity"));
+    assertTrue(noComparativeEquityText.contains("Comparative Changes In Equity"));
     assertFalse(noComparativeEquityText.contains("Comparative Equity Totals"));
     assertTrue(movementOnlyComparativeEquityText.contains("Comparative Equity Totals"));
     assertTrue(closingOnlyComparativeEquityText.contains("Comparative Equity Totals"));
@@ -815,20 +813,20 @@ class PdfReportServiceTest {
             List.of());
 
     String financialPositionText =
-        extractedText(PDF_REPORT_SERVICE.renderFinancialPosition(financialPositionReport));
-    String incomeStatementText =
-        extractedText(PDF_REPORT_SERVICE.renderIncomeStatement(incomeStatementReport));
+        extractedText(render(PDF_REPORT_SERVICE, financialPositionReport));
+    String incomeStatementText = extractedText(render(PDF_REPORT_SERVICE, incomeStatementReport));
 
     assertTrue(financialPositionText.contains("Cash without Totals"));
-    assertFalse(financialPositionText.contains("Liabilities"));
+    assertTrue(financialPositionText.contains("Empty sections"));
+    assertTrue(financialPositionText.contains("Liabilities"));
     assertFalse(financialPositionText.contains("Assets Totals"));
     assertTrue(financialPositionText.contains("Equity Totals"));
-    assertFalse(financialPositionText.contains("Comparative Financial Position"));
+    assertTrue(financialPositionText.contains("Comparative Financial Position"));
 
     assertTrue(incomeStatementText.contains("Revenue without Totals"));
     assertTrue(incomeStatementText.contains("Expenses Totals"));
     assertFalse(incomeStatementText.contains("Revenue Totals"));
-    assertFalse(incomeStatementText.contains("Comparative Income Statement"));
+    assertTrue(incomeStatementText.contains("Comparative Income Statement"));
   }
 
   @Test
@@ -838,15 +836,6 @@ class PdfReportServiceTest {
     assertThrows(NullPointerException.class, () -> new PdfReportService("FinGrind", null, CLOCK));
     assertThrows(
         NullPointerException.class, () -> new PdfReportService("FinGrind", "0.57.0", null));
-    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountBalance(null));
-    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderTrialBalance(null));
-    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderAccountLedger(null));
-    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderPeriodSummary(null));
-    assertThrows(
-        NullPointerException.class, () -> PDF_REPORT_SERVICE.renderFinancialPosition(null));
-    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderIncomeStatement(null));
-    assertThrows(
-        NullPointerException.class, () -> PDF_REPORT_SERVICE.renderCashFlowStatement(null));
-    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.renderChangesInEquity(null));
+    assertThrows(NullPointerException.class, () -> PDF_REPORT_SERVICE.render(null));
   }
 }

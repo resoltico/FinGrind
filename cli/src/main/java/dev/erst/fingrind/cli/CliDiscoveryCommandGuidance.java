@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +30,14 @@ final class CliDiscoveryCommandGuidance {
       Set.of(
           OperationId.POST_ENTRY,
           OperationId.PREFLIGHT_ENTRY,
-          OperationId.RECORD_SALE,
-          OperationId.RECORD_EXPENSE,
+          OperationId.RECORD_SALE_SETTLED,
+          OperationId.RECORD_SALE_ON_CREDIT,
+          OperationId.RECORD_PURCHASE_SETTLED,
+          OperationId.RECORD_PURCHASE_ON_CREDIT,
+          OperationId.RECORD_EXPENSE_SETTLED,
+          OperationId.RECORD_EXPENSE_ON_CREDIT,
+          OperationId.RECORD_RECEIPT,
+          OperationId.RECORD_PAYMENT,
           OperationId.RECORD_OWNER_CONTRIBUTION,
           OperationId.RECORD_OWNER_WITHDRAWAL,
           OperationId.RECORD_OPENING_POSITION,
@@ -46,7 +53,8 @@ final class CliDiscoveryCommandGuidance {
           OperationId.PERIOD_SUMMARY,
           OperationId.TAX_OBLIGATION,
           OperationId.LIST_POSTINGS,
-          OperationId.INTERIM_RESULT_SWEEP);
+          OperationId.INTERIM_RESULT_SWEEP,
+          OperationId.FISCAL_YEAR_CLOSE);
 
   private CliDiscoveryCommandGuidance() {}
 
@@ -132,14 +140,14 @@ final class CliDiscoveryCommandGuidance {
   private static List<List<String>> preparationRows(OperationId operationId) {
     if (operationId == OperationId.DECLARE_ACCOUNT) {
       return List.of(
-          List.of("Needs", "One opened protected book."),
+          List.of("Needs", initializedBookText()),
           List.of(
               "Next step after success",
               CliDiscoveryCommandExamples.primaryCommandExample(OperationId.LIST_ACCOUNTS)));
     }
     if (operationId == OperationId.DECLARE_TAX_REGISTRATION) {
       return List.of(
-          List.of("Needs", "One opened protected book."),
+          List.of("Needs", initializedBookText()),
           List.of(
               "Next step after success",
               CliDiscoveryCommandExamples.primaryCommandExample(
@@ -147,21 +155,33 @@ final class CliDiscoveryCommandGuidance {
     }
     if (ENTRY_REQUEST_OPERATIONS.contains(operationId)) {
       return List.of(
-          List.of("Needs", "One opened protected book and every referenced account declared."),
+          List.of("Needs", initializedBookWithDeclaredAccountsText()),
           List.of(
               "Next step after success",
               CliDiscoveryCommandExamples.primaryCommandExample(OperationId.TRIAL_BALANCE)));
     }
     if (BOOK_READ_OPERATIONS.contains(operationId)) {
-      return List.of(List.of("Needs", "One opened protected book."));
+      return List.of(List.of("Needs", initializedBookText()));
     }
     if (operationId == OperationId.EXECUTE_PLAN) {
       return List.of(
-          List.of("Needs", "One ledger plan JSON document passed through --request-file."),
+          List.of("Needs", "A ledger plan JSON document passed through --request-file."),
           List.of(
               "Starter file", CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
     }
     return List.of();
+  }
+
+  private static String initializedBookText() {
+    return "A protected book initialized with "
+        + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+        + ".";
+  }
+
+  private static String initializedBookWithDeclaredAccountsText() {
+    return "A protected book initialized with "
+        + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+        + " and every referenced account declared.";
   }
 
   private static String renderPostingRequestGuidance(
@@ -179,7 +199,7 @@ final class CliDiscoveryCommandGuidance {
         CliDiscoveryTextSupport.section(
             "Input Contract",
             requestFileGuidance(
-                "Pass one JSON object through --request-file <path|->.",
+                "Pass a JSON object through --request-file <path|->.",
                 CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                     + " "
                     + operationId.wireName())),
@@ -197,7 +217,7 @@ final class CliDiscoveryCommandGuidance {
     return CliDiscoveryTextSupport.section(
         "Input Contract",
         requestFileGuidance(
-            "Pass one JSON object through --request-file <path|->.",
+            "Pass a JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.DECLARE_ACCOUNT.wireName()));
@@ -212,7 +232,7 @@ final class CliDiscoveryCommandGuidance {
     return CliDiscoveryTextSupport.section(
         "Input Contract",
         requestFileGuidance(
-            "Pass one JSON object through --request-file <path|->.",
+            "Pass a JSON object through --request-file <path|->.",
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.DECLARE_TAX_REGISTRATION.wireName()));
@@ -232,7 +252,7 @@ final class CliDiscoveryCommandGuidance {
         CliDiscoveryTextSupport.section(
             "Input Contract",
             requestFileGuidance(
-                "Pass one ledger plan JSON object through --request-file <path|->.",
+                "Pass a ledger plan JSON object through --request-file <path|->.",
                 CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE))),
         CliDiscoveryTextSupport.section(
             "Plan structure", renderLedgerPlanStructure(ledgerPlanShape, postingTemplate)));

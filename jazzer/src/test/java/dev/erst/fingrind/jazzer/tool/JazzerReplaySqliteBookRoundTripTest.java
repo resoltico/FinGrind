@@ -20,7 +20,7 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new SqliteBookRoundTripReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-11", "idem-sqlite-1", 2, false),
+            new ParsedPostingCommandDetails("2026-04-07", "idem-sqlite-1", 2, false),
             new SqliteBookRoundTripLifecycleDetails(
                 PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
                 PostingLifecycleStatus.UNKNOWN_ACCOUNT,
@@ -44,11 +44,11 @@ class JazzerReplaySqliteBookRoundTripTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new SqliteBookRoundTripReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-08", "idem-7", 2, true),
+            new ParsedPostingCommandDetails("2026-04-07", "idem-7", 2, true),
             new SqliteBookRoundTripLifecycleDetails(
                 PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
-                PostingLifecycleStatus.UNKNOWN_ACCOUNT,
-                PostingLifecycleStatus.INACTIVE_ACCOUNT),
+                PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
+                PostingLifecycleStatus.NOT_RUN),
             new SqliteBookRoundTripOutcomeDetails(
                 PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
                 PostingLifecycleStatus.NOT_RUN,

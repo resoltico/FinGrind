@@ -5,8 +5,8 @@ import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxSelection;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingEntrySemanticsViolationFactory;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingTaxSemanticsViolations;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import java.util.List;
 import java.util.Objects;
@@ -28,7 +28,7 @@ final class TaxEntrySemantics {
     Objects.requireNonNull(selectorField, "selectorField");
     Objects.requireNonNull(selectorValue, "selectorValue");
     switch (entry) {
-      case BookkeepingEntry.Sale sale ->
+      case BookkeepingEntry.SaleSettled sale ->
           validateSelection(
               violations,
               book,
@@ -36,7 +36,18 @@ final class TaxEntrySemantics {
               TaxApplicationKind.OUTPUT_SALE,
               selectorField,
               selectorValue);
-      case BookkeepingEntry.Expense expense ->
+      case BookkeepingEntry.SaleOnCredit sale ->
+          validateSelection(
+              violations,
+              book,
+              sale.taxSelection(),
+              TaxApplicationKind.OUTPUT_SALE,
+              selectorField,
+              selectorValue);
+      case BookkeepingEntry.ExpenseSettled expense ->
+          validateSelection(
+              violations, book, expense.taxSelection(), null, selectorField, selectorValue);
+      case BookkeepingEntry.ExpenseOnCredit expense ->
           validateSelection(
               violations, book, expense.taxSelection(), null, selectorField, selectorValue);
       default -> {}
@@ -57,7 +68,7 @@ final class TaxEntrySemantics {
         book.findTaxRegistration(taxSelection.taxRegistrationId()).orElse(null);
     if (registration == null) {
       violations.add(
-          BookkeepingEntrySemanticsViolationFactory.unknownTaxRegistration(
+          BookkeepingTaxSemanticsViolations.unknownTaxRegistration(
               selectorField, selectorValue, taxSelection.taxRegistrationId()));
       return;
     }
@@ -68,7 +79,7 @@ final class TaxEntrySemantics {
             .orElse(null);
     if (taxCodeDefinition == null) {
       violations.add(
-          BookkeepingEntrySemanticsViolationFactory.unknownTaxCode(
+          BookkeepingTaxSemanticsViolations.unknownTaxCode(
               selectorField,
               selectorValue,
               taxSelection.taxRegistrationId(),
@@ -78,7 +89,7 @@ final class TaxEntrySemantics {
     if (requiredApplicationKind != null
         && taxCodeDefinition.applicationKind() != requiredApplicationKind) {
       violations.add(
-          BookkeepingEntrySemanticsViolationFactory.taxApplicationKindMismatch(
+          BookkeepingTaxSemanticsViolations.taxApplicationKindMismatch(
               selectorField,
               selectorValue,
               taxSelection.taxCode(),
@@ -89,7 +100,7 @@ final class TaxEntrySemantics {
     if (requiredApplicationKind == null
         && taxCodeDefinition.applicationKind() == TaxApplicationKind.OUTPUT_SALE) {
       violations.add(
-          BookkeepingEntrySemanticsViolationFactory.taxApplicationKindMismatch(
+          BookkeepingTaxSemanticsViolations.taxApplicationKindMismatch(
               selectorField,
               selectorValue,
               taxSelection.taxCode(),

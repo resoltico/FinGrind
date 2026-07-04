@@ -1,6 +1,6 @@
 {
-  "entryKind": "SALE",
-  "effectiveDate": "2026-04-08",
+  "entryKind": "SALE_SETTLED",
+  "effectiveDate": "2026-04-07",
   "cashAccountCode": "cash",
   "revenueAccountCode": "service-revenue",
   "amount": {
@@ -12,7 +12,7 @@
       {
         "sourceDocumentId": "quick-start-cash-receipt-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-08"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": [
@@ -22,7 +22,7 @@
   "provenance": {
     "actorId": "quick-start-operator",
     "actorType": "PERSON",
-    "commandId": "quick-start-record-sale",
+    "commandId": "quick-start-record-sale-settled",
     "idempotencyKey": "quick-start-idem-1",
     "causationId": "quick-start-sale-cause-1"
   }

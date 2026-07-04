@@ -50,7 +50,7 @@ final class CliTaxRegistrationOutputRenderer {
                         .toList()))));
   }
 
-  static String renderTaxRegistrationListText(TaxRegistrationPage page) {
+  static String renderTaxRegistrationListText(TaxRegistrationPage page, boolean withContext) {
     String summary =
         CliTextFormat.renderKeyValueBlock(
             page.registrations().isEmpty()
@@ -90,7 +90,9 @@ final class CliTaxRegistrationOutputRenderer {
     return CliTextFormat.renderTitledBlock(
         "Tax Registrations",
         CliReportRenderSupport.joinSections(
-            summary, registrations, CliReportRenderSupport.section("Context", context)));
+            summary,
+            registrations,
+            withContext ? CliReportRenderSupport.section("Context", context) : ""));
   }
 
   static String renderTaxRegistrationListCsv(TaxRegistrationPage page) {

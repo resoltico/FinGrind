@@ -3,9 +3,11 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -19,10 +21,12 @@ final class CliOpenBookArguments {
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
               ProtocolOptions.ENTITY_NAME,
+              ProtocolOptions.BOOK_TEMPLATE_ID,
+              ProtocolOptions.ACCOUNTING_BASIS,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
               ProtocolOptions.OUTPUT),
-          List.of());
+          List.of(ProtocolOptions.TIGHTEN_PARENTS));
 
   private CliOpenBookArguments() {}
 
@@ -36,9 +40,12 @@ final class CliOpenBookArguments {
         new OpenBookCommand(
             new BookIdentity(
                 new EntityProfile(requireEntityName(argumentValues.entityName)),
-                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
+                BookDoctrines.forTemplateAndBasis(
+                    requireBookTemplateId(argumentValues.bookTemplateId),
+                    requireAccountingBasis(argumentValues.accountingBasis)),
                 requireFunctionalCurrency(argumentValues.functionalCurrency),
                 requireFiscalYearStart(argumentValues.fiscalYearStart))),
+        argumentValues.tightenParents,
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));
   }
 
@@ -61,6 +68,16 @@ final class CliOpenBookArguments {
               CliOptionValues.parseBookEntityNameOption(
                   CliOptionValues.requireValue(argumentIterator, ProtocolOptions.ENTITY_NAME),
                   ProtocolOptions.ENTITY_NAME);
+      case ProtocolOptions.BOOK_TEMPLATE_ID ->
+          argumentValues.bookTemplateId =
+              CliOptionValues.parseBookTemplateIdOption(
+                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.BOOK_TEMPLATE_ID),
+                  ProtocolOptions.BOOK_TEMPLATE_ID);
+      case ProtocolOptions.ACCOUNTING_BASIS ->
+          argumentValues.accountingBasis =
+              CliOptionValues.parseAccountingBasisOption(
+                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.ACCOUNTING_BASIS),
+                  ProtocolOptions.ACCOUNTING_BASIS);
       case ProtocolOptions.FUNCTIONAL_CURRENCY ->
           argumentValues.functionalCurrency =
               CliOptionValues.parseCurrencyUnitOption(
@@ -78,13 +95,17 @@ final class CliOpenBookArguments {
                   argumentValues.outputMode,
                   CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
+      case ProtocolOptions.TIGHTEN_PARENTS -> argumentValues.tightenParents = true;
       default ->
           throw CliArgumentValueParser.unsupportedArgument(
               argument,
               List.of(
                   ProtocolOptions.ENTITY_NAME,
+                  ProtocolOptions.BOOK_TEMPLATE_ID,
+                  ProtocolOptions.ACCOUNTING_BASIS,
                   ProtocolOptions.FUNCTIONAL_CURRENCY,
                   ProtocolOptions.FISCAL_YEAR_START,
+                  ProtocolOptions.TIGHTEN_PARENTS,
                   ProtocolOptions.OUTPUT));
     }
   }
@@ -96,6 +117,24 @@ final class CliOpenBookArguments {
           "A " + ProtocolOptions.ENTITY_NAME + " argument is required.");
     }
     return entityName;
+  }
+
+  private static BookTemplateId requireBookTemplateId(@Nullable BookTemplateId bookTemplateId) {
+    if (bookTemplateId == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BOOK_TEMPLATE_ID,
+          "A " + ProtocolOptions.BOOK_TEMPLATE_ID + " argument is required.");
+    }
+    return bookTemplateId;
+  }
+
+  private static AccountingBasis requireAccountingBasis(@Nullable AccountingBasis accountingBasis) {
+    if (accountingBasis == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.ACCOUNTING_BASIS,
+          "A " + ProtocolOptions.ACCOUNTING_BASIS + " argument is required.");
+    }
+    return accountingBasis;
   }
 
   private static CurrencyUnit requireFunctionalCurrency(@Nullable CurrencyUnit functionalCurrency) {
@@ -119,8 +158,11 @@ final class CliOpenBookArguments {
   /** Accumulates one parsed open-book argument set before required-field resolution runs. */
   static final class OpenBookArgumentValues {
     private @Nullable BookEntityName entityName;
+    private @Nullable BookTemplateId bookTemplateId;
+    private @Nullable AccountingBasis accountingBasis;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;
     private @Nullable OutputMode outputMode;
+    private boolean tightenParents;
   }
 }

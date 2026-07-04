@@ -1,8 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
-import dev.erst.fingrind.cli.json.CliDeclareAccountPayload;
-import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
@@ -10,13 +8,14 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /** Renders administrative CLI mutation results through the shared output channel. */
 final class CliAdministrativeMutationResponseWriter {
@@ -26,7 +25,11 @@ final class CliAdministrativeMutationResponseWriter {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
   }
 
-  void writeOpenBookResult(Path bookFilePath, OpenBookResult result, OutputMode outputMode) {
+  void writeOpenBookResult(
+      Path bookFilePath,
+      List<Path> tightenedParentDirectories,
+      OpenBookResult result,
+      OutputMode outputMode) {
     switch (result) {
       case OpenBookResult.Opened opened ->
           outputMode.run(
@@ -34,13 +37,16 @@ final class CliAdministrativeMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.OpenBookPayload(
-                              absolutePath(bookFilePath),
+                              CliPublicPaths.redactedValue(bookFilePath),
                               opened.initializedAt().toString(),
+                              CliAdministrativeMutationPayloadSupport
+                                  .tightenedParentDirectoryPayloads(tightenedParentDirectories),
                               CliBookInspectionPayloadMapper.bookIdentityPayload(
                                   opened.bookIdentity())))),
               () ->
                   outputChannel.writeText(
-                      CliBookAccessOutputRenderer.renderOpenBookText(bookFilePath, opened)),
+                      CliBookAccessOutputRenderer.renderOpenBookText(
+                          bookFilePath, tightenedParentDirectories, opened)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.OPEN_BOOK));
@@ -54,7 +60,9 @@ final class CliAdministrativeMutationResponseWriter {
   }
 
   void writeGenerateBookKeyFileResult(
-      GeneratedBookKeyFile generatedKeyFile, OutputMode outputMode) {
+      GeneratedBookKeyFile generatedKeyFile,
+      List<Path> tightenedParentDirectories,
+      OutputMode outputMode) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
@@ -62,14 +70,18 @@ final class CliAdministrativeMutationResponseWriter {
                     new CliAdministrationJsonModels.GeneratedBookKeyFilePayload(
                         generatedKeyFile.encoding(),
                         generatedKeyFile.entropyBits(),
-                        generatedKeyFile.permissions()),
+                        generatedKeyFile.permissions(),
+                        CliAdministrativeMutationPayloadSupport.tightenedParentDirectoryPayloads(
+                            tightenedParentDirectories)),
                     CliEnvelopeMapper.successArtifacts(
                         CliEnvelopeMapper.successArtifact(
-                            ProtocolArtifactOutput.bookKeyFileFormat(),
+                            dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput
+                                .bookKeyFileFormat(),
                             generatedKeyFile.bookKeyFilePath())))),
         () ->
             outputChannel.writeText(
-                CliBookAccessOutputRenderer.renderGeneratedBookKeyFileText(generatedKeyFile)),
+                CliBookAccessOutputRenderer.renderGeneratedBookKeyFileText(
+                    generatedKeyFile, tightenedParentDirectories)),
         () -> {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.GENERATE_BOOK_KEY_FILE));
@@ -87,9 +99,11 @@ final class CliAdministrativeMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.RekeyBookPayload(
-                              absolutePath(rekeyed.bookFilePath()),
-                              replacementPassphraseSourceKind(replacementPassphraseSource)),
-                          replacementPassphraseArtifacts(replacementPassphraseSource))),
+                              CliPublicPaths.redactedValue(rekeyed.bookFilePath()),
+                              CliAdministrativeMutationPayloadSupport
+                                  .replacementPassphraseSourceKind(replacementPassphraseSource)),
+                          CliAdministrativeMutationPayloadSupport.replacementPassphraseArtifacts(
+                              replacementPassphraseSource))),
               () ->
                   outputChannel.writeText(
                       CliBookAccessOutputRenderer.renderRekeyBookText(
@@ -109,61 +123,48 @@ final class CliAdministrativeMutationResponseWriter {
   void writeDeclareAccountResult(DeclareAccountResult result, OutputMode outputMode) {
     switch (result) {
       case DeclareAccountResult.Declared declared ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          declareAccountPayload("declared", declared.account()))),
-              () ->
-                  outputChannel.writeText(
-                      CliMutationOutputRenderer.renderAccountDeclarationText(
-                          "declared", declared.account())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_ACCOUNT));
-              });
+          writeMutationSuccess(
+              OperationId.DECLARE_ACCOUNT,
+              "declared",
+              declared.account(),
+              account ->
+                  CliAdministrativeMutationPayloadSupport.declareAccountPayload(
+                      "declared", account),
+              (outcome, account) ->
+                  CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account),
+              outputMode);
       case DeclareAccountResult.Reactivated reactivated ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          declareAccountPayload("reactivated", reactivated.account()))),
-              () ->
-                  outputChannel.writeText(
-                      CliMutationOutputRenderer.renderAccountDeclarationText(
-                          "reactivated", reactivated.account())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_ACCOUNT));
-              });
+          writeMutationSuccess(
+              OperationId.DECLARE_ACCOUNT,
+              "reactivated",
+              reactivated.account(),
+              account ->
+                  CliAdministrativeMutationPayloadSupport.declareAccountPayload(
+                      "reactivated", account),
+              (outcome, account) ->
+                  CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account),
+              outputMode);
       case DeclareAccountResult.Renamed renamed ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          declareAccountPayload("renamed", renamed.account()))),
-              () ->
-                  outputChannel.writeText(
-                      CliMutationOutputRenderer.renderAccountDeclarationText(
-                          "renamed", renamed.account())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_ACCOUNT));
-              });
+          writeMutationSuccess(
+              OperationId.DECLARE_ACCOUNT,
+              "renamed",
+              renamed.account(),
+              account ->
+                  CliAdministrativeMutationPayloadSupport.declareAccountPayload("renamed", account),
+              (outcome, account) ->
+                  CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account),
+              outputMode);
       case DeclareAccountResult.Unchanged unchanged ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          declareAccountPayload("unchanged", unchanged.account()))),
-              () ->
-                  outputChannel.writeText(
-                      CliMutationOutputRenderer.renderAccountDeclarationText(
-                          "unchanged", unchanged.account())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_ACCOUNT));
-              });
+          writeMutationSuccess(
+              OperationId.DECLARE_ACCOUNT,
+              "unchanged",
+              unchanged.account(),
+              account ->
+                  CliAdministrativeMutationPayloadSupport.declareAccountPayload(
+                      "unchanged", account),
+              (outcome, account) ->
+                  CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account),
+              outputMode);
       case DeclareAccountResult.Rejected rejected ->
           outputChannel.writeRejectedEnvelope(
               CliRejectionPayloadMapper.administrationRejectedEnvelope(
@@ -172,64 +173,58 @@ final class CliAdministrativeMutationResponseWriter {
     }
   }
 
-  private static CliDeclareAccountPayload declareAccountPayload(
-      String outcome, dev.erst.fingrind.contract.bookkeeping.DeclaredAccount account) {
-    return new CliDeclareAccountPayload(outcome, CliBookQueryPayloadMapper.accountPayload(account));
-  }
-
   void writeDeclareTaxRegistrationResult(
       DeclareTaxRegistrationResult result, OutputMode outputMode) {
     switch (result) {
       case DeclareTaxRegistrationResult.Declared declared ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          CliTaxPayloadMapper.taxRegistrationMutationPayload(
-                              "declared", declared.registration()))),
-              () ->
-                  outputChannel.writeText(
-                      CliTaxOutputRenderer.renderTaxRegistrationMutationText(
-                          "declared", declared.registration())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_TAX_REGISTRATION));
-              });
+          writeMutationSuccess(
+              OperationId.DECLARE_TAX_REGISTRATION,
+              "declared",
+              declared.registration(),
+              registration ->
+                  CliTaxPayloadMapper.taxRegistrationMutationPayload("declared", registration),
+              CliTaxOutputRenderer::renderTaxRegistrationMutationText,
+              outputMode);
       case DeclareTaxRegistrationResult.Updated updated ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          CliTaxPayloadMapper.taxRegistrationMutationPayload(
-                              "updated", updated.registration()))),
-              () ->
-                  outputChannel.writeText(
-                      CliTaxOutputRenderer.renderTaxRegistrationMutationText(
-                          "updated", updated.registration())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_TAX_REGISTRATION));
-              });
+          writeMutationSuccess(
+              OperationId.DECLARE_TAX_REGISTRATION,
+              "updated",
+              updated.registration(),
+              registration ->
+                  CliTaxPayloadMapper.taxRegistrationMutationPayload("updated", registration),
+              CliTaxOutputRenderer::renderTaxRegistrationMutationText,
+              outputMode);
       case DeclareTaxRegistrationResult.Unchanged unchanged ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          CliTaxPayloadMapper.taxRegistrationMutationPayload(
-                              "unchanged", unchanged.registration()))),
-              () ->
-                  outputChannel.writeText(
-                      CliTaxOutputRenderer.renderTaxRegistrationMutationText(
-                          "unchanged", unchanged.registration())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.DECLARE_TAX_REGISTRATION));
-              });
+          writeMutationSuccess(
+              OperationId.DECLARE_TAX_REGISTRATION,
+              "unchanged",
+              unchanged.registration(),
+              registration ->
+                  CliTaxPayloadMapper.taxRegistrationMutationPayload("unchanged", registration),
+              CliTaxOutputRenderer::renderTaxRegistrationMutationText,
+              outputMode);
       case DeclareTaxRegistrationResult.Rejected rejected ->
           outputChannel.writeRejectedEnvelope(
               CliRejectionPayloadMapper.taxDeclarationRejectedEnvelope(rejected.rejection()),
               outputMode);
     }
+  }
+
+  private <T> void writeMutationSuccess(
+      OperationId operationId,
+      String outcome,
+      T subject,
+      Function<T, dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload> payloadFactory,
+      BiFunction<String, T, String> textRenderer,
+      OutputMode outputMode) {
+    outputMode.run(
+        () ->
+            outputChannel.writeEnvelope(
+                CliEnvelopeMapper.successEnvelope(payloadFactory.apply(subject))),
+        () -> outputChannel.writeText(textRenderer.apply(outcome, subject)),
+        () -> {
+          throw new IllegalArgumentException(CliOperationText.unsupportedCsvOutput(operationId));
+        });
   }
 
   void writeInterimResultSweepResult(InterimResultSweepResult result, OutputMode outputMode) {
@@ -298,13 +293,14 @@ final class CliAdministrativeMutationResponseWriter {
                               closed.closedFiscalYear().resultHoldingAccountCode().value(),
                               closed.closedFiscalYear().retainedAccumulatedAccountCode().value(),
                               closed.closedFiscalYear().closedAt().toString(),
+                              closed.idempotentReplay(),
                               closed.closedFiscalYear().closePostingIds().stream()
                                   .map(dev.erst.fingrind.core.PostingId::value)
                                   .toList()))),
               () ->
                   outputChannel.writeText(
                       CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(
-                          closed.closedFiscalYear())),
+                          closed.closedFiscalYear(), closed.idempotentReplay())),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.FISCAL_YEAR_CLOSE));
@@ -315,28 +311,5 @@ final class CliAdministrativeMutationResponseWriter {
                   OperationId.FISCAL_YEAR_CLOSE, rejected.rejection()),
               outputMode);
     }
-  }
-
-  private static String absolutePath(Path path) {
-    return CliPublicPaths.redactedValue(path);
-  }
-
-  private static List<CliEnvelopeJsonModels.SuccessArtifact> replacementPassphraseArtifacts(
-      BookAccess.PassphraseSource replacementPassphraseSource) {
-    if (replacementPassphraseSource instanceof BookAccess.PassphraseSource.KeyFile keyFile) {
-      return CliEnvelopeMapper.successArtifacts(
-          CliEnvelopeMapper.successArtifact(
-              ProtocolArtifactOutput.bookKeyFileFormat(), keyFile.bookKeyFilePath()));
-    }
-    return List.of();
-  }
-
-  private static String replacementPassphraseSourceKind(
-      BookAccess.PassphraseSource replacementPassphraseSource) {
-    return switch (replacementPassphraseSource) {
-      case BookAccess.PassphraseSource.KeyFile _ -> "key-file";
-      case BookAccess.PassphraseSource.StandardInput _ -> "standard-input";
-      case BookAccess.PassphraseSource.InteractivePrompt _ -> "interactive-prompt";
-    };
   }
 }

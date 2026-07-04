@@ -164,9 +164,9 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             paths.bookFilePath().toString(),
             "--book-key-file",
             paths.bookKeyFilePath().toString(),
-            "--backup-book-file-out",
+            "--backup-file",
             paths.backupBookFilePath().toString(),
-            "--backup-book-key-file-out",
+            "--backup-key-file",
             paths.backupBookKeyFilePath().toString()),
         rejectionSpec(
             CliAdministrativeExitCodes.exitCodeFor(restoreRejected),
@@ -176,9 +176,11 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             cmd(OperationId.RESTORE_BOOK),
             "--book-file",
             paths.bookFilePath().toString(),
-            "--backup-book-file",
+            "--book-key-file",
+            paths.bookKeyFilePath().toString(),
+            "--backup-file",
             paths.backupBookFilePath().toString(),
-            "--backup-book-key-file",
+            "--backup-key-file",
             paths.backupBookKeyFilePath().toString()),
         rejectionSpec(
             CliAdministrativeExitCodes.exitCodeFor(inspectRollbackRejected),
@@ -240,9 +242,7 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             paths.bookFilePath().toString(),
             "--book-key-file",
             paths.bookKeyFilePath().toString(),
-            "--period-start",
-            "2026-04-07",
-            "--period-end",
+            "--through",
             "2026-04-07"));
   }
 
@@ -326,6 +326,7 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
     CliBookWorkflow rejectedReportsWorkflow =
         reportingWorkflow(
             accountBalanceRejected,
+            rejectedTaxObligationResult(),
             trialBalanceRejected,
             accountLedgerRejected,
             periodSummaryRejected,
@@ -507,18 +508,20 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             paths.bookFilePath().toString(),
             "--book-key-file",
             paths.bookKeyFilePath().toString(),
-            "--backup-book-file-out",
+            "--backup-file",
             paths.backupBookFilePath().toString(),
-            "--backup-book-key-file-out",
+            "--backup-key-file",
             paths.backupBookKeyFilePath().toString()),
         failureSpec(
             cmd(OperationId.RESTORE_BOOK),
             cmd(OperationId.RESTORE_BOOK),
             "--book-file",
             paths.bookFilePath().toString(),
-            "--backup-book-file",
+            "--book-key-file",
+            paths.bookKeyFilePath().toString(),
+            "--backup-file",
             paths.backupBookFilePath().toString(),
-            "--backup-book-key-file",
+            "--backup-key-file",
             paths.backupBookKeyFilePath().toString()),
         failureSpec(
             cmd(OperationId.INSPECT_REKEY_ROLLBACK),
@@ -559,9 +562,7 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             paths.bookFilePath().toString(),
             "--book-key-file",
             paths.bookKeyFilePath().toString(),
-            "--period-start",
-            "2026-04-07",
-            "--period-end",
+            "--through",
             "2026-04-07"));
   }
 
@@ -794,12 +795,12 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
 
   private static dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult
       contractPreflightResult() {
-    return new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted(
+    return CliPostEntryResultFixtures.preflightAccepted(
         new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07"));
   }
 
   private static dev.erst.fingrind.contract.bookkeeping.CommitEntryResult contractCommitResult() {
-    return new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed(
+    return CliPostEntryResultFixtures.committed(
         new PostingId("posting-1"),
         new IdempotencyKey("idem-1"),
         LocalDate.parse("2026-04-07"),

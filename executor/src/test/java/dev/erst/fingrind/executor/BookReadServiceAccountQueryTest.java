@@ -23,6 +23,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
@@ -389,8 +390,7 @@ class BookReadServiceAccountQueryTest {
   private static BookInspection.CloseTargetReadiness missingCloseTarget(
       FinancialPositionLineClassification classification, List<AccountCode> inactiveCandidates) {
     BookAdministrationRejection rejection =
-        new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
-            classification, inactiveCandidates);
+        new CloseTargetAccountCandidateMissing(classification, inactiveCandidates);
     return new BookInspection.CloseTargetReadiness(
         false,
         classification,

@@ -8,10 +8,33 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /** Shared formatting helpers for FinGrind PDF reports. */
 final class PdfValueFormatter {
+  private static final Map<FinancialPositionLineClassification, String>
+      FINANCIAL_POSITION_LINE_CLASSIFICATIONS =
+          Map.ofEntries(
+              Map.entry(FinancialPositionLineClassification.CURRENT_ASSET, "Current asset"),
+              Map.entry(FinancialPositionLineClassification.NONCURRENT_ASSET, "Non-current asset"),
+              Map.entry(FinancialPositionLineClassification.INVENTORY, "Inventory"),
+              Map.entry(FinancialPositionLineClassification.TRADE_RECEIVABLE, "Trade receivable"),
+              Map.entry(FinancialPositionLineClassification.CURRENT_LIABILITY, "Current liability"),
+              Map.entry(
+                  FinancialPositionLineClassification.NONCURRENT_LIABILITY,
+                  "Non-current liability"),
+              Map.entry(FinancialPositionLineClassification.TRADE_PAYABLE, "Trade payable"),
+              Map.entry(
+                  FinancialPositionLineClassification.EQUITY_CONTRIBUTION, "Contributed capital"),
+              Map.entry(FinancialPositionLineClassification.EQUITY_WITHDRAWAL, "Distributions"),
+              Map.entry(FinancialPositionLineClassification.RESULT_HOLDING, "Accumulated result"),
+              Map.entry(
+                  FinancialPositionLineClassification.RETAINED_ACCUMULATED, "Retained accumulated"),
+              Map.entry(FinancialPositionLineClassification.RESERVE, "Reserve"),
+              Map.entry(FinancialPositionLineClassification.OTHER_EQUITY, "Other equity"));
+
   private PdfValueFormatter() {}
 
   static String displayMoney(Money money) {
@@ -70,18 +93,8 @@ final class PdfValueFormatter {
 
   static String displayFinancialPositionLineClassification(
       FinancialPositionLineClassification lineClassification) {
-    return switch (lineClassification) {
-      case CURRENT_ASSET -> "Current asset";
-      case NONCURRENT_ASSET -> "Non-current asset";
-      case CURRENT_LIABILITY -> "Current liability";
-      case NONCURRENT_LIABILITY -> "Non-current liability";
-      case EQUITY_CONTRIBUTION -> "Contributed capital";
-      case EQUITY_WITHDRAWAL -> "Distributions";
-      case RESULT_HOLDING -> "Accumulated result";
-      case RETAINED_ACCUMULATED -> "Retained accumulated";
-      case RESERVE -> "Reserve";
-      case OTHER_EQUITY -> "Other equity";
-    };
+    Objects.requireNonNull(lineClassification, "lineClassification");
+    return Objects.requireNonNull(FINANCIAL_POSITION_LINE_CLASSIFICATIONS.get(lineClassification));
   }
 
   static String displayFinancialPositionLineClassification(
@@ -95,13 +108,16 @@ final class PdfValueFormatter {
       ProfitAndLossLineClassification lineClassification) {
     return switch (lineClassification) {
       case OPERATING_REVENUE -> "Operating revenue";
+      case SALES_DISCOUNT_ALLOWANCE -> "Sales discount allowance";
       case OTHER_REVENUE -> "Other revenue";
       case FINANCE_INCOME -> "Finance income";
       case COST_OF_SALES -> "Cost of sales";
       case OPERATING_EXPENSE -> "Operating expense";
       case DEPRECIATION_AND_AMORTIZATION -> "Depreciation and amortization";
+      case SETTLEMENT_FEE -> "Settlement fee";
+      case BAD_DEBT_WRITE_OFF -> "Bad debt write-off";
       case FINANCE_EXPENSE -> "Finance expense";
-      case OTHER_EXPENSE -> "Tax expense";
+      case OTHER_EXPENSE -> "Other expense";
     };
   }
 

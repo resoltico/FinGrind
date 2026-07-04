@@ -19,7 +19,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -44,7 +44,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -70,7 +70,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",

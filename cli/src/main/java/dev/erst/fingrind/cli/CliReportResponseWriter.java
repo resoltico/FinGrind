@@ -9,12 +9,22 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
+import dev.erst.fingrind.contract.reportmodel.AccountBalanceReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.AccountLedgerReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.CashFlowStatementReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.ChangesInEquityReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.FinancialPositionReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.IncomeStatementReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.PeriodSummaryReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.ReportModel;
+import dev.erst.fingrind.contract.reportmodel.TaxObligationReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.TrialBalanceReportModelBuilder;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /** Renders report-producing read-side CLI results through the shared output channel. */
@@ -28,97 +38,107 @@ final class CliReportResponseWriter {
   void writeAccountBalanceResult(
       AccountBalanceResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
-        CliReportResultAccess.accountBalanceSnapshot(result),
-        CliReportResultAccess.accountBalanceRejection(result),
+        result.fold(AccountBalanceResult.Reported::snapshot, rejected -> null),
+        result.fold(reported -> null, AccountBalanceResult.Rejected::rejection),
         outputMode,
         exportedArtifactPath,
-        CliBookQueryPayloadMapper::accountBalancePayload,
-        CliAccountBalanceOutputRenderer::renderText,
+        AccountBalanceReportModelBuilder::buildModel,
         CliAccountBalanceOutputRenderer::renderCsv);
   }
 
   void writeTrialBalanceResult(
       TrialBalanceResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
-        CliReportResultAccess.trialBalanceReport(result),
-        CliReportResultAccess.trialBalanceRejection(result),
+        result.fold(TrialBalanceResult.Reported::report, rejected -> null),
+        result.fold(reported -> null, TrialBalanceResult.Rejected::rejection),
         outputMode,
         exportedArtifactPath,
-        CliReportPayloadMapper::trialBalancePayload,
-        CliReportOutputRenderer::renderTrialBalanceText,
-        CliReportOutputRenderer::renderTrialBalanceCsv);
+        TrialBalanceReportModelBuilder::buildModel,
+        CliReportCsvRenderer::renderTrialBalance);
   }
 
   void writeAccountLedgerResult(
       AccountLedgerResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
-        CliReportResultAccess.accountLedgerReport(result),
-        CliReportResultAccess.accountLedgerRejection(result),
+        result.fold(AccountLedgerResult.Reported::report, rejected -> null),
+        result.fold(reported -> null, AccountLedgerResult.Rejected::rejection),
         outputMode,
         exportedArtifactPath,
-        CliReportPayloadMapper::accountLedgerPayload,
-        CliReportOutputRenderer::renderAccountLedgerText,
-        CliReportOutputRenderer::renderAccountLedgerCsv);
+        AccountLedgerReportModelBuilder::buildModel,
+        CliReportCsvRenderer::renderAccountLedger);
   }
 
   void writePeriodSummaryResult(
       PeriodSummaryResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
-        CliReportResultAccess.periodSummaryReport(result),
-        CliReportResultAccess.periodSummaryRejection(result),
+        result.fold(PeriodSummaryResult.Reported::report, rejected -> null),
+        result.fold(reported -> null, PeriodSummaryResult.Rejected::rejection),
         outputMode,
         exportedArtifactPath,
-        CliReportPayloadMapper::periodSummaryPayload,
-        CliReportOutputRenderer::renderPeriodSummaryText,
-        CliReportOutputRenderer::renderPeriodSummaryCsv);
+        PeriodSummaryReportModelBuilder::buildModel,
+        CliReportCsvRenderer::renderPeriodSummary);
   }
 
   void writeFinancialPositionResult(
       FinancialPositionResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
-        CliReportResultAccess.financialPositionReport(result),
-        CliReportResultAccess.financialPositionRejection(result),
+        result.fold(FinancialPositionResult.Reported::report, rejected -> null),
+        result.fold(reported -> null, FinancialPositionResult.Rejected::rejection),
         outputMode,
         exportedArtifactPath,
-        CliReportPayloadMapper::financialPositionPayload,
-        CliReportOutputRenderer::renderFinancialPositionText,
-        CliReportOutputRenderer::renderFinancialPositionCsv);
+        FinancialPositionReportModelBuilder::buildModel,
+        CliReportCsvRenderer::renderFinancialPosition);
   }
 
   void writeIncomeStatementResult(
       IncomeStatementResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
-        CliReportResultAccess.incomeStatementReport(result),
-        CliReportResultAccess.incomeStatementRejection(result),
+        result.fold(IncomeStatementResult.Reported::report, rejected -> null),
+        result.fold(reported -> null, IncomeStatementResult.Rejected::rejection),
         outputMode,
         exportedArtifactPath,
-        CliReportPayloadMapper::incomeStatementPayload,
-        CliReportOutputRenderer::renderIncomeStatementText,
-        CliReportOutputRenderer::renderIncomeStatementCsv);
+        IncomeStatementReportModelBuilder::buildModel,
+        CliReportCsvRenderer::renderIncomeStatement);
   }
 
   void writeCashFlowStatementResult(
       CashFlowStatementResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
-        CliReportResultAccess.cashFlowStatementReport(result),
-        CliReportResultAccess.cashFlowStatementRejection(result),
+        result.fold(CashFlowStatementResult.Reported::report, rejected -> null),
+        result.fold(reported -> null, CashFlowStatementResult.Rejected::rejection),
         outputMode,
         exportedArtifactPath,
-        CliReportPayloadMapper::cashFlowStatementPayload,
-        CliReportOutputRenderer::renderCashFlowStatementText,
-        CliReportOutputRenderer::renderCashFlowStatementCsv);
+        CashFlowStatementReportModelBuilder::buildModel,
+        CliReportCsvRenderer::renderCashFlowStatement);
   }
 
   void writeChangesInEquityResult(
       ChangesInEquityResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     writeResult(
-        CliReportResultAccess.changesInEquityReport(result),
-        CliReportResultAccess.changesInEquityRejection(result),
+        result.fold(ChangesInEquityResult.Reported::report, rejected -> null),
+        result.fold(reported -> null, ChangesInEquityResult.Rejected::rejection),
         outputMode,
         exportedArtifactPath,
-        CliReportPayloadMapper::changesInEquityPayload,
-        CliReportOutputRenderer::renderChangesInEquityText,
-        CliReportOutputRenderer::renderChangesInEquityCsv);
+        ChangesInEquityReportModelBuilder::buildModel,
+        CliReportCsvRenderer::renderChangesInEquity);
+  }
+
+  void writeTaxObligationResult(
+      TaxObligationResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    switch (result) {
+      case TaxObligationResult.Reported reported ->
+          CliReportPublishingSupport.writeReportedModel(
+              outputChannel,
+              TaxObligationReportModelBuilder.buildModel(reported.report()),
+              CliReportCsvRenderer.renderTaxObligation(reported.report()),
+              outputMode,
+              exportedArtifactPath);
+      case TaxObligationResult.Rejected rejected ->
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.taxQueryRejectedEnvelope(
+                  OperationId.TAX_OBLIGATION, rejected.rejection()),
+              outputMode);
+    }
   }
 
   private <REPORTED> void writeResult(
@@ -126,43 +146,18 @@ final class CliReportResponseWriter {
       @Nullable BookQueryRejection rejection,
       OutputMode outputMode,
       @Nullable Path exportedArtifactPath,
-      Function<REPORTED, ? extends ProtocolSuccessPayload> payloadMapper,
-      Function<REPORTED, String> textRenderer,
+      Function<REPORTED, ReportModel> reportModelBuilder,
       Function<REPORTED, String> csvRenderer) {
     if (reported == null) {
       writeRejectedResult(Objects.requireNonNull(rejection, "rejection"), outputMode);
       return;
     }
-    writeReportedResult(
+    CliReportPublishingSupport.writeReportedModel(
+        outputChannel,
+        reportModelBuilder.apply(reported),
+        csvRenderer.apply(reported),
         outputMode,
-        exportedArtifactPath,
-        () -> payloadMapper.apply(reported),
-        () -> textRenderer.apply(reported),
-        () -> csvRenderer.apply(reported));
-  }
-
-  private void writeReportedResult(
-      OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
-      Supplier<? extends ProtocolSuccessPayload> payloadSupplier,
-      Supplier<String> textSupplier,
-      Supplier<String> csvSupplier) {
-    outputMode.run(
-        () ->
-            outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(payloadSupplier.get(), exportedArtifactPath)),
-        () ->
-            outputChannel.writeText(
-                exportedArtifactPath == null
-                    ? textSupplier.get()
-                    : CliArtifactOutputRenderer.renderPdfArtifact(exportedArtifactPath)),
-        () -> {
-          if (exportedArtifactPath != null) {
-            throw new IllegalStateException(
-                "CSV stdout cannot be combined with --pdf-out after argument validation.");
-          }
-          outputChannel.writeText(csvSupplier.get());
-        });
+        exportedArtifactPath);
   }
 
   private void writeRejectedResult(BookQueryRejection rejection, OutputMode outputMode) {

@@ -1,12 +1,29 @@
 package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /** Canonical command-topic selection for raw and typed posting-request surfaces. */
 public final class ProtocolPostingRequestTopics {
+  private static final Map<OperationId, BookkeepingEntryKind> REQUIRED_ENTRY_KINDS =
+      Map.ofEntries(
+          Map.entry(OperationId.POST_ENTRY, BookkeepingEntryKind.DIRECT_JOURNAL),
+          Map.entry(OperationId.RECORD_SALE_SETTLED, BookkeepingEntryKind.SALE_SETTLED),
+          Map.entry(OperationId.RECORD_SALE_ON_CREDIT, BookkeepingEntryKind.SALE_ON_CREDIT),
+          Map.entry(OperationId.RECORD_PURCHASE_SETTLED, BookkeepingEntryKind.PURCHASE_SETTLED),
+          Map.entry(OperationId.RECORD_PURCHASE_ON_CREDIT, BookkeepingEntryKind.PURCHASE_ON_CREDIT),
+          Map.entry(OperationId.RECORD_EXPENSE_SETTLED, BookkeepingEntryKind.EXPENSE_SETTLED),
+          Map.entry(OperationId.RECORD_EXPENSE_ON_CREDIT, BookkeepingEntryKind.EXPENSE_ON_CREDIT),
+          Map.entry(OperationId.RECORD_RECEIPT, BookkeepingEntryKind.RECEIPT),
+          Map.entry(OperationId.RECORD_PAYMENT, BookkeepingEntryKind.PAYMENT),
+          Map.entry(OperationId.RECORD_OWNER_CONTRIBUTION, BookkeepingEntryKind.OWNER_CONTRIBUTION),
+          Map.entry(OperationId.RECORD_OWNER_WITHDRAWAL, BookkeepingEntryKind.OWNER_WITHDRAWAL),
+          Map.entry(OperationId.RECORD_OPENING_POSITION, BookkeepingEntryKind.OPENING_POSITION),
+          Map.entry(OperationId.RECORD_REVERSAL, BookkeepingEntryKind.REVERSAL));
+
   private ProtocolPostingRequestTopics() {}
 
   /** Returns whether the selected command accepts the full published entry-kind family. */
@@ -23,7 +40,7 @@ public final class ProtocolPostingRequestTopics {
   public static BookkeepingEntryKind scaffoldEntryKind(OperationId operationId) {
     OperationId requiredOperationId = Objects.requireNonNull(operationId, "operationId");
     if (requiredOperationId == OperationId.PREFLIGHT_ENTRY) {
-      return BookkeepingEntryKind.SALE;
+      return BookkeepingEntryKind.SALE_SETTLED;
     }
     BookkeepingEntryKind requiredEntryKind = requiredEntryKindOrNull(requiredOperationId);
     if (requiredEntryKind != null) {
@@ -36,16 +53,6 @@ public final class ProtocolPostingRequestTopics {
   }
 
   private static @Nullable BookkeepingEntryKind requiredEntryKindOrNull(OperationId operationId) {
-    OperationId requiredOperationId = Objects.requireNonNull(operationId, "operationId");
-    return switch (requiredOperationId) {
-      case POST_ENTRY -> BookkeepingEntryKind.DIRECT_JOURNAL;
-      case RECORD_SALE -> BookkeepingEntryKind.SALE;
-      case RECORD_EXPENSE -> BookkeepingEntryKind.EXPENSE;
-      case RECORD_OWNER_CONTRIBUTION -> BookkeepingEntryKind.OWNER_CONTRIBUTION;
-      case RECORD_OWNER_WITHDRAWAL -> BookkeepingEntryKind.OWNER_WITHDRAWAL;
-      case RECORD_OPENING_POSITION -> BookkeepingEntryKind.OPENING_POSITION;
-      case RECORD_REVERSAL -> BookkeepingEntryKind.REVERSAL;
-      default -> null;
-    };
+    return REQUIRED_ENTRY_KINDS.get(Objects.requireNonNull(operationId, "operationId"));
   }
 }

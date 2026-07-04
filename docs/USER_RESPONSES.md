@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, response-json, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, capabilities, execute-plan, report-output]
   questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what report payloads does fingrind return"]
@@ -20,9 +20,9 @@ payloads returned by the CLI.
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
 | success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `inspect-rekey-rollback`, `restore-rekey-rollback`, `delete-rekey-rollback`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `cash-flow-statement`, `changes-in-equity` | `status`, `payload`, optional `artifacts[]` |
-| raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, or AI-agent ledger-plan scaffold JSON |
-| `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate` |
-| `ok` | successful `record-sale`, `record-expense`, `record-owner-contribution`, `record-owner-withdrawal`, `record-opening-position`, `record-reversal`, or `post-entry` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt` |
+| raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, declare-tax-registration-request, or AI-agent ledger-plan scaffold JSON |
+| `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.resolvedJournal` |
+| `ok` | successful `record-sale-settled`, `record-sale-on-credit`, `record-expense-settled`, `record-expense-on-credit`, `record-receipt`, `record-payment`, `record-owner-contribution`, `record-owner-withdrawal`, `record-opening-position`, `record-reversal`, or `post-entry` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt`, `payload.idempotentReplay`, `payload.resolvedJournal` |
 | `ok` | successful `execute-plan` | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, and optional `payload.journal` |
 | `rejected` | deterministically rejected `execute-plan` | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, optional `payload.journal`, plus top-level `code` and `message` |
 | `error` | assertion-failed `execute-plan` | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, optional `payload.journal`, plus top-level `code` and `message` |
@@ -32,12 +32,12 @@ payloads returned by the CLI.
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - discovery JSON payloads from `help`, `capabilities`, and `version` now publish
-  `payload.protocolVersion`, and the current hard-break line is `"12"`
+  `payload.protocolVersion`, and the current hard-break line is `"20"`
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; both
   intentionally publish placeholder-first sample documents whose evidence and provenance values
-  should be replaced before real-world use, and they expose the minimal sale request scaffold and
-  the minimal sale plan scaffold respectively
+  should be replaced before real-world use, and they expose the minimal settled-sale request
+  scaffold and the minimal settled-sale plan scaffold respectively
 - `generate-book-key-file.artifacts[]` is the canonical successful artifact publication surface;
   each entry carries `format` plus one redacted public `path`, and generated key files currently
   publish `format: "book-key-file"`
@@ -47,12 +47,18 @@ Dynamic fields:
 - `open-book.payload.bookIdentity.entityName`, `.accountingKernelProfile`,
   `.accountingBasis`, `.accountingFrameworkPosition`, `.entityForm`, `.bookTemplateId`,
   `.functionalCurrency`, and `.fiscalYearStart` echo the persisted initialized-book identity
+- `open-book.payload.bookIdentity.bookTemplateId` currently publishes either
+  `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING`, while `.accountingBasis` distinguishes
+  the cash-basis and accrual charts within the selected template family
 - `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
 - `inspect-book.payload.bookFile` is a redacted public path hint for the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
 - `list-postings` exposes `limit` plus an optional opaque `nextCursor`
+- `preflight-entry.payload.resolvedJournal` publishes the exact expanded journal plus semantic classification that passed the current advisory validation pass
 - `committed.payload.postingId` is generated per successful commit as a UUID v7 value
-- `committed.recordedAt` is stamped from the FinGrind commit clock, not caller input
+- `committed.payload.recordedAt` is stamped from the FinGrind commit clock, not caller input
+- `committed.payload.idempotentReplay` is true exactly when the submitted normalized request matched one already committed posting
+- `committed.payload.resolvedJournal` publishes the exact expanded journal plus semantic classification attached to the committed posting result
 - `payload.resultDetail` echoes whether the caller requested `summary` or `full`
 - `payload.summary.startedAt`, `finishedAt`, aggregate step counts, and optional failure
   details are stamped from the FinGrind execution clock
@@ -125,7 +131,7 @@ Discovery output also has two intentionally different JSON scopes:
   structured detail families such as `account-state-violations` and `entry-semantics-violations`
 - `responseModel.errorDescriptors` is an array of deterministic CLI invocation/runtime error
   descriptors such as `invalid-page-cursor`, `protected-book-verification-failed`,
-  `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
+  `internal-defect`, `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
   `pdf-export-failure`, and `interactive-prompt-unavailable`; each descriptor includes its
   published `exitCode`
 - `responseModel.errorFields` publishes the shared top-level error envelope fields; its optional
@@ -174,6 +180,23 @@ Shared initialized-book identity payload:
 - `bookTemplateId`
 - `functionalCurrency`
 - `fiscalYearStart`
+
+Shared resolved-journal payload:
+- `expandedLines.effectiveDate`
+- `expandedLines.lines[]`, where each line carries `accountCode`, `side`, and typed `amount`
+- optional `appliedTax`
+- optional `foreignExchangeDetails`
+- `classification.eventClass`
+- `classification.anchorSignature[]`, where each entry carries `accountRole` and `side`
+- `classification.containedTypedEvents[]`
+  This lists only the typed business-event pair classes contained in the resolved anchor signature.
+  It is empty for structural outcomes such as `OPENING` and `REVERSAL`, and for genuine
+  `ADJUSTMENT` journals. JSON publishes the full classifier set; text-mode posting output omits
+  the line when that set is only the same singleton class already shown in `eventClass`.
+- `classification.hasCashLine`
+- `classification.evidenceClass`
+- `classification.structural.adoptionOpeningEntry`
+- optional `classification.structural.reversesPriorPostingId`
 
 Shared posting payload:
 - `postingId`
@@ -247,14 +270,17 @@ for the current hard-break line.
 
 `backup-book` success returns:
 - `payload.bookFile`
-- `artifacts[]`, where the current entries are `backup-book-file` and `backup-book-key-file`
+- `artifacts[]`, where the current entries are `backup-file` and `backup-key-file`
 
 `restore-book` success returns:
 - `payload.bookFile`
-- `artifacts[]`, where the current entries are `backup-book-file` and `backup-book-key-file`
+- `payload.bookKeyFilePath`
+- `artifacts[]`, where the current entries use `format: "book-file"` and
+  `format: "book-key-file"`
 
-That published `backup-book-key-file` artifact is also the key file required to reopen the restored live
-`payload.bookFile`.
+`payload.bookKeyFilePath` and the published `book-key-file` artifact identify the destination key
+file required to reopen the restored live `payload.bookFile`. The backup key remains source-only
+and is not the restored live-book secret.
 
 `inspect-rekey-rollback` success returns:
 - `payload.bookFile`
@@ -411,7 +437,7 @@ read/report commands support `--output csv` for spreadsheet import. Successful p
 stdout. Every non-plan deterministic failure or single-command business rejection uses one
 canonical JSON diagnostics envelope on stderr instead, regardless of the selected success output
 mode. Invalid invocation failures use that same diagnostics shape.
-`account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `cash-flow-statement`, and `changes-in-equity` can additionally write one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the JSON report payload itself, but successful JSON success envelopes now also publish one `artifacts[]` entry with `format: "pdf"` and one redacted artifact `path` hint. When `--pdf-out` is selected together with `--output text`, stdout renders one artifact confirmation block instead of the full report body. `--output csv` cannot be combined with `--pdf-out`. If the requested PDF artifact cannot be written, the command returns one deterministic `pdf-export-failure` error instead of a successful report payload.
+`tax-obligation`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `cash-flow-statement`, and `changes-in-equity` can additionally write one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the JSON report payload itself, but successful JSON success envelopes now also publish one `artifacts[]` entry with `format: "pdf"` and one redacted artifact `path` hint. When `--pdf-out` is selected together with `--output text`, stdout renders one artifact confirmation block instead of the full report body. `--output csv` cannot be combined with `--pdf-out`. If the requested PDF artifact cannot be written, the command returns one deterministic `pdf-export-failure` error instead of a successful report payload.
 Deterministic failures and single-command business rejections for commands that accept
 `--output text` keep the same JSON diagnostics envelope rather than switching to a separate text
 failure grammar.
@@ -455,19 +481,40 @@ Checked-in template and ledger-plan examples:
 | `account-type-conflict` | `declare-account` attempted to amend an existing account's immutable classification | `accountCode`, `existingAccountType`, `requestedAccountType` |
 | `unknown-account` | a query named an undeclared account | `accountCode` |
 | `posting-not-found` | `get-posting` targeted a posting id that does not exist in the selected book | `postingId` |
-| `account-state-violations` | `preflight-entry`, one of the typed `record-*` commit commands, or raw `post-entry` found one or more undeclared, inactive, or non-postable accounts | `violations[]`, where each item includes `code`, `field`, `message`, `category`, `repair`, `accountCode`, and optional `accountNodeKind` |
+| `account-state-violations` | `preflight-entry`, one of the typed `record-*` commit commands, or raw `post-entry` found one or more undeclared, inactive, or non-postable accounts, or one request attribute that would create or deepen a negative inventory carrying balance | `violations[]`, where each item includes `code`, `field`, `message`, `category`, `repair`, `accountCode`, and optional `accountNodeKind` |
 | `inactive-account` | one item inside `account-state-violations.violations[]` named an inactive account | `code`, `field`, `message`, `category`, `repair`, `accountCode` |
+| `non-postable-account` | one item inside `account-state-violations.violations[]` named a declared header account that cannot accept direct postings | `code`, `field`, `message`, `category`, `repair`, `accountCode`, `accountNodeKind` |
+| `inventory-balance-below-zero` | one item inside `account-state-violations.violations[]` named one inventory decrease that would create or deepen a credit inventory balance | `code`, `field`, `message`, `category`, `repair`, `accountCode` |
 | `entry-semantics-violations` | `preflight-entry`, one of the typed `record-*` commit commands, or raw `post-entry` found one or more ordered entry-semantics conflicts in the selected posting request | `violations[]`, where each item includes `code`, `field`, `message`, `category`, and `repair` |
 | `economic-null-journal` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` lines net every referenced account to zero | `code`, `field`, `message`, `category`, `repair` |
-| `cash-basis-account-required` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` lines never touch a declared cash-and-cash-equivalent asset account | `code`, `field`, `message`, `category`, `repair` |
+| `raw-journal-requires-cash-line` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` adjustment omits every declared cash account line on a cash-basis book | `code`, `field`, `message`, `category`, `repair` |
 | `distinct-role-accounts-required` | one item inside `entry-semantics-violations.violations[]` found that two semantic role fields point to the same account even though the entry kind requires distinct accounts | `code`, `field`, `message`, `category`, `repair` |
 | `account-type-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one referenced account uses the wrong declared `accountType` for the selected entry kind | `code`, `field`, `message`, `category`, `repair` |
+| `cash-flow-asset-classification-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one referenced account uses the wrong declared `cashFlowAssetClassification` for the selected entry kind | `code`, `field`, `message`, `category`, `repair` |
 | `financial-position-classification-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one referenced account uses the wrong declared `financialPositionLineClassification` for the selected entry kind | `code`, `field`, `message`, `category`, `repair` |
+| `account-role-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one referenced account resolves to the wrong semantic `accountRole` for the selected entry kind | `code`, `field`, `message`, `category`, `repair` |
 | `source-document-type-not-accepted` | one item inside `entry-semantics-violations.violations[]` found that the selected evidence uses one unsupported `sourceDocumentType` | `code`, `field`, `message`, `category`, `repair` |
+| `unknown-tax-registration` | one item inside `entry-semantics-violations.violations[]` found that one tax selector references an undeclared `taxRegistrationId` | `code`, `field`, `message`, `category`, `repair` |
+| `unknown-tax-code` | one item inside `entry-semantics-violations.violations[]` found that one tax selector references a `taxCode` not declared on the selected tax registration | `code`, `field`, `message`, `category`, `repair` |
+| `tax-application-kind-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one selected tax code resolves to an unsupported tax `applicationKind` for the entry kind | `code`, `field`, `message`, `category`, `repair` |
+| `verb-requires-receivable-role` | one item inside `entry-semantics-violations.violations[]` found that the selected typed entry requires trade-receivable semantics that the current cash-basis book does not admit | `code`, `field`, `message`, `category`, `repair` |
+| `verb-requires-payable-role` | one item inside `entry-semantics-violations.violations[]` found that the selected typed entry requires trade-payable semantics that the current cash-basis book does not admit | `code`, `field`, `message`, `category`, `repair` |
+| `verb-requires-trading-template` | one item inside `entry-semantics-violations.violations[]` found that the selected inventory-purchase verb is admitted only on trading-template books | `code`, `field`, `message`, `category`, `repair` |
+| `trading-sale-requires-inventory-relief` | one item inside `entry-semantics-violations.violations[]` found that a trading-template sale omitted the required `inventoryRelief` object | `code`, `field`, `message`, `category`, `repair` |
+| `inventory-relief-requires-trading-book` | one item inside `entry-semantics-violations.violations[]` found that `inventoryRelief` appeared on a non-trading sale request | `code`, `field`, `message`, `category`, `repair` |
+| `evidence-class-conflict` | one item inside `entry-semantics-violations.violations[]` found that the retained evidence class contradicts the event class resolved from the request | `code`, `field`, `message`, `category`, `repair` |
+| `raw-journal-shadows-typed-event` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` resolves to one published typed business event and therefore must not be admitted through the raw path | `code`, `field`, `message`, `category`, `repair` |
+| `raw-journal-bundles-operational-events` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` bundles multiple operational business events into one posting | `code`, `field`, `message`, `category`, `repair` |
+| `opening-window-account-not-permitted` | one item inside `entry-semantics-violations.violations[]` found that an `OPENING_POSITION` request referenced one account that the adoption opening window does not permit | `code`, `field`, `message`, `category`, `repair` |
 | `idempotency-key-conflict` | the selected book already contains the same `idempotencyKey`, but it is bound to a different committed posting request | none |
+| `posting-effective-date-in-future` | the selected posting request uses an `effectiveDate` later than the current UTC date | `attemptedEffectiveDate`, `currentUtcDate` |
+| `book-functional-currency-mismatch` | the selected posting request uses one journal-line or typed-entry currency that does not match the selected book functional currency | `functionalCurrency`, `attemptedCurrency` |
+| `closed-period-violation` | the selected posting request uses an effective date that falls inside one transferred reporting period | `transferredThroughEffectiveDate`, `attemptedEffectiveDate` |
 | `opening-position-window-closed` | `OPENING_POSITION` was submitted after the book already contains its first committed posting | `firstBlockingPostingKind`, `firstBlockingEffectiveDate` |
 | `opening-position-touches-nominal-account` | `OPENING_POSITION` touched a revenue or expense account | `accountCode`, `accountType` |
+| `reserved-result-classification` | the selected posting request touched one account whose `financialPositionLineClassification` is reserved for reporting-period closes | `accountCode`, `financialPositionLineClassification` |
 | `reversal-target-not-found` | `reversal.priorPostingId` does not exist in the selected book | `priorPostingId` |
+| `reversal-target-is-reversal` | `reversal.priorPostingId` already identifies one reversal posting | `priorPostingId` |
 | `reversal-already-exists` | the target posting already has a full reversal | `priorPostingId` |
 | `reversal-does-not-negate-target` | a reversal request does not negate the target posting exactly | `priorPostingId` |
 
@@ -482,7 +529,7 @@ Journal-entry validation now reports every detected journal grammar violation in
 Deterministic CLI-side `status: "error"` examples are also checked in:
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json)
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json)
-- [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json)
+- [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt)
 
 When you want those malformed-input or deterministic-error examples from the live CLI, rerun the
 same command: the diagnostics envelope is JSON even when the selected success mode is text.

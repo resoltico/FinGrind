@@ -86,7 +86,7 @@ class CliFuzzFixtureParsingTest {
     PostEntryCommand cashExpenseCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 LocalDate.parse("2026-04-09"),
                 new AccountCode("6100"),
                 new AccountCode("1100"),
@@ -130,6 +130,12 @@ class CliFuzzFixtureParsingTest {
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
             new BookkeepingEntry.Reversal(
+                LocalDate.parse("2026-04-13"),
+                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                    new dev.erst.fingrind.core.ReversalReference(
+                        new dev.erst.fingrind.core.PostingId("posting-1")),
+                    new dev.erst.fingrind.core.ReversalReason("operator reversal")),
+                null,
                 new dev.erst.fingrind.core.JournalEntry(
                     LocalDate.parse("2026-04-13"),
                     List.of(
@@ -140,12 +146,7 @@ class CliFuzzFixtureParsingTest {
                         new dev.erst.fingrind.core.JournalLine(
                             new AccountCode("2000"),
                             dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                            dev.erst.fingrind.core.Money.parse("NOK", "12.50")))),
-                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new dev.erst.fingrind.core.ReversalReference(
-                        new dev.erst.fingrind.core.PostingId("posting-1")),
-                    new dev.erst.fingrind.core.ReversalReason("operator reversal")),
-                null));
+                            dev.erst.fingrind.core.Money.parse("NOK", "12.50"))))));
 
     assertEquals("JPY", CliFuzzFixtures.journalEntry(typedCommand).currencyUnit().code());
     assertEquals(

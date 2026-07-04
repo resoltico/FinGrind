@@ -12,11 +12,11 @@ public final class ContractErrors {
     return Descriptor.descriptors();
   }
 
-  /** Stable descriptor for one deterministic CLI error code. */
+  /** Stable descriptor for a deterministic CLI error code. */
   public enum Descriptor {
     UNKNOWN_COMMAND(
         "unknown-command",
-        "Invocation refused because the selected command name is not one of the public FinGrind operations.",
+        "Invocation refused because the selected command name is not among the public FinGrind operations.",
         1),
     INVALID_REQUEST(
         "invalid-request",
@@ -25,6 +25,10 @@ public final class ContractErrors {
     INTERNAL_ERROR(
         "internal-error",
         "Command failed because FinGrind encountered an internal software defect rather than a deterministic caller or environment problem.",
+        70),
+    INTERNAL_DEFECT(
+        "internal-defect",
+        "Command failed because FinGrind detected a deterministic internal contract defect in its typed bookkeeping write semantics.",
         70),
     MANAGED_RUNTIME_FAILURE(
         "managed-runtime-failure",
@@ -70,7 +74,7 @@ public final class ContractErrors {
         5),
     INTERACTIVE_PROMPT_FAILED(
         "interactive-prompt-failed",
-        "Interactive passphrase entry refused because FinGrind did not receive one valid passphrase from the interactive console.",
+        "Interactive passphrase entry refused because FinGrind did not receive a valid passphrase from the interactive console.",
         5),
     UNSUPPORTED_OUTPUT_SELECTION(
         "unsupported-output-selection",
@@ -106,7 +110,7 @@ public final class ContractErrors {
       return exitCode;
     }
 
-    /** Creates one deterministic failure with this canonical contract descriptor. */
+    /** Creates a deterministic failure with this canonical contract descriptor. */
     public ContractFailure failure(
         String message, @Nullable String hint, @Nullable String argument) {
       return new ContractFailure(this, message, hint, argument);
@@ -141,7 +145,7 @@ public final class ContractErrors {
               "column", "1-based JSON source column for syntactically invalid request input."),
           new ContractResponse.FieldDescriptor(
               "violations",
-              "Ordered list of deterministic request-validation violations when one malformed request produces more than one diagnosis."));
+              "Ordered list of deterministic request-validation violations when a malformed request produces multiple diagnoses."));
     }
   }
 }

@@ -25,7 +25,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -56,7 +56,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -88,7 +88,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": 20260407,
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -120,7 +120,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-02-30",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -154,10 +154,12 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
     CliRequestException exception =
         assertThrows(
             CliRequestException.class,
-            () -> requestReader.readPostEntryCommand(Path.of("-"), OperationId.RECORD_EXPENSE));
+            () ->
+                requestReader.readPostEntryCommand(
+                    Path.of("-"), OperationId.RECORD_EXPENSE_SETTLED));
 
     assertEquals(
-        "Command 'record-expense' requires request field entryKind to be 'EXPENSE', but the request carries 'SALE'.",
+        "Command 'record-expense-settled' requires request field entryKind to be 'EXPENSE_SETTLED', but the request carries 'SALE_SETTLED'.",
         exception.getMessage());
     assertEquals("entryKind", exception.failure().argument());
   }
@@ -170,7 +172,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -204,7 +206,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -238,7 +240,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -272,7 +274,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL",
+                  "entryKind": "DIRECT_JOURNAL",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
@@ -307,7 +309,6 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 {
                   "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
-                  "lines": %s,
                   "provenance": {
                     "actorId": "actor-1",
                     "actorType": "AGENT",
@@ -320,8 +321,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                     "reason": 1
                   }
                 }
-                """
-                            .formatted(standardBalancedLinesJson()))
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -339,7 +339,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -420,7 +420,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                 withEvidence(
                         """
                 {
-                  "entryKind": "REVERSAL",
+                  "entryKind": "DIRECT_JOURNAL",
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {

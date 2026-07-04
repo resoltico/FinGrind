@@ -8,7 +8,7 @@
     "details": {
       "type": "POSTING_WORKFLOW",
       "request": {
-        "effectiveDate": "2026-06-12",
+        "effectiveDate": "2026-04-06",
         "idempotencyKey": "seed-posting-jpy-idem-1",
         "lineCount": 2,
         "reversalPresent": false

@@ -7,8 +7,10 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedField
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.requireObjectNode;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredObject;
 
+import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
@@ -17,6 +19,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.contract.tax.TaxSelection;
+import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
@@ -84,6 +87,51 @@ final class CliBookkeepingEntryNestedParser {
             ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND,
             ForeignExchangeTreatmentKind.wireValues(),
             ForeignExchangeTreatmentKind::fromWireValue));
+  }
+
+  static @org.jspecify.annotations.Nullable SettlementAdjunct optionalSettlementAdjunct(
+      ObjectNode rootNode) {
+    JsonNode settlementAdjunctNode =
+        rootNode.get(ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT);
+    if (settlementAdjunctNode == null || settlementAdjunctNode.isNull()) {
+      return null;
+    }
+    ObjectNode settlementAdjunctObject =
+        requireObjectNode(
+            settlementAdjunctNode, ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT);
+    rejectUnexpectedFields(
+        settlementAdjunctObject,
+        ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
+        ProtocolPostingNestedFieldSets.settlementAdjunctFields());
+    return new SettlementAdjunct(
+        new AccountCode(
+            requiredText(
+                settlementAdjunctObject, ProtocolPostEntryFields.SettlementAdjunct.ACCOUNT_CODE)),
+        monetaryAmount(settlementAdjunctObject, ProtocolPostEntryFields.SettlementAdjunct.AMOUNT));
+  }
+
+  static @org.jspecify.annotations.Nullable InventoryRelief optionalInventoryRelief(
+      ObjectNode rootNode) {
+    JsonNode inventoryReliefNode = rootNode.get(ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF);
+    if (inventoryReliefNode == null || inventoryReliefNode.isNull()) {
+      return null;
+    }
+    ObjectNode inventoryReliefObject =
+        requireObjectNode(inventoryReliefNode, ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF);
+    rejectUnexpectedFields(
+        inventoryReliefObject,
+        ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+        ProtocolPostingNestedFieldSets.inventoryReliefFields());
+    return new InventoryRelief(
+        new AccountCode(
+            requiredText(
+                inventoryReliefObject,
+                ProtocolPostEntryFields.InventoryRelief.INVENTORY_ACCOUNT_CODE)),
+        new AccountCode(
+            requiredText(
+                inventoryReliefObject,
+                ProtocolPostEntryFields.InventoryRelief.COST_OF_SALES_ACCOUNT_CODE)),
+        monetaryAmount(inventoryReliefObject, ProtocolPostEntryFields.InventoryRelief.AMOUNT));
   }
 
   static PostingLineage.Reversal readRequiredReversal(ObjectNode rootNode) {

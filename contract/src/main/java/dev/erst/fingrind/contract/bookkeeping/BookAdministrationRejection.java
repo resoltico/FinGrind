@@ -5,7 +5,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import java.time.LocalDate;
 import java.util.List;
@@ -24,13 +23,14 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.ParentAccountNotHeader,
         BookAdministrationRejection.ParentAccountTaxonomyConflict,
         BookAdministrationRejection.AccountHierarchyCycle,
-        BookAdministrationRejection.CloseTargetAccountCandidateMissing,
+        CloseTargetAccountCandidateMissing,
         CloseTargetAccountCandidateAmbiguous,
         BookAdministrationRejection.InterimResultSweepMustStartAt,
         BookAdministrationRejection.InterimResultSweepFutureDate,
         BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary,
         BookAdministrationRejection.FiscalYearCloseMustStartAt,
         BookAdministrationRejection.FiscalYearCloseMustEndAt,
+        BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon,
         BookAdministrationRejection.FiscalYearCloseFutureDate {
 
   /** Returns the stable wire code for one book-administration rejection instance. */
@@ -150,19 +150,6 @@ public sealed interface BookAdministrationRejection
     }
   }
 
-  /* Rejection for one close command when policy finds no active declared target for the required classification. */
-  record CloseTargetAccountCandidateMissing(
-      FinancialPositionLineClassification requiredFinancialPositionLineClassification,
-      List<AccountCode> inactiveCandidateAccountCodes)
-      implements BookAdministrationRejection {
-    public CloseTargetAccountCandidateMissing {
-      Objects.requireNonNull(
-          requiredFinancialPositionLineClassification,
-          "requiredFinancialPositionLineClassification");
-      inactiveCandidateAccountCodes = List.copyOf(inactiveCandidateAccountCodes);
-    }
-  }
-
   /* Rejection for interim-result sweep when the requested period start is not the live sweep horizon. */
   record InterimResultSweepMustStartAt(LocalDate requiredEffectiveDateFrom)
       implements BookAdministrationRejection {
@@ -205,6 +192,16 @@ public sealed interface BookAdministrationRejection
       implements BookAdministrationRejection {
     public FiscalYearCloseMustEndAt {
       Objects.requireNonNull(requiredEffectiveDateTo, "requiredEffectiveDateTo");
+    }
+  }
+
+  /* Rejection for fiscal-year close when the selected year ends before the live close horizon. */
+  record FiscalYearClosePrecedesTransferredThroughHorizon(
+      LocalDate attemptedEffectiveDateTo, LocalDate transferredThroughEffectiveDate)
+      implements BookAdministrationRejection {
+    public FiscalYearClosePrecedesTransferredThroughHorizon {
+      Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
+      Objects.requireNonNull(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
     }
   }
 

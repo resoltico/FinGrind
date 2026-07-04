@@ -10,8 +10,7 @@ public final class RejectedCloseTargetSelection implements CloseTargetSelection 
   private final List<AccountCode> candidateAccountCodes;
 
   /** Creates one rejected selection for missing active close-target candidates. */
-  public RejectedCloseTargetSelection(
-      BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing rejection) {
+  public RejectedCloseTargetSelection(CloseTargetAccountCandidateMissing rejection) {
     this.rejection = Objects.requireNonNull(rejection, "rejection");
     this.candidateAccountCodes = rejection.inactiveCandidateAccountCodes();
   }

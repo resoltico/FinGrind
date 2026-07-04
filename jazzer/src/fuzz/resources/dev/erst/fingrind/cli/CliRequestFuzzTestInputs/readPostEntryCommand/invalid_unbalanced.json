@@ -1,5 +1,5 @@
 {
-  "entryKind": "REVERSAL",
+  "entryKind": "DIRECT_JOURNAL",
   "effectiveDate": "2026-04-07",
   "lines": [
     {
@@ -19,10 +19,6 @@
       }
     }
   ],
-  "reversal": {
-    "priorPostingId": "posting-previous",
-    "reason": "operator reversal"
-  },
   "evidence": {
     "sourceDocuments": [
       {

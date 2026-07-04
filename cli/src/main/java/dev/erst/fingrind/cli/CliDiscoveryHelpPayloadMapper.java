@@ -175,7 +175,7 @@ final class CliDiscoveryHelpPayloadMapper {
     }
     return Optional.of(
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-            "Provide one posting JSON object through --request-file <path|->.",
+            "Provide a posting JSON document through --request-file <path|->.",
             detail,
             detail == DiscoveryDetail.FULL ? helpDescriptor.requestTemplate() : null,
             null,
@@ -203,7 +203,7 @@ final class CliDiscoveryHelpPayloadMapper {
     }
     return Optional.of(
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-            "Provide one account-declaration JSON object through --request-file <path|->.",
+            "Provide an account-declaration JSON document through --request-file <path|->.",
             detail,
             null,
             detail == DiscoveryDetail.FULL ? helpDescriptor.declareAccountTemplate() : null,
@@ -231,7 +231,7 @@ final class CliDiscoveryHelpPayloadMapper {
     }
     return Optional.of(
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-            "Provide one tax-registration declaration JSON object through --request-file <path|->.",
+            "Provide a tax-registration declaration JSON document through --request-file <path|->.",
             detail,
             null,
             null,
@@ -262,7 +262,7 @@ final class CliDiscoveryHelpPayloadMapper {
     }
     return Optional.of(
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-            "Provide one ledger plan JSON object through --request-file <path|->.",
+            "Provide a ledger plan JSON document through --request-file <path|->.",
             detail,
             null,
             null,
@@ -297,8 +297,12 @@ final class CliDiscoveryHelpPayloadMapper {
   private static boolean isPostingRequestOperation(OperationId operationId) {
     return operationId == OperationId.POST_ENTRY
         || operationId == OperationId.PREFLIGHT_ENTRY
-        || operationId == OperationId.RECORD_SALE
-        || operationId == OperationId.RECORD_EXPENSE
+        || operationId == OperationId.RECORD_SALE_SETTLED
+        || operationId == OperationId.RECORD_SALE_ON_CREDIT
+        || operationId == OperationId.RECORD_EXPENSE_SETTLED
+        || operationId == OperationId.RECORD_EXPENSE_ON_CREDIT
+        || operationId == OperationId.RECORD_RECEIPT
+        || operationId == OperationId.RECORD_PAYMENT
         || operationId == OperationId.RECORD_OWNER_CONTRIBUTION
         || operationId == OperationId.RECORD_OWNER_WITHDRAWAL
         || operationId == OperationId.RECORD_OPENING_POSITION

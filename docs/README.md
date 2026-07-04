@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -33,15 +33,15 @@ The checked-in `examples/*` files below are source-checkout fixtures for review 
 Public release bundles do not include the repository's `docs/examples/` tree.
 - [examples/basic-posting-request.json](./examples/basic-posting-request.json): primary sale posting example
 - [examples/request-template.json](./examples/request-template.json): checked-in source-copy companion for the `print-request-template` minimal sale scaffold
-- [examples/declare-account-supplemental-cash-reserve.json](./examples/declare-account-supplemental-cash-reserve.json): supplemental account-declaration request for an additional cash reserve account on top of the seeded starter chart
-- [examples/declare-account-supplemental-misc-revenue.json](./examples/declare-account-supplemental-misc-revenue.json): supplemental account-declaration request for an additional miscellaneous revenue account on top of the seeded starter chart
+- [examples/declare-account-supplemental-cash-reserve.json](./examples/declare-account-supplemental-cash-reserve.json): supplemental account-declaration request for an additional cash reserve account on top of the seeded accounts
+- [examples/declare-account-supplemental-misc-revenue.json](./examples/declare-account-supplemental-misc-revenue.json): supplemental account-declaration request for an additional miscellaneous revenue account on top of the seeded accounts
 - [examples/unknown-account-request.json](./examples/unknown-account-request.json): typed posting request that deterministically rejects for an undeclared account
 - [examples/account-state-violations-response.json](./examples/account-state-violations-response.json): machine rejection example with a stable family summary plus aggregated account-state details
 - [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt): operator-facing text rejection example with one `Summary` header plus one typed issue section per account-state violation
 - [examples/entry-semantics-multi-violation-request.json](./examples/entry-semantics-multi-violation-request.json): typed posting request that deterministically rejects with multiple entry-semantics violations
 - [examples/entry-semantics-violations-response.json](./examples/entry-semantics-violations-response.json): machine rejection example with ordered entry-semantics `details.violations[]` items
 - [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt): operator-facing text rejection example with one `Summary` header plus one typed issue section per entry-semantics violation
-- [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json): example committed response with a UUID v7 `postingId`
+- [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json): example committed response with a UUID v7 `postingId` plus nested `resolvedJournal` classification facts
 - [examples/inspect-book-response.json](./examples/inspect-book-response.json): example `inspect-book` compatibility snapshot
 - [examples/list-accounts-response.json](./examples/list-accounts-response.json): example paginated account-registry response
 - [examples/get-posting-response.json](./examples/get-posting-response.json): example committed-posting lookup response
@@ -58,7 +58,7 @@ Report PDF artifacts are intentionally not checked in under `docs/examples`; the
 workflows verify `--pdf-out` directly against real CLI, bundle, and container surfaces.
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
-- [examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json): deterministic non-interactive prompt failure example
+- [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt): deterministic non-interactive prompt failure example
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` minimal sale ledger-plan scaffold
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable `execute-plan` request for a fresh book using direct journal lines
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): sale-first `execute-plan` request that pages accounts and postings inside the plan journal
@@ -109,6 +109,8 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
+- [DOC_02_IncomeStatementPresentation.md](./DOC_02_IncomeStatementPresentation.md)
+- [DOC_02_SharedReportModel.md](./DOC_02_SharedReportModel.md)
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md)
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)

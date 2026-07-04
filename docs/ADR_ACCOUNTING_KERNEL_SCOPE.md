@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: ADR_ACCOUNTING_KERNEL_SCOPE
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, bookkeeping kernel, country agnostic, functional currency, scope, internal management]
   questions: ["what bookkeeping kernel does fingrind publish today", "what does country agnostic mean in fingrind today", "what accounting scope is intentionally out of scope", "does fingrind publish a standards baseline"]
@@ -53,7 +53,8 @@ The current hard-break line is:
   journal lines remain in the selected functional currency
 - mixed-currency journal lines remain rejected
 - caller-authored operational posting crosses one balanced-journal boundary through typed business
-  entries (`SALE`, `EXPENSE`, `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, `OPENING_POSITION`,
+  entries (`SALE_SETTLED`, `SALE_ON_CREDIT`, `EXPENSE_SETTLED`, `EXPENSE_ON_CREDIT`,
+  `RECEIPT`, `PAYMENT`, `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, `OPENING_POSITION`,
   `REVERSAL`) plus the raw `DIRECT_JOURNAL` path
 - `OPENING_POSITION` remains the one opening-only adoption path before the first committed
   posting exists

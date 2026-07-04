@@ -43,11 +43,15 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractRequestShapes.EntryKindSemanticsDescriptor directJournalSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, directJournalTemplate);
     ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE));
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
     ContractRequestShapes.EntryKindSemanticsDescriptor saleSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, saleTemplate);
+    ContractTemplates.PostingRequestTemplateDescriptor creditSaleTemplate =
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_ON_CREDIT));
+    ContractRequestShapes.EntryKindSemanticsDescriptor creditSaleSemantics =
+        CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, creditSaleTemplate);
     ContractTemplates.PostingRequestTemplateDescriptor expenseTemplate =
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_EXPENSE));
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_EXPENSE_SETTLED));
     ContractRequestShapes.EntryKindSemanticsDescriptor expenseSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, expenseTemplate);
     ContractTemplates.PostingRequestTemplateDescriptor contributionTemplate =
@@ -90,6 +94,14 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
             ProtocolPostEntryFields.TopLevel.AMOUNT, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
+            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF, saleTemplate, saleSemantics));
+    assertTrue(
+        CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
+            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+            creditSaleTemplate,
+            creditSaleSemantics));
+    assertTrue(
+        CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
             ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
@@ -123,6 +135,9 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
             ProtocolPostEntryFields.TopLevel.TAX, directJournalTemplate, directJournalSemantics));
     assertFalse(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
+            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF, expenseTemplate, expenseSemantics));
+    assertFalse(
+        CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
             "foreignField", saleTemplate, saleSemantics));
   }
 
@@ -131,11 +146,11 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractTemplates.PostingRequestTemplateDescriptor directJournalTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.POST_ENTRY));
     ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE));
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
     ContractTemplates.PostingRequestTemplateDescriptor saleTemplateWithOwnedNestedFacts =
         saleTemplateWithOwnedNestedFacts(saleTemplate);
     ContractTemplates.PostingRequestTemplateDescriptor expenseTemplate =
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_EXPENSE));
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_EXPENSE_SETTLED));
     ContractTemplates.PostingRequestTemplateDescriptor contributionTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_OWNER_CONTRIBUTION));
@@ -247,7 +262,8 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     List<String> saleLabels =
         CliDiscoveryPostingModelGuidance.postingModelRows(
                 postingModel,
-                Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE)),
+                Objects.requireNonNull(
+                    MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED)),
                 "",
                 true)
             .stream()
@@ -296,7 +312,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
         Objects.requireNonNull(
             Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
     ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE));
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
 
     List<String> labels =
         CliDiscoveryPostingModelGuidance.postingModelRows(postingModel, saleTemplate, "", true)
@@ -323,7 +339,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
         Objects.requireNonNull(
             Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
     ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE));
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor strippedPostingModel =
         postingModelWithoutOwnedFieldGroups(
             postingModel,
@@ -625,10 +641,15 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
         saleTemplate.entryKind(),
         saleTemplate.effectiveDate(),
         saleTemplate.cashAccountCode(),
+        saleTemplate.receivableAccountCode(),
+        saleTemplate.payableAccountCode(),
         saleTemplate.revenueAccountCode(),
+        saleTemplate.inventoryAccountCode(),
         saleTemplate.expenseAccountCode(),
         saleTemplate.equityAccountCode(),
         saleTemplate.amount(),
+        saleTemplate.inventoryRelief(),
+        saleTemplate.settlementAdjunct(),
         new ForeignExchangeTemplateDescriptor(
             new MonetaryAmount("USD", "1100"),
             new MonetaryAmount("EUR", "1000"),

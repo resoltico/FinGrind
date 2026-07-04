@@ -236,7 +236,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
     assertEquals("DIRECT_JOURNAL", journalSemantics.path("entryKind").stringValue());
     JsonNode saleSemantics =
         requestShapes.path("bookkeepingEntry").path("entryKindSemantics").get(1);
-    assertEquals("SALE", saleSemantics.path("entryKind").stringValue());
+    assertEquals("SALE_SETTLED", saleSemantics.path("entryKind").stringValue());
     assertEquals("enumerated", saleSemantics.path("sourceDocumentTypeMode").stringValue());
     assertTrue(saleSemantics.path("acceptedSourceDocumentTypes").isArray());
     assertEquals(
@@ -370,6 +370,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
             .findFirst()
             .orElseThrow();
     assertEquals(6, protectedBookVerificationDescriptor.path("exitCode").intValue());
+    assertTrue(responseModel.path("errorDescriptors").toString().contains("internal-defect"));
     assertTrue(responseModel.path("errorDescriptors").toString().contains("internal-error"));
     assertTrue(
         responseModel.path("errorDescriptors").toString().contains("managed-runtime-failure"));

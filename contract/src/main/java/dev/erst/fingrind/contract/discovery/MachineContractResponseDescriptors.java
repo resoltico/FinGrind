@@ -71,7 +71,7 @@ final class MachineContractResponseDescriptors {
         "payload",
         "Optional "
             + ProtocolCatalog.operationName(OperationId.EXECUTE_PLAN)
-            + " outcome payload object published when one rejected or assertion-failed plan result still owns the primary operation body beside lifted top-level diagnostics.");
+            + " outcome payload object published when a rejected or assertion-failed plan result still owns the primary operation body beside lifted top-level diagnostics.");
   }
 
   private static List<ContractResponse.RejectionDescriptor> rejectionDescriptors() {

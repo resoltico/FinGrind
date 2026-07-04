@@ -1,13 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
-import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
-import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
-import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
-import dev.erst.fingrind.contract.bookkeeping.FinancialPositionReport;
-import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
-import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
-import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
+import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.File;
 import java.io.IOException;
@@ -40,36 +33,8 @@ final class CliPdfReportExporter {
     this.fileOperations = Objects.requireNonNull(fileOperations, "fileOperations");
   }
 
-  void exportAccountBalance(Path outputPath, AccountBalanceSnapshot snapshot) {
-    writePdf(outputPath, pdfReportService.renderAccountBalance(snapshot));
-  }
-
-  void exportTrialBalance(Path outputPath, TrialBalanceReport report) {
-    writePdf(outputPath, pdfReportService.renderTrialBalance(report));
-  }
-
-  void exportAccountLedger(Path outputPath, AccountLedgerReport report) {
-    writePdf(outputPath, pdfReportService.renderAccountLedger(report));
-  }
-
-  void exportPeriodSummary(Path outputPath, PeriodSummaryReport report) {
-    writePdf(outputPath, pdfReportService.renderPeriodSummary(report));
-  }
-
-  void exportFinancialPosition(Path outputPath, FinancialPositionReport report) {
-    writePdf(outputPath, pdfReportService.renderFinancialPosition(report));
-  }
-
-  void exportIncomeStatement(Path outputPath, IncomeStatementReport report) {
-    writePdf(outputPath, pdfReportService.renderIncomeStatement(report));
-  }
-
-  void exportCashFlowStatement(Path outputPath, CashFlowStatementReport report) {
-    writePdf(outputPath, pdfReportService.renderCashFlowStatement(report));
-  }
-
-  void exportChangesInEquity(Path outputPath, ChangesInEquityReport report) {
-    writePdf(outputPath, pdfReportService.renderChangesInEquity(report));
+  void export(Path outputPath, ReportModel reportModel) {
+    writePdf(outputPath, pdfReportService.render(reportModel));
   }
 
   private void writePdf(Path outputPath, byte[] pdfBytes) {

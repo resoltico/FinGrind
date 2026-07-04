@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 /** Renders write-side CLI results through the shared output channel. */
@@ -58,13 +59,21 @@ final class CliMutationResponseWriter {
     }
   }
 
-  void writeOpenBookResult(Path bookFilePath, OpenBookResult result, OutputMode outputMode) {
-    administrativeWriter.writeOpenBookResult(bookFilePath, result, outputMode);
+  void writeOpenBookResult(
+      Path bookFilePath,
+      List<Path> tightenedParentDirectories,
+      OpenBookResult result,
+      OutputMode outputMode) {
+    administrativeWriter.writeOpenBookResult(
+        bookFilePath, tightenedParentDirectories, result, outputMode);
   }
 
   void writeGenerateBookKeyFileResult(
-      GeneratedBookKeyFile generatedKeyFile, OutputMode outputMode) {
-    administrativeWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
+      GeneratedBookKeyFile generatedKeyFile,
+      List<Path> tightenedParentDirectories,
+      OutputMode outputMode) {
+    administrativeWriter.writeGenerateBookKeyFileResult(
+        generatedKeyFile, tightenedParentDirectories, outputMode);
   }
 
   void writeRekeyBookResult(

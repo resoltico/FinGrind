@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.ArrayList;
@@ -24,7 +25,10 @@ final class CashFlowPostingMovementClassifier {
       Map<AccountCode, RegisteredAccount> accountsByCode, CommittedPosting posting) {
     List<ResolvedLine> resolvedLines =
         posting.journalEntry().lines().stream()
-            .map(line -> resolveLine(accountsByCode, posting.postingId(), line))
+            .map(
+                line ->
+                    resolveLine(
+                        accountsByCode, posting.postingId(), posting.postingOriginKind(), line))
             .toList();
     long cashDebitTotal = sumCash(resolvedLines, JournalLine.EntrySide.DEBIT);
     long cashCreditTotal = sumCash(resolvedLines, JournalLine.EntrySide.CREDIT);
@@ -38,12 +42,20 @@ final class CashFlowPostingMovementClassifier {
     if (cashReceiptMinor > 0L) {
       rowMovements.addAll(
           allocateResidualCash(
-              resolvedLines, JournalLine.EntrySide.CREDIT, cashReceiptMinor, true));
+              resolvedLines,
+              posting.postingOriginKind(),
+              JournalLine.EntrySide.CREDIT,
+              cashReceiptMinor,
+              true));
     }
     if (cashPaymentMinor > 0L) {
       rowMovements.addAll(
           allocateResidualCash(
-              resolvedLines, JournalLine.EntrySide.DEBIT, cashPaymentMinor, false));
+              resolvedLines,
+              posting.postingOriginKind(),
+              JournalLine.EntrySide.DEBIT,
+              cashPaymentMinor,
+              false));
     }
     return List.copyOf(rowMovements);
   }
@@ -56,6 +68,7 @@ final class CashFlowPostingMovementClassifier {
    */
   private static List<CashFlowRowMovement> allocateResidualCash(
       List<ResolvedLine> resolvedLines,
+      PostingOriginKind postingOriginKind,
       JournalLine.EntrySide counterpartSide,
       long residualCashMinor,
       boolean receipt) {
@@ -70,7 +83,7 @@ final class CashFlowPostingMovementClassifier {
         .map(
             allocation ->
                 new CashFlowRowMovement(
-                    sectionKind(allocation.line().account()),
+                    sectionKind(postingOriginKind, allocation.line().account()),
                     allocation.line().account(),
                     receipt
                         ? BalanceMath.currencyBalance(
@@ -113,7 +126,10 @@ final class CashFlowPostingMovementClassifier {
   }
 
   private static ResolvedLine resolveLine(
-      Map<AccountCode, RegisteredAccount> accountsByCode, PostingId postingId, JournalLine line) {
+      Map<AccountCode, RegisteredAccount> accountsByCode,
+      PostingId postingId,
+      PostingOriginKind postingOriginKind,
+      JournalLine line) {
     RegisteredAccount account = accountsByCode.get(line.accountCode());
     if (account == null) {
       throw new IllegalStateException(
@@ -123,7 +139,7 @@ final class CashFlowPostingMovementClassifier {
               + line.accountCode().value()
               + " during cash-flow classification.");
     }
-    return new ResolvedLine(account, line);
+    return new ResolvedLine(postingOriginKind, account, line);
   }
 
   private static long sumCash(List<ResolvedLine> resolvedLines, JournalLine.EntrySide side) {
@@ -134,8 +150,42 @@ final class CashFlowPostingMovementClassifier {
         .sum();
   }
 
-  private static CashFlowSectionKind sectionKind(RegisteredAccount account) {
+  private static CashFlowSectionKind sectionKind(
+      PostingOriginKind postingOriginKind, RegisteredAccount account) {
+    Objects.requireNonNull(postingOriginKind, "postingOriginKind");
     Objects.requireNonNull(account, "account");
+    if (originDefinesOperatingSection(postingOriginKind)) {
+      return CashFlowSectionKind.OPERATING;
+    }
+    if (originDefinesFinancingSection(postingOriginKind)) {
+      return CashFlowSectionKind.FINANCING;
+    }
+    return sectionKindByAccountType(account);
+  }
+
+  private static boolean originDefinesOperatingSection(PostingOriginKind postingOriginKind) {
+    return switch (postingOriginKind) {
+      case SALE_SETTLED,
+          SALE_ON_CREDIT,
+          PURCHASE_SETTLED,
+          PURCHASE_ON_CREDIT,
+          EXPENSE_SETTLED,
+          EXPENSE_ON_CREDIT,
+          RECEIPT,
+          PAYMENT ->
+          true;
+      default -> false;
+    };
+  }
+
+  private static boolean originDefinesFinancingSection(PostingOriginKind postingOriginKind) {
+    return switch (postingOriginKind) {
+      case OWNER_CONTRIBUTION, OWNER_WITHDRAWAL -> true;
+      default -> false;
+    };
+  }
+
+  private static CashFlowSectionKind sectionKindByAccountType(RegisteredAccount account) {
     return switch (account.accountType()) {
       case REVENUE, EXPENSE -> CashFlowSectionKind.OPERATING;
       case dev.erst.fingrind.core.AccountType.ASSET -> assetSectionKind(account);
@@ -147,6 +197,7 @@ final class CashFlowPostingMovementClassifier {
   private static CashFlowSectionKind assetSectionKind(RegisteredAccount account) {
     FinancialPositionLineClassification classification = financialPositionClassification(account);
     return classification == FinancialPositionLineClassification.CURRENT_ASSET
+            || classification == FinancialPositionLineClassification.INVENTORY
         ? CashFlowSectionKind.OPERATING
         : CashFlowSectionKind.INVESTING;
   }
@@ -163,8 +214,10 @@ final class CashFlowPostingMovementClassifier {
     return account.accountTaxonomy().financialPositionLineClassification().orElseThrow();
   }
 
-  private record ResolvedLine(RegisteredAccount account, JournalLine line) {
+  private record ResolvedLine(
+      PostingOriginKind postingOriginKind, RegisteredAccount account, JournalLine line) {
     private ResolvedLine {
+      Objects.requireNonNull(postingOriginKind, "postingOriginKind");
       Objects.requireNonNull(account, "account");
       Objects.requireNonNull(line, "line");
     }

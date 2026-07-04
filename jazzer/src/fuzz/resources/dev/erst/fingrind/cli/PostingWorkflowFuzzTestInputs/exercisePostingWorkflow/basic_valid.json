@@ -1,6 +1,6 @@
 {
-  "entryKind": "SALE",
-  "effectiveDate": "2026-04-10",
+  "entryKind": "SALE_SETTLED",
+  "effectiveDate": "2026-04-07",
   "cashAccountCode": "1100",
   "revenueAccountCode": "2100",
   "amount": {
@@ -12,7 +12,7 @@
       {
         "sourceDocumentId": "document-idem-posting-4",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-10"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": [

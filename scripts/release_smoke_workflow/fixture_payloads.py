@@ -18,7 +18,7 @@ def sale_request(
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "SALE",
+        "entryKind": "SALE_SETTLED",
         "effectiveDate": effective_date,
         "cashAccountCode": cash_account_code,
         "revenueAccountCode": revenue_account_code,
@@ -46,7 +46,7 @@ def expense_request(
     causation_suffix: str,
 ) -> dict[str, Any]:
     return {
-        "entryKind": "EXPENSE",
+        "entryKind": "EXPENSE_SETTLED",
         "effectiveDate": effective_date,
         "expenseAccountCode": expense_account_code,
         "cashAccountCode": cash_account_code,

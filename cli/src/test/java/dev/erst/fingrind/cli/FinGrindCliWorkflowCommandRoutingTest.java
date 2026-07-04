@@ -12,7 +12,6 @@ import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
-import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
@@ -23,7 +22,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.ReportingPeriod;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -72,9 +70,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                             Instant.parse("2026-04-07T12:00:00Z"))),
                     25,
                     Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -182,9 +180,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -241,9 +239,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -253,8 +251,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
         new BackupBookResult.BackedUp(
             hint(bookFilePath), hint(backupFilePath), hint(backupBookKeyFilePath)));
     workflow.setRestoreBookResult(
-        new RestoreBookResult.Restored(
-            hint(bookFilePath), hint(backupFilePath), hint(backupBookKeyFilePath)));
+        new RestoreBookResult.Restored(hint(bookFilePath), hint(currentBookKeyFilePath)));
     workflow.setRekeyRollbackResult(
         new RekeyRollbackResult.Restored(hint(bookFilePath), hint(rollbackArtifactPath)));
 
@@ -275,9 +272,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 bookFilePath.toString(),
                 "--book-key-file",
                 currentBookKeyFilePath.toString(),
-                "--backup-book-file-out",
+                "--backup-file",
                 backupFilePath.toString(),
-                "--backup-book-key-file-out",
+                "--backup-key-file",
                 backupBookKeyFilePath.toString())));
     assertEquals(
         0,
@@ -286,9 +283,11 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 "restore-book",
                 "--book-file",
                 bookFilePath.toString(),
-                "--backup-book-file",
+                "--book-key-file",
+                currentBookKeyFilePath.toString(),
+                "--backup-file",
                 backupFilePath.toString(),
-                "--backup-book-key-file",
+                "--backup-key-file",
                 backupBookKeyFilePath.toString())));
     assertEquals(
         0,
@@ -316,10 +315,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
         workflow.restoreRekeyRollbackExpectedPassphraseSources());
     String output = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(output.contains("\"artifacts\""));
+    assertTrue(output.contains("\"format\":\"" + ProtocolArtifactOutput.backupFileFormat() + "\""));
     assertTrue(
-        output.contains("\"format\":\"" + ProtocolArtifactOutput.backupBookFileFormat() + "\""));
-    assertTrue(
-        output.contains("\"format\":\"" + ProtocolArtifactOutput.backupBookKeyFileFormat() + "\""));
+        output.contains("\"format\":\"" + ProtocolArtifactOutput.backupKeyFileFormat() + "\""));
     assertTrue(
         output.contains("\"format\":\"" + ProtocolArtifactOutput.rollbackBookFileFormat() + "\""));
   }
@@ -347,9 +345,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 bookFilePath.toString(),
                 "--book-key-file",
                 bookKeyFilePath.toString(),
-                "--period-start",
-                "2026-04-01",
-                "--period-end",
+                "--through",
                 "2026-04-30")));
     assertEquals(
         0,
@@ -360,25 +356,17 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 bookFilePath.toString(),
                 "--book-key-file",
                 bookKeyFilePath.toString(),
-                "--period-start",
-                "2026-01-01",
-                "--period-end",
-                "2026-12-31")));
+                "--year",
+                "2026")));
 
     assertEquals(
         List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.interimResultSweepAccesses());
     assertEquals(
-        List.of(
-            new InterimResultSweepCommand(
-                new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")))),
+        List.of(new InterimResultSweepCommand(LocalDate.parse("2026-04-30"))),
         workflow.interimResultSweepCommands());
     assertEquals(
         List.of(bookAccess(bookFilePath, bookKeyFilePath)), workflow.fiscalYearCloseAccesses());
-    assertEquals(
-        List.of(
-            new FiscalYearCloseCommand(
-                new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31")))),
-        workflow.fiscalYearCloseCommands());
+    assertEquals(List.of(new FiscalYearCloseCommand(2026)), workflow.fiscalYearCloseCommands());
     String output = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(output.contains("\"closeOrder\":1"));
     assertTrue(output.contains("\"retainedAccumulatedAccountCode\":\"3300\""));
@@ -407,7 +395,8 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
         BookAccess bookAccess, FiscalYearCloseCommand command) {
       fiscalYearCloseAccesses.add(bookAccess);
       fiscalYearCloseCommands.add(command);
-      return accepted(new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear()));
+      return accepted(
+          new FiscalYearCloseResult.Closed(CliFixtureSupport.sampleClosedFiscalYear(), false));
     }
 
     List<BookAccess> interimResultSweepAccesses() {
@@ -446,9 +435,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),

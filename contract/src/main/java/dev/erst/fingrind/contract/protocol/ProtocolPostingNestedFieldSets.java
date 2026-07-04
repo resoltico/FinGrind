@@ -19,6 +19,10 @@ public final class ProtocolPostingNestedFieldSets {
   private static final Set<String> REVERSAL_REFERENCE_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.reversalFields());
   private static final Set<String> TAX_FIELDS = Set.copyOf(ProtocolPostEntryFields.taxFields());
+  private static final Set<String> SETTLEMENT_ADJUNCT_FIELDS =
+      Set.copyOf(ProtocolPostEntryFields.settlementAdjunctFields());
+  private static final Set<String> INVENTORY_RELIEF_FIELDS =
+      Set.copyOf(ProtocolPostEntryFields.inventoryReliefFields());
   private static final Set<String> FOREIGN_EXCHANGE_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.foreignExchangeFields());
   private static final Set<String> QUOTED_RATE_FIELDS =
@@ -64,6 +68,16 @@ public final class ProtocolPostingNestedFieldSets {
   /** Returns the accepted nested fields for request-side tax selectors. */
   public static Set<String> taxFields() {
     return TAX_FIELDS;
+  }
+
+  /** Returns the accepted nested fields for settlement-adjunct objects. */
+  public static Set<String> settlementAdjunctFields() {
+    return SETTLEMENT_ADJUNCT_FIELDS;
+  }
+
+  /** Returns the accepted nested fields for trading-sale inventory relief objects. */
+  public static Set<String> inventoryReliefFields() {
+    return INVENTORY_RELIEF_FIELDS;
   }
 
   /** Returns the accepted nested fields for request-side foreign-exchange facts. */

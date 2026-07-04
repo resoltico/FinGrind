@@ -53,7 +53,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   1,
                   'Acme Studio',
                   'internal-management-bookkeeping-kernel',
-                  'CASH_BASIS',
+                  'CASH',
                   'NON_STATUTORY_INTERNAL_MANAGEMENT',
                   'OWNER_MANAGED_SINGLE_ENTITY',
                   'OWNER_MANAGED_SERVICE',
@@ -130,6 +130,27 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
         new BookIdentity(
             new EntityProfile(new BookEntityName("Acme Studio")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("01-01"));
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          insertInitializedAtRow(database);
+          SqliteMutationWriter.insertBookIdentity(database, bookIdentity);
+
+          assertEquals(
+              Optional.of(bookIdentity), SqliteStatementQueries.loadBookIdentity(database));
+        });
+  }
+
+  @Test
+  void loadBookIdentity_roundTripsAccrualServiceDoctrineIdentity() {
+    Path bookPath = tempDirectory.resolve("book-identity-accrual-service-doctrine.sqlite");
+    BookIdentity bookIdentity =
+        new BookIdentity(
+            new EntityProfile(new BookEntityName("Acme Service Accrual")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
             CurrencyUnit.of("EUR"),
             FiscalYearStart.parse("01-01"));
     withStandaloneDatabase(

@@ -147,7 +147,7 @@ class StatementAndCloseContractTypesTest {
     ReportingPeriod reportingPeriod =
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
     InterimResultSweepCommand interimResultSweepCommand =
-        new InterimResultSweepCommand(reportingPeriod);
+        new InterimResultSweepCommand(reportingPeriod.effectiveDateTo());
     SweptInterimResult sweptInterimResult =
         new SweptInterimResult(
             1,
@@ -162,7 +162,7 @@ class StatementAndCloseContractTypesTest {
         new BookAdministrationRejection.BookNotInitialized();
     InterimResultSweepResult.Rejected interimResultSweepRejected =
         new InterimResultSweepResult.Rejected(interimResultSweepRejection);
-    FiscalYearCloseCommand fiscalYearCloseCommand = new FiscalYearCloseCommand(reportingPeriod);
+    FiscalYearCloseCommand fiscalYearCloseCommand = new FiscalYearCloseCommand(2026);
     ClosedFiscalYear closedFiscalYear =
         new ClosedFiscalYear(
             1,
@@ -173,7 +173,7 @@ class StatementAndCloseContractTypesTest {
             Instant.parse("2026-12-31T23:59:59Z"),
             new ArrayList<>(List.of(new PostingId("posting-2"), new PostingId("posting-3"))));
     FiscalYearCloseResult.Closed fiscalYearCloseResultClosed =
-        new FiscalYearCloseResult.Closed(closedFiscalYear);
+        new FiscalYearCloseResult.Closed(closedFiscalYear, false);
     BookAdministrationRejection.BookNotInitialized fiscalYearCloseRejection =
         new BookAdministrationRejection.BookNotInitialized();
     FiscalYearCloseResult.Rejected fiscalYearCloseRejected =
@@ -226,10 +226,11 @@ class StatementAndCloseContractTypesTest {
     assertEquals(LocalDate.parse("2026-04-01"), changesInEquityQuery.effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), changesInEquityQuery.effectiveDateTo());
     assertEquals(ComparativeSelection.none(), changesInEquityQuery.comparativeSelection());
-    assertEquals(reportingPeriod, interimResultSweepCommand.reportingPeriod());
+    assertEquals(
+        reportingPeriod.effectiveDateTo(), interimResultSweepCommand.throughEffectiveDate());
     assertSame(sweptInterimResult, interimResultSweepResultSwept.sweptInterimResult());
     assertSame(interimResultSweepRejection, interimResultSweepRejected.rejection());
-    assertEquals(reportingPeriod, fiscalYearCloseCommand.reportingPeriod());
+    assertEquals(2026, fiscalYearCloseCommand.fiscalYearLabel());
     assertSame(closedFiscalYear, fiscalYearCloseResultClosed.closedFiscalYear());
     assertSame(fiscalYearCloseRejection, fiscalYearCloseRejected.rejection());
     assertEquals(dev.erst.fingrind.core.NormalBalance.CREDIT, declaredAccount.normalBalance());
@@ -356,7 +357,8 @@ class StatementAndCloseContractTypesTest {
                 List.of()));
     assertThrows(NullPointerException.class, () -> new InterimResultSweepResult.Swept(nullOf()));
     assertThrows(NullPointerException.class, () -> new InterimResultSweepResult.Rejected(nullOf()));
-    assertThrows(NullPointerException.class, () -> new FiscalYearCloseCommand(nullOf()));
+    assertThrows(
+        IllegalArgumentException.class, () -> new FiscalYearCloseCommand(Integer.MIN_VALUE));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -368,7 +370,8 @@ class StatementAndCloseContractTypesTest {
                 new AccountCode("3300"),
                 Instant.parse("2026-12-31T23:59:59Z"),
                 List.of()));
-    assertThrows(NullPointerException.class, () -> new FiscalYearCloseResult.Closed(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> new FiscalYearCloseResult.Closed(nullOf(), false));
     assertThrows(NullPointerException.class, () -> new FiscalYearCloseResult.Rejected(nullOf()));
   }
 

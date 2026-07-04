@@ -1,24 +1,6 @@
 {
   "entryKind": "REVERSAL",
   "effectiveDate": "2026-04-08",
-  "lines": [
-    {
-      "accountCode": "3000",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "USD",
-        "minorUnits": "9995"
-      }
-    },
-    {
-      "accountCode": "4000",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "USD",
-        "minorUnits": "9995"
-      }
-    }
-  ],
   "reversal": {
     "priorPostingId": "posting-previous",
     "reason": "operator reversal"

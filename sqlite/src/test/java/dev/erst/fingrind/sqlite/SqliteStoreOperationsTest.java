@@ -147,7 +147,7 @@ class SqliteStoreOperationsTest {
             SqliteStoreOperations.sqliteFailure("Failed to commit SQLite posting fact.", cause));
 
     assertEquals(
-        "Failed to commit SQLite posting fact. One upstream invariant should have rejected this request before commit.",
+        "Failed to commit SQLite posting fact. An upstream invariant should have rejected this request before commit.",
         exception.getMessage());
     assertSame(cause, exception.getCause());
   }

@@ -46,11 +46,12 @@ class TaxEntrySemanticsTest {
     List<BookkeepingPostingRejection.EntrySemanticsViolation> saleViolations =
         validate(
             new ValidationStore(Optional.empty()),
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 null,
                 null));
@@ -73,22 +74,24 @@ class TaxEntrySemanticsTest {
     List<BookkeepingPostingRejection.EntrySemanticsViolation> unknownRegistrationViolations =
         validate(
             new ValidationStore(Optional.empty()),
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                 null));
     List<BookkeepingPostingRejection.EntrySemanticsViolation> unknownCodeViolations =
         validate(
             new ValidationStore(Optional.of(registration())),
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("missing-code")),
                 null));
@@ -104,18 +107,19 @@ class TaxEntrySemanticsTest {
     List<BookkeepingPostingRejection.EntrySemanticsViolation> saleViolations =
         validate(
             new ValidationStore(Optional.of(registration())),
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
                 null));
     List<BookkeepingPostingRejection.EntrySemanticsViolation> expenseViolations =
         validate(
             new ValidationStore(Optional.of(registration())),
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("5000"),
                 new AccountCode("1000"),
@@ -134,18 +138,19 @@ class TaxEntrySemanticsTest {
     List<BookkeepingPostingRejection.EntrySemanticsViolation> saleViolations =
         validate(
             store,
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                 null));
     List<BookkeepingPostingRejection.EntrySemanticsViolation> expenseViolations =
         validate(
             store,
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("5000"),
                 new AccountCode("1000"),
@@ -156,6 +161,35 @@ class TaxEntrySemanticsTest {
 
     assertTrue(saleViolations.isEmpty());
     assertTrue(expenseViolations.isEmpty());
+  }
+
+  @Test
+  void validate_acceptsOwnedCreditSaleAndCreditExpenseTaxSelections() {
+    ValidationStore store = new ValidationStore(Optional.of(registration()));
+    List<BookkeepingPostingRejection.EntrySemanticsViolation> creditSaleViolations =
+        validate(
+            store,
+            new BookkeepingEntry.SaleOnCredit(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1100"),
+                new AccountCode("4000"),
+                new MonetaryAmount("EUR", "10000"),
+                null,
+                new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
+                null));
+    List<BookkeepingPostingRejection.EntrySemanticsViolation> creditExpenseViolations =
+        validate(
+            store,
+            new BookkeepingEntry.ExpenseOnCredit(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("5000"),
+                new AccountCode("2100"),
+                new MonetaryAmount("EUR", "11200"),
+                new TaxSelection(REGISTRATION_ID, new TaxCode("vat-nonrecoverable-expense")),
+                null));
+
+    assertTrue(creditSaleViolations.isEmpty());
+    assertTrue(creditExpenseViolations.isEmpty());
   }
 
   private static List<BookkeepingPostingRejection.EntrySemanticsViolation> validate(

@@ -23,10 +23,14 @@ class CliCashFlowResponseWriterTest extends CliResponseWriterTestSupport {
     reportWriter(jsonOutput).writeCashFlowStatementResult(reported, OutputMode.JSON, null);
     JsonNode json = readJson(jsonOutput);
     assertEquals("ok", json.path("status").stringValue());
-    assertEquals("2026-04-01", json.path("payload").path("effectiveDateFrom").stringValue());
+    assertEquals("cash-flow-statement", json.path("payload").path("family").stringValue());
     assertEquals(
-        "OPERATING",
-        json.path("payload").path("sections").get(0).path("sectionKind").stringValue());
+        "2026-04-01", json.path("payload").path("context").path("periodStart").stringValue());
+    assertEquals(
+        "Current Summary",
+        json.path("payload").path("sections").get(0).path("title").stringValue());
+    assertEquals(
+        "Operating", json.path("payload").path("sections").get(1).path("title").stringValue());
 
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
     reportWriter(textOutput).writeCashFlowStatementResult(reported, OutputMode.TEXT, null);
@@ -38,7 +42,7 @@ class CliCashFlowResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
     reportWriter(csvOutput).writeCashFlowStatementResult(reported, OutputMode.CSV, null);
     String renderedCsv = csvOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(renderedCsv.startsWith("exportFamily,rowId,parentRowId,relationKind,reportBasis"));
+    assertTrue(renderedCsv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
     assertTrue(renderedCsv.contains("cash-flow-statement-row:current:OPERATING:2000"));
   }
 

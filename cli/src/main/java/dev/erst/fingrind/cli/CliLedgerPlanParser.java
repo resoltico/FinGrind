@@ -213,7 +213,13 @@ final class CliLedgerPlanParser {
                 CliOptionValues.parseBookEntityNameOption(
                     requiredText(ensureBookNode, ProtocolOpenBookFields.ENTITY_NAME),
                     "ensureBook." + ProtocolOpenBookFields.ENTITY_NAME)),
-            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
+            BookDoctrines.forTemplateAndBasis(
+                CliOptionValues.parseBookTemplateIdOption(
+                    requiredText(ensureBookNode, ProtocolOpenBookFields.BOOK_TEMPLATE_ID),
+                    "ensureBook." + ProtocolOpenBookFields.BOOK_TEMPLATE_ID),
+                CliOptionValues.parseAccountingBasisOption(
+                    requiredText(ensureBookNode, ProtocolOpenBookFields.ACCOUNTING_BASIS),
+                    "ensureBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS)),
             CliOptionValues.parseCurrencyUnitOption(
                 requiredText(ensureBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
                 "ensureBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),

@@ -6,6 +6,8 @@
       "kind": "ensure-book",
       "ensureBook": {
         "entityName": "Plan Seed Query",
+        "bookTemplateId": "OWNER_MANAGED_SERVICE",
+        "accountingBasis": "CASH",
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01"
       }
@@ -37,9 +39,9 @@
     },
     {
       "stepId": "post-sale",
-      "kind": "record-sale",
+      "kind": "record-sale-settled",
       "posting": {
-        "entryKind": "SALE",
+        "entryKind": "SALE_SETTLED",
         "effectiveDate": "2026-04-07",
         "cashAccountCode": "1000",
         "revenueAccountCode": "2000",

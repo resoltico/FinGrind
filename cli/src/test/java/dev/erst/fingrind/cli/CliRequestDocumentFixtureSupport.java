@@ -37,7 +37,7 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
   protected static String validRequestJson() {
     return """
             {
-              "entryKind": "SALE",
+              "entryKind": "SALE_SETTLED",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "revenueAccountCode": "2000",
@@ -67,6 +67,17 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
         "cash-receipt",
         journalLineJson("1000", "DEBIT", "1000"),
         journalLineJson("2000", "CREDIT", "1000"));
+  }
+
+  protected static String validAdmissibleRawJournalRequestJson() {
+    return rawJournalRequestJson(
+        "2026-04-07",
+        "command-1",
+        "idem-1",
+        "document-1",
+        "bank-deposit",
+        journalLineJson("operating-bank", "DEBIT", "1000"),
+        journalLineJson("1000", "CREDIT", "1000"));
   }
 
   protected static String rawJournalRequestJson(
@@ -173,6 +184,8 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
                   "kind": "ensure-book",
                   "ensureBook": {
                     "entityName": "Acme Studio",
+                    "bookTemplateId": "OWNER_MANAGED_SERVICE",
+                    "accountingBasis": "CASH",
                     "functionalCurrency": "EUR",
                     "fiscalYearStart": "01-01"
                   }
@@ -222,10 +235,23 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
       String accountType,
       @Nullable String financialPositionLineClassification,
       @Nullable String profitAndLossLineClassification) {
-    String cashFlowAssetClassification =
-        quotedOrNull(
-            fixtureCashFlowAssetClassificationWireValue(
-                accountType, financialPositionLineClassification));
+    return declareAccountJson(
+        accountCode,
+        accountName,
+        accountType,
+        financialPositionLineClassification,
+        profitAndLossLineClassification,
+        fixtureCashFlowAssetClassificationWireValue(
+            accountType, financialPositionLineClassification));
+  }
+
+  protected static String declareAccountJson(
+      String accountCode,
+      String accountName,
+      String accountType,
+      @Nullable String financialPositionLineClassification,
+      @Nullable String profitAndLossLineClassification,
+      @Nullable String cashFlowAssetClassification) {
     return """
             {
               "accountCode": "%s",
@@ -242,7 +268,7 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
             accountName,
             accountType,
             quotedOrNull(financialPositionLineClassification),
-            cashFlowAssetClassification,
+            quotedOrNull(cashFlowAssetClassification),
             quotedOrNull(profitAndLossLineClassification));
   }
 

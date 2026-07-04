@@ -12,6 +12,7 @@ description = "CLI transport adapter for the FinGrind execution boundary"
 
 dependencies {
     testImplementation(libs.archunit.junit5)
+    testImplementation(libs.pdfbox)
     implementation(project(":contract"))
     implementation(project(":core"))
     implementation(project(":executor"))

@@ -12,15 +12,14 @@ final class CliBackupRestoreArguments {
   private static final List<String> RESTORE_BOOK_OPTIONS =
       List.of(
           ProtocolOptions.BOOK_FILE,
-          ProtocolOptions.BACKUP_BOOK_FILE,
-          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
+          ProtocolOptions.BOOK_KEY_FILE,
+          ProtocolOptions.BACKUP_FILE,
+          ProtocolOptions.BACKUP_KEY_FILE,
           ProtocolOptions.OUTPUT);
   private static final CliBookArgumentParser.CommandArgumentSpec BACKUP_BOOK_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.BACKUP_BOOK_FILE_OUT,
-              ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
-              ProtocolOptions.OUTPUT),
+              ProtocolOptions.BACKUP_FILE, ProtocolOptions.BACKUP_KEY_FILE, ProtocolOptions.OUTPUT),
           List.of());
 
   private CliBackupRestoreArguments() {}
@@ -34,24 +33,22 @@ final class CliBackupRestoreArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.BACKUP_BOOK_FILE_OUT.equals(argument)) {
+      if (ProtocolOptions.BACKUP_FILE.equals(argument)) {
         if (backupFilePath != null) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.BACKUP_BOOK_FILE_OUT,
-              "Duplicate argument: " + ProtocolOptions.BACKUP_BOOK_FILE_OUT);
+              ProtocolOptions.BACKUP_FILE, "Duplicate argument: " + ProtocolOptions.BACKUP_FILE);
         }
         backupFilePath =
-            CliOptionValues.requirePathOptionValue(
-                argumentIterator, ProtocolOptions.BACKUP_BOOK_FILE_OUT);
-      } else if (ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT.equals(argument)) {
+            CliOptionValues.requirePathOptionValue(argumentIterator, ProtocolOptions.BACKUP_FILE);
+      } else if (ProtocolOptions.BACKUP_KEY_FILE.equals(argument)) {
         if (backupBookKeyFilePath != null) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
-              "Duplicate argument: " + ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT);
+              ProtocolOptions.BACKUP_KEY_FILE,
+              "Duplicate argument: " + ProtocolOptions.BACKUP_KEY_FILE);
         }
         backupBookKeyFilePath =
             CliOptionValues.requirePathOptionValue(
-                argumentIterator, ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT);
+                argumentIterator, ProtocolOptions.BACKUP_KEY_FILE);
       } else {
         outputMode =
             CliOptionModes.requireOutputMode(
@@ -62,13 +59,13 @@ final class CliBackupRestoreArguments {
     }
     if (backupFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_BOOK_FILE_OUT,
-          "A " + ProtocolOptions.BACKUP_BOOK_FILE_OUT + " argument is required.");
+          ProtocolOptions.BACKUP_FILE,
+          "A " + ProtocolOptions.BACKUP_FILE + " argument is required.");
     }
     if (backupBookKeyFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT,
-          "A " + ProtocolOptions.BACKUP_BOOK_KEY_FILE_OUT + " argument is required.");
+          ProtocolOptions.BACKUP_KEY_FILE,
+          "A " + ProtocolOptions.BACKUP_KEY_FILE + " argument is required.");
     }
     CliBookPathValidator.validateDistinctBackupPaths(
         parsedArguments.bookAccess().bookFilePath(),
@@ -92,22 +89,29 @@ final class CliBackupRestoreArguments {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
     }
+    if (argumentValues.bookKeyFilePath == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BOOK_KEY_FILE,
+          "A " + ProtocolOptions.BOOK_KEY_FILE + " argument is required.");
+    }
     if (argumentValues.backupFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_BOOK_FILE,
-          "A " + ProtocolOptions.BACKUP_BOOK_FILE + " argument is required.");
+          ProtocolOptions.BACKUP_FILE,
+          "A " + ProtocolOptions.BACKUP_FILE + " argument is required.");
     }
     if (argumentValues.backupBookKeyFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_BOOK_KEY_FILE,
-          "A " + ProtocolOptions.BACKUP_BOOK_KEY_FILE + " argument is required.");
+          ProtocolOptions.BACKUP_KEY_FILE,
+          "A " + ProtocolOptions.BACKUP_KEY_FILE + " argument is required.");
     }
     CliBookPathValidator.validateDistinctRestorePaths(
         argumentValues.bookFilePath,
+        argumentValues.bookKeyFilePath,
         argumentValues.backupFilePath,
         argumentValues.backupBookKeyFilePath);
     return new RestoreBook(
         argumentValues.bookFilePath,
+        argumentValues.bookKeyFilePath,
         argumentValues.backupFilePath,
         argumentValues.backupBookKeyFilePath,
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));
@@ -122,18 +126,20 @@ final class CliBackupRestoreArguments {
           argumentValues.bookFilePath =
               requireSingleRestorePath(
                   argumentValues.bookFilePath, argumentIterator, ProtocolOptions.BOOK_FILE);
-      case ProtocolOptions.BACKUP_BOOK_FILE ->
+      case ProtocolOptions.BOOK_KEY_FILE ->
+          argumentValues.bookKeyFilePath =
+              requireSingleRestorePath(
+                  argumentValues.bookKeyFilePath, argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
+      case ProtocolOptions.BACKUP_FILE ->
           argumentValues.backupFilePath =
               requireSingleRestorePath(
-                  argumentValues.backupFilePath,
-                  argumentIterator,
-                  ProtocolOptions.BACKUP_BOOK_FILE);
-      case ProtocolOptions.BACKUP_BOOK_KEY_FILE ->
+                  argumentValues.backupFilePath, argumentIterator, ProtocolOptions.BACKUP_FILE);
+      case ProtocolOptions.BACKUP_KEY_FILE ->
           argumentValues.backupBookKeyFilePath =
               requireSingleRestorePath(
                   argumentValues.backupBookKeyFilePath,
                   argumentIterator,
-                  ProtocolOptions.BACKUP_BOOK_KEY_FILE);
+                  ProtocolOptions.BACKUP_KEY_FILE);
       case ProtocolOptions.OUTPUT ->
           argumentValues.outputMode =
               CliOptionModes.requireOutputMode(
@@ -155,6 +161,7 @@ final class CliBackupRestoreArguments {
   /** Mutable parse accumulator for restore-book command options before validation. */
   private static final class RestoreBookArgumentValues {
     private @Nullable Path bookFilePath;
+    private @Nullable Path bookKeyFilePath;
     private @Nullable Path backupFilePath;
     private @Nullable Path backupBookKeyFilePath;
     private @Nullable OutputMode outputMode;

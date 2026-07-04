@@ -6,13 +6,14 @@ import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
+import dev.erst.fingrind.core.BookTemplateId;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable contract assembler for the FinGrind CLI surface. */
 public final class MachineContract {
-  private static final String PROTOCOL_VERSION = "12";
+  private static final String PROTOCOL_VERSION = "20";
 
   private MachineContract() {}
 
@@ -47,10 +48,10 @@ public final class MachineContract {
         MachineContractDomainDescriptors.bookModel(),
         MachineContractDomainDescriptors.bookkeepingKernel(),
         MachineContractTemplatesCatalog.requestShapesFor(selectedOperation),
-        postingRequestTemplateFor(selectedOperation),
-        declareAccountTemplateFor(selectedOperation),
-        declareTaxRegistrationTemplateFor(selectedOperation),
-        ledgerPlanTemplateFor(selectedOperation),
+        MachineContractTemplatesCatalog.postingRequestTemplateFor(selectedOperation, null),
+        MachineContractTemplatesCatalog.declareAccountTemplateFor(selectedOperation),
+        MachineContractTemplatesCatalog.declareTaxRegistrationTemplateFor(selectedOperation),
+        MachineContractTemplatesCatalog.ledgerPlanTemplateFor(selectedOperation),
         selectedOperation == null
             ? MachineContractDomainDescriptors.commandDescriptors()
             : MachineContractDomainDescriptors.commandDescriptors().stream()
@@ -98,14 +99,27 @@ public final class MachineContract {
 
   /** Builds the canonical minimal posting-request template descriptor. */
   public static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
-    return MachineContractTemplatesCatalog.requestTemplate();
+    return requestTemplate((BookTemplateId) null);
+  }
+
+  /** Builds the canonical minimal posting-request template descriptor for one doctrine. */
+  public static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate(
+      @Nullable BookTemplateId bookTemplateId) {
+    return MachineContractTemplatesCatalog.requestTemplate(bookTemplateId);
   }
 
   /** Builds one command-specific posting-request template descriptor when the command owns one. */
   public static ContractTemplates.@Nullable PostingRequestTemplateDescriptor requestTemplate(
       OperationId commandTopic) {
+    return requestTemplate(commandTopic, null);
+  }
+
+  /** Builds one command-specific posting-request template descriptor for one doctrine. */
+  public static ContractTemplates.@Nullable PostingRequestTemplateDescriptor requestTemplate(
+      OperationId commandTopic, @Nullable BookTemplateId bookTemplateId) {
     Objects.requireNonNull(commandTopic, "commandTopic");
-    return postingRequestTemplateFor(ProtocolCatalog.operation(commandTopic));
+    return MachineContractTemplatesCatalog.postingRequestTemplateFor(
+        ProtocolCatalog.operation(commandTopic), bookTemplateId);
   }
 
   /** Builds the canonical minimal declare-account request template descriptor. */
@@ -124,23 +138,9 @@ public final class MachineContract {
     return MachineContractTemplatesCatalog.planTemplate();
   }
 
-  private static ContractTemplates.@Nullable PostingRequestTemplateDescriptor
-      postingRequestTemplateFor(@Nullable ProtocolOperation selectedOperation) {
-    return MachineContractTemplatesCatalog.postingRequestTemplateFor(selectedOperation);
-  }
-
-  private static ContractTemplates.@Nullable DeclareAccountTemplateDescriptor
-      declareAccountTemplateFor(@Nullable ProtocolOperation selectedOperation) {
-    return MachineContractTemplatesCatalog.declareAccountTemplateFor(selectedOperation);
-  }
-
-  private static ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor
-      declareTaxRegistrationTemplateFor(@Nullable ProtocolOperation selectedOperation) {
-    return MachineContractTemplatesCatalog.declareTaxRegistrationTemplateFor(selectedOperation);
-  }
-
-  private static ContractPlanTemplates.@Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplateFor(
-      @Nullable ProtocolOperation selectedOperation) {
-    return MachineContractTemplatesCatalog.ledgerPlanTemplateFor(selectedOperation);
+  /** Builds the canonical quick-start workflow for one published surface. */
+  public static WorkflowDescriptor quickStart(WorkflowSurface surface) {
+    Objects.requireNonNull(surface, "surface");
+    return MachineContractQuickStarts.workflow(surface);
   }
 }

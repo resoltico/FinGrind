@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: SQLITE_SCHEMA_CORE_INTERIM_RESULT_SWEEP_LINKS
-updated: "2026-06-29"
+updated: "2026-07-04"
 ---
 
 # SQLite Schema: Interim Result Sweep Links

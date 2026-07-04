@@ -60,18 +60,16 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode = cli.run(openBookPromptArguments(bookFilePath));
     assertEquals(5, exitCode);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("error", failureEnvelope.path("status").stringValue());
-    assertEquals(
-        ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.code(),
-        failureEnvelope.path("code").stringValue());
+    String outputText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(outputText.contains("Error"), outputText);
     assertTrue(
-        failureEnvelope
-            .path("message")
-            .stringValue()
-            .contains(
-                "FinGrind cannot prompt for a book passphrase because no interactive console is available."));
-    assertTrue(failureEnvelope.path("hint").stringValue().contains("--book-key-file"));
+        outputText.contains(ContractErrors.Descriptor.INTERACTIVE_PROMPT_UNAVAILABLE.code()),
+        outputText);
+    assertTrue(
+        outputText.contains(
+            "FinGrind cannot prompt for a book passphrase because no interactive console is available."),
+        outputText);
+    assertTrue(outputText.contains("--book-key-file"), outputText);
   }
 
   @Test
@@ -115,7 +113,8 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             }));
     String listText = listOutput.toString(StandardCharsets.UTF_8);
     assertTrue(listText.contains("Accounts"));
-    assertTrue(listText.contains("Acme Studio"));
+    assertTrue(listText.contains("Returned accounts"));
+    assertFalse(listText.contains("Context"));
   }
 
   @Test
@@ -151,7 +150,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_listAccountsWithWrongStandardInputPassphrase_emitsJsonFailureInTextMode()
+  void run_listAccountsWithWrongStandardInputPassphrase_emitsTextFailureInTextMode()
       throws IOException {
     Path bookFilePath = tempDirectory.resolve("wrong-stdin-text-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
@@ -181,11 +180,10 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
             }));
 
     String outputText = listOutput.toString(StandardCharsets.UTF_8);
-    JsonNode failureEnvelope = new ObjectMapper().readTree(outputText);
-    assertEquals("error", failureEnvelope.path("status").stringValue());
-    assertEquals(
-        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
-        failureEnvelope.path("code").stringValue());
+    assertTrue(outputText.contains("Error"), outputText);
+    assertTrue(
+        outputText.contains(ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code()),
+        outputText);
     assertFalse(outputText.contains(wrongSecret));
   }
 
@@ -241,6 +239,10 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
                 missingKeyFile.toString(),
                 "--entity-name",
                 "Acme Studio",
+                "--book-template-id",
+                "OWNER_MANAGED_SERVICE",
+                "--accounting-basis",
+                "CASH",
                 "--functional-currency",
                 "EUR",
                 "--fiscal-year-start",

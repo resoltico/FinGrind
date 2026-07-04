@@ -148,6 +148,24 @@ final class SqliteStoreMutationOperations {
   }
 
   InterimResultSweepOutcome interimResultSweep(
+      LocalDate throughEffectiveDate,
+      LocalDate bookStartDate,
+      BookIdentity bookIdentity,
+      InterimResultSweepPlanner planner,
+      LocalDate currentUtcDate,
+      Instant sweptAt,
+      PostingIdGenerator postingIdGenerator) {
+    return closingOperations.interimResultSweep(
+        throughEffectiveDate,
+        bookStartDate,
+        bookIdentity,
+        planner,
+        currentUtcDate,
+        sweptAt,
+        postingIdGenerator);
+  }
+
+  InterimResultSweepOutcome interimResultSweep(
       dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft interimResultSweepDraft,
       PostingIdGenerator postingIdGenerator) {
     return closingOperations.interimResultSweep(interimResultSweepDraft, postingIdGenerator);

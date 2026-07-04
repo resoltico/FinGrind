@@ -4,12 +4,14 @@ import java.util.List;
 
 /** Canonical book-template identifiers for guided owner-managed setup. */
 public enum BookTemplateId implements WireValue {
-  OWNER_MANAGED_SERVICE;
+  OWNER_MANAGED_SERVICE,
+  OWNER_MANAGED_TRADING;
 
   @Override
   public String wireValue() {
     return switch (this) {
       case OWNER_MANAGED_SERVICE -> "OWNER_MANAGED_SERVICE";
+      case OWNER_MANAGED_TRADING -> "OWNER_MANAGED_TRADING";
     };
   }
 

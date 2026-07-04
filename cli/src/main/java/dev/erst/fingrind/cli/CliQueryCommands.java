@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
-import dev.erst.fingrind.contract.tax.TaxObligationQuery;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
 
@@ -27,8 +26,12 @@ record InspectBook(BookAccess bookAccess, OutputMode outputMode)
 
 /** Query CLI commands that inspect existing book data without mutating it. */
 final class ListAccounts extends CliBookQueryOutputModeCommand<ListAccountsQuery> {
-  ListAccounts(BookAccess bookAccess, ListAccountsQuery query, OutputMode outputMode) {
+  private final boolean withContext;
+
+  ListAccounts(
+      BookAccess bookAccess, ListAccountsQuery query, boolean withContext, OutputMode outputMode) {
     super(bookAccess, query, outputMode);
+    this.withContext = withContext;
   }
 
   @Override
@@ -37,15 +40,23 @@ final class ListAccounts extends CliBookQueryOutputModeCommand<ListAccountsQuery
       BookAccess bookAccess,
       ListAccountsQuery query,
       OutputMode outputMode) {
-    return executionContext.query().runListAccountsCommand(bookAccess, query, outputMode);
+    return executionContext
+        .query()
+        .runListAccountsCommand(bookAccess, query, withContext, outputMode);
   }
 }
 
 /** Query CLI commands that inspect declared tax registrations without mutating state. */
 final class ListTaxRegistrations extends CliBookQueryOutputModeCommand<ListTaxRegistrationsQuery> {
+  private final boolean withContext;
+
   ListTaxRegistrations(
-      BookAccess bookAccess, ListTaxRegistrationsQuery query, OutputMode outputMode) {
+      BookAccess bookAccess,
+      ListTaxRegistrationsQuery query,
+      boolean withContext,
+      OutputMode outputMode) {
     super(bookAccess, query, outputMode);
+    this.withContext = withContext;
   }
 
   @Override
@@ -54,12 +65,15 @@ final class ListTaxRegistrations extends CliBookQueryOutputModeCommand<ListTaxRe
       BookAccess bookAccess,
       ListTaxRegistrationsQuery query,
       OutputMode outputMode) {
-    return executionContext.query().runListTaxRegistrationsCommand(bookAccess, query, outputMode);
+    return executionContext
+        .query()
+        .runListTaxRegistrationsCommand(bookAccess, query, withContext, outputMode);
   }
 }
 
 /** Query CLI commands that inspect existing book data without mutating it. */
-record GetPosting(BookAccess bookAccess, PostingId postingId, OutputMode outputMode)
+record GetPosting(
+    BookAccess bookAccess, PostingId postingId, boolean withContext, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   GetPosting {
     Objects.requireNonNull(bookAccess, "bookAccess");
@@ -71,14 +85,18 @@ record GetPosting(BookAccess bookAccess, PostingId postingId, OutputMode outputM
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .query()
-        .runGetPostingCommand(bookAccess, postingId, outputMode);
+        .runGetPostingCommand(bookAccess, postingId, withContext, outputMode);
   }
 }
 
 /** Query CLI commands that inspect existing book data without mutating it. */
 final class ListPostings extends CliBookQueryOutputModeCommand<ListPostingsQuery> {
-  ListPostings(BookAccess bookAccess, ListPostingsQuery query, OutputMode outputMode) {
+  private final boolean withContext;
+
+  ListPostings(
+      BookAccess bookAccess, ListPostingsQuery query, boolean withContext, OutputMode outputMode) {
     super(bookAccess, query, outputMode);
+    this.withContext = withContext;
   }
 
   @Override
@@ -87,22 +105,8 @@ final class ListPostings extends CliBookQueryOutputModeCommand<ListPostingsQuery
       BookAccess bookAccess,
       ListPostingsQuery query,
       OutputMode outputMode) {
-    return executionContext.query().runListPostingsCommand(bookAccess, query, outputMode);
-  }
-}
-
-/** Query CLI command that computes one bounded tax-obligation report. */
-final class TaxObligation extends CliBookQueryOutputModeCommand<TaxObligationQuery> {
-  TaxObligation(BookAccess bookAccess, TaxObligationQuery query, OutputMode outputMode) {
-    super(bookAccess, query, outputMode);
-  }
-
-  @Override
-  protected int executeCommand(
-      CliExecutionContext executionContext,
-      BookAccess bookAccess,
-      TaxObligationQuery query,
-      OutputMode outputMode) {
-    return executionContext.query().runTaxObligationCommand(bookAccess, query, outputMode);
+    return executionContext
+        .query()
+        .runListPostingsCommand(bookAccess, query, withContext, outputMode);
   }
 }

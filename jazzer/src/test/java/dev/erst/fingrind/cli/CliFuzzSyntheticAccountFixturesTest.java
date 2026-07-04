@@ -51,7 +51,7 @@ class CliFuzzSyntheticAccountFixturesTest {
     PostEntryCommand cashExpenseCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             cashRevenueCommand,
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 LocalDate.parse("2026-04-09"),
                 new AccountCode("6100"),
                 new AccountCode("1100"),
@@ -150,6 +150,17 @@ class CliFuzzSyntheticAccountFixturesTest {
   }
 
   @Test
+  void reversal_entry_account_declarations_follow_resolved_reversal_journal() {
+    PostEntryCommand reversalCommand =
+        CliFuzzFixtureCommandSupport.reversalAdjustmentCommand("1000", "2000");
+
+    assertEquals(
+        List.of("1000", "2000"),
+        CliFuzzSyntheticAccountFixtureSupport.accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(reversalCommand)));
+  }
+
+  @Test
   void typed_entry_account_declarations_append_tax_accounts_when_applied_tax_carries_one() {
     PostEntryCommand templateCommand =
         CliFuzzFixtures.readPostEntryCommand(
@@ -157,11 +168,12 @@ class CliFuzzSyntheticAccountFixturesTest {
     PostEntryCommand taxedSaleCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             templateCommand,
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-15"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
                 appliedTax(
@@ -173,7 +185,7 @@ class CliFuzzSyntheticAccountFixturesTest {
     PostEntryCommand taxedExpenseCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             templateCommand,
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 LocalDate.parse("2026-04-16"),
                 new AccountCode("6100"),
                 new AccountCode("1100"),
@@ -190,11 +202,12 @@ class CliFuzzSyntheticAccountFixturesTest {
     PostEntryCommand taxedSaleWithoutTaxAccountCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             templateCommand,
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-17"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
                 appliedTax(
@@ -217,6 +230,83 @@ class CliFuzzSyntheticAccountFixturesTest {
         CliFuzzSyntheticAccountFixtureSupport.accountCodes(
             CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(
                 taxedSaleWithoutTaxAccountCommand)));
+  }
+
+  @Test
+  void typed_entry_account_declarations_cover_credit_and_settlement_variants() {
+    PostEntryCommand templateCommand =
+        CliFuzzFixtures.readPostEntryCommand(
+            CliFuzzFixtureCommandSupport.basicValidRequest().getBytes(UTF_8));
+    PostEntryCommand creditSaleCommand =
+        CliFuzzFixtureCommandSupport.withEntry(
+            templateCommand,
+            new BookkeepingEntry.SaleOnCredit(
+                LocalDate.parse("2026-04-18"),
+                new AccountCode("1100"),
+                new AccountCode("4000"),
+                new MonetaryAmount("EUR", "10000"),
+                null,
+                new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
+                appliedTax(
+                    "vat-lv",
+                    "vat-standard-sale",
+                    TaxApplicationKind.OUTPUT_SALE,
+                    TaxInclusionMode.EXCLUSIVE,
+                    "2199")));
+    PostEntryCommand creditExpenseCommand =
+        CliFuzzFixtureCommandSupport.withEntry(
+            templateCommand,
+            new BookkeepingEntry.ExpenseOnCredit(
+                LocalDate.parse("2026-04-19"),
+                new AccountCode("6100"),
+                new AccountCode("2100"),
+                new MonetaryAmount("EUR", "12100"),
+                new TaxSelection(
+                    new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-expense")),
+                appliedTax(
+                    "vat-lv",
+                    "vat-standard-expense",
+                    TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+                    TaxInclusionMode.INCLUSIVE,
+                    "1307")));
+    PostEntryCommand receiptWithAdjunctCommand =
+        CliFuzzFixtureCommandSupport.withEntry(
+            templateCommand,
+            new BookkeepingEntry.Receipt(
+                LocalDate.parse("2026-04-20"),
+                new AccountCode("1000"),
+                new AccountCode("1100"),
+                new MonetaryAmount("EUR", "1250"),
+                new dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct(
+                    new AccountCode("6100"), new MonetaryAmount("EUR", "50"))));
+    PostEntryCommand paymentWithoutAdjunctCommand =
+        CliFuzzFixtureCommandSupport.withEntry(
+            templateCommand,
+            new BookkeepingEntry.Payment(
+                LocalDate.parse("2026-04-21"),
+                new AccountCode("2100"),
+                new AccountCode("1000"),
+                new MonetaryAmount("EUR", "1250"),
+                null));
+
+    assertEquals(
+        List.of("1100", "4000", "2199"),
+        CliFuzzSyntheticAccountFixtureSupport.accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(creditSaleCommand)));
+    assertEquals(
+        List.of("6100", "2100", "1307"),
+        CliFuzzSyntheticAccountFixtureSupport.accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(creditExpenseCommand)));
+    assertEquals(
+        List.of("1000", "1100", "6100"),
+        CliFuzzSyntheticAccountFixtureSupport.accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(
+                receiptWithAdjunctCommand)));
+    assertEquals(
+        List.of("2100", "1000"),
+        CliFuzzSyntheticAccountFixtureSupport.accountCodes(
+            CliFuzzSyntheticAccountFixtures.declarePostingAccountCommands(
+                paymentWithoutAdjunctCommand)));
   }
 
   @Test
@@ -286,6 +376,12 @@ class CliFuzzSyntheticAccountFixturesTest {
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,
             new BookkeepingEntry.Reversal(
+                LocalDate.parse("2026-04-13"),
+                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                    new dev.erst.fingrind.core.ReversalReference(
+                        new dev.erst.fingrind.core.PostingId("posting-1")),
+                    new dev.erst.fingrind.core.ReversalReason("operator reversal")),
+                null,
                 new dev.erst.fingrind.core.JournalEntry(
                     LocalDate.parse("2026-04-13"),
                     List.of(
@@ -296,12 +392,7 @@ class CliFuzzSyntheticAccountFixturesTest {
                         new dev.erst.fingrind.core.JournalLine(
                             new AccountCode("2000"),
                             dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                            dev.erst.fingrind.core.Money.parse("NOK", "12.50")))),
-                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new dev.erst.fingrind.core.ReversalReference(
-                        new dev.erst.fingrind.core.PostingId("posting-1")),
-                    new dev.erst.fingrind.core.ReversalReason("operator reversal")),
-                null));
+                            dev.erst.fingrind.core.Money.parse("NOK", "12.50"))))));
 
     assertEquals(
         List.of("1000", "3000"),

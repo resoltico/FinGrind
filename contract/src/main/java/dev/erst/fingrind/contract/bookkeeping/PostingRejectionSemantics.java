@@ -1,18 +1,24 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
+import dev.erst.fingrind.core.EconomicEventClass;
+import dev.erst.fingrind.core.EvidenceClass;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.SourceDocumentType;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
-/** Canonical owner for building posting entry-semantics rejection details from business facts. */
+/**
+ * Canonical public namespace for posting entry-semantics rejection factories.
+ *
+ * <p>The behavior owners already live in narrower account, evidence, and entry-mode helpers. This
+ * facade intentionally keeps the published factory vocabulary flat for callers.
+ */
 public final class PostingRejectionSemantics {
   private PostingRejectionSemantics() {}
 
@@ -23,40 +29,8 @@ public final class PostingRejectionSemantics {
       AccountCode accountCode,
       AccountType expectedAccountType,
       AccountType actualAccountType) {
-    return accountTypeMismatch(
-        "entryKind", selectorValue, field, accountCode, expectedAccountType, actualAccountType);
-  }
-
-  /**
-   * Returns one entry-semantics violation for an account whose declared type contradicts the
-   * request.
-   */
-  public static PostingRejection.EntrySemanticsViolation accountTypeMismatch(
-      String selectorField,
-      String selectorValue,
-      String field,
-      AccountCode accountCode,
-      AccountType expectedAccountType,
-      AccountType actualAccountType) {
-    String requiredSelectorField =
-        ContractDescriptorValidation.requireText(selectorField, "selectorField");
-    String requiredSelectorValue =
-        ContractDescriptorValidation.requireText(selectorValue, "selectorValue");
-    Objects.requireNonNull(field, "field");
-    Objects.requireNonNull(accountCode, "accountCode");
-    Objects.requireNonNull(expectedAccountType, "expectedAccountType");
-    Objects.requireNonNull(actualAccountType, "actualAccountType");
-    return new PostingRejection.EntrySemanticsViolation(
-        "account-type-mismatch",
-        field,
-        "%s '%s' requires %s '%s' to be account type '%s', but the declared account type is '%s'."
-            .formatted(
-                requiredSelectorField,
-                requiredSelectorValue,
-                field,
-                accountCode.value(),
-                expectedAccountType.wireValue(),
-                actualAccountType.wireValue()));
+    return PostingAccountRejectionSemantics.accountTypeMismatch(
+        selectorValue, field, accountCode, expectedAccountType, actualAccountType);
   }
 
   /** Returns one entry-semantics violation using the canonical entryKind selector field. */
@@ -66,44 +40,8 @@ public final class PostingRejectionSemantics {
       AccountCode accountCode,
       CashFlowAssetClassification expectedClassification,
       @Nullable CashFlowAssetClassification actualClassification) {
-    return cashFlowAssetClassificationMismatch(
-        "entryKind",
-        selectorValue,
-        field,
-        accountCode,
-        expectedClassification,
-        actualClassification);
-  }
-
-  /**
-   * Returns one entry-semantics violation for an asset whose declared cash-flow classification
-   * contradicts the entry.
-   */
-  public static PostingRejection.EntrySemanticsViolation cashFlowAssetClassificationMismatch(
-      String selectorField,
-      String selectorValue,
-      String field,
-      AccountCode accountCode,
-      CashFlowAssetClassification expectedClassification,
-      @Nullable CashFlowAssetClassification actualClassification) {
-    String requiredSelectorField =
-        ContractDescriptorValidation.requireText(selectorField, "selectorField");
-    String requiredSelectorValue =
-        ContractDescriptorValidation.requireText(selectorValue, "selectorValue");
-    Objects.requireNonNull(field, "field");
-    Objects.requireNonNull(accountCode, "accountCode");
-    Objects.requireNonNull(expectedClassification, "expectedClassification");
-    return new PostingRejection.EntrySemanticsViolation(
-        "cash-flow-asset-classification-mismatch",
-        field,
-        "%s '%s' requires %s '%s' to use cashFlowAssetClassification '%s', but the declared account uses '%s'."
-            .formatted(
-                requiredSelectorField,
-                requiredSelectorValue,
-                field,
-                accountCode.value(),
-                expectedClassification.wireValue(),
-                actualClassification == null ? "<absent>" : actualClassification.wireValue()));
+    return PostingAccountRejectionSemantics.cashFlowAssetClassificationMismatch(
+        selectorValue, field, accountCode, expectedClassification, actualClassification);
   }
 
   /** Returns one entry-semantics violation using the canonical entryKind selector field. */
@@ -113,177 +51,102 @@ public final class PostingRejectionSemantics {
       AccountCode accountCode,
       FinancialPositionLineClassification expectedClassification,
       @Nullable FinancialPositionLineClassification actualClassification) {
-    return financialPositionClassificationMismatch(
-        "entryKind",
-        selectorValue,
-        field,
-        accountCode,
-        expectedClassification,
-        actualClassification);
-  }
-
-  /**
-   * Returns one entry-semantics violation for an account whose declared financial-position
-   * classification contradicts the entry.
-   */
-  public static PostingRejection.EntrySemanticsViolation financialPositionClassificationMismatch(
-      String selectorField,
-      String selectorValue,
-      String field,
-      AccountCode accountCode,
-      FinancialPositionLineClassification expectedClassification,
-      @Nullable FinancialPositionLineClassification actualClassification) {
-    String requiredSelectorField =
-        ContractDescriptorValidation.requireText(selectorField, "selectorField");
-    String requiredSelectorValue =
-        ContractDescriptorValidation.requireText(selectorValue, "selectorValue");
-    Objects.requireNonNull(field, "field");
-    Objects.requireNonNull(accountCode, "accountCode");
-    Objects.requireNonNull(expectedClassification, "expectedClassification");
-    return new PostingRejection.EntrySemanticsViolation(
-        "financial-position-classification-mismatch",
-        field,
-        "%s '%s' requires %s '%s' to use financialPositionLineClassification '%s', but the declared account uses '%s'."
-            .formatted(
-                requiredSelectorField,
-                requiredSelectorValue,
-                field,
-                accountCode.value(),
-                expectedClassification.wireValue(),
-                actualClassification == null ? "<absent>" : actualClassification.wireValue()));
+    return PostingAccountRejectionSemantics.financialPositionClassificationMismatch(
+        selectorValue, field, accountCode, expectedClassification, actualClassification);
   }
 
   /** Returns one entry-semantics violation using the canonical entryKind selector field. */
   public static PostingRejection.EntrySemanticsViolation sourceDocumentTypeNotAccepted(
       String selectorValue, SourceDocumentType sourceDocumentType, List<String> acceptedTypes) {
-    return sourceDocumentTypeNotAccepted(
-        "entryKind", selectorValue, sourceDocumentType, acceptedTypes);
-  }
-
-  /**
-   * Returns one entry-semantics violation for evidence whose source-document type is not admitted.
-   */
-  public static PostingRejection.EntrySemanticsViolation sourceDocumentTypeNotAccepted(
-      String selectorField,
-      String selectorValue,
-      SourceDocumentType sourceDocumentType,
-      List<String> acceptedTypes) {
-    String requiredSelectorField =
-        ContractDescriptorValidation.requireText(selectorField, "selectorField");
-    String requiredSelectorValue =
-        ContractDescriptorValidation.requireText(selectorValue, "selectorValue");
-    Objects.requireNonNull(sourceDocumentType, "sourceDocumentType");
-    List<String> acceptedTypeValues =
-        List.copyOf(Objects.requireNonNull(acceptedTypes, "acceptedTypes"));
-    return new PostingRejection.EntrySemanticsViolation(
-        "source-document-type-not-accepted",
-        "evidence.sourceDocuments[].sourceDocumentType",
-        "%s '%s' does not accept evidence.sourceDocuments[].sourceDocumentType '%s'. Accepted values: %s."
-            .formatted(
-                requiredSelectorField,
-                requiredSelectorValue,
-                sourceDocumentType.value(),
-                String.join(", ", acceptedTypeValues)));
-  }
-
-  /** Returns one entry-semantics violation using the canonical entryKind selector field. */
-  public static PostingRejection.EntrySemanticsViolation distinctRoleAccountsRequired(
-      String selectorValue, String firstField, String secondField, AccountCode accountCode) {
-    return distinctRoleAccountsRequired(
-        "entryKind", selectorValue, firstField, secondField, accountCode);
+    return PostingEvidenceRejectionSemantics.sourceDocumentTypeNotAccepted(
+        selectorValue, sourceDocumentType, acceptedTypes);
   }
 
   /** Returns one entry-semantics violation when two semantic roles collapse onto one account. */
   public static PostingRejection.EntrySemanticsViolation distinctRoleAccountsRequired(
-      String selectorField,
-      String selectorValue,
-      String firstField,
-      String secondField,
-      AccountCode accountCode) {
-    String requiredSelectorField =
-        ContractDescriptorValidation.requireText(selectorField, "selectorField");
-    String requiredSelectorValue =
-        ContractDescriptorValidation.requireText(selectorValue, "selectorValue");
-    Objects.requireNonNull(firstField, "firstField");
-    Objects.requireNonNull(secondField, "secondField");
-    Objects.requireNonNull(accountCode, "accountCode");
-    return new PostingRejection.EntrySemanticsViolation(
-        "distinct-role-accounts-required",
-        null,
-        "%s '%s' requires %s and %s to reference distinct accounts, but both point to '%s'."
-            .formatted(
-                requiredSelectorField,
-                requiredSelectorValue,
-                firstField,
-                secondField,
-                accountCode.value()));
-  }
-
-  /** Returns one entry-semantics violation using the canonical entryKind selector field. */
-  public static PostingRejection.EntrySemanticsViolation economicNullJournal(String selectorValue) {
-    return economicNullJournal("entryKind", selectorValue);
+      String selectorValue, String firstField, String secondField, AccountCode accountCode) {
+    return PostingAccountRejectionSemantics.distinctRoleAccountsRequired(
+        selectorValue, firstField, secondField, accountCode);
   }
 
   /** Returns one entry-semantics violation for raw journals that net every account to zero. */
-  public static PostingRejection.EntrySemanticsViolation economicNullJournal(
-      String selectorField, String selectorValue) {
-    String requiredSelectorField =
-        ContractDescriptorValidation.requireText(selectorField, "selectorField");
-    String requiredSelectorValue =
-        ContractDescriptorValidation.requireText(selectorValue, "selectorValue");
-    return new PostingRejection.EntrySemanticsViolation(
-        "economic-null-journal",
-        "lines",
-        "%s '%s' uses journal lines whose debit-credit netting reduces every referenced account to zero, so the journal would record no durable account movement."
-            .formatted(requiredSelectorField, requiredSelectorValue));
-  }
-
-  /** Returns one entry-semantics violation using the canonical entryKind selector field. */
-  public static PostingRejection.EntrySemanticsViolation cashBasisAccountRequired(
-      String selectorValue, List<AccountCode> referencedAccountCodes) {
-    return cashBasisAccountRequired("entryKind", selectorValue, referencedAccountCodes);
+  public static PostingRejection.EntrySemanticsViolation economicNullJournal(String selectorValue) {
+    return PostingEntryModeRejectionSemantics.economicNullJournal(selectorValue);
   }
 
   /**
-   * Returns one entry-semantics violation for a direct journal that omits every declared
-   * cash-and-cash-equivalent asset account.
+   * Returns one entry-semantics violation for an account whose resolved role contradicts the entry.
    */
-  public static PostingRejection.EntrySemanticsViolation cashBasisAccountRequired(
-      String selectorField, String selectorValue, List<AccountCode> referencedAccountCodes) {
-    String requiredSelectorField =
-        ContractDescriptorValidation.requireText(selectorField, "selectorField");
-    String requiredSelectorValue =
-        ContractDescriptorValidation.requireText(selectorValue, "selectorValue");
-    List<AccountCode> requiredAccountCodes =
-        List.copyOf(Objects.requireNonNull(referencedAccountCodes, "referencedAccountCodes"));
-    if (requiredAccountCodes.isEmpty()) {
-      throw new IllegalArgumentException("referencedAccountCodes must contain at least one item.");
-    }
-    requiredAccountCodes.forEach(accountCode -> Objects.requireNonNull(accountCode, "accountCode"));
-    return new PostingRejection.EntrySemanticsViolation(
-        "cash-basis-account-required",
-        "lines[].accountCode",
-        "%s '%s' requires at least one lines[].accountCode to reference a declared cash-and-cash-equivalent asset account, but the request references only %s."
-            .formatted(
-                requiredSelectorField,
-                requiredSelectorValue,
-                quotedAccountCodes(requiredAccountCodes)));
+  public static PostingRejection.EntrySemanticsViolation accountRoleMismatch(
+      String selectorValue,
+      String field,
+      AccountCode accountCode,
+      AccountRole expectedRole,
+      AccountRole actualRole) {
+    return PostingAccountRejectionSemantics.accountRoleMismatch(
+        selectorValue, field, accountCode, expectedRole, actualRole);
   }
 
-  /** Returns one insertion-ordered set of referenced accounts without rejecting duplicates. */
-  public static Set<AccountCode> referencedAccountSet(AccountCode... accountCodes) {
-    Objects.requireNonNull(accountCodes, "accountCodes");
-    Set<AccountCode> referencedAccounts = new LinkedHashSet<>();
-    for (AccountCode accountCode : accountCodes) {
-      referencedAccounts.add(Objects.requireNonNull(accountCode, "accountCode"));
-    }
-    return referencedAccounts;
+  /** Returns one basis-gated typed-event refusal for the required trade-side role. */
+  public static PostingRejection.EntrySemanticsViolation verbRequiresRole(
+      String selectorValue, AccountRole requiredRole) {
+    return PostingEntryModeRejectionSemantics.verbRequiresRole(selectorValue, requiredRole);
   }
 
-  private static String quotedAccountCodes(List<AccountCode> accountCodes) {
-    return accountCodes.stream()
-        .map(AccountCode::value)
-        .map("'%s'"::formatted)
-        .collect(java.util.stream.Collectors.joining(", "));
+  /** Returns one refusal when an inventory-purchase verb targets a non-trading book. */
+  public static PostingRejection.EntrySemanticsViolation verbRequiresTradingTemplate(
+      String selectorValue, BookTemplateId bookTemplateId) {
+    return PostingEntryModeRejectionSemantics.verbRequiresTradingTemplate(
+        "entryKind", selectorValue, bookTemplateId);
+  }
+
+  /** Returns one refusal when a trading-template sale omits required inventory relief. */
+  public static PostingRejection.EntrySemanticsViolation tradingSaleRequiresInventoryRelief(
+      String selectorValue) {
+    return PostingEntryModeRejectionSemantics.tradingSaleRequiresInventoryRelief(
+        "entryKind", selectorValue);
+  }
+
+  /** Returns one refusal when inventory relief appears on a non-trading book. */
+  public static PostingRejection.EntrySemanticsViolation inventoryReliefRequiresTradingBook(
+      String selectorValue, BookTemplateId bookTemplateId) {
+    return PostingEntryModeRejectionSemantics.inventoryReliefRequiresTradingBook(
+        "entryKind", selectorValue, bookTemplateId);
+  }
+
+  /** Returns one evidence-class conflict between retained evidence and the resolved event class. */
+  public static PostingRejection.EntrySemanticsViolation evidenceClassConflict(
+      String selectorValue, EvidenceClass evidenceClass, EconomicEventClass eventClass) {
+    return PostingEvidenceRejectionSemantics.evidenceClassConflict(
+        selectorValue, evidenceClass, eventClass);
+  }
+
+  /** Returns one refusal when the raw direct-journal path shadows one typed business event. */
+  public static PostingRejection.EntrySemanticsViolation rawJournalShadowsTypedEvent(
+      String selectorValue, EconomicEventClass eventClass, String operationName) {
+    return PostingEntryModeRejectionSemantics.rawJournalShadowsTypedEvent(
+        selectorValue, eventClass, operationName);
+  }
+
+  /** Returns one refusal when the raw direct-journal path bundles multiple operational events. */
+  public static PostingRejection.EntrySemanticsViolation rawJournalBundlesOperationalEvents(
+      String selectorValue, Set<EconomicEventClass> containedTypedEvents) {
+    return PostingEntryModeRejectionSemantics.rawJournalBundlesOperationalEvents(
+        selectorValue, containedTypedEvents);
+  }
+
+  /** Returns one refusal when a cash-basis raw adjustment omits every declared cash line. */
+  public static PostingRejection.EntrySemanticsViolation rawJournalRequiresCashLine(
+      String selectorValue) {
+    return PostingEntryModeRejectionSemantics.rawJournalRequiresCashLine(selectorValue);
+  }
+
+  /**
+   * Returns one refusal when an opening-position request references a forbidden opening account.
+   */
+  public static PostingRejection.EntrySemanticsViolation openingWindowAccountNotPermitted(
+      String selectorValue, AccountCode accountCode) {
+    return PostingEntryModeRejectionSemantics.openingWindowAccountNotPermitted(
+        selectorValue, accountCode);
   }
 }

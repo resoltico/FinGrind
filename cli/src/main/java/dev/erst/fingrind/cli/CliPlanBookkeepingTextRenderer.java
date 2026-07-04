@@ -77,20 +77,7 @@ final class CliPlanBookkeepingTextRenderer {
     summaryRows.add(List.of("Causation id", posting.causationId()));
     summaryRows.add(List.of("Correlation id", displayOrNone(posting.correlationId())));
     summaryRows.add(List.of("Source channel", CliTextDisplay.wireLabel(posting.sourceChannel())));
-    String linesTable =
-        CliTextFormat.renderAdaptiveTable(
-            CliReportRenderSupport.TEXT_TABLE_WIDTH,
-            List.of("Account", "Side", "Currency", "Amount"),
-            posting.lines().stream()
-                .map(
-                    line ->
-                        List.of(
-                            line.accountCode(),
-                            CliTextDisplay.wireLabel(line.side()),
-                            line.amount().currencyCode(),
-                            line.amount().canonicalDecimal()))
-                .toList(),
-            3);
+    String linesTable = CliJournalLineTextRenderer.renderPayloadLines(posting.lines());
     List<String> sections = new ArrayList<>();
     sections.add(CliTextFormat.renderKeyValueBlock(List.copyOf(summaryRows)));
     if (posting.entry() != null) {

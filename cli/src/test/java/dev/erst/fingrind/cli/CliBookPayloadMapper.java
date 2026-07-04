@@ -3,7 +3,6 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliSuccessPayload;
-import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -68,11 +67,6 @@ final class CliBookPayloadMapper {
 
   static CliBookQueryJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
     return CliBookQueryPayloadMapper.accountPagePayload(page);
-  }
-
-  static CliBookQueryJsonModels.AccountBalancePayload accountBalancePayload(
-      AccountBalanceSnapshot snapshot) {
-    return CliBookQueryPayloadMapper.accountBalancePayload(snapshot);
   }
 
   static List<String> counterpartAccounts(DeclaredAccount account, PostingFact postingFact) {

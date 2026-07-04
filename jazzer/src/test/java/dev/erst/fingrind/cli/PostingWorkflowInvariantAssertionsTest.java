@@ -19,6 +19,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.jazzer.support.JazzerPostEntryResultFixtures;
 import dev.erst.fingrind.jazzer.support.PostingWorkflowInvariantAssertions;
 import java.time.Instant;
 import java.util.List;
@@ -30,10 +31,7 @@ class PostingWorkflowInvariantAssertionsTest {
   @Test
   void accepted_invariants_accept_matching_shapes() {
     PostEntryCommand command = basicCommand();
-    PreflightAccepted accepted =
-        new PreflightAccepted(
-            command.requestProvenance().idempotencyKey(),
-            CliFuzzFixtures.journalEntry(command).effectiveDate());
+    PreflightAccepted accepted = JazzerPostEntryResultFixtures.preflightAccepted(command);
     Committed committed = committed(command, "posting-1");
     PostingFact postingFact = postingFact(command, "posting-1");
     Committed replayed = committed(command, "posting-1", true);
@@ -119,7 +117,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyAcceptedPreflight(
                 new PreflightAccepted(
                     reversalCommand.requestProvenance().idempotencyKey(),
-                    CliFuzzFixtures.journalEntry(command).effectiveDate()),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate(),
+                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
                 command));
     assertThrows(
         IllegalStateException.class,
@@ -127,7 +126,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.verifyAcceptedPreflight(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
-                    CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1)),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
+                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
                 command));
     assertThrows(
         IllegalStateException.class,
@@ -152,6 +152,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(reversalCommand),
                     CliFuzzFixtures.postingLineage(command),
+                    reversalCommand.entry().postingOriginKind(),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -166,6 +167,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(reversalCommand),
+                    command.entry().postingOriginKind(),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -180,6 +182,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(command),
+                    command.entry().postingOriginKind(),
                     command.evidence(),
                     reversalCommand.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -194,6 +197,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(command),
+                    command.entry().postingOriginKind(),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
@@ -208,6 +212,7 @@ class PostingWorkflowInvariantAssertionsTest {
                     "posting-1",
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(command),
+                    command.entry().postingOriginKind(),
                     command.evidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -233,7 +238,8 @@ class PostingWorkflowInvariantAssertionsTest {
                     new dev.erst.fingrind.core.IdempotencyKey("idem-2"),
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant(),
-                    true),
+                    true,
+                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
                 committed));
     assertThrows(
         IllegalStateException.class,
@@ -244,7 +250,8 @@ class PostingWorkflowInvariantAssertionsTest {
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
                     CliFuzzFixtures.fixedClock().instant(),
-                    true),
+                    true,
+                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
                 committed));
     assertThrows(
         IllegalStateException.class,
@@ -255,7 +262,8 @@ class PostingWorkflowInvariantAssertionsTest {
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
-                    true),
+                    true,
+                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
                 committed));
     assertThrows(
         IllegalStateException.class,
@@ -358,7 +366,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.assertRejected(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
-                    CliFuzzFixtures.journalEntry(command).effectiveDate()),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate(),
+                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
                 PostingRejection.BookNotInitialized.class));
     assertThrows(
         IllegalStateException.class,
@@ -387,7 +396,8 @@ class PostingWorkflowInvariantAssertionsTest {
             PostingWorkflowInvariantAssertions.assertAccountStateRejected(
                 new PreflightAccepted(
                     command.requestProvenance().idempotencyKey(),
-                    CliFuzzFixtures.journalEntry(command).effectiveDate()),
+                    CliFuzzFixtures.journalEntry(command).effectiveDate(),
+                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
                 PostingRejection.UnknownAccount.class));
     assertThrows(
         IllegalStateException.class,
@@ -424,12 +434,7 @@ class PostingWorkflowInvariantAssertionsTest {
 
   private static Committed committed(
       PostEntryCommand command, String postingId, boolean idempotentReplay) {
-    return new Committed(
-        new PostingId(postingId),
-        command.requestProvenance().idempotencyKey(),
-        CliFuzzFixtures.journalEntry(command).effectiveDate(),
-        CliFuzzFixtures.fixedClock().instant(),
-        idempotentReplay);
+    return JazzerPostEntryResultFixtures.committed(command, postingId, idempotentReplay);
   }
 
   private static PostingFact postingFact(PostEntryCommand command, String postingId) {
@@ -437,6 +442,7 @@ class PostingWorkflowInvariantAssertionsTest {
         postingId,
         CliFuzzFixtures.journalEntry(command),
         CliFuzzFixtures.postingLineage(command),
+        command.entry().postingOriginKind(),
         command.evidence(),
         command.requestProvenance(),
         CliFuzzFixtures.fixedClock().instant(),
@@ -447,6 +453,7 @@ class PostingWorkflowInvariantAssertionsTest {
       String postingId,
       dev.erst.fingrind.core.JournalEntry journalEntry,
       PostingLineage postingLineage,
+      dev.erst.fingrind.core.PostingOriginKind postingOriginKind,
       dev.erst.fingrind.core.AccountingEvidence evidence,
       RequestProvenance requestProvenance,
       Instant recordedAt,
@@ -458,7 +465,7 @@ class PostingWorkflowInvariantAssertionsTest {
         PostingKind.STANDARD,
         postingLineage.reversalReference().isPresent()
             ? dev.erst.fingrind.core.PostingOriginKind.REVERSAL
-            : dev.erst.fingrind.core.PostingOriginKind.SALE,
+            : postingOriginKind,
         evidence,
         new CommittedProvenance(requestProvenance, recordedAt, sourceChannel));
   }

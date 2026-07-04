@@ -130,9 +130,9 @@ final class CliJsonRequestFailures {
     }
     if (dev.erst.fingrind.contract.protocol.ProtocolOptions.STDIN_TOKEN.equals(
         requestFile.toString())) {
-      return "Provide one readable JSON document on standard input, or pass --request-file <path> to read it from a file.";
+      return "Provide a readable JSON document on standard input, or pass --request-file <path> to read it from a file.";
     }
-    return "Verify that the selected --request-file exists and is readable, or pass --request-file - to read one JSON document from standard input.";
+    return "Verify that the selected --request-file exists and is readable, or pass --request-file - to read a JSON document from standard input.";
   }
 
   private record CliReadErrorDetails(

@@ -97,7 +97,7 @@ readonly origin_repo="${fixture_root}/origin.git"
 readonly seed_repo="${fixture_root}/seed"
 readonly release_checkout="${fixture_root}/release-checkout"
 
-git init --bare "${origin_repo}" >/dev/null
+git -c init.defaultBranch=main init --bare "${origin_repo}" >/dev/null
 git init -b main "${seed_repo}" >/dev/null
 git -C "${seed_repo}" config user.name "FinGrind Test"
 git -C "${seed_repo}" config user.email "fingrind-test@example.invalid"

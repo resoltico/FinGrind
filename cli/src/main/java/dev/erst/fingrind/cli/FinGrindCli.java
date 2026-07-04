@@ -142,26 +142,28 @@ final class FinGrindCli {
 
   /** Runs one CLI command and writes a deterministic JSON envelope. */
   int run(String[] args) {
+    dev.erst.fingrind.contract.protocol.OutputMode failureOutputMode =
+        CliFailureOutputModeResolver.resolve(args);
     try {
       CliCommand command = CliArguments.parse(args);
       return command.execute(executionContext);
     } catch (CliArgumentsException | CliRequestException exception) {
       CliFailure failure = CliFailureMapper.cliFailure(exception);
-      failureWriter.writeFailure(failure);
+      failureWriter.writeFailure(failure, failureOutputMode);
       return CliExecutionPolicy.failureExitCode(failure);
     } catch (ContractFailureException exception) {
       CliFailure failure = CliFailureMapper.contractFailure(exception.failure());
-      failureWriter.writeDeterministicFailure(failure);
+      failureWriter.writeFailure(failure, failureOutputMode);
       return CliExecutionPolicy.failureExitCode(failure);
     } catch (RuntimeException exception) {
       String errorId = nextInternalErrorId();
       CliFailure failure = CliFailureMapper.runtimeFailure(exception, errorId);
       if (failure != null) {
-        failureWriter.writeFailure(failure);
+        failureWriter.writeFailure(failure, failureOutputMode);
         return CliExecutionPolicy.failureExitCode(failure);
       }
       CliFailure internalFailure = CliFailureMapper.internalError(errorId);
-      failureWriter.writeFailure(internalFailure);
+      failureWriter.writeFailure(internalFailure, failureOutputMode);
       return CliExecutionPolicy.failureExitCode(internalFailure);
     }
   }

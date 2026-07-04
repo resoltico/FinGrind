@@ -3,6 +3,8 @@ package dev.erst.fingrind.executor.spi;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.WireValue;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 
@@ -219,6 +221,13 @@ public sealed interface BookLifecycleInspection
     @Override
     public Status status() {
       return Status.INITIALIZED;
+    }
+
+    /** Returns the canonical book-start date derived from the initialized book doctrine. */
+    public LocalDate bookStartDate() {
+      return bookIdentity
+          .fiscalYearStart()
+          .containingFiscalYearStart(initializedAt.atZone(ZoneOffset.UTC).toLocalDate());
     }
   }
 }

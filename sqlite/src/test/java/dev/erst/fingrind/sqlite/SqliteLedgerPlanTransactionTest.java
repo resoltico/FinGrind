@@ -247,7 +247,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
           Instant.parse("2026-04-07T10:15:30Z"),
           bookIdentity(),
           dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-              bookIdentity().bookDoctrine().bookTemplateId()));
+              bookIdentity().bookDoctrine()));
       postingFactStore.rollbackLedgerPlanTransaction();
       assertFalse(Files.exists(databasePath));
       assertFalse(Files.exists(parentDirectory));
@@ -266,7 +266,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
           Instant.parse("2026-04-07T10:15:30Z"),
           bookIdentity(),
           dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-              bookIdentity().bookDoctrine().bookTemplateId()));
+              bookIdentity().bookDoctrine()));
     }
     assertFalse(Files.exists(databasePath));
     assertFalse(Files.exists(parentDirectory));
@@ -340,7 +340,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
           Instant.parse("2026-04-07T10:15:30Z"),
           bookIdentity(),
           dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-              bookIdentity().bookDoctrine().bookTemplateId()));
+              bookIdentity().bookDoctrine()));
       Files.writeString(siblingFile, "preserve parent");
       postingFactStore.rollbackLedgerPlanTransaction();
       assertFalse(Files.exists(databasePath));
@@ -364,7 +364,7 @@ class SqliteLedgerPlanTransactionTest extends SqlitePostingFactStoreTestSupport 
           Instant.parse("2026-04-07T10:15:30Z"),
           bookIdentity(),
           dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-              bookIdentity().bookDoctrine().bookTemplateId()));
+              bookIdentity().bookDoctrine()));
       try (SqliteNativeDatabase openedDatabase = requireStoreDatabase(postingFactStore)) {
         assertNotNull(openedDatabase);
         setStoreDatabase(postingFactStore, new IllegalStateClosingSqliteNativeDatabase());

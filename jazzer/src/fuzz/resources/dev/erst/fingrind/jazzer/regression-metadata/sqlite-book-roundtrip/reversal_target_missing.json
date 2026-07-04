@@ -8,15 +8,15 @@
     "details": {
       "type": "SQLITE_BOOK_ROUND_TRIP",
       "request": {
-        "effectiveDate": "2026-04-08",
+        "effectiveDate": "2026-04-07",
         "idempotencyKey": "idem-7",
         "lineCount": 2,
         "reversalPresent": true
       },
       "lifecycle": {
         "uninitializedCommitStatus": "posting-book-not-initialized",
-        "undeclaredCommitStatus": "unknown-account",
-        "inactiveCommitStatus": "inactive-account"
+        "undeclaredCommitStatus": "reversal-target-not-found",
+        "inactiveCommitStatus": "not-run"
       },
       "outcome": {
         "finalCommitStatus": "reversal-target-not-found",

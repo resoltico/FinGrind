@@ -19,7 +19,8 @@ public final class BookDoctrineDisplay {
   /** Returns one human-facing label for the selected accounting basis. */
   public static String accountingBasis(AccountingBasis accountingBasis) {
     return switch (Objects.requireNonNull(accountingBasis, "accountingBasis")) {
-      case CASH_BASIS -> "Cash basis";
+      case CASH -> "Cash basis";
+      case ACCRUAL -> "Accrual basis";
     };
   }
 
@@ -42,7 +43,8 @@ public final class BookDoctrineDisplay {
   /** Returns one human-facing label for the selected book template. */
   public static String bookTemplate(BookTemplateId bookTemplateId) {
     return switch (Objects.requireNonNull(bookTemplateId, "bookTemplateId")) {
-      case OWNER_MANAGED_SERVICE -> "Owner-managed service starter chart";
+      case OWNER_MANAGED_SERVICE -> "Owner-managed service seed template";
+      case OWNER_MANAGED_TRADING -> "Owner-managed trading seed template";
     };
   }
 }

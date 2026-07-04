@@ -36,9 +36,9 @@ public final class ProtectedBookMaintenanceService {
 
   /** Restores one verified encrypted-book backup pair onto one live FinGrind book path. */
   public ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
     return toPublishedRestore(
-        workflow.restoreBook(bookFilePath, backupFilePath, backupBookKeyFilePath));
+        workflow.restoreBook(bookFilePath, bookKeyFilePath, backupFilePath, backupKeyFilePath));
   }
 
   /** Inspects stale sibling rollback artifacts for the selected book path without side effects. */

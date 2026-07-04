@@ -15,21 +15,20 @@ final class ProtocolPeriodCloseOperations {
         List.of(
             ProtocolOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.PERIOD_START + " <YYYY-MM-DD>",
-            ProtocolOptions.PERIOD_END + " <YYYY-MM-DD>",
+            ProtocolOptions.THROUGH + " <YYYY-MM-DD>",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Sweep one contiguous reporting period into one policy-selected result-holding account.",
+        "Sweep the derived contiguous reporting window into the policy-selected result-holding account.",
         List.of(
             ProtocolExampleStep.note(
-                "Declare exactly one active EQUITY account classified as RESULT_HOLDING before sweeping one reporting period."),
+                "Declare exactly one active EQUITY account classified as RESULT_HOLDING before sweeping a reporting period."),
             ProtocolExampleStep.note(
                 "Declare exactly one active and postable EQUITY account classified as RESULT_HOLDING. Zero matching active accounts or multiple matching active accounts produce deterministic rejections."),
             ProtocolExampleStep.note(
-                "The first sweep may begin before the earliest posting date. After one sweep is recorded, later sweeps must start on the day after the transferred-through horizon and remain inside one fiscal year."),
+                "The first sweep starts at book start in the selected book. After a sweep is recorded, later sweeps start on the day after the transferred-through horizon and remain inside a fiscal year."),
             ProtocolExampleStep.command(
-                "fingrind interim-result-sweep --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --period-start 2026-04-01 --period-end 2026-04-30")));
+                "fingrind interim-result-sweep --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --through 2026-04-30")));
   }
 
   static ProtocolOperation fiscalYearCloseOperation() {
@@ -41,18 +40,17 @@ final class ProtocolPeriodCloseOperations {
         List.of(
             ProtocolOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.PERIOD_START + " <YYYY-MM-DD>",
-            ProtocolOptions.PERIOD_END + " <YYYY-MM-DD>",
+            ProtocolOptions.YEAR + " <YYYY>",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Close one fiscal year by settling owner withdrawals into capital and accumulating current-year result into retained accumulated equity.",
+        "Close the fiscal year by settling owner withdrawals into capital and accumulating current-year result into retained accumulated equity.",
         List.of(
             ProtocolExampleStep.note(
                 "Declare exactly one active EQUITY account for each required close target: EQUITY_CONTRIBUTION, RESULT_HOLDING, and RETAINED_ACCUMULATED."),
             ProtocolExampleStep.note(
-                "Use one full fiscal-year period. FinGrind sweeps any unswept remaining profit-and-loss movement into RESULT_HOLDING before the year-end close settles the year."),
+                "Use the fiscal year label. FinGrind derives the year boundaries from the selected book fiscal-year start and sweeps any unswept remaining profit-and-loss movement into RESULT_HOLDING before the year-end close settles the year."),
             ProtocolExampleStep.command(
-                "fingrind fiscal-year-close --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --period-start 2026-01-01 --period-end 2026-12-31")));
+                "fingrind fiscal-year-close --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --year 2026")));
   }
 }

@@ -121,7 +121,7 @@ class CoreTextValueObjectsTest {
     BookDoctrine doctrine =
         new BookDoctrine(
             AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
-            AccountingBasis.CASH_BASIS,
+            AccountingBasis.CASH,
             AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
             EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
             BookTemplateId.OWNER_MANAGED_SERVICE);
@@ -129,7 +129,7 @@ class CoreTextValueObjectsTest {
     assertEquals(
         AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
         doctrine.accountingKernelProfileId());
-    assertEquals(AccountingBasis.CASH_BASIS, doctrine.accountingBasis());
+    assertEquals(AccountingBasis.CASH, doctrine.accountingBasis());
     assertEquals(
         AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
         doctrine.accountingFrameworkPosition());
@@ -140,7 +140,7 @@ class CoreTextValueObjectsTest {
         () ->
             new BookDoctrine(
                 nullOf(),
-                AccountingBasis.CASH_BASIS,
+                AccountingBasis.CASH,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
                 BookTemplateId.OWNER_MANAGED_SERVICE));
@@ -158,7 +158,7 @@ class CoreTextValueObjectsTest {
         () ->
             new BookDoctrine(
                 AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
-                AccountingBasis.CASH_BASIS,
+                AccountingBasis.CASH,
                 nullOf(),
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
                 BookTemplateId.OWNER_MANAGED_SERVICE));
@@ -167,7 +167,7 @@ class CoreTextValueObjectsTest {
         () ->
             new BookDoctrine(
                 AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
-                AccountingBasis.CASH_BASIS,
+                AccountingBasis.CASH,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 nullOf(),
                 BookTemplateId.OWNER_MANAGED_SERVICE));
@@ -176,7 +176,7 @@ class CoreTextValueObjectsTest {
         () ->
             new BookDoctrine(
                 AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
-                AccountingBasis.CASH_BASIS,
+                AccountingBasis.CASH,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
                 nullOf()));
@@ -202,25 +202,31 @@ class CoreTextValueObjectsTest {
         IllegalArgumentException.class,
         () -> EntityForm.fromWireValue("owner-managed-single-entity"));
 
-    assertEquals(List.of("OWNER_MANAGED_SERVICE"), BookTemplateId.wireValues());
+    assertEquals(
+        List.of("OWNER_MANAGED_SERVICE", "OWNER_MANAGED_TRADING"), BookTemplateId.wireValues());
     assertEquals(
         BookTemplateId.OWNER_MANAGED_SERVICE,
         BookTemplateId.fromWireValue(BookTemplateId.OWNER_MANAGED_SERVICE.wireValue()));
+    assertEquals(
+        BookTemplateId.OWNER_MANAGED_TRADING,
+        BookTemplateId.fromWireValue(BookTemplateId.OWNER_MANAGED_TRADING.wireValue()));
     assertThrows(
         IllegalArgumentException.class,
         () -> BookTemplateId.fromWireValue("owner-managed-service"));
 
-    assertEquals(List.of("CASH_BASIS"), AccountingBasis.wireValues());
+    assertEquals(List.of("CASH", "ACCRUAL"), AccountingBasis.wireValues());
     assertEquals(
-        AccountingBasis.CASH_BASIS,
-        AccountingBasis.fromWireValue(AccountingBasis.CASH_BASIS.wireValue()));
+        AccountingBasis.CASH, AccountingBasis.fromWireValue(AccountingBasis.CASH.wireValue()));
+    assertEquals(
+        AccountingBasis.ACCRUAL,
+        AccountingBasis.fromWireValue(AccountingBasis.ACCRUAL.wireValue()));
     assertThrows(IllegalArgumentException.class, () -> AccountingBasis.fromWireValue("cash-basis"));
 
     assertEquals(
         AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE.accountingFrameworkPosition());
     assertEquals(
-        AccountingBasis.CASH_BASIS,
+        AccountingBasis.CASH,
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE.accountingBasis());
     assertEquals(
         EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
@@ -228,6 +234,40 @@ class CoreTextValueObjectsTest {
     assertEquals(
         BookTemplateId.OWNER_MANAGED_SERVICE,
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE.bookTemplateId());
+    assertEquals(
+        AccountingBasis.ACCRUAL,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL.accountingBasis());
+    assertEquals(
+        BookTemplateId.OWNER_MANAGED_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL.bookTemplateId());
+    assertEquals(
+        AccountingBasis.CASH,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING.accountingBasis());
+    assertEquals(
+        BookTemplateId.OWNER_MANAGED_TRADING,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING.bookTemplateId());
+    assertEquals(
+        AccountingBasis.ACCRUAL,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL.accountingBasis());
+    assertEquals(
+        BookTemplateId.OWNER_MANAGED_TRADING,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL.bookTemplateId());
+    assertEquals(
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
+        BookDoctrines.forTemplateAndBasis(
+            BookTemplateId.OWNER_MANAGED_SERVICE, AccountingBasis.CASH));
+    assertEquals(
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
+        BookDoctrines.forTemplateAndBasis(
+            BookTemplateId.OWNER_MANAGED_SERVICE, AccountingBasis.ACCRUAL));
+    assertEquals(
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
+        BookDoctrines.forTemplateAndBasis(
+            BookTemplateId.OWNER_MANAGED_TRADING, AccountingBasis.CASH));
+    assertEquals(
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL,
+        BookDoctrines.forTemplateAndBasis(
+            BookTemplateId.OWNER_MANAGED_TRADING, AccountingBasis.ACCRUAL));
   }
 
   @Test
@@ -276,9 +316,12 @@ class CoreTextValueObjectsTest {
     assertEquals(
         List.of(
             "CURRENT_ASSET",
+            "INVENTORY",
             "NONCURRENT_ASSET",
+            "TRADE_RECEIVABLE",
             "CURRENT_LIABILITY",
             "NONCURRENT_LIABILITY",
+            "TRADE_PAYABLE",
             "EQUITY_CONTRIBUTION",
             "EQUITY_WITHDRAWAL",
             "RESULT_HOLDING",
@@ -289,9 +332,12 @@ class CoreTextValueObjectsTest {
     assertEquals(
         List.of(
             "CURRENT_ASSET",
+            "INVENTORY",
             "NONCURRENT_ASSET",
+            "TRADE_RECEIVABLE",
             "CURRENT_LIABILITY",
             "NONCURRENT_LIABILITY",
+            "TRADE_PAYABLE",
             "EQUITY_CONTRIBUTION",
             "EQUITY_WITHDRAWAL",
             "RESULT_HOLDING",
@@ -307,13 +353,18 @@ class CoreTextValueObjectsTest {
     }
     assertEquals(
         AccountType.ASSET, FinancialPositionLineClassification.CURRENT_ASSET.accountType());
+    assertEquals(AccountType.ASSET, FinancialPositionLineClassification.INVENTORY.accountType());
     assertEquals(
         AccountType.ASSET, FinancialPositionLineClassification.NONCURRENT_ASSET.accountType());
+    assertEquals(
+        AccountType.ASSET, FinancialPositionLineClassification.TRADE_RECEIVABLE.accountType());
     assertEquals(
         AccountType.LIABILITY, FinancialPositionLineClassification.CURRENT_LIABILITY.accountType());
     assertEquals(
         AccountType.LIABILITY,
         FinancialPositionLineClassification.NONCURRENT_LIABILITY.accountType());
+    assertEquals(
+        AccountType.LIABILITY, FinancialPositionLineClassification.TRADE_PAYABLE.accountType());
     assertEquals(
         AccountType.EQUITY, FinancialPositionLineClassification.EQUITY_CONTRIBUTION.accountType());
     assertEquals(
@@ -325,6 +376,8 @@ class CoreTextValueObjectsTest {
     assertEquals(AccountType.EQUITY, FinancialPositionLineClassification.RESERVE.accountType());
     assertEquals(
         AccountType.EQUITY, FinancialPositionLineClassification.OTHER_EQUITY.accountType());
+    assertEquals(
+        NormalBalance.DEBIT, FinancialPositionLineClassification.INVENTORY.normalBalance());
     assertEquals(
         NormalBalance.CREDIT,
         FinancialPositionLineClassification.RETAINED_ACCUMULATED.normalBalance());
@@ -338,11 +391,14 @@ class CoreTextValueObjectsTest {
     assertEquals(
         List.of(
             "OPERATING_REVENUE",
+            "SALES_DISCOUNT_ALLOWANCE",
             "OTHER_REVENUE",
             "FINANCE_INCOME",
             "COST_OF_SALES",
             "OPERATING_EXPENSE",
             "DEPRECIATION_AND_AMORTIZATION",
+            "SETTLEMENT_FEE",
+            "BAD_DEBT_WRITE_OFF",
             "FINANCE_EXPENSE",
             "OTHER_EXPENSE"),
         ProfitAndLossLineClassification.wireValues());
@@ -354,6 +410,9 @@ class CoreTextValueObjectsTest {
     }
     assertEquals(
         AccountType.REVENUE, ProfitAndLossLineClassification.OPERATING_REVENUE.accountType());
+    assertEquals(
+        AccountType.REVENUE,
+        ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE.accountType());
     assertEquals(AccountType.REVENUE, ProfitAndLossLineClassification.OTHER_REVENUE.accountType());
     assertEquals(AccountType.REVENUE, ProfitAndLossLineClassification.FINANCE_INCOME.accountType());
     assertEquals(AccountType.EXPENSE, ProfitAndLossLineClassification.COST_OF_SALES.accountType());
@@ -362,6 +421,9 @@ class CoreTextValueObjectsTest {
     assertEquals(
         AccountType.EXPENSE,
         ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION.accountType());
+    assertEquals(AccountType.EXPENSE, ProfitAndLossLineClassification.SETTLEMENT_FEE.accountType());
+    assertEquals(
+        AccountType.EXPENSE, ProfitAndLossLineClassification.BAD_DEBT_WRITE_OFF.accountType());
     assertEquals(
         AccountType.EXPENSE, ProfitAndLossLineClassification.FINANCE_EXPENSE.accountType());
     assertEquals(AccountType.EXPENSE, ProfitAndLossLineClassification.OTHER_EXPENSE.accountType());

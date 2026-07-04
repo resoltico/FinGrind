@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -147,7 +148,7 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
                 ContractDecision.accepted(result),
                 OutputMode.JSON,
                 (writers, accepted, mode) ->
-                    writers.mutation().writeOpenBookResult(bookPath, accepted, mode),
+                    writers.mutation().writeOpenBookResult(bookPath, List.of(), accepted, mode),
                 null);
           }
           case ContractDecision.Rejected<OpenBookResult>(ContractFailure failure) ->

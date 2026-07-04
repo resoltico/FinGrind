@@ -31,7 +31,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** Shared in-memory read-model and reporting fixture state for executor tests. */
-abstract class AbstractInMemoryBookReadSession extends AbstractInMemoryPostingSession
+abstract class AbstractInMemoryBookReadSession extends AbstractInMemoryReportingPeriodCloseSession
     implements BookkeepingReadStore {
   @Override
   public PostingHistoryPage listPostings(PostingHistoryQuery query) {

@@ -146,9 +146,11 @@ public final class ExecutorAccountingTestSupport {
     Objects.requireNonNull(lineClassification, "lineClassification");
     Optional<CashFlowAssetClassification> cashFlowAssetClassification =
         switch (lineClassification) {
-          case CURRENT_ASSET, NONCURRENT_ASSET -> Optional.of(CashFlowAssetClassification.NON_CASH);
+          case CURRENT_ASSET, NONCURRENT_ASSET, INVENTORY, TRADE_RECEIVABLE ->
+              Optional.of(CashFlowAssetClassification.NON_CASH);
           case CURRENT_LIABILITY,
               NONCURRENT_LIABILITY,
+              TRADE_PAYABLE,
               EQUITY_CONTRIBUTION,
               EQUITY_WITHDRAWAL,
               RESULT_HOLDING,

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: SQLITE_SCHEMA_CORE_POSTING_FACT
-updated: "2026-06-29"
+updated: "2026-07-04"
 ---
 
 # SQLite Schema: Posting Fact
@@ -26,8 +26,12 @@ create table if not exists posting_fact (
     posting_origin_kind text not null check (
         posting_origin_kind in (
             'DIRECT_JOURNAL',
-            'SALE',
-            'EXPENSE',
+            'SALE_SETTLED',
+            'SALE_ON_CREDIT',
+            'EXPENSE_SETTLED',
+            'EXPENSE_ON_CREDIT',
+            'RECEIPT',
+            'PAYMENT',
             'OWNER_CONTRIBUTION',
             'OWNER_WITHDRAWAL',
             'OPENING_POSITION',
@@ -36,16 +40,18 @@ create table if not exists posting_fact (
             'FISCAL_YEAR_CLOSE'
         )
     ),
-    entry_cash_account_code text,
-    entry_revenue_account_code text,
-    entry_expense_account_code text,
-    entry_equity_account_code text,
+    entry_primary_debit_account_code text,
+    entry_primary_credit_account_code text,
+    entry_adjunct_account_code text,
     entry_amount_currency_code text check (
         entry_amount_currency_code is null
         or entry_amount_currency_code glob '[A-Z][A-Z][A-Z]'
     ),
     entry_amount_minor integer check (
         entry_amount_minor is null or entry_amount_minor > 0
+    ),
+    entry_adjunct_amount_minor integer check (
+        entry_adjunct_amount_minor is null or entry_adjunct_amount_minor > 0
     ),
     effective_date text not null check (
         effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
@@ -142,10 +148,9 @@ create table if not exists posting_fact (
         and request_fingerprint_sha256 not glob '*[^0-9a-f]*'
     ),
     unique (idempotency_key),
-    foreign key (entry_cash_account_code) references account (account_code),
-    foreign key (entry_revenue_account_code) references account (account_code),
-    foreign key (entry_expense_account_code) references account (account_code),
-    foreign key (entry_equity_account_code) references account (account_code),
+    foreign key (entry_primary_debit_account_code) references account (account_code),
+    foreign key (entry_primary_credit_account_code) references account (account_code),
+    foreign key (entry_adjunct_account_code) references account (account_code),
     foreign key (prior_posting_id) references posting_fact (posting_id),
     check (
         (prior_posting_id is null and reason is null)
@@ -154,40 +159,37 @@ create table if not exists posting_fact (
     ),
     check (
         (
-            posting_origin_kind = 'SALE'
-            and entry_cash_account_code is not null
-            and entry_revenue_account_code is not null
-            and entry_expense_account_code is null
-            and entry_equity_account_code is null
+            posting_origin_kind in (
+                'SALE_SETTLED',
+                'SALE_ON_CREDIT',
+                'EXPENSE_SETTLED',
+                'EXPENSE_ON_CREDIT',
+                'OWNER_CONTRIBUTION',
+                'OWNER_WITHDRAWAL'
+            )
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
+            and entry_adjunct_account_code is null
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
+            and entry_adjunct_amount_minor is null
         )
         or (
-            posting_origin_kind = 'EXPENSE'
-            and entry_cash_account_code is not null
-            and entry_revenue_account_code is null
-            and entry_expense_account_code is not null
-            and entry_equity_account_code is null
+            posting_origin_kind in ('RECEIPT', 'PAYMENT')
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
-        )
-        or (
-            posting_origin_kind = 'OWNER_CONTRIBUTION'
-            and entry_cash_account_code is not null
-            and entry_revenue_account_code is null
-            and entry_expense_account_code is null
-            and entry_equity_account_code is not null
-            and entry_amount_currency_code is not null
-            and entry_amount_minor is not null
-        )
-        or (
-            posting_origin_kind = 'OWNER_WITHDRAWAL'
-            and entry_cash_account_code is not null
-            and entry_revenue_account_code is null
-            and entry_expense_account_code is null
-            and entry_equity_account_code is not null
-            and entry_amount_currency_code is not null
-            and entry_amount_minor is not null
+            and (
+                (
+                    entry_adjunct_account_code is null
+                    and entry_adjunct_amount_minor is null
+                )
+                or (
+                    entry_adjunct_account_code is not null
+                    and entry_adjunct_amount_minor is not null
+                )
+            )
         )
         or (
             posting_origin_kind in (
@@ -197,12 +199,12 @@ create table if not exists posting_fact (
                 'INTERIM_RESULT_SWEEP',
                 'FISCAL_YEAR_CLOSE'
             )
-            and entry_cash_account_code is null
-            and entry_revenue_account_code is null
-            and entry_expense_account_code is null
-            and entry_equity_account_code is null
+            and entry_primary_debit_account_code is null
+            and entry_primary_credit_account_code is null
+            and entry_adjunct_account_code is null
             and entry_amount_currency_code is null
             and entry_amount_minor is null
+            and entry_adjunct_amount_minor is null
         )
     )
 ) strict;

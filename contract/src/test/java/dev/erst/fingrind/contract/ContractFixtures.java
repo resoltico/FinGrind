@@ -47,9 +47,6 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
-import dev.erst.fingrind.core.JournalEntry;
-import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
@@ -221,20 +218,11 @@ final class ContractFixtures {
   static PostEntryCommand postEntryCommand(String idempotencyKey) {
     return new PostEntryCommand(
         new BookkeepingEntry.Reversal(
-            new JournalEntry(
-                FIXTURE_DATE,
-                List.of(
-                    new JournalLine(
-                        new AccountCode("1000"),
-                        JournalLine.EntrySide.DEBIT,
-                        Money.parse("EUR", "10.00")),
-                    new JournalLine(
-                        new AccountCode("2000"),
-                        JournalLine.EntrySide.CREDIT,
-                        Money.parse("EUR", "10.00")))),
+            FIXTURE_DATE,
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                 new ReversalReference(new PostingId("posting-0")),
                 new ReversalReason("operator reversal")),
+            null,
             null),
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),

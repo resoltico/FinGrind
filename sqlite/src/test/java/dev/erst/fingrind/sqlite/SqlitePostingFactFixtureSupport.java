@@ -119,7 +119,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         PostingKind.STANDARD,
         reversalReference
             .map(ignored -> dev.erst.fingrind.core.PostingOriginKind.REVERSAL)
-            .orElse(dev.erst.fingrind.core.PostingOriginKind.SALE),
+            .orElse(dev.erst.fingrind.core.PostingOriginKind.SALE_SETTLED),
         evidence,
         new CommittedProvenance(
             new RequestProvenance(
@@ -165,20 +165,22 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       JournalEntry journalEntry, PostingLineageModel postingLineage) {
     return switch (postingLineage) {
       case PostingLineageModel.Direct _ ->
-          new BookkeepingEntry.Sale(
+          new BookkeepingEntry.SaleSettled(
               journalEntry.effectiveDate(),
               new AccountCode("1000"),
               new AccountCode("2000"),
               MonetaryAmount.of(money("EUR", "10.00")),
               null,
               null,
+              null,
               null);
       case PostingLineageModel.Reversal reversal ->
           new BookkeepingEntry.Reversal(
-              journalEntry,
+              journalEntry.effectiveDate(),
               new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                   reversal.reference(), reversal.reason()),
-              null);
+              null,
+              journalEntry);
     };
   }
 
@@ -494,7 +496,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         Instant.parse("2026-04-07T10:15:30Z"),
         bookIdentity(),
         dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-            bookIdentity().bookDoctrine().bookTemplateId()));
+            bookIdentity().bookDoctrine()));
   }
 
   static void initializeBookWithMinimalNumericAccounts(SqlitePostingFactStore postingFactStore) {

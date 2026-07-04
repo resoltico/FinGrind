@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: CONTRACT_EXECUTOR_INDEX
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, contract, executor, api, overview, routing, protocol, reports, ledger-plan]
   questions: ["where is the split contract and executor api reference in fingrind", "which doc covers protocol discovery versus reports in fingrind", "where should I look for posting and ledger plan contract types"]
@@ -23,6 +23,7 @@ plan-orchestration semantics.
 Use these files:
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md): contract-owned protocol metadata, discovery descriptors, request/response shapes, and deterministic contract errors
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md): administration DTOs, lifecycle inspection, queries, reports, and read-side rejections
+- [DOC_02_SharedReportModel.md](./DOC_02_SharedReportModel.md): shared report content types plus the family-specific builders that feed every JSON, text, CSV, and PDF report projection
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md): posting commands, posting results, write-side rejections, ledger plans, plan journals, and executor write services
 
 Routing is authoritative in [DOC_00_Index.md](./DOC_00_Index.md), which maps every public symbol to the precise file and `##` heading.

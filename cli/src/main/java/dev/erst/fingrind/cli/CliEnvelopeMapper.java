@@ -83,7 +83,9 @@ final class CliEnvelopeMapper {
       PostEntryResult.PreflightAccepted accepted) {
     return successEnvelope(
         new CliMutationJsonModels.PreflightAcceptedPayload(
-            accepted.idempotencyKey().value(), accepted.effectiveDate().toString()));
+            accepted.idempotencyKey().value(),
+            accepted.effectiveDate().toString(),
+            CliResolvedJournalPayloadMapper.resolvedJournalPayload(accepted.resolvedJournal())));
   }
 
   static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> committedEnvelope(
@@ -94,7 +96,8 @@ final class CliEnvelopeMapper {
             committed.idempotencyKey().value(),
             committed.effectiveDate().toString(),
             committed.recordedAt().toString(),
-            committed.idempotentReplay()));
+            committed.idempotentReplay(),
+            CliResolvedJournalPayloadMapper.resolvedJournalPayload(committed.resolvedJournal())));
   }
 
   static CliEnvelopeJsonModels.SuccessArtifact successArtifact(String format, Path path) {

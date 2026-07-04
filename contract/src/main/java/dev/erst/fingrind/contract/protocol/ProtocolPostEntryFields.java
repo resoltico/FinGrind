@@ -12,10 +12,15 @@ public final class ProtocolPostEntryFields {
         TopLevel.ENTRY_KIND,
         TopLevel.EFFECTIVE_DATE,
         TopLevel.CASH_ACCOUNT_CODE,
+        TopLevel.RECEIVABLE_ACCOUNT_CODE,
+        TopLevel.PAYABLE_ACCOUNT_CODE,
         TopLevel.REVENUE_ACCOUNT_CODE,
+        TopLevel.INVENTORY_ACCOUNT_CODE,
         TopLevel.EXPENSE_ACCOUNT_CODE,
         TopLevel.EQUITY_ACCOUNT_CODE,
         TopLevel.AMOUNT,
+        TopLevel.INVENTORY_RELIEF,
+        TopLevel.SETTLEMENT_ADJUNCT,
         TopLevel.FOREIGN_EXCHANGE,
         TopLevel.TAX,
         TopLevel.LINES,
@@ -80,6 +85,19 @@ public final class ProtocolPostEntryFields {
     return List.of(Tax.TAX_REGISTRATION_ID, Tax.TAX_CODE);
   }
 
+  /** Returns settlement-adjunct request fields in stable wire order. */
+  public static List<String> settlementAdjunctFields() {
+    return List.of(SettlementAdjunct.ACCOUNT_CODE, SettlementAdjunct.AMOUNT);
+  }
+
+  /** Returns inventory-relief request fields in stable wire order. */
+  public static List<String> inventoryReliefFields() {
+    return List.of(
+        InventoryRelief.INVENTORY_ACCOUNT_CODE,
+        InventoryRelief.COST_OF_SALES_ACCOUNT_CODE,
+        InventoryRelief.AMOUNT);
+  }
+
   /** Returns request-side foreign-exchange fields in stable wire order. */
   public static List<String> foreignExchangeFields() {
     return List.of(
@@ -103,10 +121,15 @@ public final class ProtocolPostEntryFields {
     public static final String ENTRY_KIND = "entryKind";
     public static final String EFFECTIVE_DATE = "effectiveDate";
     public static final String CASH_ACCOUNT_CODE = "cashAccountCode";
+    public static final String RECEIVABLE_ACCOUNT_CODE = "receivableAccountCode";
+    public static final String PAYABLE_ACCOUNT_CODE = "payableAccountCode";
     public static final String REVENUE_ACCOUNT_CODE = "revenueAccountCode";
+    public static final String INVENTORY_ACCOUNT_CODE = "inventoryAccountCode";
     public static final String EXPENSE_ACCOUNT_CODE = "expenseAccountCode";
     public static final String EQUITY_ACCOUNT_CODE = "equityAccountCode";
     public static final String AMOUNT = "amount";
+    public static final String INVENTORY_RELIEF = "inventoryRelief";
+    public static final String SETTLEMENT_ADJUNCT = "settlementAdjunct";
     public static final String FOREIGN_EXCHANGE = "foreignExchange";
     public static final String TAX = "tax";
     public static final String LINES = "lines";
@@ -196,6 +219,23 @@ public final class ProtocolPostEntryFields {
     public static final String TAX_CODE = ProtocolTaxRegistrationFields.TaxCode.TAX_CODE;
 
     private Tax() {}
+  }
+
+  /** Optional settlement-adjunct facts carried by receipt and payment requests. */
+  public static final class SettlementAdjunct {
+    public static final String ACCOUNT_CODE = ProtocolSharedRequestFields.ACCOUNT_CODE;
+    public static final String AMOUNT = "amount";
+
+    private SettlementAdjunct() {}
+  }
+
+  /** Optional trading-sale inventory-relief facts. */
+  public static final class InventoryRelief {
+    public static final String INVENTORY_ACCOUNT_CODE = "inventoryAccountCode";
+    public static final String COST_OF_SALES_ACCOUNT_CODE = "costOfSalesAccountCode";
+    public static final String AMOUNT = "amount";
+
+    private InventoryRelief() {}
   }
 
   /** Request-side foreign-exchange facts. */

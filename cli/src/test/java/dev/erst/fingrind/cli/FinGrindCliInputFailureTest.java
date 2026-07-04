@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
-import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
@@ -45,9 +44,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -107,9 +106,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -172,9 +171,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -233,9 +232,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -262,21 +261,12 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "text"
             });
     assertEquals(1, exitCode);
-    JsonNode failureEnvelope =
-        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("error", failureEnvelope.path("status").stringValue());
-    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
-    assertEquals(
-        "Failed to read request JSON at line 1, column 2.",
-        failureEnvelope.path("message").stringValue());
-    assertTrue(
-        failureEnvelope
-            .path("details")
-            .path("parseMessage")
-            .stringValue()
-            .startsWith("Unexpected end-of-input: expected close marker for Object"));
-    assertEquals(1, failureEnvelope.path("details").path("line").intValue());
-    assertEquals(2, failureEnvelope.path("details").path("column").intValue());
+    String failureText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(failureText.contains("Error"));
+    assertTrue(failureText.contains("invalid-request"));
+    assertTrue(failureText.contains("Failed to read request JSON at line 1, column 2."));
+    assertTrue(failureText.contains("Unexpected end-of-input: expected close marker for Object"));
+    assertTrue(failureText.contains("line 1, column 2"));
     assertFalse(workflow.workflowInvoked());
   }
 
@@ -288,7 +278,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
             CliRequestReaderTestSupport.withEvidence(
                 """
             {
-              "entryKind": "REVERSAL",
+              "entryKind": "DIRECT_JOURNAL",
               "effectiveDate": "2026-04-07",
               "lines": %s,
               "provenance": {
@@ -323,9 +313,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -400,9 +390,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -458,9 +448,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -516,9 +506,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -541,6 +531,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               bookKeyFilePath.toString(),
               "--entity-name",
               "Acme Studio",
+              "--book-template-id",
+              "OWNER_MANAGED_SERVICE",
+              "--accounting-basis",
+              "CASH",
               "--functional-currency",
               "EUR",
               "--fiscal-year-start",
@@ -550,11 +544,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "--bogus"
             });
     assertEquals(1, exitCode);
-    JsonNode failureEnvelope =
-        CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
-    assertEquals("error", failureEnvelope.path("status").stringValue());
-    assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
-    assertEquals("Unsupported argument: --bogus", failureEnvelope.path("message").stringValue());
+    String failureText = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(failureText.contains("Error"));
+    assertTrue(failureText.contains("invalid-request"));
+    assertTrue(failureText.contains("Unsupported argument: --bogus"));
     assertFalse(workflow.workflowInvoked());
   }
 
@@ -573,9 +566,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),

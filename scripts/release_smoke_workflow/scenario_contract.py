@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import tempfile
+
+from contract_values import load_contract_values
 
 
 def assert_release_smoke_scenarios(
@@ -21,6 +24,7 @@ def assert_release_smoke_scenarios(
     assert bundle.book.argument == str(bundle.book.local_path)
     assert bundle.backup_book.argument == str(bundle.backup_book.local_path)
     assert bundle.second_page_command_id == "bundle-acceptance-sale"
+    assert bundle.accounting_basis == "CASH"
 
     docker = build_release_smoke_scenario(
         pathlib.Path("/workdir"),
@@ -36,7 +40,12 @@ def assert_release_smoke_scenarios(
         docker.replacement_book_key.argument
         == "keys odd/Rīga büro/nested/--entity [docker-acceptance]-replacement.key"
     )
+    assert (
+        docker.restored_book_key.argument
+        == "restored odd/Rīga büro/nested/--entity restored [docker-acceptance].key"
+    )
     assert docker.actor_prefix == "docker-acceptance"
+    assert docker.accounting_basis == "CASH"
 
 
 def assert_fixture_generation(
@@ -57,13 +66,13 @@ def assert_fixture_generation(
 
         assert_request_payload(
             json.loads(fixture_scenario.request_sale.local_path.read_text(encoding="utf-8")),
-            "SALE",
+            "SALE_SETTLED",
             "fixture-regression-sale",
             expected_source_document("fixture-regression", "sale", "2026-04-07"),
         )
         assert_request_payload(
             json.loads(fixture_scenario.request_expense.local_path.read_text(encoding="utf-8")),
-            "EXPENSE",
+            "EXPENSE_SETTLED",
             "fixture-regression-expense",
             expected_source_document("fixture-regression", "expense", "2026-04-08"),
         )
@@ -141,3 +150,21 @@ def assert_direct_journal_payload(
     assert len(lines) == 2
     assert [line["accountCode"] for line in lines] == expected_account_codes
     assert [line["side"] for line in lines] == ["DEBIT", "CREDIT"]
+
+
+def assert_operation_id_references(repo_root: pathlib.Path) -> None:
+    contract = load_contract_values(repo_root)
+    operation_ids = contract["operationIds"]
+    referenced_operation_keys = {
+        match.group(1)
+        for path in (repo_root / "scripts" / "release_smoke_workflow").glob("*.py")
+        for match in re.finditer(
+            r'operation_ids\["([a-zA-Z0-9]+)"\]', path.read_text(encoding="utf-8")
+        )
+    }
+    unknown_operation_keys = sorted(referenced_operation_keys.difference(operation_ids))
+    if unknown_operation_keys:
+        raise AssertionError(
+            "release-smoke workflow references unknown operation-id keys: "
+            + ", ".join(unknown_operation_keys)
+        )

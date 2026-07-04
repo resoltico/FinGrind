@@ -148,6 +148,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     CliBookWorkflow rejectedWorkflow =
         reportingWorkflow(
             new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            rejectedTaxObligationResult(),
             new TrialBalanceResult.Reported(sampleTrialBalanceReport()),
             new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()));
@@ -238,6 +239,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     CliBookWorkflow successfulWorkflow =
         reportingWorkflow(
             new AccountBalanceResult.Reported(sampleAccountBalanceSnapshot()),
+            rejectedTaxObligationResult(),
             new TrialBalanceResult.Reported(sampleTrialBalanceReport()),
             new AccountLedgerResult.Reported(sampleAccountLedgerReport()),
             new PeriodSummaryResult.Reported(samplePeriodSummaryReport()));
@@ -326,6 +328,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     CliBookWorkflow workflow =
         reportingWorkflow(
             new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            rejectedTaxObligationResult(),
             new TrialBalanceResult.Reported(sampleTrialBalanceReport()),
             new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()),
@@ -434,6 +437,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     CliBookWorkflow rejectedWorkflow =
         reportingWorkflow(
             new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
+            rejectedTaxObligationResult(),
             new TrialBalanceResult.Reported(sampleTrialBalanceReport()),
             new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()),

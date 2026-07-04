@@ -82,13 +82,13 @@ final class CliCommandParsingRegistry {
           OperationId.LIST_TAX_REGISTRATIONS,
           CliTaxQueryArguments::parseListTaxRegistrationsCommand),
       binding(OperationId.GET_POSTING, CliBookQueryArguments::parseGetPostingCommand),
-      binding(OperationId.LIST_POSTINGS, CliBookQueryArguments::parseListPostingsCommand),
-      binding(OperationId.TAX_OBLIGATION, CliTaxQueryArguments::parseTaxObligationCommand)
+      binding(OperationId.LIST_POSTINGS, CliBookQueryArguments::parseListPostingsCommand)
     };
   }
 
   private static ParserBinding[] reportBindings() {
     return new ParserBinding[] {
+      binding(OperationId.TAX_OBLIGATION, CliTaxQueryArguments::parseTaxObligationCommand),
       binding(OperationId.ACCOUNT_BALANCE, CliReportArguments::parseAccountBalanceCommand),
       binding(OperationId.TRIAL_BALANCE, CliReportArguments::parseTrialBalanceCommand),
       binding(OperationId.ACCOUNT_LEDGER, CliReportArguments::parseAccountLedgerCommand),
@@ -107,20 +107,38 @@ final class CliCommandParsingRegistry {
           OperationId.DECLARE_TAX_REGISTRATION,
           CliRequestMutationArguments::parseDeclareTaxRegistrationCommand),
       binding(OperationId.EXECUTE_PLAN, CliRequestMutationArguments::parseExecutePlanCommand),
-      binding(OperationId.PREFLIGHT_ENTRY, CliRequestMutationArguments::parsePreflightEntryCommand),
-      binding(OperationId.RECORD_SALE, CliRequestMutationArguments::parseRecordSaleCommand),
-      binding(OperationId.RECORD_EXPENSE, CliRequestMutationArguments::parseRecordExpenseCommand),
+      binding(OperationId.PREFLIGHT_ENTRY, CliPostingMutationArguments::parsePreflightEntryCommand),
+      binding(
+          OperationId.RECORD_SALE_SETTLED,
+          CliPostingMutationArguments::parseRecordSaleSettledCommand),
+      binding(
+          OperationId.RECORD_SALE_ON_CREDIT,
+          CliPostingMutationArguments::parseRecordSaleOnCreditCommand),
+      binding(
+          OperationId.RECORD_PURCHASE_SETTLED,
+          CliPostingMutationArguments::parseRecordPurchaseSettledCommand),
+      binding(
+          OperationId.RECORD_PURCHASE_ON_CREDIT,
+          CliPostingMutationArguments::parseRecordPurchaseOnCreditCommand),
+      binding(
+          OperationId.RECORD_EXPENSE_SETTLED,
+          CliPostingMutationArguments::parseRecordExpenseSettledCommand),
+      binding(
+          OperationId.RECORD_EXPENSE_ON_CREDIT,
+          CliPostingMutationArguments::parseRecordExpenseOnCreditCommand),
+      binding(OperationId.RECORD_RECEIPT, CliPostingMutationArguments::parseRecordReceiptCommand),
+      binding(OperationId.RECORD_PAYMENT, CliPostingMutationArguments::parseRecordPaymentCommand),
       binding(
           OperationId.RECORD_OWNER_CONTRIBUTION,
-          CliRequestMutationArguments::parseRecordOwnerContributionCommand),
+          CliPostingMutationArguments::parseRecordOwnerContributionCommand),
       binding(
           OperationId.RECORD_OWNER_WITHDRAWAL,
-          CliRequestMutationArguments::parseRecordOwnerWithdrawalCommand),
+          CliPostingMutationArguments::parseRecordOwnerWithdrawalCommand),
       binding(
           OperationId.RECORD_OPENING_POSITION,
-          CliRequestMutationArguments::parseRecordOpeningPositionCommand),
-      binding(OperationId.RECORD_REVERSAL, CliRequestMutationArguments::parseRecordReversalCommand),
-      binding(OperationId.POST_ENTRY, CliRequestMutationArguments::parsePostEntryCommand)
+          CliPostingMutationArguments::parseRecordOpeningPositionCommand),
+      binding(OperationId.RECORD_REVERSAL, CliPostingMutationArguments::parseRecordReversalCommand),
+      binding(OperationId.POST_ENTRY, CliPostingMutationArguments::parsePostEntryCommand)
     };
   }
 

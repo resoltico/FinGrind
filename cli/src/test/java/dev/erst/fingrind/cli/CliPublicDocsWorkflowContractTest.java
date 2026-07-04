@@ -27,8 +27,8 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(guide.contains("--entity-name"));
     assertTrue(guide.contains("--functional-currency"));
     assertTrue(guide.contains("--fiscal-year-start"));
-    assertTrue(guide.contains("starter chart"));
-    assertTrue(guide.contains("\"entryKind\": \"SALE\""));
+    assertTrue(guide.contains("seed template"));
+    assertTrue(guide.contains("\"entryKind\": \"SALE_SETTLED\""));
     assertTrue(guide.contains("\"cashAccountCode\": \"cash\""));
     assertTrue(guide.contains("\"revenueAccountCode\": \"service-revenue\""));
     assertFalse(guide.contains("\"recipeKind\": \"CASH_REVENUE\""));
@@ -54,7 +54,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         "Acme Studio",
         openBook.path("payload").path("bookIdentity").path("entityName").stringValue());
     JsonNode quickStartRequest = readJson(requestFile);
-    assertEquals("SALE", quickStartRequest.path("entryKind").stringValue());
+    assertEquals("SALE_SETTLED", quickStartRequest.path("entryKind").stringValue());
     assertEquals("cash", quickStartRequest.path("cashAccountCode").stringValue());
     assertEquals("service-revenue", quickStartRequest.path("revenueAccountCode").stringValue());
     assertEquals(
@@ -74,7 +74,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             .path("sourceDocumentType")
             .stringValue());
     assertEquals(
-        "2026-04-08",
+        "2026-04-07",
         quickStartRequest
             .path("evidence")
             .path("sourceDocuments")
@@ -96,9 +96,17 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "--request-file",
             requestFile.toString());
     assertEquals("ok", preflight.path("status").stringValue());
+    assertEquals(
+        "SETTLED_SALE",
+        preflight
+            .path("payload")
+            .path("resolvedJournal")
+            .path("classification")
+            .path("eventClass")
+            .stringValue());
     JsonNode committed =
         runJsonCommand(
-            "record-sale",
+            "record-sale-settled",
             "--book-file",
             bookFile.toString(),
             "--book-key-file",
@@ -106,6 +114,14 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "--request-file",
             requestFile.toString());
     assertEquals("ok", committed.path("status").stringValue());
+    assertEquals(
+        "SETTLED_SALE",
+        committed
+            .path("payload")
+            .path("resolvedJournal")
+            .path("classification")
+            .path("eventClass")
+            .stringValue());
     String trialBalance =
         runPlainCommand(
             "trial-balance",
@@ -135,7 +151,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertTrue(examplesGuide.contains("--entity-name"));
     assertTrue(examplesGuide.contains("--functional-currency"));
     assertTrue(examplesGuide.contains("--fiscal-year-start"));
-    assertTrue(examplesGuide.contains("starter chart"));
+    assertTrue(examplesGuide.contains("seed template"));
     assertTrue(examplesGuide.contains("entry-semantics-multi-violation-request.json"));
     assertTrue(examplesGuide.contains("entry-semantics-violations-text.txt"));
     assertTrue(requestsGuide.contains("placeholder-first sample"));
@@ -162,21 +178,21 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     Path queryPlanRequestFile = copyExampleFixture("ledger-plan-query-request.json");
     JsonNode postingRequest = readJson(postingRequestFile);
     assertTrue(postingRequest.path("recipeKind").isMissingNode());
-    assertEquals("SALE", postingRequest.path("entryKind").stringValue());
+    assertEquals("SALE_SETTLED", postingRequest.path("entryKind").stringValue());
     assertEquals("cash", postingRequest.path("cashAccountCode").stringValue());
     JsonNode planRequest = readJson(planRequestFile);
     JsonNode planPosting = canonicalPostingStep(planRequest).path("posting");
     assertTrue(planPosting.path("recipeKind").isMissingNode());
-    assertEquals("SALE", planPosting.path("entryKind").stringValue());
+    assertEquals("SALE_SETTLED", planPosting.path("entryKind").stringValue());
     assertEquals("cash", planPosting.path("cashAccountCode").stringValue());
     JsonNode queryPlanRequest = readJson(queryPlanRequestFile);
     assertEquals(
-        "SALE",
+        "SALE_SETTLED",
         canonicalPostingStep(queryPlanRequest).path("posting").path("entryKind").stringValue());
     JsonNode unknownAccountRequest = readJson(unknownAccountRequestFile);
-    assertEquals("SALE", unknownAccountRequest.path("entryKind").stringValue());
+    assertEquals("SALE_SETTLED", unknownAccountRequest.path("entryKind").stringValue());
     JsonNode entrySemanticsRequest = readJson(entrySemanticsRequestFile);
-    assertEquals("SALE", entrySemanticsRequest.path("entryKind").stringValue());
+    assertEquals("SALE_SETTLED", entrySemanticsRequest.path("entryKind").stringValue());
     runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     runJsonCommand(
@@ -197,7 +213,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         declareRevenueFile.toString());
     JsonNode committed =
         runJsonCommand(
-            "record-sale",
+            "record-sale-settled",
             "--book-file",
             bookFile.toString(),
             "--book-key-file",
@@ -206,6 +222,14 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             postingRequestFile.toString());
     String postingId = committed.path("payload").path("postingId").stringValue();
     assertFalse(postingId.isBlank());
+    assertEquals(
+        "SETTLED_SALE",
+        committed
+            .path("payload")
+            .path("resolvedJournal")
+            .path("classification")
+            .path("eventClass")
+            .stringValue());
     JsonNode unknownAccountPreflight =
         runJsonCommandExpectingExit(
             2,
@@ -260,7 +284,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
     JsonNode rawPlanPosting = canonicalPostingStep(rawPlanTemplate).path("posting");
     assertTrue(rawPlanPosting.path("recipeKind").isMissingNode());
-    assertEquals("SALE", rawPlanPosting.path("entryKind").stringValue());
+    assertEquals("SALE_SETTLED", rawPlanPosting.path("entryKind").stringValue());
     assertEquals("cash", rawPlanPosting.path("cashAccountCode").stringValue());
     assertEquals(
         "replace-before-commit-source-document-id",
@@ -331,8 +355,8 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
 
   private static boolean isCommittedPostingKind(String kind) {
     return switch (kind) {
-      case "record-sale",
-          "record-expense",
+      case "record-sale-settled",
+          "record-expense-settled",
           "record-owner-contribution",
           "record-owner-withdrawal",
           "record-opening-position",

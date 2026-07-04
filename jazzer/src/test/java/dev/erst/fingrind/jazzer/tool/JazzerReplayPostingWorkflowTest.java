@@ -19,7 +19,7 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new PostingWorkflowReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-10", "idem-posting-4", 2, false),
+            new ParsedPostingCommandDetails("2026-04-07", "idem-posting-4", 2, false),
             new PostingWorkflowLifecycleDetails(
                 new PostingGateDetails(
                     PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
@@ -48,16 +48,16 @@ class JazzerReplayPostingWorkflowTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new PostingWorkflowReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-08", "idem-5", 2, true),
+            new ParsedPostingCommandDetails("2026-04-07", "idem-5", 2, true),
             new PostingWorkflowLifecycleDetails(
                 new PostingGateDetails(
                     PostingLifecycleStatus.BOOK_NOT_INITIALIZED,
                     PostingLifecycleStatus.BOOK_NOT_INITIALIZED),
                 new PostingGateDetails(
-                    PostingLifecycleStatus.UNKNOWN_ACCOUNT, PostingLifecycleStatus.UNKNOWN_ACCOUNT),
+                    PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
+                    PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND),
                 new PostingGateDetails(
-                    PostingLifecycleStatus.INACTIVE_ACCOUNT,
-                    PostingLifecycleStatus.INACTIVE_ACCOUNT)),
+                    PostingLifecycleStatus.NOT_RUN, PostingLifecycleStatus.NOT_RUN)),
             new PostingWorkflowOutcomeDetails(
                 PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
                 PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,

@@ -27,7 +27,7 @@ interface CliBookLifecycleWorkflow {
 
   /** Restores one protected book from a backup artifact set. */
   ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath);
+      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath);
 
   /** Reads rollback metadata for the most recent interrupted rekey flow. */
   ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath);

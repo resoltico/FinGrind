@@ -407,9 +407,60 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parse_taxObligationAcceptsPdfArtifactOutput() {
+    TaxObligation command =
+        assertInstanceOf(
+            TaxObligation.class,
+            CliArguments.parse(
+                new String[] {
+                  "tax-obligation",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--tax-registration-id",
+                  "vat-lv",
+                  "--period-start",
+                  "2026-04-01",
+                  "--period-end",
+                  "2026-04-30",
+                  "--output",
+                  "text",
+                  "--pdf-out",
+                  "reports/tax-obligation.pdf"
+                }));
+
+    assertEquals(
+        new dev.erst.fingrind.contract.tax.TaxObligationQuery(
+            new dev.erst.fingrind.contract.tax.TaxRegistrationId("vat-lv"),
+            LocalDate.parse("2026-04-01"),
+            LocalDate.parse("2026-04-30")),
+        command.query());
+    assertEquals(OutputMode.TEXT, command.output().outputMode());
+    assertEquals(Path.of("reports/tax-obligation.pdf"), command.output().pdfOutPath());
+  }
+
+  @Test
   void parse_rejectsCsvStdoutWhenPdfArtifactRequestedForReadQueryReports() {
     for (String[] arguments :
         List.of(
+            new String[] {
+              "tax-obligation",
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--tax-registration-id",
+              "vat-lv",
+              "--period-start",
+              "2026-04-01",
+              "--period-end",
+              "2026-04-30",
+              "--output",
+              "csv",
+              "--pdf-out",
+              "reports/tax-obligation.pdf"
+            },
             new String[] {
               "account-balance",
               "--book-file",

@@ -1,5 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
+import static dev.erst.fingrind.contract.discovery.MachineContractDiscoveryTestSupport.IDENTITY;
+import static dev.erst.fingrind.contract.discovery.MachineContractDiscoveryTestSupport.environment;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -10,31 +12,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.LedgerPlanRequestShapeDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
-import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
-import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
-import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and contract tests for the published machine-discovery surfaces. */
 class MachineContractDiscoverySurfaceTest {
-  private static final ApplicationIdentity IDENTITY =
-      new ApplicationIdentity("FinGrind", "0.57.0", "Protected bookkeeping kernel");
-
   @Test
   void helpWithoutTopicPublishesCanonicalQuickStartForEveryRuntimeDistribution() {
     assertQuickStartSurface(
@@ -54,11 +46,20 @@ class MachineContractDiscoverySurfaceTest {
   }
 
   @Test
+  void launcherNeutralPosixShellSurface_publishesCanonicalQuickStart() {
+    QuickStartSteps steps =
+        quickStartSteps(MachineContract.quickStart(WorkflowSurface.PATH_POSIX_SHELL));
+
+    assertCommonQuickStartSteps(steps);
+    assertPathPosixShellQuickStartSteps(steps);
+  }
+
+  @Test
   void helpForOperationTopicsPublishesOnlyRelevantTemplatesAndNoQuickStart() {
     assertPostingTopic(OperationId.POST_ENTRY);
     assertPostingTopic(OperationId.PREFLIGHT_ENTRY);
-    assertPostingTopic(OperationId.RECORD_SALE);
-    assertPostingTopic(OperationId.RECORD_EXPENSE);
+    assertPostingTopic(OperationId.RECORD_SALE_SETTLED);
+    assertPostingTopic(OperationId.RECORD_EXPENSE_SETTLED);
     assertPostingTopic(OperationId.RECORD_OWNER_CONTRIBUTION);
     assertPostingTopic(OperationId.RECORD_OWNER_WITHDRAWAL);
     assertPostingTopic(OperationId.RECORD_OPENING_POSITION);
@@ -183,7 +184,7 @@ class MachineContractDiscoverySurfaceTest {
         MachineContractTemplatesCatalog.declareAccountCashJson().contains("\"cash-reserve\""));
     assertTrue(
         MachineContractTemplatesCatalog.declareAccountRevenueJson().contains("\"misc-revenue\""));
-    assertEquals(BookkeepingEntryKind.SALE, MachineContract.requestTemplate().entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, MachineContract.requestTemplate().entryKind());
     assertEquals("cash", MachineContract.requestTemplate().cashAccountCode());
     assertNull(MachineContract.requestTemplate().lines());
     assertEquals(
@@ -191,12 +192,12 @@ class MachineContractDiscoverySurfaceTest {
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.POST_ENTRY))
             .entryKind());
     assertEquals(
-        BookkeepingEntryKind.SALE,
+        BookkeepingEntryKind.SALE_SETTLED,
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.PREFLIGHT_ENTRY))
             .entryKind());
     assertEquals(
-        BookkeepingEntryKind.SALE,
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE))
+        BookkeepingEntryKind.SALE_SETTLED,
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED))
             .entryKind());
     assertEquals(
         BookkeepingEntryKind.REVERSAL,
@@ -227,7 +228,7 @@ class MachineContractDiscoverySurfaceTest {
             () ->
                 MachineContractTemplatesCatalog.requiredPostingEntryKind(
                     ProtocolCatalog.operation(OperationId.HELP)));
-    assertEquals("Operation help does not own one typed posting template.", cause.getMessage());
+    assertEquals("Operation help does not own a typed posting template.", cause.getMessage());
   }
 
   @Test
@@ -241,11 +242,11 @@ class MachineContractDiscoverySurfaceTest {
         postEntry.evidenceRequirement().minimumSourceDocuments());
     ContractRequestShapes.EntryKindSemanticsDescriptor sale =
         postEntry.entryKindSemantics().stream()
-            .filter(descriptor -> descriptor.entryKind() == BookkeepingEntryKind.SALE)
+            .filter(descriptor -> descriptor.entryKind() == BookkeepingEntryKind.SALE_SETTLED)
             .findFirst()
             .orElseThrow();
     RequestSurfaceFacts.BookkeepingEntryKindFacts saleFacts =
-        requestSurface.bookkeepingEntryKind(BookkeepingEntryKind.SALE);
+        requestSurface.bookkeepingEntryKind(BookkeepingEntryKind.SALE_SETTLED);
     assertEquals(saleFacts.requiredTopLevelFields(), sale.requiredTopLevelFields());
     assertEquals(saleFacts.requiredSourceDocumentFields(), sale.requiredSourceDocumentFields());
     assertEquals(saleFacts.sourceDocumentTypes().mode().wireValue(), sale.sourceDocumentTypeMode());
@@ -254,7 +255,7 @@ class MachineContractDiscoverySurfaceTest {
     assertEquals(saleFacts.sourceDocumentTypes().semantics(), sale.sourceDocumentTypeSemantics());
     assertEquals(
         saleFacts.sourceDocumentTypes().scaffoldValue(),
-        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE))
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED))
             .evidence()
             .sourceDocuments()
             .getFirst()
@@ -285,11 +286,13 @@ class MachineContractDiscoverySurfaceTest {
         MachineContract.help(
             IDENTITY,
             environment(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE),
-            OperationId.RECORD_SALE);
+            OperationId.RECORD_SALE_SETTLED);
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor saleShape =
         Objects.requireNonNull(Objects.requireNonNull(saleHelp.requestShapes()).bookkeepingEntry());
     RequestSurfaceFacts.BookkeepingEntryKindFacts saleFacts =
-        ProtocolCatalog.domain().requestSurface().bookkeepingEntryKind(BookkeepingEntryKind.SALE);
+        ProtocolCatalog.domain()
+            .requestSurface()
+            .bookkeepingEntryKind(BookkeepingEntryKind.SALE_SETTLED);
     ContractRequestShapes.RequestFieldDescriptor sourceDocumentTypeField =
         saleShape.sourceDocumentFields().stream()
             .filter(field -> "sourceDocumentType".equals(field.name()))
@@ -349,7 +352,7 @@ class MachineContractDiscoverySurfaceTest {
     assertNotNull(requestShapes.ledgerPlan());
     assertNotNull(executePlanHelp.planTemplate());
     assertEquals(
-        dev.erst.fingrind.core.BookkeepingEntryKind.SALE,
+        dev.erst.fingrind.core.BookkeepingEntryKind.SALE_SETTLED,
         Objects.requireNonNull(executePlanHelp.planTemplate())
             .canonicalPostingTemplate()
             .entryKind());
@@ -399,15 +402,8 @@ class MachineContractDiscoverySurfaceTest {
       return;
     }
     BookkeepingEntryKind expectedEntryKind =
-        switch (operationId) {
-          case RECORD_SALE -> BookkeepingEntryKind.SALE;
-          case RECORD_EXPENSE -> BookkeepingEntryKind.EXPENSE;
-          case RECORD_OWNER_CONTRIBUTION -> BookkeepingEntryKind.OWNER_CONTRIBUTION;
-          case RECORD_OWNER_WITHDRAWAL -> BookkeepingEntryKind.OWNER_WITHDRAWAL;
-          case RECORD_OPENING_POSITION -> BookkeepingEntryKind.OPENING_POSITION;
-          case RECORD_REVERSAL -> BookkeepingEntryKind.REVERSAL;
-          default -> throw new AssertionError("Unexpected posting topic " + operationId);
-        };
+        ProtocolPostingRequestTopics.requiredEntryKind(operationId)
+            .orElseThrow(() -> new AssertionError("Unexpected posting topic " + operationId));
     assertEquals(
         List.of(expectedEntryKind),
         postEntry.entryKindSemantics().stream()
@@ -477,6 +473,8 @@ class MachineContractDiscoverySurfaceTest {
             .text()
             .contains(ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)));
     assertTrue(steps.openBook().text().contains("--entity-name \"Acme Studio\""));
+    assertTrue(steps.openBook().text().contains("--book-template-id OWNER_MANAGED_SERVICE"));
+    assertTrue(steps.openBook().text().contains("--accounting-basis CASH"));
     assertTrue(
         steps
             .listAccounts()
@@ -489,7 +487,10 @@ class MachineContractDiscoverySurfaceTest {
             .text()
             .contains(ProtocolCatalog.operationName(OperationId.PREFLIGHT_ENTRY)));
     assertTrue(
-        steps.postEntry().text().contains(ProtocolCatalog.operationName(OperationId.RECORD_SALE)));
+        steps
+            .postEntry()
+            .text()
+            .contains(ProtocolCatalog.operationName(OperationId.RECORD_SALE_SETTLED)));
     assertTrue(
         steps
             .trialBalance()
@@ -501,6 +502,7 @@ class MachineContractDiscoverySurfaceTest {
   private static void assertSurfaceSpecificQuickStartSteps(
       WorkflowSurface surface, QuickStartSteps steps) {
     switch (surface) {
+      case PATH_POSIX_SHELL -> assertPathPosixShellQuickStartSteps(steps);
       case BUNDLE_POSIX_SHELL -> assertBundlePosixQuickStartSteps(steps);
       case SOURCE_CHECKOUT_POSIX_SHELL ->
           assertSourceCheckoutQuickStartSteps(false, "./secrets/acme.book-key", steps);
@@ -512,6 +514,16 @@ class MachineContractDiscoverySurfaceTest {
           assertDirectJavaQuickStartSteps(true, ".\\secrets\\acme.book-key", steps);
       case CONTAINER_DOCKER -> assertContainerQuickStartSteps(steps);
     }
+  }
+
+  private static void assertPathPosixShellQuickStartSteps(QuickStartSteps steps) {
+    assertTrue(
+        steps
+            .generateKey()
+            .text()
+            .startsWith("fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key"));
+    assertTrue(steps.introNote().text().contains("fingrind is already on PATH"));
+    assertPlaceholderRequestPreparation(steps);
   }
 
   private static void assertBundlePosixQuickStartSteps(QuickStartSteps steps) {
@@ -579,42 +591,6 @@ class MachineContractDiscoverySurfaceTest {
     assertTrue(steps.requestPreparationNote().text().contains("placeholder-first scaffold"));
   }
 
-  private static EnvironmentDescriptor environment(RuntimeDistribution runtimeDistribution) {
-    return new EnvironmentDescriptor(
-        new EnvironmentRuntimeDescriptor(runtimeDistribution, OutputMode.TEXT, null),
-        new EnvironmentPublicationDescriptor(
-            ProtocolCatalog.distribution().publicCliDistribution(),
-            ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),
-            ProtocolCatalog.distribution().unsupportedPublicCliBundleTargets(),
-            activeBundleTarget(runtimeDistribution),
-            ProtocolCatalog.distribution().sourceCheckoutJava()),
-        new EnvironmentStorageDescriptor(
-            ProtocolCatalog.runtime().storageDriver(),
-            ProtocolCatalog.runtime().storageEngine(),
-            ProtocolCatalog.runtime().bookProtectionMode(),
-            ProtocolCatalog.runtime().protectedBookFormat()),
-        new EnvironmentSqliteDescriptor(
-            ProtocolCatalog.runtime().sqliteLibraryMode(),
-            ProtocolCatalog.runtime().sqliteBundleHomeSystemProperty(),
-            ProtocolCatalog.managedSqlite().requiredCompileOptions(),
-            ProtocolCatalog.managedSqlite().forbiddenCompileOptions(),
-            ProtocolCatalog.managedSqlite().requiresSecureMemorySupport(),
-            ProtocolCatalog.managedSqlite().requiredMinimumSqliteVersion(),
-            ProtocolCatalog.managedSqlite().requiredSqlite3mcVersion(),
-            ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
-            EnvironmentSqliteDescriptor.runtime(
-                SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
-                dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus.UNAVAILABLE,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                "test fixture"),
-            null));
-  }
-
   private record QuickStartSteps(
       WorkflowStepDescriptor.Note introNote,
       WorkflowStepDescriptor.Command generateKey,
@@ -626,13 +602,6 @@ class MachineContractDiscoverySurfaceTest {
       WorkflowStepDescriptor.Command preflight,
       WorkflowStepDescriptor.Command postEntry,
       WorkflowStepDescriptor.Command trialBalance) {}
-
-  private static @Nullable PublicCliBundleTarget activeBundleTarget(
-      RuntimeDistribution runtimeDistribution) {
-    return runtimeDistribution == RuntimeDistribution.SELF_CONTAINED_BUNDLE
-        ? PublicCliBundleTarget.LINUX_X86_64
-        : null;
-  }
 
   private static List<String> recordComponentNames(Class<?> recordType) {
     return Stream.of(recordType.getRecordComponents())

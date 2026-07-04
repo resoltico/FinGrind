@@ -31,11 +31,41 @@ import org.junit.jupiter.api.Test;
 class FiscalYearCloseServiceTest {
   private static final Instant FIXED_INSTANT = Instant.parse("2026-12-31T23:59:59Z");
   private static final Clock FIXED_CLOCK = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);
+  private static final int FISCAL_YEAR_LABEL = 2026;
   private static final ReportingPeriod FISCAL_YEAR =
       new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
 
   @Test
   void fiscalYearClose_rejectsUninitializedBookWithoutCallingStore() {
+    AtomicBoolean storeCalled = new AtomicBoolean(false);
+    FiscalYearCloseService service =
+        new FiscalYearCloseService(
+            () -> new BookLifecycleInspection.Missing(1),
+            new RecordingStore() {
+              @Override
+              public FiscalYearCloseOutcome fiscalYearClose(
+                  ReportingPeriod reportingPeriod,
+                  dev.erst.fingrind.core.BookIdentity resolvedBookIdentity,
+                  FiscalYearClosePlanner planner,
+                  LocalDate currentUtcDate,
+                  Instant closedAt,
+                  PostingIdGenerator postingIdGenerator) {
+                storeCalled.set(true);
+                throw new AssertionError("closeStore should not be called");
+              }
+            },
+            () -> new PostingId("generated-1"),
+            FIXED_CLOCK);
+
+    assertEquals(
+        new FiscalYearCloseOutcome.Rejected(
+            new BookkeepingAdministrationRejection.BookNotInitialized()),
+        service.fiscalYearClose(FISCAL_YEAR_LABEL));
+    assertFalse(storeCalled.get());
+  }
+
+  @Test
+  void fiscalYearClose_reportingPeriodOverloadRejectsUninitializedBookWithoutCallingStore() {
     AtomicBoolean storeCalled = new AtomicBoolean(false);
     FiscalYearCloseService service =
         new FiscalYearCloseService(
@@ -74,6 +104,28 @@ class FiscalYearCloseServiceTest {
             postingIdGenerator,
             FIXED_CLOCK);
 
+    FiscalYearCloseOutcome outcome = service.fiscalYearClose(FISCAL_YEAR_LABEL);
+
+    assertEquals(store.outcome, outcome);
+    assertEquals(FISCAL_YEAR, store.reportingPeriod);
+    assertEquals(bookIdentity(), store.bookIdentity);
+    assertEquals(LocalDate.parse("2026-12-31"), store.currentUtcDate);
+    assertEquals(FIXED_INSTANT, store.closedAt);
+    assertSame(postingIdGenerator, store.postingIdGenerator);
+    assertNotNull(store.planner);
+  }
+
+  @Test
+  void fiscalYearClose_reportingPeriodOverloadPassesExplicitWindowIntoStore() {
+    RecordingStore store = new RecordingStore();
+    PostingIdGenerator postingIdGenerator = () -> new PostingId("generated-1");
+    FiscalYearCloseService service =
+        new FiscalYearCloseService(
+            () -> initializedLifecycleInspection(1001, 1, 1, FIXED_INSTANT),
+            store,
+            postingIdGenerator,
+            FIXED_CLOCK);
+
     FiscalYearCloseOutcome outcome = service.fiscalYearClose(FISCAL_YEAR);
 
     assertEquals(store.outcome, outcome);
@@ -96,7 +148,8 @@ class FiscalYearCloseServiceTest {
                 new AccountCode("3200"),
                 new AccountCode("3300"),
                 FIXED_INSTANT,
-                List.of(new PostingId("posting-1"))));
+                List.of(new PostingId("posting-1"))),
+            false);
 
     private @Nullable ReportingPeriod reportingPeriod;
     private @Nullable BookIdentity bookIdentity;
@@ -114,6 +167,34 @@ class FiscalYearCloseServiceTest {
         Instant sweptAt,
         PostingIdGenerator postingIdGenerator) {
       throw new UnsupportedOperationException("Interim-result sweep is not under test here.");
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome interimResultSweep(
+        LocalDate throughEffectiveDate,
+        LocalDate bookStartDate,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
+        LocalDate currentUtcDate,
+        Instant sweptAt,
+        PostingIdGenerator postingIdGenerator) {
+      throw new UnsupportedOperationException("Interim-result sweep is not under test here.");
+    }
+
+    @Override
+    public java.util.List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> postings(
+        dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+      return java.util.List.of();
+    }
+
+    @Override
+    public java.util.Optional<LocalDate> earliestPostingEffectiveDate() {
+      return java.util.Optional.empty();
+    }
+
+    @Override
+    public java.util.Optional<LocalDate> transferredThroughEffectiveDate() {
+      return java.util.Optional.empty();
     }
 
     @Override

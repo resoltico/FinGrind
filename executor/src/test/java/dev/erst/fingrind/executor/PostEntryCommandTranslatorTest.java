@@ -15,26 +15,28 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
-import dev.erst.fingrind.executor.spi.TaxRegistrationLookupStore;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** Covers application-boundary translation from published entry commands to internal postings. */
 class PostEntryCommandTranslatorTest {
-  private static final TaxRegistrationLookupStore EMPTY_TAX_REGISTRATIONS =
-      taxRegistrationId -> java.util.Optional.empty();
+  private static final PostingValidationStore EMPTY_VALIDATION_STORE =
+      new PostEntrySemanticsPolicyTestSupport.PostingValidationStoreDouble(Map.of());
 
   @Test
   void toPostingCommand_translatesSalesIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "1250"),
+                null,
                 null,
                 null,
                 null),
@@ -45,7 +47,7 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.SALE,
+            dev.erst.fingrind.core.PostingOriginKind.SALE_SETTLED,
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -62,14 +64,14 @@ class PostEntryCommandTranslatorTest {
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-revenue"),
             SourceChannel.CLI,
             command.entry()),
-        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
 
   @Test
   void toPostingCommand_translatesExpensesIntoCanonicalPostingCommand() {
     PostEntryCommand command =
         new PostEntryCommand(
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("5000"),
                 new AccountCode("1000"),
@@ -84,7 +86,7 @@ class PostEntryCommandTranslatorTest {
     assertEquals(
         new PostingCommand(
             PostingKind.STANDARD,
-            dev.erst.fingrind.core.PostingOriginKind.EXPENSE,
+            dev.erst.fingrind.core.PostingOriginKind.EXPENSE_SETTLED,
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -101,7 +103,7 @@ class PostEntryCommandTranslatorTest {
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-expense"),
             SourceChannel.CLI,
             command.entry()),
-        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
 
   @Test
@@ -140,7 +142,7 @@ class PostEntryCommandTranslatorTest {
                 "idem-recipe-equity-contribution"),
             SourceChannel.CLI,
             command.entry()),
-        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
 
   @Test
@@ -177,7 +179,7 @@ class PostEntryCommandTranslatorTest {
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-equity-withdrawal"),
             SourceChannel.CLI,
             command.entry()),
-        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
 
   @Test
@@ -194,13 +196,34 @@ class PostEntryCommandTranslatorTest {
                     new AccountCode("2000"),
                     JournalLine.EntrySide.DEBIT,
                     Money.parse("EUR", "12.50"))));
+    JournalEntry priorJournalEntry =
+        new JournalEntry(
+            LocalDate.parse("2026-04-06"),
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "12.50")),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "12.50"))));
+    PostingValidationStore validationStore =
+        new PostEntrySemanticsPolicyTestSupport.PostingValidationStoreDouble(
+            ExecutorAccountingTestSupport.bookIdentity(),
+            Map.of(),
+            Map.of(
+                new PostingId("posting-1"),
+                PostingApplicationServiceTestSupport.existingPosting(
+                    "posting-1", "prior-reversal", priorJournalEntry)));
     PostEntryCommand command =
         new PostEntryCommand(
             new BookkeepingEntry.Reversal(
-                journalEntry,
+                journalEntry.effectiveDate(),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                     new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
                     new dev.erst.fingrind.core.ReversalReason("reverse erroneous entry")),
+                null,
                 null),
             accountingEvidence("reversal-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-adjustment"),
@@ -217,8 +240,9 @@ class PostEntryCommandTranslatorTest {
             accountingEvidence("reversal-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-adjustment"),
             SourceChannel.CLI,
-            command.entry()),
-        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
+            PostingApplicationServiceTestSupport.resolvedReversalEntry(
+                "posting-1", "reverse erroneous entry", journalEntry)),
+        PostEntryCommandTranslator.toPostingCommand(command, validationStore));
   }
 
   @Test
@@ -255,7 +279,7 @@ class PostEntryCommandTranslatorTest {
                 "idem-opening-balance-adjustment"),
             SourceChannel.CLI,
             command.entry()),
-        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
 
   @Test
@@ -290,7 +314,7 @@ class PostEntryCommandTranslatorTest {
             PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
             SourceChannel.CLI,
             command.entry()),
-        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
 
   @Test
@@ -324,7 +348,7 @@ class PostEntryCommandTranslatorTest {
             PostingApplicationServiceTestSupport.requestProvenance("idem-direct-journal"),
             SourceChannel.CLI,
             command.entry()),
-        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_TAX_REGISTRATIONS));
+        PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
 
   private static List<BookkeepingEntry.OpeningPosition.OpeningAccountBalance> openingBalances(

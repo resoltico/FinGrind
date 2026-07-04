@@ -33,6 +33,9 @@ final class ReversalAcceptancePolicy {
   private static Optional<BookkeepingPostingRejection> reversalRejection(
       JournalEntry candidateReversal, CommittedPosting priorPosting, PostingValidationStore book) {
     PostingId priorPostingId = priorPosting.postingId();
+    if (priorPosting.postingLineage().isReversal()) {
+      return Optional.of(new ReversalTargetIsReversal(priorPostingId));
+    }
     if (book.findReversalFor(priorPostingId).isPresent()) {
       return Optional.of(new BookkeepingPostingRejection.ReversalAlreadyExists(priorPostingId));
     }

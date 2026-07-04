@@ -8,7 +8,7 @@
     "details": {
       "type": "POSTING_WORKFLOW",
       "request": {
-        "effectiveDate": "2026-06-13",
+        "effectiveDate": "2026-04-07",
         "idempotencyKey": "seed-posting-bhd-idem-1",
         "lineCount": 2,
         "reversalPresent": false

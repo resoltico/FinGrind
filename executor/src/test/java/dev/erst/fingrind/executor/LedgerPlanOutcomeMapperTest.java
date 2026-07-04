@@ -427,6 +427,11 @@ class LedgerPlanOutcomeMapperTest {
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                     .ReversalTargetNotFound(new PostingId("posting-1")));
+    var reversalTargetIsReversal =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanRejectedOutcomes.postingRejection(
+                new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
+                    new PostingId("posting-1b")));
     var reversalAlreadyExists =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
@@ -472,6 +477,7 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals("posting-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals("idempotency-key-conflict", duplicateIdempotencyKey.failure().code());
     assertEquals("reversal-target-not-found", reversalTargetNotFound.failure().code());
+    assertEquals("reversal-target-is-reversal", reversalTargetIsReversal.failure().code());
     assertEquals("reversal-already-exists", reversalAlreadyExists.failure().code());
     assertEquals("reversal-does-not-negate-target", reversalDoesNotNegateTarget.failure().code());
     assertEquals("book-functional-currency-mismatch", functionalCurrencyMismatch.failure().code());
@@ -483,6 +489,9 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-1")),
         reversalTargetNotFound.failure().facts());
+    assertEquals(
+        List.of(BookWorkflowFact.text("priorPostingId", "posting-1b")),
+        reversalTargetIsReversal.failure().facts());
     assertEquals(
         List.of(BookWorkflowFact.text("priorPostingId", "posting-2")),
         reversalAlreadyExists.failure().facts());
@@ -517,6 +526,33 @@ class LedgerPlanOutcomeMapperTest {
   }
 
   @Test
+  void publishedPostingRejection_projectsFutureDateAndEmptyFactVariants() {
+    var bookNotInitialized =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanRejectedOutcomes.postingRejection(new PostingRejection.BookNotInitialized());
+    var duplicateIdempotencyKey =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanRejectedOutcomes.postingRejection(
+                new PostingRejection.IdempotencyKeyConflict());
+    var futureDate =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanRejectedOutcomes.postingRejection(
+                new PostingRejection.PostingEffectiveDateInFuture(
+                    LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-07")));
+
+    assertEquals("posting-book-not-initialized", bookNotInitialized.failure().code());
+    assertEquals(List.of(), bookNotInitialized.failure().facts());
+    assertEquals("idempotency-key-conflict", duplicateIdempotencyKey.failure().code());
+    assertEquals(List.of(), duplicateIdempotencyKey.failure().facts());
+    assertEquals("posting-effective-date-in-future", futureDate.failure().code());
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("attemptedEffectiveDate", "2026-04-08"),
+            BookWorkflowFact.text("currentUtcDate", "2026-04-07")),
+        futureDate.failure().facts());
+  }
+
+  @Test
   void postingRejection_recordsInactiveAccountViolationsInWorkflowFacts() {
     var rejected =
         (LedgerPlanStepOutcome.Rejected)
@@ -535,6 +571,13 @@ class LedgerPlanOutcomeMapperTest {
             "violation",
             List.of(
                 BookWorkflowFact.text("code", "inactive-account"),
+                BookWorkflowFact.text("field", "lines[].accountCode"),
+                BookWorkflowFact.text(
+                    "message", "Journal line references inactive account '2000'."),
+                BookWorkflowFact.text("category", "account-activation"),
+                BookWorkflowFact.text(
+                    "repair",
+                    "Reactivate the account or replace it with an active posting account before retrying."),
                 BookWorkflowFact.text("accountCode", "2000"))),
         rejected.failure().facts().get(1));
   }
@@ -574,6 +617,14 @@ class LedgerPlanOutcomeMapperTest {
             "violation",
             List.of(
                 BookWorkflowFact.text("code", "non-postable-account"),
+                BookWorkflowFact.text("field", "lines[].accountCode"),
+                BookWorkflowFact.text(
+                    "message",
+                    "Journal line references header account '3000', declared as 'HEADER', which cannot accept direct postings."),
+                BookWorkflowFact.text("category", "account-node-kind"),
+                BookWorkflowFact.text(
+                    "repair",
+                    "Replace the header account with a postable account before retrying."),
                 BookWorkflowFact.text("accountCode", "3000"),
                 BookWorkflowFact.text("accountNodeKind", "HEADER"))),
         nonPostableRejected.failure().facts().get(1));
@@ -681,11 +732,12 @@ class LedgerPlanOutcomeMapperTest {
 
   private static PostEntryCommand postingCommand(String idempotencyKey) {
     return new PostEntryCommand(
-        new BookkeepingEntry.Sale(
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-05-05"),
             new AccountCode("1000"),
             new AccountCode("2000"),
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
             null,
             null,
             null),

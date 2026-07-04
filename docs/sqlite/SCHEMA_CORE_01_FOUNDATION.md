@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: SQLITE_SCHEMA_CORE_FOUNDATION
-updated: "2026-06-29"
+updated: "2026-07-04"
 ---
 
 # SQLite Schema: Foundation
@@ -13,7 +13,7 @@ updated: "2026-06-29"
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 33;
+pragma user_version = 38;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -86,7 +86,7 @@ create table if not exists book_identity (
         and accounting_kernel_profile not like '%--%'
     ),
     accounting_basis text not null check (
-        accounting_basis in ('CASH_BASIS')
+        accounting_basis in ('CASH', 'ACCRUAL')
     ),
     accounting_framework_position text not null check (
         accounting_framework_position in ('NON_STATUTORY_INTERNAL_MANAGEMENT')
@@ -95,7 +95,7 @@ create table if not exists book_identity (
         entity_form in ('OWNER_MANAGED_SINGLE_ENTITY')
     ),
     book_template_id text not null check (
-        book_template_id in ('OWNER_MANAGED_SERVICE')
+        book_template_id in ('OWNER_MANAGED_SERVICE', 'OWNER_MANAGED_TRADING')
     ),
     functional_currency_code text not null check (
         length(functional_currency_code) = 3

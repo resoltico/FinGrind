@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.tax.TaxObligationQuery;
 
 /** Report CLI commands that can render to terminal output or a PDF file. */
 final class AccountBalance extends CliBookQueryReportCommand<AccountBalanceQuery> {
@@ -139,5 +140,21 @@ final class ChangesInEquity extends CliBookQueryReportCommand<ChangesInEquityQue
       ChangesInEquityQuery query,
       CliCommand.ReportOutput output) {
     return executionContext.report().runChangesInEquityCommand(bookAccess, query, output);
+  }
+}
+
+/** Report CLI command that computes one bounded tax-obligation report. */
+final class TaxObligation extends CliBookQueryReportCommand<TaxObligationQuery> {
+  TaxObligation(BookAccess bookAccess, TaxObligationQuery query, CliCommand.ReportOutput output) {
+    super(bookAccess, query, output);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      TaxObligationQuery query,
+      CliCommand.ReportOutput output) {
+    return executionContext.report().runTaxObligationCommand(bookAccess, query, output);
   }
 }

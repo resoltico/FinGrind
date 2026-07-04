@@ -17,6 +17,7 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -222,7 +223,7 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
             maintenanceService()
-                .restoreBook(bookPath, bookPath, backupBookKeyFilePath)
+                .restoreBook(bookPath, keyFilePath(liveBookAccess), bookPath, backupBookKeyFilePath)
                 .requireAccepted());
 
     BookMaintenanceRejection.BackupSourceMatchesLiveBook conflict =
@@ -249,18 +250,84 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
             .resolve("Rīga büro")
             .resolve("nested")
             .resolve("restore-target.sqlite");
+    Path restoredBookKeyPath =
+        tempDirectory
+            .resolve("restored odd")
+            .resolve("Rīga büro")
+            .resolve("nested")
+            .resolve("restore-target.key");
 
     RestoreBookResult.Restored restored =
         assertInstanceOf(
             RestoreBookResult.Restored.class,
             maintenanceService()
-                .restoreBook(restoredBookPath, backupFilePath, backupBookKeyFilePath)
+                .restoreBook(
+                    restoredBookPath, restoredBookKeyPath, backupFilePath, backupBookKeyFilePath)
                 .requireAccepted());
 
     assertEquals(hint(restoredBookPath), restored.bookFilePath());
+    assertEquals(hint(restoredBookKeyPath), restored.bookKeyFilePath());
     assertTrue(Files.exists(restoredBookPath));
+    assertTrue(Files.exists(restoredBookKeyPath));
     assertOwnerOnlyDirectoryIfPosix(
         java.util.Objects.requireNonNull(restoredBookPath.getParent(), "restoredBookPath parent"));
+  }
+
+  @Test
+  void restoreBook_reencryptsTheRestoredBookUnderTheDestinationKeyAndRejectsTheBackupKey() {
+    Path liveBookPath = tempDirectory.resolve("books").resolve("restore-reencrypted.sqlite");
+    BookAccess liveBookAccess = bookAccess(liveBookPath);
+    initializeBook(liveBookAccess);
+    Path backupFilePath = tempDirectory.resolve("backup").resolve("restore-reencrypted.sqlite");
+    Path backupBookKeyFilePath = tempDirectory.resolve("backup").resolve("restore-reencrypted.key");
+    maintenanceService()
+        .backupBook(liveBookAccess, backupFilePath, backupBookKeyFilePath)
+        .requireAccepted();
+    Path restoredBookPath = tempDirectory.resolve("restored").resolve("restore-reencrypted.sqlite");
+    Path restoredBookKeyPath = tempDirectory.resolve("restored").resolve("restore-reencrypted.key");
+
+    RestoreBookResult.Restored restored =
+        assertInstanceOf(
+            RestoreBookResult.Restored.class,
+            maintenanceService()
+                .restoreBook(
+                    restoredBookPath, restoredBookKeyPath, backupFilePath, backupBookKeyFilePath)
+                .requireAccepted());
+
+    assertEquals(hint(restoredBookPath), restored.bookFilePath());
+    assertEquals(hint(restoredBookKeyPath), restored.bookKeyFilePath());
+    withOpenDatabase(
+        new BookAccess(
+            restoredBookPath, new BookAccess.PassphraseSource.KeyFile(restoredBookKeyPath)),
+        database -> {});
+    dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.BookVerification
+        wrongBackupVerification =
+            new SqliteProtectedBookMaintenanceStore(KEY_FILE_RESOLVER)
+                .verifyInitializedBook(
+                    localAccess(
+                        new BookAccess(
+                            restoredBookPath,
+                            new BookAccess.PassphraseSource.KeyFile(backupBookKeyFilePath))),
+                    dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+                        .RESTORED_TARGET)
+                .fold(
+                    verification -> verification,
+                    failure -> {
+                      throw new AssertionError(
+                          "Expected one accepted verification failure, but got " + failure);
+                    });
+    assertEquals(
+        new dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerificationFailure(
+            restoredBookPath.toAbsolutePath().normalize(),
+            dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure
+                .PROTECTED_BOOK_VERIFICATION_FAILED),
+        wrongBackupVerification);
+    assertEquals(
+        1,
+        auditEventCount(
+            new BookAccess(
+                restoredBookPath, new BookAccess.PassphraseSource.KeyFile(restoredBookKeyPath)),
+            "BACKUP_RESTORED"));
   }
 
   @Test
@@ -424,6 +491,10 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
 
   private static PublicPathHint hint(Path path) {
     return PublicPathHint.fromPath(path);
+  }
+
+  private static ProtectedBookAccess localAccess(BookAccess bookAccess) {
+    return ProtectedBookAccess.fromPublished(bookAccess);
   }
 
   private void initializeBook(BookAccess bookAccess) {

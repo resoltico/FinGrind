@@ -1,6 +1,8 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -20,6 +22,17 @@ final class CliOptionValues {
     } catch (NumberFormatException exception) {
       throw CliArgumentValueParser.invalid(
           optionName, "Option must be an integer: " + optionName, exception);
+    }
+  }
+
+  static int parseYearOption(String rawValue, String optionName) {
+    int parsedYear = parseIntegerOption(rawValue, optionName);
+    try {
+      java.time.Year.of(parsedYear);
+      return parsedYear;
+    } catch (java.time.DateTimeException exception) {
+      throw CliArgumentValueParser.invalid(
+          optionName, "Option must be one canonical YYYY year: " + optionName, exception);
     }
   }
 
@@ -54,6 +67,32 @@ final class CliOptionValues {
       throw CliArgumentValueParser.invalid(
           optionName,
           Objects.requireNonNullElse(exception.getMessage(), "Invalid book entity name."),
+          exception);
+    }
+  }
+
+  static BookTemplateId parseBookTemplateIdOption(String rawValue, String optionName) {
+    try {
+      return BookTemplateId.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw CliArgumentValueParser.invalid(
+          optionName,
+          Objects.requireNonNullElse(
+              exception.getMessage(),
+              "Option must be one supported book template id: " + optionName),
+          exception);
+    }
+  }
+
+  static AccountingBasis parseAccountingBasisOption(String rawValue, String optionName) {
+    try {
+      return AccountingBasis.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw CliArgumentValueParser.invalid(
+          optionName,
+          Objects.requireNonNullElse(
+              exception.getMessage(),
+              "Option must be one supported accounting basis: " + optionName),
           exception);
     }
   }

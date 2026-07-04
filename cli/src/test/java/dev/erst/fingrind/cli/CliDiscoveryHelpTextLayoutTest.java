@@ -109,9 +109,9 @@ class CliDiscoveryHelpTextLayoutTest extends CliDiscoveryHelpTextTestSupport {
 
     String rendered =
         CliDiscoveryHelpTextRenderer.keyFilePathGuidanceSection(
-            "Store the key file in one owner-only directory.");
+            "Store the key file in an owner-only directory.");
 
     assertTrue(rendered.contains("Key-File Path"));
-    assertTrue(rendered.contains("Store the key file in one owner-only directory."));
+    assertTrue(rendered.contains("Store the key file in an owner-only directory."));
   }
 }

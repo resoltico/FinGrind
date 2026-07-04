@@ -4,10 +4,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
+import dev.erst.fingrind.contract.tax.AppliedTax;
+import dev.erst.fingrind.contract.tax.TaxApplicationKind;
+import dev.erst.fingrind.contract.tax.TaxCode;
+import dev.erst.fingrind.contract.tax.TaxCodeName;
+import dev.erst.fingrind.contract.tax.TaxInclusionMode;
+import dev.erst.fingrind.contract.tax.TaxRate;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
+import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -190,8 +201,24 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                           new MonetaryAmount("EUR", "1250")))));
           assertRoundTripRetainedEntry(
               database,
+              "posting-direct-journal-foreign-exchange",
+              new BookkeepingEntry.DirectJournal(
+                  new dev.erst.fingrind.core.JournalEntry(
+                      LocalDate.parse("2026-04-07"),
+                      List.of(
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              money("EUR", "92.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("4000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              money("EUR", "92.00")))),
+                  foreignExchangeDetails()));
+          assertRoundTripRetainedEntry(
+              database,
               "posting-expense",
-              new BookkeepingEntry.Expense(
+              new BookkeepingEntry.ExpenseSettled(
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("5000"),
                   new AccountCode("1000"),
@@ -199,6 +226,98 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   null,
                   null,
                   null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-purchase-settled",
+              new BookkeepingEntry.PurchaseSettled(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("1000"),
+                  new MonetaryAmount("EUR", "1250"),
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-purchase-on-credit",
+              new BookkeepingEntry.PurchaseOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("2100"),
+                  new MonetaryAmount("EUR", "1250")));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-sale-settled-inventory-relief",
+              new BookkeepingEntry.SaleSettled(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1000"),
+                  new AccountCode("4000"),
+                  new MonetaryAmount("EUR", "1250"),
+                  new InventoryRelief(
+                      new AccountCode("1400"),
+                      new AccountCode("5000"),
+                      new MonetaryAmount("EUR", "400")),
+                  null,
+                  null,
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-sale-on-credit-taxed",
+              new BookkeepingEntry.SaleOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1100"),
+                  new AccountCode("4000"),
+                  new MonetaryAmount("EUR", "1000"),
+                  new InventoryRelief(
+                      new AccountCode("1400"),
+                      new AccountCode("5000"),
+                      new MonetaryAmount("EUR", "400")),
+                  taxSelection("vat-standard-sale"),
+                  appliedSaleTax("vat-standard-sale", "2100")));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-expense-on-credit-taxed",
+              new BookkeepingEntry.ExpenseOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("5000"),
+                  new AccountCode("2100"),
+                  new MonetaryAmount("EUR", "1210"),
+                  taxSelection("vat-standard-expense"),
+                  appliedExpenseTax("vat-standard-expense", "1300")));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-receipt-plain",
+              new BookkeepingEntry.Receipt(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1000"),
+                  new AccountCode("1100"),
+                  new MonetaryAmount("EUR", "1250"),
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-receipt-adjunct",
+              new BookkeepingEntry.Receipt(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1000"),
+                  new AccountCode("1100"),
+                  new MonetaryAmount("EUR", "1250"),
+                  settlementAdjunct("6100", "50")));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-payment-plain",
+              new BookkeepingEntry.Payment(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("2100"),
+                  new AccountCode("1000"),
+                  new MonetaryAmount("EUR", "1250"),
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-payment-adjunct",
+              new BookkeepingEntry.Payment(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("2100"),
+                  new AccountCode("1000"),
+                  new MonetaryAmount("EUR", "1250"),
+                  settlementAdjunct("6200", "75")));
           assertRoundTripRetainedEntry(
               database,
               "posting-owner-contribution",
@@ -220,14 +339,36 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
           assertRoundTripRetainedEntry(
               database,
               "posting-sale-foreign-exchange",
-              new BookkeepingEntry.Sale(
+              new BookkeepingEntry.SaleSettled(
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("1000"),
                   new AccountCode("4000"),
                   new MonetaryAmount("EUR", "9200"),
+                  null,
                   foreignExchangeDetails(),
                   null,
                   null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-reversal-foreign-exchange",
+              new BookkeepingEntry.Reversal(
+                  LocalDate.parse("2026-04-07"),
+                  new PostingLineage.Reversal(
+                      new dev.erst.fingrind.core.ReversalReference(
+                          new PostingId("posting-direct-journal-foreign-exchange")),
+                      new dev.erst.fingrind.core.ReversalReason("Correction")),
+                  reversalForeignExchangeDetails(),
+                  new dev.erst.fingrind.core.JournalEntry(
+                      LocalDate.parse("2026-04-07"),
+                      List.of(
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              money("EUR", "12.50")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("4000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              money("EUR", "12.50"))))));
         });
   }
 
@@ -319,11 +460,16 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
   private static void assertRoundTripRetainedEntry(
       SqliteNativeDatabase database, String postingId, BookkeepingEntry entry) {
     String token = postingId;
+    dev.erst.fingrind.executor.bookkeeping.PostingLineageModel postingLineage =
+        entry instanceof BookkeepingEntry.Reversal reversal
+            ? dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.reversal(
+                reversal.reversal().reference(), reversal.reversal().reason())
+            : dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct();
     CommittedPosting posting =
         new CommittedPosting(
             new PostingId(postingId),
             entry.journalEntry(),
-            dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
+            postingLineage,
             entry.postingKind(),
             entry.postingOriginKind(),
             SqlitePostingFactFixtureSupport.accountingEvidence(token),
@@ -369,5 +515,54 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             LocalDate.parse("2026-04-06"),
             "ecb-spot"),
         ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+  }
+
+  private static ForeignExchangeDetails reversalForeignExchangeDetails() {
+    return new ForeignExchangeDetails(
+        new MonetaryAmount("USD", "1360"),
+        new MonetaryAmount("EUR", "1250"),
+        new QuotedExchangeRate(
+            new MonetaryAmount("USD", "1360"),
+            new MonetaryAmount("EUR", "1250"),
+            LocalDate.parse("2026-04-06"),
+            "ecb-spot"),
+        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+  }
+
+  private static TaxSelection taxSelection(String taxCode) {
+    return new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode(taxCode));
+  }
+
+  private static AppliedTax appliedSaleTax(String taxCode, String taxAccountCode) {
+    return new AppliedTax(
+        new TaxRegistrationId("vat-lv"),
+        new TaxCode(taxCode),
+        new TaxCodeName("VAT Standard Sale"),
+        new TaxRate(210_000),
+        TaxInclusionMode.EXCLUSIVE,
+        TaxApplicationKind.OUTPUT_SALE,
+        new MonetaryAmount("EUR", "1000"),
+        new MonetaryAmount("EUR", "210"),
+        new MonetaryAmount("EUR", "1210"),
+        new AccountCode(taxAccountCode));
+  }
+
+  private static AppliedTax appliedExpenseTax(String taxCode, String taxAccountCode) {
+    return new AppliedTax(
+        new TaxRegistrationId("vat-lv"),
+        new TaxCode(taxCode),
+        new TaxCodeName("VAT Standard Expense"),
+        new TaxRate(210_000),
+        TaxInclusionMode.INCLUSIVE,
+        TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+        new MonetaryAmount("EUR", "1000"),
+        new MonetaryAmount("EUR", "210"),
+        new MonetaryAmount("EUR", "1210"),
+        new AccountCode(taxAccountCode));
+  }
+
+  private static SettlementAdjunct settlementAdjunct(String accountCode, String minorUnits) {
+    return new SettlementAdjunct(
+        new AccountCode(accountCode), new MonetaryAmount("EUR", minorUnits));
   }
 }

@@ -1,5 +1,5 @@
 {
-  "entryKind" : "SALE",
+  "entryKind" : "SALE_SETTLED",
   "effectiveDate" : "2026-01-15",
   "cashAccountCode" : "cash",
   "revenueAccountCode" : "service-revenue",

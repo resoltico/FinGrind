@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBalanceBelowZero;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
@@ -24,9 +25,14 @@ import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.BalanceSide;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CurrencyBalance;
+import dev.erst.fingrind.core.EconomicEventClass;
+import dev.erst.fingrind.core.EvidenceClass;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
@@ -41,6 +47,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the bookkeeping published-language translator. */
@@ -48,15 +55,95 @@ class BookkeepingPublishedLanguageTranslatorTest {
   private static final List<String> ENTRY_SEMANTICS_CANONICAL_CODES =
       List.of(
           "economic-null-journal",
-          "cash-basis-account-required",
           "distinct-role-accounts-required",
           "account-type-mismatch",
           "cash-flow-asset-classification-mismatch",
           "financial-position-classification-mismatch",
+          "account-role-mismatch",
           "source-document-type-not-accepted",
           "unknown-tax-registration",
           "unknown-tax-code",
-          "tax-application-kind-mismatch");
+          "tax-application-kind-mismatch",
+          "verb-requires-receivable-role",
+          "verb-requires-payable-role",
+          "verb-requires-trading-template",
+          "trading-sale-requires-inventory-relief",
+          "inventory-relief-requires-trading-book",
+          "evidence-class-conflict",
+          "raw-journal-shadows-typed-event",
+          "raw-journal-bundles-operational-events",
+          "raw-journal-requires-cash-line",
+          "opening-window-account-not-permitted");
+  private static final List<Class<?>> ENTRY_SEMANTICS_OWNERS =
+      List.of(
+          BookkeepingAccountSemanticsViolations.class,
+          BookkeepingEvidenceSemanticsViolations.class,
+          BookkeepingEntryModeSemanticsViolations.class,
+          BookkeepingTaxSemanticsViolations.class);
+  private static final Map<String, EntrySemanticsMethodInvoker> ENTRY_SEMANTICS_METHOD_INVOKERS =
+      Map.ofEntries(
+          Map.entry(
+              "accountRoleMismatch",
+              BookkeepingPublishedLanguageTranslatorTest::invokeAccountRoleMismatch),
+          Map.entry(
+              "accountTypeMismatch",
+              BookkeepingPublishedLanguageTranslatorTest::invokeAccountTypeMismatch),
+          Map.entry(
+              "cashFlowAssetClassificationMismatch",
+              BookkeepingPublishedLanguageTranslatorTest
+                  ::invokeCashFlowAssetClassificationMismatch),
+          Map.entry(
+              "distinctRoleAccountsRequired",
+              BookkeepingPublishedLanguageTranslatorTest::invokeDistinctRoleAccountsRequired),
+          Map.entry(
+              "economicNullJournal",
+              BookkeepingPublishedLanguageTranslatorTest::invokeEconomicNullJournal),
+          Map.entry(
+              "evidenceClassConflict",
+              BookkeepingPublishedLanguageTranslatorTest::invokeEvidenceClassConflict),
+          Map.entry(
+              "financialPositionClassificationMismatch",
+              BookkeepingPublishedLanguageTranslatorTest
+                  ::invokeFinancialPositionClassificationMismatch),
+          Map.entry(
+              "openingWindowAccountNotPermitted",
+              BookkeepingPublishedLanguageTranslatorTest::invokeOpeningWindowAccountNotPermitted),
+          Map.entry(
+              "rawJournalBundlesOperationalEvents",
+              BookkeepingPublishedLanguageTranslatorTest::invokeRawJournalBundlesOperationalEvents),
+          Map.entry(
+              "rawJournalRequiresCashLine",
+              BookkeepingPublishedLanguageTranslatorTest::invokeRawJournalRequiresCashLine),
+          Map.entry(
+              "rawJournalShadowsTypedEvent",
+              BookkeepingPublishedLanguageTranslatorTest::invokeRawJournalShadowsTypedEvent),
+          Map.entry(
+              "sourceDocumentTypeNotAccepted",
+              BookkeepingPublishedLanguageTranslatorTest::invokeSourceDocumentTypeNotAccepted),
+          Map.entry(
+              "taxApplicationKindMismatch",
+              BookkeepingPublishedLanguageTranslatorTest::invokeTaxApplicationKindMismatch),
+          Map.entry(
+              "unknownTaxCode", BookkeepingPublishedLanguageTranslatorTest::invokeUnknownTaxCode),
+          Map.entry(
+              "unknownTaxRegistration",
+              BookkeepingPublishedLanguageTranslatorTest::invokeUnknownTaxRegistration),
+          Map.entry(
+              "verbRequiresPayableRole",
+              BookkeepingPublishedLanguageTranslatorTest::invokeVerbRequiresPayableRole),
+          Map.entry(
+              "verbRequiresReceivableRole",
+              BookkeepingPublishedLanguageTranslatorTest::invokeVerbRequiresReceivableRole),
+          Map.entry(
+              "tradingSaleRequiresInventoryRelief",
+              BookkeepingPublishedLanguageTranslatorTest::invokeTradingSaleRequiresInventoryRelief),
+          Map.entry(
+              "verbRequiresTradingTemplate",
+              BookkeepingPublishedLanguageTranslatorTest::invokeVerbRequiresTradingTemplate),
+          Map.entry(
+              "inventoryReliefRequiresTradingBook",
+              BookkeepingPublishedLanguageTranslatorTest
+                  ::invokeInventoryReliefRequiresTradingBook));
 
   @Test
   void bookkeepingPublishedLanguageTranslator_translatesBookOpeningOutcomes() {
@@ -208,7 +295,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
             .toList());
     assertEquals(
         ENTRY_SEMANTICS_CANONICAL_CODES,
-        Arrays.stream(BookkeepingEntrySemanticsViolationFactory.class.getDeclaredMethods())
+        ENTRY_SEMANTICS_OWNERS.stream()
+            .flatMap(owner -> Arrays.stream(owner.getDeclaredMethods()))
             .filter(
                 method ->
                     Modifier.isStatic(method.getModifiers())
@@ -239,9 +327,9 @@ class BookkeepingPublishedLanguageTranslatorTest {
             List.of(new dev.erst.fingrind.core.PostingId("posting-1")));
 
     assertEquals(
-        reportingPeriod,
+        reportingPeriod.effectiveDateTo(),
         BookkeepingRequestPublishedLanguageTranslator.fromPublished(
-            new InterimResultSweepCommand(reportingPeriod)));
+            new InterimResultSweepCommand(reportingPeriod.effectiveDateTo())));
     assertEquals(
         new InterimResultSweepResult.Swept(
             new dev.erst.fingrind.contract.bookkeeping.SweptInterimResult(
@@ -257,11 +345,11 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new InterimResultSweepOutcome.Transferred(sweptInterimResult)));
     assertEquals(
         new InterimResultSweepResult.Rejected(
-            new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+            new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing(
                 FinancialPositionLineClassification.RESULT_HOLDING, List.of())),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new InterimResultSweepOutcome.Rejected(
-                new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+                new CloseTargetAccountCandidateMissing(
                     FinancialPositionLineClassification.RESULT_HOLDING, List.of()))));
   }
 
@@ -281,9 +369,9 @@ class BookkeepingPublishedLanguageTranslatorTest {
             List.of(new dev.erst.fingrind.core.PostingId("posting-1")));
 
     assertEquals(
-        reportingPeriod,
+        2026,
         BookkeepingRequestPublishedLanguageTranslator.fromPublished(
-            new FiscalYearCloseCommand(reportingPeriod)));
+            new FiscalYearCloseCommand(2026)));
     assertEquals(
         new FiscalYearCloseResult.Closed(
             new ClosedFiscalYear(
@@ -293,9 +381,10 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountCode("3200"),
                 new AccountCode("3300"),
                 closedAt,
-                List.of(new dev.erst.fingrind.core.PostingId("posting-1")))),
+                List.of(new dev.erst.fingrind.core.PostingId("posting-1"))),
+            false),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new FiscalYearCloseOutcome.Closed(closedFiscalYear)));
+            new FiscalYearCloseOutcome.Closed(closedFiscalYear, false)));
     assertEquals(
         new FiscalYearCloseResult.Rejected(
             new BookAdministrationRejection.FiscalYearCloseMustEndAt(
@@ -347,10 +436,10 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT))),
         BookkeepingPublishedLanguageTranslator.toPublished(localAccountTaxonomyConflict));
     assertEquals(
-        new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+        new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing(
             FinancialPositionLineClassification.RESULT_HOLDING, List.of(new AccountCode("3200"))),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing(
+            new CloseTargetAccountCandidateMissing(
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200")))));
     assertEquals(
@@ -453,6 +542,107 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountCode("1010"), new AccountCode("1000"))));
 
     assertEquals(
+        new PostingRejection.AccountStateViolations(
+            List.of(
+                new PostingRejection.NonPostableAccount(
+                    new AccountCode("1000"), AccountNodeKind.HEADER))),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.AccountStateViolations(
+                List.of(
+                    new BookkeepingPostingRejection.NonPostableAccount(
+                        new AccountCode("1000"), AccountNodeKind.HEADER)))));
+    assertEquals(
+        new PostingRejection.AccountStateViolations(
+            List.of(
+                new InventoryBalanceBelowZero(
+                    new AccountCode("1400"),
+                    "inventoryRelief.amount",
+                    LocalDate.parse("2026-04-07"),
+                    BalanceSide.DEBIT,
+                    Money.parse("EUR", "10.00"),
+                    Money.parse("EUR", "50.00"),
+                    Money.parse("EUR", "40.00")))),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.AccountStateViolations(
+                List.of(
+                    new InventoryBalanceBelowZeroViolation(
+                        new AccountCode("1400"),
+                        "inventoryRelief.amount",
+                        LocalDate.parse("2026-04-07"),
+                        BalanceSide.DEBIT,
+                        Money.parse("EUR", "10.00"),
+                        Money.parse("EUR", "50.00"),
+                        Money.parse("EUR", "40.00"))))));
+    assertEquals(
+        new PostingRejection.EntrySemanticsViolations(
+            List.of(
+                PostingRejectionSemantics.accountTypeMismatch(
+                    "SALE",
+                    "cashAccountCode",
+                    new AccountCode("2000"),
+                    AccountType.ASSET,
+                    AccountType.REVENUE),
+                PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
+                    "SALE",
+                    new SourceDocumentType("invoice"),
+                    List.of("cash-receipt", "bank-deposit", "card-settlement")))),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.EntrySemanticsViolations(
+                List.of(
+                    BookkeepingAccountSemanticsViolations.accountTypeMismatch(
+                        "entryKind",
+                        "SALE",
+                        "cashAccountCode",
+                        new AccountCode("2000"),
+                        AccountType.ASSET,
+                        AccountType.REVENUE),
+                    BookkeepingEvidenceSemanticsViolations.sourceDocumentTypeNotAccepted(
+                        "entryKind",
+                        "SALE",
+                        new SourceDocumentType("invoice"),
+                        List.of("cash-receipt", "bank-deposit", "card-settlement"))))));
+    assertEquals(
+        new PostingRejection.ReversalTargetNotFound(
+            new dev.erst.fingrind.core.PostingId("posting-1")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.ReversalTargetNotFound(
+                new dev.erst.fingrind.core.PostingId("posting-1"))));
+    assertEquals(
+        new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+            new dev.erst.fingrind.core.PostingId("posting-1")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new ReversalTargetIsReversal(new dev.erst.fingrind.core.PostingId("posting-1"))));
+    assertEquals(
+        new PostingRejection.ReversalAlreadyExists(
+            new dev.erst.fingrind.core.PostingId("posting-1")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.ReversalAlreadyExists(
+                new dev.erst.fingrind.core.PostingId("posting-1"))));
+    assertEquals(
+        new PostingRejection.ReversalDoesNotNegateTarget(
+            new dev.erst.fingrind.core.PostingId("posting-1")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(
+                new dev.erst.fingrind.core.PostingId("posting-1"))));
+  }
+
+  @Test
+  void toPublished_projectsDirectPostingOutcomeVariants() {
+    assertEquals(
+        new PostingRejection.BookNotInitialized(),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.BookNotInitialized()));
+    assertEquals(
+        new PostingRejection.IdempotencyKeyConflict(),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.IdempotencyKeyConflict()));
+    assertEquals(
+        new PostingRejection.PostingEffectiveDateInFuture(
+            LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-07")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.PostingEffectiveDateInFuture(
+                LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-07"))));
+    assertEquals(
         new PostingRejection.SweptInterimResultViolation(
             LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
         BookkeepingPublishedLanguageTranslator.toPublished(
@@ -484,83 +674,16 @@ class BookkeepingPublishedLanguageTranslatorTest {
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReservedResultClassification(
                 new AccountCode("3200"), FinancialPositionLineClassification.RESULT_HOLDING)));
-    assertEquals(
-        new PostingRejection.AccountStateViolations(
-            List.of(
-                new PostingRejection.NonPostableAccount(
-                    new AccountCode("1000"), AccountNodeKind.HEADER))),
-        BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingPostingRejection.AccountStateViolations(
-                List.of(
-                    new BookkeepingPostingRejection.NonPostableAccount(
-                        new AccountCode("1000"), AccountNodeKind.HEADER)))));
-    assertEquals(
-        new PostingRejection.EntrySemanticsViolations(
-            List.of(
-                PostingRejectionSemantics.accountTypeMismatch(
-                    "SALE",
-                    "cashAccountCode",
-                    new AccountCode("2000"),
-                    AccountType.ASSET,
-                    AccountType.REVENUE),
-                PostingRejectionSemantics.sourceDocumentTypeNotAccepted(
-                    "SALE",
-                    new SourceDocumentType("invoice"),
-                    List.of("cash-receipt", "bank-deposit", "card-settlement")))),
-        BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingPostingRejection.EntrySemanticsViolations(
-                List.of(
-                    BookkeepingEntrySemanticsViolationFactory.accountTypeMismatch(
-                        "entryKind",
-                        "SALE",
-                        "cashAccountCode",
-                        new AccountCode("2000"),
-                        AccountType.ASSET,
-                        AccountType.REVENUE),
-                    BookkeepingEntrySemanticsViolationFactory.sourceDocumentTypeNotAccepted(
-                        "entryKind",
-                        "SALE",
-                        new SourceDocumentType("invoice"),
-                        List.of("cash-receipt", "bank-deposit", "card-settlement"))))));
-    assertEquals(
-        new PostingRejection.ReversalTargetNotFound(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
-        BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingPostingRejection.ReversalTargetNotFound(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
-    assertEquals(
-        new PostingRejection.ReversalAlreadyExists(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
-        BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingPostingRejection.ReversalAlreadyExists(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
-    assertEquals(
-        new PostingRejection.ReversalDoesNotNegateTarget(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
-        BookkeepingPublishedLanguageTranslator.toPublished(
-            new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
   }
 
   private static BookkeepingPostingRejection.EntrySemanticsViolation
       invokeBookkeepingEntrySemanticsFactory(Method method) {
     try {
-      return switch (method.getName()) {
-        case "accountTypeMismatch" -> invokeAccountTypeMismatch(method);
-        case "cashBasisAccountRequired" -> invokeCashBasisAccountRequired(method);
-        case "cashFlowAssetClassificationMismatch" ->
-            invokeCashFlowAssetClassificationMismatch(method);
-        case "financialPositionClassificationMismatch" ->
-            invokeFinancialPositionClassificationMismatch(method);
-        case "sourceDocumentTypeNotAccepted" -> invokeSourceDocumentTypeNotAccepted(method);
-        case "unknownTaxRegistration" -> invokeUnknownTaxRegistration(method);
-        case "unknownTaxCode" -> invokeUnknownTaxCode(method);
-        case "taxApplicationKindMismatch" -> invokeTaxApplicationKindMismatch(method);
-        case "distinctRoleAccountsRequired" -> invokeDistinctRoleAccountsRequired(method);
-        case "economicNullJournal" -> invokeEconomicNullJournal(method);
-        default ->
-            throw new AssertionError("Unexpected entry-semantics factory: " + method.getName());
-      };
+      EntrySemanticsMethodInvoker invoker = ENTRY_SEMANTICS_METHOD_INVOKERS.get(method.getName());
+      if (invoker == null) {
+        throw new AssertionError("Unexpected entry-semantics factory: " + method.getName());
+      }
+      return invoker.invoke(method);
     } catch (ReflectiveOperationException exception) {
       throw new LinkageError(exception.getMessage(), exception);
     }
@@ -577,6 +700,19 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new AccountCode("1000"),
             AccountType.ASSET,
             AccountType.REVENUE);
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation invokeAccountRoleMismatch(
+      Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(
+            null,
+            "entryKind",
+            "RECEIPT",
+            "settlementAdjunct.accountCode",
+            new AccountCode("6100"),
+            AccountRole.SETTLEMENT_ADJUNCT,
+            AccountRole.EXPENSE);
   }
 
   private static BookkeepingPostingRejection.EntrySemanticsViolation
@@ -629,16 +765,6 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new AccountCode("1000"));
   }
 
-  private static BookkeepingPostingRejection.EntrySemanticsViolation invokeCashBasisAccountRequired(
-      Method method) throws ReflectiveOperationException {
-    return (BookkeepingPostingRejection.EntrySemanticsViolation)
-        method.invoke(
-            null,
-            "entryKind",
-            "DIRECT_JOURNAL",
-            List.of(new AccountCode("3000"), new AccountCode("3200")));
-  }
-
   private static BookkeepingPostingRejection.EntrySemanticsViolation invokeUnknownTaxRegistration(
       Method method) throws ReflectiveOperationException {
     return (BookkeepingPostingRejection.EntrySemanticsViolation)
@@ -672,5 +798,87 @@ class BookkeepingPublishedLanguageTranslatorTest {
       Method method) throws ReflectiveOperationException {
     return (BookkeepingPostingRejection.EntrySemanticsViolation)
         method.invoke(null, "entryKind", "DIRECT_JOURNAL");
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeVerbRequiresReceivableRole(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(null, "entryKind", "SALE_ON_CREDIT");
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation invokeVerbRequiresPayableRole(
+      Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(null, "entryKind", "EXPENSE_ON_CREDIT");
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeVerbRequiresTradingTemplate(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(
+            null, "entryKind", "PURCHASE_ON_CREDIT", BookTemplateId.OWNER_MANAGED_SERVICE);
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeTradingSaleRequiresInventoryRelief(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(null, "entryKind", "SALE_SETTLED");
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeInventoryReliefRequiresTradingBook(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(null, "entryKind", "SALE_SETTLED", BookTemplateId.OWNER_MANAGED_SERVICE);
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation invokeEvidenceClassConflict(
+      Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(
+            null,
+            "entryKind",
+            "SALE_SETTLED",
+            EvidenceClass.INVOICE,
+            EconomicEventClass.SETTLED_SALE);
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeRawJournalShadowsTypedEvent(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(
+            null,
+            "entryKind",
+            "DIRECT_JOURNAL",
+            EconomicEventClass.SETTLED_SALE,
+            "record-sale-settled");
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeRawJournalBundlesOperationalEvents(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(
+            null,
+            "entryKind",
+            "DIRECT_JOURNAL",
+            java.util.Set.of(EconomicEventClass.AR_SETTLEMENT, EconomicEventClass.SETTLED_SALE));
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeRawJournalRequiresCashLine(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(null, "entryKind", "DIRECT_JOURNAL");
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeOpeningWindowAccountNotPermitted(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(null, "entryKind", "OPENING_POSITION", new AccountCode("4000"));
+  }
+
+  /** Reflection bridge for invoking one static entry-semantics helper under test. */
+  @FunctionalInterface
+  private interface EntrySemanticsMethodInvoker {
+    BookkeepingPostingRejection.EntrySemanticsViolation invoke(Method method)
+        throws ReflectiveOperationException;
   }
 }

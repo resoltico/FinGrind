@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -45,7 +45,7 @@ Each companion page embeds the exact canonical SQL for one schema responsibility
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `33`
+- `user_version`: `38`
 - Canonical durable tables: `book_meta`, `book_identity`, `account`, `tax_registration`, `tax_registration_code`, `posting_fact`, `posting_source_document`, `posting_approval`, `posting_applied_tax`, `posting_foreign_exchange`, `journal_line`, `interim_result_sweep`, `interim_result_sweep_total`, `interim_result_sweep_posting`, `fiscal_year_close`, `fiscal_year_close_posting`, `audit_event`
 - Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `tax_registration_code_by_registration_id`, `posting_applied_tax_by_tax_registration_id`, `journal_line_by_account_code`, `audit_event_by_recorded_at`, `interim_result_sweep_by_effective_date_to`, `interim_result_sweep_total_by_currency`, `interim_result_sweep_posting_by_posting_id`, `fiscal_year_close_by_effective_date_to`, `fiscal_year_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.

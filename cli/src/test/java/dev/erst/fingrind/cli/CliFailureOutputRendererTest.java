@@ -197,6 +197,12 @@ class CliFailureOutputRendererTest {
         "Attempted currency",
         "USD");
     assertRenderedRejection(
+        new CliRejectionJsonModels.PostingEffectiveDateInFutureDetails("2026-07-01", "2026-06-30"),
+        "Attempted effective date",
+        "2026-07-01",
+        "Current UTC date",
+        "2026-06-30");
+    assertRenderedRejection(
         new CliRejectionJsonModels.OpeningPositionWindowClosedDetails("STANDARD", "2026-04-07"),
         "First blocking posting kind",
         "STANDARD",
@@ -250,6 +256,13 @@ class CliFailureOutputRendererTest {
         new CliRejectionJsonModels.FiscalYearCloseEndDetails("2026-12-31"),
         "Required end date",
         "2026-12-31");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.FiscalYearCloseTransferredThroughDetails(
+            "2025-12-31", "2026-03-31"),
+        "Attempted end date",
+        "2025-12-31",
+        "Transferred-through date",
+        "2026-03-31");
     assertRenderedRejection(
         new CliRejectionJsonModels.FiscalYearCloseFutureDateDetails("2027-01-01"),
         "Attempted end date",

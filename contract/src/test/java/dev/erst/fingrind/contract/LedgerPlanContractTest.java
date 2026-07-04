@@ -121,7 +121,7 @@ class LedgerPlanContractTest {
   @Test
   void ledgerStepKinds_publishPostingFlagsAndEntryKindMappings() {
     assertTrue(LedgerStepKind.PREFLIGHT_ENTRY.carriesPostingPayload());
-    assertTrue(LedgerStepKind.RECORD_SALE.carriesPostingPayload());
+    assertTrue(LedgerStepKind.RECORD_SALE_SETTLED.carriesPostingPayload());
     assertTrue(LedgerStepKind.POST_ENTRY.carriesPostingPayload());
     assertFalse(LedgerStepKind.ENSURE_BOOK.carriesPostingPayload());
     assertFalse(LedgerStepKind.LIST_POSTINGS.carriesPostingPayload());
@@ -133,11 +133,23 @@ class LedgerPlanContractTest {
         LedgerStepKind.POST_ENTRY,
         LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.DIRECT_JOURNAL));
     assertEquals(
-        LedgerStepKind.RECORD_SALE,
-        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.SALE));
+        LedgerStepKind.RECORD_SALE_SETTLED,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.SALE_SETTLED));
     assertEquals(
-        LedgerStepKind.RECORD_EXPENSE,
-        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.EXPENSE));
+        LedgerStepKind.RECORD_SALE_ON_CREDIT,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.SALE_ON_CREDIT));
+    assertEquals(
+        LedgerStepKind.RECORD_EXPENSE_SETTLED,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.EXPENSE_SETTLED));
+    assertEquals(
+        LedgerStepKind.RECORD_EXPENSE_ON_CREDIT,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.EXPENSE_ON_CREDIT));
+    assertEquals(
+        LedgerStepKind.RECORD_RECEIPT,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.RECEIPT));
+    assertEquals(
+        LedgerStepKind.RECORD_PAYMENT,
+        LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.PAYMENT));
     assertEquals(
         LedgerStepKind.RECORD_OWNER_CONTRIBUTION,
         LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.OWNER_CONTRIBUTION));
@@ -273,8 +285,14 @@ class LedgerPlanContractTest {
             LedgerStepKind.ENSURE_BOOK.wireValue(),
             LedgerStepKind.DECLARE_ACCOUNT.wireValue(),
             LedgerStepKind.PREFLIGHT_ENTRY.wireValue(),
-            LedgerStepKind.RECORD_SALE.wireValue(),
-            LedgerStepKind.RECORD_EXPENSE.wireValue(),
+            LedgerStepKind.RECORD_SALE_SETTLED.wireValue(),
+            LedgerStepKind.RECORD_SALE_ON_CREDIT.wireValue(),
+            LedgerStepKind.RECORD_PURCHASE_SETTLED.wireValue(),
+            LedgerStepKind.RECORD_PURCHASE_ON_CREDIT.wireValue(),
+            LedgerStepKind.RECORD_EXPENSE_SETTLED.wireValue(),
+            LedgerStepKind.RECORD_EXPENSE_ON_CREDIT.wireValue(),
+            LedgerStepKind.RECORD_RECEIPT.wireValue(),
+            LedgerStepKind.RECORD_PAYMENT.wireValue(),
             LedgerStepKind.RECORD_OWNER_CONTRIBUTION.wireValue(),
             LedgerStepKind.RECORD_OWNER_WITHDRAWAL.wireValue(),
             LedgerStepKind.RECORD_OPENING_POSITION.wireValue(),

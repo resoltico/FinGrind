@@ -154,12 +154,13 @@ class CliFixtureSupport extends CliIoFixtureSupport {
   }
 
   protected static PostingFact salePostingFact() {
-    BookkeepingEntry.Sale sale =
-        new BookkeepingEntry.Sale(
+    BookkeepingEntry.SaleSettled sale =
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-07"),
             new AccountCode("cash"),
             new AccountCode("service-revenue"),
             new MonetaryAmount("EUR", "1000"),
+            null,
             null,
             null,
             null);

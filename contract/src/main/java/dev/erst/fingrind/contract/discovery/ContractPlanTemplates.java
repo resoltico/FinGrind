@@ -5,8 +5,10 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
 import java.util.List;
@@ -99,12 +101,21 @@ public interface ContractPlanTemplates {
 
   /** Canonical ensure-book template nested inside a ledger plan. */
   public record EnsureBookTemplateDescriptor(
-      String entityName, String functionalCurrency, String fiscalYearStart)
+      String entityName,
+      String bookTemplateId,
+      String accountingBasis,
+      String functionalCurrency,
+      String fiscalYearStart)
       implements TemplateDescriptorType {
     /** Validates one ensure-book template descriptor payload. */
     public EnsureBookTemplateDescriptor {
       entityName = ContractDescriptorValidation.requireText(entityName, "entityName");
       new BookEntityName(entityName);
+      bookTemplateId = ContractDescriptorValidation.requireText(bookTemplateId, "bookTemplateId");
+      BookTemplateId.fromWireValue(bookTemplateId);
+      accountingBasis =
+          ContractDescriptorValidation.requireText(accountingBasis, "accountingBasis");
+      AccountingBasis.fromWireValue(accountingBasis);
       functionalCurrency =
           ContractDescriptorValidation.requireText(functionalCurrency, "functionalCurrency");
       CurrencyUnit.of(functionalCurrency);

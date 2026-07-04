@@ -24,11 +24,9 @@ final class InterimResultSweepHoldingAccountSelector {
       return new AcceptedInterimResultTargetSelection(accepted.account());
     }
     RejectedCloseTargetSelection rejected = (RejectedCloseTargetSelection) selection;
-    return rejected.rejection()
-            instanceof BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing
+    return rejected.rejection() instanceof CloseTargetAccountCandidateMissing
         ? new RejectedInterimResultTargetSelection(
-            (BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing)
-                rejected.rejection())
+            (CloseTargetAccountCandidateMissing) rejected.rejection())
         : new RejectedInterimResultTargetSelection(
             (CloseTargetAccountCandidateAmbiguous) rejected.rejection());
   }

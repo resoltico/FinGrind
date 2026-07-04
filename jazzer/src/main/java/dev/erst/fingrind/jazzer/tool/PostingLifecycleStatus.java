@@ -18,6 +18,7 @@ public enum PostingLifecycleStatus implements WireValue {
   UNKNOWN_ACCOUNT("unknown-account"),
   INACTIVE_ACCOUNT("inactive-account"),
   IDEMPOTENCY_KEY_CONFLICT("idempotency-key-conflict"),
+  POSTING_EFFECTIVE_DATE_IN_FUTURE("posting-effective-date-in-future"),
   BOOK_FUNCTIONAL_CURRENCY_MISMATCH("book-functional-currency-mismatch"),
   CLOSED_PERIOD_VIOLATION("closed-period-violation"),
   OPEN_ACCOUNTING_POSITION_WINDOW_CLOSED("open-accounting-position-window-closed"),
@@ -25,6 +26,7 @@ public enum PostingLifecycleStatus implements WireValue {
       "open-accounting-position-touches-nominal-account"),
   RESERVED_RESULT_CLASSIFICATION("reserved-result-classification"),
   REVERSAL_TARGET_NOT_FOUND("reversal-target-not-found"),
+  REVERSAL_TARGET_IS_REVERSAL("reversal-target-is-reversal"),
   REVERSAL_ALREADY_EXISTS("reversal-already-exists"),
   REVERSAL_DOES_NOT_NEGATE_TARGET("reversal-does-not-negate-target");
 

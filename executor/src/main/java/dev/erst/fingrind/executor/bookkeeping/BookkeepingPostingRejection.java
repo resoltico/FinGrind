@@ -18,12 +18,14 @@ public sealed interface BookkeepingPostingRejection
         BookkeepingPostingRejection.AccountStateViolations,
         BookkeepingPostingRejection.EntrySemanticsViolations,
         BookkeepingPostingRejection.IdempotencyKeyConflict,
+        BookkeepingPostingRejection.PostingEffectiveDateInFuture,
         BookkeepingPostingRejection.BookFunctionalCurrencyMismatch,
         BookkeepingPostingRejection.SweptInterimResultViolation,
         BookkeepingPostingRejection.OpeningPositionWindowClosed,
         BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount,
         BookkeepingPostingRejection.ReservedResultClassification,
         BookkeepingPostingRejection.ReversalTargetNotFound,
+        ReversalTargetIsReversal,
         BookkeepingPostingRejection.ReversalAlreadyExists,
         BookkeepingPostingRejection.ReversalDoesNotNegateTarget {
 
@@ -34,7 +36,8 @@ public sealed interface BookkeepingPostingRejection
   sealed interface AccountStateViolation
       permits BookkeepingPostingRejection.UnknownAccount,
           BookkeepingPostingRejection.InactiveAccount,
-          BookkeepingPostingRejection.NonPostableAccount {}
+          BookkeepingPostingRejection.NonPostableAccount,
+          InventoryBalanceBelowZeroViolation {}
 
   /** Refusal for a posting request with one or more account-state violations. */
   record AccountStateViolations(List<AccountStateViolation> violations)
@@ -101,6 +104,15 @@ public sealed interface BookkeepingPostingRejection
 
   /** Refusal for one reused idempotency key whose semantic request fingerprint differs. */
   record IdempotencyKeyConflict() implements BookkeepingPostingRejection {}
+
+  /** Refusal for a posting attempt whose effective date falls after the current UTC date. */
+  record PostingEffectiveDateInFuture(LocalDate attemptedEffectiveDate, LocalDate currentUtcDate)
+      implements BookkeepingPostingRejection {
+    public PostingEffectiveDateInFuture {
+      Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
+      Objects.requireNonNull(currentUtcDate, "currentUtcDate");
+    }
+  }
 
   /** Refusal for a posting whose entry currency diverges from the book functional currency. */
   record BookFunctionalCurrencyMismatch(

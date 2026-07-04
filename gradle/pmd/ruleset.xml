@@ -34,6 +34,8 @@
         <exclude name="CouplingBetweenObjects"/>
         <!-- File and method size governance lives in FinGrind's structural-governance verifiers rather than PMD's ambient NCSS defaults. -->
         <exclude name="NcssCount"/>
+        <!-- Canonical protocol vocabularies legitimately publish many public constants and are governed by contract review rather than ambient member-count heuristics. -->
+        <exclude name="ExcessivePublicCount"/>
         <!-- FinGrind bans wildcard imports through a dedicated source-policy gate. Retaining ExcessiveImports here would push developers back toward forbidden wildcard imports instead of enforcing the real rule we care about. -->
         <exclude name="ExcessiveImports"/>
         <!-- withExceptionData() takes 3-4 nullable Strings representing distinct exception location fields. A wrapper record would add ceremony for no semantic gain. -->

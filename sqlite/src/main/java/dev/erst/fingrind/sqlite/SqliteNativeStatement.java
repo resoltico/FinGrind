@@ -38,7 +38,7 @@ final class SqliteNativeStatement implements AutoCloseable {
   void bindText(int parameterIndex, @Nullable String value) {
     try {
       if (value == null) {
-        SqliteNativeStatements.bindNull(statementHandle, parameterIndex, database.sqliteApi());
+        bindNull(parameterIndex);
         return;
       }
       MemorySegment valuePointer = arena.allocateFrom(value);
@@ -48,6 +48,15 @@ final class SqliteNativeStatement implements AutoCloseable {
           valuePointer,
           utf8ByteLength(valuePointer),
           database.sqliteApi());
+    } catch (RuntimeException | Error exception) {
+      recordFailure(exception);
+      throw exception;
+    }
+  }
+
+  void bindNull(int parameterIndex) {
+    try {
+      SqliteNativeStatements.bindNull(statementHandle, parameterIndex, database.sqliteApi());
     } catch (RuntimeException | Error exception) {
       recordFailure(exception);
       throw exception;

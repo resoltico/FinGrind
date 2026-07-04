@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.contract.reportmodel.TrialBalanceReportModelBuilder;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
@@ -62,7 +63,9 @@ class PdfReportCoverageTest {
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> service.renderTrialBalance(sampleTrialBalanceReport()));
+            () ->
+                service.render(
+                    TrialBalanceReportModelBuilder.buildModel(sampleTrialBalanceReport())));
 
     assertEquals("Failed to render Trial Balance PDF.", exception.getMessage());
     assertInstanceOf(IOException.class, exception.getCause());

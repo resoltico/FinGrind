@@ -155,7 +155,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               Instant.parse("2026-04-07T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())));
+                  bookIdentity().bookDoctrine())));
       assertEquals(
           new BookOpeningOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookAlreadyInitialized()),
@@ -163,7 +163,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               Instant.parse("2026-04-08T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())));
+                  bookIdentity().bookDoctrine())));
     }
   }
 
@@ -178,7 +178,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
               Instant.parse("2026-04-07T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())));
+                  bookIdentity().bookDoctrine())));
       assertTrue(postingFactStore.inspectBook().initialized());
     }
   }
@@ -210,7 +210,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
                       Instant.parse("2026-04-07T10:15:30Z"),
                       bookIdentity(),
                       dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                          bookIdentity().bookDoctrine().bookTemplateId())));
+                          bookIdentity().bookDoctrine())));
       assertTrue(
           NullTestSupport.messageOf(openException)
               .contains("incomplete or corrupted and cannot be opened safely"));
@@ -330,7 +330,7 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
                       Instant.parse("2026-04-07T10:15:30Z"),
                       bookIdentity(),
                       dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                          bookIdentity().bookDoctrine().bookTemplateId())));
+                          bookIdentity().bookDoctrine())));
       assertTrue(
           NullTestSupport.messageOf(exception).contains("Failed to initialize SQLite book."));
       setStoreDatabase(postingFactStore, null);

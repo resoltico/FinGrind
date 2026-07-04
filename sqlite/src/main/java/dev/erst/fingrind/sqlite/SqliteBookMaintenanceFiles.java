@@ -20,7 +20,9 @@ final class SqliteBookMaintenanceFiles {
           new StageArtifactPattern(".backup-", ".sqlite"),
           new StageArtifactPattern(".backup-key-", ".tmp"),
           new StageArtifactPattern(".restore-", ".tmp"),
-          new StageArtifactPattern(".previous-", ".sqlite"));
+          new StageArtifactPattern(".restore-key-", ".tmp"),
+          new StageArtifactPattern(".previous-", ".sqlite"),
+          new StageArtifactPattern(".previous-key-", ".tmp"));
 
   private SqliteBookMaintenanceFiles() {}
 

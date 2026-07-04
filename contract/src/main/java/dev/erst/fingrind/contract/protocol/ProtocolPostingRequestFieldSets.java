@@ -14,18 +14,49 @@ public final class ProtocolPostingRequestFieldSets {
           ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> SALE_FIELDS =
+  private static final Set<String> SALE_SETTLED_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
           ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.TAX,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> EXPENSE_FIELDS =
+  private static final Set<String> SALE_ON_CREDIT_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+          ProtocolPostEntryFields.TopLevel.TAX,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  private static final Set<String> PURCHASE_SETTLED_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  private static final Set<String> PURCHASE_ON_CREDIT_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  private static final Set<String> EXPENSE_SETTLED_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
@@ -34,6 +65,36 @@ public final class ProtocolPostingRequestFieldSets {
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.TAX,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  private static final Set<String> EXPENSE_ON_CREDIT_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.TAX,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  private static final Set<String> RECEIPT_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
+          ProtocolPostEntryFields.TopLevel.EVIDENCE,
+          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+  private static final Set<String> PAYMENT_FIELDS =
+      Set.of(
+          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
   private static final Set<String> OWNER_CONTRIBUTION_FIELDS =
@@ -67,7 +128,6 @@ public final class ProtocolPostingRequestFieldSets {
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
           ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.LINES,
           ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE,
@@ -86,13 +146,43 @@ public final class ProtocolPostingRequestFieldSets {
   }
 
   /** Returns the accepted top-level fields for sale requests. */
-  public static Set<String> saleFields() {
-    return SALE_FIELDS;
+  public static Set<String> saleSettledFields() {
+    return SALE_SETTLED_FIELDS;
   }
 
-  /** Returns the accepted top-level fields for expense requests. */
-  public static Set<String> expenseFields() {
-    return EXPENSE_FIELDS;
+  /** Returns the accepted top-level fields for sale-on-credit requests. */
+  public static Set<String> saleOnCreditFields() {
+    return SALE_ON_CREDIT_FIELDS;
+  }
+
+  /** Returns the accepted top-level fields for settled-purchase requests. */
+  public static Set<String> purchaseSettledFields() {
+    return PURCHASE_SETTLED_FIELDS;
+  }
+
+  /** Returns the accepted top-level fields for purchase-on-credit requests. */
+  public static Set<String> purchaseOnCreditFields() {
+    return PURCHASE_ON_CREDIT_FIELDS;
+  }
+
+  /** Returns the accepted top-level fields for settled expense requests. */
+  public static Set<String> expenseSettledFields() {
+    return EXPENSE_SETTLED_FIELDS;
+  }
+
+  /** Returns the accepted top-level fields for expense-on-credit requests. */
+  public static Set<String> expenseOnCreditFields() {
+    return EXPENSE_ON_CREDIT_FIELDS;
+  }
+
+  /** Returns the accepted top-level fields for receipt requests. */
+  public static Set<String> receiptFields() {
+    return RECEIPT_FIELDS;
+  }
+
+  /** Returns the accepted top-level fields for payment requests. */
+  public static Set<String> paymentFields() {
+    return PAYMENT_FIELDS;
   }
 
   /** Returns the accepted top-level fields for owner-contribution requests. */

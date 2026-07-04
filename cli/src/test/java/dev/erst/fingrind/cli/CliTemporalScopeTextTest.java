@@ -35,15 +35,20 @@ class CliTemporalScopeTextTest {
     assertEquals("no-postings", CliTemporalScopeText.resolvedUpperDateBoundaryMeaning(null, null));
     assertEquals("ranged-filter", CliTemporalScopeText.scopeKind(OperationId.ACCOUNT_LEDGER));
     assertEquals("bounded-period", CliTemporalScopeText.scopeKind(OperationId.PERIOD_SUMMARY));
+    assertEquals("through-date", CliTemporalScopeText.scopeKind(OperationId.INTERIM_RESULT_SWEEP));
     assertEquals("as-of-date", CliTemporalScopeText.scopeKind(OperationId.FINANCIAL_POSITION));
     assertEquals(
         "Optional lower and upper effective-date filters over committed postings. Omit the lower boundary to start at book start; omit the upper boundary to end at the current book horizon.",
         CliTemporalScopeText.boundarySemantics(OperationId.ACCOUNT_LEDGER));
     assertEquals(
-        "One explicit closed reporting window. Both boundaries must be supplied, and neither boundary falls back to book start or the current book horizon.",
+        "Explicit closed reporting window. Both boundaries must be supplied, and neither boundary falls back to book start or the current book horizon.",
         CliTemporalScopeText.boundarySemantics(OperationId.PERIOD_SUMMARY));
+    assertEquals("--through", CliTemporalScopeText.firstOption(OperationId.INTERIM_RESULT_SWEEP));
     assertEquals(
-        "One point-in-time effective-date cutoff. Supply --effective-date-as-of to pin that cutoff explicitly, or omit it to resolve the current book horizon for the selected report.",
+        "Inclusive through date. FinGrind derives the contiguous sweep window from book start in the selected book or, after a sweep is recorded, from the live transferred-through horizon.",
+        CliTemporalScopeText.boundarySemantics(OperationId.INTERIM_RESULT_SWEEP));
+    assertEquals(
+        "Point-in-time effective-date cutoff. Supply --effective-date-as-of to pin that cutoff explicitly, or omit it to resolve the current book horizon for the selected report.",
         CliTemporalScopeText.boundarySemantics(OperationId.FINANCIAL_POSITION));
   }
 

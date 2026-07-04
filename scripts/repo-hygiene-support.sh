@@ -224,7 +224,26 @@ repo_hygiene_process_is_live() {
 
 repo_hygiene_git_fsck_supports_no_references() {
     local repo_root=$1
-    git -C "${repo_root}" fsck -h 2>&1 | grep -Fq -- '--no-references'
+    local probe_output
+    probe_output="$(
+        git -C "${repo_root}" fsck \
+            --no-references \
+            --no-dangling \
+            --no-progress \
+            --connectivity-only \
+            HEAD^{commit} 2>&1 >/dev/null
+    )" && return 0
+
+    case "${probe_output}" in
+        *"unknown option"*no-references*|*"usage: git fsck"*)
+            return 1
+            ;;
+    esac
+
+    # Any other failure came from the repository state rather than flag parsing,
+    # so keep the optimized flag enabled and let the full verifier surface the
+    # real defect.
+    return 0
 }
 
 repo_hygiene_run_git_fsck_with_heartbeat() {

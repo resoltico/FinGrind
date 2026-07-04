@@ -6,7 +6,7 @@ from .account_ledger_assertions import assert_account_ledger_csv
 from .artifact_contracts import reported_artifact_path_matches
 from .models import ReleaseSmokeConfig
 from .path_support import extract_pdf_artifact_path
-from .support import require, require_match
+from .support import require, require_match, require_no_match
 
 
 def assert_operator_queries_and_reports(
@@ -66,6 +66,23 @@ def _assert_account_balance_text(config: ReleaseSmokeConfig, text_output: str) -
             pattern,
             f"{config.label} text account-balance output did not render the {message}",
         )
+    for pattern, message in (
+        (
+            r"Seed template[[:space:]]+:[[:space:]]+Owner-managed service seed template",
+            "seed-template context",
+        ),
+        (r"Accounting basis[[:space:]]+:[[:space:]]+Cash basis", "accounting-basis context"),
+    ):
+        require_match(
+            text_output,
+            pattern,
+            f"{config.label} text account-balance output did not render the {message}",
+        )
+    require_no_match(
+        text_output,
+        r"Starter chart|starter chart|starterChart",
+        f"{config.label} text account-balance output still used the retired starter-chart label",
+    )
 
 
 def _assert_trial_balance_text(config: ReleaseSmokeConfig, text_output: str) -> None:
@@ -80,6 +97,23 @@ def _assert_trial_balance_text(config: ReleaseSmokeConfig, text_output: str) -> 
             pattern,
             f"{config.label} trial-balance output did not render the {message}",
         )
+    for pattern, message in (
+        (
+            r"Seed template[[:space:]]+:[[:space:]]+Owner-managed service seed template",
+            "seed-template context",
+        ),
+        (r"Accounting basis[[:space:]]+:[[:space:]]+Cash basis", "accounting-basis context"),
+    ):
+        require_match(
+            text_output,
+            pattern,
+            f"{config.label} trial-balance output did not render the {message}",
+        )
+    require_no_match(
+        text_output,
+        r"Starter chart|starter chart|starterChart",
+        f"{config.label} trial-balance output still used the retired starter-chart label",
+    )
 
 
 def _assert_pdf_export(

@@ -3,16 +3,13 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
-import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Synthetic account declarations shared by Jazzer workflow fixtures. */
 public final class CliFuzzSyntheticAccountFixtures {
@@ -26,16 +23,11 @@ public final class CliFuzzSyntheticAccountFixtures {
         switch (command.entry()) {
           case BookkeepingEntry.DirectJournal directJournal ->
               distinctJournalLineAccountDeclarations(directJournal.lines());
-          case BookkeepingEntry.Sale sale -> saleAccountDeclarations(sale);
-          case BookkeepingEntry.Expense expense -> expenseAccountDeclarations(expense);
-          case BookkeepingEntry.OwnerContribution ownerContribution ->
-              ownerContributionAccountDeclarations(ownerContribution);
-          case BookkeepingEntry.OwnerWithdrawal ownerWithdrawal ->
-              ownerWithdrawalAccountDeclarations(ownerWithdrawal);
           case BookkeepingEntry.OpeningPosition openingPosition ->
               openingPositionAccountDeclarations(openingPosition);
-          case BookkeepingEntry.Reversal reversal ->
-              distinctJournalLineAccountDeclarations(reversal.lines());
+          case BookkeepingEntry.Reversal _ ->
+              distinctJournalLineAccountDeclarations(CliFuzzFixtures.journalEntry(command).lines());
+          default -> CliFuzzTypedEntryAccountDeclarations.declare(command.entry());
         });
   }
 
@@ -43,95 +35,6 @@ public final class CliFuzzSyntheticAccountFixtures {
   public static AccountCode firstAccountCode(PostEntryCommand command) {
     Objects.requireNonNull(command, "command must not be null");
     return CliFuzzFixtures.journalEntry(command).lines().getFirst().accountCode();
-  }
-
-  private static List<DeclareAccountCommand> saleAccountDeclarations(BookkeepingEntry.Sale sale) {
-    List<DeclareAccountCommand> declarations =
-        new java.util.ArrayList<>(
-            List.of(
-                syntheticDeclareAccountCommand(
-                    sale.cashAccountCode(),
-                    AccountType.ASSET,
-                    CliFuzzSyntheticAccountDoctrine.financialPositionTaxonomy(
-                        FinancialPositionLineClassification.CURRENT_ASSET)),
-                syntheticDeclareAccountCommand(
-                    sale.revenueAccountCode(),
-                    AccountType.REVENUE,
-                    CliFuzzSyntheticAccountDoctrine.profitAndLossTaxonomy(
-                        ProfitAndLossLineClassification.OPERATING_REVENUE))));
-    appendAppliedTaxAccountDeclaration(
-        declarations,
-        sale.appliedTax(),
-        AccountType.LIABILITY,
-        CliFuzzSyntheticAccountDoctrine.financialPositionTaxonomy(
-            FinancialPositionLineClassification.CURRENT_LIABILITY));
-    return List.copyOf(declarations);
-  }
-
-  private static List<DeclareAccountCommand> expenseAccountDeclarations(
-      BookkeepingEntry.Expense expense) {
-    List<DeclareAccountCommand> declarations =
-        new java.util.ArrayList<>(
-            List.of(
-                syntheticDeclareAccountCommand(
-                    expense.expenseAccountCode(),
-                    AccountType.EXPENSE,
-                    CliFuzzSyntheticAccountDoctrine.profitAndLossTaxonomy(
-                        ProfitAndLossLineClassification.OPERATING_EXPENSE)),
-                syntheticDeclareAccountCommand(
-                    expense.cashAccountCode(),
-                    AccountType.ASSET,
-                    CliFuzzSyntheticAccountDoctrine.financialPositionTaxonomy(
-                        FinancialPositionLineClassification.CURRENT_ASSET))));
-    appendAppliedTaxAccountDeclaration(
-        declarations,
-        expense.appliedTax(),
-        AccountType.ASSET,
-        CliFuzzSyntheticAccountDoctrine.financialPositionTaxonomy(
-            FinancialPositionLineClassification.CURRENT_ASSET));
-    return List.copyOf(declarations);
-  }
-
-  private static List<DeclareAccountCommand> ownerContributionAccountDeclarations(
-      BookkeepingEntry.OwnerContribution ownerContribution) {
-    return List.of(
-        syntheticDeclareAccountCommand(
-            ownerContribution.cashAccountCode(),
-            AccountType.ASSET,
-            CliFuzzSyntheticAccountDoctrine.financialPositionTaxonomy(
-                FinancialPositionLineClassification.CURRENT_ASSET)),
-        syntheticDeclareAccountCommand(
-            ownerContribution.equityAccountCode(),
-            AccountType.EQUITY,
-            CliFuzzSyntheticAccountDoctrine.financialPositionTaxonomy(
-                FinancialPositionLineClassification.EQUITY_CONTRIBUTION)));
-  }
-
-  private static List<DeclareAccountCommand> ownerWithdrawalAccountDeclarations(
-      BookkeepingEntry.OwnerWithdrawal ownerWithdrawal) {
-    return List.of(
-        syntheticDeclareAccountCommand(
-            ownerWithdrawal.equityAccountCode(),
-            AccountType.EQUITY,
-            CliFuzzSyntheticAccountDoctrine.financialPositionTaxonomy(
-                FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
-        syntheticDeclareAccountCommand(
-            ownerWithdrawal.cashAccountCode(),
-            AccountType.ASSET,
-            CliFuzzSyntheticAccountDoctrine.financialPositionTaxonomy(
-                FinancialPositionLineClassification.CURRENT_ASSET)));
-  }
-
-  private static void appendAppliedTaxAccountDeclaration(
-      List<DeclareAccountCommand> declarations,
-      @Nullable AppliedTax appliedTax,
-      AccountType accountType,
-      AccountTaxonomy accountTaxonomy) {
-    if (appliedTax == null || appliedTax.taxAccountCode() == null) {
-      return;
-    }
-    declarations.add(
-        syntheticDeclareAccountCommand(appliedTax.taxAccountCode(), accountType, accountTaxonomy));
   }
 
   private static List<DeclareAccountCommand> distinctJournalLineAccountDeclarations(
@@ -168,10 +71,6 @@ public final class CliFuzzSyntheticAccountFixtures {
         .toList();
   }
 
-  private static AccountName syntheticAccountName(AccountCode accountCode) {
-    return new AccountName("Synthetic " + accountCode.value());
-  }
-
   private static List<DeclareAccountCommand> distinctAccountDeclarations(
       List<DeclareAccountCommand> declarations) {
     return List.copyOf(
@@ -194,6 +93,9 @@ public final class CliFuzzSyntheticAccountFixtures {
   private static DeclareAccountCommand syntheticDeclareAccountCommand(
       AccountCode accountCode, AccountType accountType, AccountTaxonomy accountTaxonomy) {
     return new DeclareAccountCommand(
-        accountCode, syntheticAccountName(accountCode), accountType, accountTaxonomy);
+        accountCode,
+        new AccountName("Synthetic " + accountCode.value()),
+        accountType,
+        accountTaxonomy);
   }
 }

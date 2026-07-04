@@ -78,6 +78,11 @@ def verify_open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) 
         f"{config.label} open-book did not publish the expected book template",
     )
     require(
+        payload_field(open_payload, "payload", "bookIdentity", "accountingBasis")
+        == config.accounting_basis,
+        f"{config.label} open-book did not publish the expected accounting basis",
+    )
+    require(
         payload_field(open_payload, "payload", "bookIdentity", "functionalCurrency")
         == config.functional_currency,
         f"{config.label} open-book did not echo the expected functional currency",

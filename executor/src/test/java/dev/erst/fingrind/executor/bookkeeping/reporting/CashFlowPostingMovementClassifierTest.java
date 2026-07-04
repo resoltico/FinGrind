@@ -79,7 +79,19 @@ class CashFlowPostingMovementClassifierTest {
             "1200",
             "Accounts Receivable",
             AccountType.ASSET,
+            financialPositionTaxonomy(FinancialPositionLineClassification.TRADE_RECEIVABLE));
+    RegisteredAccount currentAsset =
+        account(
+            "1300",
+            "Prepaid Expense",
+            AccountType.ASSET,
             financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET));
+    RegisteredAccount inventory =
+        account(
+            "1400",
+            "Inventory",
+            AccountType.ASSET,
+            financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY));
     RegisteredAccount equipment =
         account(
             "1500",
@@ -90,6 +102,12 @@ class CashFlowPostingMovementClassifierTest {
         account(
             "2000",
             "Accounts Payable",
+            AccountType.LIABILITY,
+            financialPositionTaxonomy(FinancialPositionLineClassification.TRADE_PAYABLE));
+    RegisteredAccount currentLiability =
+        account(
+            "2050",
+            "Accrued Expense",
             AccountType.LIABILITY,
             financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_LIABILITY));
     RegisteredAccount loan =
@@ -111,21 +129,25 @@ class CashFlowPostingMovementClassifierTest {
             AccountType.EXPENSE,
             profitAndLossTaxonomy(ProfitAndLossLineClassification.OPERATING_EXPENSE));
     Map<AccountCode, RegisteredAccount> accountsByCode =
-        Map.of(
-            cash.accountCode(), cash,
-            revenue.accountCode(), revenue,
-            receivable.accountCode(), receivable,
-            equipment.accountCode(), equipment,
-            payable.accountCode(), payable,
-            loan.accountCode(), loan,
-            capital.accountCode(), capital,
-            expense.accountCode(), expense);
+        Map.ofEntries(
+            Map.entry(cash.accountCode(), cash),
+            Map.entry(revenue.accountCode(), revenue),
+            Map.entry(receivable.accountCode(), receivable),
+            Map.entry(currentAsset.accountCode(), currentAsset),
+            Map.entry(inventory.accountCode(), inventory),
+            Map.entry(equipment.accountCode(), equipment),
+            Map.entry(payable.accountCode(), payable),
+            Map.entry(currentLiability.accountCode(), currentLiability),
+            Map.entry(loan.accountCode(), loan),
+            Map.entry(capital.accountCode(), capital),
+            Map.entry(expense.accountCode(), expense));
 
     assertMovement(
         singleMovement(
             accountsByCode,
             posting(
                 "posting-sale",
+                PostingOriginKind.SALE_SETTLED,
                 line("1000", JournalLine.EntrySide.DEBIT, "7.00"),
                 line("4000", JournalLine.EntrySide.CREDIT, "7.00"))),
         CashFlowSectionKind.OPERATING,
@@ -137,12 +159,35 @@ class CashFlowPostingMovementClassifierTest {
             accountsByCode,
             posting(
                 "posting-receivable-collection",
+                PostingOriginKind.RECEIPT,
                 line("1000", JournalLine.EntrySide.DEBIT, "4.00"),
                 line("1200", JournalLine.EntrySide.CREDIT, "4.00"))),
         CashFlowSectionKind.OPERATING,
         "1200",
         "4.00",
         "0.00");
+    assertMovement(
+        singleMovement(
+            accountsByCode,
+            posting(
+                "posting-current-asset",
+                line("1300", JournalLine.EntrySide.DEBIT, "9.00"),
+                line("1000", JournalLine.EntrySide.CREDIT, "9.00"))),
+        CashFlowSectionKind.OPERATING,
+        "1300",
+        "0.00",
+        "9.00");
+    assertMovement(
+        singleMovement(
+            accountsByCode,
+            posting(
+                "posting-inventory",
+                line("1400", JournalLine.EntrySide.DEBIT, "4.50"),
+                line("1000", JournalLine.EntrySide.CREDIT, "4.50"))),
+        CashFlowSectionKind.OPERATING,
+        "1400",
+        "0.00",
+        "4.50");
     assertMovement(
         singleMovement(
             accountsByCode,
@@ -159,12 +204,24 @@ class CashFlowPostingMovementClassifierTest {
             accountsByCode,
             posting(
                 "posting-payable",
+                PostingOriginKind.PAYMENT,
                 line("2000", JournalLine.EntrySide.DEBIT, "2.00"),
                 line("1000", JournalLine.EntrySide.CREDIT, "2.00"))),
         CashFlowSectionKind.OPERATING,
         "2000",
         "0.00",
         "2.00");
+    assertMovement(
+        singleMovement(
+            accountsByCode,
+            posting(
+                "posting-current-liability",
+                line("2050", JournalLine.EntrySide.DEBIT, "1.50"),
+                line("1000", JournalLine.EntrySide.CREDIT, "1.50"))),
+        CashFlowSectionKind.OPERATING,
+        "2050",
+        "0.00",
+        "1.50");
     assertMovement(
         singleMovement(
             accountsByCode,
@@ -181,6 +238,18 @@ class CashFlowPostingMovementClassifierTest {
             accountsByCode,
             posting(
                 "posting-capital",
+                line("1000", JournalLine.EntrySide.DEBIT, "6.50"),
+                line("3000", JournalLine.EntrySide.CREDIT, "6.50"))),
+        CashFlowSectionKind.FINANCING,
+        "3000",
+        "6.50",
+        "0.00");
+    assertMovement(
+        singleMovement(
+            accountsByCode,
+            posting(
+                "posting-owner-contribution",
+                PostingOriginKind.OWNER_CONTRIBUTION,
                 line("1000", JournalLine.EntrySide.DEBIT, "6.00"),
                 line("3000", JournalLine.EntrySide.CREDIT, "6.00"))),
         CashFlowSectionKind.FINANCING,
@@ -350,12 +419,17 @@ class CashFlowPostingMovementClassifierTest {
   }
 
   private static CommittedPosting posting(String postingId, JournalLine... lines) {
+    return posting(postingId, PostingOriginKind.DIRECT_JOURNAL, lines);
+  }
+
+  private static CommittedPosting posting(
+      String postingId, PostingOriginKind postingOriginKind, JournalLine... lines) {
     return new CommittedPosting(
         new PostingId(postingId),
         new JournalEntry(EFFECTIVE_DATE, List.of(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
-        PostingOriginKind.DIRECT_JOURNAL,
+        postingOriginKind,
         accountingEvidence(postingId),
         provenance(postingId));
   }

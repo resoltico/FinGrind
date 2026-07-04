@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: SQLITE_SCHEMA_CORE_INTERIM_RESULT_SWEEP_CORE
-updated: "2026-06-29"
+updated: "2026-07-04"
 ---
 
 # SQLite Schema: Interim Result Sweep Core
@@ -120,7 +120,8 @@ create table if not exists interim_result_sweep (
         and substr(swept_at, 15, 2) between '00' and '59'
         and substr(swept_at, 18, 2) between '00' and '59'
     ),
-    check (effective_date_from <= effective_date_to)
+    check (effective_date_from <= effective_date_to),
+    unique (effective_date_from, effective_date_to)
 ) strict;
 
 create trigger if not exists interim_result_sweep_validate_result_holding_account_on_insert

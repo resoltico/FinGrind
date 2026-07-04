@@ -44,7 +44,7 @@ class InternalManagementKernelAccountingRulesTest {
             bookIdentity().entityProfile(),
             new BookDoctrine(
                 new AccountingKernelProfileId("unsupported-kernel-profile"),
-                AccountingBasis.CASH_BASIS,
+                AccountingBasis.CASH,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
                 BookTemplateId.OWNER_MANAGED_SERVICE),

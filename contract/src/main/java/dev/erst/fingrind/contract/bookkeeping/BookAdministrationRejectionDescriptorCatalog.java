@@ -231,6 +231,19 @@ final class BookAdministrationRejectionDescriptorCatalog {
                               "requiredEffectiveDateTo",
                               "Only admissible effectiveDateTo for a fiscal-year close covering the selected year.")))),
               Map.entry(
+                  BookAdministrationRejectionDescriptors.Descriptor
+                      .FISCAL_YEAR_CLOSE_PRECEDES_TRANSFERRED_THROUGH_HORIZON,
+                  definition(
+                      "fiscal-year-close-precedes-transferred-through-horizon",
+                      "Fiscal-year close refused because the selected fiscal year ends before the live transferred-through horizon already recorded in this book.",
+                      List.of(
+                          detailField(
+                              "attemptedEffectiveDateTo",
+                              "Selected fiscal-year end that precedes the live transferred-through horizon."),
+                          detailField(
+                              "transferredThroughEffectiveDate",
+                              "Inclusive effective date through which interim-result sweeps already transfer this book.")))),
+              Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE,
                   definition(
                       "fiscal-year-close-future-date",

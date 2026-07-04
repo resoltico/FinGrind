@@ -5,6 +5,9 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.core.EffectiveDateHorizonPolicy;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -23,6 +26,7 @@ public final class PostingApplicationService {
   private final PostingValidationStore validationStore;
   private final BookkeepingPostingService bookkeepingPostingService;
   private final PostEntrySemanticsPolicy entryAcceptancePolicy;
+  private final java.time.Clock clock;
 
   /** Creates the posting application service with its application-owned seams. */
   public PostingApplicationService(
@@ -31,13 +35,14 @@ public final class PostingApplicationService {
       PostingIdGenerator postingIdGenerator,
       java.time.Clock clock) {
     this.validationStore = Objects.requireNonNull(validationStore, "validationStore");
+    this.clock = Objects.requireNonNull(clock, "clock");
     this.entryAcceptancePolicy = PostEntrySemanticsPolicy.currentKernel();
     this.bookkeepingPostingService =
         new BookkeepingPostingService(
             this.validationStore,
             Objects.requireNonNull(commitStore, "commitStore"),
             Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
-            Objects.requireNonNull(clock, "clock"));
+            this.clock);
   }
 
   /** Validates a request and reports whether a later commit attempt is admissible. */
@@ -51,7 +56,12 @@ public final class PostingApplicationService {
     return switch (bookkeepingPostingService.preflight(postingCommand)) {
       case PostingPreflightOutcome.Accepted accepted ->
           new PostEntryResult.PreflightAccepted(
-              accepted.idempotencyKey(), accepted.effectiveDate());
+              accepted.idempotencyKey(),
+              accepted.effectiveDate(),
+              resolvedJournal(
+                  java.util.Objects.requireNonNullElse(
+                      postingCommand.originatingEntry(), command.entry()),
+                  command.evidence()));
       case PostingPreflightOutcome.Rejected rejected ->
           rejectedPreflight(
               command, BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
@@ -68,7 +78,13 @@ public final class PostingApplicationService {
     PostingCommand postingCommand = localPostingCommand(command);
     return switch (bookkeepingPostingService.commit(postingCommand)) {
       case PostingCommitResult.Committed committed ->
-          committedResult(committed.postingFact(), committed.idempotentReplay());
+          committedResult(
+              committed.postingFact(),
+              committed.idempotentReplay(),
+              resolvedJournal(
+                  java.util.Objects.requireNonNullElse(
+                      postingCommand.originatingEntry(), command.entry()),
+                  command.evidence()));
       case PostingCommitResult.Rejected rejected ->
           rejectedCommit(
               command, BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
@@ -76,13 +92,16 @@ public final class PostingApplicationService {
   }
 
   private static PostEntryResult.Committed committedResult(
-      CommittedPosting committedPosting, boolean idempotentReplay) {
+      CommittedPosting committedPosting,
+      boolean idempotentReplay,
+      ResolvedJournal resolvedJournal) {
     return new PostEntryResult.Committed(
         committedPosting.postingId(),
         committedPosting.provenance().requestProvenance().idempotencyKey(),
         committedPosting.journalEntry().effectiveDate(),
         committedPosting.provenance().recordedAt(),
-        idempotentReplay);
+        idempotentReplay,
+        resolvedJournal);
   }
 
   private static PostEntryResult.PreflightRejected rejectedPreflight(
@@ -107,6 +126,10 @@ public final class PostingApplicationService {
           BookkeepingPublishedLanguageTranslator.toPublished(
               new BookkeepingPostingRejection.BookNotInitialized()));
     }
+    java.util.Optional<PostingRejection> futureDateRejection = futureDateRejectionFor(command);
+    if (futureDateRejection.isPresent()) {
+      return futureDateRejection;
+    }
     return entryAcceptancePolicy
         .rejectionFor(command, validationStore)
         .map(BookkeepingPublishedLanguageTranslator::toPublished);
@@ -114,5 +137,26 @@ public final class PostingApplicationService {
 
   private PostingCommand localPostingCommand(PostEntryCommand command) {
     return PostEntryCommandTranslator.toPostingCommand(command, validationStore);
+  }
+
+  private ResolvedJournal resolvedJournal(
+      dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry entry,
+      dev.erst.fingrind.core.AccountingEvidence evidence) {
+    PostEntrySemanticContext semanticContext =
+        PostEntrySemanticContext.from(entry, ProtocolCatalog.domain().requestSurface());
+    return ResolvedJournalSupport.resolve(
+        entry, evidence, validationStore.findAccounts(semanticContext.referencedAccounts()));
+  }
+
+  private java.util.Optional<PostingRejection> futureDateRejectionFor(PostEntryCommand command) {
+    try {
+      EffectiveDateHorizonPolicy.requireNotAfterToday(command.entry().effectiveDate(), clock);
+      return java.util.Optional.empty();
+    } catch (EffectiveDateHorizonPolicy.FutureEffectiveDateException exception) {
+      return java.util.Optional.of(
+          BookkeepingPublishedLanguageTranslator.toPublished(
+              new BookkeepingPostingRejection.PostingEffectiveDateInFuture(
+                  exception.attemptedEffectiveDate(), exception.currentUtcDate())));
+    }
   }
 }

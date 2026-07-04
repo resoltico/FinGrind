@@ -73,7 +73,7 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
 
   @Override
   public ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
     throw unexpectedInvocation("restoreBook");
   }
 

@@ -153,7 +153,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeQueryResults_writeSuccessAndRejectionEnvelopes() {
+  void writeQueryResults_writeSuccessAndRejectionEnvelopes() throws IOException {
     PostingFact postingFact = postingFact();
     AccountBalanceSnapshot balanceSnapshot =
         new AccountBalanceSnapshot(
@@ -222,8 +222,22 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertJsonContains(getPostingRejectionOutput, "\"postingId\":\"posting-9\"");
     assertJsonContains(listPostingsOutput, "\"postings\":[");
     assertJsonContains(listPostingsRejectionOutput, "\"accountCode\":\"9999\"");
-    assertJsonContains(balanceOutput, "\"effectiveDateFrom\":\"2026-04-01\"");
-    assertJsonContains(balanceOutput, "\"balanceSide\":\"DEBIT\"");
+    JsonNode balanceJson = readJson(balanceOutput);
+    assertEquals("account-balance", balanceJson.path("payload").path("family").stringValue());
+    assertEquals(
+        "2026-04-01",
+        balanceJson.path("payload").path("context").path("periodStart").stringValue());
+    assertEquals(
+        "Debit",
+        balanceJson
+            .path("payload")
+            .path("sections")
+            .get(0)
+            .path("rows")
+            .get(0)
+            .path("cells")
+            .get(4)
+            .stringValue());
     assertJsonContains(balanceRejectionOutput, "\"code\":\"query-book-not-initialized\"");
   }
 
@@ -282,12 +296,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         .writeAccountBalanceResult(
             new AccountBalanceResult.Reported(balanceSnapshot), OutputMode.CSV);
     String balanceCsv = balanceCsvOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(
-        balanceCsv.startsWith(
-            "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,accountType,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
-    assertTrue(
-        balanceCsv.contains(
-            "account-balance,account-balance:1000:EUR,,balance,account-balance,1000,Cash,ASSET,DEBIT,2026-04-01,2026-04-30,EUR,10.00,4.00,6.00,DEBIT,"));
+    assertTrue(balanceCsv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
+    assertTrue(balanceCsv.contains("account-balance:1000:EUR"));
   }
 
   @Test
@@ -420,29 +430,46 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             new TrialBalanceResult.Reported(trialBalanceReport), OutputMode.JSON);
     JsonNode trialBalanceJson = readJson(trialBalanceJsonOutput);
     assertEquals("ok", trialBalanceJson.path("status").stringValue());
+    assertEquals("trial-balance", trialBalanceJson.path("payload").path("family").stringValue());
     assertEquals(
-        "2026-04-30", trialBalanceJson.path("payload").path("effectiveDateAsOf").stringValue());
+        "2026-04-30", trialBalanceJson.path("payload").path("context").path("asOf").stringValue());
     assertEquals(
         "Acme Studio",
-        trialBalanceJson
-            .path("payload")
-            .path("context")
-            .path("bookIdentity")
-            .path("entityName")
-            .stringValue());
-    assertEquals(
-        "1000",
-        trialBalanceJson.path("payload").path("rows").get(0).path("accountCode").stringValue());
+        trialBalanceJson.path("payload").path("context").path("entity").stringValue());
     assertEquals(
         "1000",
         trialBalanceJson
             .path("payload")
+            .path("sections")
+            .get(0)
             .path("rows")
             .get(0)
-            .path("debitTotal")
-            .path("minorUnits")
+            .path("cells")
+            .get(0)
             .stringValue());
-    assertFalse(trialBalanceJson.toString().contains("\"value\""));
+    assertEquals(
+        "EUR 10.00",
+        trialBalanceJson
+            .path("payload")
+            .path("sections")
+            .get(0)
+            .path("totals")
+            .get(0)
+            .path("rows")
+            .get(0)
+            .path("cells")
+            .get(1)
+            .stringValue());
+    assertEquals(
+        "accountCode",
+        trialBalanceJson
+            .path("payload")
+            .path("sections")
+            .get(0)
+            .path("columns")
+            .get(0)
+            .path("key")
+            .stringValue());
     ByteArrayOutputStream trialBalanceTextOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(trialBalanceTextOutput))
         .writeTrialBalanceResult(
@@ -467,10 +494,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 accountLedgerReport),
             OutputMode.TEXT);
     String accountLedgerText = accountLedgerTextOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(accountLedgerText.contains("Opening balances"));
+    assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("EUR 10.00 Debit"));
-    assertTrue(accountLedgerText.contains("Running"));
-    assertTrue(accountLedgerText.contains("Counterparts"));
+    assertTrue(accountLedgerText.contains("Ledger Entries"));
+    assertTrue(accountLedgerText.contains("Counterpart account codes"));
     assertTrue(accountLedgerText.contains("posting-"));
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))
@@ -479,40 +506,25 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 accountLedgerReport),
             OutputMode.JSON);
     JsonNode accountLedgerJson = readJson(accountLedgerJsonOutput);
-    assertEquals("1000", accountLedgerJson.path("payload").path("accountCode").stringValue());
+    assertEquals("account-ledger", accountLedgerJson.path("payload").path("family").stringValue());
     assertEquals(
-        "2026-04-01", accountLedgerJson.path("payload").path("effectiveDateFrom").stringValue());
+        "2026-04-01",
+        accountLedgerJson.path("payload").path("context").path("periodStart").stringValue());
+    JsonNode entriesSection = reportSection(accountLedgerJson.path("payload"), "entries");
+    assertEquals("posting-1", entriesSection.path("rows").get(0).path("rowId").stringValue());
     assertEquals(
-        "posting-1",
-        accountLedgerJson.path("payload").path("entries").get(0).path("postingId").stringValue());
+        "2026-04-07", entriesSection.path("rows").get(0).path("cells").get(0).stringValue());
+    assertEquals("2000", entriesSection.path("rows").get(0).path("cells").get(5).stringValue());
     assertEquals(
-        "reversal",
-        accountLedgerJson
-            .path("payload")
-            .path("entries")
+        "posting-1", entriesSection.path("rows").get(0).path("cells").get(6).stringValue());
+    assertTrue(
+        entriesSection
+            .path("rows")
             .get(0)
-            .path("reversalState")
-            .stringValue());
-    assertEquals(
-        "document-idem-1",
-        accountLedgerJson
-            .path("payload")
-            .path("entries")
-            .get(0)
-            .path("evidence")
-            .path("sourceDocuments")
-            .get(0)
-            .path("sourceDocumentId")
-            .stringValue());
-    assertEquals(
-        "2000",
-        accountLedgerJson
-            .path("payload")
-            .path("entries")
-            .get(0)
-            .path("counterpartAccounts")
-            .get(0)
-            .stringValue());
+            .path("cells")
+            .get(1)
+            .stringValue()
+            .contains("posting-0"));
     assertFalse(accountLedgerJson.toString().contains("\"postingFact\""));
     ByteArrayOutputStream accountLedgerCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerCsvOutput))
@@ -521,22 +533,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 accountLedgerReport),
             OutputMode.CSV);
     String accountLedgerCsv = accountLedgerCsvOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(
-        accountLedgerCsv.startsWith(
-            "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,accountType,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message"));
-    assertTrue(
-        accountLedgerCsv.contains(
-            "account-ledger,ledger-summary:1000:EUR,,ledger-summary,account-ledger,1000,Cash,ASSET,DEBIT,true"));
-    assertTrue(
-        accountLedgerCsv.contains(
-            "account-ledger,ledger-entry:posting-1,,entry,account-ledger,1000,Cash,ASSET,DEBIT,true"));
-    assertTrue(
-        accountLedgerCsv.contains(
-            "account-ledger,ledger-counterpart:posting-1:2000,ledger-entry:posting-1,counterpart-account,account-ledger,1000,Cash,ASSET,DEBIT,true"));
-    assertTrue(accountLedgerCsv.contains("document-idem-1"));
-    assertTrue(
-        accountLedgerCsv.contains(
-            "account-ledger,ledger-source-document:posting-1:document-idem-1,ledger-entry:posting-1,source-document,account-ledger,1000,Cash,ASSET,DEBIT,true"));
+    assertTrue(accountLedgerCsv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
+    assertTrue(accountLedgerCsv.contains("ledger-entry:posting-1"));
+    assertTrue(accountLedgerCsv.contains("ledger-counterpart:posting-1:2000"));
   }
 
   @Test
@@ -560,17 +559,17 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 periodSummaryReport),
             OutputMode.JSON);
     JsonNode periodSummaryJson = readJson(periodSummaryJsonOutput);
+    assertEquals("period-summary", periodSummaryJson.path("payload").path("family").stringValue());
     assertEquals(
-        "2026-04-01", periodSummaryJson.path("payload").path("effectiveDateFrom").stringValue());
-    assertEquals(1, periodSummaryJson.path("payload").path("postingCount").asInt());
+        "2026-04-01",
+        periodSummaryJson.path("payload").path("context").path("periodStart").stringValue());
     assertEquals(
-        "1000",
-        periodSummaryJson
-            .path("payload")
-            .path("accountActivity")
-            .get(0)
-            .path("accountCode")
-            .stringValue());
+        "1", periodSummaryJson.path("payload").path("verdicts").get(2).path("value").stringValue());
+    JsonNode accountActivitySection =
+        reportSection(periodSummaryJson.path("payload"), "accountActivity");
+    assertEquals(
+        "1000", accountActivitySection.path("rows").get(0).path("cells").get(0).stringValue());
+    assertTrue(accountActivitySection.path("rows").get(0).path("cells").toString().contains("Yes"));
     assertFalse(periodSummaryJson.toString().contains("\"account\":{\"accountCode\""));
     ByteArrayOutputStream periodSummaryCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(periodSummaryCsvOutput))
@@ -579,12 +578,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 periodSummaryReport),
             OutputMode.CSV);
     String periodSummaryCsv = periodSummaryCsvOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(
-        periodSummaryCsv.startsWith(
-            "exportFamily,rowId,parentRowId,relationKind,recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit,message"));
-    assertTrue(
-        periodSummaryCsv.contains(
-            "period-summary,period-summary:account:1000:debit,period-summary:account:1000,metric,period-summary,account,1000,Cash,debitTotal,10.00,EUR,money,"));
+    assertTrue(periodSummaryCsv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
+    assertTrue(periodSummaryCsv.contains("period-summary:account:1000:net"));
   }
 
   @Test
@@ -611,16 +606,16 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             OutputMode.JSON);
 
     JsonNode directAccountLedgerJson = readJson(directAccountLedgerJsonOutput);
-    assertEquals(
-        "direct",
-        directAccountLedgerJson
-            .path("payload")
-            .path("entries")
+    JsonNode entriesSection = reportSection(directAccountLedgerJson.path("payload"), "entries");
+    assertTrue(
+        entriesSection
+            .path("rows")
             .get(0)
-            .path("reversalState")
-            .stringValue());
-    assertFalse(
-        directAccountLedgerJson.path("payload").path("entries").get(0).has("reversalTarget"));
+            .path("cells")
+            .get(1)
+            .stringValue()
+            .contains("Direct posting"));
+    assertFalse(directAccountLedgerJson.toString().contains("reversalTarget"));
   }
 
   @Test
@@ -634,7 +629,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals("ok", financialPositionJson.path("status").stringValue());
     assertEquals(
         "2026-04-30",
-        financialPositionJson.path("payload").path("effectiveDateAsOf").stringValue());
+        financialPositionJson.path("payload").path("context").path("asOf").stringValue());
     assertEquals(
         "1000",
         financialPositionJson
@@ -643,7 +638,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .get(0)
             .path("rows")
             .get(0)
-            .path("lineCode")
+            .path("cells")
+            .get(0)
             .stringValue());
 
     ByteArrayOutputStream financialPositionTextOutput = new ByteArrayOutputStream();
@@ -664,8 +660,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(
         financialPositionCsvOutput
             .toString(StandardCharsets.UTF_8)
-            .startsWith(
-                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateAsOf,accountType,lineCode,lineName,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+            .startsWith("exportFamily,rowId,parentRowId,relationKind"));
 
     ByteArrayOutputStream incomeStatementJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(incomeStatementJsonOutput))
@@ -675,7 +670,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     JsonNode incomeStatementJson = readJson(incomeStatementJsonOutput);
     assertEquals("ok", incomeStatementJson.path("status").stringValue());
     assertEquals(
-        "2026-04-01", incomeStatementJson.path("payload").path("effectiveDateFrom").stringValue());
+        "2026-04-01",
+        incomeStatementJson.path("payload").path("context").path("periodStart").stringValue());
     assertEquals(
         "2000",
         incomeStatementJson
@@ -684,7 +680,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .get(0)
             .path("rows")
             .get(0)
-            .path("lineCode")
+            .path("cells")
+            .get(0)
             .stringValue());
 
     ByteArrayOutputStream incomeStatementTextOutput = new ByteArrayOutputStream();
@@ -703,8 +700,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(
         incomeStatementCsvOutput
             .toString(StandardCharsets.UTF_8)
-            .startsWith(
-                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,accountType,lineCode,lineName,lineType,lineClassification,lineKind,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message"));
+            .startsWith("exportFamily,rowId,parentRowId,relationKind"));
 
     ByteArrayOutputStream changesInEquityJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityJsonOutput))
@@ -714,10 +710,19 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     JsonNode changesInEquityJson = readJson(changesInEquityJsonOutput);
     assertEquals("ok", changesInEquityJson.path("status").stringValue());
     assertEquals(
-        "2026-04-30", changesInEquityJson.path("payload").path("effectiveDateTo").stringValue());
+        "2026-04-30",
+        changesInEquityJson.path("payload").path("context").path("periodEnd").stringValue());
     assertEquals(
         "3200",
-        changesInEquityJson.path("payload").path("rows").get(0).path("lineCode").stringValue());
+        changesInEquityJson
+            .path("payload")
+            .path("sections")
+            .get(0)
+            .path("rows")
+            .get(0)
+            .path("cells")
+            .get(0)
+            .stringValue());
 
     ByteArrayOutputStream changesInEquityTextOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(changesInEquityTextOutput))
@@ -735,8 +740,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(
         changesInEquityCsvOutput
             .toString(StandardCharsets.UTF_8)
-            .startsWith(
-                "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,lineCode,lineName,lineClassification,lineKind,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,movementDebitTotal,movementCreditTotal,movementNetAmount,movementBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,message"));
+            .startsWith("exportFamily,rowId,parentRowId,relationKind"));
   }
 
   private static TrialBalanceReport sampleTrialBalanceReport() {
@@ -749,6 +753,15 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 declaredCashAccount(),
                 currencyBalance("EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT))),
         List.of());
+  }
+
+  private static JsonNode reportSection(JsonNode payload, String key) {
+    for (JsonNode section : payload.path("sections")) {
+      if (key.equals(section.path("key").stringValue())) {
+        return section;
+      }
+    }
+    throw new AssertionError("Expected report section " + key + " in payload: " + payload);
   }
 
   private static AccountLedgerReport sampleAccountLedgerReport() {
@@ -804,7 +817,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                     List.of())),
             OutputMode.TEXT);
     String output = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(output.contains("Net income totals"));
+    assertTrue(output.contains("Net Income Totals"));
     assertTrue(output.contains("Zero across all currencies."));
   }
 
@@ -851,7 +864,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertFalse(payload.path("migrationPolicy").path("inPlaceUpgradeSupported").asBoolean());
     assertEquals("2026-04-07T10:15:30Z", payload.path("initializedAt").stringValue());
     assertEquals("Acme Studio", payload.path("bookIdentity").path("entityName").stringValue());
-    assertEquals("CASH_BASIS", payload.path("bookIdentity").path("accountingBasis").stringValue());
+    assertEquals("CASH", payload.path("bookIdentity").path("accountingBasis").stringValue());
     assertEquals("EUR", payload.path("bookIdentity").path("functionalCurrency").stringValue());
     assertEquals("01-01", payload.path("bookIdentity").path("fiscalYearStart").stringValue());
   }

@@ -18,10 +18,13 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.tax.TaxObligationQuery;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
 
 /** Report-focused workflow double that only serves query/report projections. */
 class CliReportingWorkflow extends CliBookWorkflowAdapter {
   private final AccountBalanceResult accountBalanceResult;
+  private final TaxObligationResult taxObligationResult;
   private final TrialBalanceResult trialBalanceResult;
   private final AccountLedgerResult accountLedgerResult;
   private final PeriodSummaryResult periodSummaryResult;
@@ -32,6 +35,7 @@ class CliReportingWorkflow extends CliBookWorkflowAdapter {
 
   CliReportingWorkflow(
       AccountBalanceResult accountBalanceResult,
+      TaxObligationResult taxObligationResult,
       TrialBalanceResult trialBalanceResult,
       AccountLedgerResult accountLedgerResult,
       PeriodSummaryResult periodSummaryResult,
@@ -40,6 +44,7 @@ class CliReportingWorkflow extends CliBookWorkflowAdapter {
       CashFlowStatementResult cashFlowStatementResult,
       ChangesInEquityResult changesInEquityResult) {
     this.accountBalanceResult = accountBalanceResult;
+    this.taxObligationResult = taxObligationResult;
     this.trialBalanceResult = trialBalanceResult;
     this.accountLedgerResult = accountLedgerResult;
     this.periodSummaryResult = periodSummaryResult;
@@ -53,6 +58,12 @@ class CliReportingWorkflow extends CliBookWorkflowAdapter {
   public ContractDecision<AccountBalanceResult> accountBalance(
       BookAccess bookAccess, AccountBalanceQuery query) {
     return CliWorkflowDoubleSupport.accepted(accountBalanceResult);
+  }
+
+  @Override
+  public ContractDecision<TaxObligationResult> taxObligation(
+      BookAccess bookAccess, TaxObligationQuery query) {
+    return CliWorkflowDoubleSupport.accepted(taxObligationResult);
   }
 
   @Override

@@ -192,13 +192,23 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 "--request-file",
                 requestFile.toString())));
     assertJsonContains(preflightOutput, "\"status\":\"ok\"");
+    JsonNode preflightEnvelope =
+        new ObjectMapper().readTree(preflightOutput.toString(StandardCharsets.UTF_8));
+    assertEquals(
+        "SETTLED_SALE",
+        preflightEnvelope
+            .path("payload")
+            .path("resolvedJournal")
+            .path("classification")
+            .path("eventClass")
+            .stringValue());
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock());
     assertEquals(
         0,
         cli.run(
             jsonArguments(
-                "record-sale",
+                "record-sale-settled",
                 "--book-file",
                 bookFilePath.toString(),
                 "--book-key-file",
@@ -207,6 +217,14 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 requestFile.toString())));
     JsonNode envelope = new ObjectMapper().readTree(commitOutput.toString(StandardCharsets.UTF_8));
     assertEquals("ok", envelope.path("status").stringValue());
+    assertEquals(
+        "SETTLED_SALE",
+        envelope
+            .path("payload")
+            .path("resolvedJournal")
+            .path("classification")
+            .path("eventClass")
+            .stringValue());
     UUID postingId = UUID.fromString(envelope.path("payload").path("postingId").stringValue());
     assertEquals(7, postingId.version());
     assertEquals(2, postingId.variant());
@@ -258,7 +276,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         1,
         commitCli.run(
             jsonArguments(
-                "record-sale",
+                "record-sale-settled",
                 "--book-file",
                 bookFilePath.toString(),
                 "--book-key-file",
@@ -337,9 +355,9 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               bookFilePath.toString(),
               "--book-key-file",
               bookKeyFilePath.toString(),
-              "--backup-book-file-out",
+              "--backup-file",
               backupFilePath.toString(),
-              "--backup-book-key-file-out",
+              "--backup-key-file",
               backupKeyFilePath.toString()
             }));
 
@@ -358,12 +376,159 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 bookFilePath.toString(),
                 "--book-key-file",
                 bookKeyFilePath.toString(),
-                "--backup-book-file-out",
+                "--backup-file",
                 backupFilePath.toString(),
-                "--backup-book-key-file-out",
+                "--backup-key-file",
                 secondBackupKeyFilePath.toString())));
     JsonNode failureEnvelope = new ObjectMapper().readTree(secondBackupOutput.toByteArray());
     assertEquals("rejected", failureEnvelope.path("status").stringValue());
     assertEquals("backup-destination-already-exists", failureEnvelope.path("code").stringValue());
+  }
+
+  @Test
+  void run_backupRestoreAndTrialBalanceThroughDefaultSqliteWorkflowPreservesReadableFacts()
+      throws IOException {
+    Path requestFile = writeRequest(validRequestJson());
+    Path declareCashFile =
+        writeNamedRequest("restore-declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
+    Path declareRevenueFile =
+        writeNamedRequest(
+            "restore-declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
+    Path bookFilePath = tempDirectory.resolve("restore-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path backupFilePath = tempDirectory.resolve("restore-books").resolve("entity-backup.sqlite");
+    Path backupKeyFilePath = tempDirectory.resolve("restore-books").resolve("entity-backup.key");
+    Path restoredBookFilePath =
+        tempDirectory.resolve("restore-books").resolve("entity-restored.sqlite");
+    Path restoredBookKeyFilePath =
+        tempDirectory.resolve("restore-books").resolve("entity-restored.key");
+
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                new String[] {
+                  "declare-account",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  declareCashFile.toString()
+                }));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                new String[] {
+                  "declare-account",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  declareRevenueFile.toString()
+                }));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                jsonArguments(
+                    "record-sale-settled",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    requestFile.toString())));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                jsonArguments(
+                    "backup-book",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--backup-file",
+                    backupFilePath.toString(),
+                    "--backup-key-file",
+                    backupKeyFilePath.toString())));
+    ByteArrayOutputStream restoreOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(restoreOutput), fixedClock())
+            .run(
+                jsonArguments(
+                    "restore-book",
+                    "--book-file",
+                    restoredBookFilePath.toString(),
+                    "--book-key-file",
+                    restoredBookKeyFilePath.toString(),
+                    "--backup-file",
+                    backupFilePath.toString(),
+                    "--backup-key-file",
+                    backupKeyFilePath.toString())));
+    JsonNode restoreEnvelope = new ObjectMapper().readTree(restoreOutput.toByteArray());
+    assertEquals("ok", restoreEnvelope.path("status").stringValue());
+    assertEquals(
+        CliPublicPaths.redactedValue(restoredBookFilePath),
+        restoreEnvelope.path("payload").path("bookFile").stringValue());
+    assertEquals(
+        CliPublicPaths.redactedValue(restoredBookKeyFilePath),
+        restoreEnvelope.path("payload").path("bookKeyFilePath").stringValue());
+
+    ByteArrayOutputStream trialBalanceOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(trialBalanceOutput),
+                fixedClock())
+            .run(
+                jsonArguments(
+                    "trial-balance",
+                    "--book-file",
+                    restoredBookFilePath.toString(),
+                    "--book-key-file",
+                    restoredBookKeyFilePath.toString())));
+    assertJsonContains(trialBalanceOutput, "\"status\":\"ok\"");
+    assertJsonContains(trialBalanceOutput, "\"family\":\"trial-balance\"");
+
+    ByteArrayOutputStream wrongKeyOutput = new ByteArrayOutputStream();
+    assertEquals(
+        6,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(wrongKeyOutput), fixedClock())
+            .run(
+                jsonArguments(
+                    "trial-balance",
+                    "--book-file",
+                    restoredBookFilePath.toString(),
+                    "--book-key-file",
+                    backupKeyFilePath.toString())));
+    JsonNode wrongKeyEnvelope = new ObjectMapper().readTree(wrongKeyOutput.toByteArray());
+    assertEquals(
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
+        wrongKeyEnvelope.path("code").stringValue());
   }
 }

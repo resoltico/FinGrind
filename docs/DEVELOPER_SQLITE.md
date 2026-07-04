@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -44,7 +44,7 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `33`, owned by `BookFormatContract`
+- the current supported book format is `37`, owned by `BookFormatContract`
 - accepted posting facts persist first-class accounting evidence through
   `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
@@ -52,8 +52,9 @@ That means:
 - FinGrind is in an alpha hard-break line, so schema evolution replaces the current model
   directly and older formats are rejected instead of being migrated in place
 - `backup-book` exports one verified encrypted backup pair; `restore-book` verifies that backup
-  pair before replacing the live book path and the restored live book then reuses that backup key
-  file; `inspect-rekey-rollback` reports stale same-directory rollback artifacts;
+  pair before replacing the live book path, re-encrypts the restored live book under the selected
+  destination `--book-key-file`, and requires that destination key to reopen the restored live
+  book; `inspect-rekey-rollback` reports stale same-directory rollback artifacts;
   `restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact; and
   `delete-rekey-rollback` removes one stale rollback artifact without touching the live book path
   after verifying one initialized live book and recording one encrypted in-book maintenance audit
@@ -359,8 +360,9 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - crash-interrupted rekeys can leave that rollback artifact on disk; later opens warn about the
   stale encrypted copy so operators can decide whether to recover or delete it
 - `backup-book` is the supported operator export path for a closed book and emits one verified
-  encrypted backup pair; `restore-book` verifies that pair before replacing the live book path and
-  the restored live book then reuses the supplied backup key file
+  encrypted backup pair; `restore-book` verifies that pair before replacing the live book path,
+  re-encrypts the restored live book under the selected destination `--book-key-file`, and no
+  longer leaves the restored live book on the backup key
 - same-book multi-session access is allowed, but one writer holding `begin immediate` will block
   another writer until SQLite's busy timeout expires and the second writer fails with one busy or
   locked result instead of silently interleaving journal mutations

@@ -42,7 +42,9 @@ EOF
 
 json_fixture() {
     local fixture_root=$1
-    mkdir -p "${fixture_root}/contract/src/main/resources/dev/erst/fingrind/contract/protocol"
+    mkdir -p \
+        "${fixture_root}/contract/src/main/resources/dev/erst/fingrind/contract/protocol" \
+        "${fixture_root}/docs/examples"
     cat > "${fixture_root}/contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-surface-contract.json" <<'EOF'
 {
   "contractVersion": "1",
@@ -52,6 +54,15 @@ json_fixture() {
   }
 }
 EOF
+    cp \
+        "${structural_governance_common_repo_root}/docs/examples/account-ledger-response.json" \
+        "${fixture_root}/docs/examples/account-ledger-response.json"
+    cp \
+        "${structural_governance_common_repo_root}/docs/examples/period-summary-response.json" \
+        "${fixture_root}/docs/examples/period-summary-response.json"
+    cp \
+        "${structural_governance_common_repo_root}/docs/examples/trial-balance-response.json" \
+        "${fixture_root}/docs/examples/trial-balance-response.json"
 }
 
 sql_fixture() {

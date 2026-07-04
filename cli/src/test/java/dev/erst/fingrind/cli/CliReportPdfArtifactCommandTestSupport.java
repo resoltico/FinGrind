@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -60,6 +61,17 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
 
   protected static List<ReportCommandSpec> pdfCapableReportCommandSpecs() {
     return List.of(
+        new ReportCommandSpec(
+            "tax-obligation",
+            List.of(
+                "--tax-registration-id",
+                "vat-lv",
+                "--period-start",
+                "2026-04-01",
+                "--period-end",
+                "2026-04-30"),
+            successfulTaxObligationWorkflow(),
+            rejectedTaxObligationWorkflow()),
         new ReportCommandSpec(
             "account-balance",
             List.of("--account-code", "1000"),
@@ -111,6 +123,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow successfulAccountBalanceWorkflow() {
     return reportingWorkflow(
         new AccountBalanceResult.Reported(sampleAccountBalanceSnapshot()),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -122,6 +135,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow rejectedAccountBalanceWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -133,6 +147,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow successfulTrialBalanceWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         new TrialBalanceResult.Reported(sampleTrialBalanceReport()),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -144,6 +159,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow rejectedTrialBalanceWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -155,6 +171,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow successfulAccountLedgerWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         new AccountLedgerResult.Reported(sampleAccountLedgerReport()),
         rejectedPeriodSummaryResult(),
@@ -166,6 +183,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow rejectedAccountLedgerWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -177,6 +195,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow successfulPeriodSummaryWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         new PeriodSummaryResult.Reported(samplePeriodSummaryReport()),
@@ -188,6 +207,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow rejectedPeriodSummaryWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -199,6 +219,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow successfulFinancialPositionWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -210,6 +231,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow rejectedFinancialPositionWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -221,6 +243,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow successfulIncomeStatementWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -232,6 +255,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow rejectedIncomeStatementWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -243,6 +267,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow successfulCashFlowStatementWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -255,6 +280,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow rejectedCashFlowStatementWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -267,6 +293,7 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow successfulChangesInEquityWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),
@@ -278,6 +305,31 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   private static CliBookWorkflow rejectedChangesInEquityWorkflow() {
     return reportingWorkflow(
         rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
+        rejectedTrialBalanceResult(),
+        rejectedAccountLedgerResult(),
+        rejectedPeriodSummaryResult(),
+        rejectedFinancialPositionResult(),
+        rejectedIncomeStatementResult(),
+        rejectedChangesInEquityResult());
+  }
+
+  private static CliBookWorkflow successfulTaxObligationWorkflow() {
+    return reportingWorkflow(
+        rejectedAccountBalanceResult(),
+        new TaxObligationResult.Reported(ReportCrossFormatTaxFixture.sampleTaxObligationReport()),
+        rejectedTrialBalanceResult(),
+        rejectedAccountLedgerResult(),
+        rejectedPeriodSummaryResult(),
+        rejectedFinancialPositionResult(),
+        rejectedIncomeStatementResult(),
+        rejectedChangesInEquityResult());
+  }
+
+  private static CliBookWorkflow rejectedTaxObligationWorkflow() {
+    return reportingWorkflow(
+        rejectedAccountBalanceResult(),
+        rejectedTaxObligationResult(),
         rejectedTrialBalanceResult(),
         rejectedAccountLedgerResult(),
         rejectedPeriodSummaryResult(),

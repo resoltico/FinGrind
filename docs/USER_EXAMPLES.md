@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: USER_EXAMPLES
-updated: "2026-06-29"
+updated: "2026-07-04"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -47,6 +47,8 @@ fingrind \
   open-book \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
+  --book-template-id OWNER_MANAGED_SERVICE \
+  --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   \
@@ -91,6 +93,8 @@ cat ./secrets/acme.book-key | \
     open-book \
     --book-file ./books/acme.sqlite \
     --entity-name "Acme Studio" \
+    --book-template-id OWNER_MANAGED_SERVICE \
+    --accounting-basis CASH \
     --functional-currency EUR \
     --fiscal-year-start 01-01 \
     \
@@ -100,7 +104,7 @@ cat ./secrets/acme.book-key | \
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --functional-currency EUR --fiscal-year-start 01-01 --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -110,6 +114,8 @@ fingrind \
   open-book \
   --book-file ./books/acme.sqlite \
   --entity-name "Acme Studio" \
+  --book-template-id OWNER_MANAGED_SERVICE \
+  --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   \
@@ -119,11 +125,13 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-bookkeeping-kernel","accountingBasis":"CASH_BASIS","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
+{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-bookkeeping-kernel","accountingBasis":"CASH","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
 ```
 
-That initialized book starts from the seeded owner-managed service starter chart. Review it with
-`list-accounts` before you declare any supplemental accounts.
+That initialized book starts from the explicitly selected owner-managed service seed template with
+an explicit cash basis. Use `--accounting-basis ACCRUAL` when you want the accrual
+owner-managed service chart instead. Review the seeded accounts with `list-accounts` before you
+declare any supplemental accounts.
 
 ## Inspect Compatibility Before Mutating
 
@@ -192,8 +200,8 @@ fingrind \
   backup-book \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --backup-book-file-out ./backup/books/acme.sqlite \
-  --backup-book-key-file-out ./backup/secrets/acme.book-key
+  --backup-file ./backup/books/acme.sqlite \
+  --backup-key-file ./backup/secrets/acme.book-key
 ```
 
 That command refuses to run when the live book has blocking SQLite sidecars or stale rollback
@@ -208,15 +216,16 @@ To restore, verify the backup pair and replace the live book path in one step:
 fingrind \
   restore-book \
   --book-file ./books/acme.sqlite \
-  --backup-book-file ./backup/books/acme.sqlite \
-  --backup-book-key-file ./backup/secrets/acme.book-key
+  --book-key-file ./secrets/acme-restored.book-key \
+  --backup-file ./backup/books/acme.sqlite \
+  --backup-key-file ./backup/secrets/acme.book-key
 ```
 
-After restore completes, reopen `./books/acme.sqlite` with that same backup key file because the
-restored encrypted book keeps the backup pair's secret.
-If the selected live-book parent directory does not exist yet, FinGrind creates it with
-owner-only protection before publishing the restored book. If it already exists, keep it
-owner-only before you reuse that restore target.
+After restore completes, reopen `./books/acme.sqlite` with `./secrets/acme-restored.book-key`
+because the restored encrypted book is re-encrypted under that destination secret.
+If the selected live-book or live-key parent directory does not exist yet, FinGrind creates it
+with owner-only protection before publishing the restored pair. If either directory already
+exists, keep it owner-only before you reuse that restore target.
 
 ## Inspect Or Repair One Interrupted Rekey
 
@@ -256,7 +265,7 @@ Create these local files first:
 - `./declare-account-supplemental-misc-revenue.json`: copy
   [examples/declare-account-supplemental-misc-revenue.json](./examples/declare-account-supplemental-misc-revenue.json)
 
-The starter chart already includes `cash` and `service-revenue`. These checked-in declaration
+The seed template already includes `cash` and `service-revenue`. These checked-in declaration
 examples show how to add supplemental accounts on top of that seeded chart, for example
 `cash-reserve` and `misc-revenue`.
 
@@ -306,8 +315,15 @@ fingrind \
 That generated scaffold uses the same canonical content as the checked-in
 [examples/request-template.json](./examples/request-template.json) companion example. Both
 intentionally publish one placeholder-first sample document and default to one minimal
-`"entryKind": "SALE"` posting with `cashAccountCode`, `revenueAccountCode`, and `amount` over the
+`"entryKind": "SALE_SETTLED"` posting with `cashAccountCode`, `revenueAccountCode`, and `amount` over the
 seeded starter accounts.
+When the selected book uses `OWNER_MANAGED_TRADING`, fill the same sale request with
+`inventoryRelief.inventoryAccountCode`, `inventoryRelief.costOfSalesAccountCode`, and
+`inventoryRelief.amount` so the typed sale records revenue plus inventory relief together.
+Trading books can likewise stay on the typed inventory-acquisition path through
+`print-request-template record-purchase-settled` and
+`print-request-template record-purchase-on-credit`, which default to one inventory purchase shape
+instead of a raw adjustment journal.
 The scaffold is request-first rather than demo-runnable: `actorType` defaults to `PERSON`,
 `evidence.approvals` starts as an empty array that callers may populate when one posting requires
 explicit approval references, and every `replace-before-commit-*` evidence or provenance token must be
@@ -328,7 +344,7 @@ fingrind \
   --request-file ./basic-posting-request.json
 
 fingrind \
-  record-sale \
+  record-sale-settled \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json
@@ -337,17 +353,17 @@ fingrind \
 One successful preflight response:
 
 ```json
-{"status":"ok","payload":{"idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08"}}
+{"status":"ok","payload":{"idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-07","resolvedJournal":{"expandedLines":{"effectiveDate":"2026-04-07","lines":[{"accountCode":"cash","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}},{"accountCode":"service-revenue","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}}]},"classification":{"eventClass":"SETTLED_SALE","anchorSignature":[{"accountRole":"CASH","side":"DEBIT"},{"accountRole":"REVENUE","side":"CREDIT"}],"containedTypedEvents":["SETTLED_SALE"],"hasCashLine":true,"evidenceClass":"CASH_SETTLEMENT","structural":{"adoptionOpeningEntry":false}}}}}
 ```
 
 That response is advisory, not a durable commit guarantee. The matching commit command such as
-`record-sale` re-runs its authoritative commit-time checks inside the write transaction. Raw
+`record-sale-settled` re-runs its authoritative commit-time checks inside the write transaction. Raw
 `post-entry` does the same when the submitted request itself is a direct journal.
 
 One successful commit response:
 
 ```json
-{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}
+{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-07","recordedAt":"2026-04-07T12:00:00Z","idempotentReplay":false,"resolvedJournal":{"expandedLines":{"effectiveDate":"2026-04-07","lines":[{"accountCode":"cash","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}},{"accountCode":"service-revenue","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}}]},"classification":{"eventClass":"SETTLED_SALE","anchorSignature":[{"accountRole":"CASH","side":"DEBIT"},{"accountRole":"REVENUE","side":"CREDIT"}],"containedTypedEvents":["SETTLED_SALE"],"hasCashLine":true,"evidenceClass":"CASH_SETTLEMENT","structural":{"adoptionOpeningEntry":false}}}}}
 ```
 
 `payload.postingId` is generated by FinGrind as a UUID v7 value.
@@ -368,7 +384,7 @@ fingrind \
 
 Like `print-request-template`, this scaffold uses the same canonical content as the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) companion example.
-Its nested posting scaffold defaults to one minimal `"entryKind": "SALE"` posting with
+Its nested posting scaffold defaults to one minimal `"entryKind": "SALE_SETTLED"` posting with
 `cashAccountCode`, `revenueAccountCode`, and `amount`, and the emitted workflow uses the same placeholder evidence and provenance
 tokens as the request template. Replace those placeholder values before real-world use.
 
@@ -471,7 +487,7 @@ fingrind \
   trial-balance \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --effective-date-as-of 2026-04-08 \
+  --effective-date-as-of 2026-04-07 \
   --output text
 
 fingrind \
@@ -480,7 +496,7 @@ fingrind \
   --book-key-file ./secrets/acme.book-key \
   --account-code cash \
   --effective-date-from 2026-04-07 \
-  --effective-date-to 2026-04-08 \
+  --effective-date-to 2026-04-07 \
   --output csv
 
 fingrind \
@@ -488,7 +504,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --period-start 2026-04-07 \
-  --period-end 2026-04-08 \
+  --period-end 2026-04-07 \
   --output text
 
 fingrind \
@@ -496,7 +512,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --period-start 2026-04-07 \
-  --period-end 2026-04-08 \
+  --period-end 2026-04-07 \
   --comparative prior-period \
   --output text
 
@@ -504,7 +520,7 @@ fingrind \
   trial-balance \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --effective-date-as-of 2026-04-08 \
+  --effective-date-as-of 2026-04-07 \
   --comparative prior-period \
   --output text \
   --pdf-out ./acme-trial-balance.pdf
@@ -596,7 +612,7 @@ paragraph.
 
 ```bash
 fingrind \
-  record-sale \
+  record-sale-settled \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json
@@ -605,7 +621,7 @@ fingrind \
 One repeat commit response for the exact same normalized request:
 
 ```json
-{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z","idempotentReplay":true}}
+{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-07","recordedAt":"2026-04-07T12:00:00Z","idempotentReplay":true,"resolvedJournal":{"expandedLines":{"effectiveDate":"2026-04-07","lines":[{"accountCode":"cash","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}},{"accountCode":"service-revenue","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}}]},"classification":{"eventClass":"SETTLED_SALE","anchorSignature":[{"accountRole":"CASH","side":"DEBIT"},{"accountRole":"REVENUE","side":"CREDIT"}],"containedTypedEvents":["SETTLED_SALE"],"hasCashLine":true,"evidenceClass":"CASH_SETTLEMENT","structural":{"adoptionOpeningEntry":false}}}}}
 ```
 
 If the same `idempotencyKey` is reused with a different normalized request, the book still
@@ -712,6 +728,8 @@ fingrind \
   open-book \
   --book-file ./prompt.sqlite \
   --entity-name "Acme Studio" \
+  --book-template-id OWNER_MANAGED_SERVICE \
+  --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
   \
@@ -721,4 +739,4 @@ fingrind \
 When no supported controlling terminal is available, FinGrind returns the deterministic
 `interactive-prompt-unavailable` error with a repair hint pointing to `--book-key-file` or
 `--book-passphrase-stdin` and exits with code `5`. One example is checked in at
-[examples/interactive-prompt-unavailable-error.json](./examples/interactive-prompt-unavailable-error.json).
+[examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt).

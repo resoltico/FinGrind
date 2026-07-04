@@ -48,6 +48,13 @@ public final class BookkeepingAdministrationRejectionPublishedMapper {
           conflict.requiredEffectiveDateTo());
     }
     if (rejection
+        instanceof
+        BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
+            conflict) {
+      return new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+          conflict.attemptedEffectiveDateTo(), conflict.transferredThroughEffectiveDate());
+    }
+    if (rejection
         instanceof BookkeepingAdministrationRejection.FiscalYearCloseFutureDate conflict) {
       return new BookAdministrationRejection.FiscalYearCloseFutureDate(
           conflict.attemptedEffectiveDateTo());
@@ -94,8 +101,8 @@ public final class BookkeepingAdministrationRejectionPublishedMapper {
       case BookkeepingAdministrationRejection.AccountHierarchyCycle conflict ->
           new BookAdministrationRejection.AccountHierarchyCycle(
               conflict.accountCode(), conflict.parentAccountCode());
-      case BookkeepingAdministrationRejection.CloseTargetAccountCandidateMissing conflict ->
-          new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+      case CloseTargetAccountCandidateMissing conflict ->
+          new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing(
               conflict.requiredFinancialPositionLineClassification(),
               conflict.inactiveCandidateAccountCodes());
       case CloseTargetAccountCandidateAmbiguous conflict ->

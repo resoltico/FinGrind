@@ -21,17 +21,11 @@ public final class ProtocolOptions {
   /** Option selecting one new book key file during rekey. */
   public static final String NEW_BOOK_KEY_FILE = "--new-book-key-file";
 
-  /** Option selecting one encrypted backup-book file for backup and restore workflows. */
-  public static final String BACKUP_BOOK_FILE = "--backup-book-file";
+  /** Option selecting one backup-book file source or destination, depending on the workflow. */
+  public static final String BACKUP_FILE = "--backup-file";
 
-  /** Option selecting one existing backup key file for restore workflows. */
-  public static final String BACKUP_BOOK_KEY_FILE = "--backup-book-key-file";
-
-  /** Option selecting one new backup-book file destination for backup workflows. */
-  public static final String BACKUP_BOOK_FILE_OUT = "--backup-book-file-out";
-
-  /** Option selecting one new backup key file destination for backup workflows. */
-  public static final String BACKUP_BOOK_KEY_FILE_OUT = "--backup-book-key-file-out";
+  /** Option selecting one backup-key-file source or destination, depending on the workflow. */
+  public static final String BACKUP_KEY_FILE = "--backup-key-file";
 
   /** Option selecting one explicit stale rollback-book artifact for rekey recovery. */
   public static final String ROLLBACK_BOOK_FILE = "--rollback-book-file";
@@ -66,6 +60,12 @@ public final class ProtocolOptions {
   /** Option selecting the inclusive period-end bound for period-shaped commands. */
   public static final String PERIOD_END = "--period-end";
 
+  /** Option selecting the fiscal year label used by fiscal-year-close. */
+  public static final String YEAR = "--year";
+
+  /** Option selecting the inclusive transferred-through date used by interim-result-sweep. */
+  public static final String THROUGH = "--through";
+
   /** Option selecting one as-of effective date for as-of report commands. */
   public static final String EFFECTIVE_DATE_AS_OF = "--effective-date-as-of";
 
@@ -74,6 +74,18 @@ public final class ProtocolOptions {
 
   /** Option selecting the accounting-entity name used when initializing one new book. */
   public static final String ENTITY_NAME = "--entity-name";
+
+  /** Option selecting the seed-template doctrine used when initializing one new book. */
+  public static final String BOOK_TEMPLATE_ID = "--book-template-id";
+
+  /** Option selecting the accounting basis used when initializing one new book. */
+  public static final String ACCOUNTING_BASIS = "--accounting-basis";
+
+  /** Option restoring the interactive context footer on supported text read commands. */
+  public static final String WITH_CONTEXT = "--with-context";
+
+  /** Option explicitly tightening one existing named parent directory to owner-only access. */
+  public static final String TIGHTEN_PARENTS = "--tighten-parents";
 
   /** Option selecting the functional currency code used when initializing one new book. */
   public static final String FUNCTIONAL_CURRENCY = "--functional-currency";

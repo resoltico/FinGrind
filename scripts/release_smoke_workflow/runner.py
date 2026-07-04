@@ -47,7 +47,7 @@ def run_release_smoke(config: ReleaseSmokeConfig) -> None:
     verify_preflight_and_commit(config, operation_ids)
     verify_operator_queries_and_reports(config, operation_ids)
     verify_raw_journal_commit_and_readback(config, operation_ids)
-    verify_backup_restore_and_rollback_surfaces(config, operation_ids)
+    verify_backup_restore_and_rollback_surfaces(config, operation_ids, error_exit_codes)
     verify_rekey_and_wrong_key_semantics(config, operation_ids, error_exit_codes)
     verify_deterministic_nonsense_workflows(config, operation_ids, error_exit_codes)
     print(f"{config.label}: success")

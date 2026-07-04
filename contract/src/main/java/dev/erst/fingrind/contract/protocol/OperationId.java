@@ -1,6 +1,9 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.core.EconomicEventClass;
 import dev.erst.fingrind.core.WireValue;
+import java.util.Map;
+import java.util.Objects;
 
 /** Canonical FinGrind operation identifiers exposed on the public machine contract. */
 public enum OperationId implements WireValue {
@@ -72,10 +75,22 @@ public enum OperationId implements WireValue {
   EXECUTE_PLAN,
   /** Validates one posting request without committing it. */
   PREFLIGHT_ENTRY,
-  /** Commits one sale entry using the sale-first request language. */
-  RECORD_SALE,
-  /** Commits one expense entry using the expense-first request language. */
-  RECORD_EXPENSE,
+  /** Commits one settled sale entry using the sale-first request language. */
+  RECORD_SALE_SETTLED,
+  /** Commits one sale-on-credit entry using the sale-first request language. */
+  RECORD_SALE_ON_CREDIT,
+  /** Commits one settled purchase entry using the purchase-first request language. */
+  RECORD_PURCHASE_SETTLED,
+  /** Commits one purchase-on-credit entry using the purchase-first request language. */
+  RECORD_PURCHASE_ON_CREDIT,
+  /** Commits one settled expense entry using the expense-first request language. */
+  RECORD_EXPENSE_SETTLED,
+  /** Commits one expense-on-credit entry using the expense-first request language. */
+  RECORD_EXPENSE_ON_CREDIT,
+  /** Commits one trade-receivable settlement entry. */
+  RECORD_RECEIPT,
+  /** Commits one trade-payable settlement entry. */
+  RECORD_PAYMENT,
   /** Commits one owner-contribution entry using the contribution-first request language. */
   RECORD_OWNER_CONTRIBUTION,
   /** Commits one owner-withdrawal entry using the withdrawal-first request language. */
@@ -87,9 +102,36 @@ public enum OperationId implements WireValue {
   /** Commits one posting request. */
   POST_ENTRY;
 
+  private static final Map<EconomicEventClass, OperationId> ECONOMIC_EVENT_CLASS_OPERATIONS =
+      Map.ofEntries(
+          Map.entry(EconomicEventClass.SETTLED_SALE, RECORD_SALE_SETTLED),
+          Map.entry(EconomicEventClass.CREDIT_SALE, RECORD_SALE_ON_CREDIT),
+          Map.entry(EconomicEventClass.SETTLED_PURCHASE, RECORD_PURCHASE_SETTLED),
+          Map.entry(EconomicEventClass.CREDIT_PURCHASE, RECORD_PURCHASE_ON_CREDIT),
+          Map.entry(EconomicEventClass.SETTLED_EXPENSE, RECORD_EXPENSE_SETTLED),
+          Map.entry(EconomicEventClass.CREDIT_EXPENSE, RECORD_EXPENSE_ON_CREDIT),
+          Map.entry(EconomicEventClass.AR_SETTLEMENT, RECORD_RECEIPT),
+          Map.entry(EconomicEventClass.AP_SETTLEMENT, RECORD_PAYMENT),
+          Map.entry(EconomicEventClass.OWNER_CONTRIBUTION, RECORD_OWNER_CONTRIBUTION),
+          Map.entry(EconomicEventClass.OWNER_WITHDRAWAL, RECORD_OWNER_WITHDRAWAL),
+          Map.entry(EconomicEventClass.OPENING, RECORD_OPENING_POSITION),
+          Map.entry(EconomicEventClass.REVERSAL, RECORD_REVERSAL));
+
   /** Returns the stable CLI and wire identifier for this operation. */
   public String wireName() {
     return OperationIdContract.current().wireName(name());
+  }
+
+  /** Returns the canonical typed write operation for one singleton economic event class. */
+  public static OperationId forEconomicEventClass(EconomicEventClass eventClass) {
+    EconomicEventClass requiredEventClass = Objects.requireNonNull(eventClass, "eventClass");
+    OperationId operationId = ECONOMIC_EVENT_CLASS_OPERATIONS.get(requiredEventClass);
+    if (operationId != null) {
+      return operationId;
+    }
+    throw new IllegalArgumentException(
+        "No typed write operation exists for economicEventClass '%s'."
+            .formatted(requiredEventClass.wireValue()));
   }
 
   /** Returns the stable public wire value for this operation. */

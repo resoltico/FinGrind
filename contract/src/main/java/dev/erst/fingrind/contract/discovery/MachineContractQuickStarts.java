@@ -25,7 +25,7 @@ final class MachineContractQuickStarts {
     };
   }
 
-  private static WorkflowDescriptor workflow(WorkflowSurface surface) {
+  static WorkflowDescriptor workflow(WorkflowSurface surface) {
     QuickStartPaths paths = quickStartPaths(surface);
     return new WorkflowDescriptor(
         surface,
@@ -38,7 +38,7 @@ final class MachineContractQuickStarts {
                         ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE),
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --functional-currency EUR --fiscal-year-start 01-01"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
@@ -67,7 +67,7 @@ final class MachineContractQuickStarts {
                 "%s %s --book-file %s --book-key-file %s --request-file %s"
                     .formatted(
                         launcherCommand(surface),
-                        ProtocolCatalog.operationName(OperationId.RECORD_SALE),
+                        ProtocolCatalog.operationName(OperationId.RECORD_SALE_SETTLED),
                         paths.bookFile(),
                         paths.bookKeyFile(),
                         paths.requestFile())),
@@ -82,6 +82,7 @@ final class MachineContractQuickStarts {
 
   private static String introNote(WorkflowSurface surface) {
     return switch (surface) {
+      case PATH_POSIX_SHELL -> "Run commands from a POSIX shell where fingrind is already on PATH.";
       case BUNDLE_POSIX_SHELL ->
           "Run commands from the extracted bundle root so the canonical launcher path resolves directly.";
       case SOURCE_CHECKOUT_POSIX_SHELL ->
@@ -93,7 +94,7 @@ final class MachineContractQuickStarts {
       case DIRECT_JAVA_WINDOWS_POWERSHELL ->
           "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
       case CONTAINER_DOCKER ->
-          "Define one session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
+          "Define a session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
     };
   }
 
@@ -103,7 +104,8 @@ final class MachineContractQuickStarts {
       case BUNDLE_POSIX_SHELL ->
           WorkflowStepDescriptor.command(
               "cp ./quick-start-request.json %s".formatted(paths.requestFile()));
-      case SOURCE_CHECKOUT_POSIX_SHELL,
+      case PATH_POSIX_SHELL,
+          SOURCE_CHECKOUT_POSIX_SHELL,
           SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
           DIRECT_JAVA_POSIX_SHELL,
           DIRECT_JAVA_WINDOWS_POWERSHELL,
@@ -122,16 +124,17 @@ final class MachineContractQuickStarts {
     return switch (surface) {
       case BUNDLE_POSIX_SHELL ->
           WorkflowStepDescriptor.note(
-              "The bundled quick-start request is a concrete sample document for one first sale. Replace the sample evidence and provenance values in "
+              "The bundled quick-start request is a concrete sample document for the first settled sale. Replace the sample evidence and provenance values in "
                   + paths.requestFile()
                   + " before using it for real-world bookkeeping.");
-      case SOURCE_CHECKOUT_POSIX_SHELL,
+      case PATH_POSIX_SHELL,
+          SOURCE_CHECKOUT_POSIX_SHELL,
           SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
           DIRECT_JAVA_POSIX_SHELL,
           DIRECT_JAVA_WINDOWS_POWERSHELL,
           CONTAINER_DOCKER ->
           WorkflowStepDescriptor.note(
-              "The emitted request document is a placeholder-first scaffold for one sale entry. Replace the evidence and provenance placeholders in "
+              "The emitted request document is a placeholder-first scaffold for a settled sale entry. Replace the evidence and provenance placeholders in "
                   + paths.requestFile()
                   + " before using it for real-world bookkeeping. Run "
                   + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -143,7 +146,8 @@ final class MachineContractQuickStarts {
 
   private static QuickStartPaths quickStartPaths(WorkflowSurface surface) {
     return switch (surface) {
-      case BUNDLE_POSIX_SHELL,
+      case PATH_POSIX_SHELL,
+          BUNDLE_POSIX_SHELL,
           SOURCE_CHECKOUT_POSIX_SHELL,
           DIRECT_JAVA_POSIX_SHELL,
           CONTAINER_DOCKER ->
@@ -156,6 +160,7 @@ final class MachineContractQuickStarts {
 
   private static String launcherCommand(WorkflowSurface surface) {
     return switch (surface) {
+      case PATH_POSIX_SHELL -> "fingrind";
       case BUNDLE_POSIX_SHELL ->
           ProtocolCatalog.distribution().bundleLauncherCommand(PublicCliBundleTarget.LINUX_X86_64);
       case SOURCE_CHECKOUT_POSIX_SHELL ->

@@ -25,7 +25,7 @@ class CliBookIdentityDisplayTest {
     assertEquals(
         List.of(
             List.of("Entity", "Acme Studio"),
-            List.of("Starter chart", "Owner-managed service starter chart"),
+            List.of("Seed template", "Owner-managed service seed template"),
             List.of("Accounting basis", "Cash basis"),
             List.of("Functional currency", "EUR"),
             List.of("Fiscal year start", "01-01")),
@@ -33,7 +33,7 @@ class CliBookIdentityDisplayTest {
     assertEquals(
         List.of(
             List.of("Entity", "Acme Studio"),
-            List.of("Starter chart", "Owner-managed service starter chart"),
+            List.of("Seed template", "Owner-managed service seed template"),
             List.of("Accounting basis", "Cash basis"),
             List.of("Functional currency", "EUR"),
             List.of("Fiscal year start", "01-01")),

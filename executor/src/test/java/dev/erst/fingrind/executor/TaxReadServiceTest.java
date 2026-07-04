@@ -161,11 +161,12 @@ class TaxReadServiceTest {
                 List.of(
                     committedPosting(
                         "sale-1",
-                        new BookkeepingEntry.Sale(
+                        new BookkeepingEntry.SaleSettled(
                             LocalDate.parse("2026-04-05"),
                             new AccountCode("1000"),
                             new AccountCode("4000"),
                             new MonetaryAmount("EUR", "10000"),
+                            null,
                             null,
                             selection("vat-lv", "vat-standard-sale"),
                             appliedTax(
@@ -180,11 +181,12 @@ class TaxReadServiceTest {
                                 "2100"))),
                     committedPosting(
                         "sale-2",
-                        new BookkeepingEntry.Sale(
+                        new BookkeepingEntry.SaleSettled(
                             LocalDate.parse("2026-04-09"),
                             new AccountCode("1000"),
                             new AccountCode("4000"),
                             new MonetaryAmount("EUR", "5000"),
+                            null,
                             null,
                             selection("vat-lv", "vat-standard-sale"),
                             appliedTax(
@@ -199,7 +201,7 @@ class TaxReadServiceTest {
                                 "2100"))),
                     committedPosting(
                         "expense-recoverable",
-                        new BookkeepingEntry.Expense(
+                        new BookkeepingEntry.ExpenseSettled(
                             LocalDate.parse("2026-04-12"),
                             new AccountCode("5000"),
                             new AccountCode("1000"),
@@ -218,7 +220,7 @@ class TaxReadServiceTest {
                                 "1300"))),
                     committedPosting(
                         "expense-nonrecoverable",
-                        new BookkeepingEntry.Expense(
+                        new BookkeepingEntry.ExpenseSettled(
                             LocalDate.parse("2026-04-18"),
                             new AccountCode("5010"),
                             new AccountCode("1000"),
@@ -237,11 +239,12 @@ class TaxReadServiceTest {
                                 null))),
                     committedPosting(
                         "ignored-other-registration",
-                        new BookkeepingEntry.Sale(
+                        new BookkeepingEntry.SaleSettled(
                             LocalDate.parse("2026-04-20"),
                             new AccountCode("1000"),
                             new AccountCode("4000"),
                             new MonetaryAmount("EUR", "1000"),
+                            null,
                             null,
                             selection("vat-ee", "vat-standard-sale"),
                             appliedTax(
@@ -304,7 +307,7 @@ class TaxReadServiceTest {
                 List.of(
                     committedPosting(
                         "expense-only",
-                        new BookkeepingEntry.Expense(
+                        new BookkeepingEntry.ExpenseSettled(
                             LocalDate.parse("2026-04-12"),
                             new AccountCode("5000"),
                             new AccountCode("1000"),

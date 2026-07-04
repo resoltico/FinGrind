@@ -5,8 +5,14 @@ import java.util.List;
 /** Canonical durable origin kinds preserved for committed postings in one protected book. */
 public enum PostingOriginKind implements WireValue {
   DIRECT_JOURNAL,
-  SALE,
-  EXPENSE,
+  SALE_SETTLED,
+  SALE_ON_CREDIT,
+  PURCHASE_SETTLED,
+  PURCHASE_ON_CREDIT,
+  EXPENSE_SETTLED,
+  EXPENSE_ON_CREDIT,
+  RECEIPT,
+  PAYMENT,
   OWNER_CONTRIBUTION,
   OWNER_WITHDRAWAL,
   OPENING_POSITION,
@@ -16,17 +22,7 @@ public enum PostingOriginKind implements WireValue {
 
   @Override
   public String wireValue() {
-    return switch (this) {
-      case DIRECT_JOURNAL -> "DIRECT_JOURNAL";
-      case SALE -> "SALE";
-      case EXPENSE -> "EXPENSE";
-      case OWNER_CONTRIBUTION -> "OWNER_CONTRIBUTION";
-      case OWNER_WITHDRAWAL -> "OWNER_WITHDRAWAL";
-      case OPENING_POSITION -> "OPENING_POSITION";
-      case REVERSAL -> "REVERSAL";
-      case INTERIM_RESULT_SWEEP -> "INTERIM_RESULT_SWEEP";
-      case FISCAL_YEAR_CLOSE -> "FISCAL_YEAR_CLOSE";
-    };
+    return name();
   }
 
   /** Returns every stable wire value in declaration order. */

@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
-import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
@@ -62,6 +61,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
     Path backupBookFilePath = root.resolve("backup").resolve("entity.backup.sqlite");
     Path backupBookKeyFilePath = root.resolve("backup").resolve("entity.backup.key");
     Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
+    Path restoredBookKeyFilePath = root.resolve("restored").resolve("entity.book-key");
     Path rollbackArtifactPath = root.resolve("books").resolve("entity.rekey-rollback.sqlite");
 
     JsonNode rekeyEnvelope =
@@ -94,43 +94,46 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
             bookFilePath.toString(),
             "--book-key-file",
             bookKeyFilePath.toString(),
-            "--backup-book-file-out",
+            "--backup-file",
             backupBookFilePath.toString(),
-            "--backup-book-key-file-out",
+            "--backup-key-file",
             backupBookKeyFilePath.toString());
     assertSuccessEnvelope(backupEnvelope);
     assertArtifactList(
         backupEnvelope,
         List.of(
-            artifactExpectation(ProtocolArtifactOutput.backupBookFileFormat(), backupBookFilePath),
+            artifactExpectation(ProtocolArtifactOutput.backupFileFormat(), backupBookFilePath),
             artifactExpectation(
-                ProtocolArtifactOutput.backupBookKeyFileFormat(), backupBookKeyFilePath)));
+                ProtocolArtifactOutput.backupKeyFileFormat(), backupBookKeyFilePath)));
     assertTrue(backupEnvelope.path("payload").path("backupBookFile").isMissingNode());
     assertTrue(backupEnvelope.path("payload").path("backupBookKeyFile").isMissingNode());
 
     RecordingWorkflow restoreWorkflow = contractWorkflow();
     restoreWorkflow.setRestoreBookResult(
-        new RestoreBookResult.Restored(
-            hint(restoredBookFilePath), hint(backupBookFilePath), hint(backupBookKeyFilePath)));
+        new RestoreBookResult.Restored(hint(restoredBookFilePath), hint(restoredBookKeyFilePath)));
     JsonNode restoreEnvelope =
         runJsonWorkflowCommand(
             restoreWorkflow,
             "restore-book",
             "--book-file",
             restoredBookFilePath.toString(),
-            "--backup-book-file",
+            "--book-key-file",
+            restoredBookKeyFilePath.toString(),
+            "--backup-file",
             backupBookFilePath.toString(),
-            "--backup-book-key-file",
+            "--backup-key-file",
             backupBookKeyFilePath.toString());
     assertSuccessEnvelope(restoreEnvelope);
     assertArtifactList(
         restoreEnvelope,
         List.of(
-            artifactExpectation(ProtocolArtifactOutput.backupBookFileFormat(), backupBookFilePath),
+            artifactExpectation(ProtocolArtifactOutput.bookFileFormat(), restoredBookFilePath),
             artifactExpectation(
-                ProtocolArtifactOutput.backupBookKeyFileFormat(), backupBookKeyFilePath)));
-    assertTrue(restoreEnvelope.path("payload").path("backupBookFile").isMissingNode());
-    assertTrue(restoreEnvelope.path("payload").path("backupBookKeyFile").isMissingNode());
+                ProtocolArtifactOutput.bookKeyFileFormat(), restoredBookKeyFilePath)));
+    assertTrue(restoreEnvelope.path("payload").path("bookKeyFile").isMissingNode());
+    assertEquals(
+        CliPublicPaths.redactedValue(hint(restoredBookKeyFilePath)),
+        restoreEnvelope.path("payload").path("bookKeyFilePath").asText());
 
     RecordingWorkflow inspectRollbackWorkflow = contractWorkflow();
     inspectRollbackWorkflow.setRekeyRollbackResult(
@@ -201,6 +204,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
     Path backupBookFilePath = root.resolve("backup").resolve("entity.backup.sqlite");
     Path backupBookKeyFilePath = root.resolve("backup").resolve("entity.backup.key");
     Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
+    Path restoredBookKeyFilePath = root.resolve("restored").resolve("entity.book-key");
     Path rollbackArtifactPath = root.resolve("books").resolve("entity.rekey-rollback.sqlite");
 
     String rekeyText =
@@ -229,9 +233,9 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
             bookFilePath.toString(),
             "--book-key-file",
             bookKeyFilePath.toString(),
-            "--backup-book-file-out",
+            "--backup-file",
             backupBookFilePath.toString(),
-            "--backup-book-key-file-out",
+            "--backup-key-file",
             backupBookKeyFilePath.toString());
     assertTrue(backupText.contains("Book Backed Up"), backupText);
     assertTrue(backupText.contains("entity.backup.sqlite"), backupText);
@@ -240,20 +244,21 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
 
     RecordingWorkflow restoreWorkflow = contractWorkflow();
     restoreWorkflow.setRestoreBookResult(
-        new RestoreBookResult.Restored(
-            hint(restoredBookFilePath), hint(backupBookFilePath), hint(backupBookKeyFilePath)));
+        new RestoreBookResult.Restored(hint(restoredBookFilePath), hint(restoredBookKeyFilePath)));
     String restoreText =
         runTextWorkflowCommand(
             restoreWorkflow,
             "restore-book",
             "--book-file",
             restoredBookFilePath.toString(),
-            "--backup-book-file",
+            "--book-key-file",
+            restoredBookKeyFilePath.toString(),
+            "--backup-file",
             backupBookFilePath.toString(),
-            "--backup-book-key-file",
+            "--backup-key-file",
             backupBookKeyFilePath.toString());
     assertTrue(restoreText.contains("Book Restored"), restoreText);
-    assertTrue(restoreText.contains("entity.backup.key"), restoreText);
+    assertTrue(restoreText.contains("entity.book-key"), restoreText);
     assertTrue(!restoreText.contains("\"artifacts\""), restoreText);
 
     RecordingWorkflow inspectRollbackWorkflow = contractWorkflow();
@@ -359,9 +364,9 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
                 true,
                 Instant.parse("2026-04-07T12:00:00Z"))),
         new ListAccountsResult.Listed(accountPage(List.of(), 50, java.util.Optional.empty())),
-        new PostEntryResult.PreflightAccepted(
+        CliPostEntryResultFixtures.preflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-        new PostEntryResult.Committed(
+        CliPostEntryResultFixtures.committed(
             new PostingId("posting-1"),
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),

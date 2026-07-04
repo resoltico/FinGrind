@@ -36,7 +36,7 @@ final class ProtocolQueryOperations {
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Inspect one selected book for lifecycle state, format version, and compatibility.",
+        "Inspect the selected book for lifecycle state, format version, and compatibility.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
@@ -57,11 +57,12 @@ final class ProtocolQueryOperations {
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.optionalLimitSyntax(),
             ProtocolOptions.optionalCursorSyntax(),
+            "[" + ProtocolOptions.WITH_CONTEXT + "]",
             ProtocolOptions.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-        "List one stable page of declared accounts in the selected book using keyset pagination.",
+        "List a stable page of declared accounts in the selected book using keyset pagination.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s %d"
@@ -84,11 +85,12 @@ final class ProtocolQueryOperations {
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.optionalLimitSyntax(),
             ProtocolOptions.optionalCursorSyntax(),
+            "[" + ProtocolOptions.WITH_CONTEXT + "]",
             ProtocolOptions.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-        "List one stable page of declared tax registrations in the selected book using keyset pagination.",
+        "List a stable page of declared tax registrations in the selected book using keyset pagination.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s %d"
@@ -110,10 +112,11 @@ final class ProtocolQueryOperations {
             ProtocolOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.POSTING_ID + " <posting-id>",
+            "[" + ProtocolOptions.WITH_CONTEXT + "]",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Return one committed posting by durable posting identifier.",
+        "Return a committed posting by durable posting identifier.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 018f0e6d-7f7e-7b04-b93f-bc0b69f19d5b"
@@ -138,11 +141,12 @@ final class ProtocolQueryOperations {
             "[" + ProtocolOptions.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
             ProtocolOptions.optionalLimitSyntax(),
             ProtocolOptions.optionalCursorSyntax(),
+            "[" + ProtocolOptions.WITH_CONTEXT + "]",
             ProtocolOptions.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-        "List one filtered page of committed postings in stable reverse-chronological order using keyset pagination.",
+        "List a filtered page of committed postings in stable reverse-chronological order using keyset pagination.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 1000 %s 25"
@@ -155,31 +159,18 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation taxObligationOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolQueryReportOperations.taxRegistrationPeriodReportOperation(
         OperationId.TAX_OBLIGATION,
-        OperationCategory.QUERY,
         "Tax Obligation",
-        List.of(),
-        List.of(
-            ProtocolOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.TAX_REGISTRATION_ID + " <tax-registration-id>",
-            ProtocolOptions.PERIOD_START + " <YYYY-MM-DD>",
-            ProtocolOptions.PERIOD_END + " <YYYY-MM-DD>",
-            ProtocolOptions.optionalOutputSyntax(
-                List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
-        "Compute one bounded tax-obligation report for the selected declared tax registration.",
-        List.of(
-            ProtocolExampleStep.command(ProtocolQueryOperationExamples.taxObligationExample())));
+        "Compute a bounded tax-obligation report for the selected declared tax registration.",
+        ProtocolQueryOperationExamples.taxObligationExample());
   }
 
   private static ProtocolOperation accountBalanceOperation() {
     return ProtocolQueryReportOperations.accountWindowReportOperation(
         OperationId.ACCOUNT_BALANCE,
         "Account Balance",
-        "Compute grouped per-currency balances for one declared account.",
+        "Compute grouped per-currency balances for a declared account.",
         ProtocolQueryOperationExamples.accountBalanceExample());
   }
 
@@ -187,7 +178,7 @@ final class ProtocolQueryOperations {
     return ProtocolQueryReportOperations.asOfReportOperation(
         OperationId.TRIAL_BALANCE,
         "Trial Balance",
-        "Compute one book-wide trial balance as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
+        "Compute a book-wide trial balance as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
         ProtocolQueryOperationExamples.trialBalanceExample());
   }
 
@@ -195,7 +186,7 @@ final class ProtocolQueryOperations {
     return ProtocolQueryReportOperations.accountWindowReportOperation(
         OperationId.ACCOUNT_LEDGER,
         "Account Ledger",
-        "Compute the running ledger for one account, including opening balances, per-posting movement, and closing balances.",
+        "Compute the running ledger for an account, including opening balances, per-posting movement, and closing balances.",
         ProtocolQueryOperationExamples.accountLedgerExample());
   }
 
@@ -205,7 +196,7 @@ final class ProtocolQueryOperations {
         "Period Summary",
         false,
         true,
-        "Compute one bounded accounting-period summary with posting totals, currency totals, and per-account activity.",
+        "Compute a bounded accounting-period summary with posting totals, currency totals, and per-account activity.",
         ProtocolQueryOperationExamples.periodSummaryExample());
   }
 
@@ -213,7 +204,7 @@ final class ProtocolQueryOperations {
     return ProtocolQueryReportOperations.asOfReportOperation(
         OperationId.FINANCIAL_POSITION,
         "Financial Position",
-        "Compute one statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
+        "Compute a statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
         ProtocolQueryOperationExamples.financialPositionExample());
   }
 
@@ -223,7 +214,7 @@ final class ProtocolQueryOperations {
         "Income Statement",
         true,
         false,
-        "Compute one bounded income statement for the selected reporting period.",
+        "Compute a bounded income statement for the selected reporting period.",
         ProtocolQueryOperationExamples.incomeStatementExample());
   }
 
@@ -233,7 +224,7 @@ final class ProtocolQueryOperations {
         "Cash Flow Statement",
         true,
         false,
-        "Compute one bounded statement of cash receipts and payments for the selected reporting period.",
+        "Compute a bounded statement of cash receipts and payments for the selected reporting period.",
         ProtocolQueryOperationExamples.cashFlowStatementExample());
   }
 
@@ -243,7 +234,7 @@ final class ProtocolQueryOperations {
         "Changes In Equity",
         true,
         false,
-        "Compute one bounded statement of changes in equity for the selected reporting period.",
+        "Compute a bounded statement of changes in equity for the selected reporting period.",
         ProtocolQueryOperationExamples.changesInEquityExample());
   }
 }

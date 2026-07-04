@@ -128,7 +128,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               Instant.parse("2026-04-07T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())));
+                  bookIdentity().bookDoctrine())));
     }
   }
 
@@ -654,12 +654,12 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               Instant.parse("2026-04-07T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())),
+                  bookIdentity().bookDoctrine())),
           postingSession.openBook(
               Instant.parse("2026-04-07T10:15:30Z"),
               bookIdentity(),
               dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                  bookIdentity().bookDoctrine().bookTemplateId())));
+                  bookIdentity().bookDoctrine())));
       assertEquals(
           new AccountDeclarationOutcome.Declared(
               SqlitePostingFactFixtureSupport.registeredAccount(

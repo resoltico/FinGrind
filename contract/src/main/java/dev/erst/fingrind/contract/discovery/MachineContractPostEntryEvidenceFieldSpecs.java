@@ -48,9 +48,9 @@ final class MachineContractPostEntryEvidenceFieldSpecs {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Approval.APPROVAL_ID,
-            "Stable identifier of one retained approval fact.",
+            "Stable identifier of the retained approval fact.",
             MachineContractScalarSchemas.tokenStringSchema(
-                "Stable identifier of one retained approval fact.",
+                "Stable identifier of the retained approval fact.",
                 ApprovalId.pattern(),
                 ApprovalId.maxLength())),
         MachineContractFieldSpec.required(
@@ -87,9 +87,9 @@ final class MachineContractPostEntryEvidenceFieldSpecs {
   private static MachineContractFieldSpec sourceDocumentIdField() {
     return MachineContractFieldSpec.required(
         ProtocolPostEntryFields.SourceDocument.SOURCE_DOCUMENT_ID,
-        "Stable identifier of one retained source document.",
+        "Stable identifier of the retained source document.",
         MachineContractScalarSchemas.tokenStringSchema(
-            "Stable identifier of one retained source document.",
+            "Stable identifier of the retained source document.",
             SourceDocumentId.pattern(),
             SourceDocumentId.maxLength()));
   }
@@ -110,12 +110,12 @@ final class MachineContractPostEntryEvidenceFieldSpecs {
         entryKindFacts.sourceDocumentTypes();
     String description =
         sourceDocumentTypes.mode() == SourceDocumentTypePolicyMode.ENUMERATED
-            ? "Source-document classification for one %s evidence item. Accepted values: %s. %s"
+            ? "Source-document classification for %s evidence. Accepted values: %s. %s"
                 .formatted(
                     entryKindFacts.entryKind().wireValue(),
                     String.join(", ", sourceDocumentTypes.acceptedValues()),
                     sourceDocumentTypes.semantics())
-            : "Caller-authored source-document classification token for one %s evidence item. %s"
+            : "Caller-authored source-document classification token for %s evidence. %s"
                 .formatted(entryKindFacts.entryKind().wireValue(), sourceDocumentTypes.semantics());
     Map<String, Object> schema =
         sourceDocumentTypes.mode() == SourceDocumentTypePolicyMode.ENUMERATED

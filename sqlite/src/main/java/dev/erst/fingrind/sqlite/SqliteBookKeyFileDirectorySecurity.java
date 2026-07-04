@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -74,7 +75,7 @@ final class SqliteBookKeyFileDirectorySecurity {
         throw new SqliteCallerPathContractException(
             normalizedPath,
             SqliteCallerPathFailure.PARENT_PATH_COLLISION,
-            "The FinGrind book key file must resolve beneath one real parent directory: "
+            "The FinGrind book key file must resolve beneath a real parent directory: "
                 + redactedPath(normalizedPath));
       }
       requireSecureParentDirectorySecurity(parentDirectory, inspectSecurity(parentDirectory))
@@ -100,6 +101,18 @@ final class SqliteBookKeyFileDirectorySecurity {
     }
     SqliteBookKeyFileSecurityPolicy.applyOwnerOnlyAcl(
         directoryPath, WINDOWS_OWNER_KEY_DIRECTORY_PERMISSIONS);
+  }
+
+  static boolean hardenExistingOwnerAccessibleDirectory(Path directoryPath) throws IOException {
+    if (!Files.isDirectory(directoryPath, LinkOption.NOFOLLOW_LINKS)) {
+      return false;
+    }
+    return switch (inspectSecurity(directoryPath)) {
+      case SqlitePosixKeyFileSecurity posixSecurity ->
+          hardenExistingOwnerAccessiblePosixDirectory(directoryPath, posixSecurity.permissions());
+      case SqliteAclKeyFileSecurity aclSecurity ->
+          hardenExistingOwnerAccessibleAclDirectory(directoryPath, aclSecurity);
+    };
   }
 
   static ContractDecision<Path> requireSecureParentDirectorySecurity(
@@ -145,5 +158,42 @@ final class SqliteBookKeyFileDirectorySecurity {
         ACL_SECRET_DIRECTORY_ACCESS_PERMISSIONS,
         "The FinGrind book key file parent directory ACL must grant the directory owner traversal access: ",
         "The FinGrind book key file parent directory ACL must grant secret-directory access only to the directory owner: ");
+  }
+
+  private static boolean hardenExistingOwnerAccessiblePosixDirectory(
+      Path directoryPath, Set<PosixFilePermission> permissions) throws IOException {
+    if (!permissions.contains(PosixFilePermission.OWNER_EXECUTE)) {
+      return false;
+    }
+    if (POSIX_KEY_DIRECTORY_PERMISSIONS.containsAll(permissions)) {
+      return false;
+    }
+    hardenDirectory(directoryPath);
+    return true;
+  }
+
+  private static boolean hardenExistingOwnerAccessibleAclDirectory(
+      Path directoryPath, SqliteAclKeyFileSecurity security) throws IOException {
+    boolean ownerCanTraverse =
+        security.acl().stream()
+            .filter(entry -> entry.type() == AclEntryType.ALLOW)
+            .filter(entry -> security.owner().equals(entry.principal()))
+            .anyMatch(entry -> entry.permissions().containsAll(ACL_DIRECTORY_REQUIRED_PERMISSIONS));
+    if (!ownerCanTraverse) {
+      return false;
+    }
+    boolean nonOwnerAccessPresent =
+        security.acl().stream()
+            .filter(entry -> entry.type() == AclEntryType.ALLOW)
+            .filter(entry -> !security.owner().equals(entry.principal()))
+            .anyMatch(
+                entry ->
+                    SqliteBookKeyFileSecuritySupport.containsAny(
+                        entry.permissions(), ACL_SECRET_DIRECTORY_ACCESS_PERMISSIONS));
+    if (!nonOwnerAccessPresent) {
+      return false;
+    }
+    hardenDirectory(directoryPath);
+    return true;
   }
 }

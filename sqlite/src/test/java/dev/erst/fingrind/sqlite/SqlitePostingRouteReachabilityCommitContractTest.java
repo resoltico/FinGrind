@@ -8,15 +8,18 @@ import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFact
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.CANDIDATE_ACCOUNT_CODE;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.DECLARED_AT;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.FIXED_CLOCK;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.accrualBookIdentity;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.candidateAccount;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.cellToken;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.counterAssetAccount;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.counterAuxiliaryAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.PostingApplicationService;
@@ -53,7 +56,7 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(token, TEST_BOOK_KEY.toCharArray());
         SqlitePostingSession session = SqlitePostingSessions.open(bookPath(token), passphrase)) {
-      session.openBook(DECLARED_AT, bookIdentity(), List.of());
+      session.openBook(DECLARED_AT, accrualBookIdentity(), List.of());
       declareReachabilityAccounts(session, cell);
       PostingApplicationService application =
           new PostingApplicationService(
@@ -65,12 +68,21 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
         assertCommitted(result, "posting-" + cellToken(cell), token);
         return;
       }
+      PostEntryResult.CommitRejected rejected =
+          assertInstanceOf(PostEntryResult.CommitRejected.class, result);
+      PostingRejection.EntrySemanticsViolations violations =
+          assertInstanceOf(PostingRejection.EntrySemanticsViolations.class, rejected.rejection());
+      assertEquals(requestProvenance(token).idempotencyKey(), rejected.requestIdempotencyKey());
+      assertEquals(1, violations.violations().size());
       assertEquals(
-          new PostEntryResult.CommitRejected(
-              requestProvenance(token).idempotencyKey(),
-              new PostingRejection.OpeningPositionTouchesNominalAccount(
-                  CANDIDATE_ACCOUNT_CODE, cell.accountType())),
-          result);
+          "opening-window-account-not-permitted", violations.violations().getFirst().code());
+      assertEquals(
+          "entryKind '"
+              + BookkeepingEntryKind.OPENING_POSITION.wireValue()
+              + "' uses openingBalances[].accountCode '"
+              + CANDIDATE_ACCOUNT_CODE.value()
+              + "', which is not permitted in the adoption opening window.",
+          violations.violations().getFirst().message());
     }
   }
 
@@ -80,13 +92,13 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(token, TEST_BOOK_KEY.toCharArray());
         SqlitePostingSession session = SqlitePostingSessions.open(bookPath(token), passphrase)) {
-      session.openBook(DECLARED_AT, bookIdentity(), List.of());
+      session.openBook(DECLARED_AT, accrualBookIdentity(), List.of());
       declareReachabilityAccounts(session, cell);
       PostingApplicationService application =
           new PostingApplicationService(
               session, session, oneShotPostingId("posting-" + cellToken(cell)), FIXED_CLOCK);
 
-      PostEntryResult result = application.commit(directJournalCommand(token));
+      PostEntryResult result = application.commit(directJournalCommand(cell, token));
 
       if (cell.operationalJournalReachable()) {
         assertCommitted(result, "posting-" + cellToken(cell), token);
@@ -111,7 +123,7 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(token, TEST_BOOK_KEY.toCharArray());
         SqlitePostingSession session = SqlitePostingSessions.open(bookPath(token), passphrase)) {
-      session.openBook(DECLARED_AT, bookIdentity(), List.of());
+      session.openBook(DECLARED_AT, accrualBookIdentity(), List.of());
       declareReachabilityAccounts(session, cell);
       PostingApplicationService application =
           new PostingApplicationService(
@@ -127,7 +139,7 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
               PostEntryResult.Committed.class, seedResult, "seed commit must succeed for " + cell);
 
       PostEntryResult result =
-          application.commit(reversalCommand(token, committedSeed.postingId()));
+          application.commit(reversalCommand(cell, token, committedSeed.postingId()));
 
       if (cell.reversalReachable()) {
         assertCommitted(result, reversalPostingIdValue, token);
@@ -145,7 +157,7 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
 
   private static void declareReachabilityAccounts(
       SqlitePostingSession session, RequestSurfaceFacts.ReachabilityCellFacts cell) {
-    var counterAccount = counterAssetAccount();
+    var counterAccount = counterAuxiliaryAccount();
     var candidateAccount = candidateAccount(cell);
     session.declareAccount(
         counterAccount.accountCode(),
@@ -162,14 +174,12 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
   }
 
   private void assertCommitted(PostEntryResult result, String postingId, String token) {
-    assertEquals(
-        new PostEntryResult.Committed(
-            new PostingId(postingId),
-            requestProvenance(token).idempotencyKey(),
-            PostingRouteReachabilityTestSupport.EFFECTIVE_DATE,
-            FIXED_CLOCK.instant(),
-            false),
-        result);
+    PostEntryResult.Committed committed = assertInstanceOf(PostEntryResult.Committed.class, result);
+    assertEquals(new PostingId(postingId), committed.postingId());
+    assertEquals(requestProvenance(token).idempotencyKey(), committed.idempotencyKey());
+    assertEquals(PostingRouteReachabilityTestSupport.EFFECTIVE_DATE, committed.effectiveDate());
+    assertEquals(FIXED_CLOCK.instant(), committed.recordedAt());
+    assertFalse(committed.idempotentReplay());
   }
 
   private Path bookPath(String token) {

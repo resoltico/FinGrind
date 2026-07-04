@@ -398,12 +398,13 @@ class TaxContractTypesTest {
             new MonetaryAmount("EUR", "2100"),
             new MonetaryAmount("EUR", "12100"),
             new AccountCode("2100"));
-    BookkeepingEntry.Sale sale =
-        new BookkeepingEntry.Sale(
+    BookkeepingEntry.SaleSettled sale =
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "10000"),
+            null,
             null,
             new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
             saleTax);
@@ -419,8 +420,8 @@ class TaxContractTypesTest {
             new MonetaryAmount("EUR", "2100"),
             new MonetaryAmount("EUR", "12100"),
             new AccountCode("1300"));
-    BookkeepingEntry.Expense recoverableExpense =
-        new BookkeepingEntry.Expense(
+    BookkeepingEntry.ExpenseSettled recoverableExpense =
+        new BookkeepingEntry.ExpenseSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("5000"),
             new AccountCode("1000"),
@@ -440,8 +441,8 @@ class TaxContractTypesTest {
             new MonetaryAmount("EUR", "1200"),
             new MonetaryAmount("EUR", "11200"),
             null);
-    BookkeepingEntry.Expense nonrecoverableExpense =
-        new BookkeepingEntry.Expense(
+    BookkeepingEntry.ExpenseSettled nonrecoverableExpense =
+        new BookkeepingEntry.ExpenseSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("5010"),
             new AccountCode("1000"),
@@ -451,7 +452,7 @@ class TaxContractTypesTest {
                 new TaxRegistrationId("vat-lv"), new TaxCode("vat-nonrecoverable-expense")),
             nonrecoverableExpenseTax);
 
-    assertEquals(BookkeepingEntryKind.SALE, sale.entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, sale.entryKind());
     assertEquals(3, sale.journalEntry().lines().size());
     assertEquals(
         Money.parse("EUR", "121.00"), sale.journalEntry().lines().getFirst().amount().money());
@@ -482,31 +483,34 @@ class TaxContractTypesTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-25"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 null,
                 mismatchedAppliedTax));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-25"),
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
                 null,
+                null,
                 selection,
                 mismatchedAppliedTax));
-    BookkeepingEntry.Sale unresolvedSale =
-        new BookkeepingEntry.Sale(
+    BookkeepingEntry.SaleSettled unresolvedSale =
+        new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "10000"),
+            null,
             null,
             selection,
             null);

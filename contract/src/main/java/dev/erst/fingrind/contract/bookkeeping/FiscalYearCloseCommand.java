@@ -1,12 +1,17 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.core.ReportingPeriod;
-import java.util.Objects;
+import java.time.DateTimeException;
+import java.time.Year;
 
-/** Administrative command that closes one fiscal year. */
-public record FiscalYearCloseCommand(ReportingPeriod reportingPeriod) {
+/** Administrative command that closes one fiscal year identified by its label. */
+public record FiscalYearCloseCommand(int fiscalYearLabel) {
   /** Validates one fiscal-year-close command. */
   public FiscalYearCloseCommand {
-    Objects.requireNonNull(reportingPeriod, "reportingPeriod");
+    try {
+      Year.of(fiscalYearLabel);
+    } catch (DateTimeException exception) {
+      throw new IllegalArgumentException(
+          "fiscalYearLabel must be one supported ISO-8601 proleptic year.", exception);
+    }
   }
 }

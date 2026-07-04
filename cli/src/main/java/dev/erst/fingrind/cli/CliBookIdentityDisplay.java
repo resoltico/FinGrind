@@ -34,7 +34,7 @@ final class CliBookIdentityDisplay {
             BookDoctrineDisplay.entityForm(bookIdentity.bookDoctrine().entityForm())));
     rows.add(
         List.of(
-            "Starter chart",
+            "Seed template",
             BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())));
     rows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     rows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
@@ -46,7 +46,7 @@ final class CliBookIdentityDisplay {
     return List.of(
         List.of("Entity", bookIdentity.entityName().value()),
         List.of(
-            "Starter chart",
+            "Seed template",
             BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())),
         List.of(
             "Accounting basis",

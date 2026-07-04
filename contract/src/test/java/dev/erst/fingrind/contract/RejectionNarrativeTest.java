@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
+import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
@@ -107,12 +108,12 @@ class RejectionNarrativeTest {
             .contains("chart hierarchy cycle"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+                new CloseTargetAccountCandidateMissing(
                     FinancialPositionLineClassification.RESULT_HOLDING, List.of()))
             .contains("required classification"));
     assertTrue(
         RejectionNarrative.message(
-                new BookAdministrationRejection.CloseTargetAccountCandidateMissing(
+                new CloseTargetAccountCandidateMissing(
                     FinancialPositionLineClassification.RESULT_HOLDING,
                     List.of(new AccountCode("3200"))))
             .contains("inactive candidates: 3200"));
@@ -149,6 +150,11 @@ class RejectionNarrativeTest {
                 new BookAdministrationRejection.FiscalYearCloseMustEndAt(
                     LocalDate.parse("2026-12-31")))
             .contains("2026-12-31"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+                    LocalDate.parse("2025-12-31"), LocalDate.parse("2026-03-31")))
+            .contains("2026-03-31"));
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.FiscalYearCloseFutureDate(
@@ -301,6 +307,11 @@ class RejectionNarrativeTest {
             .contains("different committed posting request"));
     assertTrue(
         RejectionNarrative.message(
+                new PostingRejection.PostingEffectiveDateInFuture(
+                    LocalDate.parse("2026-05-02"), LocalDate.parse("2026-05-01")))
+            .contains("current UTC date"));
+    assertTrue(
+        RejectionNarrative.message(
                 new PostingRejection.BookFunctionalCurrencyMismatch(
                     dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
                     dev.erst.fingrind.core.CurrencyUnit.of("USD")))
@@ -336,6 +347,11 @@ class RejectionNarrativeTest {
         RejectionNarrative.message(
                 new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")))
             .contains("posting-1"));
+    assertTrue(
+        RejectionNarrative.message(
+                new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+                    new PostingId("posting-1")))
+            .contains("cannot be reversed"));
     assertTrue(
         RejectionNarrative.message(
                 new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1")))
@@ -381,6 +397,11 @@ class RejectionNarrativeTest {
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(new PostingRejection.IdempotencyKeyConflict()))
             .contains("exact same normalized request"));
+    assertEquals(
+        "Use an effective date on or before the current UTC date.",
+        RejectionNarrative.hint(
+            new PostingRejection.PostingEffectiveDateInFuture(
+                LocalDate.parse("2026-05-02"), LocalDate.parse("2026-05-01"))));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
@@ -425,6 +446,12 @@ class RejectionNarrativeTest {
                 RejectionNarrative.hint(
                     new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))))
             .contains("get-posting"));
+    assertTrue(
+        java.util.Objects.requireNonNull(
+                RejectionNarrative.hint(
+                    new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
+                        new PostingId("posting-1"))))
+            .contains("fresh operational entry"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(

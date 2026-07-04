@@ -11,6 +11,9 @@ import java.util.Set;
 
 /** Validates that every requested posting account is known and active. */
 final class PostingAccountStatePolicy {
+  private final NonNegativeInventoryBalancePolicy nonNegativeInventoryBalancePolicy =
+      new NonNegativeInventoryBalancePolicy();
+
   Optional<BookkeepingPostingRejection> rejectionFor(
       PostingRequestModel postingRequest, PostingValidationStore book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
@@ -34,9 +37,10 @@ final class PostingAccountStatePolicy {
                 accountCode, account.accountTaxonomy().nodeKind()));
       }
     }
-    return violations.isEmpty()
-        ? Optional.empty()
-        : Optional.of(
-            new BookkeepingPostingRejection.AccountStateViolations(List.copyOf(violations)));
+    if (!violations.isEmpty()) {
+      return Optional.of(
+          new BookkeepingPostingRejection.AccountStateViolations(List.copyOf(violations)));
+    }
+    return nonNegativeInventoryBalancePolicy.rejectionFor(postingRequest, declaredAccounts, book);
   }
 }

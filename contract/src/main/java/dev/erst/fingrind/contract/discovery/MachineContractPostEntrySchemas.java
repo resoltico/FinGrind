@@ -147,9 +147,19 @@ final class MachineContractPostEntrySchemas {
                         ? RequestFieldPresence.REQUIRED
                         : facts.optionalTopLevelFields().contains(field.name())
                             ? RequestFieldPresence.OPTIONAL
-                            : RequestFieldPresence.FORBIDDEN,
+                            : conditionallyAcceptedTopLevelField(facts.entryKind(), field)
+                                ? RequestFieldPresence.CONDITIONAL
+                                : RequestFieldPresence.FORBIDDEN,
                     field.description()))
         .toList();
+  }
+
+  private static boolean conditionallyAcceptedTopLevelField(
+      BookkeepingEntryKind entryKind, MachineContractFieldSpec field) {
+    return field.presence() == RequestFieldPresence.CONDITIONAL
+        && ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF.equals(field.name())
+        && (entryKind == BookkeepingEntryKind.SALE_SETTLED
+            || entryKind == BookkeepingEntryKind.SALE_ON_CREDIT);
   }
 
   private static List<ContractRequestShapes.RequestFieldDescriptor> nestedFieldDescriptors(

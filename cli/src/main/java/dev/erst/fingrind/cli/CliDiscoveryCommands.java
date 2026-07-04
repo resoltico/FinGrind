@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.core.BookTemplateId;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -75,16 +76,18 @@ record EnvironmentCommand(OutputMode outputMode) implements CliCommand.OutputMod
 }
 
 /** Requests one canonical request scaffold JSON document. */
-record PrintRequestTemplate(@Nullable OperationId commandTopic) implements CliCommand {
+record PrintRequestTemplate(
+    @Nullable OperationId commandTopic, @Nullable BookTemplateId bookTemplateId)
+    implements CliCommand {
   PrintRequestTemplate() {
-    this(null);
+    this(null, null);
   }
 
   @Override
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writeRequestTemplate(commandTopic);
+        .writeRequestTemplate(commandTopic, bookTemplateId);
   }
 }
 

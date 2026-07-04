@@ -255,7 +255,7 @@ class FiscalYearClosePlannerTest {
     NullPointerException closedOutcomeFailure =
         assertThrows(
             NullPointerException.class,
-            () -> new FiscalYearCloseOutcome.Closed((ClosedFiscalYearRecord) nullValue()));
+            () -> new FiscalYearCloseOutcome.Closed((ClosedFiscalYearRecord) nullValue(), false));
     NullPointerException rejectedOutcomeFailure =
         assertThrows(
             NullPointerException.class,

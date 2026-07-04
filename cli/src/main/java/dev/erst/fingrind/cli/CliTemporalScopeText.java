@@ -9,7 +9,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Shared temporal-scope labels, option names, and meaning tokens derived from one contract owner.
+ * Shared temporal-scope labels, option names, and meaning tokens derived from the contract owner.
  */
 final class CliTemporalScopeText {
   private static final RequestSurfaceFacts REQUEST_SURFACE =

@@ -6,6 +6,8 @@
       "kind": "ensure-book",
       "ensureBook": {
         "entityName": "Plan Seed JPY",
+        "bookTemplateId": "OWNER_MANAGED_SERVICE",
+        "accountingBasis": "CASH",
         "functionalCurrency": "JPY",
         "fiscalYearStart": "01-01"
       }
@@ -37,10 +39,10 @@
     },
     {
       "stepId": "post-jpy",
-      "kind": "record-sale",
+      "kind": "record-sale-settled",
       "posting": {
-        "entryKind": "SALE",
-        "effectiveDate": "2026-06-16",
+        "entryKind": "SALE_SETTLED",
+        "effectiveDate": "2026-04-06",
         "cashAccountCode": "7110",
         "revenueAccountCode": "8110",
         "amount": {
@@ -52,7 +54,7 @@
             {
               "sourceDocumentId": "document-seed-plan-jpy-idem-1",
               "sourceDocumentType": "cash-receipt",
-              "documentDate": "2026-06-16"
+              "documentDate": "2026-04-06"
             }
           ],
           "approvals": [

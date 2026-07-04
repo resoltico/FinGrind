@@ -4,8 +4,6 @@ import dev.erst.fingrind.cli.json.CliTaxJsonModels;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
-import dev.erst.fingrind.contract.tax.TaxObligationCodeSummary;
-import dev.erst.fingrind.contract.tax.TaxObligationReport;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 
@@ -54,22 +52,6 @@ final class CliTaxPayloadMapper {
         page.registrations().stream().map(CliTaxPayloadMapper::taxRegistrationPayload).toList());
   }
 
-  static CliTaxJsonModels.TaxObligationPayload taxObligationPayload(TaxObligationReport report) {
-    return new CliTaxJsonModels.TaxObligationPayload(
-        new CliTaxJsonModels.TaxObligationContextPayload(
-            CliBookInspectionPayloadMapper.bookIdentityPayload(report.bookIdentity()),
-            taxRegistrationPayload(report.registration()),
-            report.reportingPeriod().effectiveDateFrom().toString(),
-            report.reportingPeriod().effectiveDateTo().toString(),
-            report.dueDate().toString()),
-        report.codeSummaries().stream().map(CliTaxPayloadMapper::taxObligationCodeSummary).toList(),
-        report.outputTax(),
-        report.recoverableInputTax(),
-        report.nonrecoverableInputTax(),
-        report.netPayable(),
-        report.netReceivable());
-  }
-
   static CliTaxJsonModels.TaxSelectionPayload taxSelectionPayload(TaxSelection selection) {
     return new CliTaxJsonModels.TaxSelectionPayload(
         selection.taxRegistrationId().value(), selection.taxCode().value());
@@ -87,17 +69,5 @@ final class CliTaxPayloadMapper {
         appliedTax.taxAmount(),
         appliedTax.grossAmount(),
         appliedTax.taxAccountCode() == null ? null : appliedTax.taxAccountCode().value());
-  }
-
-  private static CliTaxJsonModels.TaxObligationCodeSummaryPayload taxObligationCodeSummary(
-      TaxObligationCodeSummary summary) {
-    return new CliTaxJsonModels.TaxObligationCodeSummaryPayload(
-        summary.taxCode().value(),
-        summary.taxCodeName().value(),
-        summary.applicationKind().wireValue(),
-        summary.postingCount(),
-        summary.taxableAmount(),
-        summary.taxAmount(),
-        summary.grossAmount());
   }
 }

@@ -36,6 +36,16 @@ public final class InterimResultSweepPlanner {
     return holdingAccountSelector.resultHoldingAccount(bookIdentity, accounts);
   }
 
+  /** Derives the only admissible contiguous sweep window ending at the selected through date. */
+  public ReportingPeriod reportingPeriod(
+      LocalDate throughEffectiveDate,
+      LocalDate bookStartDate,
+      BookIdentity bookIdentity,
+      Optional<LocalDate> transferredThroughEffectiveDate) {
+    return InterimResultSweepHorizonValidator.reportingPeriodFor(
+        throughEffectiveDate, bookStartDate, bookIdentity, transferredThroughEffectiveDate);
+  }
+
   /** Returns the first deterministic close-horizon rejection for the selected period, if any. */
   public Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
       ReportingPeriod reportingPeriod,
@@ -44,6 +54,21 @@ public final class InterimResultSweepPlanner {
       Optional<LocalDate> transferredThroughEffectiveDate) {
     return InterimResultSweepHorizonValidator.closeHorizonRejection(
         reportingPeriod, bookIdentity, currentUtcDate, transferredThroughEffectiveDate);
+  }
+
+  /** Returns the first deterministic close-horizon rejection for one derived sweep window. */
+  public Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
+      LocalDate throughEffectiveDate,
+      LocalDate bookStartDate,
+      BookIdentity bookIdentity,
+      LocalDate currentUtcDate,
+      Optional<LocalDate> transferredThroughEffectiveDate) {
+    return InterimResultSweepHorizonValidator.closeHorizonRejection(
+        throughEffectiveDate,
+        bookStartDate,
+        bookIdentity,
+        currentUtcDate,
+        transferredThroughEffectiveDate);
   }
 
   /** Plans durable interim-result-sweep postings and the published close totals they produce. */

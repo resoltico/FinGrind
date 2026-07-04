@@ -122,6 +122,14 @@ class PdfValueFormatterTest {
         PdfValueFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.NONCURRENT_ASSET));
     assertEquals(
+        "Inventory",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.INVENTORY));
+    assertEquals(
+        "Trade receivable",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.TRADE_RECEIVABLE));
+    assertEquals(
         "Current liability",
         PdfValueFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.CURRENT_LIABILITY));
@@ -129,6 +137,10 @@ class PdfValueFormatterTest {
         "Non-current liability",
         PdfValueFormatter.displayFinancialPositionLineClassification(
             FinancialPositionLineClassification.NONCURRENT_LIABILITY));
+    assertEquals(
+        "Trade payable",
+        PdfValueFormatter.displayFinancialPositionLineClassification(
+            FinancialPositionLineClassification.TRADE_PAYABLE));
     assertEquals(
         "Contributed capital",
         PdfValueFormatter.displayFinancialPositionLineClassification(
@@ -165,6 +177,10 @@ class PdfValueFormatterTest {
         PdfValueFormatter.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.OPERATING_REVENUE));
     assertEquals(
+        "Sales discount allowance",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE));
+    assertEquals(
         "Other revenue",
         PdfValueFormatter.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.OTHER_REVENUE));
@@ -185,11 +201,19 @@ class PdfValueFormatterTest {
         PdfValueFormatter.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION));
     assertEquals(
+        "Settlement fee",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.SETTLEMENT_FEE));
+    assertEquals(
+        "Bad debt write-off",
+        PdfValueFormatter.displayProfitAndLossLineClassification(
+            ProfitAndLossLineClassification.BAD_DEBT_WRITE_OFF));
+    assertEquals(
         "Finance expense",
         PdfValueFormatter.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.FINANCE_EXPENSE));
     assertEquals(
-        "Tax expense",
+        "Other expense",
         PdfValueFormatter.displayProfitAndLossLineClassification(
             ProfitAndLossLineClassification.OTHER_EXPENSE));
     assertEquals(

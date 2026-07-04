@@ -150,6 +150,8 @@ def assert_open_book(args: argparse.Namespace) -> int:
         raise SystemExit(f"{args.label} open-book returned the wrong entity form")
     if book_identity["bookTemplateId"] != "OWNER_MANAGED_SERVICE":
         raise SystemExit(f"{args.label} open-book returned the wrong book template")
+    if book_identity["accountingBasis"] != args.accounting_basis:
+        raise SystemExit(f"{args.label} open-book returned the wrong accounting basis")
     if book_identity["functionalCurrency"] != args.functional_currency:
         raise SystemExit(f"{args.label} open-book returned the wrong functional currency")
     if book_identity["fiscalYearStart"] != args.fiscal_year_start:
@@ -211,8 +213,8 @@ def build_parser() -> argparse.ArgumentParser:
     request_template.add_argument("--label", required=True)
     request_template.add_argument(
         "--expected-entry-kind",
-        choices=("DIRECT_JOURNAL", "SALE"),
-        default="SALE",
+        choices=("DIRECT_JOURNAL", "SALE_SETTLED"),
+        default="SALE_SETTLED",
     )
     request_template.add_argument("--require-evidence-fields", action="store_true")
     request_template.set_defaults(handler=assert_request_template)
@@ -239,6 +241,7 @@ def build_parser() -> argparse.ArgumentParser:
     open_book.add_argument("--document", required=True)
     open_book.add_argument("--label", required=True)
     open_book.add_argument("--entity-name", required=True)
+    open_book.add_argument("--accounting-basis", required=True)
     open_book.add_argument("--functional-currency", required=True)
     open_book.add_argument("--fiscal-year-start", required=True)
     open_book.set_defaults(handler=assert_open_book)

@@ -442,11 +442,20 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     PrintRequestTemplate recordSale =
         assertInstanceOf(
             PrintRequestTemplate.class,
-            CliArguments.parse(new String[] {"print-request-template", "record-sale"}));
+            CliArguments.parse(new String[] {"print-request-template", "record-sale-settled"}));
+    PrintRequestTemplate recordPurchaseSettled =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(new String[] {"print-request-template", "record-purchase-settled"}));
+    PrintRequestTemplate recordPurchaseOnCredit =
+        assertInstanceOf(
+            PrintRequestTemplate.class,
+            CliArguments.parse(
+                new String[] {"print-request-template", "record-purchase-on-credit"}));
     PrintRequestTemplate recordExpense =
         assertInstanceOf(
             PrintRequestTemplate.class,
-            CliArguments.parse(new String[] {"print-request-template", "record-expense"}));
+            CliArguments.parse(new String[] {"print-request-template", "record-expense-settled"}));
     PrintRequestTemplate recordOwnerContribution =
         assertInstanceOf(
             PrintRequestTemplate.class,
@@ -469,8 +478,10 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals(OperationId.DECLARE_ACCOUNT, declareAccount.commandTopic());
     assertEquals(OperationId.DECLARE_TAX_REGISTRATION, declareTaxRegistration.commandTopic());
     assertEquals(OperationId.PREFLIGHT_ENTRY, preflight.commandTopic());
-    assertEquals(OperationId.RECORD_SALE, recordSale.commandTopic());
-    assertEquals(OperationId.RECORD_EXPENSE, recordExpense.commandTopic());
+    assertEquals(OperationId.RECORD_SALE_SETTLED, recordSale.commandTopic());
+    assertEquals(OperationId.RECORD_PURCHASE_SETTLED, recordPurchaseSettled.commandTopic());
+    assertEquals(OperationId.RECORD_PURCHASE_ON_CREDIT, recordPurchaseOnCredit.commandTopic());
+    assertEquals(OperationId.RECORD_EXPENSE_SETTLED, recordExpense.commandTopic());
     assertEquals(OperationId.RECORD_OWNER_CONTRIBUTION, recordOwnerContribution.commandTopic());
     assertEquals(OperationId.RECORD_OWNER_WITHDRAWAL, recordOwnerWithdrawal.commandTopic());
     assertEquals(OperationId.RECORD_OPENING_POSITION, recordOpeningPosition.commandTopic());
@@ -509,7 +520,9 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertTrue(exception.failure().message().contains("Unsupported request-template topic"));
     assertTrue(exception.failure().message().contains("post-entry"));
     assertTrue(exception.failure().message().contains("preflight-entry"));
-    assertTrue(exception.failure().message().contains("record-sale"));
+    assertTrue(exception.failure().message().contains("record-sale-settled"));
+    assertTrue(exception.failure().message().contains("record-purchase-settled"));
+    assertTrue(exception.failure().message().contains("record-purchase-on-credit"));
     assertTrue(exception.failure().message().contains("declare-account"));
     assertTrue(exception.failure().message().contains("declare-tax-registration"));
   }

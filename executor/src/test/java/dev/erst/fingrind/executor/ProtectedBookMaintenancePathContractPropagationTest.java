@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
@@ -55,6 +56,7 @@ class ProtectedBookMaintenancePathContractPropagationTest {
   void restoreBook_rejectsBackupSourcePathViolationsRaisedDuringVerification() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
     Path book = path(tempDirectory, "book.sqlite");
+    Path bookKey = restoreBookKey(book);
     Path backup = path(tempDirectory, "backup.sqlite");
     Path backupKey = path(tempDirectory, "backup.book-key");
     store.verifyInitializedBookRejection =
@@ -66,7 +68,7 @@ class ProtectedBookMaintenancePathContractPropagationTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
 
     assertArtifactPathInvalid(
         rejected.rejection(),
@@ -79,6 +81,7 @@ class ProtectedBookMaintenancePathContractPropagationTest {
   void restoreBook_rejectsRestoredTargetPathViolationsRaisedDuringReplacement() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
     Path book = path(tempDirectory, "book.sqlite");
+    Path bookKey = restoreBookKey(book);
     Path backup = path(tempDirectory, "backup.sqlite");
     Path backupKey = path(tempDirectory, "backup.book-key");
     store.stageReplacementRejection =
@@ -90,7 +93,38 @@ class ProtectedBookMaintenancePathContractPropagationTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+
+    assertArtifactPathInvalid(
+        rejected.rejection(),
+        BookMaintenanceArtifactRole.RESTORED_TARGET,
+        hint(book),
+        BookMaintenancePathFailure.PARENT_PATH_COLLISION);
+  }
+
+  @Test
+  void restoreRekeyRollback_rejectsRestoredTargetPathViolationsRaisedDuringReplacement() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path(tempDirectory, "book.sqlite");
+    Path rollback = path(tempDirectory, "book.rekey-rollback-1.sqlite");
+    touch(rollback);
+    store.rollbackArtifacts.put(
+        store.normalized(book), java.util.List.of(store.normalized(rollback)));
+    store.stageReplacementRejection =
+        new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
+            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+            store.normalized(book),
+            ProtectedBookMaintenancePathFailure.PARENT_PATH_COLLISION);
+
+    RekeyRollbackResult.Rejected rejected =
+        assertInstanceOf(
+            RekeyRollbackResult.Rejected.class,
+            service(store)
+                .restoreRekeyRollback(
+                    book,
+                    rollback,
+                    new BookAccess.PassphraseSource.KeyFile(path(tempDirectory, "book.key")))
+                .requireAccepted());
 
     assertArtifactPathInvalid(
         rejected.rejection(),
@@ -131,6 +165,7 @@ class ProtectedBookMaintenancePathContractPropagationTest {
   void restoreBook_failsFastWhenTheStoreThrowsANonPathMaintenanceRejection() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
     Path book = path(tempDirectory, "book.sqlite");
+    Path bookKey = restoreBookKey(book);
     Path backup = path(tempDirectory, "backup.sqlite");
     Path backupKey = path(tempDirectory, "backup.book-key");
     store.verifyInitializedBookRejection =
@@ -140,7 +175,28 @@ class ProtectedBookMaintenancePathContractPropagationTest {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
-            () -> service(store).restoreBook(book, backup, backupKey));
+            () -> service(store).restoreBook(book, bookKey, backup, backupKey));
+
+    assertTrue(
+        java.util.Objects.requireNonNull(exception.getMessage())
+            .contains("Expected one maintenance artifact-path rejection"));
+  }
+
+  @Test
+  void restoreBook_failsFastWhenReplacementStagingThrowsANonPathMaintenanceRejection() {
+    FakeMaintenanceStore store = new FakeMaintenanceStore();
+    Path book = path(tempDirectory, "book.sqlite");
+    Path bookKey = restoreBookKey(book);
+    Path backup = path(tempDirectory, "backup.sqlite");
+    Path backupKey = path(tempDirectory, "backup.book-key");
+    store.stageReplacementRejection =
+        new ProtectedBookMaintenanceRejection.ArtifactBusy(
+            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, store.normalized(book));
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> service(store).restoreBook(book, bookKey, backup, backupKey));
 
     assertTrue(
         java.util.Objects.requireNonNull(exception.getMessage())
@@ -157,5 +213,12 @@ class ProtectedBookMaintenancePathContractPropagationTest {
     assertEquals(expectedRole, invalid.artifactRole());
     assertEquals(expectedPathHint, invalid.artifactPath());
     assertEquals(expectedPathFailure, invalid.pathFailure());
+  }
+
+  private static Path restoreBookKey(Path bookFilePath) {
+    return bookFilePath
+        .resolveSibling(bookFilePath.getFileName().toString() + ".book-key")
+        .toAbsolutePath()
+        .normalize();
   }
 }

@@ -49,21 +49,33 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record OpenBookPayload(String bookFile, String initializedAt, BookIdentityPayload bookIdentity)
+  record OpenBookPayload(
+      String bookFile,
+      String initializedAt,
+      java.util.List<String> tightenedParentDirectories,
+      BookIdentityPayload bookIdentity)
       implements CliSuccessPayload {
     public OpenBookPayload {
       bookFile = requireText(bookFile, "bookFile");
       initializedAt = requireText(initializedAt, "initializedAt");
+      tightenedParentDirectories =
+          CliJsonModelValidation.copyList(tightenedParentDirectories, "tightenedParentDirectories");
       java.util.Objects.requireNonNull(bookIdentity, "bookIdentity");
     }
   }
 
-  record GeneratedBookKeyFilePayload(String encoding, int entropyBits, String permissions)
+  record GeneratedBookKeyFilePayload(
+      String encoding,
+      int entropyBits,
+      String permissions,
+      java.util.List<String> tightenedParentDirectories)
       implements CliSuccessPayload {
     public GeneratedBookKeyFilePayload {
       encoding = requireText(encoding, "encoding");
       requirePositive(entropyBits, "entropyBits");
       permissions = requireText(permissions, "permissions");
+      tightenedParentDirectories =
+          CliJsonModelValidation.copyList(tightenedParentDirectories, "tightenedParentDirectories");
     }
   }
 
@@ -82,9 +94,10 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record RestoreBookPayload(String bookFile) implements CliSuccessPayload {
+  record RestoreBookPayload(String bookFile, String bookKeyFilePath) implements CliSuccessPayload {
     public RestoreBookPayload {
       bookFile = requireText(bookFile, "bookFile");
+      bookKeyFilePath = requireText(bookKeyFilePath, "bookKeyFilePath");
     }
   }
 
@@ -134,6 +147,7 @@ public interface CliAdministrationJsonModels {
       String resultHoldingAccountCode,
       String retainedAccumulatedAccountCode,
       String closedAt,
+      boolean idempotentReplay,
       java.util.List<String> closePostingIds)
       implements CliSuccessPayload {
     public ClosedFiscalYearPayload {

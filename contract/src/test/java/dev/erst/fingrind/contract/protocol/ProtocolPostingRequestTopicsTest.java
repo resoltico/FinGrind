@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import dev.erst.fingrind.core.EconomicEventClass;
 import org.junit.jupiter.api.Test;
 
 /** Coverage and contract tests for raw-versus-typed posting command topic selection. */
@@ -15,7 +16,7 @@ class ProtocolPostingRequestTopicsTest {
   void acceptsAnyEntryKind_onlyForPreflightEntry() {
     assertTrue(ProtocolPostingRequestTopics.acceptsAnyEntryKind(OperationId.PREFLIGHT_ENTRY));
     assertFalse(ProtocolPostingRequestTopics.acceptsAnyEntryKind(OperationId.POST_ENTRY));
-    assertFalse(ProtocolPostingRequestTopics.acceptsAnyEntryKind(OperationId.RECORD_SALE));
+    assertFalse(ProtocolPostingRequestTopics.acceptsAnyEntryKind(OperationId.RECORD_SALE_SETTLED));
   }
 
   @Test
@@ -24,11 +25,13 @@ class ProtocolPostingRequestTopicsTest {
         BookkeepingEntryKind.DIRECT_JOURNAL,
         ProtocolPostingRequestTopics.requiredEntryKind(OperationId.POST_ENTRY).orElseThrow());
     assertEquals(
-        BookkeepingEntryKind.SALE,
-        ProtocolPostingRequestTopics.requiredEntryKind(OperationId.RECORD_SALE).orElseThrow());
+        BookkeepingEntryKind.SALE_SETTLED,
+        ProtocolPostingRequestTopics.requiredEntryKind(OperationId.RECORD_SALE_SETTLED)
+            .orElseThrow());
     assertEquals(
-        BookkeepingEntryKind.EXPENSE,
-        ProtocolPostingRequestTopics.requiredEntryKind(OperationId.RECORD_EXPENSE).orElseThrow());
+        BookkeepingEntryKind.EXPENSE_SETTLED,
+        ProtocolPostingRequestTopics.requiredEntryKind(OperationId.RECORD_EXPENSE_SETTLED)
+            .orElseThrow());
     assertEquals(
         BookkeepingEntryKind.OWNER_CONTRIBUTION,
         ProtocolPostingRequestTopics.requiredEntryKind(OperationId.RECORD_OWNER_CONTRIBUTION)
@@ -52,7 +55,7 @@ class ProtocolPostingRequestTopicsTest {
   @Test
   void scaffoldEntryKind_returnsCanonicalScaffoldOrRejectsUnownedOperation() {
     assertEquals(
-        BookkeepingEntryKind.SALE,
+        BookkeepingEntryKind.SALE_SETTLED,
         ProtocolPostingRequestTopics.scaffoldEntryKind(OperationId.PREFLIGHT_ENTRY));
     assertEquals(
         BookkeepingEntryKind.DIRECT_JOURNAL,
@@ -81,5 +84,29 @@ class ProtocolPostingRequestTopicsTest {
     assertThrows(
         NullPointerException.class,
         () -> ProtocolPostingRequestTopics.scaffoldEntryKind(nullOf(OperationId.class)));
+  }
+
+  @Test
+  void economicEventClasses_mapToTypedWriteOperationsOrRejectNonSingletons() {
+    assertEquals(
+        OperationId.RECORD_SALE_ON_CREDIT,
+        OperationId.forEconomicEventClass(EconomicEventClass.CREDIT_SALE));
+    assertEquals(
+        OperationId.RECORD_EXPENSE_ON_CREDIT,
+        OperationId.forEconomicEventClass(EconomicEventClass.CREDIT_EXPENSE));
+    assertEquals(
+        OperationId.RECORD_RECEIPT,
+        OperationId.forEconomicEventClass(EconomicEventClass.AR_SETTLEMENT));
+    assertEquals(
+        OperationId.RECORD_PAYMENT,
+        OperationId.forEconomicEventClass(EconomicEventClass.AP_SETTLEMENT));
+
+    IllegalArgumentException unsupported =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> OperationId.forEconomicEventClass(EconomicEventClass.ADJUSTMENT));
+    assertTrue(
+        java.util.Objects.requireNonNullElse(unsupported.getMessage(), "")
+            .contains("No typed write operation exists for economicEventClass 'ADJUSTMENT'."));
   }
 }

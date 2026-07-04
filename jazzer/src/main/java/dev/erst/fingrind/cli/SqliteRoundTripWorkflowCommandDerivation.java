@@ -44,14 +44,18 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   static PostEntryCommand derivedExactReversalCommand(
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
+    java.time.LocalDate reversalEffectiveDate = reversalEffectiveDate(command);
+    JournalEntry derivedJournalEntry =
+        new JournalEntry(
+            reversalEffectiveDate,
+            exactReversalLines(CliFuzzFixtures.journalEntry(command).lines()));
     return new PostEntryCommand(
         new BookkeepingEntry.Reversal(
-            new JournalEntry(
-                CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
-                exactReversalLines(CliFuzzFixtures.journalEntry(command).lines())),
+            reversalEffectiveDate,
             new PostingLineage.Reversal(
                 new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario)),
-            command.entry().foreignExchangeDetails()),
+            command.entry().foreignExchangeDetails(),
+            derivedJournalEntry),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
@@ -60,14 +64,18 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   static PostEntryCommand derivedNearMissReversalCommand(
       PostEntryCommand command, PostingId targetPostingId, String scenario) {
     String stableToken = derivedStableToken(command.requestProvenance(), scenario);
+    java.time.LocalDate reversalEffectiveDate = reversalEffectiveDate(command);
+    JournalEntry derivedJournalEntry =
+        new JournalEntry(
+            reversalEffectiveDate,
+            nonNegatingReversalLines(CliFuzzFixtures.journalEntry(command).lines()));
     return new PostEntryCommand(
         new BookkeepingEntry.Reversal(
-            new JournalEntry(
-                CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
-                nonNegatingReversalLines(CliFuzzFixtures.journalEntry(command).lines())),
+            reversalEffectiveDate,
             new PostingLineage.Reversal(
                 new ReversalReference(targetPostingId), new ReversalReason("Derived " + scenario)),
-            command.entry().foreignExchangeDetails()),
+            command.entry().foreignExchangeDetails(),
+            derivedJournalEntry),
         derivedEvidence(command.evidence(), stableToken),
         buildDerivedRequestProvenance(command.requestProvenance(), stableToken),
         command.sourceChannel());
@@ -123,6 +131,10 @@ final class SqliteRoundTripWorkflowCommandDerivation {
 
   static RequestProvenance derivedRequestProvenance(RequestProvenance provenance, String scenario) {
     return buildDerivedRequestProvenance(provenance, derivedStableToken(provenance, scenario));
+  }
+
+  private static java.time.LocalDate reversalEffectiveDate(PostEntryCommand command) {
+    return CliFuzzFixtures.journalEntry(command).effectiveDate();
   }
 
   private static String derivedStableToken(RequestProvenance provenance, String scenario) {

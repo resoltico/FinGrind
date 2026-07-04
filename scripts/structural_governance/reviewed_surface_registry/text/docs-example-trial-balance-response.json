@@ -1,0 +1,16 @@
+{
+  "relativePath": "docs/examples/trial-balance-response.json",
+  "owner": "docs-report-example",
+  "reason": "The checked-in trial-balance response fixture is one reviewed whole-response example for the shared report model, not an ad hoc JSON catalog.",
+  "splitTrigger": "Replace whole-response report examples with fragment-owned example families before adding another nested report-model response fixture.",
+  "reviewedRoleName": "docs-report-json-example",
+  "budgetVarianceReason": "Shared report-model response examples exceed the default JSON example nesting budget until the documentation surface can publish fragment-owned report examples instead of one whole-response payload.",
+  "approval": {
+    "physicalLines": 1,
+    "logicalLines": 1,
+    "importLikeLines": 0,
+    "functions": 0,
+    "nestedTypes": 36,
+    "expiresOn": "2026-08-15"
+  }
+}

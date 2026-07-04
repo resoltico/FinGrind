@@ -86,7 +86,7 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
                       Instant.parse("2026-04-07T10:15:30Z"),
                       bookIdentity(),
                       dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-                          bookIdentity().bookDoctrine().bookTemplateId())));
+                          bookIdentity().bookDoctrine())));
       assertEquals(
           "This FinGrind SQLite session cannot initialize or create a book file.",
           exception.getMessage());

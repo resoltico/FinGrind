@@ -18,7 +18,7 @@ final class MachineContractPostEntryFieldSpecs {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-            "Caller-authored bookkeeping entry kind. FinGrind accepts direct journals and typed business entries for sale, expense, owner contribution, owner withdrawal, opening position, and reversal.",
+            "Caller-authored bookkeeping entry kind. FinGrind accepts direct journals and typed business entries for settled sale, sale on credit, settled expense, expense on credit, receipt, payment, owner contribution, owner withdrawal, opening position, and reversal.",
             MachineContractScalarSchemas.enumStringSchema(
                 "Caller-authored bookkeeping entry kind.", BookkeepingEntryKind.wireValues())),
         MachineContractFieldSpec.required(
@@ -28,40 +28,63 @@ final class MachineContractPostEntryFieldSpecs {
                 "ISO-8601 local date that makes the bookkeeping entry effective.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-            "Declared cash account used by one sale, expense, owner contribution, or owner withdrawal entry.",
+            "Declared cash account used by a cash-settled operational entry or owner movement.",
             accountCodeSchema(
-                "Declared cash account used by one sale, expense, owner contribution, or owner withdrawal entry.")),
+                "Declared cash account used by a cash-settled operational entry or owner movement.")),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
+            "Declared trade receivable account used by a sale-on-credit or receipt entry.",
+            accountCodeSchema(
+                "Declared trade receivable account used by a sale-on-credit or receipt entry.")),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+            "Declared trade payable account used by an expense-on-credit or payment entry.",
+            accountCodeSchema(
+                "Declared trade payable account used by an expense-on-credit or payment entry.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
-            "Declared revenue account credited by one sale entry.",
-            accountCodeSchema("Declared revenue account credited by one sale entry.")),
+            "Declared revenue account credited by a sale entry.",
+            accountCodeSchema("Declared revenue account credited by a sale entry.")),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+            "Declared inventory asset account used by one trading-template inventory-purchase entry.",
+            accountCodeSchema(
+                "Declared inventory asset account used by one trading-template inventory-purchase entry.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
-            "Declared expense account debited by one expense entry.",
-            accountCodeSchema("Declared expense account debited by one expense entry.")),
+            "Declared expense account debited by an expense entry.",
+            accountCodeSchema("Declared expense account debited by an expense entry.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-            "Declared equity account used by one owner contribution or owner withdrawal entry.",
+            "Declared equity account used by an owner contribution or owner withdrawal entry.",
             accountCodeSchema(
-                "Declared equity account used by one owner contribution or owner withdrawal entry.")),
+                "Declared equity account used by an owner contribution or owner withdrawal entry.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.AMOUNT,
-            "Exact positive money object carried by one typed business entry.",
+            "Exact positive money object carried by a typed business entry.",
             MachineContractScalarSchemas.moneyObjectSchema(
-                "Exact positive money object carried by one typed business entry.", true)),
+                "Exact positive money object carried by a typed business entry.", true)),
+        MachineContractFieldSpec.conditional(
+            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+            "Conditional inventory-relief facts paired with a sale entry. Trading-template sale requests require this object so one committed sale can carry both revenue recognition and cost-of-sales relief.",
+            MachineContractPostEntryComponentSchemas.inventoryReliefSchema()),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
+            "Optional settlement-side adjunct used by a receipt or payment entry.",
+            MachineContractPostEntryComponentSchemas.settlementAdjunctSchema()),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-            "Optional owned foreign-exchange facts for one transaction-currency event translated into book functional currency.",
+            "Optional owned foreign-exchange facts for a transaction-currency event translated into book functional currency.",
             MachineContractPostEntryComponentSchemas.foreignExchangeSchema()),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.TAX,
-            "Optional declared tax selector used by sale and expense entries when this request must resolve through one owned tax registration.",
+            "Optional declared tax selector used by sale and expense entries when this request must resolve through an owned tax registration.",
             MachineContractPostEntryComponentSchemas.taxSchema()),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.LINES,
-            "Balanced non-empty array of journal lines used by direct-journal and reversal entries.",
+            "Balanced non-empty array of journal lines used only by direct-journal entries.",
             MachineContractSchemaSupport.arraySchema(
-                "Balanced non-empty array of journal lines used by direct-journal and reversal entries.",
+                "Balanced non-empty array of journal lines used only by direct-journal entries.",
                 MachineContractPostEntryComponentSchemas.lineSchema(),
                 2)),
         MachineContractFieldSpec.optional(
@@ -101,7 +124,7 @@ final class MachineContractPostEntryFieldSpecs {
                 "Journal side that carries the line amount.", JournalLine.EntrySide.wireValues())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.JournalLine.AMOUNT,
-            "Exact positive money object for this journal line. Every line in one entry must resolve to the same currency unit.",
+            "Exact positive money object for this journal line. Every line in the same entry must resolve to the same currency unit.",
             MachineContractScalarSchemas.moneyObjectSchema(
                 "Exact positive money object for this journal line.", true)));
   }
@@ -137,6 +160,39 @@ final class MachineContractPostEntryFieldSpecs {
             "Declared tax code selected inside the named tax registration.",
             MachineContractScalarSchemas.nonBlankStringSchema(
                 "Declared tax code selected inside the named tax registration.")));
+  }
+
+  static List<MachineContractFieldSpec> settlementAdjunctFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.SettlementAdjunct.ACCOUNT_CODE,
+            "Declared adjunct account used by a receipt or payment settlement.",
+            accountCodeSchema("Declared adjunct account used by a receipt or payment settlement.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.SettlementAdjunct.AMOUNT,
+            "Exact positive money object carried by a settlement adjunct.",
+            MachineContractScalarSchemas.moneyObjectSchema(
+                "Exact positive money object carried by a settlement adjunct.", true)));
+  }
+
+  static List<MachineContractFieldSpec> inventoryReliefFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.InventoryRelief.INVENTORY_ACCOUNT_CODE,
+            "Declared non-cash inventory account credited by this trading-sale inventory relief.",
+            accountCodeSchema(
+                "Declared non-cash inventory account credited by this trading-sale inventory relief.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.InventoryRelief.COST_OF_SALES_ACCOUNT_CODE,
+            "Declared cost-of-sales account debited by this trading-sale inventory relief.",
+            accountCodeSchema(
+                "Declared cost-of-sales account debited by this trading-sale inventory relief.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.InventoryRelief.AMOUNT,
+            "Exact positive money object carried by the inventory-relief leg of a trading sale.",
+            MachineContractScalarSchemas.moneyObjectSchema(
+                "Exact positive money object carried by the inventory-relief leg of a trading sale.",
+                true)));
   }
 
   static List<MachineContractFieldSpec> evidenceFields() {

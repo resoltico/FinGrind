@@ -42,7 +42,6 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
     String shortcutTemplate =
         CliDiscoveryOutputRenderer.renderJsonTemplate(
             Map.of("hello", "world"), "fingrind print-request-template post-entry");
-
     assertFalse(bareTemplate.contains("Shortcut:"));
     assertTrue(bareTemplate.contains("\"hello\" : \"world\""));
     assertTrue(shortcutTemplate.contains("Shortcut: fingrind print-request-template post-entry"));
@@ -57,7 +56,6 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             () ->
                 CliDiscoveryOutputRenderer.renderJsonTemplate(
                     new BrokenTemplate(BrokenEnum.BROKEN), null));
-
     String message = java.util.Objects.requireNonNullElse(exception.getMessage(), "");
     assertTrue(message.contains("Failed to render CLI help request template JSON."));
   }
@@ -109,12 +107,12 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 new ContractResponse.PreflightDescriptor(
                     "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
                 new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
-
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("Quick Start"));
-    assertTrue(rendered.contains("Generate one key file"));
-    assertTrue(rendered.contains("Review the seeded starter chart"));
-    assertTrue(rendered.contains("Create the first sale request"));
+    assertTrue(rendered.contains("Generate a key file"));
+    assertFalse(rendered.contains("Generate one key file"));
+    assertTrue(rendered.contains("Review the seeded accounts"));
+    assertTrue(rendered.contains("Create the first settled-sale request"));
     assertTrue(rendered.contains("Command Catalog"));
     assertTrue(rendered.contains("Reference"));
   }
@@ -133,7 +131,6 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             CliDiscoveryTestSupport.environment().publication(),
             CliDiscoveryTestSupport.environment().storage(),
             CliDiscoveryTestSupport.environment().sqlite());
-
     String rendered = renderHelpText(helpDescriptor, environmentDescriptor, true);
 
     assertTrue(rendered.contains("FinGrind"));
@@ -151,24 +148,26 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             MachineContract.help(
                 CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment()));
 
-    int generateKeyIndex = rendered.indexOf("Generate one key file");
-    int openBookIndex = rendered.indexOf("Open one protected book");
-    int starterChartIndex = rendered.indexOf("Review the seeded starter chart");
-    int entryScaffoldIndex = rendered.indexOf("Create the first sale request");
-    int preflightIndex = rendered.indexOf("Validate the first sale request");
-    int postEntryIndex = rendered.indexOf("Commit the first sale");
+    int generateKeyIndex = rendered.indexOf("Generate a key file");
+    int openBookIndex = rendered.indexOf("Open a protected book");
+    int seedTemplateIndex = rendered.indexOf("Review the seeded accounts");
+    int entryScaffoldIndex = rendered.indexOf("Create the first settled-sale request");
+    int preflightIndex = rendered.indexOf("Validate the first settled-sale request");
+    int postEntryIndex = rendered.indexOf("Commit the first settled sale");
     int firstReportIndex = rendered.indexOf("Read the first report");
 
     assertTrue(generateKeyIndex >= 0, rendered);
     assertTrue(openBookIndex >= 0, rendered);
-    assertTrue(starterChartIndex >= 0, rendered);
+    assertFalse(rendered.contains("Generate one key file"), rendered);
+    assertFalse(rendered.contains("Open one protected book"), rendered);
+    assertTrue(seedTemplateIndex >= 0, rendered);
     assertTrue(entryScaffoldIndex >= 0, rendered);
     assertTrue(preflightIndex >= 0, rendered);
     assertTrue(postEntryIndex >= 0, rendered);
     assertTrue(firstReportIndex >= 0, rendered);
     assertTrue(generateKeyIndex < openBookIndex, rendered);
-    assertTrue(openBookIndex < starterChartIndex, rendered);
-    assertTrue(starterChartIndex < entryScaffoldIndex, rendered);
+    assertTrue(openBookIndex < seedTemplateIndex, rendered);
+    assertTrue(seedTemplateIndex < entryScaffoldIndex, rendered);
     assertTrue(entryScaffoldIndex < preflightIndex, rendered);
     assertTrue(preflightIndex < postEntryIndex, rendered);
     assertTrue(postEntryIndex < firstReportIndex, rendered);
@@ -488,7 +487,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
 
     String rendered = renderHelpText(mutatedHelp);
 
-    assertTrue(rendered.contains("Canonical scaffold value: SALE."), rendered);
+    assertTrue(rendered.contains("Canonical scaffold value: SALE_SETTLED."), rendered);
     assertFalse(rendered.contains("Canonical scaffold value: OPENING_POSITION."), rendered);
     assertFalse(rendered.contains("Canonical scaffold value: DIRECT_JOURNAL."), rendered);
   }
@@ -532,7 +531,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
             CliDiscoveryTestSupport.environment(),
-            OperationId.RECORD_SALE);
+            OperationId.RECORD_SALE_SETTLED);
     HelpDescriptor executePlanCanonical =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
@@ -569,19 +568,19 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             assertTrue(
                 normalizedFieldBlocks(recordSaleAcceptedBlocks)
                     .getFirst()
-                    .contains("Canonical scaffold value: SALE."),
+                    .contains("Canonical scaffold value: SALE_SETTLED."),
                 recordSaleRendered),
         () ->
             assertTrue(
                 normalizedFieldBlocks(executePlanAcceptedBlocks)
                     .getFirst()
-                    .contains("Canonical scaffold value: SALE."),
+                    .contains("Canonical scaffold value: SALE_SETTLED."),
                 executePlanRendered),
         () ->
             assertEquals(
                 normalizedFieldBlocks(recordSaleAcceptedBlocks),
                 normalizedFieldBlocks(executePlanAcceptedBlocks),
-                "record-sale:\n"
+                "record-sale-settled:\n"
                     + recordSaleRendered
                     + "\n\nexecute-plan:\n"
                     + executePlanRendered));
@@ -647,7 +646,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
               MachineContract.help(
                   CliDiscoveryTestSupport.identity(),
                   CliDiscoveryTestSupport.environment(),
-                  OperationId.RECORD_SALE));
+                  OperationId.RECORD_SALE_SETTLED));
 
       assertTrue(rendered.contains("cp ./quick-start-request.json ./request.json"));
     } finally {

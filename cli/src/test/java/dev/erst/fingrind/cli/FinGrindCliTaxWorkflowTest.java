@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -218,9 +219,9 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
     String salePostingId =
         commitPosting(
             workflow,
-            "record-sale",
+            "record-sale-settled",
             writeNamedRequest(
-                "record-sale-taxed.json",
+                "record-sale-settled-taxed.json",
                 saleRequestJson(
                     "2026-04-05",
                     "command-sale-taxed",
@@ -233,11 +234,11 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
                     "vat-standard-sale")));
     commitPosting(
         workflow,
-        "record-sale",
+        "record-sale-settled",
         writeNamedRequest(
-            "record-sale-taxed-second.json",
+            "record-sale-settled-taxed-second.json",
             saleRequestJson(
-                "2026-04-09",
+                "2026-04-06",
                 "command-sale-taxed-second",
                 "idem-sale-taxed-second",
                 "document-sale-taxed-second",
@@ -249,11 +250,11 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
     String recoverableExpensePostingId =
         commitPosting(
             workflow,
-            "record-expense",
+            "record-expense-settled",
             writeNamedRequest(
-                "record-expense-taxed.json",
+                "record-expense-settled-taxed.json",
                 expenseRequestJson(
-                    "2026-04-12",
+                    "2026-04-07",
                     "command-expense-taxed",
                     "idem-expense-taxed",
                     "document-expense-taxed",
@@ -265,11 +266,11 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
     String nonrecoverableExpensePostingId =
         commitPosting(
             workflow,
-            "record-expense",
+            "record-expense-settled",
             writeNamedRequest(
-                "record-expense-taxed-nonrecoverable.json",
+                "record-expense-settled-taxed-nonrecoverable.json",
                 expenseRequestJson(
-                    "2026-04-18",
+                    "2026-04-07",
                     "command-expense-taxed-nonrecoverable",
                     "idem-expense-taxed-nonrecoverable",
                     "document-expense-taxed-nonrecoverable",
@@ -295,7 +296,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "--posting-id",
             postingIds.salePostingId());
     JsonNode saleEntry = salePostingEnvelope.path("payload").path("posting").path("entry");
-    assertEquals("SALE", saleEntry.path("entryKind").stringValue());
+    assertEquals("SALE_SETTLED", saleEntry.path("entryKind").stringValue());
     assertEquals("vat-lv", saleEntry.path("taxSelection").path("taxRegistrationId").stringValue());
     assertEquals("vat-standard-sale", saleEntry.path("taxSelection").path("taxCode").stringValue());
     assertEquals(
@@ -368,27 +369,18 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "2026-04-01",
             "--period-end",
             "2026-04-30");
+    JsonNode payload = obligationEnvelope.path("payload");
+    assertEquals("tax-obligation", payload.path("family").stringValue());
+    assertEquals("EUR 31.50", payload.path("verdicts").get(0).path("value").stringValue());
+    assertEquals("EUR 10.50", payload.path("verdicts").get(1).path("value").stringValue());
+    assertEquals("EUR 6.00", payload.path("verdicts").get(2).path("value").stringValue());
+    assertEquals("EUR 21.00", payload.path("verdicts").get(3).path("value").stringValue());
+    JsonNode codeSummaries = payload.path("sections").get(0);
+    assertEquals("codeSummaries", codeSummaries.path("key").stringValue());
+    assertEquals(3, codeSummaries.path("rows").size());
     assertEquals(
-        "3150",
-        obligationEnvelope.path("payload").path("outputTax").path("minorUnits").stringValue());
-    assertEquals(
-        "1050",
-        obligationEnvelope
-            .path("payload")
-            .path("recoverableInputTax")
-            .path("minorUnits")
-            .stringValue());
-    assertEquals(
-        "600",
-        obligationEnvelope
-            .path("payload")
-            .path("nonrecoverableInputTax")
-            .path("minorUnits")
-            .stringValue());
-    assertEquals(
-        "2100",
-        obligationEnvelope.path("payload").path("netPayable").path("minorUnits").stringValue());
-    assertEquals(3, obligationEnvelope.path("payload").path("codeSummaries").size());
+        "EUR 21.00",
+        codeSummaries.path("totals").get(0).path("rows").get(3).path("cells").get(1).stringValue());
 
     String obligationText =
         runText(
@@ -428,9 +420,23 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "--output",
             "csv");
     assertTrue(
-        obligationCsv.contains("taxObligationCode:vat-lv:vat-standard-sale:OUTPUT_SALE"),
+        obligationCsv.contains(
+            "exportFamily,rowId,parentRowId,relationKind,recordKind,taxRegistrationId,taxRegistrationName,taxJurisdiction,taxRegistrationNumber,effectiveDateFrom,effectiveDateTo,dueDate,taxCode,taxCodeName,applicationKind,postingCount,currencyCode,taxableAmount,taxAmount,grossAmount,outputTax,recoverableInputTax,nonrecoverableInputTax,netPayable,netReceivable,message"),
         obligationCsv);
-    assertTrue(obligationCsv.contains("taxObligationCodeSummary"), obligationCsv);
+    assertTrue(
+        obligationCsv.contains(
+            "tax-obligation-row:vat-standard-sale:OUTPUT_SALE,,line,tax-obligation,vat-lv"),
+        obligationCsv);
+    assertTrue(
+        obligationCsv.contains(",vat-standard-sale,VAT Standard Sale,OUTPUT_SALE,"), obligationCsv);
+    assertTrue(
+        obligationCsv.contains("tax-obligation-total:EUR,,report-total,tax-obligation,vat-lv"),
+        obligationCsv);
+    assertTrue(obligationCsv.contains("31.50"), obligationCsv);
+    assertTrue(obligationCsv.contains("10.50"), obligationCsv);
+    assertTrue(obligationCsv.contains("6.00"), obligationCsv);
+    assertTrue(obligationCsv.contains("21.00"), obligationCsv);
+    assertTrue(obligationCsv.contains("0.00"), obligationCsv);
 
     String emptyObligationText =
         runText(
@@ -469,10 +475,62 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "2026-04-30",
             "--output",
             "csv");
-    assertTrue(emptyObligationCsv.contains("taxObligationScopeEmpty"), emptyObligationCsv);
+    assertTrue(
+        emptyObligationCsv.contains("tax-obligation-total:EUR,,report-empty,tax-obligation,vat-ee"),
+        emptyObligationCsv);
     assertTrue(
         emptyObligationCsv.contains("No tax obligation code summaries matched the selected scope."),
         emptyObligationCsv);
+
+    Path textPdfOut = tempDirectory.resolve("tax-obligation-text.pdf");
+    String textPdfOutput =
+        runText(
+            0,
+            "tax-obligation",
+            "--book-file",
+            workflow.bookFilePath().toString(),
+            "--book-key-file",
+            workflow.bookKeyFilePath().toString(),
+            "--tax-registration-id",
+            "vat-lv",
+            "--period-start",
+            "2026-04-01",
+            "--period-end",
+            "2026-04-30",
+            "--output",
+            "text",
+            "--pdf-out",
+            textPdfOut.toString());
+    assertEquals(
+        CliArtifactOutputRenderer.renderPdfArtifact(textPdfOut) + System.lineSeparator(),
+        textPdfOutput);
+    assertTrue(Files.exists(textPdfOut), textPdfOut.toString());
+
+    Path jsonPdfOut = tempDirectory.resolve("tax-obligation-json.pdf");
+    JsonNode pdfEnvelope =
+        runJson(
+            0,
+            "tax-obligation",
+            "--book-file",
+            workflow.bookFilePath().toString(),
+            "--book-key-file",
+            workflow.bookKeyFilePath().toString(),
+            "--tax-registration-id",
+            "vat-lv",
+            "--period-start",
+            "2026-04-01",
+            "--period-end",
+            "2026-04-30",
+            "--output",
+            "json",
+            "--pdf-out",
+            jsonPdfOut.toString());
+    assertEquals(1, pdfEnvelope.path("artifacts").size());
+    assertEquals("pdf", pdfEnvelope.path("artifacts").get(0).path("format").stringValue());
+    assertEquals(
+        CliPublicPaths.redactedValue(jsonPdfOut),
+        pdfEnvelope.path("artifacts").get(0).path("path").stringValue());
+    assertTrue(Files.exists(jsonPdfOut), jsonPdfOut.toString());
   }
 
   private void assertTaxObligationRejections(TaxWorkflowContext workflow) throws IOException {
@@ -733,7 +791,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
       String taxCode) {
     return """
         {
-          "entryKind": "SALE",
+          "entryKind": "SALE_SETTLED",
           "effectiveDate": "%s",
           "cashAccountCode": "%s",
           "revenueAccountCode": "%s",
@@ -791,7 +849,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
       String taxCode) {
     return """
         {
-          "entryKind": "EXPENSE",
+          "entryKind": "EXPENSE_SETTLED",
           "effectiveDate": "%s",
           "expenseAccountCode": "%s",
           "cashAccountCode": "%s",

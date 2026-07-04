@@ -14,7 +14,9 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import java.io.IOException;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -173,6 +175,46 @@ abstract class SqliteProtectedBookMaintenanceStoreCoverageTestSupport
         stagedBookPath, targetBookPath, previousTargetBackupPath);
   }
 
+  protected static SqliteStagedRestoredBookPair newStagedRestoredBookPair(
+      Path stagedBookPath,
+      Path finalBookPath,
+      Path stagedBookKeyFilePath,
+      Path finalBookKeyFilePath,
+      @Nullable Path previousBookFilePath,
+      @Nullable Path previousBookKeyFilePath,
+      SqliteBookPassphrase restoredPassphrase) {
+    try {
+      MethodHandles.Lookup lookup =
+          MethodHandles.privateLookupIn(SqliteStagedRestoredBookPair.class, MethodHandles.lookup());
+      MethodHandle constructor =
+          lookup.findConstructor(
+              SqliteStagedRestoredBookPair.class,
+              MethodType.methodType(
+                  void.class,
+                  Path.class,
+                  Path.class,
+                  Path.class,
+                  Path.class,
+                  Path.class,
+                  Path.class,
+                  SqliteBookPassphrase.class,
+                  SqliteProtectedBookVerificationSupport.class));
+      return (SqliteStagedRestoredBookPair)
+          constructor.invokeWithArguments(
+              stagedBookPath,
+              finalBookPath,
+              stagedBookKeyFilePath,
+              finalBookKeyFilePath,
+              previousBookFilePath,
+              previousBookKeyFilePath,
+              restoredPassphrase,
+              VERIFICATION_SUPPORT);
+    } catch (Throwable exception) {
+      throw new LinkageError(
+          "Failed to instantiate one staged restored-book pair test fixture.", exception);
+    }
+  }
+
   protected static void setPrivateField(Object target, String fieldName, @Nullable Object value) {
     try {
       MethodHandles.Lookup lookup =
@@ -184,6 +226,17 @@ abstract class SqliteProtectedBookMaintenanceStoreCoverageTestSupport
           field.set(target, value);
         }
         case "backupFilePublished", "backupKeyFilePublished" -> {
+          VarHandle field = lookup.findVarHandle(target.getClass(), fieldName, boolean.class);
+          field.set(
+              target,
+              ((Boolean) java.util.Objects.requireNonNull(value, fieldName)).booleanValue());
+        }
+        case "restoredPassphrase" -> {
+          VarHandle field =
+              lookup.findVarHandle(target.getClass(), fieldName, SqliteBookPassphrase.class);
+          field.set(target, value);
+        }
+        case "finished" -> {
           VarHandle field = lookup.findVarHandle(target.getClass(), fieldName, boolean.class);
           field.set(
               target,

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.58.0"
+version: "0.59.0"
 domain: SQLITE_SCHEMA_CORE_POSTING_FOREIGN_EXCHANGE
-updated: "2026-06-29"
+updated: "2026-07-04"
 ---
 
 # SQLite Schema: Posting Foreign Exchange
@@ -70,7 +70,7 @@ create table if not exists posting_foreign_exchange (
 create trigger if not exists posting_foreign_exchange_validate_origin_on_insert
 before insert on posting_foreign_exchange
 begin
-    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE, EXPENSE, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
+    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE_SETTLED, EXPENSE_SETTLED, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
     where exists (
         select 1
         from posting_fact
@@ -78,8 +78,8 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_origin_kind not in (
                 'DIRECT_JOURNAL',
-                'SALE',
-                'EXPENSE',
+                'SALE_SETTLED',
+                'EXPENSE_SETTLED',
                 'OWNER_CONTRIBUTION',
                 'OWNER_WITHDRAWAL',
                 'REVERSAL'

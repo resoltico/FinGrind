@@ -11,22 +11,25 @@ import java.util.List;
 final class CliBookAccessOutputRenderer {
   private CliBookAccessOutputRenderer() {}
 
-  static String renderGeneratedBookKeyFileText(GeneratedBookKeyFile generatedKeyFile) {
+  static String renderGeneratedBookKeyFileText(
+      GeneratedBookKeyFile generatedKeyFile, List<Path> tightenedParentDirectories) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Book key file", CliTextDisplay.path(generatedKeyFile.bookKeyFilePath())));
+    rows.add(List.of("Encoding", generatedKeyFile.encoding()));
+    rows.add(List.of("Entropy bits", Integer.toString(generatedKeyFile.entropyBits())));
+    rows.add(List.of("Permissions", generatedKeyFile.permissions()));
+    appendTightenedParentRows(rows, tightenedParentDirectories);
     return CliTextFormat.renderTitledBlock(
-        "Book Key File Generated",
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Book key file", CliTextDisplay.path(generatedKeyFile.bookKeyFilePath())),
-                List.of("Encoding", generatedKeyFile.encoding()),
-                List.of("Entropy bits", Integer.toString(generatedKeyFile.entropyBits())),
-                List.of("Permissions", generatedKeyFile.permissions()))));
+        "Book Key File Generated", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderOpenBookText(Path bookFilePath, OpenBookResult.Opened opened) {
+  static String renderOpenBookText(
+      Path bookFilePath, List<Path> tightenedParentDirectories, OpenBookResult.Opened opened) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Book file", CliTextDisplay.path(bookFilePath)));
     rows.addAll(CliBookIdentityDisplay.rows(opened.bookIdentity()));
     rows.add(List.of("Initialized at", CliTextDisplay.instant(opened.initializedAt())));
+    appendTightenedParentRows(rows, tightenedParentDirectories);
     return CliTextFormat.renderTitledBlock(
         "Book Initialized", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
@@ -51,5 +54,14 @@ final class CliBookAccessOutputRenderer {
       case BookAccess.PassphraseSource.StandardInput _ -> "Standard input";
       case BookAccess.PassphraseSource.InteractivePrompt _ -> "Interactive prompt";
     };
+  }
+
+  private static void appendTightenedParentRows(
+      List<List<String>> rows, List<Path> tightenedParentDirectories) {
+    tightenedParentDirectories.forEach(
+        tightenedParentDirectory ->
+            rows.add(
+                List.of(
+                    "Tightened parent directory", CliTextDisplay.path(tightenedParentDirectory))));
   }
 }

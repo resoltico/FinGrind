@@ -11,6 +11,7 @@ import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.evidence;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.extractedText;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.ledgerEntries;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.money;
+import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.render;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -71,8 +72,8 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                 new PeriodCurrencySummary(
                     balance("EUR", "3600.00", "3600.00", "0.00", BalanceSide.ZERO))),
             accountActivityRows(72));
-    byte[] accountLedgerPdf = PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport);
-    byte[] periodSummaryPdf = PDF_REPORT_SERVICE.renderPeriodSummary(periodSummaryReport);
+    byte[] accountLedgerPdf = render(PDF_REPORT_SERVICE, accountLedgerReport);
+    byte[] periodSummaryPdf = render(PDF_REPORT_SERVICE, periodSummaryReport);
     assertPdfPageCountAtLeast(accountLedgerPdf, 2);
     assertPdfPageCountAtLeast(periodSummaryPdf, 2);
     String accountLedgerText = extractedText(accountLedgerPdf);
@@ -139,8 +140,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                     BalanceSide.DEBIT)),
             List.of(balance("EUR", "250.00", "100.00", "150.00", BalanceSide.DEBIT)));
 
-    String accountLedgerText =
-        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
+    String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));
     String normalizedAccountLedgerText = accountLedgerText.replace('\n', ' ');
 
     assertTrue(accountLedgerText.contains("Opening Balances"));
@@ -166,8 +166,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             List.of(),
             List.of(balance("EUR", "0.00", "25.00", "25.00", BalanceSide.CREDIT)));
 
-    String accountLedgerText =
-        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
+    String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));
 
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("25.00"));
@@ -216,8 +215,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                     BalanceSide.ZERO)),
             List.of(balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO)));
 
-    String accountLedgerText =
-        extractedText(PDF_REPORT_SERVICE.renderAccountLedger(accountLedgerReport));
+    String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));
 
     assertTrue(accountLedgerText.contains("(self)"));
   }

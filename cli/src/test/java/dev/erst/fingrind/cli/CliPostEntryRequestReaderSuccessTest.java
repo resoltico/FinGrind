@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -18,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.node.ObjectNode;
@@ -31,7 +33,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
         readFromStandardInput(
             """
             {
-              "entryKind": "EXPENSE",
+              "entryKind": "EXPENSE_SETTLED",
               "effectiveDate": "2026-04-07",
               "expenseAccountCode": "5000",
               "cashAccountCode": "1000",
@@ -47,13 +49,295 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             """
                 .formatted(eurMoneyJson("1000")));
 
-    BookkeepingEntry.Expense entry =
-        assertInstanceOf(BookkeepingEntry.Expense.class, command.entry());
+    BookkeepingEntry.ExpenseSettled entry =
+        assertInstanceOf(BookkeepingEntry.ExpenseSettled.class, command.entry());
 
-    assertEquals(BookkeepingEntryKind.EXPENSE, entry.entryKind());
+    assertEquals(BookkeepingEntryKind.EXPENSE_SETTLED, entry.entryKind());
     assertEquals(new AccountCode("5000"), entry.expenseAccountCode());
     assertEquals(new AccountCode("1000"), entry.cashAccountCode());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
+  }
+
+  @Test
+  void readPostEntryCommand_readsCreditSaleAndExpenseEntriesWithTaxSelection() {
+    PostEntryCommand saleCommand =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "SALE_ON_CREDIT",
+              "effectiveDate": "2026-04-07",
+              "receivableAccountCode": "1100",
+              "revenueAccountCode": "2000",
+              "amount": %s,
+              "tax": {
+                "taxRegistrationId": "vat-lv",
+                "taxCode": "vat-standard-sale"
+              },
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-credit-sale",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000")));
+    PostEntryCommand expenseCommand =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "EXPENSE_ON_CREDIT",
+              "effectiveDate": "2026-04-07",
+              "expenseAccountCode": "5000",
+              "payableAccountCode": "2100",
+              "amount": %s,
+              "tax": {
+                "taxRegistrationId": "vat-lv",
+                "taxCode": "vat-standard-expense"
+              },
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-2",
+                "idempotencyKey": "idem-credit-expense",
+                "causationId": "cause-2"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000")));
+
+    BookkeepingEntry.SaleOnCredit sale =
+        assertInstanceOf(BookkeepingEntry.SaleOnCredit.class, saleCommand.entry());
+    BookkeepingEntry.ExpenseOnCredit expense =
+        assertInstanceOf(BookkeepingEntry.ExpenseOnCredit.class, expenseCommand.entry());
+    var saleTaxSelection = Objects.requireNonNull(sale.taxSelection());
+    var expenseTaxSelection = Objects.requireNonNull(expense.taxSelection());
+
+    assertEquals(BookkeepingEntryKind.SALE_ON_CREDIT, sale.entryKind());
+    assertEquals(new AccountCode("1100"), sale.receivableAccountCode());
+    assertEquals("vat-standard-sale", saleTaxSelection.taxCode().value());
+    assertEquals(BookkeepingEntryKind.EXPENSE_ON_CREDIT, expense.entryKind());
+    assertEquals(new AccountCode("2100"), expense.payableAccountCode());
+    assertEquals("vat-standard-expense", expenseTaxSelection.taxCode().value());
+  }
+
+  @Test
+  void readPostEntryCommand_readsSalesWithInventoryRelief() {
+    PostEntryCommand settledSaleCommand =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "SALE_SETTLED",
+              "effectiveDate": "2026-04-07",
+              "cashAccountCode": "1000",
+              "revenueAccountCode": "4000",
+              "amount": %s,
+              "inventoryRelief": {
+                "inventoryAccountCode": "1400",
+                "costOfSalesAccountCode": "5000",
+                "amount": %s
+              },
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-sale-settled-relief",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000"), eurMoneyJson("400")));
+    PostEntryCommand creditSaleCommand =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "SALE_ON_CREDIT",
+              "effectiveDate": "2026-04-07",
+              "receivableAccountCode": "1100",
+              "revenueAccountCode": "4000",
+              "amount": %s,
+              "inventoryRelief": {
+                "inventoryAccountCode": "1400",
+                "costOfSalesAccountCode": "5000",
+                "amount": %s
+              },
+              "provenance": {
+                "actorId": "actor-2",
+                "actorType": "AGENT",
+                "commandId": "command-2",
+                "idempotencyKey": "idem-sale-credit-relief",
+                "causationId": "cause-2"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000"), eurMoneyJson("400")));
+
+    BookkeepingEntry.SaleSettled settledSale =
+        assertInstanceOf(BookkeepingEntry.SaleSettled.class, settledSaleCommand.entry());
+    BookkeepingEntry.SaleOnCredit creditSale =
+        assertInstanceOf(BookkeepingEntry.SaleOnCredit.class, creditSaleCommand.entry());
+    var settledInventoryRelief = Objects.requireNonNull(settledSale.inventoryRelief());
+    var creditInventoryRelief = Objects.requireNonNull(creditSale.inventoryRelief());
+
+    assertEquals(new AccountCode("1400"), settledInventoryRelief.inventoryAccountCode());
+    assertEquals(new AccountCode("5000"), settledInventoryRelief.costOfSalesAccountCode());
+    assertEquals("400", settledInventoryRelief.amount().minorUnits());
+    assertEquals(new AccountCode("1400"), creditInventoryRelief.inventoryAccountCode());
+    assertEquals(new AccountCode("5000"), creditInventoryRelief.costOfSalesAccountCode());
+    assertEquals("400", creditInventoryRelief.amount().minorUnits());
+  }
+
+  @Test
+  void readPostEntryCommand_allowsExplicitNullInventoryRelief() {
+    PostEntryCommand command =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "SALE_SETTLED",
+              "effectiveDate": "2026-04-07",
+              "cashAccountCode": "1000",
+              "revenueAccountCode": "4000",
+              "amount": %s,
+              "inventoryRelief": null,
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-sale-null-relief",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000")));
+
+    BookkeepingEntry.SaleSettled sale =
+        assertInstanceOf(BookkeepingEntry.SaleSettled.class, command.entry());
+
+    assertNull(sale.inventoryRelief());
+  }
+
+  @Test
+  void readPostEntryCommand_readsReceiptAndPaymentEntriesWithSettlementAdjunct() {
+    PostEntryCommand receiptCommand =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "RECEIPT",
+              "effectiveDate": "2026-04-07",
+              "cashAccountCode": "1000",
+              "receivableAccountCode": "1100",
+              "amount": %s,
+              "settlementAdjunct": {
+                "accountCode": "6100",
+                "amount": %s
+              },
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-receipt",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000"), eurMoneyJson("50")));
+    PostEntryCommand paymentCommand =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "PAYMENT",
+              "effectiveDate": "2026-04-07",
+              "payableAccountCode": "2100",
+              "cashAccountCode": "1000",
+              "amount": %s,
+              "settlementAdjunct": {
+                "accountCode": "6200",
+                "amount": %s
+              },
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-2",
+                "idempotencyKey": "idem-payment",
+                "causationId": "cause-2"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000"), eurMoneyJson("75")));
+
+    BookkeepingEntry.Receipt receipt =
+        assertInstanceOf(BookkeepingEntry.Receipt.class, receiptCommand.entry());
+    BookkeepingEntry.Payment payment =
+        assertInstanceOf(BookkeepingEntry.Payment.class, paymentCommand.entry());
+    var receiptAdjunct = Objects.requireNonNull(receipt.settlementAdjunct());
+    var paymentAdjunct = Objects.requireNonNull(payment.settlementAdjunct());
+
+    assertEquals(BookkeepingEntryKind.RECEIPT, receipt.entryKind());
+    assertEquals(new AccountCode("6100"), receiptAdjunct.accountCode());
+    assertEquals("50", receiptAdjunct.amount().minorUnits());
+    assertEquals(BookkeepingEntryKind.PAYMENT, payment.entryKind());
+    assertEquals(new AccountCode("6200"), paymentAdjunct.accountCode());
+    assertEquals("75", paymentAdjunct.amount().minorUnits());
+  }
+
+  @Test
+  void readPostEntryCommand_allowsReceiptWithoutSettlementAdjunct() {
+    PostEntryCommand command =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "RECEIPT",
+              "effectiveDate": "2026-04-07",
+              "cashAccountCode": "1000",
+              "receivableAccountCode": "1100",
+              "amount": %s,
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-receipt-plain",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000")));
+
+    BookkeepingEntry.Receipt receipt =
+        assertInstanceOf(BookkeepingEntry.Receipt.class, command.entry());
+
+    assertEquals(BookkeepingEntryKind.RECEIPT, receipt.entryKind());
+    assertNull(receipt.settlementAdjunct());
+  }
+
+  @Test
+  void readPostEntryCommand_allowsExplicitNullSettlementAdjunct() {
+    PostEntryCommand command =
+        readFromStandardInput(
+            """
+            {
+              "entryKind": "PAYMENT",
+              "effectiveDate": "2026-04-07",
+              "payableAccountCode": "2100",
+              "cashAccountCode": "1000",
+              "amount": %s,
+              "settlementAdjunct": null,
+              "provenance": {
+                "actorId": "actor-1",
+                "actorType": "AGENT",
+                "commandId": "command-1",
+                "idempotencyKey": "idem-payment-plain",
+                "causationId": "cause-1"
+              }
+            }
+            """
+                .formatted(eurMoneyJson("1000")));
+
+    BookkeepingEntry.Payment payment =
+        assertInstanceOf(BookkeepingEntry.Payment.class, command.entry());
+
+    assertEquals(BookkeepingEntryKind.PAYMENT, payment.entryKind());
+    assertNull(payment.settlementAdjunct());
   }
 
   @Test
@@ -143,9 +427,10 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             new ByteArrayInputStream(validRequestJson(false).getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
-    BookkeepingEntry.Sale entry = assertInstanceOf(BookkeepingEntry.Sale.class, command.entry());
+    BookkeepingEntry.SaleSettled entry =
+        assertInstanceOf(BookkeepingEntry.SaleSettled.class, command.entry());
 
-    assertEquals(BookkeepingEntryKind.SALE, entry.entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, entry.entryKind());
     assertEquals(new AccountCode("1000"), entry.cashAccountCode());
     assertEquals(new AccountCode("2000"), entry.revenueAccountCode());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
@@ -158,10 +443,11 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             new ByteArrayInputStream(validRequestJson(false).getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command =
-        requestReader.readPostEntryCommand(Path.of("-"), OperationId.RECORD_SALE);
-    BookkeepingEntry.Sale entry = assertInstanceOf(BookkeepingEntry.Sale.class, command.entry());
+        requestReader.readPostEntryCommand(Path.of("-"), OperationId.RECORD_SALE_SETTLED);
+    BookkeepingEntry.SaleSettled entry =
+        assertInstanceOf(BookkeepingEntry.SaleSettled.class, command.entry());
 
-    assertEquals(BookkeepingEntryKind.SALE, entry.entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, entry.entryKind());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
 
@@ -171,7 +457,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
         readFromStandardInput(
             """
             {
-              "entryKind": "SALE",
+              "entryKind": "SALE_SETTLED",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "revenueAccountCode": "2000",
@@ -188,9 +474,10 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             """
                 .formatted(eurMoneyJson("1000")));
 
-    BookkeepingEntry.Sale entry = assertInstanceOf(BookkeepingEntry.Sale.class, command.entry());
+    BookkeepingEntry.SaleSettled entry =
+        assertInstanceOf(BookkeepingEntry.SaleSettled.class, command.entry());
 
-    assertEquals(BookkeepingEntryKind.SALE, entry.entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, entry.entryKind());
     assertNull(entry.taxSelection());
     assertEquals(SourceChannel.CLI, command.sourceChannel());
   }
@@ -201,7 +488,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
         readFromStandardInput(
             """
             {
-              "entryKind": "SALE",
+              "entryKind": "SALE_SETTLED",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "revenueAccountCode": "2000",
@@ -233,7 +520,8 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     moneyJson("USD", "10000"),
                     eurMoneyJson("9200")));
 
-    BookkeepingEntry.Sale entry = assertInstanceOf(BookkeepingEntry.Sale.class, command.entry());
+    BookkeepingEntry.SaleSettled entry =
+        assertInstanceOf(BookkeepingEntry.SaleSettled.class, command.entry());
 
     assertNotNull(entry.foreignExchangeDetails());
     assertEquals("USD", entry.foreignExchangeDetails().transactionAmount().currencyCode());
@@ -249,7 +537,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
         readFromStandardInput(
             """
             {
-              "entryKind": "SALE",
+              "entryKind": "SALE_SETTLED",
               "effectiveDate": "2026-04-07",
               "cashAccountCode": "1000",
               "revenueAccountCode": "2000",
@@ -266,7 +554,8 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
             """
                 .formatted(eurMoneyJson("9200")));
 
-    BookkeepingEntry.Sale entry = assertInstanceOf(BookkeepingEntry.Sale.class, command.entry());
+    BookkeepingEntry.SaleSettled entry =
+        assertInstanceOf(BookkeepingEntry.SaleSettled.class, command.entry());
 
     assertNull(entry.foreignExchangeDetails());
   }
@@ -280,9 +569,10 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
 
     PostEntryCommand command =
         CliPostingRequestParser.readPostEntryCommand(rootNode, OperationId.HELP);
-    BookkeepingEntry.Sale entry = assertInstanceOf(BookkeepingEntry.Sale.class, command.entry());
+    BookkeepingEntry.SaleSettled entry =
+        assertInstanceOf(BookkeepingEntry.SaleSettled.class, command.entry());
 
-    assertEquals(BookkeepingEntryKind.SALE, entry.entryKind());
+    assertEquals(BookkeepingEntryKind.SALE_SETTLED, entry.entryKind());
   }
 
   @Test
@@ -418,18 +708,6 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 {
                   "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
-                  "lines": [
-                    {
-                      "accountCode": "1000",
-                      "side": "DEBIT",
-                      "amount": %s
-                    },
-                    {
-                      "accountCode": "3000",
-                      "side": "CREDIT",
-                      "amount": %s
-                    }
-                  ],
                   "reversal": {
                     "priorPostingId": "posting-0",
                     "reason": "operator reversal"
@@ -442,15 +720,19 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     "causationId": "cause-1"
                   }
                 }
-                """
-                            .formatted(eurMoneyJson("1000"), eurMoneyJson("1000")))
+                """)
                     .getBytes(StandardCharsets.UTF_8)));
 
     PostEntryCommand command = requestReader.readPostEntryCommand(Path.of("-"));
     BookkeepingEntry.Reversal entry =
         assertInstanceOf(BookkeepingEntry.Reversal.class, command.entry());
 
-    assertEquals(2, entry.lines().size());
+    assertEquals(
+        Optional.of(new ReversalReference(new dev.erst.fingrind.core.PostingId("posting-0"))),
+        entry.reversal().reversalReference());
+    assertEquals(
+        Optional.of(new ReversalReason("operator reversal")), entry.reversal().reversalReason());
+    assertThrows(IllegalStateException.class, entry::journalEntry);
   }
 
   @Test
@@ -461,7 +743,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
@@ -492,7 +774,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 withEvidence(
                         """
                 {
-                  "entryKind": "SALE",
+                  "entryKind": "SALE_SETTLED",
                   "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",

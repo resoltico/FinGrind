@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import java.io.PrintStream;
 import java.nio.file.Path;
 import org.jspecify.annotations.Nullable;
@@ -97,5 +98,14 @@ class CliResponseWriterReportSupport extends CliResponseWriterBookReadSupport {
   void writeChangesInEquityResult(
       ChangesInEquityResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
     reportWriter.writeChangesInEquityResult(result, outputMode, exportedArtifactPath);
+  }
+
+  void writeTaxObligationResult(TaxObligationResult result, OutputMode outputMode) {
+    reportWriter.writeTaxObligationResult(result, outputMode, null);
+  }
+
+  void writeTaxObligationResult(
+      TaxObligationResult result, OutputMode outputMode, @Nullable Path exportedArtifactPath) {
+    reportWriter.writeTaxObligationResult(result, outputMode, exportedArtifactPath);
   }
 }

@@ -4,8 +4,10 @@ import dev.erst.fingrind.cli.json.CliAccountStateViolationPayload;
 import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AccountStateViolationDetail;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
+import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 
 /** Maps posting rejections into the CLI rejected-envelope contract. */
@@ -28,8 +30,18 @@ final class CliPostingRejectionPayloadMapper {
 
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
       rejectionDetails(PostingRejection rejection) {
+    CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails bookkeepingDetails =
+        bookkeepingDetails(rejection);
+    return bookkeepingDetails != null ? bookkeepingDetails : reversalDetails(rejection);
+  }
+
+  private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
+      bookkeepingDetails(PostingRejection rejection) {
+    if (rejection instanceof PostingRejection.BookNotInitialized
+        || rejection instanceof PostingRejection.IdempotencyKeyConflict) {
+      return null;
+    }
     return switch (rejection) {
-      case PostingRejection.BookNotInitialized _ -> null;
       case PostingRejection.AccountStateViolations violations ->
           new CliRejectionJsonModels.AccountStateViolationsDetails(
               violations.violations().stream()
@@ -40,7 +52,10 @@ final class CliPostingRejectionPayloadMapper {
               violations.violations().stream()
                   .map(CliPostingRejectionPayloadMapper::entrySemanticsViolationPayload)
                   .toList());
-      case PostingRejection.IdempotencyKeyConflict _ -> null;
+      case PostingRejection.PostingEffectiveDateInFuture futureDate ->
+          new CliRejectionJsonModels.PostingEffectiveDateInFutureDetails(
+              futureDate.attemptedEffectiveDate().toString(),
+              futureDate.currentUtcDate().toString());
       case PostingRejection.BookFunctionalCurrencyMismatch rejectionCurrencyMismatch ->
           new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails(
               rejectionCurrencyMismatch.functionalCurrency().code(),
@@ -61,22 +76,33 @@ final class CliPostingRejectionPayloadMapper {
           new CliRejectionJsonModels.ReservedResultClassificationDetails(
               rejectionReserved.accountCode().value(),
               rejectionReserved.financialPositionLineClassification().wireValue());
-      case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
-          new CliRejectionJsonModels.PriorPostingDetails(
-              reversalTargetNotFound.priorPostingId().value());
-      case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
-          new CliRejectionJsonModels.PriorPostingDetails(
-              reversalAlreadyExists.priorPostingId().value());
-      case PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget ->
-          new CliRejectionJsonModels.PriorPostingDetails(
-              reversalDoesNotNegateTarget.priorPostingId().value());
+      default -> null;
     };
+  }
+
+  private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
+      reversalDetails(PostingRejection rejection) {
+    return switch (rejection) {
+      case PostingRejection.ReversalTargetNotFound reversalTargetNotFound ->
+          priorPostingDetails(reversalTargetNotFound.priorPostingId().value());
+      case ReversalTargetIsReversal reversalTargetIsReversal ->
+          priorPostingDetails(reversalTargetIsReversal.priorPostingId().value());
+      case PostingRejection.ReversalAlreadyExists reversalAlreadyExists ->
+          priorPostingDetails(reversalAlreadyExists.priorPostingId().value());
+      case PostingRejection.ReversalDoesNotNegateTarget reversalDoesNotNegateTarget ->
+          priorPostingDetails(reversalDoesNotNegateTarget.priorPostingId().value());
+      default -> null;
+    };
+  }
+
+  private static CliRejectionJsonModels.PriorPostingDetails priorPostingDetails(
+      String priorPostingId) {
+    return new CliRejectionJsonModels.PriorPostingDetails(priorPostingId);
   }
 
   private static CliAccountStateViolationPayload accountStateViolationPayload(
       PostingRejection.AccountStateViolation violation) {
-    PostingRejection.AccountStateViolationDetail detail =
-        PostingRejection.accountStateDetail(violation);
+    AccountStateViolationDetail detail = PostingRejection.accountStateDetail(violation);
     return new CliAccountStateViolationPayload(
         detail.code(),
         detail.field(),

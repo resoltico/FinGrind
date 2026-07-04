@@ -71,8 +71,9 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
 
   @Override
   public ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
-    return maintenanceService.restoreBook(bookFilePath, backupFilePath, backupBookKeyFilePath);
+      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
+    return maintenanceService.restoreBook(
+        bookFilePath, bookKeyFilePath, backupFilePath, backupKeyFilePath);
   }
 
   @Override

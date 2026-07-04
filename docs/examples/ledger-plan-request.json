@@ -6,15 +6,17 @@
       "kind": "ensure-book",
       "ensureBook": {
         "entityName": "Acme Studio",
+        "bookTemplateId": "OWNER_MANAGED_SERVICE",
+        "accountingBasis": "CASH",
         "functionalCurrency": "EUR",
         "fiscalYearStart": "01-01"
       }
     },
     {
-      "stepId": "record-sale",
-      "kind": "record-sale",
+      "stepId": "record-sale-settled",
+      "kind": "record-sale-settled",
       "posting": {
-        "entryKind": "SALE",
+        "entryKind": "SALE_SETTLED",
         "effectiveDate": "2026-04-07",
         "cashAccountCode": "cash",
         "revenueAccountCode": "service-revenue",

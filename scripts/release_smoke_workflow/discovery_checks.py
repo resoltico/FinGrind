@@ -67,12 +67,12 @@ def verify_help_and_template_surfaces(
     )
     require_match(
         help_text,
-        r"Generate one key file",
+        r"Generate a key file",
         f"{config.label} help text did not lead with key generation as the first operator action",
     )
     require_match(
         help_text,
-        r"Open one protected book",
+        r"Open a protected book",
         f"{config.label} help text did not publish the protected-book opening path",
     )
     request_template = parse_json_output(

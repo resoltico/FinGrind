@@ -77,9 +77,9 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
             new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
-            new PostEntryResult.PreflightAccepted(
+            CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
-            new PostEntryResult.Committed(
+            CliPostEntryResultFixtures.committed(
                 new PostingId("posting-1"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
@@ -243,7 +243,10 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
 
           @Override
           public ContractDecision<RestoreBookResult> restoreBook(
-              Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+              Path bookFilePath,
+              Path bookKeyFilePath,
+              Path backupFilePath,
+              Path backupKeyFilePath) {
             throw new AssertionError("restoreBook should not be called in this test");
           }
 

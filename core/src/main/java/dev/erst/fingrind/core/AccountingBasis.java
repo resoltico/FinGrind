@@ -4,12 +4,14 @@ import java.util.List;
 
 /** Canonical accounting-basis posture for one protected book. */
 public enum AccountingBasis implements WireValue {
-  CASH_BASIS;
+  CASH,
+  ACCRUAL;
 
   @Override
   public String wireValue() {
     return switch (this) {
-      case CASH_BASIS -> "CASH_BASIS";
+      case CASH -> "CASH";
+      case ACCRUAL -> "ACCRUAL";
     };
   }
 

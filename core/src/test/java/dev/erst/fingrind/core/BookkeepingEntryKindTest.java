@@ -12,8 +12,14 @@ class BookkeepingEntryKindTest {
   @Test
   void wireHelpers_publishStableVocabularyInDeclarationOrder() {
     assertEquals("DIRECT_JOURNAL", BookkeepingEntryKind.DIRECT_JOURNAL.wireValue());
-    assertEquals("SALE", BookkeepingEntryKind.SALE.wireValue());
-    assertEquals("EXPENSE", BookkeepingEntryKind.EXPENSE.wireValue());
+    assertEquals("SALE_SETTLED", BookkeepingEntryKind.SALE_SETTLED.wireValue());
+    assertEquals("SALE_ON_CREDIT", BookkeepingEntryKind.SALE_ON_CREDIT.wireValue());
+    assertEquals("PURCHASE_SETTLED", BookkeepingEntryKind.PURCHASE_SETTLED.wireValue());
+    assertEquals("PURCHASE_ON_CREDIT", BookkeepingEntryKind.PURCHASE_ON_CREDIT.wireValue());
+    assertEquals("EXPENSE_SETTLED", BookkeepingEntryKind.EXPENSE_SETTLED.wireValue());
+    assertEquals("EXPENSE_ON_CREDIT", BookkeepingEntryKind.EXPENSE_ON_CREDIT.wireValue());
+    assertEquals("RECEIPT", BookkeepingEntryKind.RECEIPT.wireValue());
+    assertEquals("PAYMENT", BookkeepingEntryKind.PAYMENT.wireValue());
     assertEquals("OWNER_CONTRIBUTION", BookkeepingEntryKind.OWNER_CONTRIBUTION.wireValue());
     assertEquals("OWNER_WITHDRAWAL", BookkeepingEntryKind.OWNER_WITHDRAWAL.wireValue());
     assertEquals("OPENING_POSITION", BookkeepingEntryKind.OPENING_POSITION.wireValue());
@@ -21,8 +27,14 @@ class BookkeepingEntryKindTest {
     assertEquals(
         List.of(
             "DIRECT_JOURNAL",
-            "SALE",
-            "EXPENSE",
+            "SALE_SETTLED",
+            "SALE_ON_CREDIT",
+            "PURCHASE_SETTLED",
+            "PURCHASE_ON_CREDIT",
+            "EXPENSE_SETTLED",
+            "EXPENSE_ON_CREDIT",
+            "RECEIPT",
+            "PAYMENT",
             "OWNER_CONTRIBUTION",
             "OWNER_WITHDRAWAL",
             "OPENING_POSITION",
@@ -34,8 +46,24 @@ class BookkeepingEntryKindTest {
   void fromWireValue_parsesStableVocabularyAndRejectsUnknownInput() {
     assertEquals(
         BookkeepingEntryKind.DIRECT_JOURNAL, BookkeepingEntryKind.fromWireValue("DIRECT_JOURNAL"));
-    assertEquals(BookkeepingEntryKind.SALE, BookkeepingEntryKind.fromWireValue("SALE"));
-    assertEquals(BookkeepingEntryKind.EXPENSE, BookkeepingEntryKind.fromWireValue("EXPENSE"));
+    assertEquals(
+        BookkeepingEntryKind.SALE_SETTLED, BookkeepingEntryKind.fromWireValue("SALE_SETTLED"));
+    assertEquals(
+        BookkeepingEntryKind.SALE_ON_CREDIT, BookkeepingEntryKind.fromWireValue("SALE_ON_CREDIT"));
+    assertEquals(
+        BookkeepingEntryKind.PURCHASE_SETTLED,
+        BookkeepingEntryKind.fromWireValue("PURCHASE_SETTLED"));
+    assertEquals(
+        BookkeepingEntryKind.PURCHASE_ON_CREDIT,
+        BookkeepingEntryKind.fromWireValue("PURCHASE_ON_CREDIT"));
+    assertEquals(
+        BookkeepingEntryKind.EXPENSE_SETTLED,
+        BookkeepingEntryKind.fromWireValue("EXPENSE_SETTLED"));
+    assertEquals(
+        BookkeepingEntryKind.EXPENSE_ON_CREDIT,
+        BookkeepingEntryKind.fromWireValue("EXPENSE_ON_CREDIT"));
+    assertEquals(BookkeepingEntryKind.RECEIPT, BookkeepingEntryKind.fromWireValue("RECEIPT"));
+    assertEquals(BookkeepingEntryKind.PAYMENT, BookkeepingEntryKind.fromWireValue("PAYMENT"));
     assertEquals(
         BookkeepingEntryKind.OWNER_CONTRIBUTION,
         BookkeepingEntryKind.fromWireValue("OWNER_CONTRIBUTION"));
@@ -59,8 +87,14 @@ class BookkeepingEntryKindTest {
   @Test
   void narrativeLabel_returnsStableOperatorLanguage() {
     assertEquals("direct journal", BookkeepingEntryKind.DIRECT_JOURNAL.narrativeLabel());
-    assertEquals("sale", BookkeepingEntryKind.SALE.narrativeLabel());
-    assertEquals("expense", BookkeepingEntryKind.EXPENSE.narrativeLabel());
+    assertEquals("settled sale", BookkeepingEntryKind.SALE_SETTLED.narrativeLabel());
+    assertEquals("sale on credit", BookkeepingEntryKind.SALE_ON_CREDIT.narrativeLabel());
+    assertEquals("settled purchase", BookkeepingEntryKind.PURCHASE_SETTLED.narrativeLabel());
+    assertEquals("purchase on credit", BookkeepingEntryKind.PURCHASE_ON_CREDIT.narrativeLabel());
+    assertEquals("settled expense", BookkeepingEntryKind.EXPENSE_SETTLED.narrativeLabel());
+    assertEquals("expense on credit", BookkeepingEntryKind.EXPENSE_ON_CREDIT.narrativeLabel());
+    assertEquals("receipt", BookkeepingEntryKind.RECEIPT.narrativeLabel());
+    assertEquals("payment", BookkeepingEntryKind.PAYMENT.narrativeLabel());
     assertEquals("owner contribution", BookkeepingEntryKind.OWNER_CONTRIBUTION.narrativeLabel());
     assertEquals("owner withdrawal", BookkeepingEntryKind.OWNER_WITHDRAWAL.narrativeLabel());
     assertEquals("opening position", BookkeepingEntryKind.OPENING_POSITION.narrativeLabel());

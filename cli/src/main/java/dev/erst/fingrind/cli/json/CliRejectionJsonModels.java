@@ -25,6 +25,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
       permits AccountStateViolationsDetails,
           EntrySemanticsViolationsDetails,
           PriorPostingDetails,
+          PostingEffectiveDateInFutureDetails,
           FunctionalCurrencyMismatchDetails,
           OpeningPositionWindowClosedDetails,
           OpeningPositionNominalAccountDetails,
@@ -49,6 +50,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
           InterimResultSweepFiscalYearDetails,
           FiscalYearCloseStartDetails,
           FiscalYearCloseEndDetails,
+          FiscalYearCloseTransferredThroughDetails,
           FiscalYearCloseFutureDateDetails {}
 
   /** Sealed category for query and workflow rejection payloads. */
@@ -282,6 +284,16 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
     }
   }
 
+  record FiscalYearCloseTransferredThroughDetails(
+      String attemptedEffectiveDateTo, String transferredThroughEffectiveDate)
+      implements CloseWindowRejectionDetails {
+    public FiscalYearCloseTransferredThroughDetails {
+      attemptedEffectiveDateTo = requireText(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
+      transferredThroughEffectiveDate =
+          requireText(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
+    }
+  }
+
   record FiscalYearCloseFutureDateDetails(String attemptedEffectiveDateTo)
       implements CloseWindowRejectionDetails {
     public FiscalYearCloseFutureDateDetails {
@@ -296,6 +308,14 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
       transferredThroughEffectiveDate =
           requireText(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
       attemptedEffectiveDate = requireText(attemptedEffectiveDate, "attemptedEffectiveDate");
+    }
+  }
+
+  record PostingEffectiveDateInFutureDetails(String attemptedEffectiveDate, String currentUtcDate)
+      implements PostingRejectionDetails {
+    public PostingEffectiveDateInFutureDetails {
+      attemptedEffectiveDate = requireText(attemptedEffectiveDate, "attemptedEffectiveDate");
+      currentUtcDate = requireText(currentUtcDate, "currentUtcDate");
     }
   }
 

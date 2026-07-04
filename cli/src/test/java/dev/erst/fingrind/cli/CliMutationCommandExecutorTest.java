@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
-import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -40,7 +39,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
 
     int exitCode =
         executor.runRecordEntryCommand(
-            bookAccess(), requestFile, OutputMode.JSON, OperationId.RECORD_EXPENSE);
+            bookAccess(), requestFile, OutputMode.JSON, OperationId.RECORD_EXPENSE_SETTLED);
 
     JsonNode envelope = readJson(outputStream);
     assertEquals(1, exitCode);
@@ -48,10 +47,13 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
     assertEquals("invalid-request", envelope.path("code").stringValue());
     assertEquals("entryKind", envelope.path("argument").stringValue());
     assertTrue(envelope.path("message").stringValue().contains("entryKind"));
-    assertTrue(envelope.path("message").stringValue().contains("EXPENSE"));
-    assertTrue(envelope.path("message").stringValue().contains("SALE"));
+    assertTrue(envelope.path("message").stringValue().contains("EXPENSE_SETTLED"));
+    assertTrue(envelope.path("message").stringValue().contains("SALE_SETTLED"));
     assertTrue(
-        envelope.path("hint").stringValue().contains("print-request-template record-expense"));
+        envelope
+            .path("hint")
+            .stringValue()
+            .contains("print-request-template record-expense-settled"));
   }
 
   @Test
@@ -75,7 +77,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
     assertEquals("invalid-request", envelope.path("code").stringValue());
     assertEquals("entryKind", envelope.path("argument").stringValue());
     assertTrue(envelope.path("message").stringValue().contains("DIRECT_JOURNAL"));
-    assertTrue(envelope.path("message").stringValue().contains("SALE"));
+    assertTrue(envelope.path("message").stringValue().contains("SALE_SETTLED"));
     assertTrue(envelope.path("hint").stringValue().contains("print-request-template post-entry"));
   }
 
@@ -91,7 +93,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
               BookAccess bookAccess, PostEntryCommand command) {
             capturedCommand.set(command);
             return ContractDecision.accepted(
-                new PostEntryResult.Committed(
+                CliPostEntryResultFixtures.committed(
                     new PostingId("posting-1"),
                     new IdempotencyKey("idem-1"),
                     LocalDate.parse("2026-04-07"),
@@ -109,7 +111,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
 
     int exitCode =
         executor.runRecordEntryCommand(
-            bookAccess(), requestFile, OutputMode.JSON, OperationId.RECORD_SALE);
+            bookAccess(), requestFile, OutputMode.JSON, OperationId.RECORD_SALE_SETTLED);
 
     JsonNode envelope = readJson(outputStream);
     assertEquals(0, exitCode);
@@ -117,7 +119,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
     assertEquals("posting-1", envelope.path("payload").path("postingId").stringValue());
     assertNotNull(capturedCommand.get());
     assertEquals(
-        dev.erst.fingrind.core.BookkeepingEntryKind.SALE,
+        dev.erst.fingrind.core.BookkeepingEntryKind.SALE_SETTLED,
         capturedCommand.get().entry().entryKind());
   }
 

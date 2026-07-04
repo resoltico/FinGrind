@@ -1,5 +1,6 @@
 package dev.erst.fingrind.report.pdf;
 
+import dev.erst.fingrind.contract.reportmodel.ReportSection;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyBalance;
 import java.io.IOException;
@@ -9,6 +10,15 @@ import java.util.function.Function;
 /** Shared statement-section table rendering for balance-style financial statements. */
 final class PdfStatementSectionTableRenderer {
   private PdfStatementSectionTableRenderer() {}
+
+  static void renderSection(PdfPageWriter pageWriter, ReportSection section) throws IOException {
+    pageWriter.writeTable(
+        section.title(),
+        PdfReportTableLayouts.reportColumns(section.columns()),
+        section.rows().stream()
+            .map(dev.erst.fingrind.contract.reportmodel.ReportRow::cells)
+            .toList());
+  }
 
   static <S, R> void renderSections(
       PdfPageWriter pageWriter,

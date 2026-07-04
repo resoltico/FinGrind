@@ -28,7 +28,7 @@ create_repo() {
     local origin_dir="${target_dir}/origin.git"
     local primary_dir="${target_dir}/primary"
 
-    git init --bare "${origin_dir}" >/dev/null
+    git -c init.defaultBranch=main init --bare "${origin_dir}" >/dev/null
     git clone "${origin_dir}" "${primary_dir}" >/dev/null 2>&1
     (
         cd "${primary_dir}"

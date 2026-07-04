@@ -1,30 +1,12 @@
 {
   "entryKind": "REVERSAL",
-  "effectiveDate": "2026-04-09",
-  "lines": [
-    {
-      "accountCode": "cash",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    },
-    {
-      "accountCode": "service-revenue",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "EUR",
-        "minorUnits": "1000"
-      }
-    }
-  ],
+  "effectiveDate": "2026-04-07",
   "evidence": {
     "sourceDocuments": [
       {
         "sourceDocumentId": "document-reversal-1",
         "sourceDocumentType": "credit-note",
-        "documentDate": "2026-04-09"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": [

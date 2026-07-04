@@ -90,7 +90,7 @@ final class ProtocolQueryOperationExamples {
   }
 
   static String taxObligationExample() {
-    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s vat-lv %s 2026-04-01 %s 2026-04-30 %s text"
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s tax-registration-main %s 2026-04-01 %s 2026-04-30 %s text"
         .formatted(
             OperationId.TAX_OBLIGATION.wireName(),
             ProtocolOptions.BOOK_FILE,

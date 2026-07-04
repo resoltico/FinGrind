@@ -47,12 +47,14 @@ class MachineContractPlanTemplateTest {
     assertEquals("ensure-book", initializeBook.stepId());
     assertEquals(LedgerStepKind.ENSURE_BOOK, initializeBook.kind());
     assertEquals("Acme Studio", initializeBookTemplate.entityName());
+    assertEquals("OWNER_MANAGED_SERVICE", initializeBookTemplate.bookTemplateId());
     assertEquals("EUR", initializeBookTemplate.functionalCurrency());
     assertEquals("01-01", initializeBookTemplate.fiscalYearStart());
-    assertEquals("record-sale", recordSale.stepId());
-    assertEquals(LedgerStepKind.RECORD_SALE, recordSale.kind());
+    assertEquals("record-sale-settled", recordSale.stepId());
+    assertEquals(LedgerStepKind.RECORD_SALE_SETTLED, recordSale.kind());
     assertEquals("2026-01-15", recordSaleTemplate.effectiveDate());
-    assertEquals(dev.erst.fingrind.core.BookkeepingEntryKind.SALE, recordSaleTemplate.entryKind());
+    assertEquals(
+        dev.erst.fingrind.core.BookkeepingEntryKind.SALE_SETTLED, recordSaleTemplate.entryKind());
     assertEquals("cash", recordSaleTemplate.cashAccountCode());
     assertEquals("service-revenue", recordSaleTemplate.revenueAccountCode());
     assertNull(recordSaleTemplate.expenseAccountCode());
@@ -87,7 +89,7 @@ class MachineContractPlanTemplateTest {
     ContractPlanTemplates.LedgerPlanStepTemplateDescriptor postingStep =
         template.canonicalPostingScaffoldStep();
 
-    assertEquals("record-sale", postingStep.stepId());
+    assertEquals("record-sale-settled", postingStep.stepId());
     assertSame(postingStep.posting(), template.canonicalPostingTemplate());
   }
 

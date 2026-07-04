@@ -153,9 +153,33 @@ class TaxValidationSupportTest {
     assertEquals(
         saleTax,
         TaxValidationSupport.appliedTax(
-            new BookkeepingEntry.Sale(
+            new BookkeepingEntry.SaleSettled(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1000"),
+                new AccountCode("4000"),
+                new MonetaryAmount("EUR", "10000"),
+                null,
+                null,
+                new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
+                saleTax)));
+    assertEquals(
+        expenseTax,
+        TaxValidationSupport.appliedTax(
+            new BookkeepingEntry.ExpenseSettled(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("5000"),
+                new AccountCode("1000"),
+                new MonetaryAmount("EUR", "12100"),
+                null,
+                new TaxSelection(
+                    new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-expense")),
+                expenseTax)));
+    assertEquals(
+        saleTax,
+        TaxValidationSupport.appliedTax(
+            new BookkeepingEntry.SaleOnCredit(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1100"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
                 null,
@@ -164,12 +188,11 @@ class TaxValidationSupportTest {
     assertEquals(
         expenseTax,
         TaxValidationSupport.appliedTax(
-            new BookkeepingEntry.Expense(
+            new BookkeepingEntry.ExpenseOnCredit(
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("5000"),
-                new AccountCode("1000"),
+                new AccountCode("2100"),
                 new MonetaryAmount("EUR", "12100"),
-                null,
                 new TaxSelection(
                     new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-expense")),
                 expenseTax)));

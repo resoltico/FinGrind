@@ -6,9 +6,29 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
+import java.util.Map;
+import java.util.Objects;
 
 /** Shared operator-facing labels and totals for posting facts. */
 final class CliPostingLabels {
+  private static final Map<PostingOriginKind, String> POSTING_ORIGIN_LABELS =
+      Map.ofEntries(
+          Map.entry(PostingOriginKind.DIRECT_JOURNAL, "Direct journal"),
+          Map.entry(PostingOriginKind.SALE_SETTLED, "Settled sale"),
+          Map.entry(PostingOriginKind.SALE_ON_CREDIT, "Sale on credit"),
+          Map.entry(PostingOriginKind.PURCHASE_SETTLED, "Settled purchase"),
+          Map.entry(PostingOriginKind.PURCHASE_ON_CREDIT, "Purchase on credit"),
+          Map.entry(PostingOriginKind.EXPENSE_SETTLED, "Settled expense"),
+          Map.entry(PostingOriginKind.EXPENSE_ON_CREDIT, "Expense on credit"),
+          Map.entry(PostingOriginKind.RECEIPT, "Receipt"),
+          Map.entry(PostingOriginKind.PAYMENT, "Payment"),
+          Map.entry(PostingOriginKind.OWNER_CONTRIBUTION, "Owner contribution"),
+          Map.entry(PostingOriginKind.OWNER_WITHDRAWAL, "Owner withdrawal"),
+          Map.entry(PostingOriginKind.OPENING_POSITION, "Opening position"),
+          Map.entry(PostingOriginKind.REVERSAL, "Reversal"),
+          Map.entry(PostingOriginKind.INTERIM_RESULT_SWEEP, "Interim result sweep"),
+          Map.entry(PostingOriginKind.FISCAL_YEAR_CLOSE, "Fiscal-year close"));
+
   private CliPostingLabels() {}
 
   static String displayPostingCoverage(PostingCoverage postingCoverage) {
@@ -28,17 +48,7 @@ final class CliPostingLabels {
   }
 
   static String displayPostingOriginKind(PostingOriginKind postingOriginKind) {
-    return switch (postingOriginKind) {
-      case DIRECT_JOURNAL -> "Direct journal";
-      case SALE -> "Sale";
-      case EXPENSE -> "Expense";
-      case OWNER_CONTRIBUTION -> "Owner contribution";
-      case OWNER_WITHDRAWAL -> "Owner withdrawal";
-      case OPENING_POSITION -> "Opening position";
-      case REVERSAL -> "Reversal";
-      case INTERIM_RESULT_SWEEP -> "Interim result sweep";
-      case FISCAL_YEAR_CLOSE -> "Fiscal-year close";
-    };
+    return Objects.requireNonNull(POSTING_ORIGIN_LABELS.get(postingOriginKind));
   }
 
   static String displayPostingRoleText(PostingFact postingFact) {

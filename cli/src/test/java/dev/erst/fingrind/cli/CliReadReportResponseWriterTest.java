@@ -159,7 +159,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
-        "\"accountCode\":\"1000\"");
+        "\"family\":\"account-balance\"");
     assertWriterOutput(
         writer ->
             writer.writeAccountBalanceResult(
@@ -171,13 +171,13 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,accountCode,accountName,accountType,normalBalance,effectiveDateFrom,effectiveDateTo,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message");
+        "exportFamily,rowId,parentRowId,relationKind");
     assertWriterOutput(
         writer ->
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
-        "\"accountCode\":\"1000\"");
+        "\"family\":\"trial-balance\"");
     assertWriterOutput(
         writer ->
             writer.writeTrialBalanceResult(
@@ -189,31 +189,31 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "reportBasis,recordKind,effectiveDateAsOf,balanced,accountCode,accountName,accountType,normalBalance,active,currencyCode,debitTotal,creditTotal,netAmount,balanceSide,message");
+        "exportFamily,rowId,parentRowId,relationKind");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
-        "\"accountCode\":\"1000\"");
+        "\"family\":\"account-ledger\"");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
-        "Counterparts");
+        "Counterpart account codes");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,accountCode,accountName,accountType,normalBalance,active,effectiveDateFrom,effectiveDateTo,currencyCode,openingDebitTotal,openingCreditTotal,openingNetAmount,openingBalanceSide,closingDebitTotal,closingCreditTotal,closingNetAmount,closingBalanceSide,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversalTarget,debitAmount,creditAmount,runningNetAmount,runningBalanceSide,counterpartAccountCode,sourceDocumentId,sourceDocumentType,approvalId,approvalDecision,message");
+        "exportFamily,rowId,parentRowId,relationKind");
     assertWriterOutput(
         writer ->
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Reported(periodSummaryReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
-        "\"postingCount\":1");
+        "\"family\":\"period-summary\"");
     assertWriterOutput(
         writer ->
             writer.writePeriodSummaryResult(
@@ -225,7 +225,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Reported(periodSummaryReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "recordKind,subjectKind,subjectCode,subjectName,metricName,metricValue,currencyCode,metricUnit,message");
+        "exportFamily,rowId,parentRowId,relationKind");
   }
 
   @Test

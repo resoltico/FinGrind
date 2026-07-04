@@ -17,8 +17,14 @@ class ProtocolRequestTemplateTopicsTest {
         List.of(
             OperationId.POST_ENTRY,
             OperationId.PREFLIGHT_ENTRY,
-            OperationId.RECORD_SALE,
-            OperationId.RECORD_EXPENSE,
+            OperationId.RECORD_SALE_SETTLED,
+            OperationId.RECORD_SALE_ON_CREDIT,
+            OperationId.RECORD_PURCHASE_SETTLED,
+            OperationId.RECORD_PURCHASE_ON_CREDIT,
+            OperationId.RECORD_EXPENSE_SETTLED,
+            OperationId.RECORD_EXPENSE_ON_CREDIT,
+            OperationId.RECORD_RECEIPT,
+            OperationId.RECORD_PAYMENT,
             OperationId.RECORD_OWNER_CONTRIBUTION,
             OperationId.RECORD_OWNER_WITHDRAWAL,
             OperationId.RECORD_OPENING_POSITION,
@@ -30,8 +36,14 @@ class ProtocolRequestTemplateTopicsTest {
         List.of(
             "post-entry",
             "preflight-entry",
-            "record-sale",
-            "record-expense",
+            "record-sale-settled",
+            "record-sale-on-credit",
+            "record-purchase-settled",
+            "record-purchase-on-credit",
+            "record-expense-settled",
+            "record-expense-on-credit",
+            "record-receipt",
+            "record-payment",
             "record-owner-contribution",
             "record-owner-withdrawal",
             "record-opening-position",
@@ -40,13 +52,14 @@ class ProtocolRequestTemplateTopicsTest {
             "declare-tax-registration"),
         ProtocolRequestTemplateTopics.topicNames());
     assertEquals(
-        "[post-entry|preflight-entry|record-sale|record-expense|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|declare-tax-registration]",
+        "[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|declare-tax-registration]",
         ProtocolRequestTemplateTopics.syntax());
   }
 
   @Test
   void supportsOnlyRegisteredRequestTemplateTopics() {
-    assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.RECORD_SALE));
+    assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.RECORD_SALE_SETTLED));
+    assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.RECORD_PURCHASE_SETTLED));
     assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.DECLARE_ACCOUNT));
     assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.DECLARE_TAX_REGISTRATION));
     assertFalse(ProtocolRequestTemplateTopics.supports(OperationId.EXECUTE_PLAN));

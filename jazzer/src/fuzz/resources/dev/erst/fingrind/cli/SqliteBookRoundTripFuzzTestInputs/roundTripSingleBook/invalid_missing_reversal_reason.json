@@ -1,24 +1,6 @@
 {
   "entryKind": "REVERSAL",
-  "effectiveDate": "2026-04-08",
-  "lines": [
-    {
-      "accountCode": "3000",
-      "side": "CREDIT",
-      "amount": {
-        "currencyCode": "USD",
-        "minorUnits": "9995"
-      }
-    },
-    {
-      "accountCode": "4000",
-      "side": "DEBIT",
-      "amount": {
-        "currencyCode": "USD",
-        "minorUnits": "9995"
-      }
-    }
-  ],
+  "effectiveDate": "2026-04-07",
   "reversal": {
     "priorPostingId": "posting-missing"
   },
@@ -27,7 +9,7 @@
       {
         "sourceDocumentId": "document-idem-6",
         "sourceDocumentType": "credit-note",
-        "documentDate": "2026-04-08"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": [

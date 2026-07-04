@@ -80,6 +80,12 @@ class BookkeepingAdministrationRejectionPublishedMapperTest {
             new BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt(
                 LocalDate.parse("2026-12-31"))));
     assertEquals(
+        new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+            LocalDate.parse("2025-12-31"), LocalDate.parse("2026-03-31")),
+        BookkeepingAdministrationRejectionPublishedMapper.toPublished(
+            new BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+                LocalDate.parse("2025-12-31"), LocalDate.parse("2026-03-31"))));
+    assertEquals(
         new BookAdministrationRejection.FiscalYearCloseFutureDate(LocalDate.parse("2027-01-01")),
         BookkeepingAdministrationRejectionPublishedMapper.toPublished(
             new BookkeepingAdministrationRejection.FiscalYearCloseFutureDate(

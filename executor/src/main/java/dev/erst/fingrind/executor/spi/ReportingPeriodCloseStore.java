@@ -10,10 +10,20 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 /** Plans and commits durable close operations under the store-owned mutation boundary. */
-public interface ReportingPeriodCloseStore {
+public interface ReportingPeriodCloseStore extends PostingRangeStore {
   /** Attempts one atomic interim-result-sweep commit and returns the administration outcome. */
   InterimResultSweepOutcome interimResultSweep(
       ReportingPeriod reportingPeriod,
+      BookIdentity bookIdentity,
+      InterimResultSweepPlanner planner,
+      LocalDate currentUtcDate,
+      Instant sweptAt,
+      PostingIdGenerator postingIdGenerator);
+
+  /** Attempts one atomic interim-result-sweep commit for the selected through date. */
+  InterimResultSweepOutcome interimResultSweep(
+      LocalDate throughEffectiveDate,
+      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,

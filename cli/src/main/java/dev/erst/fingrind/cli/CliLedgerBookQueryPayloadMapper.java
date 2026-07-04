@@ -130,6 +130,10 @@ final class CliLedgerBookQueryPayloadMapper {
   private static CliPostingEntryPayload entryPayload(List<LedgerFact> facts) {
     @Nullable List<LedgerFact> reversalFacts =
         CliLedgerFactAccess.optionalGroupFacts(facts, "reversal");
+    @Nullable List<LedgerFact> inventoryReliefFacts =
+        CliLedgerFactAccess.optionalGroupFacts(facts, "inventoryRelief");
+    @Nullable List<LedgerFact> settlementAdjunctFacts =
+        CliLedgerFactAccess.optionalGroupFacts(facts, "settlementAdjunct");
     List<CliOpeningBalancePayload> openingBalances =
         CliLedgerFactAccess.groupedFacts(facts, "openingBalance").stream()
             .map(CliLedgerBookQueryPayloadMapper::openingBalancePayload)
@@ -137,10 +141,25 @@ final class CliLedgerBookQueryPayloadMapper {
     return new CliPostingEntryPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "entryKind"),
         CliLedgerFactAccess.optionalTextFact(facts, "cashAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "receivableAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "payableAccountCode"),
         CliLedgerFactAccess.optionalTextFact(facts, "revenueAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "inventoryAccountCode"),
         CliLedgerFactAccess.optionalTextFact(facts, "expenseAccountCode"),
         CliLedgerFactAccess.optionalTextFact(facts, "equityAccountCode"),
         CliLedgerFactAccess.optionalMoneyFact(facts, "amount"),
+        inventoryReliefFacts == null
+            ? null
+            : new CliPostingEntryPayload.InventoryReliefPayload(
+                CliLedgerFactAccess.requiredTextFact(inventoryReliefFacts, "inventoryAccountCode"),
+                CliLedgerFactAccess.requiredTextFact(
+                    inventoryReliefFacts, "costOfSalesAccountCode"),
+                CliLedgerFactAccess.requiredMoneyFact(inventoryReliefFacts, "amount")),
+        settlementAdjunctFacts == null
+            ? null
+            : new CliPostingEntryPayload.SettlementAdjunctPayload(
+                CliLedgerFactAccess.requiredTextFact(settlementAdjunctFacts, "accountCode"),
+                CliLedgerFactAccess.requiredMoneyFact(settlementAdjunctFacts, "amount")),
         null,
         null,
         null,

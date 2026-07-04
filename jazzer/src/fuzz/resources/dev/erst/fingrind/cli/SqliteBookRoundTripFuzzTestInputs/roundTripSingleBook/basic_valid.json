@@ -1,6 +1,6 @@
 {
-  "entryKind": "SALE",
-  "effectiveDate": "2026-04-11",
+  "entryKind": "SALE_SETTLED",
+  "effectiveDate": "2026-04-07",
   "cashAccountCode": "3100",
   "revenueAccountCode": "4100",
   "amount": {
@@ -12,7 +12,7 @@
       {
         "sourceDocumentId": "document-idem-sqlite-1",
         "sourceDocumentType": "cash-receipt",
-        "documentDate": "2026-04-11"
+        "documentDate": "2026-04-07"
       }
     ],
     "approvals": [
