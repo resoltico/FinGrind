@@ -135,6 +135,30 @@ bash "${self_hosted_primary}/scripts/verify-release-primary-checkout.sh" \
 [[ ! -f "${self_hosted_primary}/BROKEN.txt" ]] || die \
     "self-hosted displaced primary placeholder file survived the replacement reconciliation"
 
+permission_normalization_root="${temp_parent}/permission-normalization"
+mkdir -p "${permission_normalization_root}"
+permission_normalization_release="$(create_release_checkout "${permission_normalization_root}" "5.5.5")"
+permission_normalization_primary="${permission_normalization_root}/primary"
+permission_normalization_sealed_dir="${permission_normalization_primary}/sealed/child"
+mkdir -p "${permission_normalization_sealed_dir}"
+printf 'corrupt placeholder\n' > "${permission_normalization_primary}/BROKEN.txt"
+printf 'delete me\n' > "${permission_normalization_sealed_dir}/IMMOVABLE.txt"
+chmod 000 "${permission_normalization_sealed_dir}/IMMOVABLE.txt"
+chmod 000 "${permission_normalization_sealed_dir}"
+bash "${reconcile_script}" "${permission_normalization_primary}" "${permission_normalization_release}" "5.5.5" >/dev/null
+[[ ! -e "${permission_normalization_release}" ]] || die \
+    "permission-normalization replacement checkout path still exists after reconciliation"
+[[ -d "${permission_normalization_primary}/.git" ]] || die \
+    "permission-normalization primary checkout was not replaced with the Git checkout"
+[[ "$(git -C "${permission_normalization_primary}" branch --show-current)" == 'main' ]] || die \
+    "permission-normalization reconciled primary checkout is not on main"
+"${verify_script}" "${permission_normalization_primary}" "5.5.5" >/dev/null || die \
+    "permission-normalization reconciled primary checkout did not satisfy the canonical verifier"
+[[ ! -e "${permission_normalization_root}/.primary.pre-release-backup" ]] || die \
+    "permission-normalization displaced primary checkout backup survived the cleanup pass"
+[[ ! -f "${permission_normalization_primary}/BROKEN.txt" ]] || die \
+    "permission-normalization primary checkout still exposes the displaced placeholder file"
+
 cleanup_failure_root="${temp_parent}/cleanup-failure"
 mkdir -p "${cleanup_failure_root}"
 cleanup_failure_release="$(create_release_checkout "${cleanup_failure_root}" "6.6.6")"
@@ -142,6 +166,7 @@ cleanup_failure_primary="${cleanup_failure_root}/primary"
 cleanup_failure_root_resolved="$(cd -P -- "${cleanup_failure_root}" && pwd)"
 cleanup_failure_backup="${cleanup_failure_root_resolved}/.primary.pre-release-backup"
 cleanup_failure_fake_bin="${cleanup_failure_root}/fake-bin"
+cleanup_failure_output="${cleanup_failure_root}/cleanup-failure.out"
 mkdir -p "${cleanup_failure_primary}" "${cleanup_failure_fake_bin}"
 printf 'corrupt placeholder\n' > "${cleanup_failure_primary}/BROKEN.txt"
 cat > "${cleanup_failure_fake_bin}/rm" <<'EOF'
@@ -158,12 +183,11 @@ done
 exec /bin/rm "$@"
 EOF
 chmod +x "${cleanup_failure_fake_bin}/rm"
-if PATH="${cleanup_failure_fake_bin}:${PATH}" \
+PATH="${cleanup_failure_fake_bin}:${PATH}" \
     FINGRIND_TEST_BLOCKED_RM_PATH="${cleanup_failure_backup}" \
     bash "${reconcile_script}" "${cleanup_failure_primary}" "${cleanup_failure_release}" "6.6.6" \
-        >/dev/null 2>&1; then
-    die "cleanup-failure reconciliation unexpectedly succeeded"
-fi
+        >"${cleanup_failure_output}" 2>&1 || die \
+    "cleanup-failure reconciliation failed even though the primary checkout was already truthful"
 [[ ! -e "${cleanup_failure_release}" ]] || die \
     "cleanup-failure replacement checkout path still exists after replacement installation"
 [[ -d "${cleanup_failure_primary}/.git" ]] || die \
@@ -178,6 +202,8 @@ fi
     "cleanup-failure primary checkout still exposes the displaced placeholder file"
 [[ -f "${cleanup_failure_backup}/BROKEN.txt" ]] || die \
     "cleanup-failure displaced placeholder file was not preserved in the backup tree"
+grep -Fq "preserved displaced backup at ${cleanup_failure_backup}" "${cleanup_failure_output}" || die \
+    "cleanup-failure reconciliation did not report the preserved displaced backup path"
 
 failure_root="${temp_parent}/failure"
 mkdir -p "${failure_root}"
