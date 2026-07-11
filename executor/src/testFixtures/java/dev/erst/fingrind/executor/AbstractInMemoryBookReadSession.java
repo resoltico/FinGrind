@@ -12,6 +12,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerEntryView;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
+import dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodCurrencySummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
@@ -24,6 +26,7 @@ import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -163,6 +166,56 @@ abstract class AbstractInMemoryBookReadSession extends AbstractInMemoryReporting
             postingsByPostingId.values().stream()
                 .map(posting -> posting.journalEntry().effectiveDate())
                 .max(LocalDate::compareTo));
+  }
+
+  @Override
+  public List<InventoryValuationMovementRecord> inventoryValuationMovements(
+      Optional<LocalDate> effectiveDateAsOf) {
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
+    return InMemoryBookSessionSupport.withLock(
+        lock,
+        () -> {
+          Map<AccountCode, Long> nextSequenceByAccount = InMemoryBookSessionSupport.mutableMap();
+          List<InventoryValuationMovementRecord> rows = new ArrayList<>();
+          postingsByPostingId.values().stream()
+              .filter(
+                  posting ->
+                      effectiveDateAsOf.stream()
+                          .allMatch(date -> !posting.journalEntry().effectiveDate().isAfter(date)))
+              .sorted(
+                  Comparator.comparing(
+                          (dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting) ->
+                              posting.journalEntry().effectiveDate())
+                      .thenComparing(posting -> posting.provenance().recordedAt())
+                      .thenComparing(posting -> posting.postingId().value()))
+              .forEach(
+                  posting ->
+                      inventoryMovementsByPostingId
+                          .getOrDefault(posting.postingId(), List.of())
+                          .forEach(
+                              movement ->
+                                  rows.add(
+                                      valuationMovement(
+                                          posting.postingId(),
+                                          movement,
+                                          nextSequenceByAccount.merge(
+                                              movement.inventoryAccount(), 1L, Math::addExact)))));
+          return List.copyOf(rows);
+        });
+  }
+
+  private static InventoryValuationMovementRecord valuationMovement(
+      dev.erst.fingrind.core.PostingId postingId,
+      InventoryMovementRecord movement,
+      long accountSequence) {
+    return new InventoryValuationMovementRecord(
+        movement.inventoryAccount(),
+        movement.effectiveDate(),
+        accountSequence,
+        movement.kind(),
+        movement.quantityDelta(),
+        movement.costDeltaMinor(),
+        postingId);
   }
 
   @Override

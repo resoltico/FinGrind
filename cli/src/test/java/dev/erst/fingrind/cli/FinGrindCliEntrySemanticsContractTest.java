@@ -190,6 +190,155 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_rejectsInventoryQuantityIncompatibleWithUnitOfMeasureAcrossPreflightAndCommit()
+      throws IOException {
+    Path bookFilePath =
+        tempDirectory.resolve("inventory-quantity-uom-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path requestFile =
+        writeNamedRequest(
+            "sale-settled-incompatible-quantity.json",
+            saleSettledIncompatibleInventoryQuantityRequestJson());
+
+    openTradingBook(bookFilePath, bookKeyFilePath);
+
+    for (String commandName : List.of("preflight-entry", "record-sale-settled")) {
+      JsonNode rejectionEnvelope =
+          runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
+      JsonNode violation = rejectionEnvelope.path("details").path("violations").get(0);
+
+      assertTrue(
+          hasViolation(rejectionEnvelope, "inventory-quantity-incompatible-with-unit-of-measure"),
+          rejectionEnvelope.toPrettyString());
+      assertEquals("inventoryRelief.quantity", violation.path("field").stringValue());
+      assertEquals("inventory-quantity", violation.path("category").stringValue());
+      assertTrue(violation.path("message").stringValue().contains("quantityScale 0"));
+      assertTrue(
+          violation
+              .path("message")
+              .stringValue()
+              .contains("Quantity must not contain fractional digits at scale 0."));
+      assertFalse(rejectionEnvelope.toPrettyString().contains("QuantityIncompatibleWithUnit"));
+    }
+  }
+
+  @Test
+  void run_rejectsInventoryAcquisitionCostThatCannotComposeExactMinorUnitsAcrossPreflightAndCommit()
+      throws IOException {
+    Path bookFilePath =
+        tempDirectory.resolve("inventory-cost-exact-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path declareInventoryFile =
+        writeNamedRequest(
+            "declare-fractional-inventory.json",
+            declareInventoryAccountJson("inventory-frac", "Fractional Inventory", "kg", 2));
+    Path requestFile =
+        writeNamedRequest(
+            "purchase-on-credit-inexact-acquisition.json",
+            purchaseOnCreditRequestJson("inventory-frac", "0.25", "2", "purchase-inexact"));
+
+    openTradingAccrualBook(bookFilePath, bookKeyFilePath);
+    declareAccount(bookFilePath, bookKeyFilePath, declareInventoryFile);
+
+    for (String commandName : List.of("preflight-entry", "record-purchase-on-credit")) {
+      JsonNode rejectionEnvelope =
+          runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
+      JsonNode violation = rejectionEnvelope.path("details").path("violations").get(0);
+
+      assertTrue(
+          hasViolation(rejectionEnvelope, "inventory-acquisition-cost-not-exact"),
+          rejectionEnvelope.toPrettyString());
+      assertEquals("unitCost", violation.path("field").stringValue());
+      assertEquals("inventory-acquisition", violation.path("category").stringValue());
+      assertTrue(violation.path("message").stringValue().contains("EUR 0.02"));
+      assertTrue(violation.path("message").stringValue().contains("0.25"));
+      assertFalse(rejectionEnvelope.toPrettyString().contains("InexactAcquisitionCostException"));
+    }
+  }
+
+  @Test
+  void run_rejectsInventoryAcquisitionThatBreachesMinorUnitFloorAcrossPreflightAndCommit()
+      throws IOException {
+    Path bookFilePath =
+        tempDirectory.resolve("inventory-cost-floor-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path declareInventoryFile =
+        writeNamedRequest(
+            "declare-floor-inventory.json",
+            declareInventoryAccountJson("inventory-floor", "Floor Inventory", "kg", 2));
+    Path requestFile =
+        writeNamedRequest(
+            "purchase-on-credit-floor-breach.json",
+            purchaseOnCreditRequestJson("inventory-floor", "0.25", "4", "purchase-floor"));
+
+    openTradingAccrualBook(bookFilePath, bookKeyFilePath);
+    declareAccount(bookFilePath, bookKeyFilePath, declareInventoryFile);
+
+    for (String commandName : List.of("preflight-entry", "record-purchase-on-credit")) {
+      JsonNode rejectionEnvelope =
+          runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
+      JsonNode violation = rejectionEnvelope.path("details").path("violations").get(0);
+
+      assertTrue(
+          hasViolation(rejectionEnvelope, "inventory-acquisition-breaches-minor-unit-floor"),
+          rejectionEnvelope.toPrettyString());
+      assertEquals("unitCost", violation.path("field").stringValue());
+      assertEquals("inventory-acquisition", violation.path("category").stringValue());
+      assertTrue(violation.path("message").stringValue().contains("EUR 0.01"));
+      assertTrue(violation.path("message").stringValue().contains("EUR 0.25"));
+      assertFalse(
+          rejectionEnvelope.toPrettyString().contains("InventoryPoolMinorUnitFloorException"));
+    }
+  }
+
+  @Test
+  void run_rejectsInventoryOpeningBalancesThatOmitQuantityAcrossPreflightAndCommit()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("opening-inventory-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path requestFile = writeNamedRequest("opening-inventory.json", openingInventoryRequestJson());
+
+    openTradingBook(bookFilePath, bookKeyFilePath);
+
+    for (String commandName : List.of("preflight-entry", "record-opening-position")) {
+      JsonNode rejectionEnvelope =
+          runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
+
+      assertTrue(
+          hasViolation(rejectionEnvelope, "opening-inventory-requires-quantity"),
+          rejectionEnvelope.toPrettyString());
+      assertEquals(
+          "openingBalances[].quantity",
+          rejectionEnvelope.path("details").path("violations").get(0).path("field").stringValue());
+      assertFalse(rejectionEnvelope.toPrettyString().contains("\"unknown-account\""));
+    }
+  }
+
+  @Test
+  void run_rejectsRawJournalInventoryMovementsAcrossPreflightAndCommit() throws IOException {
+    Path bookFilePath =
+        tempDirectory.resolve("direct-journal-inventory-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path requestFile =
+        writeNamedRequest("direct-journal-inventory.json", directJournalInventoryRequestJson());
+
+    openTradingBook(bookFilePath, bookKeyFilePath);
+
+    for (String commandName : List.of("preflight-entry", "post-entry")) {
+      JsonNode rejectionEnvelope =
+          runRejectedEnvelope(bookFilePath, bookKeyFilePath, requestFile, commandName);
+
+      assertTrue(
+          hasViolation(rejectionEnvelope, "raw-journal-touches-inventory"),
+          rejectionEnvelope.toPrettyString());
+      assertEquals(
+          "lines[].accountCode",
+          rejectionEnvelope.path("details").path("violations").get(0).path("field").stringValue());
+      assertFalse(rejectionEnvelope.toPrettyString().contains("\"unknown-account\""));
+    }
+  }
+
+  @Test
   void run_rejectsDirectJournalsThatNeverTouchCashAcrossPreflightAndCommit() throws IOException {
     Path bookFilePath =
         tempDirectory.resolve("non-cash-direct-journal-books").resolve("entity.sqlite");
@@ -336,6 +485,46 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+  }
+
+  private void openTradingBook(Path bookFilePath, Path bookKeyFilePath) {
+    openTradingBook(
+        bookFilePath,
+        bookKeyFilePath,
+        tradingBookIdentity().bookDoctrine().accountingBasis().wireValue());
+  }
+
+  private void openTradingAccrualBook(Path bookFilePath, Path bookKeyFilePath) {
+    openTradingBook(bookFilePath, bookKeyFilePath, "ACCRUAL");
+  }
+
+  private void openTradingBook(
+      Path bookFilePath, Path bookKeyFilePath, String accountingBasisWireValue) {
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                jsonArguments(
+                    "open-book",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--entity-name",
+                    tradingBookIdentity().entityName().value(),
+                    "--book-template-id",
+                    tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+                    "--accounting-basis",
+                    accountingBasisWireValue,
+                    "--inventory-costing",
+                    dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
+                    "--functional-currency",
+                    tradingBookIdentity().functionalCurrency().code(),
+                    "--fiscal-year-start",
+                    tradingBookIdentity().fiscalYearStart().wireValue())));
   }
 
   private void declareAccount(Path bookFilePath, Path bookKeyFilePath, Path requestFile) {
@@ -515,20 +704,29 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
   }
 
   private static String purchaseOnCreditRequestJson() {
+    return purchaseOnCreditRequestJson("inventory", "4", "1000", "purchase-service-book");
+  }
+
+  private static String purchaseOnCreditRequestJson(
+      String inventoryAccountCode,
+      String quantity,
+      String unitCostMinorUnits,
+      String requestSuffix) {
     return """
         {
           "entryKind": "PURCHASE_ON_CREDIT",
           "effectiveDate": "2026-04-07",
-          "inventoryAccountCode": "inventory",
+          "inventoryAccountCode": "%s",
           "payableAccountCode": "accounts-payable",
-          "amount": {
+          "quantity": "%s",
+          "unitCost": {
             "currencyCode": "EUR",
-            "minorUnits": "1000"
+            "minorUnits": "%s"
           },
           "evidence": {
             "sourceDocuments": [
               {
-                "sourceDocumentId": "document-purchase-service-book",
+                "sourceDocumentId": "document-%s",
                 "sourceDocumentType": "supplier-invoice",
                 "documentDate": "2026-04-07"
               }
@@ -536,11 +734,164 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-purchase-service-book",
+            "actorId": "actor-%s",
             "actorType": "AGENT",
-            "commandId": "command-purchase-service-book",
-            "idempotencyKey": "idem-purchase-service-book",
-            "causationId": "cause-purchase-service-book"
+            "commandId": "command-%s",
+            "idempotencyKey": "idem-%s",
+            "causationId": "cause-%s"
+          }
+        }
+        """
+        .formatted(
+            inventoryAccountCode,
+            quantity,
+            unitCostMinorUnits,
+            requestSuffix,
+            requestSuffix,
+            requestSuffix,
+            requestSuffix,
+            requestSuffix);
+  }
+
+  private static String saleSettledIncompatibleInventoryQuantityRequestJson() {
+    return """
+        {
+          "entryKind": "SALE_SETTLED",
+          "effectiveDate": "2026-04-07",
+          "cashAccountCode": "cash",
+          "revenueAccountCode": "sales-revenue",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "7000"
+          },
+          "inventoryRelief": {
+            "inventoryAccountCode": "inventory",
+            "costOfSalesAccountCode": "cost-of-sales",
+            "quantity": "0.5"
+          },
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-sale-uom",
+                "sourceDocumentType": "cash-receipt",
+                "documentDate": "2026-04-07"
+              }
+            ],
+            "approvals": []
+          },
+          "provenance": {
+            "actorId": "actor-sale-uom",
+            "actorType": "AGENT",
+            "commandId": "command-sale-uom",
+            "idempotencyKey": "idem-sale-uom",
+            "causationId": "cause-sale-uom"
+          }
+        }
+        """;
+  }
+
+  private static String declareInventoryAccountJson(
+      String accountCode, String accountName, String unitToken, int quantityScale) {
+    return """
+        {
+          "accountCode": "%s",
+          "accountName": "%s",
+          "accountType": "ASSET",
+          "accountNodeKind": "POSTABLE",
+          "financialPositionLineClassification": "INVENTORY",
+          "cashFlowAssetClassification": "NON_CASH",
+          "unitOfMeasure": {
+            "token": "%s",
+            "quantityScale": %d
+          }
+        }
+        """
+        .formatted(accountCode, accountName, unitToken, quantityScale);
+  }
+
+  private static String openingInventoryRequestJson() {
+    return """
+        {
+          "entryKind": "OPENING_POSITION",
+          "effectiveDate": "2026-04-07",
+          "openingBalances": [
+            {
+              "accountCode": "inventory",
+              "side": "DEBIT",
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
+            },
+            {
+              "accountCode": "owner-capital",
+              "side": "CREDIT",
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
+            }
+          ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-opening-inventory",
+                "sourceDocumentType": "opening-balance-support",
+                "documentDate": "2026-04-07"
+              }
+            ],
+            "approvals": []
+          },
+          "provenance": {
+            "actorId": "actor-opening-inventory",
+            "actorType": "AGENT",
+            "commandId": "command-opening-inventory",
+            "idempotencyKey": "idem-opening-inventory",
+            "causationId": "cause-opening-inventory"
+          }
+        }
+        """;
+  }
+
+  private static String directJournalInventoryRequestJson() {
+    return """
+        {
+          "entryKind": "DIRECT_JOURNAL",
+          "effectiveDate": "2026-04-07",
+          "lines": [
+            {
+              "accountCode": "inventory",
+              "side": "DEBIT",
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
+            },
+            {
+              "accountCode": "owner-capital",
+              "side": "CREDIT",
+              "amount": {
+                "currencyCode": "EUR",
+                "minorUnits": "1000"
+              }
+            }
+          ],
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-direct-journal-inventory",
+                "sourceDocumentType": "working-note",
+                "documentDate": "2026-04-07"
+              }
+            ],
+            "approvals": []
+          },
+          "provenance": {
+            "actorId": "actor-direct-journal-inventory",
+            "actorType": "AGENT",
+            "commandId": "command-direct-journal-inventory",
+            "idempotencyKey": "idem-direct-journal-inventory",
+            "causationId": "cause-direct-journal-inventory"
           }
         }
         """;

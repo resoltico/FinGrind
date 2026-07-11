@@ -89,6 +89,7 @@ class PostingFactTest {
             null,
             null,
             null,
+            null,
             null);
 
     PostingFact postingFact =
@@ -113,6 +114,7 @@ class PostingFactTest {
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "1000"),
+            null,
             null,
             null,
             null,
@@ -152,23 +154,6 @@ class PostingFactTest {
         "originatingEntry postingOriginKind must match the committed posting fact.",
         postingOriginKindMismatch.getMessage());
 
-    IllegalArgumentException journalEntryMismatch =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new PostingFact(
-                    new PostingId("posting-1"),
-                    journalEntry(),
-                    sale.postingLineage(),
-                    sale.postingKind(),
-                    sale.postingOriginKind(),
-                    ContractFixtures.accountingEvidence("idem-1"),
-                    provenance("idem-1"),
-                    sale));
-    assertEquals(
-        "originatingEntry journalEntry must match the committed posting fact journalEntry.",
-        journalEntryMismatch.getMessage());
-
     IllegalArgumentException postingLineageMismatch =
         assertThrows(
             IllegalArgumentException.class,
@@ -187,6 +172,44 @@ class PostingFactTest {
     assertEquals(
         "originatingEntry postingLineage must match the committed posting fact lineage.",
         postingLineageMismatch.getMessage());
+  }
+
+  @Test
+  void constructor_acceptsCallerAuthoredInventoryEntryWithoutResolvedJournalFacts() {
+    BookkeepingEntry purchase =
+        new BookkeepingEntry.PurchaseSettled(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1400"),
+            new AccountCode("1000"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+            new MonetaryAmount("EUR", "1250"),
+            null,
+            null,
+            null,
+            null);
+
+    PostingFact postingFact =
+        new PostingFact(
+            new PostingId("posting-1"),
+            new JournalEntry(
+                LocalDate.parse("2026-04-07"),
+                List.of(
+                    new JournalLine(
+                        new AccountCode("1400"),
+                        JournalLine.EntrySide.DEBIT,
+                        Money.parse("EUR", "12.50")),
+                    new JournalLine(
+                        new AccountCode("1000"),
+                        JournalLine.EntrySide.CREDIT,
+                        Money.parse("EUR", "12.50")))),
+            PostingLineage.direct(),
+            PostingKind.STANDARD,
+            PostingOriginKind.PURCHASE_SETTLED,
+            ContractFixtures.accountingEvidence("idem-1"),
+            provenance("idem-1"),
+            purchase);
+
+    assertEquals(Optional.of(purchase), postingFact.callerAuthoredEntry());
   }
 
   private static JournalEntry journalEntry() {

@@ -28,11 +28,21 @@ enum AccountStateViolationOwner {
       "account-node-kind",
       "One journal line references a header account that cannot accept direct postings.",
       "Replace the header account with a postable account before retrying."),
-  INVENTORY_BALANCE_BELOW_ZERO(
-      "inventory-balance-below-zero",
-      "inventory-balance",
-      "One request attribute would create or deepen a negative inventory carrying balance.",
-      "Reduce the requested inventory decrease, record the missing inventory acquisition first, or post a corrective inventory increase before retrying.");
+  INVENTORY_MOVEMENT_PRECEDES_ACCOUNT_HORIZON(
+      "inventory-movement-precedes-account-horizon",
+      "inventory-horizon",
+      "One request attribute would append an inventory movement before the account's durable movement horizon.",
+      "Retry with an effective date on or after the account horizon, or reverse later movements before restating earlier inventory history."),
+  INVENTORY_QUANTITY_BELOW_ZERO(
+      "inventory-quantity-below-zero",
+      "inventory-quantity",
+      "One request attribute would drive exact inventory quantity on hand below zero.",
+      "Reduce the requested inventory decrease, record the missing inventory acquisition first, or post a corrective inventory increase before retrying."),
+  INVENTORY_WRITE_DOWN_EXCEEDS_CARRYING_COST(
+      "inventory-write-down-exceeds-carrying-cost",
+      "inventory-carrying-cost",
+      "One request attribute would reduce inventory carrying cost below zero.",
+      "Reduce the requested inventory cost decrease, capitalize the missing cost first, or post a corrective inventory increase before retrying.");
 
   private static final Map<String, Integer> ORDER_BY_CODE =
       Arrays.stream(values())
@@ -45,20 +55,6 @@ enum AccountStateViolationOwner {
       Comparator.<PostingRejection.AccountStateViolation>comparingInt(
               violation -> ORDER_BY_CODE.get(require(violation).code()))
           .thenComparing(violation -> accountCode(violation).value());
-
-  private static final List<ContractResponse.FieldDescriptor> DETAIL_FIELDS =
-      List.of(
-          detailField("code", "Stable account-state violation code."),
-          detailField(
-              "field",
-              "Request-field path for the posting attribute whose account-state issue failed."),
-          detailField("message", "Canonical plain-language explanation for this one violation."),
-          detailField("category", "Stable repair category owned by this violation code."),
-          detailField("repair", "Canonical action-first repair guidance for this one violation."),
-          detailField("accountCode", "Account code that caused this one account-state violation."),
-          detailField(
-              "accountNodeKind",
-              "Declared accountNodeKind when the account exists but cannot accept direct postings."));
 
   private final String code;
   private final String category;
@@ -84,12 +80,12 @@ enum AccountStateViolationOwner {
     return repair;
   }
 
-  String field() {
-    return "lines[].accountCode";
+  String description() {
+    return description;
   }
 
-  private ContractResponse.RejectionDescriptor descriptor() {
-    return new ContractResponse.RejectionDescriptor(code, description, DETAIL_FIELDS, List.of());
+  String field() {
+    return "lines[].accountCode";
   }
 
   static AccountStateViolationOwner require(PostingRejection.AccountStateViolation violation) {
@@ -97,7 +93,9 @@ enum AccountStateViolationOwner {
       case PostingRejection.UnknownAccount _ -> UNKNOWN_ACCOUNT;
       case PostingRejection.InactiveAccount _ -> INACTIVE_ACCOUNT;
       case PostingRejection.NonPostableAccount _ -> NON_POSTABLE_ACCOUNT;
-      case InventoryBalanceBelowZero _ -> INVENTORY_BALANCE_BELOW_ZERO;
+      case InventoryMovementPrecedesAccountHorizon _ -> INVENTORY_MOVEMENT_PRECEDES_ACCOUNT_HORIZON;
+      case InventoryQuantityBelowZero _ -> INVENTORY_QUANTITY_BELOW_ZERO;
+      case InventoryWriteDownExceedsCarryingCost _ -> INVENTORY_WRITE_DOWN_EXCEEDS_CARRYING_COST;
     };
   }
 
@@ -107,8 +105,11 @@ enum AccountStateViolationOwner {
       case PostingRejection.InactiveAccount inactiveAccount -> inactiveAccount.accountCode();
       case PostingRejection.NonPostableAccount nonPostableAccount ->
           nonPostableAccount.accountCode();
-      case InventoryBalanceBelowZero inventoryBalanceBelowZero ->
-          inventoryBalanceBelowZero.accountCode();
+      case InventoryMovementPrecedesAccountHorizon horizonViolation ->
+          horizonViolation.accountCode();
+      case InventoryQuantityBelowZero quantityViolation -> quantityViolation.accountCode();
+      case InventoryWriteDownExceedsCarryingCost carryingCostViolation ->
+          carryingCostViolation.accountCode();
     };
   }
 
@@ -118,7 +119,9 @@ enum AccountStateViolationOwner {
       case PostingRejection.InactiveAccount _ -> null;
       case PostingRejection.NonPostableAccount nonPostableAccount ->
           nonPostableAccount.accountNodeKind().wireValue();
-      case InventoryBalanceBelowZero _ -> null;
+      case InventoryMovementPrecedesAccountHorizon _ -> null;
+      case InventoryQuantityBelowZero _ -> null;
+      case InventoryWriteDownExceedsCarryingCost _ -> null;
     };
   }
 
@@ -131,7 +134,10 @@ enum AccountStateViolationOwner {
       case PostingRejection.UnknownAccount _ -> UNKNOWN_ACCOUNT.field();
       case PostingRejection.InactiveAccount _ -> INACTIVE_ACCOUNT.field();
       case PostingRejection.NonPostableAccount _ -> NON_POSTABLE_ACCOUNT.field();
-      case InventoryBalanceBelowZero inventoryBalanceBelowZero -> inventoryBalanceBelowZero.field();
+      case InventoryMovementPrecedesAccountHorizon horizonViolation -> horizonViolation.field();
+      case InventoryQuantityBelowZero quantityViolation -> quantityViolation.field();
+      case InventoryWriteDownExceedsCarryingCost carryingCostViolation ->
+          carryingCostViolation.field();
     };
   }
 
@@ -144,51 +150,7 @@ enum AccountStateViolationOwner {
   }
 
   static String message(PostingRejection.AccountStateViolation violation) {
-    return switch (violation) {
-      case PostingRejection.UnknownAccount unknownAccount ->
-          "Journal line references undeclared account '%s'."
-              .formatted(unknownAccount.accountCode().value());
-      case PostingRejection.InactiveAccount inactiveAccount ->
-          "Journal line references inactive account '%s'."
-              .formatted(inactiveAccount.accountCode().value());
-      case PostingRejection.NonPostableAccount nonPostableAccount ->
-          "Journal line references header account '%s', declared as '%s', which cannot accept direct postings."
-              .formatted(
-                  nonPostableAccount.accountCode().value(),
-                  nonPostableAccount.accountNodeKind().wireValue());
-      case InventoryBalanceBelowZero inventoryBalanceBelowZero ->
-          inventoryBalanceMessage(inventoryBalanceBelowZero);
-    };
-  }
-
-  private static String inventoryBalanceMessage(
-      InventoryBalanceBelowZero inventoryBalanceBelowZero) {
-    String requestedDecrease = monetaryText(inventoryBalanceBelowZero.requestedDecreaseAmount());
-    String currentBalance = monetaryText(inventoryBalanceBelowZero.currentNetAmount());
-    String resultingBalance = monetaryText(inventoryBalanceBelowZero.resultingCreditBalance());
-    if (inventoryBalanceBelowZero.currentBalanceSide()
-        == dev.erst.fingrind.core.BalanceSide.CREDIT) {
-      return "Request field '%s' reduces inventory account '%s' on '%s' by %s while the account already carries a credit balance of %s, deepening it to %s credit."
-          .formatted(
-              inventoryBalanceBelowZero.field(),
-              inventoryBalanceBelowZero.accountCode().value(),
-              inventoryBalanceBelowZero.effectiveDate(),
-              requestedDecrease,
-              currentBalance,
-              resultingBalance);
-    }
-    return "Request field '%s' reduces inventory account '%s' on '%s' by %s, but only %s is on hand; resulting balance would be %s credit."
-        .formatted(
-            inventoryBalanceBelowZero.field(),
-            inventoryBalanceBelowZero.accountCode().value(),
-            inventoryBalanceBelowZero.effectiveDate(),
-            requestedDecrease,
-            currentBalance,
-            resultingBalance);
-  }
-
-  private static String monetaryText(dev.erst.fingrind.core.Money amount) {
-    return "%s %s".formatted(amount.currencyUnit().code(), amount.canonicalDecimal());
+    return AccountStateViolationNarrativeSupport.message(violation);
   }
 
   static List<PostingRejection.AccountStateViolation> inCanonicalOrder(
@@ -199,19 +161,10 @@ enum AccountStateViolationOwner {
   }
 
   static List<ContractResponse.RejectionDescriptor> descriptors() {
-    return Arrays.stream(values()).map(AccountStateViolationOwner::descriptor).toList();
+    return AccountStateViolationNarrativeSupport.descriptors();
   }
 
   static String envelopeMessage(List<PostingRejection.AccountStateViolation> violations) {
-    int issueCount = inCanonicalOrder(violations).size();
-    return issueCount == 1
-        ? "Posting rejected with 1 account-state issue."
-        : "Posting rejected with %d account-state issues.".formatted(issueCount);
-  }
-
-  private static ContractResponse.FieldDescriptor detailField(String name, String description) {
-    return new ContractResponse.FieldDescriptor(
-        ContractDescriptorValidation.requireText(name, "name"),
-        ContractDescriptorValidation.requireText(description, "description"));
+    return AccountStateViolationNarrativeSupport.envelopeMessage(violations);
   }
 }

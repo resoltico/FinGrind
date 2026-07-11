@@ -32,7 +32,7 @@ public record PostingFact(
     Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(provenance, "provenance");
     requireMatchingOriginatingEntry(
-        originatingEntry, postingKind, postingOriginKind, journalEntry, postingLineage);
+        originatingEntry, postingKind, postingOriginKind, postingLineage);
   }
 
   /** Builds one committed posting fact without retained caller-authored entry details. */
@@ -74,7 +74,6 @@ public record PostingFact(
       @Nullable BookkeepingEntry originatingEntry,
       PostingKind postingKind,
       PostingOriginKind postingOriginKind,
-      JournalEntry journalEntry,
       PostingLineage postingLineage) {
     if (originatingEntry == null) {
       return;
@@ -86,10 +85,6 @@ public record PostingFact(
     if (originatingEntry.postingOriginKind() != postingOriginKind) {
       throw new IllegalArgumentException(
           "originatingEntry postingOriginKind must match the committed posting fact.");
-    }
-    if (!originatingEntry.journalEntry().equals(journalEntry)) {
-      throw new IllegalArgumentException(
-          "originatingEntry journalEntry must match the committed posting fact journalEntry.");
     }
     if (!originatingEntry.postingLineage().equals(postingLineage)) {
       throw new IllegalArgumentException(

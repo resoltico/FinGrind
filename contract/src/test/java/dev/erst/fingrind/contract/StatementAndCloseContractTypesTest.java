@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -205,18 +206,24 @@ class StatementAndCloseContractTypesTest {
         Optional.of(LocalDate.parse("2026-04-30")), financialPositionQuery.effectiveDateAsOf());
     assertEquals(ComparativeSelection.none(), financialPositionQuery.comparativeSelection());
     assertSame(financialPositionReport, reportedFinancialPosition.report());
+    assertSame(financialPositionReport, reportedFinancialPosition.reported());
+    assertNull(reportedFinancialPosition.rejection());
     assertSame(financialPositionRejection, rejectedFinancialPosition.rejection());
     assertEquals(
         "reported", reportedFinancialPosition.fold(ignored -> "reported", ignored -> "rejected"));
     assertEquals(
         "rejected", rejectedFinancialPosition.fold(ignored -> "reported", ignored -> "rejected"));
     assertSame(incomeStatementReport, reportedIncomeStatement.report());
+    assertSame(incomeStatementReport, reportedIncomeStatement.reported());
+    assertNull(reportedIncomeStatement.rejection());
     assertSame(incomeStatementRejection, rejectedIncomeStatement.rejection());
     assertEquals(
         "reported", reportedIncomeStatement.fold(ignored -> "reported", ignored -> "rejected"));
     assertEquals(
         "rejected", rejectedIncomeStatement.fold(ignored -> "reported", ignored -> "rejected"));
     assertSame(changesReport, reportedChanges.report());
+    assertSame(changesReport, reportedChanges.reported());
+    assertNull(reportedChanges.rejection());
     assertSame(changesInEquityRejection, rejectedChanges.rejection());
     assertEquals("reported", reportedChanges.fold(ignored -> "reported", ignored -> "rejected"));
     assertEquals("rejected", rejectedChanges.fold(ignored -> "reported", ignored -> "rejected"));

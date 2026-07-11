@@ -9,8 +9,35 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+## [0.60.0] - 2026-07-11
+
+### Added
+
+- Added the exact inventory-costing kernel: exported `Quantity`, `UnitOfMeasure`, `InventoryCostingDoctrine`, and `WeightedAverageCostingMath` types define non-money quantity, account-owned units of measure, and perpetual moving weighted-average arithmetic without using a rounded unit-cost display value as an accounting input.
+- Added one append-only inventory movement ledger and materialized on-hand state to protected books. The new ledger records typed acquisitions, capitalizations, count increases, opening balances, disposals, write-downs, shrinkage, and reversal compensation in deterministic per-account replay order.
+- Added typed inventory-maintenance commands for settled and credit landed-cost capitalization, carrying-cost write-downs, quantity shrinkage, and count-discovered quantity increases. Each command has its own request scaffold, evidence policy, account roles, and durable inventory movement rather than relying on a raw-journal substitute.
+- Added `inventory-valuation`, an as-of report with optional ordered movement detail in JSON, text, tabular CSV, and PDF. It publishes each inventory account's owned unit of measure, exact quantity on hand, exact carrying-value pool, and an explicitly informational rounded moving-average unit-cost projection.
+- Added deterministic, property-based, and Jazzer replay coverage for weighted-average conservation, pool-to-zero behavior, replay ordering, and the rule that cost of sales is independent of the rounded unit-cost projection.
+
+### Changed
+
+- Updated the managed runtime to SQLite `3.53.3` and SQLite3 Multiple Ciphers `2.3.6`, with a complete upstream six-file amalgamation manifest verified by normalized SHA3-256 digests at build time and runtime identity checks across bundles, containers, and source checkouts.
+- Updated the repository-owned developer and release tooling to Ruff `0.15.21`, PMD `7.26.0`, Shadow `9.5.1`, Spotless `8.8.0`, `actions/setup-java` `5.5.0`, `gradle/actions/setup-gradle` `6.2.0`, `docker/login-action` `4.4.0`, and `docker/build-push-action` `7.3.0`.
+- Changed `OWNER_MANAGED_TRADING` into a perpetual moving weighted-average doctrine. Trading books now require `--inventory-costing WEIGHTED_AVERAGE`, persist that choice, and expose it through book inspection; service books reject an inventory-costing selection.
+- Changed the inventory request contract onto exact, quantity-aware facts. Inventory accounts require `unitOfMeasure { token, quantityScale }`; purchases and count increases require `quantity` plus `unitCost`; inventory opening balances require quantity plus carrying cost; and trading-sale relief now identifies quantity rather than caller-supplied cost.
+- Changed sale and shrinkage costing so the executor derives authoritative cost of sales from the exact inventory pool and replay order. `ResolvedInventoryCosting`, preflight output, committed posting readback, and `get-posting` expose derived cost of sales, relieved quantity, and a display-only `roundedMovingAverageUnitCostProjection`.
+- Changed tax and foreign-exchange composition for inventory acquisitions and capitalizations. Request amounts and unit costs are pre-VAT functional-currency carrying costs; recoverable input tax remains outside the pool, nonrecoverable input tax is capitalized, and retained `SPOT_TRANSACTION` facts must agree with the executor-resolved pre-tax functional amount.
+- Changed the protected-book contract incompatibly to book format `39` and public protocol `21`. The new format persists the inventory doctrine, unit metadata, typed movement ledger, exact on-hand pool, and replay-backed verification; callers must use the quantity-based inventory request vocabulary.
+- Changed raw journal admission so direct journals cannot touch inventory accounts. Every inventory movement is now owned by a typed business-event command, including opening inventory positions and reversal compensation.
+
 ### Fixed
 
+- Fixed inventory integrity at both the admission and durable-storage boundaries. FinGrind now rejects movements before an account's replay horizon, quantity decreases below zero, write-downs above carrying cost, non-contiguous replay sequences, out-of-order movement inserts, and update or delete attempts against append-only inventory movements.
+- Fixed inventory admission diagnostics so unit-of-measure-incompatible quantities, acquisition costs that cannot be represented exactly, and positive acquisitions below the functional-currency minor-unit floor now produce named request rejections instead of leaking lower-level exceptions.
+- Fixed foreign-exchange validation and persistence for inventory and credit-side business events. Acquisition validation now compares the full `quantity × unitCost` amount with the retained functional amount, and valid `SPOT_TRANSACTION` facts persist through the complete request-to-book path.
+- Fixed opening and movement-origin integrity so an inventory opening balance is admitted only as an account's first typed opening movement, and durable validation rejects any inventory movement whose posting origin does not match its typed business event.
+- Fixed `inventory-valuation --movements --output csv` so it retains every selected account's exact quantity, carrying-value pool, and informational unit-cost snapshot even where no movement detail matches the selected range.
+- Fixed inventory-event help and request discovery so human help, machine contracts, request templates, and ledger-plan scaffolds consistently describe derived cost of sales, exact quantity, tax treatment, and the inventory-specific command vocabulary.
 - Fixed the post-tag public-container publication verifier so the anonymous mounted-book proof now expects the live per-account `trial-balance --output text` layout, the currency-formatted totals row, and the resolved `As of` context line instead of the retired compact account-table rendering that falsely failed the `0.59.0` staging-container publication rerun path after the image itself had already published correctly.
 - Fixed the replacement-based release closeout helper so `reconcile-release-primary-checkout.sh` now stages its verifier outside the replacement checkout before moving that tree into place, treats the verified replacement as authoritative before deleting the displaced backup, normalizes ordinary owner permissions inside the displaced backup before retrying deletion, and reports any still-preserved cleanup-only backup path explicitly instead of rolling the repository back or pretending the release itself failed.
 
@@ -1532,7 +1559,8 @@ Historical release notes older than `0.31.0` live in:
 - Taught `:cli:bundleCliArchive` to report the exact archive path and checksum path it emitted under the active Gradle build directory, and added a regression check so relocated build roots do not force operators or agents to hunt for the produced bundle artifact manually.
 - Split the internal bookkeeping and workflow models away from the public contract DTOs, moved shared `CurrencyBalance` and `EffectiveDateRange` ownership into the `core` shared kernel, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.59.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.60.0...HEAD
+[0.60.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.60.0
 [0.59.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.59.0
 [0.58.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.58.0
 [0.57.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.57.0

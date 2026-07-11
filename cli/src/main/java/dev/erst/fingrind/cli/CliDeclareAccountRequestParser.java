@@ -1,8 +1,10 @@
 package dev.erst.fingrind.cli;
 
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.optionalText;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredInt;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
 import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
+import static dev.erst.fingrind.cli.CliJsonStructureAccess.optionalObject;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedFields;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
@@ -17,6 +19,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import tools.jackson.databind.node.ObjectNode;
 
 /** Parses declare-account request payloads into command objects. */
@@ -30,6 +33,16 @@ final class CliDeclareAccountRequestParser {
         ProtocolBookRequestFieldSets.declareAccountFields(),
         "Declare-account request fields must be top-level for direct request files; remove the declareAccount wrapper.");
     rejectUnexpectedFields(rootNode, null, ProtocolBookRequestFieldSets.declareAccountFields());
+    var unitOfMeasureNode =
+        optionalObject(rootNode, ProtocolDeclareAccountFields.UNIT_OF_MEASURE)
+            .map(
+                node -> {
+                  rejectUnexpectedFields(
+                      node,
+                      ProtocolDeclareAccountFields.UNIT_OF_MEASURE,
+                      ProtocolDeclareAccountFields.UnitOfMeasure.fields());
+                  return node;
+                });
     return new DeclareAccountCommand(
         new AccountCode(requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_CODE)),
         new AccountName(requiredText(rootNode, ProtocolDeclareAccountFields.ACCOUNT_NAME)),
@@ -70,6 +83,14 @@ final class CliDeclareAccountRequestParser {
                             value,
                             ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION,
                             CashFlowAssetClassification.wireValues(),
-                            CashFlowAssetClassification::fromWireValue))));
+                            CashFlowAssetClassification::fromWireValue))),
+        unitOfMeasureNode
+            .map(
+                node ->
+                    new UnitOfMeasure(
+                        requiredText(node, ProtocolDeclareAccountFields.UnitOfMeasure.TOKEN),
+                        requiredInt(
+                            node, ProtocolDeclareAccountFields.UnitOfMeasure.QUANTITY_SCALE)))
+            .orElse(null));
   }
 }

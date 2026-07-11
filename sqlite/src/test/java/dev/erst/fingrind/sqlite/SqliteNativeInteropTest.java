@@ -3,10 +3,10 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
@@ -25,6 +25,8 @@ import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -276,6 +278,9 @@ class SqliteNativeInteropTest {
                   'EUR',
                   1000,
                   null,
+                  null,
+                  null,
+                  null,
                   '2026-05-05',
                   '2026-05-05T09:15:30Z',
                   'actor-1',
@@ -305,6 +310,7 @@ class SqliteNativeInteropTest {
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
                 .toPublished(
                     SqlitePostingMapper.committedPosting(
+                        database,
                         postingRow,
                         lines,
                         SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
@@ -313,6 +319,7 @@ class SqliteNativeInteropTest {
             dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator
                 .toPublished(
                     SqlitePostingMapper.committedPosting(
+                        database,
                         postingRow,
                         lines,
                         SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
@@ -323,13 +330,88 @@ class SqliteNativeInteropTest {
   }
 
   @Test
-  void committedPosting_saleSettledFallsBackWhenInventoryReliefSideCountsDoNotMatch()
+  void committedPosting_rebuildsInventoryReliefWhenQuantityWasPersisted() throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(
+            bookAccess(tempDirectory.resolve("posting-fact-relief-reconstructed.sqlite")))) {
+      createInventoryCostingTables(database);
+      database.executeStatement("insert into account values ('1400', 0)");
+      database.executeStatement(
+          "insert into inventory_movement values ('purchase', '1400', '2026-05-04', 1, 'ACQUISITION', 10, 10000, 'purchase')");
+      database.executeStatement(
+          "insert into inventory_movement values ('sale', '1400', '2026-05-05', 2, 'DISPOSAL', -1, -1000, 'posting-1')");
+      try (SqliteNativeStatement postingRow =
+          SqliteNativeStatements.prepare(database, saleSettledProjectionSql("1"))) {
+        assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
+        List<JournalLine> lines =
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("5000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("1400"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "10.00")));
+        JournalEntry journalEntry =
+            new JournalEntry(java.time.LocalDate.parse("2026-05-05"), lines);
+
+        BookkeepingEntry.SaleSettled saleSettled =
+            assertInstanceOf(
+                BookkeepingEntry.SaleSettled.class,
+                SqlitePostingOriginatingEntryMapper.originatingEntry(
+                    database,
+                    postingRow,
+                    journalEntry,
+                    PostingLineageModel.direct(),
+                    PostingOriginKind.SALE_SETTLED,
+                    null,
+                    null));
+
+        assertEquals(
+            new InventoryRelief(
+                new AccountCode("1400"),
+                new AccountCode("5000"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+            saleSettled.inventoryRelief());
+
+        BookkeepingEntry.SaleSettled resolvedSale =
+            assertInstanceOf(
+                BookkeepingEntry.SaleSettled.class,
+                SqlitePostingMapper.committedPosting(
+                        database,
+                        postingRow,
+                        lines,
+                        SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
+                        null,
+                        null)
+                    .resolvedOriginatingEntry()
+                    .orElseThrow());
+        assertEquals(
+            Money.parse("EUR", "10.00"),
+            Objects.requireNonNull(
+                    resolvedSale.resolvedInventoryCosting(), "resolvedInventoryCosting")
+                .costOfSales());
+      }
+    }
+  }
+
+  @Test
+  void committedPosting_saleSettledRejectsWhenInventoryReliefSideCountsDoNotMatch()
       throws Exception {
     try (SqliteNativeDatabase database =
         openNativeDatabase(
             bookAccess(tempDirectory.resolve("posting-fact-relief-counts.sqlite")))) {
       try (SqliteNativeStatement postingRow =
-          SqliteNativeStatements.prepare(database, saleSettledProjectionSql())) {
+          SqliteNativeStatements.prepare(database, saleSettledProjectionSql("1"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
         List<JournalLine> lines =
             List.of(
@@ -356,30 +438,92 @@ class SqliteNativeInteropTest {
         JournalEntry journalEntry =
             new JournalEntry(java.time.LocalDate.parse("2026-05-05"), lines);
 
-        BookkeepingEntry.SaleSettled saleSettled =
-            assertInstanceOf(
-                BookkeepingEntry.SaleSettled.class,
-                SqlitePostingOriginatingEntryMapper.originatingEntry(
-                    postingRow,
-                    journalEntry,
-                    PostingLineageModel.direct(),
-                    PostingOriginKind.SALE_SETTLED,
-                    null,
-                    null));
+        IllegalStateException failure =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    SqlitePostingOriginatingEntryMapper.originatingEntry(
+                        database,
+                        postingRow,
+                        journalEntry,
+                        PostingLineageModel.direct(),
+                        PostingOriginKind.SALE_SETTLED,
+                        null,
+                        null));
+        assertEquals(
+            "Persisted sale originating entry with inventory quantity must resolve exactly one inventory relief debit and credit line.",
+            failure.getMessage());
+      }
+    }
+  }
 
-        assertNull(saleSettled.inventoryRelief());
+  private static void createInventoryCostingTables(SqliteNativeDatabase database) {
+    database.executeStatement(
+        "create table account (account_code text primary key, quantity_scale integer not null)");
+    database.executeStatement(
+        "create table inventory_movement (movement_id text primary key, inventory_account text not null, effective_date text not null, account_sequence integer not null, kind text not null, quantity_delta integer not null, cost_delta_minor integer not null, posting_id text not null)");
+  }
+
+  @Test
+  void committedPosting_saleSettledRejectsWhenInventoryReliefDebitCountsDoNotMatch()
+      throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(
+            bookAccess(tempDirectory.resolve("posting-fact-relief-debit-counts.sqlite")))) {
+      try (SqliteNativeStatement postingRow =
+          SqliteNativeStatements.prepare(database, saleSettledProjectionSql("1"))) {
+        assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
+        List<JournalLine> lines =
+            List.of(
+                new JournalLine(
+                    new AccountCode("1000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("5000"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "4.00")),
+                new JournalLine(
+                    new AccountCode("5010"),
+                    JournalLine.EntrySide.DEBIT,
+                    Money.parse("EUR", "2.00")),
+                new JournalLine(
+                    new AccountCode("2000"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "10.00")),
+                new JournalLine(
+                    new AccountCode("1400"),
+                    JournalLine.EntrySide.CREDIT,
+                    Money.parse("EUR", "6.00")));
+        JournalEntry journalEntry =
+            new JournalEntry(java.time.LocalDate.parse("2026-05-05"), lines);
+
+        IllegalStateException failure =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    SqlitePostingOriginatingEntryMapper.originatingEntry(
+                        database,
+                        postingRow,
+                        journalEntry,
+                        PostingLineageModel.direct(),
+                        PostingOriginKind.SALE_SETTLED,
+                        null,
+                        null));
+        assertEquals(
+            "Persisted sale originating entry with inventory quantity must resolve exactly one inventory relief debit and credit line.",
+            failure.getMessage());
       }
     }
   }
 
   @Test
-  void committedPosting_saleSettledFallsBackWhenInventoryReliefAmountsDoNotMatch()
-      throws Exception {
+  void committedPosting_saleSettledRejectsWhenInventoryReliefAmountsDoNotMatch() throws Exception {
     try (SqliteNativeDatabase database =
         openNativeDatabase(
             bookAccess(tempDirectory.resolve("posting-fact-relief-amount-mismatch.sqlite")))) {
       try (SqliteNativeStatement postingRow =
-          SqliteNativeStatements.prepare(database, saleSettledProjectionSql())) {
+          SqliteNativeStatements.prepare(database, saleSettledProjectionSql("1"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
         List<JournalLine> lines =
             List.of(
@@ -402,18 +546,21 @@ class SqliteNativeInteropTest {
         JournalEntry journalEntry =
             new JournalEntry(java.time.LocalDate.parse("2026-05-05"), lines);
 
-        BookkeepingEntry.SaleSettled saleSettled =
-            assertInstanceOf(
-                BookkeepingEntry.SaleSettled.class,
-                SqlitePostingOriginatingEntryMapper.originatingEntry(
-                    postingRow,
-                    journalEntry,
-                    PostingLineageModel.direct(),
-                    PostingOriginKind.SALE_SETTLED,
-                    null,
-                    null));
-
-        assertNull(saleSettled.inventoryRelief());
+        IllegalStateException failure =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    SqlitePostingOriginatingEntryMapper.originatingEntry(
+                        database,
+                        postingRow,
+                        journalEntry,
+                        PostingLineageModel.direct(),
+                        PostingOriginKind.SALE_SETTLED,
+                        null,
+                        null));
+        assertEquals(
+            "Persisted sale originating entry with inventory quantity must carry matching relief journal amounts.",
+            failure.getMessage());
       }
     }
   }
@@ -431,6 +578,9 @@ class SqliteNativeInteropTest {
                   'posting-1',
                   'STANDARD',
                   'REVERSAL',
+                  null,
+                  null,
+                  null,
                   null,
                   null,
                   null,
@@ -467,6 +617,7 @@ class SqliteNativeInteropTest {
                 IllegalStateException.class,
                 () ->
                     SqlitePostingMapper.committedPosting(
+                        database,
                         postingRow,
                         lines,
                         SqlitePostingFactFixtureSupport.accountingEvidence("idem-1"),
@@ -675,6 +826,9 @@ class SqliteNativeInteropTest {
             null,
             null,
             null,
+            null,
+            null,
+            null,
             %s,
             null,
             %s,
@@ -684,7 +838,7 @@ class SqliteNativeInteropTest {
         .formatted(reasonSqlLiteral, priorPostingIdSqlLiteral);
   }
 
-  private static String saleSettledProjectionSql() {
+  private static String saleSettledProjectionSql(@Nullable String entryQuantity) {
     return """
         select
             'posting-1',
@@ -695,6 +849,9 @@ class SqliteNativeInteropTest {
             null,
             'EUR',
             1000,
+            null,
+            %s,
+            null,
             null,
             '2026-05-05',
             '2026-05-05T09:15:30Z',
@@ -709,7 +866,8 @@ class SqliteNativeInteropTest {
             null,
             null,
             null
-        """;
+        """
+        .formatted(entryQuantity == null ? "null" : "'" + entryQuantity + "'");
   }
 
   private static long strlen(MemorySegment pointer) {

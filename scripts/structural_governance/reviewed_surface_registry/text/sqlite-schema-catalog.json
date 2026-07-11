@@ -1,16 +1,16 @@
 {
   "relativePath": "sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql",
   "owner": "sqlite-schema",
-  "reason": "The canonical SQLite schema is one intentionally reviewed data catalog owned by the storage adapter.",
-  "splitTrigger": "Break out reusable generated fragments before adding another independent schema family.",
+  "reason": "The canonical SQLite schema is one atomically applied bootstrap catalog whose ordered statements and trigger bodies define the protected-book fingerprint.",
+  "splitTrigger": "Introduce generated schema composition only when the runtime can preserve one canonical ordered fingerprint while independently owning a reusable schema family; do not split this bootstrap catalog mechanically.",
   "reviewedRoleName": "sqlite-schema-catalog",
-  "budgetVarianceReason": "The canonical schema catalog exceeds the default SQLite SQL budget until schema families are generated or split into narrower fragments.",
+  "budgetVarianceReason": "The atomic schema catalog exceeds the default SQLite SQL budget because bootstrap and fingerprinting require its ordered DDL and trigger text to remain in one canonical file.",
   "approval": {
-    "physicalLines": 1837,
-    "logicalLines": 1765,
-    "importLikeLines": 71,
+    "physicalLines": 2242,
+    "logicalLines": 2157,
+    "importLikeLines": 84,
     "functions": 0,
     "nestedTypes": 0,
-    "expiresOn": "2026-08-01"
+    "expiresOn": "2026-10-01"
   }
 }

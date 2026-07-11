@@ -21,6 +21,8 @@ import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
@@ -188,6 +190,12 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   public ContractDecision<IncomeStatementResult> incomeStatement(
       BookAccess bookAccess, IncomeStatementQuery query) {
     throw unexpectedInvocation("incomeStatement");
+  }
+
+  @Override
+  public ContractDecision<InventoryValuationResult> inventoryValuation(
+      BookAccess bookAccess, InventoryValuationQuery query) {
+    throw unexpectedInvocation("inventoryValuation");
   }
 
   @Override

@@ -18,6 +18,15 @@ final class CliPostingLabels {
           Map.entry(PostingOriginKind.SALE_ON_CREDIT, "Sale on credit"),
           Map.entry(PostingOriginKind.PURCHASE_SETTLED, "Settled purchase"),
           Map.entry(PostingOriginKind.PURCHASE_ON_CREDIT, "Purchase on credit"),
+          Map.entry(
+              PostingOriginKind.INVENTORY_CAPITALIZATION_SETTLED,
+              "Settled inventory capitalization"),
+          Map.entry(
+              PostingOriginKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+              "Inventory capitalization on credit"),
+          Map.entry(PostingOriginKind.INVENTORY_WRITE_DOWN, "Inventory write-down"),
+          Map.entry(PostingOriginKind.INVENTORY_SHRINKAGE, "Inventory shrinkage"),
+          Map.entry(PostingOriginKind.INVENTORY_COUNT_INCREASE, "Inventory count increase"),
           Map.entry(PostingOriginKind.EXPENSE_SETTLED, "Settled expense"),
           Map.entry(PostingOriginKind.EXPENSE_ON_CREDIT, "Expense on credit"),
           Map.entry(PostingOriginKind.RECEIPT, "Receipt"),

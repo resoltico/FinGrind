@@ -156,6 +156,8 @@ class CliDistributionBuildContractTest {
   private static void assertCliBuildScriptDelegatesDistribution(String buildScript) {
     assertTrue(buildScript.contains("id(\"dev.erst.fingrind.cli-distribution\")"));
     assertTrue(buildScript.contains("id(\"dev.erst.fingrind.managed-sqlite-consumer\")"));
+    assertTrue(buildScript.contains("duplicatesStrategy = DuplicatesStrategy.INCLUDE"));
+    assertTrue(buildScript.contains("mergeServiceFiles()"));
     assertFalse(buildScript.contains("stageDockerBuildContext"));
     assertFalse(buildScript.contains("docker-build-context-manifest.json"));
     assertFalse(buildScript.contains("source-checkout-artifact-manifest.tsv"));

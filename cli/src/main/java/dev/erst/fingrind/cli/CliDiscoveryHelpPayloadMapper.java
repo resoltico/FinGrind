@@ -16,10 +16,33 @@ import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Maps help descriptors into command-scoped and overview CLI JSON payloads. */
 final class CliDiscoveryHelpPayloadMapper {
+  private static final Set<OperationId> POSTING_REQUEST_OPERATIONS =
+      Set.of(
+          OperationId.POST_ENTRY,
+          OperationId.PREFLIGHT_ENTRY,
+          OperationId.RECORD_SALE_SETTLED,
+          OperationId.RECORD_SALE_ON_CREDIT,
+          OperationId.RECORD_PURCHASE_SETTLED,
+          OperationId.RECORD_PURCHASE_ON_CREDIT,
+          OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED,
+          OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
+          OperationId.RECORD_INVENTORY_WRITE_DOWN,
+          OperationId.RECORD_INVENTORY_SHRINKAGE,
+          OperationId.RECORD_INVENTORY_COUNT_INCREASE,
+          OperationId.RECORD_EXPENSE_SETTLED,
+          OperationId.RECORD_EXPENSE_ON_CREDIT,
+          OperationId.RECORD_RECEIPT,
+          OperationId.RECORD_PAYMENT,
+          OperationId.RECORD_OWNER_CONTRIBUTION,
+          OperationId.RECORD_OWNER_WITHDRAWAL,
+          OperationId.RECORD_OPENING_POSITION,
+          OperationId.RECORD_REVERSAL);
+
   private CliDiscoveryHelpPayloadMapper() {}
 
   static ProtocolSuccessPayload helpPayload(
@@ -295,18 +318,7 @@ final class CliDiscoveryHelpPayloadMapper {
   }
 
   private static boolean isPostingRequestOperation(OperationId operationId) {
-    return operationId == OperationId.POST_ENTRY
-        || operationId == OperationId.PREFLIGHT_ENTRY
-        || operationId == OperationId.RECORD_SALE_SETTLED
-        || operationId == OperationId.RECORD_SALE_ON_CREDIT
-        || operationId == OperationId.RECORD_EXPENSE_SETTLED
-        || operationId == OperationId.RECORD_EXPENSE_ON_CREDIT
-        || operationId == OperationId.RECORD_RECEIPT
-        || operationId == OperationId.RECORD_PAYMENT
-        || operationId == OperationId.RECORD_OWNER_CONTRIBUTION
-        || operationId == OperationId.RECORD_OWNER_WITHDRAWAL
-        || operationId == OperationId.RECORD_OPENING_POSITION
-        || operationId == OperationId.RECORD_REVERSAL;
+    return POSTING_REQUEST_OPERATIONS.contains(operationId);
   }
 
   private static boolean isCommandScoped(HelpDescriptor helpDescriptor) {

@@ -62,7 +62,11 @@ class PostEntryRoleAccountSemanticsCoverageTest {
             LocalDate.parse("2026-04-07"),
             new AccountCode("1400"),
             new AccountCode("1000"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
             new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            null,
             null),
         "entryKind",
         "PURCHASE_SETTLED");
@@ -73,7 +77,12 @@ class PostEntryRoleAccountSemanticsCoverageTest {
             LocalDate.parse("2026-04-07"),
             new AccountCode("1400"),
             new AccountCode("2100"),
-            new MonetaryAmount("EUR", "1000")),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            null,
+            null),
         "entryKind",
         "PURCHASE_ON_CREDIT");
     PostEntryRoleAccountSemantics.validate(
@@ -85,7 +94,8 @@ class PostEntryRoleAccountSemanticsCoverageTest {
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new MonetaryAmount("EUR", "1000")))),
+                    new MonetaryAmount("EUR", "1000"),
+                    null))),
         "entryKind",
         "OPENING_POSITION");
     PostEntryRoleAccountSemantics.validate(

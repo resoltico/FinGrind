@@ -101,7 +101,13 @@ def verify_markdown_docs(repo_root: Path) -> list[str]:
         markdown_budget_for,
         measure_markdown_file,
     )
-    return measurement_violations(measurements, measurements)
+    return measurement_violations(
+        measurements,
+        measurements,
+        reviewed_surfaces=reviewed_surfaces_matching(
+            lambda relative_path: relative_path.suffix == ".md"
+        ),
+    )
 
 
 def verify_gradle_kts(repo_root: Path) -> list[str]:

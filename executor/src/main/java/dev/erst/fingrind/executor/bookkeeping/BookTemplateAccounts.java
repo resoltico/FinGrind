@@ -63,6 +63,9 @@ public final class BookTemplateAccounts {
         BookTemplateSeedAccounts.salesRevenueAccount(),
         BookTemplateSeedAccounts.salesDiscountAllowanceAccount(),
         BookTemplateSeedAccounts.costOfSalesAccount(),
+        TradingInventorySeedAccounts.writeDownLossAccount(),
+        TradingInventorySeedAccounts.shrinkageLossAccount(),
+        TradingInventorySeedAccounts.countGainAccount(),
         BookTemplateSeedAccounts.operatingExpenseAccount());
   }
 
@@ -79,6 +82,9 @@ public final class BookTemplateAccounts {
         BookTemplateSeedAccounts.salesRevenueAccount(),
         BookTemplateSeedAccounts.salesDiscountAllowanceAccount(),
         BookTemplateSeedAccounts.costOfSalesAccount(),
+        TradingInventorySeedAccounts.writeDownLossAccount(),
+        TradingInventorySeedAccounts.shrinkageLossAccount(),
+        TradingInventorySeedAccounts.countGainAccount(),
         BookTemplateSeedAccounts.operatingExpenseAccount(),
         BookTemplateSeedAccounts.settlementFeeAccount(),
         BookTemplateSeedAccounts.badDebtWriteOffAccount());

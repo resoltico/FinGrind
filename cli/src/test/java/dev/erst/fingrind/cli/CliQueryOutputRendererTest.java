@@ -758,6 +758,22 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void renderAccountPage_rendersInventoryUnitOfMeasureInTextAndCsv() {
+    DeclaredAccount inventoryAccount = inventoryDeclaredAccount("1400", "Inventory", "kg", 3);
+
+    String text =
+        CliAccountPageOutputRenderer.renderText(
+            accountPage(List.of(inventoryAccount), 50, Optional.empty()), false);
+    String csv =
+        CliAccountPageOutputRenderer.renderCsv(
+            accountPage(List.of(inventoryAccount), 50, Optional.empty()));
+
+    assertTrue(text.contains("kg (scale 3)"));
+    assertTrue(csv.contains("kg"));
+    assertTrue(csv.contains(",3,"));
+  }
+
+  @Test
   void renderBookInspectionText_coversEveryStatusLabel() {
     assertTrue(
         CliQueryOutputRenderer.renderBookInspectionText(

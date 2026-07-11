@@ -144,6 +144,40 @@ final class PostingApplicationServiceTestSupport {
             FIXED_CLOCK.instant()));
   }
 
+  static void declareInventoryVatRegistration(InMemoryBookSession bookSession) {
+    bookSession.taxRegistrationsById.put(
+        new TaxRegistrationId("vat-inventory"),
+        new DeclaredTaxRegistration(
+            new TaxRegistrationId("vat-inventory"),
+            new TaxRegistrationName("Inventory VAT"),
+            new TaxJurisdiction("LV"),
+            null,
+            new AccountCode("2100"),
+            new AccountCode("1300"),
+            TaxObligationFrequency.MONTHLY,
+            20,
+            List.of(
+                new TaxCodeDefinition(
+                    new TaxCode("vat-output"),
+                    new TaxCodeName("Output VAT"),
+                    new TaxRate(200_000),
+                    TaxInclusionMode.EXCLUSIVE,
+                    TaxApplicationKind.OUTPUT_SALE),
+                new TaxCodeDefinition(
+                    new TaxCode("vat-input-recoverable"),
+                    new TaxCodeName("Recoverable Input VAT"),
+                    new TaxRate(200_000),
+                    TaxInclusionMode.EXCLUSIVE,
+                    TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE),
+                new TaxCodeDefinition(
+                    new TaxCode("vat-input-nonrecoverable"),
+                    new TaxCodeName("Nonrecoverable Input VAT"),
+                    new TaxRate(200_000),
+                    TaxInclusionMode.EXCLUSIVE,
+                    TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE)),
+            FIXED_CLOCK.instant()));
+  }
+
   static void declareNonCashDirectJournalAccounts(InMemoryBookSession bookSession) {
     bookSession.declareAccount(
         new AccountCode("3000"),
@@ -175,6 +209,7 @@ final class PostingApplicationServiceTestSupport {
             null,
             null,
             null,
+            null,
             null),
         accountingEvidence(idempotencyKey),
         requestProvenance(idempotencyKey),
@@ -188,6 +223,7 @@ final class PostingApplicationServiceTestSupport {
             new AccountCode("1000"),
             new AccountCode("2000"),
             MonetaryAmount.of(Money.parse("EUR", "100.00")),
+            null,
             null,
             null,
             new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
@@ -242,7 +278,7 @@ final class PostingApplicationServiceTestSupport {
     for (JournalLine line : journalEntry.lines()) {
       balances.add(
           new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
-              line.accountCode(), line.side(), MonetaryAmount.of(line.amount().money())));
+              line.accountCode(), line.side(), MonetaryAmount.of(line.amount().money()), null));
     }
     return List.copyOf(balances);
   }

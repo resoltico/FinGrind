@@ -21,6 +21,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PositiveMoney;
+import dev.erst.fingrind.core.Quantity;
 import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -199,22 +200,99 @@ class BookkeepingEntrySupportTest {
   }
 
   @Test
-  void inventoryRelief_supportsSaleJournalExpansionAndCurrencyValidation() {
+  void inventoryCostEntry_coversRecoverableNonrecoverableAndInvalidTaxKinds() {
+    AppliedTax recoverable =
+        appliedTax(
+            TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+            TaxInclusionMode.INCLUSIVE,
+            "10000",
+            "2100",
+            "12100",
+            "1300");
+    AppliedTax recoverableZeroTax =
+        appliedTax(
+            TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+            TaxInclusionMode.INCLUSIVE,
+            "10000",
+            "0",
+            "10000",
+            null);
+    AppliedTax nonrecoverable =
+        appliedTax(
+            TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE,
+            TaxInclusionMode.INCLUSIVE,
+            "10000",
+            "2100",
+            "12100",
+            null);
+    AppliedTax wrongKind =
+        appliedTax(
+            TaxApplicationKind.OUTPUT_SALE,
+            TaxInclusionMode.EXCLUSIVE,
+            "10000",
+            "0",
+            "10000",
+            null);
+
+    assertEquals(
+        3,
+        BookkeepingEntrySupport.inventoryCostEntry(
+                LocalDate.parse("2026-04-25"),
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                recoverable)
+            .lines()
+            .size());
+    assertEquals(
+        2,
+        BookkeepingEntrySupport.inventoryCostEntry(
+                LocalDate.parse("2026-04-25"),
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                recoverableZeroTax)
+            .lines()
+            .size());
+    assertEquals(
+        2,
+        BookkeepingEntrySupport.inventoryCostEntry(
+                LocalDate.parse("2026-04-25"),
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                nonrecoverable)
+            .lines()
+            .size());
+    assertEquals(
+        "Resolved inventory tax cannot use applicationKind OUTPUT_SALE.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    BookkeepingEntrySupport.inventoryCostEntry(
+                        LocalDate.parse("2026-04-25"),
+                        new AccountCode("1400"),
+                        new AccountCode("2100"),
+                        wrongKind))
+            .getMessage());
+  }
+
+  @Test
+  void inventoryRelief_supportsSaleJournalExpansionWithResolvedCosting() {
     InventoryRelief inventoryRelief =
         new InventoryRelief(
-            new AccountCode("1400"), new AccountCode("5100"), new MonetaryAmount("EUR", "2500"));
-    InventoryRelief acceptedInventoryRelief =
-        BookkeepingEntryValidationSupport.requireOptionalInventoryRelief(
-            inventoryRelief, new MonetaryAmount("EUR", "10000"), "inventoryRelief");
+            new AccountCode("1400"),
+            new AccountCode("5100"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"));
     JournalEntry journalEntry =
         BookkeepingEntrySupport.saleEntry(
             LocalDate.parse("2026-04-25"),
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "10000"),
-            inventoryRelief);
+            inventoryRelief,
+            new ResolvedInventoryCosting(
+                Money.parse("EUR", "25.00"),
+                Quantity.ofScaledUnits(0, 1),
+                Money.parse("EUR", "99.99")));
 
-    assertSame(inventoryRelief, acceptedInventoryRelief);
     assertEquals(4, journalEntry.lines().size());
     assertEquals(new AccountCode("5100"), journalEntry.lines().get(2).accountCode());
     assertEquals(JournalLine.EntrySide.DEBIT, journalEntry.lines().get(2).side());
@@ -224,23 +302,10 @@ class BookkeepingEntrySupportTest {
     assertEquals(JournalLine.EntrySide.CREDIT, journalEntry.lines().get(3).side());
     assertEquals(
         PositiveMoney.of(Money.parse("EUR", "25.00")), journalEntry.lines().get(3).amount());
-    assertEquals(
-        "inventoryRelief.amount currencyCode must match the entry amount currencyCode.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                    BookkeepingEntryValidationSupport.requireOptionalInventoryRelief(
-                        new InventoryRelief(
-                            new AccountCode("1400"),
-                            new AccountCode("5100"),
-                            new MonetaryAmount("USD", "2500")),
-                        new MonetaryAmount("EUR", "10000"),
-                        "inventoryRelief"))
-            .getMessage());
   }
 
   @Test
-  void inventoryRelief_requiresPositiveAmount() {
+  void inventoryRelief_requiresPositiveQuantity() {
     IllegalArgumentException rejection =
         assertThrows(
             IllegalArgumentException.class,
@@ -248,9 +313,10 @@ class BookkeepingEntrySupportTest {
                 new InventoryRelief(
                     new AccountCode("1400"),
                     new AccountCode("5100"),
-                    new MonetaryAmount("EUR", "0")));
+                    new dev.erst.fingrind.contract.bookkeeping.QuantityText("0")));
 
-    assertEquals("inventoryRelief.amount must carry one positive amount.", rejection.getMessage());
+    assertEquals(
+        "inventoryRelief.quantity must carry one positive quantity.", rejection.getMessage());
   }
 
   @Test
@@ -275,7 +341,7 @@ class BookkeepingEntrySupportTest {
 
     assertDoesNotThrow(
         () ->
-            BookkeepingEntryValidationSupport.requireTaxSelectionState(
+            BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
                 new MonetaryAmount("EUR", "10000"),
                 selection,
                 null,
@@ -285,7 +351,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+                    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "10000"),
                         null,
                         exclusiveSaleTax,
@@ -296,7 +362,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+                    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "10000"),
                         selection,
                         new AppliedTax(
@@ -317,7 +383,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+                    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "10000"),
                         selection,
                         new AppliedTax(
@@ -338,7 +404,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+                    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "12100"),
                         selection,
                         inclusiveExpenseTax,
@@ -349,7 +415,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+                    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "10000"),
                         selection,
                         inclusiveExpenseTax,
@@ -359,14 +425,14 @@ class BookkeepingEntrySupportTest {
         "sale tax selection requires executor-owned tax resolution before journalEntry() can be derived.",
         assertThrows(
                 IllegalStateException.class,
-                () -> BookkeepingEntryValidationSupport.requireResolvedAppliedTax(null, "sale"))
+                () -> BookkeepingEntryTaxValidationSupport.requireResolvedAppliedTax(null, "sale"))
             .getMessage());
     assertEquals(
         "appliedTax taxableAmount currencyCode must match the entry amount currencyCode.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+                    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("USD", "10000"),
                         selection,
                         exclusiveSaleTax,
@@ -377,7 +443,7 @@ class BookkeepingEntrySupportTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+                    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
                         new MonetaryAmount("EUR", "12100"),
                         selection,
                         exclusiveSaleTax,
@@ -386,10 +452,10 @@ class BookkeepingEntrySupportTest {
   }
 
   @Test
-  void typedEntryForeignExchange_requiresSpotSettlementAndExactFunctionalAmount() {
+  void typedEntryForeignExchange_requiresSpotTransactionAndExactFunctionalAmount() {
     ForeignExchangeDetails matchingSpot =
         foreignExchangeDetails(
-            "USD", "10000", "EUR", "9200", ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+            "USD", "10000", "EUR", "9200", ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
     ForeignExchangeDetails realizedSettlement =
         foreignExchangeDetails(
             "USD", "10000", "EUR", "9200", ForeignExchangeTreatmentKind.REALIZED_SETTLEMENT);
@@ -402,11 +468,56 @@ class BookkeepingEntrySupportTest {
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "9200"),
                 null,
+                null,
+                matchingSpot,
+                null,
+                null));
+    assertDoesNotThrow(
+        () ->
+            new BookkeepingEntry.SaleOnCredit(
+                LocalDate.parse("2026-04-25"),
+                new AccountCode("1100"),
+                new AccountCode("4000"),
+                new MonetaryAmount("EUR", "9200"),
+                null,
+                null,
+                matchingSpot,
+                null,
+                null));
+    assertDoesNotThrow(
+        () ->
+            new BookkeepingEntry.PurchaseOnCredit(
+                LocalDate.parse("2026-04-25"),
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                new QuantityText("1"),
+                new MonetaryAmount("EUR", "9200"),
+                null,
+                matchingSpot,
+                null,
+                null));
+    assertDoesNotThrow(
+        () ->
+            new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+                LocalDate.parse("2026-04-25"),
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                new MonetaryAmount("EUR", "9200"),
+                matchingSpot,
+                null,
+                null));
+    assertDoesNotThrow(
+        () ->
+            new BookkeepingEntry.ExpenseOnCredit(
+                LocalDate.parse("2026-04-25"),
+                new AccountCode("5000"),
+                new AccountCode("2100"),
+                new MonetaryAmount("EUR", "9200"),
                 matchingSpot,
                 null,
                 null));
     assertEquals(
-        "sale foreignExchange.treatmentKind must be SPOT_SETTLEMENT.",
+        "sale foreignExchange.treatmentKind must be SPOT_TRANSACTION.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
@@ -415,6 +526,7 @@ class BookkeepingEntrySupportTest {
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "9200"),
+                        null,
                         null,
                         realizedSettlement,
                         null,

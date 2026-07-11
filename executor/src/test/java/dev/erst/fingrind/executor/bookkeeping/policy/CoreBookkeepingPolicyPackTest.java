@@ -47,7 +47,8 @@ class InternalManagementKernelAccountingRulesTest {
                 AccountingBasis.CASH,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                BookTemplateId.OWNER_MANAGED_SERVICE),
+                BookTemplateId.OWNER_MANAGED_SERVICE,
+                null),
             bookIdentity().functionalCurrency(),
             bookIdentity().fiscalYearStart());
 

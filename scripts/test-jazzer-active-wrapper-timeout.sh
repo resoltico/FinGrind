@@ -43,7 +43,8 @@ readonly source_repo_lock_support="${repo_root}/scripts/repo-verification-lock-s
 readonly source_repo_lock_path_support="${repo_root}/scripts/repo-verification-lock-path-support.sh"
 readonly source_repo_lock_process_support="${repo_root}/scripts/repo-verification-lock-process-support.sh"
 readonly source_topology_reader="${repo_root}/scripts/read-jazzer-topology.py"
-readonly source_topology_file="${repo_root}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json"
+readonly source_harnesses_file="${repo_root}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-harnesses.json"
+readonly source_run_targets_file="${repo_root}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-run-targets.json"
 
 [[ -f "${source_wrapper}" ]] || die "missing fuzz-cli-request wrapper"
 [[ -f "${source_common}" ]] || die "missing common.sh wrapper library"
@@ -52,7 +53,8 @@ readonly source_topology_file="${repo_root}/jazzer/src/main/resources/dev/erst/f
 [[ -f "${source_repo_lock_path_support}" ]] || die "missing repo verification lock path helper"
 [[ -f "${source_repo_lock_process_support}" ]] || die "missing repo verification lock process helper"
 [[ -f "${source_topology_reader}" ]] || die "missing Jazzer topology reader"
-[[ -f "${source_topology_file}" ]] || die "missing Jazzer topology file"
+[[ -f "${source_harnesses_file}" ]] || die "missing Jazzer harness catalog"
+[[ -f "${source_run_targets_file}" ]] || die "missing Jazzer run-target catalog"
 
 tmp_dir="$(mktemp -d)"
 cleanup() {
@@ -77,7 +79,8 @@ cp "${source_repo_lock_support}" "${stub_scripts_dir}/repo-verification-lock-sup
 cp "${source_repo_lock_path_support}" "${stub_scripts_dir}/repo-verification-lock-path-support.sh"
 cp "${source_repo_lock_process_support}" "${stub_scripts_dir}/repo-verification-lock-process-support.sh"
 cp "${source_topology_reader}" "${stub_scripts_dir}/read-jazzer-topology.py"
-cp "${source_topology_file}" "${stub_topology_dir}/jazzer-topology.json"
+cp "${source_harnesses_file}" "${stub_topology_dir}/jazzer-harnesses.json"
+cp "${source_run_targets_file}" "${stub_topology_dir}/jazzer-run-targets.json"
 chmod +x \
     "${stub_bin_dir}/_run-lock-support" \
     "${stub_scripts_dir}/repo-verification-lock-support.sh"

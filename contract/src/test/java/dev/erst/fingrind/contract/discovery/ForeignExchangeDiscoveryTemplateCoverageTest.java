@@ -41,7 +41,7 @@ class ForeignExchangeDiscoveryTemplateCoverageTest {
                 saleDescriptor.quotedRateFields(), ProtocolPostEntryFields.QuotedRate.QUOTE_SOURCE)
             .presence());
     assertEquals(
-        List.of("SPOT_SETTLEMENT", "REALIZED_SETTLEMENT", "UNREALIZED_REMEASUREMENT"),
+        List.of("SPOT_TRANSACTION", "REALIZED_SETTLEMENT", "UNREALIZED_REMEASUREMENT"),
         vocabularyNamed(saleDescriptor, ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND)
             .values());
     assertEquals(

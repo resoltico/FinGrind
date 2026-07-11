@@ -406,6 +406,7 @@ class TaxContractTypesTest {
             new MonetaryAmount("EUR", "10000"),
             null,
             null,
+            null,
             new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
             saleTax);
     AppliedTax recoverableExpenseTax =
@@ -491,6 +492,7 @@ class TaxContractTypesTest {
                 null,
                 null,
                 null,
+                null,
                 mismatchedAppliedTax));
     assertThrows(
         IllegalArgumentException.class,
@@ -502,6 +504,7 @@ class TaxContractTypesTest {
                 new MonetaryAmount("EUR", "10000"),
                 null,
                 null,
+                null,
                 selection,
                 mismatchedAppliedTax));
     BookkeepingEntry.SaleSettled unresolvedSale =
@@ -510,6 +513,7 @@ class TaxContractTypesTest {
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "10000"),
+            null,
             null,
             null,
             selection,

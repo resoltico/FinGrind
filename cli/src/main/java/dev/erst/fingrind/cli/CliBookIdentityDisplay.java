@@ -36,6 +36,12 @@ final class CliBookIdentityDisplay {
         List.of(
             "Seed template",
             BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())));
+    if (bookIdentity.bookDoctrine().inventoryCostingDoctrine() != null) {
+      rows.add(
+          List.of(
+              "Inventory costing",
+              bookIdentity.bookDoctrine().inventoryCostingDoctrine().wireValue()));
+    }
     rows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     rows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
     return List.copyOf(rows);
@@ -43,16 +49,25 @@ final class CliBookIdentityDisplay {
 
   static List<List<String>> contextRows(BookIdentity bookIdentity) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return List.of(
-        List.of("Entity", bookIdentity.entityName().value()),
+    List<List<String>> rows = new ArrayList<>();
+    rows.add(List.of("Entity", bookIdentity.entityName().value()));
+    rows.add(
         List.of(
             "Seed template",
-            BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())),
+            BookDoctrineDisplay.bookTemplate(bookIdentity.bookDoctrine().bookTemplateId())));
+    rows.add(
         List.of(
             "Accounting basis",
-            BookDoctrineDisplay.accountingBasis(bookIdentity.bookDoctrine().accountingBasis())),
-        List.of("Functional currency", bookIdentity.functionalCurrency().code()),
-        List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
+            BookDoctrineDisplay.accountingBasis(bookIdentity.bookDoctrine().accountingBasis())));
+    if (bookIdentity.bookDoctrine().inventoryCostingDoctrine() != null) {
+      rows.add(
+          List.of(
+              "Inventory costing",
+              bookIdentity.bookDoctrine().inventoryCostingDoctrine().wireValue()));
+    }
+    rows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
+    rows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
+    return List.copyOf(rows);
   }
 
   static List<List<String>> rows(BookIdentity bookIdentity) {

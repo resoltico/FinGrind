@@ -42,7 +42,6 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
             .scaffoldValue(),
         template.evidence().sourceDocuments().getFirst().sourceDocumentType());
     assertNotNull(template.provenance());
-
     switch (entryKind) {
       case DIRECT_JOURNAL -> {
         assertNotNull(template.lines());
@@ -66,13 +65,13 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         assertEquals("inventory", template.inventoryAccountCode());
         assertEquals("cash", template.cashAccountCode());
         assertNull(template.inventoryRelief());
-        assertAmountTemplateShape(template);
+        assertQuantityUnitCostTemplateShape(template);
       }
       case PURCHASE_ON_CREDIT -> {
         assertEquals("inventory", template.inventoryAccountCode());
         assertEquals("accounts-payable", template.payableAccountCode());
         assertNull(template.inventoryRelief());
-        assertAmountTemplateShape(template);
+        assertQuantityUnitCostTemplateShape(template);
       }
       case EXPENSE_SETTLED -> {
         assertEquals("cash", template.cashAccountCode());
@@ -94,14 +93,9 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         assertEquals("accounts-payable", template.payableAccountCode());
         assertAmountTemplateShape(template);
       }
-      case OWNER_CONTRIBUTION -> {
+      case OWNER_CONTRIBUTION, OWNER_WITHDRAWAL -> {
         assertEquals("cash", template.cashAccountCode());
-        assertEquals("owner-capital", template.equityAccountCode());
-        assertAmountTemplateShape(template);
-      }
-      case OWNER_WITHDRAWAL -> {
-        assertEquals("cash", template.cashAccountCode());
-        assertEquals("owner-draws", template.equityAccountCode());
+        assertEquals(ownerEquityAccount(entryKind), template.equityAccountCode());
         assertAmountTemplateShape(template);
       }
       case OPENING_POSITION -> {
@@ -116,6 +110,37 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
             "018f0000-0000-7000-8000-000000000001",
             Objects.requireNonNull(template.reversal()).priorPostingId());
       }
+      default -> assertInventoryTemplate(entryKind, template);
+    }
+  }
+
+  private static void assertInventoryTemplate(
+      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+    assertEquals("inventory", template.inventoryAccountCode());
+    switch (entryKind) {
+      case INVENTORY_CAPITALIZATION_SETTLED -> {
+        assertEquals("cash", template.cashAccountCode());
+        assertAmountTemplateShape(template);
+      }
+      case INVENTORY_CAPITALIZATION_ON_CREDIT -> {
+        assertEquals("accounts-payable", template.payableAccountCode());
+        assertAmountTemplateShape(template);
+      }
+      case INVENTORY_WRITE_DOWN -> {
+        assertEquals("inventory-write-down-loss", template.writeDownLossAccountCode());
+        assertAmountTemplateShape(template);
+      }
+      case INVENTORY_SHRINKAGE -> {
+        assertEquals("inventory-shrinkage-loss", template.shrinkageLossAccountCode());
+        assertNull(template.amount());
+        assertEquals("5", template.quantity());
+        assertNull(template.unitCost());
+      }
+      case INVENTORY_COUNT_INCREASE -> {
+        assertEquals("inventory-count-gain", template.countGainAccountCode());
+        assertQuantityUnitCostTemplateShape(template);
+      }
+      default -> throw new IllegalArgumentException("Expected inventory entry kind.");
     }
   }
 
@@ -127,6 +152,18 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         Map.entry(OperationId.RECORD_SALE_ON_CREDIT, BookkeepingEntryKind.SALE_ON_CREDIT),
         Map.entry(OperationId.RECORD_PURCHASE_SETTLED, BookkeepingEntryKind.PURCHASE_SETTLED),
         Map.entry(OperationId.RECORD_PURCHASE_ON_CREDIT, BookkeepingEntryKind.PURCHASE_ON_CREDIT),
+        Map.entry(
+            OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED,
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED),
+        Map.entry(
+            OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT),
+        Map.entry(
+            OperationId.RECORD_INVENTORY_WRITE_DOWN, BookkeepingEntryKind.INVENTORY_WRITE_DOWN),
+        Map.entry(OperationId.RECORD_INVENTORY_SHRINKAGE, BookkeepingEntryKind.INVENTORY_SHRINKAGE),
+        Map.entry(
+            OperationId.RECORD_INVENTORY_COUNT_INCREASE,
+            BookkeepingEntryKind.INVENTORY_COUNT_INCREASE),
         Map.entry(OperationId.RECORD_EXPENSE_SETTLED, BookkeepingEntryKind.EXPENSE_SETTLED),
         Map.entry(OperationId.RECORD_EXPENSE_ON_CREDIT, BookkeepingEntryKind.EXPENSE_ON_CREDIT),
         Map.entry(OperationId.RECORD_RECEIPT, BookkeepingEntryKind.RECEIPT),
@@ -144,6 +181,15 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         Map.entry(BookkeepingEntryKind.SALE_ON_CREDIT, "saleOnCredit"),
         Map.entry(BookkeepingEntryKind.PURCHASE_SETTLED, "purchaseSettled"),
         Map.entry(BookkeepingEntryKind.PURCHASE_ON_CREDIT, "purchaseOnCredit"),
+        Map.entry(
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
+            "inventoryCapitalizationSettled"),
+        Map.entry(
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+            "inventoryCapitalizationOnCredit"),
+        Map.entry(BookkeepingEntryKind.INVENTORY_WRITE_DOWN, "inventoryWriteDown"),
+        Map.entry(BookkeepingEntryKind.INVENTORY_SHRINKAGE, "inventoryShrinkage"),
+        Map.entry(BookkeepingEntryKind.INVENTORY_COUNT_INCREASE, "inventoryCountIncrease"),
         Map.entry(BookkeepingEntryKind.EXPENSE_SETTLED, "expenseSettled"),
         Map.entry(BookkeepingEntryKind.EXPENSE_ON_CREDIT, "expenseOnCredit"),
         Map.entry(BookkeepingEntryKind.OWNER_CONTRIBUTION, "ownerContribution"),
@@ -156,22 +202,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
       BookkeepingEntryKind entryKind,
       ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
     return switch (entryKind) {
-      case DIRECT_JOURNAL ->
-          new ContractPostingRequestTemplateValidators.PostingTemplateFields(
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              settlementAdjunct,
-              null,
-              null,
-              JOURNAL_LINES,
-              null);
+      case DIRECT_JOURNAL -> emptyFields(settlementAdjunct, JOURNAL_LINES, null);
       case SALE_SETTLED ->
           amountFields("cash", null, null, "service-revenue", null, null, null, settlementAdjunct);
       case SALE_ON_CREDIT ->
@@ -185,9 +216,10 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
               null,
               settlementAdjunct);
       case PURCHASE_SETTLED ->
-          amountFields("cash", null, null, null, "inventory", null, null, settlementAdjunct);
+          quantityUnitCostFields(
+              "cash", null, null, null, "inventory", null, null, settlementAdjunct);
       case PURCHASE_ON_CREDIT ->
-          amountFields(
+          quantityUnitCostFields(
               null, null, "accounts-payable", null, "inventory", null, null, settlementAdjunct);
       case EXPENSE_SETTLED ->
           amountFields(
@@ -207,43 +239,47 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
               "cash", "accounts-receivable", null, null, null, null, null, settlementAdjunct);
       case PAYMENT ->
           amountFields("cash", null, "accounts-payable", null, null, null, null, settlementAdjunct);
-      case OWNER_CONTRIBUTION ->
-          amountFields("cash", null, null, null, null, null, "owner-capital", settlementAdjunct);
-      case OWNER_WITHDRAWAL ->
-          amountFields("cash", null, null, null, null, null, "owner-draws", settlementAdjunct);
-      case OPENING_POSITION ->
-          new ContractPostingRequestTemplateValidators.PostingTemplateFields(
+      case OWNER_CONTRIBUTION, OWNER_WITHDRAWAL ->
+          amountFields(
+              "cash",
               null,
               null,
               null,
               null,
               null,
-              null,
-              null,
-              null,
-              null,
-              settlementAdjunct,
-              null,
-              null,
-              null,
-              OPENING_BALANCES);
-      case REVERSAL ->
-          new ContractPostingRequestTemplateValidators.PostingTemplateFields(
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              null,
-              settlementAdjunct,
-              null,
-              null,
-              null,
-              null);
+              ownerEquityAccount(entryKind),
+              settlementAdjunct);
+      case OPENING_POSITION -> emptyFields(settlementAdjunct, null, OPENING_BALANCES);
+      case REVERSAL -> emptyFields(settlementAdjunct, null, null);
+      default -> inventoryCanonicalFields(entryKind, settlementAdjunct);
     };
+  }
+
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields
+      inventoryCanonicalFields(
+          BookkeepingEntryKind entryKind,
+          ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+    return switch (entryKind) {
+      case INVENTORY_CAPITALIZATION_SETTLED ->
+          amountFields("cash", null, null, null, "inventory", null, null, settlementAdjunct);
+      case INVENTORY_CAPITALIZATION_ON_CREDIT ->
+          amountFields(
+              null, null, "accounts-payable", null, "inventory", null, null, settlementAdjunct);
+      case INVENTORY_WRITE_DOWN ->
+          inventoryMaintenanceFields(
+              "inventory", "inventory-write-down-loss", null, null, null, settlementAdjunct);
+      case INVENTORY_SHRINKAGE ->
+          inventoryMaintenanceFields(
+              "inventory", null, "inventory-shrinkage-loss", null, "5", settlementAdjunct);
+      case INVENTORY_COUNT_INCREASE ->
+          inventoryMaintenanceFields(
+              "inventory", null, null, "inventory-count-gain", null, settlementAdjunct);
+      default -> throw new IllegalArgumentException("Expected inventory entry kind.");
+    };
+  }
+
+  private static String ownerEquityAccount(BookkeepingEntryKind entryKind) {
+    return entryKind == BookkeepingEntryKind.OWNER_CONTRIBUTION ? "owner-capital" : "owner-draws";
   }
 
   static ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunctIfOwned(
@@ -253,10 +289,10 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         : null;
   }
 
-  static ContractTemplates.@Nullable ReversalTemplateDescriptor reversalIfOwned(
+  static ContractReversalTemplates.@Nullable ReversalTemplateDescriptor reversalIfOwned(
       BookkeepingEntryKind entryKind) {
     return entryKind == BookkeepingEntryKind.REVERSAL
-        ? new ContractTemplates.ReversalTemplateDescriptor("posting-1", "correction")
+        ? new ContractReversalTemplates.ReversalTemplateDescriptor("posting-1", "correction")
         : null;
   }
 
@@ -281,8 +317,13 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         revenueAccountCode,
         inventoryAccountCode,
         expenseAccountCode,
+        null,
+        null,
+        null,
         equityAccountCode,
         new MonetaryAmount("EUR", "1000"),
+        null,
+        null,
         null,
         settlementAdjunct,
         null,
@@ -291,9 +332,109 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         null);
   }
 
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields
+      quantityUnitCostFields(
+          @Nullable String cashAccountCode,
+          @Nullable String receivableAccountCode,
+          @Nullable String payableAccountCode,
+          @Nullable String revenueAccountCode,
+          @Nullable String inventoryAccountCode,
+          @Nullable String expenseAccountCode,
+          @Nullable String equityAccountCode,
+          ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+    return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
+        cashAccountCode,
+        receivableAccountCode,
+        payableAccountCode,
+        revenueAccountCode,
+        inventoryAccountCode,
+        expenseAccountCode,
+        null,
+        null,
+        null,
+        equityAccountCode,
+        null,
+        "5",
+        new MonetaryAmount("EUR", "120"),
+        null,
+        settlementAdjunct,
+        null,
+        null,
+        null,
+        null);
+  }
+
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields
+      inventoryMaintenanceFields(
+          String inventoryAccountCode,
+          @Nullable String writeDownLossAccountCode,
+          @Nullable String shrinkageLossAccountCode,
+          @Nullable String countGainAccountCode,
+          @Nullable String quantity,
+          ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+    return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
+        null,
+        null,
+        null,
+        null,
+        inventoryAccountCode,
+        null,
+        writeDownLossAccountCode,
+        shrinkageLossAccountCode,
+        countGainAccountCode,
+        null,
+        countGainAccountCode == null && quantity == null ? new MonetaryAmount("EUR", "1000") : null,
+        countGainAccountCode == null ? quantity : "5",
+        countGainAccountCode == null ? null : new MonetaryAmount("EUR", "120"),
+        null,
+        settlementAdjunct,
+        null,
+        null,
+        null,
+        null);
+  }
+
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields emptyFields(
+      ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct,
+      @Nullable List<ContractTemplates.JournalLineTemplateDescriptor> lines,
+      @Nullable List<ContractTemplates.OpeningBalanceTemplateDescriptor> openingBalances) {
+    return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        settlementAdjunct,
+        null,
+        null,
+        lines,
+        openingBalances);
+  }
+
   private static void assertAmountTemplateShape(
       ContractTemplates.PostingRequestTemplateDescriptor template) {
     assertNotNull(template.amount());
+    assertNull(template.quantity());
+    assertNull(template.unitCost());
+    assertNull(template.lines());
+    assertNull(template.openingBalances());
+    assertNull(template.reversal());
+  }
+
+  private static void assertQuantityUnitCostTemplateShape(
+      ContractTemplates.PostingRequestTemplateDescriptor template) {
+    assertNull(template.amount());
+    assertEquals("5", template.quantity());
+    assertEquals(new MonetaryAmount("EUR", "120"), template.unitCost());
     assertNull(template.lines());
     assertNull(template.openingBalances());
     assertNull(template.reversal());

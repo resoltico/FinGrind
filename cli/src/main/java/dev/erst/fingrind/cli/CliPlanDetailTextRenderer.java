@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanLedgerFactJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.util.ArrayList;
@@ -101,23 +102,24 @@ final class CliPlanDetailTextRenderer {
         .collect(java.util.stream.Collectors.joining(" "));
   }
 
-  private static String renderFactDetails(List<CliPlanJsonModels.LedgerFactPayload> facts) {
+  private static String renderFactDetails(
+      List<CliPlanLedgerFactJsonModels.LedgerFactPayload> facts) {
     List<List<String>> valueRows = new ArrayList<>();
     List<String> groupSections = new ArrayList<>();
-    for (CliPlanJsonModels.LedgerFactPayload fact : facts) {
+    for (CliPlanLedgerFactJsonModels.LedgerFactPayload fact : facts) {
       switch (fact) {
-        case CliPlanJsonModels.TextLedgerFactPayload text ->
+        case CliPlanLedgerFactJsonModels.TextLedgerFactPayload text ->
             valueRows.add(List.of(displayLabel(text.name()), text.value()));
-        case CliPlanJsonModels.FlagLedgerFactPayload flag ->
+        case CliPlanLedgerFactJsonModels.FlagLedgerFactPayload flag ->
             valueRows.add(
                 List.of(
                     displayLabel(flag.name()),
                     CliQueryScopeText.displayBooleanLabel(flag.value())));
-        case CliPlanJsonModels.CountLedgerFactPayload count ->
+        case CliPlanLedgerFactJsonModels.CountLedgerFactPayload count ->
             valueRows.add(List.of(displayLabel(count.name()), Integer.toString(count.value())));
-        case CliPlanJsonModels.MoneyLedgerFactPayload money ->
+        case CliPlanLedgerFactJsonModels.MoneyLedgerFactPayload money ->
             valueRows.add(List.of(displayLabel(money.name()), displayMoney(money.value())));
-        case CliPlanJsonModels.GroupLedgerFactPayload group ->
+        case CliPlanLedgerFactJsonModels.GroupLedgerFactPayload group ->
             groupSections.add(
                 CliReportRenderSupport.section(
                     CliTextDisplay.wireLabel(group.name()), renderFactDetails(group.facts())));

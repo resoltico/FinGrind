@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, request-json, provenance, reversal, idempotency, ledger-plan, execute-plan, posting-shape, account-declaration]
   questions: ["what request json does fingrind accept", "what ledger plan shape does execute-plan accept", "what posting request fields does fingrind accept"]
@@ -61,14 +61,16 @@ becomes single-use per book after the first committed posting.
 The default posting scaffold uses the minimal `SALE_SETTLED` path with `cashAccountCode`,
 `revenueAccountCode`, and `amount`. On `OWNER_MANAGED_TRADING` books, sale requests additionally
 carry `inventoryRelief.inventoryAccountCode`, `inventoryRelief.costOfSalesAccountCode`, and
-`inventoryRelief.amount` so one typed sale records the inventory relief and cost-of-sales side of
+`inventoryRelief.quantity` so one typed sale records the inventory relief and cost-of-sales side of
 the same business event. Trading inventory acquisitions stay on the typed path through
 `print-request-template record-purchase-settled` and
 `print-request-template record-purchase-on-credit`, which publish `inventoryAccountCode` plus the
-matching cash or payable role fields and purchase-specific source-document defaults. The raw
+matching cash or payable role fields, `quantity`, `unitCost`, and purchase-specific source-document defaults. Landed-cost capitalization, carrying-cost write-downs, quantity shrinkage, and count increases have their own `record-inventory-*` templates, account roles, and source-document policies. The raw
 direct-journal boundary stays available through
 `print-request-template post-entry`, but it still has to move at least one declared
-cash-and-cash-equivalent asset account.
+cash-and-cash-equivalent asset account on cash-basis books and must not contain any line whose
+declared account resolves to the inventory role. Inventory quantity and carrying-cost changes use
+the corresponding typed inventory command exclusively.
 
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
 `help record-sale-settled`, `help post-entry`, `help declare-account`, and `help execute-plan` inline one
@@ -79,7 +81,9 @@ posting model remains nested under the ledger-plan request shape rather than sur
 top-level posting document. When you need the raw scaffold bytes directly, `print-request-template`
 accepts `declare-account` plus every posting-shaped topic:
 `post-entry`, `preflight-entry`, `record-sale-settled`, `record-sale-on-credit`,
-`record-purchase-settled`, `record-purchase-on-credit`, `record-expense-settled`,
+`record-purchase-settled`, `record-purchase-on-credit`, `record-inventory-capitalization-settled`,
+`record-inventory-capitalization-on-credit`, `record-inventory-write-down`,
+`record-inventory-shrinkage`, `record-inventory-count-increase`, `record-expense-settled`,
 `record-expense-on-credit`, `record-receipt`, `record-payment`, `record-owner-contribution`,
 `record-owner-withdrawal`, `record-opening-position`, `record-reversal`, and
 `declare-tax-registration`.
@@ -98,10 +102,16 @@ Current posting-request rules:
 - `DIRECT_JOURNAL` requires balanced `lines`
 - `DIRECT_JOURNAL` is rejected unless at least one `lines[].accountCode` references a declared
   `CASH_AND_CASH_EQUIVALENT` asset account
+- `DIRECT_JOURNAL` is rejected when any `lines[].accountCode` names an inventory account because raw journals do not own exact inventory quantity truth
 - `SALE_SETTLED` requires `cashAccountCode`, `revenueAccountCode`, and `amount`; on `OWNER_MANAGED_TRADING` books it also requires `inventoryRelief`
 - `SALE_ON_CREDIT` requires `receivableAccountCode`, `revenueAccountCode`, and `amount`; on `OWNER_MANAGED_TRADING` books it also requires `inventoryRelief`
-- `PURCHASE_SETTLED` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `cashAccountCode`, and `amount`
-- `PURCHASE_ON_CREDIT` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `payableAccountCode`, and `amount`
+- `PURCHASE_SETTLED` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `cashAccountCode`, `quantity`, and `unitCost`
+- `PURCHASE_ON_CREDIT` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `payableAccountCode`, `quantity`, and `unitCost`
+- `INVENTORY_CAPITALIZATION_SETTLED` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `cashAccountCode`, and pre-VAT `amount`; it requires existing positive inventory quantity and changes carrying cost without changing quantity
+- `INVENTORY_CAPITALIZATION_ON_CREDIT` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `payableAccountCode`, and pre-VAT `amount`; it requires existing positive inventory quantity and changes carrying cost without changing quantity
+- `INVENTORY_WRITE_DOWN` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `writeDownLossAccountCode`, and `amount`; the amount cannot exceed the exact carrying-cost pool
+- `INVENTORY_SHRINKAGE` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `shrinkageLossAccountCode`, and `quantity`; FinGrind derives the loss from the exact pool and rejects an insufficient quantity
+- `INVENTORY_COUNT_INCREASE` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `countGainAccountCode`, `quantity`, and `unitCost`
 - `EXPENSE_SETTLED` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
 - `EXPENSE_ON_CREDIT` requires `expenseAccountCode`, `payableAccountCode`, and `amount`
 - `RECEIPT` requires `cashAccountCode`, `receivableAccountCode`, and `amount`
@@ -109,13 +119,18 @@ Current posting-request rules:
 - `OWNER_CONTRIBUTION` requires `cashAccountCode`, `equityAccountCode`, and `amount`
 - `OWNER_WITHDRAWAL` requires `equityAccountCode`, `cashAccountCode`, and `amount`
 - `OPENING_POSITION` requires `openingBalances`
+- every `openingBalances[].accountCode` must name one asset, liability, or equity account; an inventory balance additionally requires `openingBalances[].quantity`, uses `openingBalances[].amount` as full carrying cost, and must be the first durable movement for that inventory account; non-inventory balances must omit `quantity`
 - `REVERSAL` requires `reversal`, derives its journal lines from `reversal.priorPostingId`, and rejects targets that are themselves reversals
 - `evidence.sourceDocuments` must contain at least one source-document object
 - every `evidence.sourceDocuments[]` entry requires `sourceDocumentId`, `sourceDocumentType`, and `documentDate`
 - `inventoryRelief` is admitted only on `SALE_SETTLED` and `SALE_ON_CREDIT`
-- `inventoryRelief` requires `inventoryAccountCode`, `costOfSalesAccountCode`, and `amount`
+- `inventoryRelief` requires `inventoryAccountCode`, `costOfSalesAccountCode`, and `quantity`
 - `inventoryRelief.inventoryAccountCode` and `inventoryRelief.costOfSalesAccountCode` must name distinct declared accounts
-- every inventory-account decrease, including `inventoryRelief.amount`, is rejected when it would create or deepen a credit inventory balance; record the missing inventory acquisition first or reduce the requested decrease
+- every inventory-account decrease, including `inventoryRelief.quantity`, is rejected when it would drive exact quantity on hand below zero; record the missing inventory acquisition first or reduce the requested decrease
+- purchase and capitalization `amount` or `unitCost` values are pre-VAT functional-currency carrying costs; recoverable input tax is posted to the recoverable-tax account outside the pool, while nonrecoverable input tax is capitalized into the pool
+- sale `inventoryRelief.quantity` identifies quantity only: FinGrind derives cost of sales from the exact inventory pool and retains the derived cost, relieved quantity, and informational rounded moving-average unit-cost projection on the committed sale
+- `inventory-valuation` exposes the exact per-account quantity and carrying-cost pool from durable movement replay; its rounded moving-average unit-cost projection is display-only and never feeds carrying value or cost of sales
+- a foreign-exchange purchase must state a `foreignExchange.functionalAmount` equal to the executor-resolved pre-tax acquisition cost, including quantity multiplication
 - on command-scoped `requestShapes.bookkeepingEntry` payloads, the selected `sourceDocumentType`
   policy is published directly on `sourceDocumentFields[]` and on the embedded executable schema;
   the full-family descriptor also keeps `sourceDocumentTypeMode`,
@@ -129,9 +144,9 @@ Current posting-request rules:
 - every line inside one direct `DIRECT_JOURNAL` entry must share the same `lines[].amount.currencyCode`
 - every direct `DIRECT_JOURNAL` entry is rejected when debit-credit netting reduces every referenced account to zero, because that request would record no durable account movement
 - every journal-line amount, every top-level `amount`, and every `openingBalances[].amount` must use the selected book's functional currency
-- `foreignExchange` is optional for `DIRECT_JOURNAL`, `SALE_SETTLED`, `EXPENSE_SETTLED`,
-  `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, and `REVERSAL`, and must be absent for
-  `SALE_ON_CREDIT`, `EXPENSE_ON_CREDIT`, `RECEIPT`, `PAYMENT`, and `OPENING_POSITION`
+- `foreignExchange` is optional for `DIRECT_JOURNAL`, settled and on-credit sales, purchases,
+  capitalizations, and expenses, `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, and `REVERSAL`, and
+  must be absent for `RECEIPT`, `PAYMENT`, and `OPENING_POSITION`
 - `foreignExchange` requires `transactionAmount`, `functionalAmount`, `quotedRate`, and
   `treatmentKind`
 - `foreignExchange.quotedRate` requires `transactionCurrencyAmount`,
@@ -142,9 +157,9 @@ Current posting-request rules:
 - `foreignExchange.functionalAmount` and
   `foreignExchange.quotedRate.functionalCurrencyAmount` must use the selected book's functional
   currency
-- typed `SALE_SETTLED`, `EXPENSE_SETTLED`, `OWNER_CONTRIBUTION`, and `OWNER_WITHDRAWAL`
-  requests currently require `foreignExchange.treatmentKind: "SPOT_SETTLEMENT"`; direct
-  `DIRECT_JOURNAL` and `REVERSAL` requests accept the broader published treatment vocabulary
+- every typed transaction request that accepts `foreignExchange` requires
+  `foreignExchange.treatmentKind: "SPOT_TRANSACTION"`; direct `DIRECT_JOURNAL` and `REVERSAL`
+  requests accept the broader published treatment vocabulary
 - `foreignExchange` records foreign transaction facts without changing the journal-line currency,
   so mixed-currency journal lines remain rejected
 - `reversal` is required only for `REVERSAL` and must be absent for every other `entryKind`
@@ -179,10 +194,32 @@ Current posting-request rules:
 }
 ```
 
+Inventory accounts add one nested `unitOfMeasure` object:
+
+```json
+{
+  "accountCode": "inventory",
+  "accountName": "Inventory",
+  "accountType": "ASSET",
+  "accountNodeKind": "POSTABLE",
+  "financialPositionLineClassification": "INVENTORY",
+  "cashFlowAssetClassification": "NON_CASH",
+  "unitOfMeasure": {
+    "token": "unit",
+    "quantityScale": 0
+  }
+}
+```
+
 Current account-declaration rules:
 - `accountCode`, `accountName`, `accountType`, and `accountNodeKind` are required
 - `cashFlowAssetClassification` is required when `accountType` is `ASSET` and is forbidden for
   non-asset accounts
+- `unitOfMeasure` is required when `financialPositionLineClassification` is `INVENTORY` and is
+  forbidden for every non-inventory account
+- `unitOfMeasure.token` must start with an ASCII letter or digit, may then contain only ASCII
+  letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 64 characters
+- `unitOfMeasure.quantityScale` must be an integer between `0` and `9` inclusive
 - `parentAccountCode` is optional and declares one explicit chart parent when this account belongs
   under another declared account
 - `accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters,
@@ -199,6 +236,8 @@ Current account-declaration rules:
   `financialPositionLineClassification` when declaring accounts
 - `REVENUE` and `EXPENSE` accounts must declare `profitAndLossLineClassification` and must not
   declare `financialPositionLineClassification`
+- `INVENTORY` accounts are ordinary asset accounts on the public request surface, so they still
+  declare one `cashFlowAssetClassification`; the built-in inventory doctrine requires `NON_CASH`
 - redeclaring an existing account may update the display name and reactivate the account
 - redeclaring an existing account with a different `accountType` is rejected
 - redeclaring an existing account with a different chart parent or declared taxonomy is
@@ -233,7 +272,8 @@ Current ledger-plan rules:
   accepts `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING`, `accountingBasis` accepts `CASH`
   or `ACCRUAL`, and the runtime persists the built-in doctrine facts and echoes them back in
   response payloads
-- `declare-account` uses nested `declareAccount`
+- `declare-account` uses nested `declareAccount`, which has the same shape and inventory-account
+  `unitOfMeasure` rule as the standalone `declare-account` request
 - `preflight-entry`, every committed `record-*` step, and raw `post-entry` use nested `posting`,
   which has the same shape as the normal posting request, including required
   `evidence.sourceDocuments[]` and `evidence.approvals[]`
@@ -286,7 +326,7 @@ exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result env
 | Field | Accepted Values |
 |:------|:----------------|
 | `lines[].side` | `DEBIT`, `CREDIT` |
-| `foreignExchange.treatmentKind` | `SPOT_SETTLEMENT`, `REALIZED_SETTLEMENT`, `UNREALIZED_REMEASUREMENT` |
+| `foreignExchange.treatmentKind` | `SPOT_TRANSACTION`, `REALIZED_SETTLEMENT`, `UNREALIZED_REMEASUREMENT` |
 | `provenance.actorType` | `PERSON`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
 | `accountNodeKind` | `POSTABLE`, `HEADER` |

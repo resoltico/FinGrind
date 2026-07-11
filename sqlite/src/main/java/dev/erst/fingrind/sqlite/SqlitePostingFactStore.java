@@ -14,6 +14,7 @@ import java.util.function.Supplier;
  */
 class SqlitePostingFactStore
     implements SqlitePostingFactStoreReadView,
+        SqliteInventoryValuationReadOperationsView,
         SqlitePostingFactStoreMutationView,
         SqlitePostingFactStoreLifecycleView {
   private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
@@ -21,6 +22,7 @@ class SqlitePostingFactStore
   final SqliteSessionSecret sessionSecret;
   final SqliteStoreLifecycle lifecycle;
   private final SqliteStoreReadOperations readOperations;
+  private final SqliteInventoryValuationReadOperations inventoryValuationReadOperations;
   private final SqliteStoreMutationOperations mutationOperations;
 
   /** Opens one SQLite-backed book boundary without mutating storage eagerly. */
@@ -79,6 +81,8 @@ class SqlitePostingFactStore
         new SqliteSessionSecret(Objects.requireNonNull(bookPassphrase, "bookPassphrase"));
     this.lifecycle = new SqliteStoreLifecycle(this.context, sessionSecret);
     this.readOperations = new SqliteStoreReadOperations(context, lifecycle);
+    this.inventoryValuationReadOperations =
+        new SqliteInventoryValuationReadOperations(context, lifecycle);
     this.mutationOperations =
         new SqliteStoreMutationOperations(
             context,
@@ -101,6 +105,11 @@ class SqlitePostingFactStore
   @Override
   public SqliteStoreReadOperations storeReadOperations() {
     return readOperations;
+  }
+
+  @Override
+  public SqliteInventoryValuationReadOperations storeInventoryValuationReadOperations() {
+    return inventoryValuationReadOperations;
   }
 
   @Override

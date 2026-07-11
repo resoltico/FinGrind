@@ -144,6 +144,8 @@ class SqliteStoreFixtureSupport {
             financial_position_line_classification,
             cash_flow_asset_classification,
             profit_and_loss_line_classification,
+            unit_of_measure,
+            quantity_scale,
             active,
             declared_at
         ) values (
@@ -152,6 +154,8 @@ class SqliteStoreFixtureSupport {
             '%s',
             'POSTABLE',
             null,
+            %s,
+            %s,
             %s,
             %s,
             %s,
@@ -177,6 +181,20 @@ class SqliteStoreFixtureSupport {
                     .profitAndLossLineClassification()
                     .map(ProfitAndLossLineClassification::wireValue)
                     .map(SqliteStoreFixtureSupport::quotedSqlStringLiteral)
+                    .orElse("null"),
+                accountTaxonomy
+                    .financialPositionLineClassification()
+                    .filter(
+                        classification ->
+                            classification == FinancialPositionLineClassification.INVENTORY)
+                    .map(ignored -> quotedSqlStringLiteral("unit"))
+                    .orElse("null"),
+                accountTaxonomy
+                    .financialPositionLineClassification()
+                    .filter(
+                        classification ->
+                            classification == FinancialPositionLineClassification.INVENTORY)
+                    .map(ignored -> "0")
                     .orElse("null"),
                 active,
                 declaredAt));

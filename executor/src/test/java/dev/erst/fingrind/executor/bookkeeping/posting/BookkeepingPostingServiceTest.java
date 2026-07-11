@@ -24,6 +24,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.InMemoryBookSession;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -119,18 +120,20 @@ class BookkeepingPostingServiceTest {
     assertInstanceOf(
         AccountDeclarationOutcome.Declared.class,
         bookSession.declareAccount(
-            new AccountCode("1000"),
-            new AccountName("Cash"),
-            AccountType.ASSET,
-            accountTaxonomy(AccountType.ASSET),
+            new AccountDeclaration(
+                new AccountCode("1000"),
+                new AccountName("Cash"),
+                AccountType.ASSET,
+                accountTaxonomy(AccountType.ASSET)),
             FIXED_INSTANT));
     assertInstanceOf(
         AccountDeclarationOutcome.Declared.class,
         bookSession.declareAccount(
-            new AccountCode("4000"),
-            new AccountName("Revenue"),
-            AccountType.REVENUE,
-            accountTaxonomy(AccountType.REVENUE),
+            new AccountDeclaration(
+                new AccountCode("4000"),
+                new AccountName("Revenue"),
+                AccountType.REVENUE,
+                accountTaxonomy(AccountType.REVENUE)),
             FIXED_INSTANT));
     return bookSession;
   }

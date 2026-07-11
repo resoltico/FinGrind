@@ -16,6 +16,16 @@ class BookkeepingEntryKindTest {
     assertEquals("SALE_ON_CREDIT", BookkeepingEntryKind.SALE_ON_CREDIT.wireValue());
     assertEquals("PURCHASE_SETTLED", BookkeepingEntryKind.PURCHASE_SETTLED.wireValue());
     assertEquals("PURCHASE_ON_CREDIT", BookkeepingEntryKind.PURCHASE_ON_CREDIT.wireValue());
+    assertEquals(
+        "INVENTORY_CAPITALIZATION_SETTLED",
+        BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED.wireValue());
+    assertEquals(
+        "INVENTORY_CAPITALIZATION_ON_CREDIT",
+        BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT.wireValue());
+    assertEquals("INVENTORY_WRITE_DOWN", BookkeepingEntryKind.INVENTORY_WRITE_DOWN.wireValue());
+    assertEquals("INVENTORY_SHRINKAGE", BookkeepingEntryKind.INVENTORY_SHRINKAGE.wireValue());
+    assertEquals(
+        "INVENTORY_COUNT_INCREASE", BookkeepingEntryKind.INVENTORY_COUNT_INCREASE.wireValue());
     assertEquals("EXPENSE_SETTLED", BookkeepingEntryKind.EXPENSE_SETTLED.wireValue());
     assertEquals("EXPENSE_ON_CREDIT", BookkeepingEntryKind.EXPENSE_ON_CREDIT.wireValue());
     assertEquals("RECEIPT", BookkeepingEntryKind.RECEIPT.wireValue());
@@ -31,6 +41,11 @@ class BookkeepingEntryKindTest {
             "SALE_ON_CREDIT",
             "PURCHASE_SETTLED",
             "PURCHASE_ON_CREDIT",
+            "INVENTORY_CAPITALIZATION_SETTLED",
+            "INVENTORY_CAPITALIZATION_ON_CREDIT",
+            "INVENTORY_WRITE_DOWN",
+            "INVENTORY_SHRINKAGE",
+            "INVENTORY_COUNT_INCREASE",
             "EXPENSE_SETTLED",
             "EXPENSE_ON_CREDIT",
             "RECEIPT",
@@ -56,6 +71,21 @@ class BookkeepingEntryKindTest {
     assertEquals(
         BookkeepingEntryKind.PURCHASE_ON_CREDIT,
         BookkeepingEntryKind.fromWireValue("PURCHASE_ON_CREDIT"));
+    assertEquals(
+        BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
+        BookkeepingEntryKind.fromWireValue("INVENTORY_CAPITALIZATION_SETTLED"));
+    assertEquals(
+        BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+        BookkeepingEntryKind.fromWireValue("INVENTORY_CAPITALIZATION_ON_CREDIT"));
+    assertEquals(
+        BookkeepingEntryKind.INVENTORY_WRITE_DOWN,
+        BookkeepingEntryKind.fromWireValue("INVENTORY_WRITE_DOWN"));
+    assertEquals(
+        BookkeepingEntryKind.INVENTORY_SHRINKAGE,
+        BookkeepingEntryKind.fromWireValue("INVENTORY_SHRINKAGE"));
+    assertEquals(
+        BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
+        BookkeepingEntryKind.fromWireValue("INVENTORY_COUNT_INCREASE"));
     assertEquals(
         BookkeepingEntryKind.EXPENSE_SETTLED,
         BookkeepingEntryKind.fromWireValue("EXPENSE_SETTLED"));
@@ -91,6 +121,17 @@ class BookkeepingEntryKindTest {
     assertEquals("sale on credit", BookkeepingEntryKind.SALE_ON_CREDIT.narrativeLabel());
     assertEquals("settled purchase", BookkeepingEntryKind.PURCHASE_SETTLED.narrativeLabel());
     assertEquals("purchase on credit", BookkeepingEntryKind.PURCHASE_ON_CREDIT.narrativeLabel());
+    assertEquals(
+        "settled inventory capitalization",
+        BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED.narrativeLabel());
+    assertEquals(
+        "inventory capitalization on credit",
+        BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT.narrativeLabel());
+    assertEquals(
+        "inventory write-down", BookkeepingEntryKind.INVENTORY_WRITE_DOWN.narrativeLabel());
+    assertEquals("inventory shrinkage", BookkeepingEntryKind.INVENTORY_SHRINKAGE.narrativeLabel());
+    assertEquals(
+        "inventory count increase", BookkeepingEntryKind.INVENTORY_COUNT_INCREASE.narrativeLabel());
     assertEquals("settled expense", BookkeepingEntryKind.EXPENSE_SETTLED.narrativeLabel());
     assertEquals("expense on credit", BookkeepingEntryKind.EXPENSE_ON_CREDIT.narrativeLabel());
     assertEquals("receipt", BookkeepingEntryKind.RECEIPT.narrativeLabel());

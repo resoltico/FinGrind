@@ -151,6 +151,9 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
         saleTemplateWithOwnedNestedFacts(saleTemplate);
     ContractTemplates.PostingRequestTemplateDescriptor expenseTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_EXPENSE_SETTLED));
+    ContractTemplates.PostingRequestTemplateDescriptor purchaseSettledTemplate =
+        Objects.requireNonNull(
+            MachineContract.requestTemplate(OperationId.RECORD_PURCHASE_SETTLED));
     ContractTemplates.PostingRequestTemplateDescriptor contributionTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_OWNER_CONTRIBUTION));
@@ -185,6 +188,13 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     assertTrue(templatePublishesField(ProtocolPostEntryFields.TopLevel.AMOUNT, saleTemplate));
     assertFalse(
         templatePublishesField(ProtocolPostEntryFields.TopLevel.AMOUNT, directJournalTemplate));
+    assertTrue(
+        templatePublishesField(ProtocolPostEntryFields.TopLevel.QUANTITY, purchaseSettledTemplate));
+    assertFalse(templatePublishesField(ProtocolPostEntryFields.TopLevel.QUANTITY, saleTemplate));
+    assertTrue(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.UNIT_COST, purchaseSettledTemplate));
+    assertFalse(templatePublishesField(ProtocolPostEntryFields.TopLevel.UNIT_COST, saleTemplate));
     assertFalse(
         templatePublishesField(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, saleTemplate));
     assertTrue(
@@ -646,8 +656,13 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
         saleTemplate.revenueAccountCode(),
         saleTemplate.inventoryAccountCode(),
         saleTemplate.expenseAccountCode(),
+        saleTemplate.writeDownLossAccountCode(),
+        saleTemplate.shrinkageLossAccountCode(),
+        saleTemplate.countGainAccountCode(),
         saleTemplate.equityAccountCode(),
         saleTemplate.amount(),
+        null,
+        null,
         saleTemplate.inventoryRelief(),
         saleTemplate.settlementAdjunct(),
         new ForeignExchangeTemplateDescriptor(
@@ -658,7 +673,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
                 new MonetaryAmount("EUR", "100"),
                 "2026-04-25",
                 "ECB daily reference rate"),
-            ForeignExchangeTreatmentKind.SPOT_SETTLEMENT),
+            ForeignExchangeTreatmentKind.SPOT_TRANSACTION),
         new ContractTemplates.TaxSelectionTemplateDescriptor("vat-lv", "vat-standard-sale"),
         saleTemplate.lines(),
         saleTemplate.openingBalances(),

@@ -16,6 +16,8 @@ final class SqliteBookContract {
   static final String JOURNAL_LINE_TABLE = "journal_line";
   static final String FISCAL_YEAR_CLOSE_POSTING_TABLE = "fiscal_year_close_posting";
   static final String FISCAL_YEAR_CLOSE_TABLE = "fiscal_year_close";
+  static final String INVENTORY_MOVEMENT_TABLE = "inventory_movement";
+  static final String INVENTORY_ON_HAND_TABLE = "inventory_on_hand";
   static final String INTERIM_RESULT_SWEEP_POSTING_TABLE = "interim_result_sweep_posting";
   static final String INTERIM_RESULT_SWEEP_TABLE = "interim_result_sweep";
   static final String INTERIM_RESULT_SWEEP_TOTAL_TABLE = "interim_result_sweep_total";
@@ -33,6 +35,8 @@ final class SqliteBookContract {
               BOOK_META_TABLE,
               BOOK_IDENTITY_TABLE,
               ACCOUNT_TABLE,
+              INVENTORY_MOVEMENT_TABLE,
+              INVENTORY_ON_HAND_TABLE,
               TAX_REGISTRATION_TABLE,
               TAX_REGISTRATION_CODE_TABLE,
               POSTING_FACT_TABLE,

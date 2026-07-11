@@ -91,6 +91,7 @@ abstract class AbstractInMemoryBookAdministrationSession
                               declaration.accountName(),
                               declaration.accountType(),
                               declaration.accountTaxonomy(),
+                              declaration.unitOfMeasure(),
                               true,
                               initializedAt)));
           return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
@@ -117,11 +118,7 @@ abstract class AbstractInMemoryBookAdministrationSession
 
   @Override
   public AccountDeclarationOutcome declareAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountTaxonomy accountTaxonomy,
-      Instant declaredAt) {
+      AccountDeclaration declaration, Instant declaredAt) {
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -131,20 +128,29 @@ abstract class AbstractInMemoryBookAdministrationSession
           }
           AccountDeclarationOutcome declarationOutcome =
               RegisteredAccount.declare(
-                  accountsByCode.get(accountCode),
-                  new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy),
-                  declaredAt);
+                  accountsByCode.get(declaration.accountCode()), declaration, declaredAt);
           switch (declarationOutcome) {
             case AccountDeclarationOutcome.Declared declared ->
-                accountsByCode.put(accountCode, declared.account());
+                accountsByCode.put(declaration.accountCode(), declared.account());
             case AccountDeclarationOutcome.Reactivated reactivated ->
-                accountsByCode.put(accountCode, reactivated.account());
+                accountsByCode.put(declaration.accountCode(), reactivated.account());
             case AccountDeclarationOutcome.Renamed renamed ->
-                accountsByCode.put(accountCode, renamed.account());
+                accountsByCode.put(declaration.accountCode(), renamed.account());
             case AccountDeclarationOutcome.Unchanged _, AccountDeclarationOutcome.Rejected _ -> {}
           }
           return declarationOutcome;
         });
+  }
+
+  /** Convenience overload for test code that constructs one declaration inline. */
+  AccountDeclarationOutcome declareAccount(
+      AccountCode accountCode,
+      AccountName accountName,
+      AccountType accountType,
+      AccountTaxonomy accountTaxonomy,
+      Instant declaredAt) {
+    return declareAccount(
+        new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy), declaredAt);
   }
 
   @Override
@@ -196,6 +202,7 @@ abstract class AbstractInMemoryBookAdministrationSession
                   existingAccount.accountName(),
                   existingAccount.accountType(),
                   existingAccount.accountTaxonomy(),
+                  existingAccount.unitOfMeasure(),
                   false,
                   existingAccount.declaredAt()));
         });

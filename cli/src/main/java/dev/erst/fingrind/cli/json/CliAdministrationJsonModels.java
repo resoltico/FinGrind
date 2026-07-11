@@ -1,8 +1,11 @@
 package dev.erst.fingrind.cli.json;
 
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireNonNegative;
+import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
+
+import org.jspecify.annotations.Nullable;
 
 /** Administration and inspection JSON records emitted by the CLI transport layer. */
 public interface CliAdministrationJsonModels {
@@ -25,6 +28,7 @@ public interface CliAdministrationJsonModels {
       String accountingFrameworkPosition,
       String entityForm,
       String bookTemplateId,
+      @Nullable String inventoryCostingDoctrine,
       String functionalCurrency,
       String fiscalYearStart) {
     public BookIdentityPayload {
@@ -35,6 +39,8 @@ public interface CliAdministrationJsonModels {
           requireText(accountingFrameworkPosition, "accountingFrameworkPosition");
       entityForm = requireText(entityForm, "entityForm");
       bookTemplateId = requireText(bookTemplateId, "bookTemplateId");
+      inventoryCostingDoctrine =
+          requireOptionalText(inventoryCostingDoctrine, "inventoryCostingDoctrine");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
       fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
     }

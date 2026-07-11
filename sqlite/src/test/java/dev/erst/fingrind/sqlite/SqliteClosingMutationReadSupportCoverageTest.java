@@ -190,10 +190,11 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
                 true,
                 CLOSED_CLOCK.instant())),
         postingFactStore.declareAccount(
-            new AccountCode(accountCode),
-            new AccountName(accountName),
-            AccountType.EQUITY,
-            financialPositionTaxonomy(classification),
+            new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                new AccountCode(accountCode),
+                new AccountName(accountName),
+                AccountType.EQUITY,
+                financialPositionTaxonomy(classification)),
             CLOSED_CLOCK.instant()));
   }
 }

@@ -17,7 +17,8 @@ public final class BookkeepingRequestPublishedLanguageTranslator {
         command.accountCode(),
         command.accountName(),
         command.accountType(),
-        command.accountTaxonomy());
+        command.accountTaxonomy(),
+        command.unitOfMeasure());
   }
 
   /** Translates one public interim-result-sweep request into the local bookkeeping model. */

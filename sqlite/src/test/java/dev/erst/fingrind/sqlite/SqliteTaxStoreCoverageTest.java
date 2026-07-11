@@ -680,7 +680,8 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
         accountingEvidence(token),
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         committedProvenance(token),
-        entry);
+        entry,
+        null);
   }
 
   private static CommittedProvenance committedProvenance(String token) {
@@ -702,6 +703,7 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
         new AccountCode("1000"),
         new AccountCode("2000"),
         new MonetaryAmount("EUR", "10000"),
+        null,
         null,
         null,
         new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
@@ -746,6 +748,7 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
         new AccountCode("1000"),
         new AccountCode("2000"),
         new MonetaryAmount("EUR", "5000"),
+        null,
         null,
         null,
         null,

@@ -14,23 +14,31 @@ final class ReportCrossFormatProjectionAssertions {
   private ReportCrossFormatProjectionAssertions() {}
 
   static void assertStructuredFactsMatch(ReportModel model) throws IOException {
-    assertEquals(
-        ReportCrossFormatStructuredFacts.modelFacts(model),
-        ReportCrossFormatCsvFacts.fromCsv(CsvReportProjector.render(model)));
+    assertCsvFactsMatch(model);
+    assertJsonFactsMatch(model);
+  }
+
+  static void assertJsonFactsMatch(ReportModel model) throws IOException {
     assertEquals(
         ReportCrossFormatStructuredFacts.modelFacts(model),
         ReportCrossFormatStructuredFacts.jsonFacts(JsonReportProjector.project(model)));
   }
 
-  static void assertTextFactsMatch(ReportModel model, String rendered) {
+  static void assertCsvFactsMatch(ReportModel model) {
     assertEquals(
         ReportCrossFormatStructuredFacts.modelFacts(model),
+        ReportCrossFormatCsvFacts.fromCsv(CsvReportProjector.render(model)));
+  }
+
+  static void assertTextFactsMatch(ReportModel model, String rendered) {
+    assertEquals(
+        ReportCrossFormatStructuredFacts.readableModelFacts(model),
         ReportCrossFormatTextFacts.fromText(model, rendered));
   }
 
   static void assertPdfFactsMatch(ReportModel model, String rendered) {
     assertEquals(
-        ReportCrossFormatStructuredFacts.modelFacts(model),
+        ReportCrossFormatStructuredFacts.readableModelFacts(model),
         ReportCrossFormatPdfFacts.fromPdfText(model, rendered));
   }
 

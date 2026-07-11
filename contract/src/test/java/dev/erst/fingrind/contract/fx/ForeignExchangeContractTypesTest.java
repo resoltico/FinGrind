@@ -13,7 +13,7 @@ class ForeignExchangeContractTypesTest {
   @Test
   void treatmentKind_publishesStableWireValuesAndParsing() {
     assertEquals(
-        List.of("SPOT_SETTLEMENT", "REALIZED_SETTLEMENT", "UNREALIZED_REMEASUREMENT"),
+        List.of("SPOT_TRANSACTION", "REALIZED_SETTLEMENT", "UNREALIZED_REMEASUREMENT"),
         ForeignExchangeTreatmentKind.wireValues());
     assertEquals(
         ForeignExchangeTreatmentKind.REALIZED_SETTLEMENT,
@@ -105,7 +105,7 @@ class ForeignExchangeContractTypesTest {
                 new MonetaryAmount("USD", "1100"),
                 new MonetaryAmount("EUR", "1000"),
                 quotedRate,
-                ForeignExchangeTreatmentKind.SPOT_SETTLEMENT)
+                ForeignExchangeTreatmentKind.SPOT_TRANSACTION)
             .functionalAmount());
     assertEquals(
         "transactionAmount must carry one positive amount.",
@@ -116,7 +116,7 @@ class ForeignExchangeContractTypesTest {
                         new MonetaryAmount("USD", "0"),
                         new MonetaryAmount("EUR", "1000"),
                         quotedRate,
-                        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT))
+                        ForeignExchangeTreatmentKind.SPOT_TRANSACTION))
             .getMessage());
     assertEquals(
         "Foreign-exchange details require distinct transaction and functional currencies.",
@@ -127,7 +127,7 @@ class ForeignExchangeContractTypesTest {
                         new MonetaryAmount("USD", "1100"),
                         new MonetaryAmount("USD", "1000"),
                         quotedRate,
-                        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT))
+                        ForeignExchangeTreatmentKind.SPOT_TRANSACTION))
             .getMessage());
     assertEquals(
         "transactionAmount currencyCode must match quotedExchangeRate transaction currency.",
@@ -138,7 +138,7 @@ class ForeignExchangeContractTypesTest {
                         new MonetaryAmount("GBP", "1100"),
                         new MonetaryAmount("EUR", "1000"),
                         quotedRate,
-                        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT))
+                        ForeignExchangeTreatmentKind.SPOT_TRANSACTION))
             .getMessage());
     assertEquals(
         "functionalAmount currencyCode must match quotedExchangeRate functional currency.",
@@ -149,7 +149,7 @@ class ForeignExchangeContractTypesTest {
                         new MonetaryAmount("USD", "1100"),
                         new MonetaryAmount("GBP", "1000"),
                         quotedRate,
-                        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT))
+                        ForeignExchangeTreatmentKind.SPOT_TRANSACTION))
             .getMessage());
     assertEquals(
         "functionalAmount must equal the half-up translation of transactionAmount through quotedExchangeRate.",
@@ -160,7 +160,7 @@ class ForeignExchangeContractTypesTest {
                         new MonetaryAmount("USD", "1100"),
                         new MonetaryAmount("EUR", "999"),
                         quotedRate,
-                        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT))
+                        ForeignExchangeTreatmentKind.SPOT_TRANSACTION))
             .getMessage());
   }
 }

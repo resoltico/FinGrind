@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.Optional;
 
 /** Package-local seeded account declarations shared by built-in book templates. */
@@ -35,13 +36,17 @@ final class BookTemplateSeedAccounts {
   }
 
   static AccountDeclaration inventoryAccount() {
-    return account(
-        "inventory",
-        "Inventory",
+    return new AccountDeclaration(
+        new AccountCode("inventory"),
+        new AccountName("Inventory"),
         AccountType.ASSET,
-        Optional.of(FinancialPositionLineClassification.INVENTORY),
-        Optional.of(CashFlowAssetClassification.NON_CASH),
-        Optional.empty());
+        new AccountTaxonomy(
+            AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(FinancialPositionLineClassification.INVENTORY),
+            Optional.empty(),
+            Optional.of(CashFlowAssetClassification.NON_CASH)),
+        new UnitOfMeasure("unit", 0));
   }
 
   static AccountDeclaration accountsPayableAccount() {

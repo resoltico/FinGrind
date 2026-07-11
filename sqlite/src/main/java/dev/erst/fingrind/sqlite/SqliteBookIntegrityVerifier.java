@@ -3,7 +3,9 @@ package dev.erst.fingrind.sqlite;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDate;
 import java.util.HexFormat;
+import java.util.Map;
 import java.util.Optional;
 
 /** Verifies that one opened SQLite book matches FinGrind's persisted money and schema contract. */
@@ -98,6 +100,64 @@ final class SqliteBookIntegrityVerifier {
             statement -> {});
   }
 
+  static boolean hasConsistentInventoryOnHand(SqliteNativeDatabase activeDatabase) {
+    Map<String, InventoryReplayState> replayedStates = SqliteReportRowValues.insertionOrderedMap();
+    Map<String, Long> nextExpectedSequences = SqliteReportRowValues.insertionOrderedMap();
+    boolean validReplay =
+        SqliteStatementQueries.queryWithStatement(
+            activeDatabase,
+            SqliteInventoryCostingSql.LOAD_INVENTORY_MOVEMENT_REPLAY_ROWS,
+            statement -> {
+              while (statement.step() == SqliteNativeResultCode.code("ROW")) {
+                String inventoryAccount = SqlitePostingMapper.requiredText(statement, 0);
+                long accountSequence = statement.columnLong(2);
+                long expectedSequence = nextExpectedSequences.getOrDefault(inventoryAccount, 1L);
+                if (accountSequence != expectedSequence) {
+                  return false;
+                }
+                LocalDate effectiveDate =
+                    dev.erst.fingrind.core.CanonicalTemporalText.parseLocalDate(
+                        SqlitePostingMapper.requiredText(statement, 1),
+                        "inventoryMovement.effectiveDate");
+                InventoryReplayState nextState =
+                    replayedStates
+                        .getOrDefault(inventoryAccount, InventoryReplayState.ZERO)
+                        .apply(statement.columnLong(3), statement.columnLong(4), effectiveDate);
+                if (!nextState.valid()) {
+                  return false;
+                }
+                replayedStates.put(inventoryAccount, nextState);
+                nextExpectedSequences.put(inventoryAccount, Math.incrementExact(accountSequence));
+              }
+              return true;
+            });
+    if (!validReplay) {
+      return false;
+    }
+    Map<String, InventoryReplayState> persistedStates = SqliteReportRowValues.insertionOrderedMap();
+    boolean validPersisted =
+        SqliteStatementQueries.queryWithStatement(
+            activeDatabase,
+            SqliteInventoryCostingSql.LOAD_INVENTORY_ON_HAND_ROWS,
+            statement -> {
+              while (statement.step() == SqliteNativeResultCode.code("ROW")) {
+                InventoryReplayState persistedState =
+                    InventoryReplayState.persisted(
+                        statement.columnLong(1),
+                        statement.columnLong(2),
+                        dev.erst.fingrind.core.CanonicalTemporalText.parseLocalDate(
+                            SqlitePostingMapper.requiredText(statement, 3),
+                            "inventoryOnHand.lastMovementDate"));
+                if (!persistedState.valid()) {
+                  return false;
+                }
+                persistedStates.put(SqlitePostingMapper.requiredText(statement, 0), persistedState);
+              }
+              return Boolean.TRUE;
+            });
+    return validPersisted && replayedStates.equals(persistedStates);
+  }
+
   static String liveSchemaFingerprint(SqliteNativeDatabase activeDatabase) {
     StringBuilder material = new StringBuilder(1024);
     int rowCount = 0;
@@ -137,6 +197,32 @@ final class SqliteBookIntegrityVerifier {
       return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
     } catch (NoSuchAlgorithmException exception) {
       throw new IllegalStateException("SHA-256 is unavailable in this Java runtime.", exception);
+    }
+  }
+
+  private record InventoryReplayState(
+      long quantity, long costPoolMinor, Optional<LocalDate> lastMovementDate) {
+    private static final InventoryReplayState ZERO =
+        new InventoryReplayState(0L, 0L, Optional.empty());
+
+    private static InventoryReplayState persisted(
+        long quantity, long costPoolMinor, LocalDate lastMovementDate) {
+      return new InventoryReplayState(quantity, costPoolMinor, Optional.of(lastMovementDate));
+    }
+
+    private InventoryReplayState apply(
+        long quantityDelta, long costDeltaMinor, LocalDate effectiveDate) {
+      return new InventoryReplayState(
+          Math.addExact(quantity, quantityDelta),
+          Math.addExact(costPoolMinor, costDeltaMinor),
+          Optional.of(effectiveDate));
+    }
+
+    private boolean valid() {
+      return quantity >= 0L
+          && costPoolMinor >= 0L
+          && ((quantity == 0L) == (costPoolMinor == 0L))
+          && lastMovementDate.isPresent();
     }
   }
 }

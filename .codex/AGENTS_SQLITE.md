@@ -2,10 +2,10 @@
 
 **Version:** 1.0.0
 **Updated:** 2026-06-13
-**Baseline:** SQLite **3.53.2**
+**Baseline:** SQLite **3.53.3**
 **Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v3.0.0+
 **Layered by:** [.codex/AGENTS_SQLITE3MC.md](./AGENTS_SQLITE3MC.md) for encrypted databases (SQLite3 Multiple Ciphers).
-**Scope:** projects that build, vendor, link, wrap, configure, distribute, test, or operate SQLite 3.53.2 — C and C++ integrations, amalgamation builds, static or shared library packaging, embedded applications, CLIs, services, language bindings (JNI/JNA, Python/Rust/Node/.NET/Java/Kotlin), SQL migrations, PRAGMA/URI configuration, WAL/journal behavior, build flags, and cross-platform distribution. For at-rest encryption, load the SQLite3MC layer in addition to this file.
+**Scope:** projects that build, vendor, link, wrap, configure, distribute, test, or operate SQLite 3.53.3 — C and C++ integrations, amalgamation builds, static or shared library packaging, embedded applications, CLIs, services, language bindings (JNI/JNA, Python/Rust/Node/.NET/Java/Kotlin), SQL migrations, PRAGMA/URI configuration, WAL/journal behavior, build flags, and cross-platform distribution. For at-rest encryption, load the SQLite3MC layer in addition to this file.
 
 ## 0. Scope and inheritance
 
@@ -30,7 +30,7 @@ Per the Naurian frame, some theory the agent typically does not bring in cold an
 - Whether the headers at compile time, the static or shared library linked at build time, and the dynamic library actually loaded at runtime are the same SQLite version. A single file will not answer this; the agent must verify across phases.
 - Whether the application loads the intended SQLite, or quietly resolves to a different system SQLite. "Drop-in replacement" is a code property, not a runtime guarantee.
 - Whether SQLite 3.52.0 (withdrawn upstream) is still pinned anywhere as a fallback baseline.
-- Whether code or migrations silently require a 3.53.2 SQL feature that an older deployed runtime will not provide.
+- Whether code or migrations silently require a 3.53.3 SQL feature that an older deployed runtime will not provide.
 
 Where the answer is not derivable from code, history, or conversation, surface the gap explicitly; do not assume the convenient answer.
 
@@ -104,17 +104,17 @@ Do not:
 
 ---
 
-## 3. Baseline posture: SQLite 3.53.2
+## 3. Baseline posture: SQLite 3.53.3
 
 ### 3.1 Version baseline
 
-For repositories governed by this protocol, assume SQLite **3.53.2**. Use the repository's pinned version when it is more specific. Do not upgrade or downgrade SQLite without a compatibility judgment, migration-risk assessment, and verification plan.
+For repositories governed by this protocol, assume SQLite **3.53.3**. Use the repository's pinned version when it is more specific. Do not upgrade or downgrade SQLite without a compatibility judgment, migration-risk assessment, and verification plan.
 
-The SQLite 3.53.x line fixes the WAL-reset database corruption bug (the fix landed in 3.53.0 and is carried forward in 3.53.2). Do not downgrade to a pre-fix SQLite baseline without explicitly accepting the risk and recording the justification (per universal contract §1.5).
+The SQLite 3.53.x line fixes the WAL-reset database corruption bug (the fix landed in 3.53.0 and is carried forward in 3.53.3). Do not downgrade to a pre-fix SQLite baseline without explicitly accepting the risk and recording the justification (per universal contract §1.5).
 
-### 3.2 SQLite 3.53.2 feature posture
+### 3.2 SQLite 3.53.3 feature posture
 
-Use SQLite 3.53.2 capabilities only when the deployed runtime is guaranteed to be SQLite 3.53.2 or newer.
+Use SQLite 3.53.3 capabilities only when the deployed runtime is guaranteed to be SQLite 3.53.3 or newer.
 
 Notable 3.53 behavior for agents:
 
@@ -128,11 +128,11 @@ Notable 3.53 behavior for agents:
 - New C interfaces such as `sqlite3_str_truncate()`, `sqlite3_str_free()`, `sqlite3_carray_bind_v2()`, `SQLITE_PREPARE_FROM_DDL`, `SQLITE_UTF8_ZT`, `SQLITE_LIMIT_PARSER_DEPTH`, and `SQLITE_DBCONFIG_FP_DIGITS` are available only when the runtime really is 3.53+.
 - Floating-point text conversion now rounds by default to 17 significant digits instead of the previous 15. Review golden outputs, text dumps, hash inputs, and deterministic serialization tests.
 
-Do not write code or migrations that silently require 3.53.2 if production, tests, system packages, or bundled artifacts may still load an older SQLite.
+Do not write code or migrations that silently require 3.53.3 if production, tests, system packages, or bundled artifacts may still load an older SQLite.
 
 ### 3.3 SQLite 3.52 warning
 
-SQLite 3.52.0 was withdrawn upstream; SQLite 3.53.0 is its re-release with the stale-expression-index fixes. Do not select SQLite 3.52.0 as a fallback baseline. If a repository already contains that version (see §0.1), surface the issue and prefer moving to SQLite 3.53.2 or a project-approved fixed baseline.
+SQLite 3.52.0 was withdrawn upstream; SQLite 3.53.0 is its re-release with the stale-expression-index fixes. Do not select SQLite 3.52.0 as a fallback baseline. If a repository already contains that version (see §0.1), surface the issue and prefer moving to SQLite 3.53.3 or a project-approved fixed baseline.
 
 ---
 
@@ -234,7 +234,7 @@ Do not convert all SQLite failures into generic booleans or generic exceptions.
 
 SQLite SQL compatibility is a runtime contract.
 
-Before using a 3.53.2 SQL feature in migrations or generated SQL, verify that all deployment targets load SQLite 3.53.2 or newer.
+Before using a 3.53.3 SQL feature in migrations or generated SQL, verify that all deployment targets load SQLite 3.53.3 or newer.
 
 Be especially cautious with: `ALTER TABLE` constraint changes; `REINDEX EXPRESSIONS`; JSONB functions; temp triggers touching the main schema; query plans that rely on new optimizer behavior; deterministic text output involving floating-point values.
 
@@ -351,7 +351,7 @@ If the application uses multiple connections, WAL, background workers, or concur
 
 ### 9.4 Performance tests
 
-Measure before optimizing. Performance-sensitive changes should consider: page size; cache size; WAL vs rollback journal; synchronous mode; hardware acceleration and target CPU features; binding overhead; query planner changes in SQLite 3.53.2.
+Measure before optimizing. Performance-sensitive changes should consider: page size; cache size; WAL vs rollback journal; synchronous mode; hardware acceleration and target CPU features; binding overhead; query planner changes in SQLite 3.53.3.
 
 Do not weaken durability or compatibility for unmeasured performance claims.
 

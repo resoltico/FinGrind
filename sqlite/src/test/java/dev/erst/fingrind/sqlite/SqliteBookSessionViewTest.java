@@ -182,10 +182,12 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           assertInstanceOf(
               AccountDeclarationOutcome.Declared.class,
               postingFactStore.declareAccount(
-                  new AccountCode("3200"),
-                  new AccountName("Retained Earnings"),
-                  AccountType.EQUITY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+                  new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                      new AccountCode("3200"),
+                      new AccountName("Retained Earnings"),
+                      AccountType.EQUITY,
+                      financialPositionTaxonomy(
+                          FinancialPositionLineClassification.RESULT_HOLDING)),
                   sweptAt));
       assertEquals(new AccountCode("3200"), declared.account().accountCode());
       commitPosting(
@@ -299,10 +301,12 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                   Instant.parse("2026-04-07T10:15:30Z"))),
           administrationView(postingFactStore)
               .declareAccount(
-                  new AccountCode("1000"),
-                  new AccountName("Cash"),
-                  dev.erst.fingrind.core.AccountType.ASSET,
-                  accountTaxonomy(dev.erst.fingrind.core.AccountType.ASSET, NormalBalance.DEBIT),
+                  new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                      new AccountCode("1000"),
+                      new AccountName("Cash"),
+                      dev.erst.fingrind.core.AccountType.ASSET,
+                      accountTaxonomy(
+                          dev.erst.fingrind.core.AccountType.ASSET, NormalBalance.DEBIT)),
                   Instant.parse("2026-04-07T10:15:30Z")));
       assertTrue(postingFactStore.inspectBook().initialized());
     }
@@ -670,10 +674,11 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                   true,
                   Instant.parse("2026-04-07T10:20:30Z"))),
           postingFactStore.declareAccount(
-              new AccountCode("3000"),
-              new AccountName("Retained Earnings"),
-              dev.erst.fingrind.core.AccountType.EQUITY,
-              accountTaxonomy(dev.erst.fingrind.core.AccountType.EQUITY, NormalBalance.CREDIT),
+              new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                  new AccountCode("3000"),
+                  new AccountName("Retained Earnings"),
+                  dev.erst.fingrind.core.AccountType.EQUITY,
+                  accountTaxonomy(dev.erst.fingrind.core.AccountType.EQUITY, NormalBalance.CREDIT)),
               Instant.parse("2026-04-07T10:20:30Z")));
       assertEquals(
           new AccountDeclarationOutcome.Unchanged(
@@ -685,10 +690,11 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                   true,
                   Instant.parse("2026-04-07T10:20:30Z"))),
           postingSession.declareAccount(
-              new AccountCode("3000"),
-              new AccountName("Retained Earnings"),
-              dev.erst.fingrind.core.AccountType.EQUITY,
-              accountTaxonomy(dev.erst.fingrind.core.AccountType.EQUITY, NormalBalance.CREDIT),
+              new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                  new AccountCode("3000"),
+                  new AccountName("Retained Earnings"),
+                  dev.erst.fingrind.core.AccountType.EQUITY,
+                  accountTaxonomy(dev.erst.fingrind.core.AccountType.EQUITY, NormalBalance.CREDIT)),
               Instant.parse("2026-04-07T10:20:30Z")));
 
       assertEquals(postingFactStore.allAccounts(), reportingPeriodCloseSession.allAccounts());

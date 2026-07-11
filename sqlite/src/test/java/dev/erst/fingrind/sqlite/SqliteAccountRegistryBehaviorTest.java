@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -10,6 +11,8 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.UnitOfMeasure;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
@@ -108,6 +111,44 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                   true,
                   Instant.parse("2026-04-07T10:15:30Z"))),
           postingFactStore.findAccount(new AccountCode("1000")));
+    }
+  }
+
+  @Test
+  void declareInventoryAccount_persistsAndProjectsUnitOfMeasure() {
+    Path databasePath = tempDirectory.resolve("declare-inventory-account.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
+      openBookWithNoDeclaredAccounts(postingFactStore);
+
+      AccountDeclarationOutcome.Declared declared =
+          assertInstanceOf(
+              AccountDeclarationOutcome.Declared.class,
+              postingFactStore.declareAccount(
+                  new AccountDeclaration(
+                      new AccountCode("1400"),
+                      new AccountName("Inventory"),
+                      AccountType.ASSET,
+                      financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
+                      new UnitOfMeasure("kg", 3)),
+                  Instant.parse("2026-04-07T10:15:30Z")));
+
+      assertEquals(new UnitOfMeasure("kg", 3), declared.account().unitOfMeasure());
+      assertEquals(
+          Optional.of(new UnitOfMeasure("kg", 3)),
+          listAccounts(postingFactStore).stream()
+              .filter(account -> "1400".equals(account.accountCode().value()))
+              .findFirst()
+              .map(account -> account.unitOfMeasure()));
+      assertEquals(
+          "kg",
+          queryText(
+              requireStoreDatabase(postingFactStore),
+              "select unit_of_measure from account where account_code = '1400'"));
+      assertEquals(
+          3,
+          queryInt(
+              requireStoreDatabase(postingFactStore),
+              "select quantity_scale from account where account_code = '1400'"));
     }
   }
 

@@ -7,6 +7,8 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
+import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintTestSupport;
@@ -31,6 +33,10 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryBookAdmini
       InMemoryBookSessionSupport.mutableMap();
   protected final Map<PostingId, CommittedPosting> postingsByPostingId =
       InMemoryBookSessionSupport.mutableMap();
+  protected final Map<PostingId, List<InventoryMovementRecord>> inventoryMovementsByPostingId =
+      InMemoryBookSessionSupport.mutableMap();
+  protected final Map<dev.erst.fingrind.core.AccountCode, InventoryAccountState>
+      inventoryStateByAccount = InMemoryBookSessionSupport.mutableMap();
   protected final Map<PostingId, CommittedPosting> reversalsByPriorPostingId =
       InMemoryBookSessionSupport.mutableMap();
   protected final PostingAcceptancePolicy postingAcceptancePolicy =
@@ -52,6 +58,21 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryBookAdmini
   public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     return InMemoryBookSessionSupport.withLock(
         lock, () -> Optional.ofNullable(reversalsByPriorPostingId.get(priorPostingId)));
+  }
+
+  @Override
+  public Optional<InventoryAccountState> findInventoryAccountState(
+      dev.erst.fingrind.core.AccountCode inventoryAccountCode) {
+    Objects.requireNonNull(inventoryAccountCode, "inventoryAccountCode");
+    return InMemoryBookSessionSupport.withLock(
+        lock, () -> Optional.ofNullable(inventoryStateByAccount.get(inventoryAccountCode)));
+  }
+
+  @Override
+  public List<InventoryMovementRecord> inventoryMovements(PostingId postingId) {
+    Objects.requireNonNull(postingId, "postingId");
+    return InMemoryBookSessionSupport.withLock(
+        lock, () -> inventoryMovementsByPostingId.getOrDefault(postingId, List.of()));
   }
 
   @Override
@@ -102,29 +123,32 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryBookAdmini
                 new PostingCommitResult.Rejected(rejected.rejection());
             case PostingAcceptancePolicy.Decision.Accepted accepted -> {
               CommittedPosting postingFact =
-                  postingDraft.materialize(postingIdGenerator.nextPostingId());
+                  accepted
+                      .acceptedPosting()
+                      .materialize(postingIdGenerator.nextPostingId(), postingDraft.provenance());
+              Optional<dev.erst.fingrind.core.ReversalReference> reversalReference =
+                  postingFact.postingLineage().reversalReference();
+              if (reversalReference.isPresent()
+                  && reversalsByPriorPostingId.containsKey(
+                      reversalReference.orElseThrow().priorPostingId())) {
+                yield new PostingCommitResult.Rejected(
+                    new BookkeepingPostingRejection.ReversalAlreadyExists(
+                        reversalReference.orElseThrow().priorPostingId()));
+              }
               IdempotencyKey idempotencyKey =
                   postingFact.provenance().requestProvenance().idempotencyKey();
               postingsByIdempotencyKey.put(
                   idempotencyKey,
                   new StoredRequestPosting(postingFact, accepted.requestFingerprint()));
               postingsByPostingId.put(postingFact.postingId(), postingFact);
-
-              Optional<dev.erst.fingrind.core.ReversalReference> reversalReference =
-                  postingFact.postingLineage().reversalReference();
               if (reversalReference.isPresent()) {
                 dev.erst.fingrind.core.ReversalReference postedReversal =
                     reversalReference.orElseThrow();
-                PostingId priorPostingId = postedReversal.priorPostingId();
-                CommittedPosting existingReversal =
-                    reversalsByPriorPostingId.putIfAbsent(priorPostingId, postingFact);
-                if (existingReversal != null) {
-                  postingsByIdempotencyKey.remove(idempotencyKey);
-                  postingsByPostingId.remove(postingFact.postingId(), postingFact);
-                  yield new PostingCommitResult.Rejected(
-                      new BookkeepingPostingRejection.ReversalAlreadyExists(priorPostingId));
-                }
+                reversalsByPriorPostingId.put(postedReversal.priorPostingId(), postingFact);
               }
+              inventoryMovementsByPostingId.put(
+                  postingFact.postingId(), accepted.acceptedPosting().inventoryMovements());
+              inventoryStateByAccount.putAll(accepted.acceptedPosting().resultingInventoryStates());
               yield new PostingCommitResult.Committed(postingFact, false);
             }
           };

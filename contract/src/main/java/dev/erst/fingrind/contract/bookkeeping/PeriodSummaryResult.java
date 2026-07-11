@@ -5,12 +5,22 @@ import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
 /** Closed result family for period-summary reports. */
-public sealed interface PeriodSummaryResult
+public sealed interface PeriodSummaryResult extends BookQueryReportResult<PeriodSummaryReport>
     permits PeriodSummaryResult.Reported, PeriodSummaryResult.Rejected {
 
   /** Folds the closed result family without transport-layer pattern switching. */
   <T extends @Nullable Object> T fold(
       Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper);
+
+  @Override
+  default @Nullable PeriodSummaryReport reported() {
+    return fold(Reported::report, rejected -> null);
+  }
+
+  @Override
+  default @Nullable BookQueryRejection rejection() {
+    return fold(reported -> null, Rejected::rejection);
+  }
 
   /** Success result carrying one canonical period-summary report. */
   record Reported(PeriodSummaryReport report) implements PeriodSummaryResult {

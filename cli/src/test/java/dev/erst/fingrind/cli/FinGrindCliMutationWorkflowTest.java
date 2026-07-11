@@ -232,6 +232,253 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_preflightTradingSalePublishesDerivedInventoryCostingInJsonAndText() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("trading-preflight-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path purchaseRequestFile =
+        writeNamedRequest(
+            "trading-purchase-settled.json",
+            tradingPurchaseSettledRequestJson("idem-trading-purchase"));
+    Path saleRequestFile =
+        writeNamedRequest(
+            "trading-sale-settled.json", tradingSaleSettledRequestJson("idem-trading-sale"));
+
+    ByteArrayOutputStream openOutput = new ByteArrayOutputStream();
+    FinGrindCli openCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
+    assertEquals(
+        0,
+        openCli.run(jsonArguments(openTradingBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+
+    ByteArrayOutputStream purchaseOutput = new ByteArrayOutputStream();
+    FinGrindCli purchaseCli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(purchaseOutput), fixedClock());
+    assertEquals(
+        0,
+        purchaseCli.run(
+            jsonArguments(
+                "record-purchase-settled",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                purchaseRequestFile.toString())));
+
+    ByteArrayOutputStream preflightJsonOutput = new ByteArrayOutputStream();
+    FinGrindCli preflightJsonCli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(preflightJsonOutput),
+            fixedClock());
+    assertEquals(
+        0,
+        preflightJsonCli.run(
+            jsonArguments(
+                "preflight-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                saleRequestFile.toString())));
+
+    JsonNode preflightEnvelope =
+        new ObjectMapper().readTree(preflightJsonOutput.toString(StandardCharsets.UTF_8));
+    assertEquals("ok", preflightEnvelope.path("status").stringValue());
+    assertEquals(
+        "SETTLED_SALE",
+        preflightEnvelope
+            .path("payload")
+            .path("resolvedJournal")
+            .path("classification")
+            .path("eventClass")
+            .stringValue());
+    JsonNode resolvedLines =
+        preflightEnvelope
+            .path("payload")
+            .path("resolvedJournal")
+            .path("expandedLines")
+            .path("lines");
+    assertEquals(4, resolvedLines.size());
+    assertEquals("cost-of-sales", resolvedLines.get(2).path("accountCode").stringValue());
+    assertEquals("DEBIT", resolvedLines.get(2).path("side").stringValue());
+    assertEquals("1000", resolvedLines.get(2).path("amount").path("minorUnits").stringValue());
+    assertEquals("inventory", resolvedLines.get(3).path("accountCode").stringValue());
+    assertEquals("CREDIT", resolvedLines.get(3).path("side").stringValue());
+    assertEquals("1000", resolvedLines.get(3).path("amount").path("minorUnits").stringValue());
+
+    ByteArrayOutputStream preflightTextOutput = new ByteArrayOutputStream();
+    FinGrindCli preflightTextCli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(preflightTextOutput),
+            fixedClock());
+    assertEquals(
+        0,
+        preflightTextCli.run(
+            new String[] {
+              "preflight-entry",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--request-file",
+              saleRequestFile.toString(),
+              "--output",
+              "text"
+            }));
+    String preflightText = preflightTextOutput.toString(StandardCharsets.UTF_8);
+    assertTrue(preflightText.contains("Entry Preflight Passed"), preflightText);
+    assertTrue(preflightText.contains("Journal lines"), preflightText);
+    assertTrue(preflightText.contains("cost-of-sales"), preflightText);
+    assertTrue(preflightText.contains("inventory"), preflightText);
+    assertTrue(preflightText.contains("10.00"), preflightText);
+  }
+
+  @Test
+  void run_inventoryMaintenanceCommandsThroughDefaultSqliteWorkflow() throws IOException {
+    Path bookFilePath =
+        tempDirectory.resolve("inventory-maintenance-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(
+                jsonArguments(
+                    openAccrualTradingBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+
+    assertResolvedEventClass(
+        recordEntry(
+            bookFilePath,
+            bookKeyFilePath,
+            "record-purchase-settled",
+            writeNamedRequest(
+                "inventory-maintenance-purchase.json",
+                tradingPurchaseSettledRequestJson("inventory-maintenance-purchase"))),
+        "SETTLED_PURCHASE");
+    assertResolvedEventClass(
+        recordEntry(
+            bookFilePath,
+            bookKeyFilePath,
+            "record-inventory-capitalization-settled",
+            writeNamedRequest(
+                "inventory-capitalization-settled.json",
+                inventoryMaintenanceRequestJson(
+                    "INVENTORY_CAPITALIZATION_SETTLED",
+                    """
+                    "inventoryAccountCode": "inventory",
+                    "cashAccountCode": "cash",
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "200"
+                    }
+                    """,
+                    "landed-cost-invoice",
+                    "inventory-capitalization-settled"))),
+        "INVENTORY_CAPITALIZATION");
+    assertResolvedEventClass(
+        recordEntry(
+            bookFilePath,
+            bookKeyFilePath,
+            "record-inventory-capitalization-on-credit",
+            writeNamedRequest(
+                "inventory-capitalization-on-credit.json",
+                inventoryMaintenanceRequestJson(
+                    "INVENTORY_CAPITALIZATION_ON_CREDIT",
+                    """
+                    "inventoryAccountCode": "inventory",
+                    "payableAccountCode": "accounts-payable",
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "300"
+                    }
+                    """,
+                    "landed-cost-invoice",
+                    "inventory-capitalization-on-credit"))),
+        "INVENTORY_CAPITALIZATION");
+    assertResolvedEventClass(
+        recordEntry(
+            bookFilePath,
+            bookKeyFilePath,
+            "record-inventory-shrinkage",
+            writeNamedRequest(
+                "inventory-shrinkage.json",
+                inventoryMaintenanceRequestJson(
+                    "INVENTORY_SHRINKAGE",
+                    """
+                    "inventoryAccountCode": "inventory",
+                    "shrinkageLossAccountCode": "inventory-shrinkage-loss",
+                    "quantity": "1"
+                    """,
+                    "inventory-count-sheet",
+                    "inventory-shrinkage"))),
+        "INVENTORY_SHRINKAGE");
+    assertResolvedEventClass(
+        recordEntry(
+            bookFilePath,
+            bookKeyFilePath,
+            "record-inventory-count-increase",
+            writeNamedRequest(
+                "inventory-count-increase.json",
+                inventoryMaintenanceRequestJson(
+                    "INVENTORY_COUNT_INCREASE",
+                    """
+                    "inventoryAccountCode": "inventory",
+                    "countGainAccountCode": "inventory-count-gain",
+                    "quantity": "2",
+                    "unitCost": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "1000"
+                    }
+                    """,
+                    "inventory-count-sheet",
+                    "inventory-count-increase"))),
+        "INVENTORY_COUNT_INCREASE");
+    assertResolvedEventClass(
+        recordEntry(
+            bookFilePath,
+            bookKeyFilePath,
+            "record-inventory-write-down",
+            writeNamedRequest(
+                "inventory-write-down.json",
+                inventoryMaintenanceRequestJson(
+                    "INVENTORY_WRITE_DOWN",
+                    """
+                    "inventoryAccountCode": "inventory",
+                    "writeDownLossAccountCode": "inventory-write-down-loss",
+                    "amount": {
+                      "currencyCode": "EUR",
+                      "minorUnits": "100"
+                    }
+                    """,
+                    "inventory-write-down-assessment",
+                    "inventory-write-down"))),
+        "INVENTORY_WRITE_DOWN");
+
+    ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(balanceOutput), fixedClock())
+            .run(
+                jsonArguments(
+                    "account-balance",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--account-code",
+                    "inventory")));
+    assertJsonContains(balanceOutput, "\"status\":\"ok\"");
+    assertJsonContains(balanceOutput, "Inventory [inventory]");
+    assertJsonContains(balanceOutput, "EUR 19.00");
+    assertJsonContains(balanceOutput, "Debit");
+  }
+
+  @Test
   void run_rejectsPlaceholderRequestScaffoldBeforePreflightOrCommit() throws IOException {
     Path bookFilePath = tempDirectory.resolve("placeholder-books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
@@ -324,6 +571,194 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         failureEnvelope.path("code").stringValue());
     assertFalse(outputText.contains("wrong-current-secret"));
     assertFalse(outputText.contains("replacement-secret"));
+  }
+
+  private static String[] openTradingBookKeyFileArguments(Path bookFilePath, Path bookKeyFilePath) {
+    return new String[] {
+      "open-book",
+      "--book-file",
+      bookFilePath.toString(),
+      "--book-key-file",
+      bookKeyFilePath.toString(),
+      "--entity-name",
+      tradingBookIdentity().entityName().value(),
+      "--book-template-id",
+      tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+      "--accounting-basis",
+      tradingBookIdentity().bookDoctrine().accountingBasis().wireValue(),
+      "--inventory-costing",
+      dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
+      "--functional-currency",
+      tradingBookIdentity().functionalCurrency().code(),
+      "--fiscal-year-start",
+      tradingBookIdentity().fiscalYearStart().wireValue()
+    };
+  }
+
+  private static String[] openAccrualTradingBookKeyFileArguments(
+      Path bookFilePath, Path bookKeyFilePath) {
+    return new String[] {
+      "open-book",
+      "--book-file",
+      bookFilePath.toString(),
+      "--book-key-file",
+      bookKeyFilePath.toString(),
+      "--entity-name",
+      tradingBookIdentity().entityName().value(),
+      "--book-template-id",
+      tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+      "--accounting-basis",
+      dev.erst.fingrind.core.AccountingBasis.ACCRUAL.wireValue(),
+      "--inventory-costing",
+      dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
+      "--functional-currency",
+      tradingBookIdentity().functionalCurrency().code(),
+      "--fiscal-year-start",
+      tradingBookIdentity().fiscalYearStart().wireValue()
+    };
+  }
+
+  private JsonNode recordEntry(
+      Path bookFilePath, Path bookKeyFilePath, String command, Path requestFile)
+      throws IOException {
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    int exitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(output), fixedClock())
+            .run(
+                jsonArguments(
+                    command,
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    requestFile.toString()));
+    String response = output.toString(StandardCharsets.UTF_8);
+    assertEquals(0, exitCode, response);
+    JsonNode envelope = new ObjectMapper().readTree(response);
+    assertEquals("ok", envelope.path("status").stringValue(), envelope.toPrettyString());
+    return envelope;
+  }
+
+  private static void assertResolvedEventClass(JsonNode envelope, String expectedEventClass) {
+    assertEquals(
+        expectedEventClass,
+        envelope
+            .path("payload")
+            .path("resolvedJournal")
+            .path("classification")
+            .path("eventClass")
+            .stringValue(),
+        envelope.toPrettyString());
+  }
+
+  private static String inventoryMaintenanceRequestJson(
+      String entryKind, String entryFactsJson, String sourceDocumentType, String idempotencyKey) {
+    return """
+        {
+          "entryKind": "%s",
+          "effectiveDate": "2026-04-07",
+          %s,
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-%s",
+                "sourceDocumentType": "%s",
+                "documentDate": "2026-04-07"
+              }
+            ],
+            "approvals": []
+          },
+          "provenance": {
+            "actorId": "actor-%s",
+            "actorType": "AGENT",
+            "commandId": "command-%s",
+            "idempotencyKey": "%s",
+            "causationId": "cause-%s"
+          }
+        }
+        """
+        .formatted(
+            entryKind,
+            entryFactsJson,
+            idempotencyKey,
+            sourceDocumentType,
+            idempotencyKey,
+            idempotencyKey,
+            idempotencyKey,
+            idempotencyKey);
+  }
+
+  private static String tradingPurchaseSettledRequestJson(String idempotencyKey) {
+    return """
+        {
+          "entryKind": "PURCHASE_SETTLED",
+          "effectiveDate": "2026-04-07",
+          "inventoryAccountCode": "inventory",
+          "cashAccountCode": "cash",
+          "quantity": "1",
+          "unitCost": {
+            "currencyCode": "EUR",
+            "minorUnits": "1000"
+          },
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-%s",
+                "sourceDocumentType": "purchase-receipt",
+                "documentDate": "2026-04-07"
+              }
+            ],
+            "approvals": []
+          },
+          "provenance": {
+            "actorId": "actor-%s",
+            "actorType": "AGENT",
+            "commandId": "command-%s",
+            "idempotencyKey": "%s",
+            "causationId": "cause-%s"
+          }
+        }
+        """
+        .formatted(idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey);
+  }
+
+  private static String tradingSaleSettledRequestJson(String idempotencyKey) {
+    return """
+        {
+          "entryKind": "SALE_SETTLED",
+          "effectiveDate": "2026-04-07",
+          "cashAccountCode": "cash",
+          "revenueAccountCode": "sales-revenue",
+          "amount": {
+            "currencyCode": "EUR",
+            "minorUnits": "7000"
+          },
+          "inventoryRelief": {
+            "inventoryAccountCode": "inventory",
+            "costOfSalesAccountCode": "cost-of-sales",
+            "quantity": "1"
+          },
+          "evidence": {
+            "sourceDocuments": [
+              {
+                "sourceDocumentId": "document-%s",
+                "sourceDocumentType": "cash-receipt",
+                "documentDate": "2026-04-07"
+              }
+            ],
+            "approvals": []
+          },
+          "provenance": {
+            "actorId": "actor-%s",
+            "actorType": "AGENT",
+            "commandId": "command-%s",
+            "idempotencyKey": "%s",
+            "causationId": "cause-%s"
+          }
+        }
+        """
+        .formatted(idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey);
   }
 
   @Test

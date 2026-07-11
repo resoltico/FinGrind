@@ -11,6 +11,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.executor.InMemoryBookSession;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedInterimResultTargetSelection;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultTargetSelection;
 import java.time.Instant;
@@ -26,10 +27,11 @@ class BookkeepingResultHoldingReadSupportTest {
       assertInstanceOf(
           AccountDeclarationOutcome.Declared.class,
           bookSession.declareAccount(
-              new AccountCode("3200"),
-              new AccountName("Result Holding"),
-              AccountType.EQUITY,
-              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+              new AccountDeclaration(
+                  new AccountCode("3200"),
+                  new AccountName("Result Holding"),
+                  AccountType.EQUITY,
+                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
               Instant.parse("2026-04-07T10:15:30Z")));
 
       InterimResultTargetSelection selection =

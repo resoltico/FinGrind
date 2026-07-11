@@ -89,9 +89,9 @@ abstract non-sealed class CliBookQueryOutputModeCommand<Q> implements CliCommand
 abstract non-sealed class CliBookQueryReportCommand<Q> implements CliCommand.ReportCommand {
   private final BookAccess bookAccess;
   private final Q query;
-  private final CliCommand.ReportOutput output;
+  private final CliReportOutput output;
 
-  CliBookQueryReportCommand(BookAccess bookAccess, Q query, CliCommand.ReportOutput output) {
+  CliBookQueryReportCommand(BookAccess bookAccess, Q query, CliReportOutput output) {
     this.bookAccess = Objects.requireNonNull(bookAccess, "bookAccess");
     this.query = Objects.requireNonNull(query, "query");
     this.output = Objects.requireNonNull(output, "output");
@@ -106,7 +106,7 @@ abstract non-sealed class CliBookQueryReportCommand<Q> implements CliCommand.Rep
   }
 
   @Override
-  public final CliCommand.ReportOutput output() {
+  public final CliReportOutput output() {
     return output;
   }
 
@@ -117,10 +117,7 @@ abstract non-sealed class CliBookQueryReportCommand<Q> implements CliCommand.Rep
   }
 
   protected abstract int executeCommand(
-      CliExecutionContext executionContext,
-      BookAccess bookAccess,
-      Q query,
-      CliCommand.ReportOutput output);
+      CliExecutionContext executionContext, BookAccess bookAccess, Q query, CliReportOutput output);
 }
 
 /** Shared base for book-bound commands that accept an optional artifact path and output mode. */

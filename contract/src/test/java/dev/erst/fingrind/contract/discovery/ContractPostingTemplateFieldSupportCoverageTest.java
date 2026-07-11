@@ -66,7 +66,12 @@ class ContractPostingTemplateFieldSupportCoverageTest {
         null,
         null,
         null,
+        null,
+        null,
+        null,
         new MonetaryAmount("EUR", "1000"),
+        null,
+        null,
         null,
         null,
         null,
@@ -76,7 +81,6 @@ class ContractPostingTemplateFieldSupportCoverageTest {
   }
 
   private static InventoryReliefTemplateDescriptor inventoryRelief() {
-    return new InventoryReliefTemplateDescriptor(
-        "inventory-on-hand", "cost-of-sales", new MonetaryAmount("EUR", "250"));
+    return new InventoryReliefTemplateDescriptor("inventory-on-hand", "cost-of-sales", "1");
   }
 }

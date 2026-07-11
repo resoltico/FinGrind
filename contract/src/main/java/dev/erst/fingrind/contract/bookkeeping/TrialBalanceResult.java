@@ -5,12 +5,22 @@ import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
 /** Closed result family for trial-balance reports. */
-public sealed interface TrialBalanceResult
+public sealed interface TrialBalanceResult extends BookQueryReportResult<TrialBalanceReport>
     permits TrialBalanceResult.Reported, TrialBalanceResult.Rejected {
 
   /** Folds the closed result family without transport-layer pattern switching. */
   <T extends @Nullable Object> T fold(
       Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper);
+
+  @Override
+  default @Nullable TrialBalanceReport reported() {
+    return fold(Reported::report, rejected -> null);
+  }
+
+  @Override
+  default @Nullable BookQueryRejection rejection() {
+    return fold(reported -> null, Rejected::rejection);
+  }
 
   /** Success result carrying one canonical trial-balance report. */
   record Reported(TrialBalanceReport report) implements TrialBalanceResult {

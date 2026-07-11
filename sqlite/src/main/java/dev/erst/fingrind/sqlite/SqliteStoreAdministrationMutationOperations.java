@@ -5,10 +5,6 @@ import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountTaxonomy;
-import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -87,14 +83,10 @@ final class SqliteStoreAdministrationMutationOperations {
         });
   }
 
-  AccountDeclarationOutcome declareAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountTaxonomy accountTaxonomy,
-      Instant declaredAt) {
+  AccountDeclarationOutcome declareAccount(AccountDeclaration declaration, Instant declaredAt) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
+    Objects.requireNonNull(declaration, "declaration");
     if (Files.notExists(context.bookPath())) {
       return new AccountDeclarationOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
@@ -110,12 +102,10 @@ final class SqliteStoreAdministrationMutationOperations {
 
             transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
             Optional<RegisteredAccount> existingAccount =
-                SqliteAccountStatementQueries.findOneAccount(activeDatabase, accountCode);
+                SqliteAccountStatementQueries.findOneAccount(
+                    activeDatabase, declaration.accountCode());
             AccountDeclarationOutcome declarationOutcome =
-                RegisteredAccount.declare(
-                    existingAccount.orElse(null),
-                    new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy),
-                    declaredAt);
+                RegisteredAccount.declare(existingAccount.orElse(null), declaration, declaredAt);
             if (declarationOutcome instanceof AccountDeclarationOutcome.Rejected rejected) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
               return rejected;

@@ -3,10 +3,6 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountTaxonomy;
-import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
@@ -46,14 +42,9 @@ interface SqlitePostingFactStoreMutationView {
 
   /** Declares a new account in the protected book. */
   default AccountDeclarationOutcome declareAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountTaxonomy accountTaxonomy,
-      Instant declaredAt) {
+      AccountDeclaration declaration, Instant declaredAt) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
-        .declareAccount(accountCode, accountName, accountType, accountTaxonomy, declaredAt);
+    return storeMutationOperations().declareAccount(declaration, declaredAt);
   }
 
   /** Commits one posting draft into the protected book. */

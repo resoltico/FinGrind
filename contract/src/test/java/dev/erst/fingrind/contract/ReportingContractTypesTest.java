@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -173,6 +174,8 @@ class ReportingContractTypesTest {
     assertEquals(
         List.of(new TrialBalanceRow(CASH_ACCOUNT, EUR_DEBIT_BALANCE)), trialBalanceReport.rows());
     assertSame(trialBalanceReport, reportedTrialBalance.report());
+    assertSame(trialBalanceReport, reportedTrialBalance.reported());
+    assertNull(reportedTrialBalance.rejection());
     assertEquals(
         "query-book-not-initialized",
         BookQueryRejection.wireCode(rejectedTrialBalance.rejection()));
@@ -180,6 +183,8 @@ class ReportingContractTypesTest {
         Optional.of(LocalDate.parse("2026-04-01")), accountLedgerQuery.effectiveDateFrom());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), accountLedgerQuery.effectiveDateTo());
     assertSame(accountLedgerReport, reportedAccountLedger.report());
+    assertSame(accountLedgerReport, reportedAccountLedger.reported());
+    assertNull(reportedAccountLedger.rejection());
     assertEquals(
         CASH_ACCOUNT.accountCode(),
         ((BookQueryRejection.UnknownAccount) rejectedAccountLedger.rejection()).accountCode());
@@ -187,6 +192,8 @@ class ReportingContractTypesTest {
     assertEquals(LocalDate.parse("2026-04-01"), periodSummaryQuery.effectiveDateFrom());
     assertEquals(LocalDate.parse("2026-04-30"), periodSummaryQuery.effectiveDateTo());
     assertSame(periodSummaryReport, reportedPeriodSummary.report());
+    assertSame(periodSummaryReport, reportedPeriodSummary.reported());
+    assertNull(reportedPeriodSummary.rejection());
     assertEquals(
         "query-book-not-initialized",
         BookQueryRejection.wireCode(rejectedPeriodSummary.rejection()));
@@ -198,6 +205,8 @@ class ReportingContractTypesTest {
     assertEquals("listed", listedPostings.fold(ignored -> "listed", ignored -> "rejected"));
     assertEquals("rejected", rejectedPostings.fold(ignored -> "listed", ignored -> "rejected"));
     assertEquals("reported", reportedBalance.fold(ignored -> "reported", ignored -> "rejected"));
+    assertSame(reportedBalance.snapshot(), reportedBalance.reported());
+    assertNull(reportedBalance.rejection());
     assertEquals("rejected", rejectedBalance.fold(ignored -> "reported", ignored -> "rejected"));
     assertEquals(
         "reported", reportedTrialBalance.fold(ignored -> "reported", ignored -> "rejected"));

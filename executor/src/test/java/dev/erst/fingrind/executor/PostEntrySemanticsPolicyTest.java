@@ -134,7 +134,7 @@ class PostEntrySemanticsPolicyTest {
         new InventoryRelief(
             new AccountCode("1400"),
             new AccountCode("5000"),
-            MonetaryAmount.of(Money.parse("EUR", "4.00")));
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"));
     BookkeepingEntry.SaleSettled saleWithInventoryRelief =
         new BookkeepingEntry.SaleSettled(
             LocalDate.parse("2026-04-07"),
@@ -142,6 +142,7 @@ class PostEntrySemanticsPolicyTest {
             new AccountCode("2000"),
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
             inventoryRelief,
+            null,
             null,
             null,
             null);
@@ -154,6 +155,7 @@ class PostEntrySemanticsPolicyTest {
             null,
             null,
             null,
+            null,
             null);
     BookkeepingEntry.SaleOnCredit creditSaleWithInventoryRelief =
         new BookkeepingEntry.SaleOnCredit(
@@ -163,6 +165,8 @@ class PostEntrySemanticsPolicyTest {
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
             inventoryRelief,
             null,
+            null,
+            null,
             null);
     BookkeepingEntry.SaleOnCredit creditSaleWithoutInventoryRelief =
         new BookkeepingEntry.SaleOnCredit(
@@ -170,6 +174,8 @@ class PostEntrySemanticsPolicyTest {
             new AccountCode("1100"),
             new AccountCode("2000"),
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
+            null,
             null,
             null,
             null);
@@ -261,11 +267,13 @@ class PostEntrySemanticsPolicyTest {
                             new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                                 new AccountCode("1000"),
                                 dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                                MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                                MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                                null),
                             new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                                 new AccountCode("2000"),
                                 dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                                MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                                MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                                null))),
                     generatedEvidence("opening-balance", "opening-balance"),
                     requestProvenance("opening-balance"),
                     SourceChannel.CLI),
@@ -317,11 +325,13 @@ class PostEntrySemanticsPolicyTest {
                             new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                                 new AccountCode("1000"),
                                 dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                                MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                                MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                                null),
                             new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                                 new AccountCode("2000"),
                                 dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                                MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                                MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                                null))),
                     generatedEvidence("open-pattern", "field-note"),
                     requestProvenance("open-pattern"),
                     SourceChannel.CLI),
@@ -359,11 +369,13 @@ class PostEntrySemanticsPolicyTest {
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("1000"),
                     dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                    MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                    MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                    null),
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("2000"),
                     dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                    MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                    MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                    null))),
         "entryKind",
         "OPENING_POSITION");
     PostEntryRoleAccountSemantics.validate(
@@ -551,6 +563,7 @@ class PostEntrySemanticsPolicyTest {
                     MonetaryAmount.of(Money.parse("EUR", "10.00")),
                     null,
                     null,
+                    null,
                     new dev.erst.fingrind.contract.tax.TaxSelection(
                         new dev.erst.fingrind.contract.tax.TaxRegistrationId("vat-lv"),
                         new dev.erst.fingrind.contract.tax.TaxCode("missing-code")),
@@ -658,11 +671,13 @@ class PostEntrySemanticsPolicyTest {
                         new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("1000"),
                             dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                            null),
                         new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("2000"),
                             dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                            MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                            null))),
                 generatedEvidence("opening-window-blocked", "opening-balance"),
                 requestProvenance("opening-window-blocked"),
                 SourceChannel.CLI),
@@ -786,6 +801,7 @@ class PostEntrySemanticsPolicyTest {
             null,
             null,
             null,
+            null,
             null),
         "entryKind",
         "SALE_SETTLED");
@@ -800,6 +816,8 @@ class PostEntrySemanticsPolicyTest {
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
             null,
             null,
+            null,
+            null,
             null),
         "entryKind",
         "SALE_ON_CREDIT");
@@ -811,6 +829,7 @@ class PostEntrySemanticsPolicyTest {
             new AccountCode("3000"),
             new AccountCode("2100"),
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
             null,
             null),
         "entryKind",
@@ -869,7 +888,8 @@ class PostEntrySemanticsPolicyTest {
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("1000"),
                     dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                    MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                    MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                    null))),
         "entryKind",
         "OPENING_POSITION");
     PostEntryRoleAccountSemantics.validate(
@@ -900,6 +920,7 @@ class PostEntrySemanticsPolicyTest {
                         new AccountCode("1000"),
                         new AccountCode("2000"),
                         MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                        null,
                         null,
                         null,
                         null,

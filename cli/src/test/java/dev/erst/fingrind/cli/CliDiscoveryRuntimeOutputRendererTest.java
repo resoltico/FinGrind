@@ -367,8 +367,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
                     "<redacted>/libsqlite3.dylib",
-                    "3.53.2",
-                    "2.3.5",
+                    "3.53.3",
+                    "2.3.6",
                     "source-id",
                     "compile options mismatch")));
     String unavailableRendered =
@@ -392,8 +392,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(incompatibleRendered.contains("Runtime status"));
     assertTrue(incompatibleRendered.contains("incompatible"));
     assertTrue(incompatibleRendered.contains("compile options mismatch"));
-    assertTrue(incompatibleRendered.contains("3.53.2"));
-    assertTrue(incompatibleRendered.contains("2.3.5"));
+    assertTrue(incompatibleRendered.contains("3.53.3"));
+    assertTrue(incompatibleRendered.contains("2.3.6"));
     assertFalse(incompatibleRendered.contains("source-id"));
 
     assertTrue(unavailableRendered.contains("Runtime status"));

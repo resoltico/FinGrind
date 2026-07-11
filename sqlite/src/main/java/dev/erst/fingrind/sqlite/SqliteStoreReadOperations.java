@@ -17,6 +17,8 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
+import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -57,6 +59,14 @@ final class SqliteStoreReadOperations {
 
   Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     return queryOperations.findAccount(accountCode);
+  }
+
+  Optional<InventoryAccountState> findInventoryAccountState(AccountCode inventoryAccountCode) {
+    return queryOperations.findInventoryAccountState(inventoryAccountCode);
+  }
+
+  List<InventoryMovementRecord> inventoryMovements(PostingId postingId) {
+    return queryOperations.inventoryMovements(postingId);
   }
 
   Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented"]
@@ -26,23 +26,34 @@ public sealed interface PostingLineage
 - Variants: `Direct`, `Reversal`
 - Purpose: keep direct postings and reversal postings structurally distinct
 
-## `BookkeepingEntry` And `BookkeepingEntryKind`
+## `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind`
 
 `BookkeepingEntry` is the public bookkeeping write model that makes typed business events the
-primary caller-authored surface while preserving one explicit raw direct-journal path, and
-`BookkeepingEntryKind` is the closed caller-authored vocabulary that selects those entry families.
+primary caller-authored surface while preserving explicit direct-journal, opening-position, and
+reversal forms. `TypedBookkeepingEntry` is the closed event family whose journal derives from
+caller-authored business facts. `BookkeepingEntrySurface` is the shared published view of every
+caller-authored variant, and `BookkeepingEntryKind` is the closed caller-authored vocabulary that
+selects those entry families.
 
 ```java
 public sealed interface BookkeepingEntry
+public sealed interface TypedBookkeepingEntry
+public interface BookkeepingEntrySurface
 public enum BookkeepingEntryKind
 ```
 
 - Direct journal: `DirectJournal` carries one caller-authored `JournalEntry` for the raw escape
   hatch
-- Typed business events: `SaleSettled`, `SaleOnCredit`, `ExpenseSettled`, `ExpenseOnCredit`,
-  `Receipt`, `Payment`, `OwnerContribution`, `OwnerWithdrawal`, `OpeningPosition`, and
-  `Reversal` preserve the caller-authored event facts that FinGrind translates into one canonical
-  journal entry
+- Typed business events: `SaleSettled`, `SaleOnCredit`, `PurchaseSettled`, `PurchaseOnCredit`,
+  `InventoryCapitalizationSettled`, `InventoryCapitalizationOnCredit`, `InventoryWriteDown`,
+  `InventoryShrinkage`, `InventoryCountIncrease`, `ExpenseSettled`, `ExpenseOnCredit`, `Receipt`,
+  `Payment`, `OwnerContribution`, and `OwnerWithdrawal` preserve caller-authored event facts that
+  FinGrind translates into one canonical journal entry
+- Distinct forms: `OpeningPosition` establishes a book's opening balances, while `Reversal`
+  identifies and negates an existing posting; neither represents a new economic event
+- Shared view: `BookkeepingEntrySurface` owns the derived accessors that every caller-authored
+  variant publishes consistently, including `entryKind()`, `journalEntry()`, `postingKind()`,
+  `postingOriginKind()`, `postingLineage()`, `lines()`, and optional foreign-exchange facts
 - Purpose: keep the business-event-first write language explicit without introducing a second write
   kernel
 
@@ -63,8 +74,9 @@ public record PostEntryCommand(
   caller-authored business event or raw direct journal plus first-class retained evidence and
   provenance
 - Boundary: typed business-event commands are the normal public write language, while direct
-  balanced journal lines remain the explicit fallback for cases that do not fit those event
-  families
+  balanced journal lines remain the explicit fallback for non-inventory cases that do not fit
+  those event families; raw direct journals reject every line resolving to the `INVENTORY` role
+  because they cannot carry exact inventory quantity truth
 - Money policy: public money amounts arrive as exact positive `MonetaryAmount` values, while the
   direct journal and reversal variants carry one already-validated `JournalEntry`
 
@@ -79,8 +91,9 @@ public record TaxSelection(TaxRegistrationId taxRegistrationId, TaxCode taxCode)
 public record AppliedTax(...)
 ```
 
-- `TaxSelection`: lets one sale or expense request point at one declared tax registration and one
-  declared tax code; there is no neutral free-form tax payload outside those typed selectors
+- `TaxSelection`: lets one sale, purchase, capitalization, or expense request point at one declared
+  tax registration and one declared tax code; there is no neutral free-form tax payload outside
+  those typed selectors
 - `AppliedTax`: preserves the resolved registration, code name, rate, inclusion mode, application
   kind, taxable amount, tax amount, gross amount, and optional tax account code as one committed
   posting fact
@@ -111,15 +124,69 @@ entries.
 public record InventoryRelief(
     AccountCode inventoryAccountCode,
     AccountCode costOfSalesAccountCode,
-    MonetaryAmount amount)
+    QuantityText quantity)
 ```
 
 - Purpose: keep inventory depletion and cost-of-sales recognition on the typed sale path instead
   of forcing goods-trading books back to raw journals
 - Validation: trading books require it on sale requests, non-trading books reject it, and the
-  amount must stay consistent with the caller-authored sale event it annotates
+  quantity must resolve through the selected inventory account's unit of measure before posting
+  translation derives cost of sales
 - Boundary: this request-side fact remains distinct from the translated journal lines that debit
   cost-of-sales and credit inventory after posting translation
+
+## `QuantityText`, `ResolvedInventoryAcquisition`, `ResolvedInventoryCosting`, And `ResolvedInventoryDisposal`
+
+These types keep caller-authored inventory quantity separate from executor-owned resolved costing.
+
+```java
+public record QuantityText(String value)
+public record ResolvedInventoryAcquisition(
+    Quantity quantityAcquired, MonetaryAmount preTaxCost, MonetaryAmount carryingCost)
+public record ResolvedInventoryCosting(
+    Money costOfSales,
+    Quantity quantityRelieved,
+    Money roundedMovingAverageUnitCostProjection)
+public record ResolvedInventoryDisposal(
+    Money carryingCost,
+    Quantity quantityDisposed,
+    Money roundedMovingAverageUnitCostProjection)
+```
+
+- `QuantityText`: carries one canonical non-negative plain-decimal quantity string before the
+  selected inventory account's `UnitOfMeasure` resolves scale and exact integer units
+- `ResolvedInventoryAcquisition`: records the exact acquired quantity, pre-tax acquisition cost,
+  and full carrying-cost delta that the executor resolved for one purchase request before durable
+  posting
+- `ResolvedInventoryCosting`: records the exact relieved quantity, the derived cost of sales, and
+  the rounded read-time moving-average unit-cost projection that explains one sale-side inventory
+  relief without becoming authoritative cost truth
+- `ResolvedInventoryDisposal`: records the exact relieved quantity and carrying cost for one
+  inventory decrease, together with a rounded read-time projection that remains non-authoritative
+- Boundary: caller-authored request facts stay on `QuantityText`, while exact acquisition and
+  disposal values become executor-owned resolution facts only after admissibility and costing
+  policy run, and `journalEntry()` stays one caller-derivable skeleton until executor-owned tax,
+  costing, and reversal resolution complete the posted journal
+
+## `InventoryMovementPrecedesAccountHorizon`, `InventoryQuantityBelowZero`, And `InventoryWriteDownExceedsCarryingCost`
+
+These published account-state detail types name the deterministic inventory-state refusals that can
+appear inside `PostingRejection.AccountStateViolations`.
+
+```java
+public record InventoryMovementPrecedesAccountHorizon(...)
+public record InventoryQuantityBelowZero(...)
+public record InventoryWriteDownExceedsCarryingCost(...)
+```
+
+- `InventoryMovementPrecedesAccountHorizon`: the request tried to append one inventory movement
+  before the inventory account's existing effective-date horizon
+- `InventoryQuantityBelowZero`: the request tried to relieve more exact quantity than the selected
+  inventory account has on hand
+- `InventoryWriteDownExceedsCarryingCost`: the request tried to reduce carrying cost below zero on
+  one inventory account
+- Boundary: these are published contract facts. The executor owns the first-defense admission rule,
+  then translates local violation models into these public detail records
 
 ## `PostEntryCommandTranslator`
 
@@ -214,6 +281,55 @@ public interface PostingRequestModel
 - `PostingRequestModel`: the shared local shape consumed by bookkeeping validation and materialized
   posting facts, including first-class evidence
 
+## `PostEntryResolutionSupport`, `PostEntryResolutionSupport.ResolutionOutcome`, `InventoryPostingResolution`, `AcceptedPosting`, `PostingAccountStatePolicy`, `InventoryAdmissionPolicy`, And `InventoryAdmissionPolicy.InventoryAdmissionFailure`
+
+These executor-owned types resolve typed entry requests into one accepted posting shape and its
+inventory side effects before commit.
+
+```java
+public final class PostEntryResolutionSupport
+public record PostEntryResolutionSupport.ResolutionOutcome(...)
+public record InventoryPostingResolution(...)
+public record AcceptedPosting(...)
+public final class PostingAccountStatePolicy
+public final class InventoryAdmissionPolicy
+public static final class InventoryAdmissionPolicy.InventoryAdmissionFailure
+```
+
+- `PostEntryResolutionSupport`: runs tax resolution, reversal resolution, and executor-owned
+  inventory costing plus admission in one owner-controlled sequence so callers do not compose
+  partial semantic pipelines themselves
+- `PostEntryResolutionSupport.ResolutionOutcome`: returns both the resolved entry plus any
+  deterministic rejection reached during that resolution pass
+- `InventoryPostingResolution`: packages one resolved entry together with the exact inventory
+  movements and resulting per-account on-hand states that the executor derived
+- `AcceptedPosting`: is the fully admissible posting shape ready for durable commit, retaining both
+  the caller-authored entry and the resolved originating entry when they exist
+- `PostingAccountStatePolicy`: owns declared-account, active-account, and postable-account checks
+  before deeper semantic policies run
+- `InventoryAdmissionPolicy`: is the first defense for inventory horizon, quantity-floor,
+  carrying-cost-floor, inventory unit-of-measure compatibility, and exact acquisition-cost
+  admission checks before SQLite trigger backstops
+- `InventoryAdmissionPolicy.InventoryAdmissionFailure`: wraps one deterministic
+  `BookkeepingPostingRejection` when inventory admission rejects prior to commit
+
+## `InventoryEntrySemanticsViolations`
+
+`InventoryEntrySemanticsViolations` is the executor-local construction boundary for inventory
+event rejections whose published codes, messages, and repair guidance are owned by the contract.
+
+```java
+public final class InventoryEntrySemanticsViolations
+```
+
+- Purpose: translates canonical inventory rejection semantics into the local bookkeeping rejection
+  shape used by executor policies
+- Scope: trading-template eligibility, sale relief requirements, unit-of-measure compatibility,
+  exact acquisition cost, foreign-exchange functional-cost alignment, raw-journal protection, and
+  opening-position quantity rules
+- Boundary: it never invents public error language; the canonical contract rejection semantics
+  remain the single source of that language
+
 ## `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator`
 
 `PostingAcceptancePolicy` owns bookkeeping-side admission rules, while
@@ -246,9 +362,6 @@ public final class BookkeepingPublishedLanguageTranslator
   bookkeeping policy code
 - `BookkeepingPostingRejection`: local refusal family for posting validation and reversal
   admissibility before translation into public `PostingRejection`
-- `InventoryBalanceBelowZeroViolation`: local account-state subtype for one inventory decrease
-  that would create or deepen a credit carrying balance before publication translates it into
-  public `InventoryBalanceBelowZero`
 - `BookkeepingRequestPublishedLanguageTranslator`: translates `OpenBookCommand`,
   `DeclareAccountCommand`, and explicit close commands into the local working model before any
   bookkeeping rule evaluates them
@@ -559,14 +672,16 @@ public final class UuidV7PostingIdGenerator implements PostingIdGenerator
 
 - Purpose: generate time-ordered UUID v7 posting ids without an external dependency
 
-## `PostingRejection` And `PostingRejectionSemantics`
+## `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics`
 
-`PostingRejection` is the closed family of deterministic write-side refusals, and
-`PostingRejectionSemantics` is the canonical owner for building entry-semantics violation details
-from business facts.
+`PostingRejection` is the closed family of deterministic write-side refusals,
+`PostingInventoryRejectionSemantics` owns the inventory-specific entry-semantics vocabulary, and
+`PostingRejectionSemantics` owns the remaining canonical entry-semantics builders derived from
+business facts.
 
 ```java
 public sealed interface PostingRejection
+public final class PostingInventoryRejectionSemantics
 public final class PostingRejectionSemantics
 ```
 
@@ -579,13 +694,19 @@ public final class PostingRejectionSemantics
 - `AccountStateViolationDetail`: stable top-level detail payload for one aggregated
   `AccountStateViolations` issue, kept separate from the closed rejection family so the family
   stays focused on refusal variants while adapters still receive one typed detail shape
-- `InventoryBalanceBelowZero`: published account-state subtype for one inventory decrease that
-  would create or deepen a credit carrying balance, including the exact request field,
-  effective date, current balance, requested decrease, and resulting credit balance
+- `InventoryMovementPrecedesAccountHorizon`: published account-state subtype for one inventory
+  movement that attempts to backdate before the selected account's existing movement horizon
+- `InventoryQuantityBelowZero`: published account-state subtype for one inventory decrease that
+  would drive exact quantity on hand below zero, including the attempted decrease and resulting
+  shortfall quantity
+- `InventoryWriteDownExceedsCarryingCost`: published account-state subtype for one inventory
+  carrying-cost decrease that would drive the selected pool below zero
 - `PostingRejection`: keep validly parsed but inadmissible postings machine-distinguishable
+- `PostingInventoryRejectionSemantics`: build canonical inventory-only admission violations for
+  trading-template requirements, opening inventory, and raw-journal inventory movement attempts
 - `ReservedResultClassification`: names both the blocked account code and the close-reserved
   classification, covering both `RESULT_HOLDING` and `RETAINED_ACCUMULATED`
 - `ReversalTargetIsReversal`: makes reversal lineage terminal, so restoring business effect after
   one reversal requires one fresh operational entry instead of a reversal-of-reversal redo
-- `PostingRejectionSemantics`: build canonical account-type, classification, evidence, and
-  economic-nullity violations plus the referenced-account set used to evaluate them
+- `PostingRejectionSemantics`: build canonical non-inventory account-type, classification,
+  evidence, and economic-nullity violations plus the referenced-account set used to evaluate them

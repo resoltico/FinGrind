@@ -12,6 +12,8 @@ final class CliLedgerBookQueryPayloadMapper {
   private CliLedgerBookQueryPayloadMapper() {}
 
   static CliBookQueryJsonModels.DeclaredAccountPayload accountPayload(List<LedgerFact> facts) {
+    @Nullable List<LedgerFact> unitOfMeasureFacts =
+        CliLedgerFactAccess.optionalGroupFacts(facts, "unitOfMeasure");
     return new CliBookQueryJsonModels.DeclaredAccountPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "accountCode"),
         CliLedgerFactAccess.requiredTextFact(facts, "accountName"),
@@ -21,6 +23,7 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.optionalTextFact(facts, "financialPositionLineClassification"),
         CliLedgerFactAccess.optionalTextFact(facts, "cashFlowAssetClassification"),
         CliLedgerFactAccess.optionalTextFact(facts, "profitAndLossLineClassification"),
+        unitOfMeasureFacts == null ? null : unitOfMeasurePayload(unitOfMeasureFacts),
         CliLedgerFactAccess.requiredTextFact(facts, "normalBalance"),
         CliLedgerFactAccess.requiredFlagFact(facts, "active"),
         CliLedgerFactAccess.requiredTextFact(facts, "declaredAt"));
@@ -146,15 +149,20 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.optionalTextFact(facts, "revenueAccountCode"),
         CliLedgerFactAccess.optionalTextFact(facts, "inventoryAccountCode"),
         CliLedgerFactAccess.optionalTextFact(facts, "expenseAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "writeDownLossAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "shrinkageLossAccountCode"),
+        CliLedgerFactAccess.optionalTextFact(facts, "countGainAccountCode"),
         CliLedgerFactAccess.optionalTextFact(facts, "equityAccountCode"),
         CliLedgerFactAccess.optionalMoneyFact(facts, "amount"),
+        CliLedgerFactAccess.optionalTextFact(facts, "quantity"),
+        CliLedgerFactAccess.optionalMoneyFact(facts, "unitCost"),
         inventoryReliefFacts == null
             ? null
             : new CliPostingEntryPayload.InventoryReliefPayload(
                 CliLedgerFactAccess.requiredTextFact(inventoryReliefFacts, "inventoryAccountCode"),
                 CliLedgerFactAccess.requiredTextFact(
                     inventoryReliefFacts, "costOfSalesAccountCode"),
-                CliLedgerFactAccess.requiredMoneyFact(inventoryReliefFacts, "amount")),
+                CliLedgerFactAccess.requiredTextFact(inventoryReliefFacts, "quantity")),
         settlementAdjunctFacts == null
             ? null
             : new CliPostingEntryPayload.SettlementAdjunctPayload(
@@ -164,14 +172,16 @@ final class CliLedgerBookQueryPayloadMapper {
         null,
         null,
         reversalFacts == null ? null : reversalPayload(reversalFacts),
-        openingBalances.isEmpty() ? null : openingBalances);
+        openingBalances.isEmpty() ? null : openingBalances,
+        null);
   }
 
   private static CliOpeningBalancePayload openingBalancePayload(List<LedgerFact> facts) {
     return new CliOpeningBalancePayload(
         CliLedgerFactAccess.requiredTextFact(facts, "accountCode"),
         CliLedgerFactAccess.requiredTextFact(facts, "side"),
-        CliLedgerFactAccess.requiredMoneyFact(facts, "amount"));
+        CliLedgerFactAccess.requiredMoneyFact(facts, "amount"),
+        CliLedgerFactAccess.optionalTextFact(facts, "quantity"));
   }
 
   private static CliBookQueryJsonModels.JournalLinePayload linePayload(List<LedgerFact> facts) {
@@ -179,5 +189,12 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.requiredTextFact(facts, "accountCode"),
         CliLedgerFactAccess.requiredTextFact(facts, "side"),
         CliLedgerFactAccess.requiredMoneyFact(facts, "amount"));
+  }
+
+  private static CliBookQueryJsonModels.UnitOfMeasurePayload unitOfMeasurePayload(
+      List<LedgerFact> facts) {
+    return new CliBookQueryJsonModels.UnitOfMeasurePayload(
+        CliLedgerFactAccess.requiredTextFact(facts, "token"),
+        CliLedgerFactAccess.requiredCountFact(facts, "quantityScale"));
   }
 }

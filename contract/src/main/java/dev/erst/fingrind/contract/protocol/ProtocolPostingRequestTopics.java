@@ -15,6 +15,19 @@ public final class ProtocolPostingRequestTopics {
           Map.entry(OperationId.RECORD_SALE_ON_CREDIT, BookkeepingEntryKind.SALE_ON_CREDIT),
           Map.entry(OperationId.RECORD_PURCHASE_SETTLED, BookkeepingEntryKind.PURCHASE_SETTLED),
           Map.entry(OperationId.RECORD_PURCHASE_ON_CREDIT, BookkeepingEntryKind.PURCHASE_ON_CREDIT),
+          Map.entry(
+              OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED,
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED),
+          Map.entry(
+              OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT),
+          Map.entry(
+              OperationId.RECORD_INVENTORY_WRITE_DOWN, BookkeepingEntryKind.INVENTORY_WRITE_DOWN),
+          Map.entry(
+              OperationId.RECORD_INVENTORY_SHRINKAGE, BookkeepingEntryKind.INVENTORY_SHRINKAGE),
+          Map.entry(
+              OperationId.RECORD_INVENTORY_COUNT_INCREASE,
+              BookkeepingEntryKind.INVENTORY_COUNT_INCREASE),
           Map.entry(OperationId.RECORD_EXPENSE_SETTLED, BookkeepingEntryKind.EXPENSE_SETTLED),
           Map.entry(OperationId.RECORD_EXPENSE_ON_CREDIT, BookkeepingEntryKind.EXPENSE_ON_CREDIT),
           Map.entry(OperationId.RECORD_RECEIPT, BookkeepingEntryKind.RECEIPT),

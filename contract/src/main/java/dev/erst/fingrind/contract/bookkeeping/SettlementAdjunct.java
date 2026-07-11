@@ -8,6 +8,6 @@ public record SettlementAdjunct(AccountCode accountCode, MonetaryAmount amount) 
   /** Validates one settlement adjunct payload. */
   public SettlementAdjunct {
     Objects.requireNonNull(accountCode, "accountCode");
-    amount = BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
+    amount = BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
   }
 }

@@ -81,12 +81,32 @@ enum EntrySemanticsViolationOwner {
       "trading-sale-requires-inventory-relief",
       "trading-sale",
       "A sale on a trading-template book must carry inventory relief so the same committed event recognizes both revenue and cost of sales.",
-      "Add inventoryRelief with declared non-cash inventory, cost-of-sales, and amount facts."),
+      "Add inventoryRelief with declared non-cash inventory, cost-of-sales, and quantity facts."),
   INVENTORY_RELIEF_REQUIRES_TRADING_BOOK(
       "inventory-relief-requires-trading-book",
       "trading-sale",
       "inventoryRelief is accepted only on trading-template sale requests.",
       "Remove inventoryRelief, or initialize the book with the trading template when the sale must relieve inventory."),
+  INVENTORY_QUANTITY_INCOMPATIBLE_WITH_UNIT_OF_MEASURE(
+      "inventory-quantity-incompatible-with-unit-of-measure",
+      "inventory-quantity",
+      "One inventory quantity field is incompatible with the selected inventory account's declared unitOfMeasure and exact quantityScale.",
+      "Use quantity text admitted by the selected inventory account's declared unitOfMeasure scale, or declare an inventory account whose unitOfMeasure matches the intended quantity precision."),
+  INVENTORY_ACQUISITION_COST_NOT_EXACT(
+      "inventory-acquisition-cost-not-exact",
+      "inventory-acquisition",
+      "One inventory acquisition cannot compose an exact carrying-cost amount at the currency minor-unit boundary from the supplied quantity and unitCost.",
+      "Adjust quantity or unitCost so quantity multiplied by unitCost resolves to one exact functional-currency minor-unit amount."),
+  INVENTORY_ACQUISITION_BREACHES_MINOR_UNIT_FLOOR(
+      "inventory-acquisition-breaches-minor-unit-floor",
+      "inventory-acquisition",
+      "One inventory acquisition would leave a positive carrying-cost pool below the minimum minor-unit floor required to preserve zero-to-zero disposal truth.",
+      "Increase the carrying cost for the selected quantity, or use a coarser inventory unitOfMeasure scale so the resulting positive pool remains above the minor-unit floor."),
+  INVENTORY_ACQUISITION_FOREIGN_EXCHANGE_FUNCTIONAL_AMOUNT_MISMATCH(
+      "inventory-acquisition-foreign-exchange-functional-amount-mismatch",
+      "foreign-exchange",
+      "One inventory acquisition foreignExchange.functionalAmount contradicts the exact functional-currency pre-tax acquisition cost resolved from quantity and unitCost.",
+      "Use a foreignExchange.functionalAmount equal to the exact pre-tax acquisition cost resolved from the supplied quantity and unitCost."),
   EVIDENCE_CLASS_CONFLICT(
       "evidence-class-conflict",
       "evidence-class",
@@ -107,11 +127,41 @@ enum EntrySemanticsViolationOwner {
       "raw-journal-admission",
       "The supplied raw journal is an adjustment on a cash-basis book, but no journal line resolves to a declared cash account.",
       "Add at least one declared cash account line, or use an accrual-basis book for this adjustment."),
+  RAW_JOURNAL_TOUCHES_INVENTORY(
+      "raw-journal-touches-inventory",
+      "raw-journal-admission",
+      "The supplied raw journal contains an inventory-account line even though raw journals do not own exact inventory quantity truth.",
+      "Remove the inventory line, or restate the request as one supported quantity-aware inventory command."),
   OPENING_WINDOW_ACCOUNT_NOT_PERMITTED(
       "opening-window-account-not-permitted",
       "opening-window",
       "The supplied opening-position request references an account that is not permitted during the adoption opening window.",
-      "Use only opening-window-permitted balance-sheet and equity accounts in openingBalances[].accountCode.");
+      "Use only opening-window-permitted balance-sheet and equity accounts in openingBalances[].accountCode."),
+  OPENING_INVENTORY_REQUIRES_QUANTITY(
+      "opening-inventory-requires-quantity",
+      "inventory-opening",
+      "One inventory opening balance omits the exact quantity required to establish its carrying-cost pool.",
+      "Supply openingBalances[].quantity for every inventory account, using quantity text admitted by that account's unitOfMeasure."),
+  OPENING_QUANTITY_REQUIRES_INVENTORY(
+      "opening-quantity-requires-inventory",
+      "inventory-opening",
+      "One non-inventory opening balance carries quantity even though exact quantity belongs only to inventory accounts.",
+      "Remove openingBalances[].quantity from non-inventory accounts, or use an inventory account when the opening balance represents stock on hand."),
+  INVENTORY_CAPITALIZATION_REQUIRES_QUANTITY_ON_HAND(
+      "inventory-capitalization-requires-quantity-on-hand",
+      "inventory-capitalization",
+      "A cost-only inventory capitalization requires existing inventory quantity so the carrying-cost pool remains exact and non-zero together with quantity.",
+      "Record or correct the inventory quantity first, then capitalize the directly attributable carrying cost."),
+  INVENTORY_OPENING_CARRYING_COST_INVALID(
+      "inventory-opening-carrying-cost-invalid",
+      "inventory-opening",
+      "One inventory opening quantity and carrying cost cannot establish a valid exact inventory pool.",
+      "Use a positive carrying cost that is sufficient for the supplied exact quantity and the inventory account's quantityScale."),
+  INVENTORY_OPENING_MUST_BE_FIRST_MOVEMENT(
+      "inventory-opening-must-be-first-movement",
+      "inventory-opening",
+      "An inventory opening balance is valid only as the first durable movement for that inventory account.",
+      "Use an opening position before any inventory movement, or correct the established inventory history through a typed compensating event.");
 
   private static final Map<String, EntrySemanticsViolationOwner> BY_CODE =
       Arrays.stream(values())

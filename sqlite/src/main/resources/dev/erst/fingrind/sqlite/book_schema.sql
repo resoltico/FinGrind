@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 38;
+pragma user_version = 39;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -83,6 +83,10 @@ create table if not exists book_identity (
     book_template_id text not null check (
         book_template_id in ('OWNER_MANAGED_SERVICE', 'OWNER_MANAGED_TRADING')
     ),
+    costing_doctrine text check (
+        costing_doctrine is null
+        or costing_doctrine in ('WEIGHTED_AVERAGE')
+    ),
     functional_currency_code text not null check (
         length(functional_currency_code) = 3
         and functional_currency_code glob '[A-Z][A-Z][A-Z]'
@@ -107,6 +111,16 @@ create table if not exists book_identity (
         (
             fiscal_year_start_month = 2
             and fiscal_year_start_day between 1 and 29
+        )
+    ),
+    check (
+        (
+            book_template_id = 'OWNER_MANAGED_SERVICE'
+            and costing_doctrine is null
+        )
+        or (
+            book_template_id = 'OWNER_MANAGED_TRADING'
+            and coalesce(costing_doctrine, '') = 'WEIGHTED_AVERAGE'
         )
     )
 ) strict;
@@ -163,6 +177,18 @@ create table if not exists account (
             'OTHER_EXPENSE'
         )
     ),
+    unit_of_measure text check (
+        unit_of_measure is null
+        or (
+            length(unit_of_measure) between 1 and 64
+            and unit_of_measure glob '[A-Za-z0-9]*'
+            and unit_of_measure not glob '*[^A-Za-z0-9._:/-]*'
+        )
+    ),
+    quantity_scale integer check (
+        quantity_scale is null
+        or quantity_scale between 0 and 9
+    ),
     active integer not null check (active in (0, 1)),
     declared_at text not null check (
         (
@@ -211,6 +237,18 @@ create table if not exists account (
     ),
     check (
         parent_account_code is null or parent_account_code <> account_code
+    ),
+    check (
+        (
+            financial_position_line_classification = 'INVENTORY'
+            and unit_of_measure is not null
+            and quantity_scale is not null
+        )
+        or (
+            coalesce(financial_position_line_classification, '') <> 'INVENTORY'
+            and unit_of_measure is null
+            and quantity_scale is null
+        )
     ),
     check (
         (
@@ -533,6 +571,11 @@ create table if not exists posting_fact (
             'SALE_ON_CREDIT',
             'PURCHASE_SETTLED',
             'PURCHASE_ON_CREDIT',
+            'INVENTORY_CAPITALIZATION_SETTLED',
+            'INVENTORY_CAPITALIZATION_ON_CREDIT',
+            'INVENTORY_WRITE_DOWN',
+            'INVENTORY_SHRINKAGE',
+            'INVENTORY_COUNT_INCREASE',
             'EXPENSE_SETTLED',
             'EXPENSE_ON_CREDIT',
             'RECEIPT',
@@ -557,6 +600,23 @@ create table if not exists posting_fact (
     ),
     entry_adjunct_amount_minor integer check (
         entry_adjunct_amount_minor is null or entry_adjunct_amount_minor > 0
+    ),
+    entry_quantity text check (
+        entry_quantity is null
+        or (
+            length(entry_quantity) between 1 and 64
+            and entry_quantity = trim(entry_quantity)
+            and entry_quantity not like '+%'
+            and entry_quantity not like '-%'
+            and entry_quantity not glob '*[^0-9.]*'
+        )
+    ),
+    entry_unit_cost_currency_code text check (
+        entry_unit_cost_currency_code is null
+        or entry_unit_cost_currency_code glob '[A-Z][A-Z][A-Z]'
+    ),
+    entry_unit_cost_minor integer check (
+        entry_unit_cost_minor is null or entry_unit_cost_minor > 0
     ),
     effective_date text not null check (
         effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
@@ -667,8 +727,9 @@ create table if not exists posting_fact (
             posting_origin_kind in (
                 'SALE_SETTLED',
                 'SALE_ON_CREDIT',
-                'PURCHASE_SETTLED',
-                'PURCHASE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT',
+                'INVENTORY_WRITE_DOWN',
                 'EXPENSE_SETTLED',
                 'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
@@ -680,6 +741,52 @@ create table if not exists posting_fact (
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
             and entry_adjunct_amount_minor is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
+        )
+        or (
+            posting_origin_kind in (
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'INVENTORY_COUNT_INCREASE'
+            )
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
+            and entry_adjunct_account_code is null
+            and entry_amount_currency_code is null
+            and entry_amount_minor is null
+            and entry_adjunct_amount_minor is null
+            and entry_quantity is not null
+            and entry_unit_cost_currency_code is not null
+            and entry_unit_cost_minor is not null
+        )
+        or (
+            posting_origin_kind = 'INVENTORY_SHRINKAGE'
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
+            and entry_adjunct_account_code is null
+            and entry_amount_currency_code is null
+            and entry_amount_minor is null
+            and entry_adjunct_amount_minor is null
+            and entry_quantity is not null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
+        )
+        or (
+            posting_origin_kind in (
+                'SALE_SETTLED',
+                'SALE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT',
+                'INVENTORY_WRITE_DOWN',
+                'EXPENSE_SETTLED',
+                'EXPENSE_ON_CREDIT',
+                'OWNER_CONTRIBUTION',
+                'OWNER_WITHDRAWAL'
+            )
+            and entry_quantity is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
         )
         or (
             posting_origin_kind in ('RECEIPT', 'PAYMENT')
@@ -687,6 +794,9 @@ create table if not exists posting_fact (
             and entry_primary_credit_account_code is not null
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
+            and entry_quantity is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
             and (
                 (
                     entry_adjunct_account_code is null
@@ -712,6 +822,9 @@ create table if not exists posting_fact (
             and entry_amount_currency_code is null
             and entry_amount_minor is null
             and entry_adjunct_amount_minor is null
+            and entry_quantity is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
         )
     )
 ) strict;
@@ -904,7 +1017,7 @@ create table if not exists posting_applied_tax (
 create trigger if not exists posting_applied_tax_validate_origin_on_insert
 before insert on posting_applied_tax
 begin
-    select raise(fail, 'posting_applied_tax requires sale or expense posting origin.')
+    select raise(fail, 'posting_applied_tax requires sale, purchase, capitalization, or expense posting origin.')
     where exists (
         select 1
         from posting_fact
@@ -913,6 +1026,10 @@ begin
             and posting_fact.posting_origin_kind not in (
                 'SALE_SETTLED',
                 'SALE_ON_CREDIT',
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT',
                 'EXPENSE_SETTLED',
                 'EXPENSE_ON_CREDIT'
             )
@@ -926,7 +1043,7 @@ begin
             and posting_fact.posting_origin_kind in ('SALE_SETTLED', 'SALE_ON_CREDIT')
             and new.application_kind <> 'OUTPUT_SALE'
     );
-    select raise(fail, 'expense tax application cannot use OUTPUT_SALE.')
+    select raise(fail, 'input tax application cannot use OUTPUT_SALE.')
     where exists (
         select 1
         from posting_fact
@@ -934,7 +1051,11 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_origin_kind in (
                 'EXPENSE_SETTLED',
-                'EXPENSE_ON_CREDIT'
+                'EXPENSE_ON_CREDIT',
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT'
             )
             and new.application_kind = 'OUTPUT_SALE'
     );
@@ -956,7 +1077,7 @@ create table if not exists posting_foreign_exchange (
     posting_id text primary key references posting_fact (posting_id),
     treatment_kind text not null check (
         treatment_kind in (
-            'SPOT_SETTLEMENT',
+            'SPOT_TRANSACTION',
             'REALIZED_SETTLEMENT',
             'UNREALIZED_REMEASUREMENT'
         )
@@ -1010,7 +1131,7 @@ create table if not exists posting_foreign_exchange (
 create trigger if not exists posting_foreign_exchange_validate_origin_on_insert
 before insert on posting_foreign_exchange
 begin
-    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE_SETTLED, EXPENSE_SETTLED, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
+    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE_SETTLED, SALE_ON_CREDIT, PURCHASE_SETTLED, PURCHASE_ON_CREDIT, INVENTORY_CAPITALIZATION_SETTLED, INVENTORY_CAPITALIZATION_ON_CREDIT, EXPENSE_SETTLED, EXPENSE_ON_CREDIT, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
     where exists (
         select 1
         from posting_fact
@@ -1019,7 +1140,13 @@ begin
             and posting_fact.posting_origin_kind not in (
                 'DIRECT_JOURNAL',
                 'SALE_SETTLED',
+                'SALE_ON_CREDIT',
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT',
                 'EXPENSE_SETTLED',
+                'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
                 'OWNER_WITHDRAWAL',
                 'REVERSAL'
@@ -1124,6 +1251,266 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind = 'OPENING_BALANCE'
             and account.account_type not in ('ASSET', 'LIABILITY', 'EQUITY')
+    );
+end;
+
+create table if not exists inventory_movement (
+    movement_id text primary key check (length(trim(movement_id)) > 0),
+    inventory_account text not null references account (account_code),
+    effective_date text not null check (
+        effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        and substr(effective_date, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(effective_date, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(effective_date, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(effective_date, 6, 2) in ('04', '06', '09', '11')
+                and substr(effective_date, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(effective_date, 6, 2) = '02'
+                and (
+                    substr(effective_date, 9, 2) between '01' and '28'
+                    or (
+                        substr(effective_date, 9, 2) = '29'
+                        and (
+                            cast(substr(effective_date, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(effective_date, 1, 4) as integer) % 4 = 0
+                                and cast(substr(effective_date, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ),
+    account_sequence integer not null check (account_sequence >= 1),
+    kind text not null check (
+        kind in (
+            'ACQUISITION',
+            'CAPITALIZATION',
+            'COUNT_INCREASE',
+            'OPENING',
+            'DISPOSAL',
+            'WRITE_DOWN',
+            'SHRINKAGE',
+            'REVERSAL_COMP'
+        )
+    ),
+    quantity_delta integer not null,
+    cost_delta_minor integer not null,
+    posting_id text not null references posting_fact (posting_id),
+    unique (inventory_account, account_sequence),
+    check (quantity_delta <> 0 or cost_delta_minor <> 0)
+) strict;
+
+create trigger if not exists inventory_movement_validate_inventory_account_on_insert
+before insert on inventory_movement
+begin
+    select raise(
+        fail,
+        'inventory movements must reference one active postable inventory account.'
+    )
+    where exists (
+        select 1
+        from account
+        where
+            account.account_code = new.inventory_account
+            and (
+                account.active = 0
+                or account.account_type <> 'ASSET'
+                or account.account_node_kind <> 'POSTABLE'
+                or account.financial_position_line_classification <> 'INVENTORY'
+            )
+    );
+    select raise(
+        fail,
+        'inventory movement effective date must match the referenced posting effective date.'
+    )
+    where exists (
+        select 1
+        from posting_fact
+        where
+            posting_fact.posting_id = new.posting_id
+            and posting_fact.effective_date <> new.effective_date
+    );
+end;
+
+create trigger if not exists inventory_movement_validate_account_horizon_on_insert
+before insert on inventory_movement
+when exists (select 1 from inventory_movement where inventory_account = new.inventory_account)
+begin
+    select raise(
+        fail,
+        'inventory movements must append in non-decreasing effective-date order per account.'
+    )
+    where new.effective_date < (
+        select max(effective_date)
+        from inventory_movement
+        where inventory_account = new.inventory_account
+    );
+end;
+
+create trigger if not exists inventory_movement_validate_account_sequence_on_insert
+before insert on inventory_movement
+begin
+    select raise(
+        fail,
+        'inventory movements must append with the next store-owned account sequence per account.'
+    )
+    where new.account_sequence <> (
+        select coalesce(max(account_sequence), 0) + 1
+        from inventory_movement
+        where inventory_account = new.inventory_account
+    );
+end;
+
+create trigger if not exists inventory_movement_validate_typed_posting_origin_on_insert
+before insert on inventory_movement
+begin
+    select raise(
+        fail,
+        'inventory movements require a matching typed posting origin.'
+    )
+    where not exists (
+        select 1
+        from posting_fact
+        where
+            posting_fact.posting_id = new.posting_id
+            and (
+                (
+                    new.kind = 'ACQUISITION'
+                    and posting_fact.posting_origin_kind in ('PURCHASE_SETTLED', 'PURCHASE_ON_CREDIT')
+                )
+                or (
+                    new.kind = 'CAPITALIZATION'
+                    and posting_fact.posting_origin_kind in (
+                        'INVENTORY_CAPITALIZATION_SETTLED',
+                        'INVENTORY_CAPITALIZATION_ON_CREDIT'
+                    )
+                )
+                or (
+                    new.kind = 'COUNT_INCREASE'
+                    and posting_fact.posting_origin_kind = 'INVENTORY_COUNT_INCREASE'
+                )
+                or (
+                    new.kind = 'OPENING'
+                    and posting_fact.posting_origin_kind = 'OPENING_POSITION'
+                )
+                or (
+                    new.kind = 'DISPOSAL'
+                    and posting_fact.posting_origin_kind in ('SALE_SETTLED', 'SALE_ON_CREDIT')
+                )
+                or (
+                    new.kind = 'WRITE_DOWN'
+                    and posting_fact.posting_origin_kind = 'INVENTORY_WRITE_DOWN'
+                )
+                or (
+                    new.kind = 'SHRINKAGE'
+                    and posting_fact.posting_origin_kind = 'INVENTORY_SHRINKAGE'
+                )
+                or (
+                    new.kind = 'REVERSAL_COMP'
+                    and posting_fact.posting_origin_kind = 'REVERSAL'
+                )
+            )
+    );
+end;
+
+create trigger if not exists inventory_movement_validate_opening_on_insert
+before insert on inventory_movement
+when new.kind = 'OPENING'
+begin
+    select raise(
+        fail,
+        'inventory opening movements must be the first durable movement for their inventory account.'
+    )
+    where exists (
+        select 1
+        from inventory_movement
+        where inventory_account = new.inventory_account
+    );
+end;
+
+create table if not exists inventory_on_hand (
+    inventory_account text primary key references account (account_code),
+    quantity integer not null check (quantity >= 0),
+    cost_pool_minor integer not null check (cost_pool_minor >= 0),
+    last_movement_date text not null check (
+        last_movement_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        and substr(last_movement_date, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(last_movement_date, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(last_movement_date, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(last_movement_date, 6, 2) in ('04', '06', '09', '11')
+                and substr(last_movement_date, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(last_movement_date, 6, 2) = '02'
+                and (
+                    substr(last_movement_date, 9, 2) between '01' and '28'
+                    or (
+                        substr(last_movement_date, 9, 2) = '29'
+                        and (
+                            cast(substr(last_movement_date, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(last_movement_date, 1, 4) as integer) % 4 = 0
+                                and cast(substr(last_movement_date, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ),
+    check ((quantity = 0) = (cost_pool_minor = 0))
+) strict;
+
+create trigger if not exists inventory_on_hand_validate_inventory_account_on_insert
+before insert on inventory_on_hand
+begin
+    select raise(
+        fail,
+        'inventory_on_hand rows must reference one active postable inventory account.'
+    )
+    where exists (
+        select 1
+        from account
+        where
+            account.account_code = new.inventory_account
+            and (
+                account.active = 0
+                or account.account_type <> 'ASSET'
+                or account.account_node_kind <> 'POSTABLE'
+                or account.financial_position_line_classification <> 'INVENTORY'
+            )
+    );
+end;
+
+create trigger if not exists inventory_on_hand_validate_inventory_account_on_update
+before update on inventory_on_hand
+begin
+    select raise(
+        fail,
+        'inventory_on_hand rows must reference one active postable inventory account.'
+    )
+    where exists (
+        select 1
+        from account
+        where
+            account.account_code = new.inventory_account
+            and (
+                account.active = 0
+                or account.account_type <> 'ASSET'
+                or account.account_node_kind <> 'POSTABLE'
+                or account.financial_position_line_classification <> 'INVENTORY'
+            )
     );
 end;
 
@@ -1706,6 +2093,12 @@ on posting_applied_tax (tax_registration_id, posting_id);
 create index if not exists journal_line_by_account_code
 on journal_line (account_code, posting_id, line_order);
 
+create index if not exists inventory_movement_by_account_replay
+on inventory_movement (inventory_account, effective_date, account_sequence);
+
+create index if not exists inventory_movement_by_posting_id
+on inventory_movement (posting_id, inventory_account, account_sequence);
+
 create index if not exists audit_event_by_recorded_at
 on audit_event (recorded_at, audit_event_order);
 
@@ -1762,6 +2155,18 @@ create trigger if not exists book_identity_reject_delete
 before delete on book_identity
 begin
     select raise(fail, 'book_identity rows are append-only.');
+end;
+
+create trigger if not exists inventory_movement_reject_update
+before update on inventory_movement
+begin
+    select raise(fail, 'inventory_movement rows are append-only.');
+end;
+
+create trigger if not exists inventory_movement_reject_delete
+before delete on inventory_movement
+begin
+    select raise(fail, 'inventory_movement rows are append-only.');
 end;
 
 create trigger if not exists audit_event_reject_update

@@ -54,6 +54,7 @@ class TaxEntrySemanticsTest {
                 null,
                 null,
                 null,
+                null,
                 null));
     List<BookkeepingPostingRejection.EntrySemanticsViolation> contributionViolations =
         validate(
@@ -81,6 +82,7 @@ class TaxEntrySemanticsTest {
                 new MonetaryAmount("EUR", "10000"),
                 null,
                 null,
+                null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                 null));
     List<BookkeepingPostingRejection.EntrySemanticsViolation> unknownCodeViolations =
@@ -91,6 +93,7 @@ class TaxEntrySemanticsTest {
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("missing-code")),
@@ -112,6 +115,7 @@ class TaxEntrySemanticsTest {
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
@@ -145,6 +149,7 @@ class TaxEntrySemanticsTest {
                 new MonetaryAmount("EUR", "10000"),
                 null,
                 null,
+                null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                 null));
     List<BookkeepingPostingRejection.EntrySemanticsViolation> expenseViolations =
@@ -175,6 +180,8 @@ class TaxEntrySemanticsTest {
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
                 null,
+                null,
+                null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                 null));
     List<BookkeepingPostingRejection.EntrySemanticsViolation> creditExpenseViolations =
@@ -185,6 +192,7 @@ class TaxEntrySemanticsTest {
                 new AccountCode("5000"),
                 new AccountCode("2100"),
                 new MonetaryAmount("EUR", "11200"),
+                null,
                 new TaxSelection(REGISTRATION_ID, new TaxCode("vat-nonrecoverable-expense")),
                 null));
 

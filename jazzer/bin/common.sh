@@ -11,7 +11,7 @@ readonly FG_REPO_ROOT="${FG_REPO_ROOT:-$(cd "${FG_JAZZER_DIR}/.." && pwd)}"
 readonly FG_GRADLEW="${FG_GRADLEW:-${FG_REPO_ROOT}/gradlew}"
 readonly FG_RUN_LOCK_SUPPORT="${FG_REPO_ROOT}/jazzer/bin/_run-lock-support"
 readonly FG_TOPOLOGY_READER="${FG_REPO_ROOT}/scripts/read-jazzer-topology.py"
-readonly FG_TOPOLOGY_FILE="${FG_REPO_ROOT}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json"
+readonly FG_RUN_TARGETS_FILE="${FG_REPO_ROOT}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-run-targets.json"
 readonly FG_TIMEOUT_GRACE_SECONDS="${FG_TIMEOUT_GRACE_SECONDS:-15}"
 readonly FG_TIMEOUT_STARTUP_SECONDS="${FG_TIMEOUT_STARTUP_SECONDS:-600}"
 readonly FG_WRAPPER_EXIT_STATUS_GRADLE_PROPERTY="fingrindJazzerWrapperExitStatusFile"
@@ -28,8 +28,8 @@ fg_wrapper_name=""
     printf '%s\n' "Missing Jazzer topology reader: ${FG_TOPOLOGY_READER}" >&2
     exit 1
 }
-[[ -f "${FG_TOPOLOGY_FILE}" ]] || {
-    printf '%s\n' "Missing Jazzer topology file: ${FG_TOPOLOGY_FILE}" >&2
+[[ -f "${FG_RUN_TARGETS_FILE}" ]] || {
+    printf '%s\n' "Missing Jazzer run-target catalog: ${FG_RUN_TARGETS_FILE}" >&2
     exit 1
 }
 
@@ -79,12 +79,8 @@ fg_restore_errexit() {
     set +e
 }
 
-fg_replayable_target_keys_from_topology_file() {
-    sed -n \
-        '/"harnesses"[[:space:]]*:/,/"runTargets"[[:space:]]*:/{
-            s/.*"key"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p
-        }' \
-        "${FG_TOPOLOGY_FILE}"
+fg_replayable_target_keys_from_catalog() {
+    fg_replayable_target_keys
 }
 
 fg_replayable_target_keys_shell_json() {
@@ -100,7 +96,7 @@ fg_replayable_target_keys_shell_json() {
             printf ', '
         fi
         printf '"%s"' "${target_key}"
-    done < <(fg_replayable_target_keys_from_topology_file)
+    done < <(fg_replayable_target_keys_from_catalog)
     printf ']'
 }
 
@@ -116,7 +112,7 @@ fg_render_replayable_target_keys_inline() {
             printf ', '
         fi
         printf '%s' "${target_key}"
-    done < <(fg_replayable_target_keys_from_topology_file)
+    done < <(fg_replayable_target_keys_from_catalog)
 }
 
 fg_print_replayable_target_key_help_block() {
@@ -128,7 +124,7 @@ fg_print_replayable_target_key_help_block() {
     while IFS= read -r target_key; do
         [[ -n "${target_key}" ]] || continue
         printf '  %s\n' "${target_key}"
-    done < <(fg_replayable_target_keys_from_topology_file)
+    done < <(fg_replayable_target_keys_from_catalog)
 }
 
 fg_emit_wrapper_failure_json() {

@@ -6,6 +6,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -22,6 +23,7 @@ public interface CliBookQueryJsonModels {
       @Nullable String financialPositionLineClassification,
       @Nullable String cashFlowAssetClassification,
       @Nullable String profitAndLossLineClassification,
+      @Nullable UnitOfMeasurePayload unitOfMeasure,
       String normalBalance,
       boolean active,
       String declaredAt)
@@ -39,8 +41,17 @@ public interface CliBookQueryJsonModels {
           requireOptionalText(cashFlowAssetClassification, "cashFlowAssetClassification");
       profitAndLossLineClassification =
           requireOptionalText(profitAndLossLineClassification, "profitAndLossLineClassification");
+      if (unitOfMeasure != null) {
+        new UnitOfMeasure(unitOfMeasure.token(), unitOfMeasure.quantityScale());
+      }
       normalBalance = requireText(normalBalance, "normalBalance");
       declaredAt = requireText(declaredAt, "declaredAt");
+    }
+  }
+
+  record UnitOfMeasurePayload(String token, int quantityScale) {
+    public UnitOfMeasurePayload {
+      new UnitOfMeasure(requireText(token, "token"), quantityScale);
     }
   }
 

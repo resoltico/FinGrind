@@ -13,6 +13,7 @@ import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanLedgerFactJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
@@ -267,7 +268,8 @@ class CliJsonModelValidationTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliPlanJsonModels.GroupLedgerFactPayload(LedgerFactKind.GROUP, "facts", List.of()));
+            new CliPlanLedgerFactJsonModels.GroupLedgerFactPayload(
+                LedgerFactKind.GROUP, "facts", List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () -> new CliPlanJsonModels.LedgerExecutionJournalPayload("start", "finish", List.of()));
@@ -811,6 +813,7 @@ class CliJsonModelValidationTest {
         "POSTABLE",
         null,
         "CURRENT_ASSET",
+        null,
         null,
         null,
         "DEBIT",

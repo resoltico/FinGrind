@@ -14,9 +14,11 @@ import dev.erst.fingrind.core.EconomicEventClass;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingEntryModeSemanticsViolations;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingEvidenceSemanticsViolations;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.InventoryEntrySemanticsViolations;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Shared admission and evidence semantics for published post-entry validation. */
@@ -27,6 +29,19 @@ final class PostEntryAdmissionSupport {
           Map.entry(BookkeepingEntryKind.SALE_ON_CREDIT, EconomicEventClass.CREDIT_SALE),
           Map.entry(BookkeepingEntryKind.PURCHASE_SETTLED, EconomicEventClass.SETTLED_PURCHASE),
           Map.entry(BookkeepingEntryKind.PURCHASE_ON_CREDIT, EconomicEventClass.CREDIT_PURCHASE),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
+              EconomicEventClass.INVENTORY_CAPITALIZATION),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+              EconomicEventClass.INVENTORY_CAPITALIZATION),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_WRITE_DOWN, EconomicEventClass.INVENTORY_WRITE_DOWN),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_SHRINKAGE, EconomicEventClass.INVENTORY_SHRINKAGE),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
+              EconomicEventClass.INVENTORY_COUNT_INCREASE),
           Map.entry(BookkeepingEntryKind.EXPENSE_SETTLED, EconomicEventClass.SETTLED_EXPENSE),
           Map.entry(BookkeepingEntryKind.EXPENSE_ON_CREDIT, EconomicEventClass.CREDIT_EXPENSE),
           Map.entry(BookkeepingEntryKind.RECEIPT, EconomicEventClass.AR_SETTLEMENT),
@@ -35,6 +50,15 @@ final class PostEntryAdmissionSupport {
           Map.entry(BookkeepingEntryKind.OWNER_WITHDRAWAL, EconomicEventClass.OWNER_WITHDRAWAL),
           Map.entry(BookkeepingEntryKind.OPENING_POSITION, EconomicEventClass.OPENING),
           Map.entry(BookkeepingEntryKind.REVERSAL, EconomicEventClass.REVERSAL));
+  private static final Set<BookkeepingEntryKind> TRADING_INVENTORY_ENTRY_KINDS =
+      Set.of(
+          BookkeepingEntryKind.PURCHASE_SETTLED,
+          BookkeepingEntryKind.PURCHASE_ON_CREDIT,
+          BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
+          BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+          BookkeepingEntryKind.INVENTORY_WRITE_DOWN,
+          BookkeepingEntryKind.INVENTORY_SHRINKAGE,
+          BookkeepingEntryKind.INVENTORY_COUNT_INCREASE);
 
   private PostEntryAdmissionSupport() {}
 
@@ -159,9 +183,33 @@ final class PostEntryAdmissionSupport {
   static boolean canResolveResolvedJournal(BookkeepingEntry entry) {
     return switch (entry) {
       case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.SaleSettled sale ->
-          sale.taxSelection() == null || sale.appliedTax() != null;
+          (sale.taxSelection() == null || sale.appliedTax() != null)
+              && (sale.inventoryRelief() == null || sale.resolvedInventoryCosting() != null);
       case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.SaleOnCredit sale ->
-          sale.taxSelection() == null || sale.appliedTax() != null;
+          (sale.taxSelection() == null || sale.appliedTax() != null)
+              && (sale.inventoryRelief() == null || sale.resolvedInventoryCosting() != null);
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.PurchaseSettled purchase ->
+          purchase.resolvedInventoryAcquisition() != null
+              && (purchase.taxSelection() == null || purchase.appliedTax() != null);
+      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.PurchaseOnCredit purchase ->
+          purchase.resolvedInventoryAcquisition() != null
+              && (purchase.taxSelection() == null || purchase.appliedTax() != null);
+      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+                  .InventoryCapitalizationSettled
+              capitalization ->
+          capitalization.taxSelection() == null || capitalization.appliedTax() != null;
+      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+                  .InventoryCapitalizationOnCredit
+              capitalization ->
+          capitalization.taxSelection() == null || capitalization.appliedTax() != null;
+      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+                  .InventoryShrinkage
+              shrinkage ->
+          shrinkage.resolvedInventoryDisposal() != null;
+      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+                  .InventoryCountIncrease
+              countIncrease ->
+          countIncrease.resolvedInventoryAcquisition() != null;
       case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.ExpenseSettled expense ->
           expense.taxSelection() == null || expense.appliedTax() != null;
       case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.ExpenseOnCredit expense ->
@@ -189,7 +237,7 @@ final class PostEntryAdmissionSupport {
               () ->
                   BookkeepingEntryModeSemanticsViolations.verbRequiresReceivableRole(
                       selectorField, selectorValue));
-      case PURCHASE_ON_CREDIT, EXPENSE_ON_CREDIT, PAYMENT ->
+      case PURCHASE_ON_CREDIT, INVENTORY_CAPITALIZATION_ON_CREDIT, EXPENSE_ON_CREDIT, PAYMENT ->
           appendViolationOnce(
               violations,
               "verb-requires-payable-role",
@@ -217,16 +265,13 @@ final class PostEntryAdmissionSupport {
       BookTemplateId bookTemplateId,
       String selectorField,
       String selectorValue) {
-    boolean inventoryPurchaseEntry =
-        entry instanceof dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.PurchaseSettled
-            || entry
-                instanceof dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.PurchaseOnCredit;
-    if (inventoryPurchaseEntry && bookTemplateId != BookTemplateId.OWNER_MANAGED_TRADING) {
+    boolean tradingInventoryEntry = TRADING_INVENTORY_ENTRY_KINDS.contains(entry.entryKind());
+    if (tradingInventoryEntry && bookTemplateId != BookTemplateId.OWNER_MANAGED_TRADING) {
       appendViolationOnce(
           violations,
           "verb-requires-trading-template",
           () ->
-              BookkeepingEntryModeSemanticsViolations.verbRequiresTradingTemplate(
+              InventoryEntrySemanticsViolations.verbRequiresTradingTemplate(
                   selectorField, selectorValue, bookTemplateId));
     }
 
@@ -246,14 +291,14 @@ final class PostEntryAdmissionSupport {
     if (bookTemplateId == BookTemplateId.OWNER_MANAGED_TRADING) {
       if (!hasInventoryRelief) {
         violations.add(
-            BookkeepingEntryModeSemanticsViolations.tradingSaleRequiresInventoryRelief(
+            InventoryEntrySemanticsViolations.tradingSaleRequiresInventoryRelief(
                 selectorField, selectorValue));
       }
       return;
     }
     if (hasInventoryRelief) {
       violations.add(
-          BookkeepingEntryModeSemanticsViolations.inventoryReliefRequiresTradingBook(
+          InventoryEntrySemanticsViolations.inventoryReliefRequiresTradingBook(
               selectorField, selectorValue, bookTemplateId));
     }
   }

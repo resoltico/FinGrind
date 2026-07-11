@@ -14,6 +14,7 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.time.Clock;
 import java.time.Instant;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Optional;
 
 /** Shared reachability scenarios reused by in-memory and SQLite-backed reachability contracts. */
@@ -31,6 +33,7 @@ public final class PostingRouteReachabilityTestSupport {
   public static final Instant DECLARED_AT = Instant.parse("2026-04-07T10:15:30Z");
   public static final AccountCode COUNTER_ACCOUNT_CODE = new AccountCode("1000");
   public static final AccountCode CANDIDATE_ACCOUNT_CODE = new AccountCode("9000");
+  public static final AccountCode PAYABLE_ACCOUNT_CODE = new AccountCode("2100");
 
   private PostingRouteReachabilityTestSupport() {}
 
@@ -39,13 +42,32 @@ public final class PostingRouteReachabilityTestSupport {
     return ProtocolCatalog.domain().requestSurface().reachabilityMatrix();
   }
 
-  /** Returns the accrual-basis book identity used to probe basis-neutral reachability doctrine. */
-  public static BookIdentity accrualBookIdentity() {
+  /**
+   * Returns the doctrine fixture used to probe one published reachability cell.
+   *
+   * <p>Inventory reversals remain reachable only through quantity-aware trading routes, so
+   * inventory cells ride a trading accrual doctrine while every other cell stays on the service
+   * accrual baseline.
+   */
+  public static BookIdentity bookIdentity(RequestSurfaceFacts.ReachabilityCellFacts cell) {
+    if (isInventoryCell(cell)) {
+      return new BookIdentity(
+          new EntityProfile(new BookEntityName("Acme Studio")),
+          BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL,
+          CurrencyUnit.of("EUR"),
+          FiscalYearStart.parse("01-01"));
+    }
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
+  }
+
+  /** Returns whether the published reachability cell targets inventory. */
+  public static boolean isInventoryCell(RequestSurfaceFacts.ReachabilityCellFacts cell) {
+    return "financial-position".equals(Objects.requireNonNull(cell, "cell").classificationFamily())
+        && FinancialPositionLineClassification.INVENTORY.wireValue().equals(cell.classification());
   }
 
   /** Produces a stable scenario token for one matrix cell. */
@@ -59,11 +81,13 @@ public final class PostingRouteReachabilityTestSupport {
 
   /** Declares the scenario's candidate account using the matrix cell taxonomy. */
   public static RegisteredAccount candidateAccount(RequestSurfaceFacts.ReachabilityCellFacts cell) {
+    AccountTaxonomy accountTaxonomy = taxonomy(cell);
     return new RegisteredAccount(
         CANDIDATE_ACCOUNT_CODE,
         new AccountName("Candidate"),
         cell.accountType(),
-        taxonomy(cell),
+        accountTaxonomy,
+        defaultUnitOfMeasure(accountTaxonomy).orElse(null),
         true,
         DECLARED_AT);
   }
@@ -80,6 +104,22 @@ public final class PostingRouteReachabilityTestSupport {
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.NON_CASH)),
+        true,
+        DECLARED_AT);
+  }
+
+  /** Declares the payable counter-account used by inventory purchase reversal seeds. */
+  public static RegisteredAccount payableAuxiliaryAccount() {
+    return new RegisteredAccount(
+        PAYABLE_ACCOUNT_CODE,
+        new AccountName("Payable"),
+        dev.erst.fingrind.core.AccountType.LIABILITY,
+        new AccountTaxonomy(
+            dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(FinancialPositionLineClassification.TRADE_PAYABLE),
+            Optional.empty(),
+            Optional.empty()),
         true,
         DECLARED_AT);
   }
@@ -119,5 +159,12 @@ public final class PostingRouteReachabilityTestSupport {
         Optional.empty(),
         Optional.empty(),
         Optional.of(ProfitAndLossLineClassification.fromWireValue(classificationWireValue)));
+  }
+
+  private static Optional<UnitOfMeasure> defaultUnitOfMeasure(AccountTaxonomy accountTaxonomy) {
+    return accountTaxonomy
+        .financialPositionLineClassification()
+        .filter(classification -> classification == FinancialPositionLineClassification.INVENTORY)
+        .map(ignored -> new UnitOfMeasure("unit", 0));
   }
 }

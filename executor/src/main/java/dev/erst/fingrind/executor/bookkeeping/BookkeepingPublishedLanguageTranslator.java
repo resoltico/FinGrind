@@ -1,18 +1,23 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.ClosedFiscalYear;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
-import dev.erst.fingrind.contract.bookkeeping.InventoryBalanceBelowZero;
+import dev.erst.fingrind.contract.bookkeeping.InventoryMovementPrecedesAccountHorizon;
+import dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero;
+import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingCost;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
+import dev.erst.fingrind.core.JournalEntry;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Translates between the public published language and the local bookkeeping model. */
 public final class BookkeepingPublishedLanguageTranslator {
@@ -21,15 +26,23 @@ public final class BookkeepingPublishedLanguageTranslator {
   /** Translates one published committed posting into the local bookkeeping model. */
   public static CommittedPosting fromPublished(PostingFact postingFact) {
     Objects.requireNonNull(postingFact, "postingFact");
+    BookkeepingEntry callerAuthoredEntry = postingFact.callerAuthoredEntry().orElse(null);
+    PostingLineageModel postingLineage = fromPublished(postingFact.postingLineage());
     return new CommittedPosting(
         postingFact.postingId(),
         postingFact.journalEntry(),
-        fromPublished(postingFact.postingLineage()),
+        postingLineage,
         postingFact.postingKind(),
         postingFact.postingOriginKind(),
         postingFact.evidence(),
         postingFact.provenance(),
-        postingFact.originatingEntry());
+        callerAuthoredEntry,
+        resolvedOriginatingEntry(
+            callerAuthoredEntry,
+            postingFact.postingKind(),
+            postingFact.postingOriginKind(),
+            postingFact.journalEntry(),
+            postingLineage));
   }
 
   /** Translates one published posting lineage into the bookkeeping model. */
@@ -50,6 +63,7 @@ public final class BookkeepingPublishedLanguageTranslator {
         account.accountName(),
         account.accountType(),
         account.accountTaxonomy(),
+        account.unitOfMeasure(),
         account.active(),
         account.declaredAt());
   }
@@ -65,7 +79,30 @@ public final class BookkeepingPublishedLanguageTranslator {
         posting.postingOriginKind(),
         posting.evidence(),
         posting.provenance(),
-        posting.originatingEntry());
+        posting.resolvedOriginatingEntry().orElse(posting.callerAuthoredEntry().orElse(null)));
+  }
+
+  private static @Nullable BookkeepingEntry resolvedOriginatingEntry(
+      @Nullable BookkeepingEntry callerAuthoredEntry,
+      dev.erst.fingrind.core.PostingKind postingKind,
+      dev.erst.fingrind.core.PostingOriginKind postingOriginKind,
+      JournalEntry journalEntry,
+      PostingLineageModel postingLineage) {
+    if (callerAuthoredEntry == null) {
+      return null;
+    }
+    try {
+      PostingOriginatingEntryValidator.requireResolvedMatches(
+          callerAuthoredEntry,
+          postingKind,
+          postingOriginKind,
+          journalEntry,
+          postingLineage,
+          "published posting");
+      return callerAuthoredEntry;
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+      return null;
+    }
   }
 
   /** Translates one bookkeeping opening outcome into the public response model. */
@@ -187,15 +224,28 @@ public final class BookkeepingPublishedLanguageTranslator {
       case BookkeepingPostingRejection.NonPostableAccount nonPostableAccount ->
           new PostingRejection.NonPostableAccount(
               nonPostableAccount.accountCode(), nonPostableAccount.accountNodeKind());
-      case InventoryBalanceBelowZeroViolation inventoryBalanceBelowZero ->
-          new InventoryBalanceBelowZero(
-              inventoryBalanceBelowZero.accountCode(),
-              inventoryBalanceBelowZero.field(),
-              inventoryBalanceBelowZero.effectiveDate(),
-              inventoryBalanceBelowZero.currentBalanceSide(),
-              inventoryBalanceBelowZero.currentNetAmount(),
-              inventoryBalanceBelowZero.requestedDecreaseAmount(),
-              inventoryBalanceBelowZero.resultingCreditBalance());
+      case InventoryMovementPrecedesAccountHorizonViolation horizonViolation ->
+          new InventoryMovementPrecedesAccountHorizon(
+              horizonViolation.accountCode(),
+              horizonViolation.field(),
+              horizonViolation.attemptedEffectiveDate(),
+              horizonViolation.accountHorizonEffectiveDate());
+      case InventoryQuantityBelowZeroViolation quantityViolation ->
+          new InventoryQuantityBelowZero(
+              quantityViolation.accountCode(),
+              quantityViolation.field(),
+              quantityViolation.effectiveDate(),
+              quantityViolation.quantityOnHand(),
+              quantityViolation.requestedDecreaseQuantity(),
+              quantityViolation.resultingShortfallQuantity());
+      case InventoryWriteDownExceedsCarryingCostViolation carryingCostViolation ->
+          new InventoryWriteDownExceedsCarryingCost(
+              carryingCostViolation.accountCode(),
+              carryingCostViolation.field(),
+              carryingCostViolation.effectiveDate(),
+              carryingCostViolation.carryingCostOnHand(),
+              carryingCostViolation.requestedCostDecrease(),
+              carryingCostViolation.resultingCostShortfall());
     };
   }
 

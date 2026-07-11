@@ -16,6 +16,15 @@ final class CliDiscoveryPostingModelGuidance {
         CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
   }
 
+  static String renderEntrySemantics(
+      ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
+      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+    return CliTextFormat.wrap(
+        CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postEntryShape, postingTemplate)
+            .semantics(),
+        CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+  }
+
   static List<List<String>> postingModelRows(
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
       ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,

@@ -14,6 +14,8 @@ import dev.erst.fingrind.executor.bookkeeping.FinancialPositionView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementRowView;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementView;
+import dev.erst.fingrind.executor.bookkeeping.InventoryValuationCriteria;
+import dev.erst.fingrind.executor.bookkeeping.InventoryValuationView;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.Comparator;
 import java.util.List;
@@ -35,10 +37,12 @@ public final class BookkeepingReportingService {
   private final IncomeStatementCalculator incomeStatementCalculator;
   private final CashFlowStatementCalculator cashFlowStatementCalculator;
   private final ChangesInEquityStatementCalculator changesInEquityCalculator;
+  private final BookkeepingReadStore bookStore;
 
   /** Creates one reporting service over the selected lifecycle and report-store seams. */
   public BookkeepingReportingService(BookkeepingReadStore bookStore) {
-    ReportingContext context = new ReportingContext(bookStore);
+    this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
+    ReportingContext context = new ReportingContext(this.bookStore);
     this.financialPositionCalculator = new FinancialPositionStatementCalculator(context);
     this.incomeStatementCalculator = new IncomeStatementCalculator(context);
     this.cashFlowStatementCalculator = new CashFlowStatementCalculator(context);
@@ -53,6 +57,16 @@ public final class BookkeepingReportingService {
   /** Computes one income statement for the selected bookkeeping book. */
   public IncomeStatementView incomeStatement(IncomeStatementCriteria criteria) {
     return incomeStatementCalculator.view(Objects.requireNonNull(criteria, "criteria"));
+  }
+
+  /** Computes exact inventory carrying values from the canonical durable movement ledger. */
+  public List<InventoryValuationView> inventoryValuation(InventoryValuationCriteria criteria) {
+    InventoryValuationCriteria requiredCriteria = Objects.requireNonNull(criteria, "criteria");
+    return InventoryValuationCalculator.calculate(
+        bookStore.requireInitializedBookIdentity(),
+        bookStore.allAccounts(),
+        bookStore.inventoryValuationMovements(requiredCriteria.effectiveDateAsOf()),
+        requiredCriteria);
   }
 
   /** Computes one cash-flow statement for the selected bookkeeping book. */

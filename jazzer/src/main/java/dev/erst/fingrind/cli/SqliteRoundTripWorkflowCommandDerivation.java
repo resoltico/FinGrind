@@ -96,7 +96,8 @@ final class SqliteRoundTripWorkflowCommandDerivation {
                         line.accountCode(),
                         line.side(),
                         dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(
-                            line.amount().money())))
+                            line.amount().money()),
+                        null))
             .toList());
   }
 

@@ -96,12 +96,12 @@ class CliOptionModesTest {
 
   @Test
   void resolvedReportOutput_rejectsCsvStdoutWhenPdfArtifactIsRequested() {
-    CliCommand.ReportOutput jsonWithPdf =
+    CliReportOutput jsonWithPdf =
         CliOptionModes.resolvedReportOutput(OutputMode.JSON, Path.of("reports/trial-balance.pdf"));
     assertEquals(OutputMode.JSON, jsonWithPdf.outputMode());
     assertEquals(Path.of("reports/trial-balance.pdf"), jsonWithPdf.pdfOutPath());
 
-    CliCommand.ReportOutput defaultTextWithPdf =
+    CliReportOutput defaultTextWithPdf =
         CliOptionModes.resolvedReportOutput(null, Path.of("reports/trial-balance.pdf"));
     assertEquals(OutputMode.TEXT, defaultTextWithPdf.outputMode());
     assertEquals(Path.of("reports/trial-balance.pdf"), defaultTextWithPdf.pdfOutPath());

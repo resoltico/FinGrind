@@ -87,7 +87,8 @@ public final class AccountClassificationReachability {
         requiredClassification.wireValue(),
         true,
         true,
-        !requiredClassification.reservedForCloseOperations(),
+        requiredClassification != FinancialPositionLineClassification.INVENTORY
+            && !requiredClassification.reservedForCloseOperations(),
         !requiredClassification.reservedForCloseOperations());
   }
 

@@ -31,6 +31,13 @@ class AccountClassificationReachabilityTest {
         cells.getLast());
     assertEquals(
         new AccountClassificationReachability.ReachabilityCell(
+            "financial-position", AccountType.ASSET, "INVENTORY", true, true, false, true),
+        cells.stream()
+            .filter(cell -> "INVENTORY".equals(cell.classification()))
+            .findFirst()
+            .orElseThrow());
+    assertEquals(
+        new AccountClassificationReachability.ReachabilityCell(
             "financial-position", AccountType.EQUITY, "RESULT_HOLDING", true, true, false, false),
         cells.stream()
             .filter(cell -> "RESULT_HOLDING".equals(cell.classification()))
@@ -59,6 +66,12 @@ class AccountClassificationReachabilityTest {
             Optional.empty(),
             Optional.empty(),
             Optional.of(ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION));
+    AccountTaxonomy inventoryTaxonomy =
+        new AccountTaxonomy(
+            AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(FinancialPositionLineClassification.INVENTORY),
+            Optional.empty());
 
     assertEquals(
         new AccountClassificationReachability.ReachabilityCell(
@@ -75,7 +88,9 @@ class AccountClassificationReachabilityTest {
             true),
         AccountClassificationReachability.reachabilityFor(expenseTaxonomy));
     assertTrue(AccountClassificationReachability.openingReachable(reserveTaxonomy));
+    assertTrue(AccountClassificationReachability.openingReachable(inventoryTaxonomy));
     assertFalse(AccountClassificationReachability.openingReachable(expenseTaxonomy));
+    assertFalse(AccountClassificationReachability.operationalJournalReachable(inventoryTaxonomy));
     assertTrue(AccountClassificationReachability.operationalJournalReachable(expenseTaxonomy));
     assertTrue(AccountClassificationReachability.reversalReachable(reserveTaxonomy));
   }

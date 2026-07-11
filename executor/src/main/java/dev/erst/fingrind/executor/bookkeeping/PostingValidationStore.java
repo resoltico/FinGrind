@@ -2,6 +2,8 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.executor.spi.AccountLookupStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
+import dev.erst.fingrind.executor.spi.InventoryMovementLookupStore;
+import dev.erst.fingrind.executor.spi.InventoryStateLookupStore;
 import dev.erst.fingrind.executor.spi.PostingLookupStore;
 import dev.erst.fingrind.executor.spi.PostingRangeStore;
 import dev.erst.fingrind.executor.spi.TaxRegistrationLookupStore;
@@ -10,6 +12,8 @@ import dev.erst.fingrind.executor.spi.TaxRegistrationLookupStore;
 public interface PostingValidationStore
     extends BookLifecycleReader,
         AccountLookupStore,
+        InventoryMovementLookupStore,
+        InventoryStateLookupStore,
         PostingLookupStore,
         PostingRangeStore,
         TaxRegistrationLookupStore {}

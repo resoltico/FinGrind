@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: SQLITE_SCHEMA_CORE_POSTING_APPLIED_TAX
-updated: "2026-07-04"
+updated: "2026-07-11"
 ---
 
 # SQLite Schema: Posting Applied Tax
@@ -51,7 +51,7 @@ create table if not exists posting_applied_tax (
 create trigger if not exists posting_applied_tax_validate_origin_on_insert
 before insert on posting_applied_tax
 begin
-    select raise(fail, 'posting_applied_tax requires sale or expense posting origin.')
+    select raise(fail, 'posting_applied_tax requires sale, purchase, capitalization, or expense posting origin.')
     where exists (
         select 1
         from posting_fact
@@ -60,6 +60,10 @@ begin
             and posting_fact.posting_origin_kind not in (
                 'SALE_SETTLED',
                 'SALE_ON_CREDIT',
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT',
                 'EXPENSE_SETTLED',
                 'EXPENSE_ON_CREDIT'
             )
@@ -73,7 +77,7 @@ begin
             and posting_fact.posting_origin_kind in ('SALE_SETTLED', 'SALE_ON_CREDIT')
             and new.application_kind <> 'OUTPUT_SALE'
     );
-    select raise(fail, 'expense tax application cannot use OUTPUT_SALE.')
+    select raise(fail, 'input tax application cannot use OUTPUT_SALE.')
     where exists (
         select 1
         from posting_fact
@@ -81,7 +85,11 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_origin_kind in (
                 'EXPENSE_SETTLED',
-                'EXPENSE_ON_CREDIT'
+                'EXPENSE_ON_CREDIT',
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT'
             )
             and new.application_kind = 'OUTPUT_SALE'
     );

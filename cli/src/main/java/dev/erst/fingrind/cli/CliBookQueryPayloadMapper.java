@@ -39,6 +39,10 @@ final class CliBookQueryPayloadMapper {
             .profitAndLossLineClassification()
             .map(value -> value.wireValue())
             .orElse(null),
+        account.unitOfMeasure() == null
+            ? null
+            : new CliBookQueryJsonModels.UnitOfMeasurePayload(
+                account.unitOfMeasure().token(), account.unitOfMeasure().quantityScale()),
         account.normalBalance().wireValue(),
         account.active(),
         account.declaredAt().toString());

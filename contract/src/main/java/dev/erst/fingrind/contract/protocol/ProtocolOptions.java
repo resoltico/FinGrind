@@ -69,6 +69,12 @@ public final class ProtocolOptions {
   /** Option selecting one as-of effective date for as-of report commands. */
   public static final String EFFECTIVE_DATE_AS_OF = "--effective-date-as-of";
 
+  /** Option selecting one inventory-valuation effective-date cutoff. */
+  public static final String AS_OF = "--as-of";
+
+  /** Option requesting ordered inventory movement detail with inventory valuation. */
+  public static final String MOVEMENTS = "--movements";
+
   /** Option selecting one comparative mode or explicit comparative range for supported reports. */
   public static final String COMPARATIVE = "--comparative";
 
@@ -80,6 +86,9 @@ public final class ProtocolOptions {
 
   /** Option selecting the accounting basis used when initializing one new book. */
   public static final String ACCOUNTING_BASIS = "--accounting-basis";
+
+  /** Option selecting the inventory costing doctrine required by trading-book initialization. */
+  public static final String INVENTORY_COSTING = "--inventory-costing";
 
   /** Option restoring the interactive context footer on supported text read commands. */
   public static final String WITH_CONTEXT = "--with-context";

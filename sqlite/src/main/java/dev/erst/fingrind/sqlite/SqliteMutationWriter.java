@@ -35,9 +35,15 @@ final class SqliteMutationWriter {
       statement.bindText(4, bookIdentity.bookDoctrine().accountingFrameworkPosition().wireValue());
       statement.bindText(5, bookIdentity.bookDoctrine().entityForm().wireValue());
       statement.bindText(6, bookIdentity.bookDoctrine().bookTemplateId().wireValue());
-      statement.bindText(7, bookIdentity.functionalCurrency().code());
-      statement.bindInt(8, bookIdentity.fiscalYearStart().month());
-      statement.bindInt(9, bookIdentity.fiscalYearStart().day());
+      bindOptionalText(
+          statement,
+          7,
+          bookIdentity.bookDoctrine().inventoryCostingDoctrine() == null
+              ? null
+              : bookIdentity.bookDoctrine().inventoryCostingDoctrine().wireValue());
+      statement.bindText(8, bookIdentity.functionalCurrency().code());
+      statement.bindInt(9, bookIdentity.fiscalYearStart().month());
+      statement.bindInt(10, bookIdentity.fiscalYearStart().day());
       statement.step();
     }
   }
@@ -87,8 +93,15 @@ final class SqliteMutationWriter {
               .profitAndLossLineClassification()
               .map(value -> value.wireValue())
               .orElse(null));
-      statement.bindInt(9, Boolean.compare(account.active(), false));
-      statement.bindText(10, CanonicalTemporalText.formatUtcInstant(account.declaredAt()));
+      bindOptionalText(
+          statement, 9, account.unitOfMeasure() == null ? null : account.unitOfMeasure().token());
+      if (account.unitOfMeasure() == null) {
+        statement.bindNull(10);
+      } else {
+        statement.bindInt(10, account.unitOfMeasure().quantityScale());
+      }
+      statement.bindInt(11, Boolean.compare(account.active(), false));
+      statement.bindText(12, CanonicalTemporalText.formatUtcInstant(account.declaredAt()));
       statement.step();
     }
   }

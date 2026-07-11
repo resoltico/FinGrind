@@ -1,15 +1,15 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: SQLITE_SCHEMA_CORE_POSTING_FACT
-updated: "2026-07-04"
+updated: "2026-07-11"
 ---
 
 # SQLite Schema: Posting Fact
 
-**Purpose**: Persisted posting identity, provenance, replay fingerprint, and posting admission gates.
+**Purpose**: Persisted posting identity, provenance, and replay fingerprint.
 **Source of truth**: [`book_schema.sql`](../../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql)
-**Generation**: This page is rendered from the canonical schema file by `scripts/render-sqlite-schema-doc.py`. **Coverage**: `posting_fact` and posting-fact admission triggers.
+**Generation**: This page is rendered from the canonical schema file by `scripts/render-sqlite-schema-doc.py`. **Coverage**: `posting_fact`.
 
 ```sql
 create table if not exists posting_fact (
@@ -28,6 +28,13 @@ create table if not exists posting_fact (
             'DIRECT_JOURNAL',
             'SALE_SETTLED',
             'SALE_ON_CREDIT',
+            'PURCHASE_SETTLED',
+            'PURCHASE_ON_CREDIT',
+            'INVENTORY_CAPITALIZATION_SETTLED',
+            'INVENTORY_CAPITALIZATION_ON_CREDIT',
+            'INVENTORY_WRITE_DOWN',
+            'INVENTORY_SHRINKAGE',
+            'INVENTORY_COUNT_INCREASE',
             'EXPENSE_SETTLED',
             'EXPENSE_ON_CREDIT',
             'RECEIPT',
@@ -52,6 +59,23 @@ create table if not exists posting_fact (
     ),
     entry_adjunct_amount_minor integer check (
         entry_adjunct_amount_minor is null or entry_adjunct_amount_minor > 0
+    ),
+    entry_quantity text check (
+        entry_quantity is null
+        or (
+            length(entry_quantity) between 1 and 64
+            and entry_quantity = trim(entry_quantity)
+            and entry_quantity not like '+%'
+            and entry_quantity not like '-%'
+            and entry_quantity not glob '*[^0-9.]*'
+        )
+    ),
+    entry_unit_cost_currency_code text check (
+        entry_unit_cost_currency_code is null
+        or entry_unit_cost_currency_code glob '[A-Z][A-Z][A-Z]'
+    ),
+    entry_unit_cost_minor integer check (
+        entry_unit_cost_minor is null or entry_unit_cost_minor > 0
     ),
     effective_date text not null check (
         effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
@@ -162,6 +186,9 @@ create table if not exists posting_fact (
             posting_origin_kind in (
                 'SALE_SETTLED',
                 'SALE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT',
+                'INVENTORY_WRITE_DOWN',
                 'EXPENSE_SETTLED',
                 'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
@@ -173,6 +200,52 @@ create table if not exists posting_fact (
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
             and entry_adjunct_amount_minor is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
+        )
+        or (
+            posting_origin_kind in (
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'INVENTORY_COUNT_INCREASE'
+            )
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
+            and entry_adjunct_account_code is null
+            and entry_amount_currency_code is null
+            and entry_amount_minor is null
+            and entry_adjunct_amount_minor is null
+            and entry_quantity is not null
+            and entry_unit_cost_currency_code is not null
+            and entry_unit_cost_minor is not null
+        )
+        or (
+            posting_origin_kind = 'INVENTORY_SHRINKAGE'
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
+            and entry_adjunct_account_code is null
+            and entry_amount_currency_code is null
+            and entry_amount_minor is null
+            and entry_adjunct_amount_minor is null
+            and entry_quantity is not null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
+        )
+        or (
+            posting_origin_kind in (
+                'SALE_SETTLED',
+                'SALE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT',
+                'INVENTORY_WRITE_DOWN',
+                'EXPENSE_SETTLED',
+                'EXPENSE_ON_CREDIT',
+                'OWNER_CONTRIBUTION',
+                'OWNER_WITHDRAWAL'
+            )
+            and entry_quantity is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
         )
         or (
             posting_origin_kind in ('RECEIPT', 'PAYMENT')
@@ -180,6 +253,9 @@ create table if not exists posting_fact (
             and entry_primary_credit_account_code is not null
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
+            and entry_quantity is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
             and (
                 (
                     entry_adjunct_account_code is null
@@ -205,42 +281,10 @@ create table if not exists posting_fact (
             and entry_amount_currency_code is null
             and entry_amount_minor is null
             and entry_adjunct_amount_minor is null
+            and entry_quantity is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
         )
     )
 ) strict;
-
-create trigger if not exists posting_fact_validate_opening_balance_window_on_insert
-before insert on posting_fact
-when new.posting_kind = 'OPENING_BALANCE'
-begin
-    select raise(fail, 'opening-balance postings must be committed before all other postings.')
-    where exists (
-        select 1
-        from posting_fact
-    );
-end;
-
-create trigger if not exists posting_fact_validate_closed_period_on_insert
-before insert on posting_fact
-when new.posting_kind not in ('INTERIM_RESULT_SWEEP', 'FISCAL_YEAR_CLOSE')
-begin
-    select raise(fail, 'posting effective date is already closed.')
-    where exists (
-        select 1
-        from interim_result_sweep
-        where interim_result_sweep.effective_date_to >= new.effective_date
-    );
-end;
-
-create trigger if not exists posting_fact_validate_generated_close_provenance_on_insert
-before insert on posting_fact
-when new.posting_kind in ('INTERIM_RESULT_SWEEP', 'FISCAL_YEAR_CLOSE')
-begin
-    select raise(fail, 'generated close postings must be system-authored.')
-    where new.actor_type <> 'SYSTEM';
-    select raise(fail, 'generated close postings must use the system source channel.')
-    where new.source_channel <> 'SYSTEM';
-    select raise(fail, 'generated close postings cannot reverse earlier postings.')
-    where new.prior_posting_id is not null or new.reason is not null;
-end;
 ```

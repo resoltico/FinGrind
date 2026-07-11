@@ -20,7 +20,8 @@ public record PostingCommand(
     AccountingEvidence evidence,
     RequestProvenance requestProvenance,
     SourceChannel sourceChannel,
-    @Nullable BookkeepingEntry originatingEntry)
+    @Nullable BookkeepingEntry callerAuthoredEntryOrNull,
+    @Nullable BookkeepingEntry resolvedOriginatingEntryOrNull)
     implements PostingRequestModel {
   /** Validates one bookkeeping posting command. */
   public PostingCommand {
@@ -31,8 +32,14 @@ public record PostingCommand(
     Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(requestProvenance, "requestProvenance");
     Objects.requireNonNull(sourceChannel, "sourceChannel");
-    PostingOriginatingEntryValidator.requireMatches(
-        originatingEntry,
+    PostingOriginatingEntryValidator.requireCallerAuthoredMatches(
+        callerAuthoredEntryOrNull,
+        postingKind,
+        postingOriginKind,
+        postingLineage,
+        "posting command");
+    PostingOriginatingEntryValidator.requireResolvedMatches(
+        resolvedOriginatingEntryOrNull,
         postingKind,
         postingOriginKind,
         journalEntry,
@@ -57,11 +64,17 @@ public record PostingCommand(
         evidence,
         requestProvenance,
         sourceChannel,
+        null,
         null);
   }
 
   @Override
   public Optional<BookkeepingEntry> callerAuthoredEntry() {
-    return Optional.ofNullable(originatingEntry);
+    return Optional.ofNullable(callerAuthoredEntryOrNull);
+  }
+
+  @Override
+  public Optional<BookkeepingEntry> resolvedOriginatingEntry() {
+    return Optional.ofNullable(resolvedOriginatingEntryOrNull);
   }
 }

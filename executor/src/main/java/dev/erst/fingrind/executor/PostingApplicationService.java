@@ -8,9 +8,13 @@ import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.EffectiveDateHorizonPolicy;
+import dev.erst.fingrind.core.JournalEntry;
+import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.PostingAccountStatePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
@@ -26,6 +30,7 @@ public final class PostingApplicationService {
   private final PostingValidationStore validationStore;
   private final BookkeepingPostingService bookkeepingPostingService;
   private final PostEntrySemanticsPolicy entryAcceptancePolicy;
+  private final PostingAccountStatePolicy postingAccountStatePolicy;
   private final java.time.Clock clock;
 
   /** Creates the posting application service with its application-owned seams. */
@@ -37,6 +42,7 @@ public final class PostingApplicationService {
     this.validationStore = Objects.requireNonNull(validationStore, "validationStore");
     this.clock = Objects.requireNonNull(clock, "clock");
     this.entryAcceptancePolicy = PostEntrySemanticsPolicy.currentKernel();
+    this.postingAccountStatePolicy = new PostingAccountStatePolicy();
     this.bookkeepingPostingService =
         new BookkeepingPostingService(
             this.validationStore,
@@ -60,7 +66,7 @@ public final class PostingApplicationService {
               accepted.effectiveDate(),
               resolvedJournal(
                   java.util.Objects.requireNonNullElse(
-                      postingCommand.originatingEntry(), command.entry()),
+                      postingCommand.resolvedOriginatingEntry().orElse(null), command.entry()),
                   command.evidence()));
       case PostingPreflightOutcome.Rejected rejected ->
           rejectedPreflight(
@@ -83,7 +89,7 @@ public final class PostingApplicationService {
               committed.idempotentReplay(),
               resolvedJournal(
                   java.util.Objects.requireNonNullElse(
-                      postingCommand.originatingEntry(), command.entry()),
+                      postingCommand.resolvedOriginatingEntry().orElse(null), command.entry()),
                   command.evidence()));
       case PostingCommitResult.Rejected rejected ->
           rejectedCommit(
@@ -130,9 +136,24 @@ public final class PostingApplicationService {
     if (futureDateRejection.isPresent()) {
       return futureDateRejection;
     }
-    return entryAcceptancePolicy
-        .rejectionFor(command, validationStore)
-        .map(BookkeepingPublishedLanguageTranslator::toPublished);
+    java.util.Optional<PostingRejection> semanticsRejection =
+        entryAcceptancePolicy
+            .rejectionFor(command, validationStore)
+            .map(BookkeepingPublishedLanguageTranslator::toPublished);
+    if (semanticsRejection.isPresent()) {
+      return semanticsRejection;
+    }
+    java.util.Optional<PostingRejection> declaredAccountRejection =
+        declaredAccountRejectionFor(command);
+    if (declaredAccountRejection.isPresent()) {
+      return declaredAccountRejection;
+    }
+    PostEntryResolutionSupport.ResolutionOutcome resolutionOutcome =
+        PostEntryResolutionSupport.resolve(command.entry(), validationStore);
+    if (resolutionOutcome.rejection().isPresent()) {
+      return resolutionOutcome.rejection().map(BookkeepingPublishedLanguageTranslator::toPublished);
+    }
+    return java.util.Optional.empty();
   }
 
   private PostingCommand localPostingCommand(PostEntryCommand command) {
@@ -158,5 +179,46 @@ public final class PostingApplicationService {
               new BookkeepingPostingRejection.PostingEffectiveDateInFuture(
                   exception.attemptedEffectiveDate(), exception.currentUtcDate())));
     }
+  }
+
+  private java.util.Optional<PostingRejection> declaredAccountRejectionFor(
+      PostEntryCommand command) {
+    java.util.Set<dev.erst.fingrind.core.AccountCode> referencedAccounts =
+        PostEntrySemanticContext.from(command.entry(), ProtocolCatalog.domain().requestSurface())
+            .referencedAccounts();
+    if (referencedAccounts.isEmpty()) {
+      return java.util.Optional.empty();
+    }
+    dev.erst.fingrind.core.CurrencyUnit currencyUnit =
+        validationStore.requireInitializedBookIdentity().functionalCurrency();
+    java.util.List<dev.erst.fingrind.core.AccountCode> orderedAccounts =
+        new java.util.ArrayList<>(referencedAccounts);
+    dev.erst.fingrind.core.AccountCode debitAccount = orderedAccounts.getFirst();
+    dev.erst.fingrind.core.AccountCode creditAccount =
+        orderedAccounts.size() > 1 ? orderedAccounts.get(1) : orderedAccounts.getFirst();
+    PostingCommand validationProbe =
+        new PostingCommand(
+            command.entry().postingKind(),
+            command.entry().postingOriginKind(),
+            new JournalEntry(
+                command.entry().effectiveDate(),
+                java.util.List.of(
+                    new JournalLine(
+                        debitAccount,
+                        JournalLine.EntrySide.DEBIT,
+                        Money.ofMinorUnits(currencyUnit, 1L)),
+                    new JournalLine(
+                        creditAccount,
+                        JournalLine.EntrySide.CREDIT,
+                        Money.ofMinorUnits(currencyUnit, 1L)))),
+            BookkeepingPublishedLanguageTranslator.fromPublished(command.entry().postingLineage()),
+            command.evidence(),
+            command.requestProvenance(),
+            command.sourceChannel(),
+            command.entry(),
+            null);
+    return postingAccountStatePolicy
+        .declaredAccountRejectionFor(validationProbe, validationStore)
+        .map(BookkeepingPublishedLanguageTranslator::toPublished);
   }
 }

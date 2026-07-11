@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=./common.sh
+. "${script_dir}/common.sh"
+
+fg_initialize_wrapper "$0"
+if fg_has_help_flag "$@"; then
+    cat <<'EOF'
+Usage: jazzer/bin/fuzz-inventory-costing-math [supported Gradle options]
+
+Launches the active inventory-costing-math Jazzer harness.
+EOF
+    fg_print_gradle_passthrough_help
+    exit 0
+fi
+fg_run_active_command "inventory-costing-math" "fuzzInventoryCostingMath" "$@"

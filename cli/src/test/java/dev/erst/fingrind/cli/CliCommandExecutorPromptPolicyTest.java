@@ -192,7 +192,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
             failureWriter(outputStream),
             workflow,
             new CliPdfReportExporter(new PdfReportService("FinGrind", "0.57.0", fixedClock())));
-    CliCommand.ReportOutput jsonOutput = new CliCommand.ReportOutput(OutputMode.JSON, null);
+    CliReportOutput jsonOutput = new CliReportOutput(OutputMode.JSON, null);
 
     assertPromptFailure(
         outputStream,

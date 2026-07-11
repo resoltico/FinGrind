@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
@@ -42,54 +43,59 @@ final class CliReportCommandExecutor {
   }
 
   int runAccountBalanceCommand(
-      BookAccess bookAccess, AccountBalanceQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, AccountBalanceQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.accountBalance());
   }
 
   int runTrialBalanceCommand(
-      BookAccess bookAccess, TrialBalanceQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, TrialBalanceQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.trialBalance());
   }
 
   int runAccountLedgerCommand(
-      BookAccess bookAccess, AccountLedgerQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, AccountLedgerQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.accountLedger());
   }
 
   int runPeriodSummaryCommand(
-      BookAccess bookAccess, PeriodSummaryQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, PeriodSummaryQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.periodSummary());
   }
 
   int runFinancialPositionCommand(
-      BookAccess bookAccess, FinancialPositionQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, FinancialPositionQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.financialPosition());
   }
 
   int runIncomeStatementCommand(
-      BookAccess bookAccess, IncomeStatementQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, IncomeStatementQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.incomeStatement());
   }
 
+  int runInventoryValuationCommand(
+      BookAccess bookAccess, InventoryValuationQuery query, CliReportOutput output) {
+    return runConfiguredReportCommand(bookAccess, query, output, handlers.inventoryValuation());
+  }
+
   int runCashFlowStatementCommand(
-      BookAccess bookAccess, CashFlowStatementQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, CashFlowStatementQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.cashFlowStatement());
   }
 
   int runChangesInEquityCommand(
-      BookAccess bookAccess, ChangesInEquityQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, ChangesInEquityQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.changesInEquity());
   }
 
   int runTaxObligationCommand(
-      BookAccess bookAccess, TaxObligationQuery query, CliCommand.ReportOutput output) {
+      BookAccess bookAccess, TaxObligationQuery query, CliReportOutput output) {
     return runConfiguredReportCommand(bookAccess, query, output, handlers.taxObligation());
   }
 
   private <QUERY, RESULT, REPORTED> int runConfiguredReportCommand(
       BookAccess bookAccess,
       QUERY query,
-      CliCommand.ReportOutput output,
+      CliReportOutput output,
       CliConfiguredReportHandler<QUERY, RESULT, REPORTED> handler) {
     return runReportCommand(
         bookAccess,
@@ -103,7 +109,7 @@ final class CliReportCommandExecutor {
 
   private <RESULT, REPORTED> int runReportCommand(
       BookAccess bookAccess,
-      CliCommand.ReportOutput output,
+      CliReportOutput output,
       Supplier<ContractDecision<RESULT>> resultSupplier,
       CliConfiguredReportHandler.ReportedValue<RESULT, REPORTED> reportedValue,
       Function<REPORTED, ReportModel> reportModelBuilder,
@@ -122,7 +128,7 @@ final class CliReportCommandExecutor {
 
   private <RESULT> int runPromptedReportCommand(
       BookAccess bookAccess,
-      CliCommand.ReportOutput output,
+      CliReportOutput output,
       Supplier<ContractDecision<RESULT>> resultSupplier,
       Function<RESULT, @Nullable Path> exportAction,
       BiConsumer<RESULT, @Nullable Path> writeResult,

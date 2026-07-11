@@ -7,13 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.InMemoryBookFixtureMutations;
 import dev.erst.fingrind.executor.InMemoryBookSession;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
@@ -114,14 +113,15 @@ class CliFuzzAccountLifecycleFixturesTest {
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
-                  AccountCode accountCode,
-                  AccountName accountName,
-                  AccountType accountType,
-                  AccountTaxonomy accountTaxonomy,
-                  Instant declaredAt) {
+                  AccountDeclaration declaration, Instant declaredAt) {
                 return new AccountDeclarationOutcome.Declared(
                     new RegisteredAccount(
-                        accountCode, accountName, accountType, accountTaxonomy, false, declaredAt));
+                        declaration.accountCode(),
+                        declaration.accountName(),
+                        declaration.accountType(),
+                        declaration.accountTaxonomy(),
+                        false,
+                        declaredAt));
               }
             },
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {},
@@ -138,17 +138,13 @@ class CliFuzzAccountLifecycleFixturesTest {
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
-                  AccountCode accountCode,
-                  AccountName accountName,
-                  AccountType accountType,
-                  AccountTaxonomy accountTaxonomy,
-                  Instant declaredAt) {
+                  AccountDeclaration declaration, Instant declaredAt) {
                 return new AccountDeclarationOutcome.Declared(
                     new RegisteredAccount(
-                        accountCode,
-                        accountName,
-                        accountType,
-                        accountTaxonomy,
+                        declaration.accountCode(),
+                        declaration.accountName(),
+                        declaration.accountType(),
+                        declaration.accountTaxonomy(),
                         true,
                         declaredAt.plusSeconds(1)));
               }
@@ -182,14 +178,15 @@ class CliFuzzAccountLifecycleFixturesTest {
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
-                  AccountCode accountCode,
-                  AccountName accountName,
-                  AccountType accountType,
-                  AccountTaxonomy accountTaxonomy,
-                  Instant declaredAt) {
+                  AccountDeclaration declaration, Instant declaredAt) {
                 RegisteredAccount account =
                     new RegisteredAccount(
-                        accountCode, accountName, accountType, accountTaxonomy, true, declaredAt);
+                        declaration.accountCode(),
+                        declaration.accountName(),
+                        declaration.accountType(),
+                        declaration.accountTaxonomy(),
+                        true,
+                        declaredAt);
                 return switch (declareCalls.getAndIncrement()) {
                   case 0 -> new AccountDeclarationOutcome.Renamed(account);
                   case 1 -> new AccountDeclarationOutcome.Unchanged(account);

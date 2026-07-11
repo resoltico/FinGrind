@@ -13,6 +13,8 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
@@ -74,6 +76,10 @@ interface CliBookReadWorkflow {
   /** Reports one income statement projection. */
   ContractDecision<IncomeStatementResult> incomeStatement(
       BookAccess bookAccess, IncomeStatementQuery query);
+
+  /** Reports exact per-account inventory valuation through an optional effective-date cutoff. */
+  ContractDecision<InventoryValuationResult> inventoryValuation(
+      BookAccess bookAccess, InventoryValuationQuery query);
 
   /** Reports one statement of cash receipts and payments projection. */
   ContractDecision<CashFlowStatementResult> cashFlowStatement(

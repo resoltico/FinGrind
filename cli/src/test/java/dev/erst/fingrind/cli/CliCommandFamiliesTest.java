@@ -18,8 +18,7 @@ class CliCommandFamiliesTest {
   void commandFamilies_preserveTypedStateAcrossSharedCommandShapes() {
     Path requestFile = Path.of("request.json");
     OutputMode outputMode = OutputMode.CSV;
-    CliCommand.ReportOutput reportOutput =
-        new CliCommand.ReportOutput(OutputMode.JSON, Path.of("report.pdf"));
+    CliReportOutput reportOutput = new CliReportOutput(OutputMode.JSON, Path.of("report.pdf"));
 
     CliBookRequestOutputModeCommand requestCommand =
         new CliBookRequestOutputModeCommand(BOOK_ACCESS, requestFile, outputMode) {
@@ -50,7 +49,7 @@ class CliCommandFamiliesTest {
               CliExecutionContext executionContext,
               BookAccess bookAccess,
               String query,
-              CliCommand.ReportOutput output) {
+              CliReportOutput output) {
             return 0;
           }
         };

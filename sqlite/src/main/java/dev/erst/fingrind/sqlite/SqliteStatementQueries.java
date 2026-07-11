@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityForm;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -38,6 +39,7 @@ final class SqliteStatementQueries {
       String accountingFrameworkPosition,
       String entityForm,
       String bookTemplateId,
+      @org.jspecify.annotations.Nullable String costingDoctrine,
       String functionalCurrencyCode,
       int fiscalYearStartMonth,
       int fiscalYearStartDay) {}
@@ -64,6 +66,7 @@ final class SqliteStatementQueries {
           SqlitePostingAttachments attachments = loadAttachments.load(postingId);
           return Optional.of(
               SqlitePostingMapper.committedPosting(
+                  activeDatabase,
                   statement,
                   attachments.lines(),
                   attachments.evidence(),
@@ -93,6 +96,7 @@ final class SqliteStatementQueries {
           return Optional.of(
               new StoredRequestPosting(
                   SqlitePostingMapper.committedPosting(
+                      activeDatabase,
                       statement,
                       attachments.lines(),
                       attachments.evidence(),
@@ -138,15 +142,29 @@ final class SqliteStatementQueries {
       return Optional.empty();
     }
     BookIdentityCoreRow coreRow = identityCoreRow.orElseThrow();
+    @org.jspecify.annotations.Nullable InventoryCostingDoctrine persistedCostingDoctrine =
+        coreRow.costingDoctrine() == null
+            ? null
+            : InventoryCostingDoctrine.fromWireValue(coreRow.costingDoctrine());
+    BookDoctrine bookDoctrine;
+    try {
+      bookDoctrine =
+          new BookDoctrine(
+              new AccountingKernelProfileId(coreRow.accountingKernelProfile()),
+              AccountingBasis.fromWireValue(coreRow.accountingBasis()),
+              AccountingFrameworkPosition.fromWireValue(coreRow.accountingFrameworkPosition()),
+              EntityForm.fromWireValue(coreRow.entityForm()),
+              BookTemplateId.fromWireValue(coreRow.bookTemplateId()),
+              persistedCostingDoctrine);
+    } catch (IllegalArgumentException exception) {
+      throw new IllegalStateException(
+          "Persisted SQLite book identity carries an inventory costing doctrine that does not match the selected book template.",
+          exception);
+    }
     return Optional.of(
         new BookIdentity(
             new EntityProfile(new BookEntityName(coreRow.entityName())),
-            new BookDoctrine(
-                new AccountingKernelProfileId(coreRow.accountingKernelProfile()),
-                AccountingBasis.fromWireValue(coreRow.accountingBasis()),
-                AccountingFrameworkPosition.fromWireValue(coreRow.accountingFrameworkPosition()),
-                EntityForm.fromWireValue(coreRow.entityForm()),
-                BookTemplateId.fromWireValue(coreRow.bookTemplateId())),
+            bookDoctrine,
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
             new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay())));
   }
@@ -242,9 +260,10 @@ final class SqliteStatementQueries {
                   SqlitePostingMapper.requiredText(statement, 3),
                   SqlitePostingMapper.requiredText(statement, 4),
                   SqlitePostingMapper.requiredText(statement, 5),
-                  SqlitePostingMapper.requiredText(statement, 6),
-                  SqlitePostingMapper.requiredInt(statement, 7),
-                  SqlitePostingMapper.requiredInt(statement, 8));
+                  statement.columnText(6),
+                  SqlitePostingMapper.requiredText(statement, 7),
+                  SqlitePostingMapper.requiredInt(statement, 8),
+                  SqlitePostingMapper.requiredInt(statement, 9));
           if (statement.step() != SqliteNativeResultCode.code("DONE")) {
             throw new IllegalStateException(
                 "SQLite book identity core query returned more than one row.");

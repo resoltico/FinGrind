@@ -315,8 +315,7 @@ final class CliSummaryReportArguments {
         requiredEffectiveDateTo,
         ProtocolOptions.PERIOD_START,
         ProtocolOptions.PERIOD_END);
-    CliCommand.ReportOutput resolvedOutput =
-        CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath);
+    CliReportOutput resolvedOutput = CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath);
     ComparativeSelection resolvedComparativeSelection =
         comparativeSelection == null ? ComparativeSelection.none() : comparativeSelection;
     return commandFactory.create(
@@ -342,6 +341,6 @@ final class CliSummaryReportArguments {
         LocalDate effectiveDateFrom,
         LocalDate effectiveDateTo,
         ComparativeSelection comparativeSelection,
-        CliCommand.ReportOutput output);
+        CliReportOutput output);
   }
 }

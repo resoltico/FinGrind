@@ -5,12 +5,22 @@ import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
 /** Closed family of public income-statement outcomes. */
-public sealed interface IncomeStatementResult
+public sealed interface IncomeStatementResult extends BookQueryReportResult<IncomeStatementReport>
     permits IncomeStatementResult.Reported, IncomeStatementResult.Rejected {
 
   /** Folds the closed result family without transport-layer pattern switching. */
   <T extends @Nullable Object> T fold(
       Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper);
+
+  @Override
+  default @Nullable IncomeStatementReport reported() {
+    return fold(Reported::report, rejected -> null);
+  }
+
+  @Override
+  default @Nullable BookQueryRejection rejection() {
+    return fold(reported -> null, Rejected::rejection);
+  }
 
   /** Successful income-statement result. */
   record Reported(IncomeStatementReport report) implements IncomeStatementResult {

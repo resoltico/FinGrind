@@ -155,6 +155,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
             "account-ledger",
             "period-summary",
             "financial-position",
+            "inventory-valuation",
             "income-statement",
             "cash-flow-statement",
             "changes-in-equity"),
@@ -186,6 +187,12 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
             .path("schema")
             .path("properties")
             .has("cashFlowAssetClassification"));
+    assertTrue(
+        requestShapes
+            .path("declareAccount")
+            .path("schema")
+            .path("properties")
+            .has("unitOfMeasure"));
     assertEquals(
         "https://json-schema.org/draft/2020-12/schema",
         requestShapes.path("schemaDialect").stringValue());

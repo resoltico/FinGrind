@@ -10,16 +10,33 @@ import java.util.Optional;
 import java.util.Set;
 
 /** Validates that every requested posting account is known and active. */
-final class PostingAccountStatePolicy {
-  private final NonNegativeInventoryBalancePolicy nonNegativeInventoryBalancePolicy =
-      new NonNegativeInventoryBalancePolicy();
-
-  Optional<BookkeepingPostingRejection> rejectionFor(
+public final class PostingAccountStatePolicy {
+  /** Returns the first declared-account rejection for one caller-authored posting request. */
+  public Optional<BookkeepingPostingRejection> declaredAccountRejectionFor(
       PostingRequestModel postingRequest, PostingValidationStore book) {
     Objects.requireNonNull(postingRequest, "postingRequest");
     Objects.requireNonNull(book, "book");
     Set<AccountCode> requestedAccounts = PostingRequestAccounts.requestedAccounts(postingRequest);
     Map<AccountCode, RegisteredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
+    return declaredAccountRejectionFor(requestedAccounts, declaredAccounts);
+  }
+
+  Optional<BookkeepingPostingRejection> rejectionFor(
+      AcceptedPosting postingRequest, PostingValidationStore book) {
+    Objects.requireNonNull(postingRequest, "postingRequest");
+    Objects.requireNonNull(book, "book");
+    Set<AccountCode> requestedAccounts = PostingRequestAccounts.requestedAccounts(postingRequest);
+    Map<AccountCode, RegisteredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
+    Optional<BookkeepingPostingRejection> declaredAccountRejection =
+        declaredAccountRejectionFor(requestedAccounts, declaredAccounts);
+    if (declaredAccountRejection.isPresent()) {
+      return declaredAccountRejection;
+    }
+    return Optional.empty();
+  }
+
+  private static Optional<BookkeepingPostingRejection> declaredAccountRejectionFor(
+      Set<AccountCode> requestedAccounts, Map<AccountCode, RegisteredAccount> declaredAccounts) {
     Set<BookkeepingPostingRejection.AccountStateViolation> violations = new LinkedHashSet<>();
     for (AccountCode accountCode : requestedAccounts) {
       RegisteredAccount account = declaredAccounts.get(accountCode);
@@ -41,6 +58,6 @@ final class PostingAccountStatePolicy {
       return Optional.of(
           new BookkeepingPostingRejection.AccountStateViolations(List.copyOf(violations)));
     }
-    return nonNegativeInventoryBalancePolicy.rejectionFor(postingRequest, declaredAccounts, book);
+    return Optional.empty();
   }
 }

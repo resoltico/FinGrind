@@ -2,11 +2,16 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryCosting;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryDisposal;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
@@ -30,9 +35,13 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.InventoryMovementKind;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.Quantity;
 import dev.erst.fingrind.core.RequestFingerprint;
+import dev.erst.fingrind.core.UnitOfMeasure;
+import dev.erst.fingrind.core.WeightedAverageCostingMath;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -41,6 +50,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -194,11 +204,13 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                       new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                           new AccountCode("1000"),
                           dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                          new MonetaryAmount("EUR", "1250")),
+                          new MonetaryAmount("EUR", "1250"),
+                          null),
                       new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                           new AccountCode("3000"),
                           dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                          new MonetaryAmount("EUR", "1250")))));
+                          new MonetaryAmount("EUR", "1250"),
+                          null))));
           assertRoundTripRetainedEntry(
               database,
               "posting-direct-journal-foreign-exchange",
@@ -233,7 +245,11 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("1400"),
                   new AccountCode("1000"),
+                  new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
                   new MonetaryAmount("EUR", "1250"),
+                  null,
+                  null,
+                  null,
                   null));
           assertRoundTripRetainedEntry(
               database,
@@ -242,7 +258,12 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   LocalDate.parse("2026-04-07"),
                   new AccountCode("1400"),
                   new AccountCode("2100"),
-                  new MonetaryAmount("EUR", "1250")));
+                  new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+                  new MonetaryAmount("EUR", "1250"),
+                  null,
+                  null,
+                  null,
+                  null));
           assertRoundTripRetainedEntry(
               database,
               "posting-sale-settled-inventory-relief",
@@ -254,7 +275,8 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   new InventoryRelief(
                       new AccountCode("1400"),
                       new AccountCode("5000"),
-                      new MonetaryAmount("EUR", "400")),
+                      new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+                  null,
                   null,
                   null,
                   null));
@@ -269,9 +291,24 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   new InventoryRelief(
                       new AccountCode("1400"),
                       new AccountCode("5000"),
-                      new MonetaryAmount("EUR", "400")),
+                      new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+                  null,
+                  null,
                   taxSelection("vat-standard-sale"),
                   appliedSaleTax("vat-standard-sale", "2100")));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-sale-on-credit-plain",
+              new BookkeepingEntry.SaleOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1100"),
+                  new AccountCode("4000"),
+                  new MonetaryAmount("EUR", "9200"),
+                  null,
+                  null,
+                  foreignExchangeDetails(),
+                  null,
+                  null));
           assertRoundTripRetainedEntry(
               database,
               "posting-expense-on-credit-taxed",
@@ -280,6 +317,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   new AccountCode("5000"),
                   new AccountCode("2100"),
                   new MonetaryAmount("EUR", "1210"),
+                  null,
                   taxSelection("vat-standard-expense"),
                   appliedExpenseTax("vat-standard-expense", "1300")));
           assertRoundTripRetainedEntry(
@@ -345,6 +383,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   new AccountCode("4000"),
                   new MonetaryAmount("EUR", "9200"),
                   null,
+                  null,
                   foreignExchangeDetails(),
                   null,
                   null));
@@ -369,6 +408,232 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                               new AccountCode("4000"),
                               dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
                               money("EUR", "12.50"))))));
+        });
+  }
+
+  @Test
+  void insertPostingFact_roundTripsOpeningPositionInventoryQuantity() {
+    Path bookPath = tempDirectory.resolve("posting-opening-position-inventory-quantity.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          SqliteStoreFixtureSupport.insertCanonicalInitializedBookMetadata(database);
+          SqliteStoreFixtureSupport.insertAccountRow(
+              database,
+              "1400",
+              "Inventory",
+              "ASSET",
+              SqlitePostingFactFixtureSupport.financialPositionTaxonomy(
+                  FinancialPositionLineClassification.INVENTORY),
+              1,
+              "2026-04-07T10:15:30Z");
+
+          String postingId = "posting-opening-position-inventory";
+          BookkeepingEntry.OpeningPosition openingPosition =
+              new BookkeepingEntry.OpeningPosition(
+                  LocalDate.parse("2026-04-07"),
+                  List.of(
+                      new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                          new AccountCode("1400"),
+                          dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                          new MonetaryAmount("EUR", "1250"),
+                          new dev.erst.fingrind.contract.bookkeeping.QuantityText("2")),
+                      new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                          new AccountCode("3000"),
+                          dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                          new MonetaryAmount("EUR", "1250"),
+                          null)));
+
+          assertRoundTripRetainedEntry(
+              database,
+              postingId,
+              openingPosition,
+              () ->
+                  SqliteInventoryCostingWriter.insertInventoryMovement(
+                      database,
+                      "movement-opening-position-inventory",
+                      new AccountCode("1400"),
+                      LocalDate.parse("2026-04-07"),
+                      InventoryMovementKind.OPENING,
+                      2L,
+                      1_250L,
+                      new PostingId(postingId)));
+        });
+  }
+
+  @Test
+  void readOpeningPosition_wrapsPersistedInventoryQuantityQueryFailure() {
+    Path bookPath =
+        tempDirectory.resolve("posting-opening-position-inventory-query-failure.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          SqliteStoreFixtureSupport.insertCanonicalInitializedBookMetadata(database);
+          String postingId = "posting-opening-position-query-failure";
+          assertRoundTripRetainedEntry(
+              database,
+              postingId,
+              new BookkeepingEntry.OpeningPosition(
+                  LocalDate.parse("2026-04-07"),
+                  List.of(
+                      new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                          new AccountCode("1000"),
+                          dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                          new MonetaryAmount("EUR", "1250"),
+                          null),
+                      new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                          new AccountCode("3000"),
+                          dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                          new MonetaryAmount("EUR", "1250"),
+                          null))));
+
+          SqliteStatementRedirectingDatabase failingDatabase =
+              new SqliteStatementRedirectingDatabase(
+                  database,
+                  sql ->
+                      database.prepare(
+                          SqliteInventoryCostingSql.LOAD_OPENING_INVENTORY_QUANTITIES_BY_POSTING_ID
+                                  .equals(sql)
+                              ? "select missing_column from missing_table"
+                              : sql));
+          IllegalStateException failure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      new SqlitePostingReader()
+                          .findOneCommittedPosting(
+                              failingDatabase,
+                              SqlitePostingSql.FIND_POSTING_BY_ID,
+                              statement -> statement.bindText(1, postingId)));
+
+          String message = Objects.requireNonNull(failure.getMessage());
+          assertTrue(
+              message.startsWith("Failed to read persisted opening inventory quantities."),
+              message);
+        });
+  }
+
+  @Test
+  void insertPostingFact_roundTripsForeignExchangeForEveryCreditSideVariant() {
+    Path bookPath = tempDirectory.resolve("posting-fact-credit-side-foreign-exchange.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          SqliteStoreFixtureSupport.insertCanonicalInitializedBookMetadata(database);
+
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-sale-on-credit-foreign-exchange",
+              new BookkeepingEntry.SaleOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1100"),
+                  new AccountCode("4000"),
+                  new MonetaryAmount("EUR", "9200"),
+                  null,
+                  null,
+                  foreignExchangeDetails(),
+                  null,
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-purchase-on-credit-foreign-exchange",
+              new BookkeepingEntry.PurchaseOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("2100"),
+                  new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+                  new MonetaryAmount("EUR", "9200"),
+                  null,
+                  foreignExchangeDetails(),
+                  null,
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-inventory-capitalization-on-credit-foreign-exchange",
+              new dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+                  .InventoryCapitalizationOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("2100"),
+                  new MonetaryAmount("EUR", "9200"),
+                  foreignExchangeDetails(),
+                  null,
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-expense-on-credit-foreign-exchange",
+              new BookkeepingEntry.ExpenseOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("5000"),
+                  new AccountCode("2100"),
+                  new MonetaryAmount("EUR", "9200"),
+                  foreignExchangeDetails(),
+                  null,
+                  null));
+        });
+  }
+
+  @Test
+  void insertPostingFact_roundTripsEveryInventoryMaintenanceVariant() {
+    Path bookPath = tempDirectory.resolve("posting-fact-inventory-maintenance-roundtrip.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          SqliteStoreFixtureSupport.insertCanonicalInitializedBookMetadata(database);
+
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-inventory-capitalization-settled",
+              new InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("1000"),
+                  new MonetaryAmount("EUR", "1210"),
+                  null,
+                  taxSelection("vat-standard-expense"),
+                  appliedExpenseTax("vat-standard-expense", "1300")));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-inventory-capitalization-on-credit",
+              new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("2100"),
+                  new MonetaryAmount("EUR", "1250"),
+                  null,
+                  null,
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-inventory-write-down",
+              new InventoryBookkeepingEntryVariants.InventoryWriteDown(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("6100"),
+                  new MonetaryAmount("EUR", "125")));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-inventory-shrinkage",
+              new InventoryBookkeepingEntryVariants.InventoryShrinkage(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("6200"),
+                  new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+                  null));
+          assertRoundTripRetainedEntry(
+              database,
+              "posting-inventory-count-increase",
+              new InventoryBookkeepingEntryVariants.InventoryCountIncrease(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1400"),
+                  new AccountCode("7100"),
+                  new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+                  new MonetaryAmount("EUR", "1250"),
+                  null));
         });
   }
 
@@ -459,7 +724,16 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
 
   private static void assertRoundTripRetainedEntry(
       SqliteNativeDatabase database, String postingId, BookkeepingEntry entry) {
+    assertRoundTripRetainedEntry(database, postingId, entry, () -> {});
+  }
+
+  private static void assertRoundTripRetainedEntry(
+      SqliteNativeDatabase database,
+      String postingId,
+      BookkeepingEntry entry,
+      Runnable afterJournalPersistence) {
     String token = postingId;
+    BookkeepingEntry resolvedEntry = resolvedEntryForPersistence(entry);
     dev.erst.fingrind.executor.bookkeeping.PostingLineageModel postingLineage =
         entry instanceof BookkeepingEntry.Reversal reversal
             ? dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.reversal(
@@ -468,18 +742,20 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
     CommittedPosting posting =
         new CommittedPosting(
             new PostingId(postingId),
-            entry.journalEntry(),
+            resolvedEntry.journalEntry(),
             postingLineage,
             entry.postingKind(),
             entry.postingOriginKind(),
             SqlitePostingFactFixtureSupport.accountingEvidence(token),
             committedProvenance(token),
-            entry);
+            entry,
+            resolvedEntry);
     RequestFingerprint requestFingerprint =
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64));
 
     SqliteMutationWriter.insertPostingFact(database, posting, requestFingerprint);
     SqliteMutationWriter.insertJournalLines(database, posting, SqliteCommitFaultHook.NONE);
+    afterJournalPersistence.run();
     CommittedPosting persisted =
         new SqlitePostingReader()
             .findOneCommittedPosting(
@@ -490,6 +766,106 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
 
     assertEquals(Optional.of(entry), persisted.callerAuthoredEntry());
     assertEquals(entry.postingOriginKind(), persisted.postingOriginKind());
+  }
+
+  private static BookkeepingEntry resolvedEntryForPersistence(BookkeepingEntry entry) {
+    return switch (entry) {
+      case BookkeepingEntry.PurchaseSettled purchase ->
+          new BookkeepingEntry.PurchaseSettled(
+              purchase.effectiveDate(),
+              purchase.inventoryAccountCode(),
+              purchase.cashAccountCode(),
+              purchase.quantity(),
+              purchase.unitCost(),
+              resolvedInventoryAcquisition(purchase.quantity(), purchase.unitCost()),
+              purchase.foreignExchangeDetails(),
+              null,
+              null);
+      case BookkeepingEntry.PurchaseOnCredit purchase ->
+          new BookkeepingEntry.PurchaseOnCredit(
+              purchase.effectiveDate(),
+              purchase.inventoryAccountCode(),
+              purchase.payableAccountCode(),
+              purchase.quantity(),
+              purchase.unitCost(),
+              resolvedInventoryAcquisition(purchase.quantity(), purchase.unitCost()),
+              purchase.foreignExchangeDetails(),
+              null,
+              null);
+      case BookkeepingEntry.SaleSettled sale when sale.inventoryRelief() != null ->
+          new BookkeepingEntry.SaleSettled(
+              sale.effectiveDate(),
+              sale.cashAccountCode(),
+              sale.revenueAccountCode(),
+              sale.amount(),
+              sale.inventoryRelief(),
+              resolvedInventoryCosting(sale.amount(), sale.inventoryRelief().quantity()),
+              sale.foreignExchangeDetails(),
+              sale.taxSelection(),
+              sale.appliedTax());
+      case BookkeepingEntry.SaleOnCredit sale when sale.inventoryRelief() != null ->
+          new BookkeepingEntry.SaleOnCredit(
+              sale.effectiveDate(),
+              sale.receivableAccountCode(),
+              sale.revenueAccountCode(),
+              sale.amount(),
+              sale.inventoryRelief(),
+              resolvedInventoryCosting(sale.amount(), sale.inventoryRelief().quantity()),
+              sale.foreignExchangeDetails(),
+              sale.taxSelection(),
+              sale.appliedTax());
+      case InventoryBookkeepingEntryVariants.InventoryShrinkage shrinkage ->
+          new InventoryBookkeepingEntryVariants.InventoryShrinkage(
+              shrinkage.effectiveDate(),
+              shrinkage.inventoryAccountCode(),
+              shrinkage.shrinkageLossAccountCode(),
+              shrinkage.quantity(),
+              resolvedInventoryDisposal(shrinkage.quantity()));
+      case InventoryBookkeepingEntryVariants.InventoryCountIncrease countIncrease ->
+          new InventoryBookkeepingEntryVariants.InventoryCountIncrease(
+              countIncrease.effectiveDate(),
+              countIncrease.inventoryAccountCode(),
+              countIncrease.countGainAccountCode(),
+              countIncrease.quantity(),
+              countIncrease.unitCost(),
+              resolvedInventoryAcquisition(countIncrease.quantity(), countIncrease.unitCost()));
+      default -> entry;
+    };
+  }
+
+  private static ResolvedInventoryAcquisition resolvedInventoryAcquisition(
+      dev.erst.fingrind.contract.bookkeeping.QuantityText quantity, MonetaryAmount unitCost) {
+    Quantity resolvedQuantity = resolvedQuantity(quantity);
+    MonetaryAmount acquisitionCost =
+        MonetaryAmount.of(
+            WeightedAverageCostingMath.acquire(
+                    WeightedAverageCostingMath.InventoryPool.zero(
+                        CurrencyUnit.of(unitCost.currencyCode()), resolvedQuantity.scale()),
+                    resolvedQuantity,
+                    unitCost.toMoney())
+                .costPool());
+    return new ResolvedInventoryAcquisition(resolvedQuantity, acquisitionCost, acquisitionCost);
+  }
+
+  private static ResolvedInventoryCosting resolvedInventoryCosting(
+      MonetaryAmount amount, dev.erst.fingrind.contract.bookkeeping.QuantityText quantity) {
+    Quantity resolvedQuantity = resolvedQuantity(quantity);
+    return new ResolvedInventoryCosting(amount.toMoney(), resolvedQuantity, amount.toMoney());
+  }
+
+  private static ResolvedInventoryDisposal resolvedInventoryDisposal(
+      dev.erst.fingrind.contract.bookkeeping.QuantityText quantity) {
+    Quantity resolvedQuantity = resolvedQuantity(quantity);
+    Money carryingCost = Money.parse("EUR", "12.50");
+    return new ResolvedInventoryDisposal(carryingCost, resolvedQuantity, carryingCost);
+  }
+
+  private static Quantity resolvedQuantity(
+      dev.erst.fingrind.contract.bookkeeping.QuantityText quantity) {
+    String value = quantity.value();
+    int decimalPointIndex = value.indexOf('.');
+    int scale = decimalPointIndex < 0 ? 0 : value.length() - decimalPointIndex - 1;
+    return quantity.resolve(new UnitOfMeasure("fixture-unit", scale));
   }
 
   private static CommittedProvenance committedProvenance(String token) {
@@ -514,7 +890,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             new MonetaryAmount("EUR", "9200"),
             LocalDate.parse("2026-04-06"),
             "ecb-spot"),
-        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+        ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
   }
 
   private static ForeignExchangeDetails reversalForeignExchangeDetails() {
@@ -526,7 +902,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             new MonetaryAmount("EUR", "1250"),
             LocalDate.parse("2026-04-06"),
             "ecb-spot"),
-        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+        ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
   }
 
   private static TaxSelection taxSelection(String taxCode) {

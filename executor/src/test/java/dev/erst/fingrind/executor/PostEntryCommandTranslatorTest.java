@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
@@ -39,6 +40,7 @@ class PostEntryCommandTranslatorTest {
                 null,
                 null,
                 null,
+                null,
                 null),
             accountingEvidence("recipe-cash-revenue"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-revenue"),
@@ -63,6 +65,7 @@ class PostEntryCommandTranslatorTest {
             accountingEvidence("recipe-cash-revenue"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-revenue"),
             SourceChannel.CLI,
+            command.entry(),
             command.entry()),
         PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
@@ -102,6 +105,7 @@ class PostEntryCommandTranslatorTest {
             accountingEvidence("recipe-cash-expense"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-cash-expense"),
             SourceChannel.CLI,
+            command.entry(),
             command.entry()),
         PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
@@ -141,6 +145,7 @@ class PostEntryCommandTranslatorTest {
             PostingApplicationServiceTestSupport.requestProvenance(
                 "idem-recipe-equity-contribution"),
             SourceChannel.CLI,
+            command.entry(),
             command.entry()),
         PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
@@ -178,6 +183,7 @@ class PostEntryCommandTranslatorTest {
             accountingEvidence("recipe-equity-withdrawal"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-recipe-equity-withdrawal"),
             SourceChannel.CLI,
+            command.entry(),
             command.entry()),
         PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
@@ -240,9 +246,35 @@ class PostEntryCommandTranslatorTest {
             accountingEvidence("reversal-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-adjustment"),
             SourceChannel.CLI,
+            command.entry(),
             PostingApplicationServiceTestSupport.resolvedReversalEntry(
                 "posting-1", "reverse erroneous entry", journalEntry)),
         PostEntryCommandTranslator.toPostingCommand(command, validationStore));
+  }
+
+  @Test
+  void toPostingCommand_rejectsEntriesThatRemainUnresolvedAfterApplicationChecks() {
+    PostEntryCommand command =
+        new PostEntryCommand(
+            new BookkeepingEntry.Reversal(
+                LocalDate.parse("2026-04-07"),
+                new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                    new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-missing")),
+                    new dev.erst.fingrind.core.ReversalReason("operator reversal")),
+                null,
+                null),
+            accountingEvidence("reversal-missing-target"),
+            PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-missing-target"),
+            SourceChannel.CLI);
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
+
+    assertEquals(
+        "Posting translation requires a resolvable entry after application rejection checks.",
+        failure.getMessage());
   }
 
   @Test
@@ -278,6 +310,7 @@ class PostEntryCommandTranslatorTest {
             PostingApplicationServiceTestSupport.requestProvenance(
                 "idem-opening-balance-adjustment"),
             SourceChannel.CLI,
+            command.entry(),
             command.entry()),
         PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
@@ -313,6 +346,7 @@ class PostEntryCommandTranslatorTest {
             accountingEvidence("correction-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-correction-adjustment"),
             SourceChannel.CLI,
+            command.entry(),
             command.entry()),
         PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
@@ -347,6 +381,7 @@ class PostEntryCommandTranslatorTest {
             accountingEvidence("direct-journal"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-direct-journal"),
             SourceChannel.CLI,
+            command.entry(),
             command.entry()),
         PostEntryCommandTranslator.toPostingCommand(command, EMPTY_VALIDATION_STORE));
   }
@@ -358,7 +393,7 @@ class PostEntryCommandTranslatorTest {
     for (JournalLine line : journalEntry.lines()) {
       balances.add(
           new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
-              line.accountCode(), line.side(), MonetaryAmount.of(line.amount().money())));
+              line.accountCode(), line.side(), MonetaryAmount.of(line.amount().money()), null));
     }
     return List.copyOf(balances);
   }

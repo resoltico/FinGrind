@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: ADR_ACCOUNTING_FOUNDATION
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, accounting foundation, roadmap, doctrine, evidence, business events, tax, fx, cash flow, disclosures]
   questions: ["what exactly must fingrind implement to reach a best in class accounting foundation", "what is fingrind's exact roadmap from the current bookkeeping kernel to best in class", "which bounded contexts are missing from fingrind today"]
@@ -14,6 +14,7 @@ route:
 accounting foundation, and the hard-break implementation sequence required to reach that target.
 **Companion documents**:
 - [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md)
+- [ADR_INVENTORY_COSTING.md](./ADR_INVENTORY_COSTING.md)
 - [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md)
 - [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md)
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md)
@@ -108,6 +109,11 @@ Must own:
 - inventory
 - payroll
 
+Current accepted design line:
+- inventory's first executable doctrine is one per-account perpetual moving weighted-average
+  costing context documented in [ADR_INVENTORY_COSTING.md](./ADR_INVENTORY_COSTING.md), with
+  typed commands, durable movement and on-hand state, executor admission, and conformance tests
+
 Completion gate:
 - operating flows create business events that publish accounting facts into the protected book
 - ledger users are not forced to emulate operations directly with raw journal requests
@@ -130,8 +136,8 @@ This order is deliberate:
 - business events must arrive before tax, FX, and subledgers can publish owned semantics cleanly
 - reporting overlays must not outrun the facts they need
 
-Today, steps 1 through 5 are implemented. Disclosure, operational subledgers, and any standards
-overlay remain future work.
+Today, steps 1 through 5 and the first owned operational subledger, inventory, are implemented.
+Disclosure, the remaining operational subledgers, and any standards overlay remain future work.
 
 ## Rules For Every Revision
 

@@ -11,31 +11,31 @@ final class MachineContractPostEntryComponentSchemas {
 
   static Map<String, Object> lineSchema() {
     return MachineContractSchemaSupport.objectSchema(
-        "Balanced journal line.", MachineContractPostEntryFieldSpecs.lineFields());
+        "Balanced journal line.", MachineContractPostEntryNestedFieldSpecs.lineFields());
   }
 
   static Map<String, Object> openingBalanceSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Opening balance inside the initial accounting position.",
-        MachineContractPostEntryFieldSpecs.openingBalanceFields());
+        MachineContractPostEntryNestedFieldSpecs.openingBalanceFields());
   }
 
   static Map<String, Object> taxSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Optional declared tax selector resolved through an owned tax registration.",
-        MachineContractPostEntryFieldSpecs.taxFields());
+        MachineContractPostEntryNestedFieldSpecs.taxFields());
   }
 
   static Map<String, Object> settlementAdjunctSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Optional settlement-side adjunct carried by receipt and payment requests.",
-        MachineContractPostEntryFieldSpecs.settlementAdjunctFields());
+        MachineContractPostEntryNestedFieldSpecs.settlementAdjunctFields());
   }
 
   static Map<String, Object> inventoryReliefSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Optional trading-sale inventory-relief facts that debit cost of sales and credit inventory as part of the same sale entry.",
-        MachineContractPostEntryFieldSpecs.inventoryReliefFields());
+        MachineContractPostEntryNestedFieldSpecs.inventoryReliefFields());
   }
 
   static Map<String, Object> foreignExchangeSchema() {
@@ -53,13 +53,13 @@ final class MachineContractPostEntryComponentSchemas {
   static Map<String, Object> provenanceSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Caller-supplied provenance captured before commit.",
-        MachineContractPostEntryFieldSpecs.provenanceFields());
+        MachineContractPostEntryNestedFieldSpecs.provenanceFields());
   }
 
   static Map<String, Object> evidenceSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "First-class source-document and approval references linked to this posting.",
-        MachineContractPostEntryFieldSpecs.evidenceFields());
+        MachineContractPostEntryEvidenceFieldSpecs.evidenceFields());
   }
 
   static Map<String, Object> evidenceSchema(
@@ -84,26 +84,26 @@ final class MachineContractPostEntryComponentSchemas {
   static Map<String, Object> sourceDocumentSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Retained source document linked to this posting.",
-        MachineContractPostEntryFieldSpecs.sourceDocumentFields());
+        MachineContractPostEntryEvidenceFieldSpecs.sourceDocumentFields());
   }
 
   static Map<String, Object> sourceDocumentSchema(
       RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts) {
     return MachineContractSchemaSupport.objectSchema(
         "Retained source document linked to this posting.",
-        MachineContractPostEntryFieldSpecs.sourceDocumentFields(entryKindFacts));
+        MachineContractPostEntryEvidenceFieldSpecs.sourceDocumentFields(entryKindFacts));
   }
 
   static Map<String, Object> approvalSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Retained approval linked to this posting.",
-        MachineContractPostEntryFieldSpecs.approvalFields());
+        MachineContractPostEntryEvidenceFieldSpecs.approvalFields());
   }
 
   static Map<String, Object> reversalSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Optional reversal target descriptor.",
-        MachineContractPostEntryFieldSpecs.reversalFields());
+        MachineContractPostEntryNestedFieldSpecs.reversalFields());
   }
 
   static MachineContractFieldSpec requiredEntryKindField(

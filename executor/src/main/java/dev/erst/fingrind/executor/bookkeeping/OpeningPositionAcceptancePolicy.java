@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountClassificationReachability;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -37,9 +38,13 @@ final class OpeningPositionAcceptancePolicy {
     for (AccountCode accountCode : requestedAccounts) {
       RegisteredAccount account =
           Objects.requireNonNull(declaredAccounts.get(accountCode), "account");
-      if (!AccountClassificationReachability.openingReachable(account.accountTaxonomy())) {
+      if (account.accountTaxonomy().financialPositionLineClassification().orElse(null)
+          == FinancialPositionLineClassification.INVENTORY) {
+        continue;
+      }
+      if (nominalAccount == null
+          && !AccountClassificationReachability.openingReachable(account.accountTaxonomy())) {
         nominalAccount = account;
-        break;
       }
     }
     if (nominalAccount == null) {

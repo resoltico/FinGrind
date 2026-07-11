@@ -67,7 +67,19 @@ final class RequestSurfaceTemporalContracts {
             "book-start",
             "current-book-horizon",
             "latest-posting-effective-date",
-            "no-postings"));
+            "no-postings"),
+        new RequestSurfaceFacts.TemporalScopeFacts(
+            TemporalScopeArchetype.INVENTORY_AS_OF_DATE,
+            List.of(ProtocolOptions.AS_OF),
+            "Inventory valuation as of",
+            "As of",
+            "As of",
+            "Point-in-time effective-date cutoff for canonical inventory-ledger replay. Supply --as-of to pin the cutoff explicitly, or omit it to include every durable inventory movement in the selected book.",
+            "selected-date",
+            "book-start",
+            "current-inventory-ledger-horizon",
+            "latest-inventory-movement-effective-date",
+            "no-inventory-movements"));
   }
 
   static List<RequestSurfaceFacts.CommandTemporalScopeFacts> commandTemporalScopes() {
@@ -95,6 +107,8 @@ final class RequestSurfaceTemporalContracts {
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
             OperationId.TRIAL_BALANCE, TemporalScopeArchetype.AS_OF_DATE),
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.FINANCIAL_POSITION, TemporalScopeArchetype.AS_OF_DATE));
+            OperationId.FINANCIAL_POSITION, TemporalScopeArchetype.AS_OF_DATE),
+        new RequestSurfaceFacts.CommandTemporalScopeFacts(
+            OperationId.INVENTORY_VALUATION, TemporalScopeArchetype.INVENTORY_AS_OF_DATE));
   }
 }

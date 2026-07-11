@@ -52,6 +52,18 @@ final class ContractPostingRequestTemplateFieldSupport {
     ContractPostingTemplateFieldRules.forbidOpeningBalances(fields.openingBalances());
   }
 
+  static void forbidInventoryMaintenanceFields(
+      ContractPostingRequestTemplateValidators.PostingTemplateFields fields, String owner) {
+    if (owner.startsWith("inventory")) {
+      return;
+    }
+    forbidTextFields(
+        fields,
+        TemplateTextField.WRITE_DOWN_LOSS,
+        TemplateTextField.SHRINKAGE_LOSS,
+        TemplateTextField.COUNT_GAIN);
+  }
+
   static void validateInventoryRelief(
       @Nullable InventoryReliefTemplateDescriptor inventoryRelief,
       String owner,
@@ -96,6 +108,9 @@ final class ContractPostingRequestTemplateFieldSupport {
     REVENUE("revenueAccountCode"),
     INVENTORY("inventoryAccountCode"),
     EXPENSE("expenseAccountCode"),
+    WRITE_DOWN_LOSS("writeDownLossAccountCode"),
+    SHRINKAGE_LOSS("shrinkageLossAccountCode"),
+    COUNT_GAIN("countGainAccountCode"),
     EQUITY("equityAccountCode");
 
     private final String fieldName;
@@ -116,6 +131,9 @@ final class ContractPostingRequestTemplateFieldSupport {
         case REVENUE -> fields.revenueAccountCode();
         case INVENTORY -> fields.inventoryAccountCode();
         case EXPENSE -> fields.expenseAccountCode();
+        case WRITE_DOWN_LOSS -> fields.writeDownLossAccountCode();
+        case SHRINKAGE_LOSS -> fields.shrinkageLossAccountCode();
+        case COUNT_GAIN -> fields.countGainAccountCode();
         case EQUITY -> fields.equityAccountCode();
       };
     }

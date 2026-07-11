@@ -53,6 +53,15 @@ public final class LedgerPlanFactMapper {
                 facts.add(
                     BookWorkflowFact.text(
                         "profitAndLossLineClassification", classification.wireValue())));
+    if (account.unitOfMeasure() != null) {
+      facts.add(
+          BookWorkflowFact.group(
+              "unitOfMeasure",
+              List.of(
+                  BookWorkflowFact.text("token", account.unitOfMeasure().token()),
+                  BookWorkflowFact.count(
+                      "quantityScale", account.unitOfMeasure().quantityScale()))));
+    }
     facts.add(BookWorkflowFact.text("normalBalance", account.normalBalance().wireValue()));
     facts.add(BookWorkflowFact.flag("active", account.active()));
     facts.add(BookWorkflowFact.text("declaredAt", account.declaredAt().toString()));

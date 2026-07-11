@@ -22,7 +22,9 @@ final class RequestSurfaceContracts {
   private static List<RequestSurfaceFacts.BookkeepingEntryKindFacts> bookkeepingEntryKinds() {
     return Stream.of(
             directAndSalesEntryKindFacts(),
+            InventoryRequestSurfaceContracts.purchaseEntryKindFacts(),
             expenseAndSettlementEntryKindFacts(),
+            InventoryRequestSurfaceContracts.maintenanceEntryKindFacts(),
             ownerAndTerminalEntryKindFacts())
         .flatMap(List::stream)
         .toList();
@@ -45,7 +47,7 @@ final class RequestSurfaceContracts {
                 List.of(),
                 "Source-document types remain caller-authored tokens constrained by the published token pattern for direct journals.",
                 "journal-support"),
-            "Direct journal writes accept caller-authored balanced lines when no typed business-event surface fits exactly. Raw admission rejects journals that shadow one typed event exactly, rejects bundled operational compounds, preserves genuine adjustments, and requires one cash line only on cash-basis books."),
+            "Direct journal writes accept caller-authored balanced lines when no typed business-event surface fits exactly. Raw admission rejects journals that shadow one typed event exactly, rejects bundled operational compounds, rejects every line resolving to an inventory account because raw journals do not own exact inventory quantity truth, preserves genuine non-inventory adjustments, and requires one cash line only on cash-basis books."),
         entryKindFacts(
             BookkeepingEntryKind.SALE_SETTLED,
             Set.of(
@@ -64,7 +66,7 @@ final class RequestSurfaceContracts {
                 List.of("cash-receipt", "bank-deposit", "card-settlement"),
                 "Accepted source-document types for settled-sale requests.",
                 "cash-receipt"),
-            "Settled-sale writes debit one cash-and-cash-equivalent asset account and credit one revenue account. Trading-template sale requests additionally carry inventoryRelief so the same event debits one cost-of-sales account and credits one non-cash inventory account, and the selected inventory account must remain non-negative after the request posts."),
+            "Settled-sale writes debit one cash-and-cash-equivalent asset account and credit one revenue account. Trading-template sale requests additionally carry inventoryRelief so the same event relieves one exact inventory quantity, debits one cost-of-sales account, credits one non-cash inventory account, and lets FinGrind derive cost of sales from the inventory pool."),
         entryKindFacts(
             BookkeepingEntryKind.SALE_ON_CREDIT,
             Set.of(
@@ -75,52 +77,20 @@ final class RequestSurfaceContracts {
                 ProtocolPostEntryFields.TopLevel.AMOUNT,
                 ProtocolPostEntryFields.TopLevel.EVIDENCE,
                 ProtocolPostEntryFields.TopLevel.PROVENANCE),
-            Set.of(ProtocolPostEntryFields.TopLevel.TAX),
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.TAX,
+                ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
             sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.ENUMERATED,
                 List.of("invoice"),
                 "Accepted source-document types for sale-on-credit requests.",
                 "invoice"),
-            "Sale-on-credit writes debit one trade receivable account and credit one revenue account. Trading-template sale requests additionally carry inventoryRelief so the same event debits one cost-of-sales account and credits one non-cash inventory account, and the selected inventory account must remain non-negative after the request posts."));
+            "Sale-on-credit writes debit one trade receivable account and credit one revenue account. Trading-template sale requests additionally carry inventoryRelief so the same event relieves one exact inventory quantity, debits one cost-of-sales account, credits one non-cash inventory account, and lets FinGrind derive cost of sales from the inventory pool."));
   }
 
   private static List<RequestSurfaceFacts.BookkeepingEntryKindFacts>
       expenseAndSettlementEntryKindFacts() {
     return List.of(
-        entryKindFacts(
-            BookkeepingEntryKind.PURCHASE_SETTLED,
-            Set.of(
-                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-                ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-                ProtocolPostEntryFields.TopLevel.AMOUNT,
-                ProtocolPostEntryFields.TopLevel.EVIDENCE,
-                ProtocolPostEntryFields.TopLevel.PROVENANCE),
-            Set.of(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
-            sourceDocumentTypes(
-                SourceDocumentTypePolicyMode.ENUMERATED,
-                List.of("purchase-receipt", "cash-disbursement", "bank-payment-confirmation"),
-                "Accepted source-document types for settled-purchase requests.",
-                "purchase-receipt"),
-            "Settled-purchase writes debit one inventory asset account and credit one cash-and-cash-equivalent asset account on trading-template books, restoring carrying inventory only through non-negative balances."),
-        entryKindFacts(
-            BookkeepingEntryKind.PURCHASE_ON_CREDIT,
-            Set.of(
-                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-                ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-                ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
-                ProtocolPostEntryFields.TopLevel.AMOUNT,
-                ProtocolPostEntryFields.TopLevel.EVIDENCE,
-                ProtocolPostEntryFields.TopLevel.PROVENANCE),
-            Set.of(),
-            sourceDocumentTypes(
-                SourceDocumentTypePolicyMode.ENUMERATED,
-                List.of("supplier-invoice"),
-                "Accepted source-document types for purchase-on-credit requests.",
-                "supplier-invoice"),
-            "Purchase-on-credit writes debit one inventory asset account and credit one trade payable account on trading-template books, restoring carrying inventory only through non-negative balances."),
         entryKindFacts(
             BookkeepingEntryKind.EXPENSE_SETTLED,
             Set.of(
@@ -150,7 +120,9 @@ final class RequestSurfaceContracts {
                 ProtocolPostEntryFields.TopLevel.AMOUNT,
                 ProtocolPostEntryFields.TopLevel.EVIDENCE,
                 ProtocolPostEntryFields.TopLevel.PROVENANCE),
-            Set.of(ProtocolPostEntryFields.TopLevel.TAX),
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.TAX,
+                ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE),
             sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.ENUMERATED,
                 List.of("bill"),
@@ -239,7 +211,7 @@ final class RequestSurfaceContracts {
                 List.of(),
                 "Source-document types remain caller-authored tokens constrained by the published token pattern for opening-position requests.",
                 "opening-balance-support"),
-            "Opening-position writes are reserved for the one-time adoption window before the first committed posting and may touch only asset, liability, or equity accounts."),
+            "Opening-position writes are reserved for the one-time adoption window before the first committed posting. Inventory opening balances must include exact quantity alongside carrying cost so FinGrind can initialize each inventory pool; other balances must omit quantity."),
         entryKindFacts(
             BookkeepingEntryKind.REVERSAL,
             Set.of(
@@ -263,7 +235,7 @@ final class RequestSurfaceContracts {
         1);
   }
 
-  private static RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts(
+  static RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts(
       BookkeepingEntryKind entryKind,
       Set<String> requiredTopLevelFields,
       Set<String> optionalTopLevelFields,
@@ -287,7 +259,7 @@ final class RequestSurfaceContracts {
         semantics);
   }
 
-  private static RequestSurfaceFacts.SourceDocumentTypeFacts sourceDocumentTypes(
+  static RequestSurfaceFacts.SourceDocumentTypeFacts sourceDocumentTypes(
       SourceDocumentTypePolicyMode mode,
       List<String> acceptedValues,
       String semantics,

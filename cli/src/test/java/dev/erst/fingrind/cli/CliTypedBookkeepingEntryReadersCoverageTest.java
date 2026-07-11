@@ -39,7 +39,8 @@ class CliTypedBookkeepingEntryReadersCoverageTest extends CliRequestReaderTestSu
                           "effectiveDate": "2026-04-07",
                           "inventoryAccountCode": "1400",
                           "cashAccountCode": "1000",
-                          "amount": %s
+                          "quantity": "4",
+                          "unitCost": %s
                         }
                         """
                             .formatted(eurMoneyJson("1000"))),
@@ -56,7 +57,8 @@ class CliTypedBookkeepingEntryReadersCoverageTest extends CliRequestReaderTestSu
                           "effectiveDate": "2026-04-07",
                           "inventoryAccountCode": "1400",
                           "payableAccountCode": "2100",
-                          "amount": %s
+                          "quantity": "4",
+                          "unitCost": %s
                         }
                         """
                             .formatted(eurMoneyJson("1000"))),
@@ -199,7 +201,7 @@ class CliTypedBookkeepingEntryReadersCoverageTest extends CliRequestReaderTestSu
                     BookkeepingEntryKind.OWNER_WITHDRAWAL))
             .equityAccountCode());
     assertEquals(
-        2,
+        3,
         assertInstanceOf(
                 BookkeepingEntry.OpeningPosition.class,
                 CliTypedBookkeepingEntryReaders.read(
@@ -211,17 +213,25 @@ class CliTypedBookkeepingEntryReadersCoverageTest extends CliRequestReaderTestSu
                             {
                               "accountCode": "1000",
                               "side": "DEBIT",
+                              "amount": %s,
+                              "quantity": "2"
+                            },
+                            {
+                              "accountCode": "1100",
+                              "side": "DEBIT",
                               "amount": %s
                             },
                             {
                               "accountCode": "3000",
                               "side": "CREDIT",
-                              "amount": %s
+                              "amount": %s,
+                              "quantity": null
                             }
                           ]
                         }
                         """
-                            .formatted(eurMoneyJson("1000"), eurMoneyJson("1000"))),
+                            .formatted(
+                                eurMoneyJson("1000"), eurMoneyJson("1000"), eurMoneyJson("2000"))),
                     BookkeepingEntryKind.OPENING_POSITION))
             .balances()
             .size());
@@ -244,6 +254,85 @@ class CliTypedBookkeepingEntryReadersCoverageTest extends CliRequestReaderTestSu
             .reversal()
             .reason()
             .value());
+  }
+
+  @Test
+  void read_supportsEveryInventoryMaintenanceEntryKind() throws IOException {
+    assertInstanceOf(
+        dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+            .InventoryCapitalizationSettled.class,
+        CliTypedBookkeepingEntryReaders.read(
+            rootNode(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "inventoryAccountCode": "1400",
+                  "cashAccountCode": "1000",
+                  "amount": %s
+                }
+                """
+                    .formatted(eurMoneyJson("1000"))),
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+            .InventoryCapitalizationOnCredit.class,
+        CliTypedBookkeepingEntryReaders.read(
+            rootNode(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "inventoryAccountCode": "1400",
+                  "payableAccountCode": "2100",
+                  "amount": %s
+                }
+                """
+                    .formatted(eurMoneyJson("1000"))),
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants.InventoryWriteDown
+            .class,
+        CliTypedBookkeepingEntryReaders.read(
+            rootNode(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "inventoryAccountCode": "1400",
+                  "writeDownLossAccountCode": "6100",
+                  "amount": %s
+                }
+                """
+                    .formatted(eurMoneyJson("1000"))),
+            BookkeepingEntryKind.INVENTORY_WRITE_DOWN));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants.InventoryShrinkage
+            .class,
+        CliTypedBookkeepingEntryReaders.read(
+            rootNode(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "inventoryAccountCode": "1400",
+                  "shrinkageLossAccountCode": "6200",
+                  "quantity": "2"
+                }
+                """),
+            BookkeepingEntryKind.INVENTORY_SHRINKAGE));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+            .InventoryCountIncrease.class,
+        CliTypedBookkeepingEntryReaders.read(
+            rootNode(
+                """
+                {
+                  "effectiveDate": "2026-04-07",
+                  "inventoryAccountCode": "1400",
+                  "countGainAccountCode": "7100",
+                  "quantity": "2",
+                  "unitCost": %s
+                }
+                """
+                    .formatted(eurMoneyJson("1000"))),
+            BookkeepingEntryKind.INVENTORY_COUNT_INCREASE));
   }
 
   private static ObjectNode rootNode(String json) throws IOException {

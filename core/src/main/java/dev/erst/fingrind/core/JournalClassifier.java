@@ -69,6 +69,14 @@ public final class JournalClassifier {
           Set.of(
               new AnchorEntry(AccountRole.EQUITY_DRAWS, EntrySide.DEBIT),
               new AnchorEntry(AccountRole.CASH, EntrySide.CREDIT)));
+  private static final Set<AnchorEntry> INVENTORY_EXPENSE_SIGNATURE =
+      Set.of(
+          new AnchorEntry(AccountRole.EXPENSE, EntrySide.DEBIT),
+          new AnchorEntry(AccountRole.INVENTORY, EntrySide.CREDIT));
+  private static final Set<AnchorEntry> INVENTORY_COUNT_INCREASE_SIGNATURE =
+      Set.of(
+          new AnchorEntry(AccountRole.INVENTORY, EntrySide.DEBIT),
+          new AnchorEntry(AccountRole.REVENUE, EntrySide.CREDIT));
   private static final List<TypedSignature> TYPED_SIGNATURES =
       List.of(
           SETTLED_SALE,
@@ -96,26 +104,33 @@ public final class JournalClassifier {
       JournalEntry journalEntry,
       AccountRoleLookup accountRoleLookup,
       EvidenceClass evidenceClass,
-      StructuralContext structural) {
+      StructuralContext structural,
+      java.util.Optional<EconomicEventClass> assertedTypedEventClass) {
     Objects.requireNonNull(journalEntry, "journalEntry");
     Objects.requireNonNull(accountRoleLookup, "accountRoleLookup");
     return classifyDerived(
         anchorSignature(journalEntry, accountRoleLookup),
         hasCashLine(journalEntry, accountRoleLookup),
         evidenceClass,
-        structural);
+        structural,
+        assertedTypedEventClass);
   }
 
   private static ClassificationResult classifyDerived(
       Set<AnchorEntry> anchorSignature,
       boolean hasCashLine,
       EvidenceClass evidenceClass,
-      StructuralContext structural) {
+      StructuralContext structural,
+      java.util.Optional<EconomicEventClass> assertedTypedEventClass) {
     Set<AnchorEntry> signature =
         Set.copyOf(Objects.requireNonNull(anchorSignature, "anchorSignature"));
     boolean requiredHasCashLine = hasCashLine;
     EvidenceClass requiredEvidenceClass = Objects.requireNonNull(evidenceClass, "evidenceClass");
     StructuralContext requiredStructural = Objects.requireNonNull(structural, "structural");
+    java.util.Optional<EconomicEventClass> requiredAssertedTypedEventClass =
+        java.util.Optional.ofNullable(
+            Objects.requireNonNull(assertedTypedEventClass, "assertedTypedEventClass")
+                .orElse(null));
     if (requiredStructural.reversesPriorPosting().isPresent()) {
       return new ClassificationResult(
           EconomicEventClass.REVERSAL,
@@ -130,6 +145,17 @@ public final class JournalClassifier {
           EconomicEventClass.OPENING,
           signature,
           Set.of(),
+          requiredHasCashLine,
+          requiredEvidenceClass,
+          requiredStructural);
+    }
+    if (requiredAssertedTypedEventClass.isPresent()) {
+      EconomicEventClass assertedEventClass = requiredAssertedTypedEventClass.orElseThrow();
+      requireAssertedTypedEventSignature(assertedEventClass, signature);
+      return new ClassificationResult(
+          assertedEventClass,
+          signature,
+          Set.of(assertedEventClass),
           requiredHasCashLine,
           requiredEvidenceClass,
           requiredStructural);
@@ -149,6 +175,26 @@ public final class JournalClassifier {
         requiredHasCashLine,
         requiredEvidenceClass,
         requiredStructural);
+  }
+
+  private static void requireAssertedTypedEventSignature(
+      EconomicEventClass assertedEventClass, Set<AnchorEntry> signature) {
+    boolean accepted =
+        switch (assertedEventClass) {
+          case INVENTORY_CAPITALIZATION ->
+              signature.equals(SETTLED_PURCHASE.anchorSignature)
+                  || signature.equals(CREDIT_PURCHASE.anchorSignature);
+          case INVENTORY_WRITE_DOWN, INVENTORY_SHRINKAGE ->
+              signature.equals(INVENTORY_EXPENSE_SIGNATURE);
+          case INVENTORY_COUNT_INCREASE -> signature.equals(INVENTORY_COUNT_INCREASE_SIGNATURE);
+          default -> false;
+        };
+    if (!accepted) {
+      throw new IllegalArgumentException(
+          "Asserted typed event "
+              + assertedEventClass.wireValue()
+              + " is incompatible with the resolved journal anchor signature.");
+    }
   }
 
   private static Set<AnchorEntry> anchorSignature(

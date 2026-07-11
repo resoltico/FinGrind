@@ -2,10 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountTaxonomy;
-import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -45,14 +41,9 @@ interface SqliteAdministrationCapabilityView
 
   @Override
   default AccountDeclarationOutcome declareAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountTaxonomy accountTaxonomy,
-      Instant declaredAt) {
+      AccountDeclaration declaration, Instant declaredAt) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
-        .declareAccount(accountCode, accountName, accountType, accountTaxonomy, declaredAt);
+    return storeMutationOperations().declareAccount(declaration, declaredAt);
   }
 
   @Override

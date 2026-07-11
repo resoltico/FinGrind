@@ -66,6 +66,7 @@ class CliFuzzTypedEntryAccountDeclarationsTest {
                         null,
                         null,
                         null,
+                        null,
                         null)));
     assertEquals(
         "settlement-and-equity declarations do not support: SaleSettled",

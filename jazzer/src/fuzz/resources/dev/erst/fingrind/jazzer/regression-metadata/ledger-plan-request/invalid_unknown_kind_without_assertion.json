@@ -4,7 +4,7 @@
   "coverageIntent": "unknown kind rejection without assertion fallthrough",
   "expectation": {
     "outcomeKind": "expected-invalid",
-    "message": "Unsupported value for kind: post_entry. Accepted values: ensure-book, declare-account, preflight-entry, record-sale-settled, record-sale-on-credit, record-purchase-settled, record-purchase-on-credit, record-expense-settled, record-expense-on-credit, record-receipt, record-payment, record-owner-contribution, record-owner-withdrawal, record-opening-position, record-reversal, post-entry, inspect-book, list-accounts, get-posting, list-postings, account-balance, assert.",
+    "message": "Unsupported value for kind: post_entry. Accepted values: ensure-book, declare-account, preflight-entry, record-sale-settled, record-sale-on-credit, record-purchase-settled, record-purchase-on-credit, record-inventory-capitalization-settled, record-inventory-capitalization-on-credit, record-inventory-write-down, record-inventory-shrinkage, record-inventory-count-increase, record-expense-settled, record-expense-on-credit, record-receipt, record-payment, record-owner-contribution, record-owner-withdrawal, record-opening-position, record-reversal, post-entry, inspect-book, list-accounts, get-posting, list-postings, account-balance, assert.",
     "details": {
       "type": "LEDGER_PLAN_REQUEST_UNPARSED"
     }

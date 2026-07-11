@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: SQLITE_SCHEMA_CORE_TAX_REGISTRATION
-updated: "2026-07-04"
+updated: "2026-07-11"
 ---
 
 # SQLite Schema: Tax Registration

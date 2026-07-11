@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
@@ -30,6 +31,8 @@ class LedgerPlanEntryFactMapperTest {
                 new MonetaryAmount("EUR", "1000"),
                 null,
                 null,
+                null,
+                null,
                 null)),
         "receivableAccountCode",
         "1100");
@@ -40,6 +43,7 @@ class LedgerPlanEntryFactMapperTest {
                 new AccountCode("5000"),
                 new AccountCode("2100"),
                 new MonetaryAmount("EUR", "1000"),
+                null,
                 null,
                 null)),
         "payableAccountCode",
@@ -72,11 +76,13 @@ class LedgerPlanEntryFactMapperTest {
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         JournalLine.EntrySide.DEBIT,
-                        new MonetaryAmount("EUR", "1000")),
+                        new MonetaryAmount("EUR", "1000"),
+                        null),
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         JournalLine.EntrySide.CREDIT,
-                        new MonetaryAmount("EUR", "1000"))))),
+                        new MonetaryAmount("EUR", "1000"),
+                        null)))),
         "openingBalance",
         "accountCode",
         "1000");
@@ -134,7 +140,8 @@ class LedgerPlanEntryFactMapperTest {
                 new InventoryRelief(
                     new AccountCode("1400"),
                     new AccountCode("5000"),
-                    new MonetaryAmount("EUR", "400")),
+                    new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+                null,
                 null,
                 null,
                 null));
@@ -168,7 +175,11 @@ class LedgerPlanEntryFactMapperTest {
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1400"),
                 new AccountCode("1000"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
                 new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
+                null,
                 null));
     List<BookWorkflowFact> purchaseOnCreditFacts =
         LedgerPlanEntryFactMapper.entryFacts(
@@ -176,7 +187,12 @@ class LedgerPlanEntryFactMapperTest {
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1400"),
                 new AccountCode("2100"),
-                new MonetaryAmount("EUR", "1000")));
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+                new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
+                null,
+                null));
     List<BookWorkflowFact> expenseSettledFacts =
         LedgerPlanEntryFactMapper.entryFacts(
             new BookkeepingEntry.ExpenseSettled(
@@ -201,6 +217,79 @@ class LedgerPlanEntryFactMapperTest {
     assertContainsText(purchaseOnCreditFacts, "payableAccountCode", "2100");
     assertContainsText(expenseSettledFacts, "expenseAccountCode", "5000");
     assertContainsText(expenseSettledFacts, "cashAccountCode", "1000");
+  }
+
+  @Test
+  void entryFacts_coverEveryInventoryAdjustmentVariant() {
+    LocalDate effectiveDate = LocalDate.parse("2026-04-07");
+
+    assertContainsText(
+        LedgerPlanEntryFactMapper.entryFacts(
+            new InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled(
+                effectiveDate,
+                new AccountCode("1400"),
+                new AccountCode("1000"),
+                new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
+                null)),
+        "cashAccountCode",
+        "1000");
+    assertContainsText(
+        LedgerPlanEntryFactMapper.entryFacts(
+            new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+                effectiveDate,
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
+                null)),
+        "payableAccountCode",
+        "2100");
+    assertContainsText(
+        LedgerPlanEntryFactMapper.entryFacts(
+            new InventoryBookkeepingEntryVariants.InventoryWriteDown(
+                effectiveDate,
+                new AccountCode("1400"),
+                new AccountCode("5100"),
+                new MonetaryAmount("EUR", "1000"))),
+        "writeDownLossAccountCode",
+        "5100");
+    assertContainsText(
+        LedgerPlanEntryFactMapper.entryFacts(
+            new InventoryBookkeepingEntryVariants.InventoryShrinkage(
+                effectiveDate,
+                new AccountCode("1400"),
+                new AccountCode("5200"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+                null)),
+        "shrinkageLossAccountCode",
+        "5200");
+    assertContainsText(
+        LedgerPlanEntryFactMapper.entryFacts(
+            new InventoryBookkeepingEntryVariants.InventoryCountIncrease(
+                effectiveDate,
+                new AccountCode("1400"),
+                new AccountCode("4900"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+                new MonetaryAmount("EUR", "1000"),
+                null)),
+        "countGainAccountCode",
+        "4900");
+    assertContainsGroupText(
+        LedgerPlanEntryFactMapper.entryFacts(
+            new BookkeepingEntry.OpeningPosition(
+                effectiveDate,
+                List.of(
+                    new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                        new AccountCode("1400"),
+                        JournalLine.EntrySide.DEBIT,
+                        new MonetaryAmount("EUR", "1000"),
+                        new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"))))),
+        "openingBalance",
+        "quantity",
+        "1");
   }
 
   private static void assertContainsText(

@@ -17,8 +17,13 @@ public final class ProtocolPostEntryFields {
         TopLevel.REVENUE_ACCOUNT_CODE,
         TopLevel.INVENTORY_ACCOUNT_CODE,
         TopLevel.EXPENSE_ACCOUNT_CODE,
+        TopLevel.WRITE_DOWN_LOSS_ACCOUNT_CODE,
+        TopLevel.SHRINKAGE_LOSS_ACCOUNT_CODE,
+        TopLevel.COUNT_GAIN_ACCOUNT_CODE,
         TopLevel.EQUITY_ACCOUNT_CODE,
         TopLevel.AMOUNT,
+        TopLevel.QUANTITY,
+        TopLevel.UNIT_COST,
         TopLevel.INVENTORY_RELIEF,
         TopLevel.SETTLEMENT_ADJUNCT,
         TopLevel.FOREIGN_EXCHANGE,
@@ -37,7 +42,11 @@ public final class ProtocolPostEntryFields {
 
   /** Returns opening-balance request fields in stable wire order. */
   public static List<String> openingBalanceFields() {
-    return List.of(OpeningBalance.ACCOUNT_CODE, OpeningBalance.SIDE, OpeningBalance.AMOUNT);
+    return List.of(
+        OpeningBalance.ACCOUNT_CODE,
+        OpeningBalance.SIDE,
+        OpeningBalance.AMOUNT,
+        OpeningBalance.QUANTITY);
   }
 
   /** Returns provenance request fields in stable wire order. */
@@ -95,7 +104,7 @@ public final class ProtocolPostEntryFields {
     return List.of(
         InventoryRelief.INVENTORY_ACCOUNT_CODE,
         InventoryRelief.COST_OF_SALES_ACCOUNT_CODE,
-        InventoryRelief.AMOUNT);
+        InventoryRelief.QUANTITY);
   }
 
   /** Returns request-side foreign-exchange fields in stable wire order. */
@@ -126,8 +135,13 @@ public final class ProtocolPostEntryFields {
     public static final String REVENUE_ACCOUNT_CODE = "revenueAccountCode";
     public static final String INVENTORY_ACCOUNT_CODE = "inventoryAccountCode";
     public static final String EXPENSE_ACCOUNT_CODE = "expenseAccountCode";
+    public static final String WRITE_DOWN_LOSS_ACCOUNT_CODE = "writeDownLossAccountCode";
+    public static final String SHRINKAGE_LOSS_ACCOUNT_CODE = "shrinkageLossAccountCode";
+    public static final String COUNT_GAIN_ACCOUNT_CODE = "countGainAccountCode";
     public static final String EQUITY_ACCOUNT_CODE = "equityAccountCode";
     public static final String AMOUNT = "amount";
+    public static final String QUANTITY = "quantity";
+    public static final String UNIT_COST = "unitCost";
     public static final String INVENTORY_RELIEF = "inventoryRelief";
     public static final String SETTLEMENT_ADJUNCT = "settlementAdjunct";
     public static final String FOREIGN_EXCHANGE = "foreignExchange";
@@ -155,6 +169,7 @@ public final class ProtocolPostEntryFields {
     public static final String ACCOUNT_CODE = ProtocolSharedRequestFields.ACCOUNT_CODE;
     public static final String SIDE = "side";
     public static final String AMOUNT = "amount";
+    public static final String QUANTITY = "quantity";
 
     private OpeningBalance() {}
   }
@@ -233,7 +248,7 @@ public final class ProtocolPostEntryFields {
   public static final class InventoryRelief {
     public static final String INVENTORY_ACCOUNT_CODE = "inventoryAccountCode";
     public static final String COST_OF_SALES_ACCOUNT_CODE = "costOfSalesAccountCode";
-    public static final String AMOUNT = "amount";
+    public static final String QUANTITY = "quantity";
 
     private InventoryRelief() {}
   }

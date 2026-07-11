@@ -176,7 +176,7 @@ final class CliOptionModes {
         outputMode, CliOutputModeDefaults.OutputSurface.DISCOVERY);
   }
 
-  static CliCommand.ReportOutput resolvedReportOutput(
+  static CliReportOutput resolvedReportOutput(
       @Nullable OutputMode outputMode, @Nullable Path pdfOutPath) {
     OutputMode resolvedOutputMode = resolvedOutputMode(outputMode);
     if (pdfOutPath != null && resolvedOutputMode == OutputMode.CSV) {
@@ -188,7 +188,7 @@ final class CliOptionModes {
               + ProtocolOptions.PDF_OUT
               + " is selected, accepted stdout modes are json or text.");
     }
-    return new CliCommand.ReportOutput(resolvedOutputMode, pdfOutPath);
+    return new CliReportOutput(resolvedOutputMode, pdfOutPath);
   }
 
   static Path requirePdfOutPath(

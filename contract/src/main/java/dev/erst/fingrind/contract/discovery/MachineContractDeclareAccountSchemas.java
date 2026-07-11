@@ -8,6 +8,8 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.Quantity;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.List;
 import java.util.Map;
 
@@ -105,7 +107,11 @@ final class MachineContractDeclareAccountSchemas {
             "Required when accountType is REVENUE or EXPENSE. Declares the account's canonical profit-and-loss taxonomy.",
             MachineContractScalarSchemas.enumStringSchema(
                 "Required when accountType is REVENUE or EXPENSE. Declares the account's canonical profit-and-loss taxonomy.",
-                ProfitAndLossLineClassification.wireValues())));
+                ProfitAndLossLineClassification.wireValues())),
+        MachineContractFieldSpec.conditional(
+            ProtocolDeclareAccountFields.UNIT_OF_MEASURE,
+            "Required when financialPositionLineClassification is INVENTORY and forbidden for every non-inventory account. Declares the inventory account's owned unit token and exact quantity scale.",
+            unitOfMeasureSchema()));
   }
 
   private static Map<String, Object> balanceSheetTaxonomyBranch() {
@@ -128,7 +134,9 @@ final class MachineContractDeclareAccountSchemas {
             ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION,
             MachineContractScalarSchemas.enumStringSchema(
                 "Required cash-flow asset taxonomy for ASSET accounts and forbidden for all other account types.",
-                CashFlowAssetClassification.wireValues())),
+                CashFlowAssetClassification.wireValues()),
+            ProtocolDeclareAccountFields.UNIT_OF_MEASURE,
+            unitOfMeasureSchema()),
         "required",
         List.of(ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION),
         "allOf",
@@ -155,7 +163,24 @@ final class MachineContractDeclareAccountSchemas {
                     "not",
                     MachineContractSchemaSupport.orderedMap(
                         "required",
-                        List.of(ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION))))));
+                        List.of(ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION)))),
+            MachineContractSchemaSupport.orderedMap(
+                "if",
+                MachineContractSchemaSupport.orderedMap(
+                    "properties",
+                    MachineContractSchemaSupport.orderedMap(
+                        ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
+                        MachineContractScalarSchemas.constSchema(
+                            FinancialPositionLineClassification.INVENTORY.wireValue(),
+                            "Inventory statement-of-financial-position classification."))),
+                "then",
+                MachineContractSchemaSupport.orderedMap(
+                    "required", List.of(ProtocolDeclareAccountFields.UNIT_OF_MEASURE)),
+                "else",
+                MachineContractSchemaSupport.orderedMap(
+                    "not",
+                    MachineContractSchemaSupport.orderedMap(
+                        "required", List.of(ProtocolDeclareAccountFields.UNIT_OF_MEASURE))))));
   }
 
   private static Map<String, Object> profitAndLossTaxonomyBranch() {
@@ -183,6 +208,32 @@ final class MachineContractDeclareAccountSchemas {
                     List.of(ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION)),
                 MachineContractSchemaSupport.orderedMap(
                     "required",
-                    List.of(ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION)))));
+                    List.of(ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION)),
+                MachineContractSchemaSupport.orderedMap(
+                    "required", List.of(ProtocolDeclareAccountFields.UNIT_OF_MEASURE)))));
+  }
+
+  private static Map<String, Object> unitOfMeasureSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Inventory account unit-of-measure payload with one stable token and exact quantity scale.",
+        MachineContractSchemaSupport.orderedMap(
+            ProtocolDeclareAccountFields.UnitOfMeasure.TOKEN,
+            MachineContractScalarSchemas.tokenStringSchema(
+                "Stable inventory unit-of-measure token.",
+                UnitOfMeasure.pattern(),
+                UnitOfMeasure.maxLength()),
+            ProtocolDeclareAccountFields.UnitOfMeasure.QUANTITY_SCALE,
+            MachineContractSchemaSupport.orderedMap(
+                "type",
+                "integer",
+                "description",
+                "Exact quantity scale owned by the inventory unit of measure.",
+                "minimum",
+                0,
+                "maximum",
+                Quantity.maxSupportedScale())),
+        List.of(
+            ProtocolDeclareAccountFields.UnitOfMeasure.TOKEN,
+            ProtocolDeclareAccountFields.UnitOfMeasure.QUANTITY_SCALE));
   }
 }

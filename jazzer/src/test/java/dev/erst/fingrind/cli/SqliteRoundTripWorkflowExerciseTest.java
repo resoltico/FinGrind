@@ -34,9 +34,8 @@ class SqliteRoundTripWorkflowExerciseTest {
             command, "reversal-target-not-found".getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
     assertEquals(PostingLifecycleStatus.BOOK_NOT_INITIALIZED, snapshot.uninitializedCommitStatus());
-    assertEquals(
-        PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND, snapshot.undeclaredCommitStatus());
-    assertEquals(PostingLifecycleStatus.NOT_RUN, snapshot.inactiveCommitStatus());
+    assertEquals(PostingLifecycleStatus.UNKNOWN_ACCOUNT, snapshot.undeclaredCommitStatus());
+    assertEquals(PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND, snapshot.inactiveCommitStatus());
     assertEquals(PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND, snapshot.finalCommitStatus());
     assertEquals(PostingLifecycleStatus.NOT_RUN, snapshot.reloadStatus());
     assertEquals(PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND, snapshot.duplicateStatus());

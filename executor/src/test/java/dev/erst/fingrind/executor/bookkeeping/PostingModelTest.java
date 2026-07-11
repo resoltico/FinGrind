@@ -96,10 +96,11 @@ class PostingModelTest {
                     accountingEvidence("idem-2"),
                     requestProvenance("idem-2"),
                     dev.erst.fingrind.core.SourceChannel.CLI,
-                    saleEntry()));
+                    saleEntry(),
+                    null));
 
     assertEquals(
-        "originatingEntry postingOriginKind must match the posting command.",
+        "callerAuthoredEntry postingOriginKind must match the posting command.",
         exception.getMessage());
   }
 
@@ -117,10 +118,11 @@ class PostingModelTest {
                     accountingEvidence("idem-kind-drift"),
                     requestProvenance("idem-kind-drift"),
                     dev.erst.fingrind.core.SourceChannel.CLI,
-                    saleEntry()));
+                    saleEntry(),
+                    null));
 
     assertEquals(
-        "originatingEntry postingKind must match the posting command.", exception.getMessage());
+        "callerAuthoredEntry postingKind must match the posting command.", exception.getMessage());
   }
 
   @Test
@@ -139,10 +141,11 @@ class PostingModelTest {
                     dev.erst.fingrind.core.PostingOriginKind.SALE_SETTLED,
                     accountingEvidence("idem-3"),
                     committedProvenance("idem-3"),
-                    saleEntry()));
+                    saleEntry(),
+                    null));
 
     assertEquals(
-        "originatingEntry postingLineage must match the committed posting lineage.",
+        "callerAuthoredEntry postingLineage must match the committed posting lineage.",
         exception.getMessage());
   }
 
@@ -161,10 +164,11 @@ class PostingModelTest {
                     new dev.erst.fingrind.core.RequestFingerprint(
                         dev.erst.fingrind.core.RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
                     committedProvenance("idem-reversal-kind"),
-                    reversalEntry()));
+                    reversalEntry(),
+                    null));
 
     assertEquals(
-        "originatingEntry postingLineage must match the posting draft lineage.",
+        "callerAuthoredEntry postingLineage must match the posting draft lineage.",
         exception.getMessage());
   }
 
@@ -184,10 +188,11 @@ class PostingModelTest {
                     dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                     accountingEvidence("idem-4"),
                     committedProvenance("idem-4"),
-                    reversalEntry()));
+                    reversalEntry(),
+                    null));
 
     assertEquals(
-        "originatingEntry postingLineage must match the committed posting lineage.",
+        "callerAuthoredEntry postingLineage must match the committed posting lineage.",
         exception.getMessage());
   }
 
@@ -207,10 +212,11 @@ class PostingModelTest {
                     dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                     accountingEvidence("idem-5"),
                     committedProvenance("idem-5"),
-                    reversalEntry()));
+                    reversalEntry(),
+                    null));
 
     assertEquals(
-        "originatingEntry postingLineage must match the committed posting lineage.",
+        "callerAuthoredEntry postingLineage must match the committed posting lineage.",
         exception.getMessage());
   }
 
@@ -228,7 +234,8 @@ class PostingModelTest {
             reversalEntry.postingOriginKind(),
             accountingEvidence("idem-6"),
             committedProvenance("idem-6"),
-            reversalEntry);
+            reversalEntry,
+            null);
 
     assertEquals(Optional.of(reversalEntry), posting.callerAuthoredEntry());
   }
@@ -266,6 +273,7 @@ class PostingModelTest {
         new AccountCode("1000"),
         new AccountCode("2000"),
         dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(Money.parse("EUR", "10.00")),
+        null,
         null,
         null,
         null,

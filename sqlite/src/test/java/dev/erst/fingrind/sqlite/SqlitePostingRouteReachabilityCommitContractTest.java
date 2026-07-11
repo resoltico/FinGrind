@@ -8,10 +8,11 @@ import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFact
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.CANDIDATE_ACCOUNT_CODE;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.DECLARED_AT;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.FIXED_CLOCK;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.accrualBookIdentity;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.candidateAccount;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.cellToken;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.counterAuxiliaryAccount;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.isInventoryCell;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.payableAuxiliaryAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -23,6 +24,7 @@ import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.PostingApplicationService;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.testsupport.PostingRouteReachabilityContract;
 import dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport;
@@ -56,13 +58,15 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(token, TEST_BOOK_KEY.toCharArray());
         SqlitePostingSession session = SqlitePostingSessions.open(bookPath(token), passphrase)) {
-      session.openBook(DECLARED_AT, accrualBookIdentity(), List.of());
-      declareReachabilityAccounts(session, cell);
+      session.openBook(
+          DECLARED_AT,
+          dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.bookIdentity(cell),
+          reachabilitySeedAccounts(cell));
       PostingApplicationService application =
           new PostingApplicationService(
               session, session, oneShotPostingId("posting-" + cellToken(cell)), FIXED_CLOCK);
 
-      PostEntryResult result = application.commit(openingPositionCommand(token));
+      PostEntryResult result = application.commit(openingPositionCommand(cell, token));
 
       if (cell.openingReachable()) {
         assertCommitted(result, "posting-" + cellToken(cell), token);
@@ -92,8 +96,10 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(token, TEST_BOOK_KEY.toCharArray());
         SqlitePostingSession session = SqlitePostingSessions.open(bookPath(token), passphrase)) {
-      session.openBook(DECLARED_AT, accrualBookIdentity(), List.of());
-      declareReachabilityAccounts(session, cell);
+      session.openBook(
+          DECLARED_AT,
+          dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.bookIdentity(cell),
+          reachabilitySeedAccounts(cell));
       PostingApplicationService application =
           new PostingApplicationService(
               session, session, oneShotPostingId("posting-" + cellToken(cell)), FIXED_CLOCK);
@@ -102,6 +108,22 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
 
       if (cell.operationalJournalReachable()) {
         assertCommitted(result, "posting-" + cellToken(cell), token);
+        return;
+      }
+      if (isInventoryCell(cell)) {
+        PostEntryResult.CommitRejected rejected =
+            assertInstanceOf(PostEntryResult.CommitRejected.class, result);
+        PostingRejection.EntrySemanticsViolations violations =
+            assertInstanceOf(PostingRejection.EntrySemanticsViolations.class, rejected.rejection());
+        assertEquals(1, violations.violations().size());
+        assertEquals("raw-journal-touches-inventory", violations.violations().getFirst().code());
+        assertEquals(
+            "entryKind '"
+                + BookkeepingEntryKind.DIRECT_JOURNAL.wireValue()
+                + "' contains lines[].accountCode '"
+                + CANDIDATE_ACCOUNT_CODE.value()
+                + "', which resolves to the inventory role. Raw direct-journal requests cannot create or change exact inventory quantity.",
+            violations.violations().getFirst().message());
         return;
       }
       assertEquals(
@@ -123,8 +145,10 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(token, TEST_BOOK_KEY.toCharArray());
         SqlitePostingSession session = SqlitePostingSessions.open(bookPath(token), passphrase)) {
-      session.openBook(DECLARED_AT, accrualBookIdentity(), List.of());
-      declareReachabilityAccounts(session, cell);
+      session.openBook(
+          DECLARED_AT,
+          dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.bookIdentity(cell),
+          reachabilitySeedAccounts(cell));
       PostingApplicationService application =
           new PostingApplicationService(
               session,
@@ -155,22 +179,27 @@ class SqlitePostingRouteReachabilityCommitContractTest extends SqlitePostingFact
     }
   }
 
-  private static void declareReachabilityAccounts(
-      SqlitePostingSession session, RequestSurfaceFacts.ReachabilityCellFacts cell) {
+  private static List<AccountDeclaration> reachabilitySeedAccounts(
+      RequestSurfaceFacts.ReachabilityCellFacts cell) {
     var counterAccount = counterAuxiliaryAccount();
     var candidateAccount = candidateAccount(cell);
-    session.declareAccount(
-        counterAccount.accountCode(),
-        counterAccount.accountName(),
-        counterAccount.accountType(),
-        counterAccount.accountTaxonomy(),
-        counterAccount.declaredAt());
-    session.declareAccount(
-        candidateAccount.accountCode(),
-        candidateAccount.accountName(),
-        candidateAccount.accountType(),
-        candidateAccount.accountTaxonomy(),
-        candidateAccount.declaredAt());
+    if (isInventoryCell(cell)) {
+      return List.of(
+          accountDeclaration(counterAccount),
+          accountDeclaration(candidateAccount),
+          accountDeclaration(payableAuxiliaryAccount()));
+    }
+    return List.of(accountDeclaration(counterAccount), accountDeclaration(candidateAccount));
+  }
+
+  private static AccountDeclaration accountDeclaration(
+      dev.erst.fingrind.executor.bookkeeping.RegisteredAccount account) {
+    return new AccountDeclaration(
+        account.accountCode(),
+        account.accountName(),
+        account.accountType(),
+        account.accountTaxonomy(),
+        account.unitOfMeasure());
   }
 
   private void assertCommitted(PostEntryResult result, String postingId, String token) {

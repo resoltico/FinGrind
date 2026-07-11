@@ -11,6 +11,7 @@ import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.util.List;
 import java.util.ListIterator;
 import org.jspecify.annotations.Nullable;
@@ -23,6 +24,7 @@ final class CliOpenBookArguments {
               ProtocolOptions.ENTITY_NAME,
               ProtocolOptions.BOOK_TEMPLATE_ID,
               ProtocolOptions.ACCOUNTING_BASIS,
+              ProtocolOptions.INVENTORY_COSTING,
               ProtocolOptions.FUNCTIONAL_CURRENCY,
               ProtocolOptions.FISCAL_YEAR_START,
               ProtocolOptions.OUTPUT),
@@ -40,9 +42,7 @@ final class CliOpenBookArguments {
         new OpenBookCommand(
             new BookIdentity(
                 new EntityProfile(requireEntityName(argumentValues.entityName)),
-                BookDoctrines.forTemplateAndBasis(
-                    requireBookTemplateId(argumentValues.bookTemplateId),
-                    requireAccountingBasis(argumentValues.accountingBasis)),
+                resolveBookDoctrine(argumentValues),
                 requireFunctionalCurrency(argumentValues.functionalCurrency),
                 requireFiscalYearStart(argumentValues.fiscalYearStart))),
         argumentValues.tightenParents,
@@ -78,6 +78,11 @@ final class CliOpenBookArguments {
               CliOptionValues.parseAccountingBasisOption(
                   CliOptionValues.requireValue(argumentIterator, ProtocolOptions.ACCOUNTING_BASIS),
                   ProtocolOptions.ACCOUNTING_BASIS);
+      case ProtocolOptions.INVENTORY_COSTING ->
+          argumentValues.inventoryCostingDoctrine =
+              CliOptionValues.parseInventoryCostingDoctrineOption(
+                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.INVENTORY_COSTING),
+                  ProtocolOptions.INVENTORY_COSTING);
       case ProtocolOptions.FUNCTIONAL_CURRENCY ->
           argumentValues.functionalCurrency =
               CliOptionValues.parseCurrencyUnitOption(
@@ -103,6 +108,7 @@ final class CliOpenBookArguments {
                   ProtocolOptions.ENTITY_NAME,
                   ProtocolOptions.BOOK_TEMPLATE_ID,
                   ProtocolOptions.ACCOUNTING_BASIS,
+                  ProtocolOptions.INVENTORY_COSTING,
                   ProtocolOptions.FUNCTIONAL_CURRENCY,
                   ProtocolOptions.FISCAL_YEAR_START,
                   ProtocolOptions.TIGHTEN_PARENTS,
@@ -137,6 +143,22 @@ final class CliOpenBookArguments {
     return accountingBasis;
   }
 
+  private static dev.erst.fingrind.core.BookDoctrine resolveBookDoctrine(
+      OpenBookArgumentValues argumentValues) {
+    BookTemplateId bookTemplateId = requireBookTemplateId(argumentValues.bookTemplateId);
+    AccountingBasis accountingBasis = requireAccountingBasis(argumentValues.accountingBasis);
+    try {
+      return BookDoctrines.forTemplateAndBasis(
+          bookTemplateId, accountingBasis, argumentValues.inventoryCostingDoctrine);
+    } catch (IllegalArgumentException exception) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.INVENTORY_COSTING,
+          java.util.Objects.requireNonNullElse(
+              exception.getMessage(), "Invalid inventory costing doctrine."),
+          exception);
+    }
+  }
+
   private static CurrencyUnit requireFunctionalCurrency(@Nullable CurrencyUnit functionalCurrency) {
     if (functionalCurrency == null) {
       throw CliArgumentValueParser.invalid(
@@ -160,6 +182,7 @@ final class CliOpenBookArguments {
     private @Nullable BookEntityName entityName;
     private @Nullable BookTemplateId bookTemplateId;
     private @Nullable AccountingBasis accountingBasis;
+    private @Nullable InventoryCostingDoctrine inventoryCostingDoctrine;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;
     private @Nullable OutputMode outputMode;

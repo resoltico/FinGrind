@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
@@ -22,10 +23,106 @@ final class TaxPostingResolution {
     return switch (entry) {
       case BookkeepingEntry.SaleSettled sale -> resolveSaleSettled(sale, store);
       case BookkeepingEntry.SaleOnCredit sale -> resolveSaleOnCredit(sale, store);
+      case BookkeepingEntry.PurchaseSettled purchase -> resolvePurchaseSettled(purchase, store);
+      case BookkeepingEntry.PurchaseOnCredit purchase -> resolvePurchaseOnCredit(purchase, store);
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled capitalization ->
+          resolveCapitalizationSettled(capitalization, store);
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit capitalization ->
+          resolveCapitalizationOnCredit(capitalization, store);
       case BookkeepingEntry.ExpenseSettled expense -> resolveExpenseSettled(expense, store);
       case BookkeepingEntry.ExpenseOnCredit expense -> resolveExpenseOnCredit(expense, store);
       default -> entry;
     };
+  }
+
+  static boolean requiresInventoryQuantityResolution(BookkeepingEntry entry) {
+    return switch (entry) {
+      case BookkeepingEntry.PurchaseSettled purchase -> purchase.taxSelection() != null;
+      case BookkeepingEntry.PurchaseOnCredit purchase -> purchase.taxSelection() != null;
+      default -> false;
+    };
+  }
+
+  private static BookkeepingEntry.PurchaseSettled resolvePurchaseSettled(
+      BookkeepingEntry.PurchaseSettled purchase, TaxRegistrationLookupStore store) {
+    if (purchase.taxSelection() == null || purchase.appliedTax() != null) {
+      return purchase;
+    }
+    var acquisition = purchase.resolvedInventoryAcquisition();
+    if (acquisition == null) {
+      throw new IllegalStateException(
+          "purchaseSettled tax resolution requires executor-owned quantity resolution.");
+    }
+    AppliedTax appliedTax =
+        resolvedInventoryInputTax(purchase.taxSelection(), store, acquisition.preTaxCost());
+    return new BookkeepingEntry.PurchaseSettled(
+        purchase.effectiveDate(),
+        purchase.inventoryAccountCode(),
+        purchase.cashAccountCode(),
+        purchase.quantity(),
+        purchase.unitCost(),
+        purchase.resolvedInventoryAcquisition(),
+        purchase.foreignExchangeDetails(),
+        purchase.taxSelection(),
+        appliedTax);
+  }
+
+  private static BookkeepingEntry.PurchaseOnCredit resolvePurchaseOnCredit(
+      BookkeepingEntry.PurchaseOnCredit purchase, TaxRegistrationLookupStore store) {
+    if (purchase.taxSelection() == null || purchase.appliedTax() != null) {
+      return purchase;
+    }
+    var acquisition = purchase.resolvedInventoryAcquisition();
+    if (acquisition == null) {
+      throw new IllegalStateException(
+          "purchaseOnCredit tax resolution requires executor-owned quantity resolution.");
+    }
+    AppliedTax appliedTax =
+        resolvedInventoryInputTax(purchase.taxSelection(), store, acquisition.preTaxCost());
+    return new BookkeepingEntry.PurchaseOnCredit(
+        purchase.effectiveDate(),
+        purchase.inventoryAccountCode(),
+        purchase.payableAccountCode(),
+        purchase.quantity(),
+        purchase.unitCost(),
+        purchase.resolvedInventoryAcquisition(),
+        purchase.foreignExchangeDetails(),
+        purchase.taxSelection(),
+        appliedTax);
+  }
+
+  private static InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled
+      resolveCapitalizationSettled(
+          InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled capitalization,
+          TaxRegistrationLookupStore store) {
+    if (capitalization.taxSelection() == null || capitalization.appliedTax() != null) {
+      return capitalization;
+    }
+    return new InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled(
+        capitalization.effectiveDate(),
+        capitalization.inventoryAccountCode(),
+        capitalization.cashAccountCode(),
+        capitalization.amount(),
+        capitalization.foreignExchangeDetails(),
+        capitalization.taxSelection(),
+        resolvedInventoryInputTax(capitalization.taxSelection(), store, capitalization.amount()));
+  }
+
+  private static InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit
+      resolveCapitalizationOnCredit(
+          InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit capitalization,
+          TaxRegistrationLookupStore store) {
+    if (capitalization.taxSelection() == null || capitalization.appliedTax() != null) {
+      return capitalization;
+    }
+    return new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+        capitalization.effectiveDate(),
+        capitalization.inventoryAccountCode(),
+        capitalization.payableAccountCode(),
+        capitalization.amount(),
+        capitalization.foreignExchangeDetails(),
+        capitalization.taxSelection(),
+        resolvedInventoryInputTax(capitalization.taxSelection(), store, capitalization.amount()));
   }
 
   private static BookkeepingEntry.SaleSettled resolveSaleSettled(
@@ -45,6 +142,7 @@ final class TaxPostingResolution {
         sale.revenueAccountCode(),
         sale.amount(),
         sale.inventoryRelief(),
+        sale.resolvedInventoryCosting(),
         sale.foreignExchangeDetails(),
         sale.taxSelection(),
         appliedTax(sale.taxSelection(), registration, code, sale.amount()));
@@ -67,6 +165,8 @@ final class TaxPostingResolution {
         sale.revenueAccountCode(),
         sale.amount(),
         sale.inventoryRelief(),
+        sale.resolvedInventoryCosting(),
+        sale.foreignExchangeDetails(),
         sale.taxSelection(),
         appliedTax(sale.taxSelection(), registration, code, sale.amount()));
   }
@@ -108,6 +208,7 @@ final class TaxPostingResolution {
         expense.expenseAccountCode(),
         expense.payableAccountCode(),
         expense.amount(),
+        expense.foreignExchangeDetails(),
         expense.taxSelection(),
         appliedTax(expense.taxSelection(), registration, code, expense.amount()));
   }
@@ -121,6 +222,21 @@ final class TaxPostingResolution {
                 new IllegalArgumentException(
                     "Unknown taxRegistrationId '%s'."
                         .formatted(selection.taxRegistrationId().value())));
+  }
+
+  private static AppliedTax resolvedInventoryInputTax(
+      TaxSelection selection, TaxRegistrationLookupStore store, MonetaryAmount preTaxCost) {
+    DeclaredTaxRegistration registration = requireRegistration(selection, store);
+    TaxCodeDefinition code = requireCode(registration, selection);
+    if (code.applicationKind() == TaxApplicationKind.OUTPUT_SALE) {
+      throw new IllegalArgumentException(
+          "Inventory input taxSelection cannot resolve to applicationKind OUTPUT_SALE.");
+    }
+    if (code.inclusionMode() != dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE) {
+      throw new IllegalArgumentException(
+          "Inventory unitCost and capitalization amount are pre-VAT inputs, so taxSelection must use EXCLUSIVE inclusionMode.");
+    }
+    return appliedTax(selection, registration, code, preTaxCost);
   }
 
   private static TaxCodeDefinition requireCode(

@@ -8,6 +8,7 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredArray;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.QuantityText;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
@@ -56,7 +57,9 @@ final class CliBookkeepingEntryStructureParser {
               MonetaryAmount.of(
                   CliJsonMoneyParser.requiredPositiveMoney(
                           openingBalanceObject, ProtocolPostEntryFields.OpeningBalance.AMOUNT)
-                      .money())));
+                      .money()),
+              optionalQuantity(
+                  openingBalanceObject, ProtocolPostEntryFields.OpeningBalance.QUANTITY)));
       index++;
     }
     return openingBalances;
@@ -75,6 +78,25 @@ final class CliBookkeepingEntryStructureParser {
   static MonetaryAmount requiredPositiveAmount(ObjectNode rootNode) {
     return MonetaryAmount.of(
         CliJsonMoneyParser.requiredPositiveMoney(rootNode, ProtocolPostEntryFields.TopLevel.AMOUNT)
+            .money());
+  }
+
+  static QuantityText requiredPositiveQuantity(ObjectNode rootNode) {
+    return new QuantityText(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.QUANTITY));
+  }
+
+  private static @org.jspecify.annotations.Nullable QuantityText optionalQuantity(
+      ObjectNode rootNode, String fieldName) {
+    JsonNode quantityNode = rootNode.get(fieldName);
+    return quantityNode == null || quantityNode.isNull()
+        ? null
+        : new QuantityText(requiredText(rootNode, fieldName));
+  }
+
+  static MonetaryAmount requiredPositiveUnitCost(ObjectNode rootNode) {
+    return MonetaryAmount.of(
+        CliJsonMoneyParser.requiredPositiveMoney(
+                rootNode, ProtocolPostEntryFields.TopLevel.UNIT_COST)
             .money());
   }
 

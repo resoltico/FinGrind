@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
-  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, interim-result-sweep, fiscal-year-close, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
+  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, inventory-valuation, interim-result-sweep, fiscal-year-close, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is interim-result-sweep documented", "where is fiscal-year-close documented", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
 ---
 
@@ -45,9 +45,11 @@ public final class BookTemplateAccounts
   owner-draws, result-holding, retained-accumulated, service-revenue, and operating-expense;
   the accrual variant of that same service template adds accounts-receivable,
   accounts-payable, sales-discount-allowance, settlement-fee, and bad-debt-write-off; and
-  `OWNER_MANAGED_TRADING`, whose cash basis seeds inventory, sales-revenue, sales-discount-allowance,
-  cost-of-sales, and the same owner-equity close targets, while the accrual trading variant adds
-  accounts-receivable, accounts-payable, settlement-fee, and bad-debt-write-off
+  `OWNER_MANAGED_TRADING`, whose cash basis seeds inventory with its `unit` unit of measure,
+  sales-revenue, sales-discount-allowance, cost-of-sales, inventory-write-down-loss,
+  inventory-shrinkage-loss, inventory-count-gain, and the same owner-equity close targets, while
+  the accrual trading variant adds accounts-receivable, accounts-payable, settlement-fee, and
+  bad-debt-write-off
 
 ## `BookReadService`
 
@@ -61,8 +63,8 @@ public final class BookReadService
 - Constructor: requires `BookkeepingReadStore`
 - Surface: `inspectBook()`, `listAccounts(...)`, `getPosting(...)`, `listPostings(...)`,
   `accountBalance(...)`, `trialBalance(...)`, `accountLedger(...)`, `periodSummary(...)`,
-  `financialPosition(...)`, `incomeStatement(...)`, `cashFlowStatement(...)`, and
-  `changesInEquity(...)`
+  `inventoryValuation(...)`, `financialPosition(...)`, `incomeStatement(...)`,
+  `cashFlowStatement(...)`, and `changesInEquity(...)`
 - Boundary: this is the anti-corruption layer between public read/report DTOs and the local
   bookkeeping inspection/query/report model served by one selected `BookkeepingReadStore`
 - Translators: the exported `BookInspectionPublishedLanguageTranslator` in the `executor` package
@@ -107,11 +109,15 @@ public record DeclareAccountCommand(
     AccountCode accountCode,
     AccountName accountName,
     AccountType accountType,
-    AccountTaxonomy accountTaxonomy)
+    AccountTaxonomy accountTaxonomy,
+    @Nullable UnitOfMeasure unitOfMeasure)
 ```
 
 - Purpose: keep account-registry writes typed at the contract boundary, including explicit chart
-  classification, declared chart hierarchy, and statement-line taxonomy
+  classification, declared chart hierarchy, statement-line taxonomy, and the inventory account's
+  owned unit token plus exact quantity scale
+- Validation: inventory account declarations require `unitOfMeasure`, while every non-inventory
+  declaration forbids it
 
 ## `DeclaredAccount`
 
@@ -124,12 +130,13 @@ public record DeclaredAccount(
     AccountName accountName,
     AccountType accountType,
     AccountTaxonomy accountTaxonomy,
+    @Nullable UnitOfMeasure unitOfMeasure,
     boolean active,
     Instant declaredAt)
 ```
 
 - Purpose: represent one declared account independently of CLI or SQLite concerns, including its
-  immutable account classification and taxonomy
+  immutable account classification, taxonomy, and any owned inventory unit metadata
 - Derived fact: `normalBalance()` remains part of the public response surface, but it is derived
   from `accountType` plus declared classification through `AccountTaxonomyDoctrine`
 
@@ -164,8 +171,10 @@ public record ClosedFiscalYear(...)
 public record OpenBookCommand(BookIdentity bookIdentity)
 ```
 
-- Purpose: require entity name, functional currency, and fiscal-year anchor at initialization time
-- Validation: rejects `null` book identity
+- Purpose: require entity name, functional currency, fiscal-year anchor, and the selected book
+  doctrine at initialization time
+- Validation: rejects a `null` book identity; trading-book doctrine requires moving
+  weighted-average inventory costing while service-book doctrine forbids it
 
 ## `OpenBookResult`
 
@@ -186,7 +195,7 @@ public sealed interface OpenBookResult
 public sealed interface DeclareAccountResult
 ```
 
-- Variants: `Declared`, `Rejected`
+- Variants: `Declared`, `Reactivated`, `Renamed`, `Unchanged`, `Rejected`
 
 ## `DeclareTaxRegistrationCommand`, `DeclareTaxRegistrationResult`, `DeclaredTaxRegistration`, `TaxRegistrationId`, `TaxRegistrationName`, `TaxRegistrationNumber`, `TaxJurisdiction`, `TaxObligationFrequency`, `TaxCode`, `TaxCodeName`, `TaxCodeDefinition`, `TaxRate`, `TaxInclusionMode`, `TaxApplicationKind`, `TaxDeclarationRejection`, `TaxDefinitionViolation`, `TaxAdministrationService`, And `TaxAdministrationStore`
 

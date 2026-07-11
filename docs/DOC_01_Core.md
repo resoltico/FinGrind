@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: CORE
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
-  keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, idempotency, temporal-text, fiscal-year-start, reachability]
-  questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module"]
+  keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, quantity, unit-of-measure, inventory-costing, weighted-average, idempotency, temporal-text, fiscal-year-start, reachability]
+  questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module", "where are quantity and weighted-average inventory costing primitives documented"]
 ---
 
 # Core API Reference
@@ -123,71 +123,8 @@ public enum EntityForm implements WireValue
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
-## `BookTemplateId`
-
-`BookTemplateId` is the canonical guided setup template identifier carried by one protected book.
-
-```java
-public enum BookTemplateId implements WireValue
-```
-
-- Purpose: make the seeded template family explicit instead of hiding it in executor setup
-  code
-- Current contract: `OWNER_MANAGED_SERVICE`, `OWNER_MANAGED_TRADING`
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
-
-## `BookDoctrine`
-
-`BookDoctrine` is the canonical doctrine owner for one protected book's accounting posture.
-
-```java
-public record BookDoctrine(
-    AccountingKernelProfileId accountingKernelProfileId,
-    AccountingBasis accountingBasis,
-    AccountingFrameworkPosition accountingFrameworkPosition,
-    EntityForm entityForm,
-    BookTemplateId bookTemplateId)
-```
-
-- Purpose: keep kernel profile, accounting basis, framework posture, entity form, and starter
-  template under one persisted doctrine owner
-- Validation: rejects `null` doctrine components
-
-## `BookDoctrines`
-
-`BookDoctrines` publishes the built-in doctrine bundles FinGrind can persist today.
-
-```java
-public final class BookDoctrines
-```
-
-- Purpose: centralize the current built-in doctrine so open-book, discovery, SQLite, CLI, and
-  tests all speak one doctrine bundle
-- Current built-in doctrines:
-  `INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE`, which is cash-basis, non-statutory internal
-  management, owner-managed single entity, and owner-managed service; and
-  `INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL`, which is accrual-basis, non-statutory
-  internal management, owner-managed single entity, and owner-managed service; plus
-  `INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING`, which is cash-basis, non-statutory internal
-  management, owner-managed single entity, and owner-managed trading; and
-  `INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL`, which is accrual-basis, non-statutory
-  internal management, owner-managed single entity, and owner-managed trading
-
-## `BookDoctrineDisplay`
-
-`BookDoctrineDisplay` is the operator-facing label owner for persisted doctrine values.
-
-```java
-public final class BookDoctrineDisplay
-```
-
-- Purpose: translate persisted doctrine identifiers into stable human-facing labels for CLI, PDF,
-  and other operator surfaces
-- Current label families: accounting kernel, accounting basis, framework posture, entity form,
-  and seed template
-- Boundary: this is a presentation helper over persisted doctrine values, not a second doctrine
-  source
+Book-template selection, persisted book doctrine, built-in doctrine bundles, and their display
+labels continue in [DOC_01_Core_BookDoctrine.md](./DOC_01_Core_BookDoctrine.md).
 
 ## `AccountingEvidence`
 
@@ -639,6 +576,207 @@ public final class CurrencyUnit
 - Validation: rejects whitespace-padded, non-uppercase, non-ISO, or unsupported currency-unit
   codes, and rejects units whose published scale falls outside FinGrind's supported exact-money
   range of `0..9`
+
+## `Quantity`
+
+`Quantity` is the shared-kernel exact non-negative quantity value used by inventory-costing math
+and future quantity-bearing accounting facts.
+
+```java
+public final class Quantity implements Comparable<Quantity>
+```
+
+- Purpose: represent one exact quantity as scaled integer units without embedding one unit of
+  measure or falling back to one generic decimal seam
+- Representation: `scale()` and `scaledUnits()` together own the exact value, while
+  `canonicalDecimal()` publishes the canonical plain-decimal text form
+- Surface: `ofScaledUnits(...)`, `zero(...)`, `parse(...)`, `plus(...)`, `minus(...)`, and
+  `compareTo(...)` all preserve exact same-scale arithmetic
+- Validation: rejects negative scaled units, unsupported scales outside `0..9`, malformed decimal
+  text, redundant leading zeroes, and any subtraction that would drive quantity below zero
+
+## `UnitOfMeasure`
+
+`UnitOfMeasure` is the stable per-account unit token that owns which exact quantity scale is
+admissible for that unit.
+
+```java
+public record UnitOfMeasure(String token, int quantityScale)
+```
+
+- Purpose: keep unit identity and quantity-scale ownership explicit instead of burying that scale
+  in individual quantity values or caller-local parsing code
+- Surface: `parseQuantity(...)` parses one quantity at the owned `quantityScale`, and
+  `requireCompatible(...)` rejects quantities whose scale does not match the unit's declared scale
+- Validation: rejects blank or overlength tokens, non-ASCII token grammar drift, and unsupported
+  quantity scales outside `0..9`
+
+## `UnitOfMeasure.QuantityIncompatibleWithUnitOfMeasureException`
+
+`UnitOfMeasure.QuantityIncompatibleWithUnitOfMeasureException` is the dedicated failure raised
+when quantity text contradicts the unit's owned exact quantity scale.
+
+```java
+public static final class QuantityIncompatibleWithUnitOfMeasureException extends IllegalArgumentException
+```
+
+- Purpose: publish unit-scale contradiction as one typed failure so higher layers can map it to
+  deterministic rejections without depending on incidental parser exception text
+- Surface: `quantityText()`, `unitOfMeasure()`, and `reason()` return the rejected text, the
+  owning unit, and the stable rejection reason that caller-facing layers may publish
+- Trigger: raised by `parseQuantity(...)` when the provided quantity text cannot resolve at the
+  owned `quantityScale`
+
+## `InventoryCostingDoctrine`
+
+`InventoryCostingDoctrine` is the stable wire vocabulary for shared-kernel inventory-costing
+method identifiers.
+
+```java
+public enum InventoryCostingDoctrine implements WireValue
+```
+
+- Purpose: publish the current inventory-costing doctrine line explicitly instead of leaving the
+  method implied by executor-local code or ADR prose
+- Current contract: `WEIGHTED_AVERAGE`
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  vocabulary
+
+## `InventoryMovementKind`
+
+`InventoryMovementKind` is the stable wire vocabulary for one durable inventory-ledger movement
+row kind.
+
+```java
+public enum InventoryMovementKind implements WireValue
+```
+
+- Purpose: publish the durable inventory replay vocabulary explicitly instead of burying movement
+  kinds inside SQLite literals, executor-local switches, or verification-only code paths
+- Current contract: `ACQUISITION`, `CAPITALIZATION`, `COUNT_INCREASE`, `OPENING`, `DISPOSAL`,
+  `WRITE_DOWN`, `SHRINKAGE`, and `REVERSAL_COMP`
+- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
+  movement-kind vocabulary
+
+## `WeightedAverageCostingMath`
+
+`WeightedAverageCostingMath` is the pure exact-costing owner for weighted-average acquisition,
+disposal, write-down, reversal restore, and non-authoritative unit-cost projection.
+
+```java
+public final class WeightedAverageCostingMath
+```
+
+- Purpose: keep weighted-average inventory math exact, pure, and reusable without leaking any I/O,
+  storage, or report projection concerns into the shared kernel
+- Surface: `acquire(...)`, `dispose(...)`, `writeDown(...)`, `reversalRestore(...)`, and
+  `roundedMovingAverageUnitCostProjection(...)`
+- Disposal doctrine: `dispose(...)` derives cost of sales from the exact carrying-cost pool and
+  exact quantity on hand, and a zeroing disposal consumes the entire remaining pool so quantity
+  zero and cost-pool zero stay equivalent
+- Admission doctrine: because the carrying-cost truth boundary is still one `Money` value at the
+  currency minor-unit scale, positive pools that would strand positive quantity against a zero
+  remaining pool under half-up disposal rounding are rejected up front
+- Failure surface: exact-costing invariants now publish dedicated failure types for disposal
+  overdraws plus exact-pool zero-equivalence and minor-unit-floor violations, so higher layers can
+  translate those failures without depending on incidental exception text
+- Projection boundary: `roundedMovingAverageUnitCostProjection(...)` is one read-time display
+  projection only; it is never one authoritative stored fact and never feeds back into cost of
+  sales
+
+## `WeightedAverageCostingMath.InventoryPool`
+
+`WeightedAverageCostingMath.InventoryPool` is one exact on-hand quantity and carrying-cost state
+pair for one homogeneous inventory pool.
+
+```java
+public record InventoryPool(Quantity quantityOnHand, Money costPool)
+```
+
+- Purpose: keep the exact quantity/cost-pool truth boundary structural instead of passing those
+  values around as unrelated arguments
+- Surface: `zero(...)` returns one zero pool for the selected currency and quantity scale
+- Validation: rejects `null` components, rejects quantity/cost-pool states where only one side is
+  zero, and rejects positive pools whose carrying cost falls below one currency minor unit per
+  smallest quantity increment because such states would break the zero-to-zero invariant under
+  half-up disposal rounding
+
+## `WeightedAverageCostingMath.InventoryPoolZeroEquivalenceException`
+
+`WeightedAverageCostingMath.InventoryPoolZeroEquivalenceException` is the dedicated failure raised
+when one exact pool would leave quantity and carrying cost disagreeing about whether inventory is
+present.
+
+```java
+public static final class InventoryPoolZeroEquivalenceException extends IllegalArgumentException
+```
+
+- Purpose: publish the zero-to-zero truth breach explicitly instead of leaving higher layers to
+  infer it from a generic validation message
+- Surface: `quantityOnHand()` and `costPool()` return the rejected attempted pool state
+- Trigger: raised when one side of the exact pool is zero and the other is positive
+
+## `WeightedAverageCostingMath.InventoryPoolMinorUnitFloorException`
+
+`WeightedAverageCostingMath.InventoryPoolMinorUnitFloorException` is the dedicated failure raised
+when one positive exact pool lacks enough carrying cost to preserve zero-to-zero truth at the
+currency minor-unit boundary.
+
+```java
+public static final class InventoryPoolMinorUnitFloorException extends IllegalArgumentException
+```
+
+- Purpose: expose the exact pool-floor invariant as a first-class contract instead of burying it
+  in one generic constructor failure
+- Surface: `quantityOnHand()`, `costPool()`, and `minimumRequiredMinorUnits()` describe the
+  rejected attempted pool state and the minimum carrying-cost floor it violated
+- Trigger: raised when positive quantity would carry fewer currency minor units than smallest
+  quantity increments
+
+## `WeightedAverageCostingMath.Disposal`
+
+`WeightedAverageCostingMath.Disposal` is the exact weighted-average disposal outcome containing the
+derived cost of sales and the remaining pool.
+
+```java
+public record Disposal(InventoryPool remainingPool, Money costOfSales)
+```
+
+- Purpose: publish both sides of one disposal atomically so callers cannot separate the derived
+  cost of sales from the remaining exact pool state
+- Validation: rejects `null` values and rejects cost-of-sales currency drift from the remaining
+  pool currency
+
+## `WeightedAverageCostingMath.DisposedQuantityExceedsOnHandException`
+
+`WeightedAverageCostingMath.DisposedQuantityExceedsOnHandException` is the dedicated failure raised
+when one weighted-average disposal attempts to relieve more quantity than the exact pool contains.
+
+```java
+public static final class DisposedQuantityExceedsOnHandException extends IllegalArgumentException
+```
+
+- Purpose: publish quantity overdraw as one typed exact-costing failure so higher layers can map
+  it to domain rejections without matching on message text
+- Surface: `disposedQuantity()` and `quantityOnHand()` return the rejected request and the exact
+  available on-hand quantity
+- Trigger: raised by `dispose(...)` before any weighted-average cost-of-sales calculation runs
+
+## `WeightedAverageCostingMath.InexactAcquisitionCostException`
+
+`WeightedAverageCostingMath.InexactAcquisitionCostException` is the dedicated failure raised when
+one quantity and unit-cost pair cannot compose one exact acquisition carrying cost at the currency
+minor-unit boundary.
+
+```java
+public static final class InexactAcquisitionCostException extends IllegalArgumentException
+```
+
+- Purpose: expose acquisition exactness failure as one typed contract instead of leaving higher
+  layers to infer it from generic arithmetic validation
+- Surface: `quantity()` and `unitCost()` return the rejected quantity and unit cost facts
+- Trigger: raised by `acquire(...)` before inventory state changes when exact quantity multiplied
+  by unit cost would not resolve to one exact carrying-cost amount
 
 ## `FiscalYearStart`
 

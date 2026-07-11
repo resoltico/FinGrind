@@ -20,6 +20,9 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
       value = UnparsedPostingWorkflowReplayDetails.class,
       name = "POSTING_WORKFLOW_UNPARSED"),
   @JsonSubTypes.Type(
+      value = InventoryCostingMathReplayDetails.class,
+      name = "INVENTORY_COSTING_MATH"),
+  @JsonSubTypes.Type(
       value = SqliteBookRoundTripReplayDetails.class,
       name = "SQLITE_BOOK_ROUND_TRIP"),
   @JsonSubTypes.Type(
@@ -34,5 +37,6 @@ public sealed interface ReplayDetails
         UnparsedLedgerPlanReplayDetails,
         PostingWorkflowReplayDetails,
         UnparsedPostingWorkflowReplayDetails,
+        InventoryCostingMathReplayDetails,
         SqliteBookRoundTripReplayDetails,
         UnparsedSqliteBookRoundTripReplayDetails {}

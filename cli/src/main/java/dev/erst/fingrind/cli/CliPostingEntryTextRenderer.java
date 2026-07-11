@@ -29,9 +29,16 @@ final class CliPostingEntryTextRenderer {
     appendOptionalSummaryRow(summaryRows, "Revenue account", entry.revenueAccountCode());
     appendOptionalSummaryRow(summaryRows, "Inventory account", entry.inventoryAccountCode());
     appendOptionalSummaryRow(summaryRows, "Expense account", entry.expenseAccountCode());
+    appendOptionalSummaryRow(
+        summaryRows, "Write-down loss account", entry.writeDownLossAccountCode());
+    appendOptionalSummaryRow(
+        summaryRows, "Shrinkage loss account", entry.shrinkageLossAccountCode());
+    appendOptionalSummaryRow(summaryRows, "Count gain account", entry.countGainAccountCode());
     appendOptionalSummaryRow(summaryRows, "Equity account", entry.equityAccountCode());
     appendAmountRow(summaryRows, entry);
+    appendQuantityRows(summaryRows, entry);
     appendInventoryReliefRows(summaryRows, entry);
+    appendResolvedInventoryCostingRows(summaryRows, entry);
     appendSettlementAdjunctRows(summaryRows, entry);
     appendForeignExchangeRows(summaryRows, entry);
     appendTaxSelectionRows(summaryRows, entry);
@@ -47,17 +54,18 @@ final class CliPostingEntryTextRenderer {
         "Opening balances",
         CliTextFormat.renderAdaptiveTable(
             CliReportRenderSupport.TEXT_TABLE_WIDTH,
-            List.of("Account", "Side", "Currency", "Amount"),
+            List.of("Account", "Side", "Quantity", "Currency", "Amount"),
             openingBalances.stream()
                 .map(
                     balance ->
                         List.of(
                             balance.accountCode(),
                             CliTextDisplay.wireLabel(balance.side()),
+                            balance.quantity() == null ? "" : balance.quantity(),
                             balance.amount().currencyCode(),
                             balance.amount().canonicalDecimal()))
                 .toList(),
-            3));
+            4));
   }
 
   private static void appendOptionalSummaryRow(
@@ -86,6 +94,16 @@ final class CliPostingEntryTextRenderer {
             CliTextFormat.displayMoney(entry.settlementAdjunct().amount().toMoney())));
   }
 
+  private static void appendQuantityRows(
+      List<List<String>> summaryRows, CliPostingEntryPayload entry) {
+    if (entry.quantity() != null) {
+      summaryRows.add(List.of("Quantity", entry.quantity()));
+    }
+    if (entry.unitCost() != null) {
+      summaryRows.add(List.of("Unit cost", CliTextFormat.displayMoney(entry.unitCost().toMoney())));
+    }
+  }
+
   private static void appendInventoryReliefRows(
       List<List<String>> summaryRows, CliPostingEntryPayload entry) {
     if (entry.inventoryRelief() == null) {
@@ -94,10 +112,28 @@ final class CliPostingEntryTextRenderer {
     summaryRows.add(List.of("Inventory account", entry.inventoryRelief().inventoryAccountCode()));
     summaryRows.add(
         List.of("Cost of sales account", entry.inventoryRelief().costOfSalesAccountCode()));
+    summaryRows.add(List.of("Inventory relief quantity", entry.inventoryRelief().quantity()));
+  }
+
+  private static void appendResolvedInventoryCostingRows(
+      List<List<String>> summaryRows, CliPostingEntryPayload entry) {
+    if (entry.resolvedInventoryCosting() == null) {
+      return;
+    }
     summaryRows.add(
         List.of(
-            "Inventory relief amount",
-            CliTextFormat.displayMoney(entry.inventoryRelief().amount().toMoney())));
+            "Derived cost of sales",
+            CliTextFormat.displayMoney(entry.resolvedInventoryCosting().costOfSales().toMoney())));
+    summaryRows.add(
+        List.of("Derived quantity relieved", entry.resolvedInventoryCosting().quantityRelieved()));
+    summaryRows.add(
+        List.of(
+            "Moving-average unit cost (informational)",
+            CliTextFormat.displayMoney(
+                entry
+                    .resolvedInventoryCosting()
+                    .roundedMovingAverageUnitCostProjection()
+                    .toMoney())));
   }
 
   private static void appendTaxSelectionRows(

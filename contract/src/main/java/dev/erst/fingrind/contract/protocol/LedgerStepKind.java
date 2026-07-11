@@ -17,6 +17,11 @@ public enum LedgerStepKind implements WireValue {
   RECORD_SALE_ON_CREDIT(OperationId.RECORD_SALE_ON_CREDIT),
   RECORD_PURCHASE_SETTLED(OperationId.RECORD_PURCHASE_SETTLED),
   RECORD_PURCHASE_ON_CREDIT(OperationId.RECORD_PURCHASE_ON_CREDIT),
+  RECORD_INVENTORY_CAPITALIZATION_SETTLED(OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED),
+  RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT(OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT),
+  RECORD_INVENTORY_WRITE_DOWN(OperationId.RECORD_INVENTORY_WRITE_DOWN),
+  RECORD_INVENTORY_SHRINKAGE(OperationId.RECORD_INVENTORY_SHRINKAGE),
+  RECORD_INVENTORY_COUNT_INCREASE(OperationId.RECORD_INVENTORY_COUNT_INCREASE),
   RECORD_EXPENSE_SETTLED(OperationId.RECORD_EXPENSE_SETTLED),
   RECORD_EXPENSE_ON_CREDIT(OperationId.RECORD_EXPENSE_ON_CREDIT),
   RECORD_RECEIPT(OperationId.RECORD_RECEIPT),
@@ -33,23 +38,9 @@ public enum LedgerStepKind implements WireValue {
   ACCOUNT_BALANCE(OperationId.ACCOUNT_BALANCE),
   ASSERT("assert");
 
-  private static final Set<LedgerStepKind> POSTING_COMMIT_STEPS =
-      EnumSet.of(
-          RECORD_SALE_SETTLED,
-          RECORD_SALE_ON_CREDIT,
-          RECORD_PURCHASE_SETTLED,
-          RECORD_PURCHASE_ON_CREDIT,
-          RECORD_EXPENSE_SETTLED,
-          RECORD_EXPENSE_ON_CREDIT,
-          RECORD_RECEIPT,
-          RECORD_PAYMENT,
-          RECORD_OWNER_CONTRIBUTION,
-          RECORD_OWNER_WITHDRAWAL,
-          RECORD_OPENING_POSITION,
-          RECORD_REVERSAL,
-          POST_ENTRY);
   private static final Map<BookkeepingEntryKind, LedgerStepKind> ENTRY_KIND_STEP_KINDS =
       entryKindStepKinds();
+  private static final Set<LedgerStepKind> POSTING_COMMIT_STEPS = postingCommitSteps();
 
   private final String wireValue;
 
@@ -96,19 +87,21 @@ public enum LedgerStepKind implements WireValue {
   }
 
   private static Map<BookkeepingEntryKind, LedgerStepKind> entryKindStepKinds() {
-    return Map.ofEntries(
-        Map.entry(BookkeepingEntryKind.DIRECT_JOURNAL, POST_ENTRY),
-        Map.entry(BookkeepingEntryKind.SALE_SETTLED, RECORD_SALE_SETTLED),
-        Map.entry(BookkeepingEntryKind.SALE_ON_CREDIT, RECORD_SALE_ON_CREDIT),
-        Map.entry(BookkeepingEntryKind.PURCHASE_SETTLED, RECORD_PURCHASE_SETTLED),
-        Map.entry(BookkeepingEntryKind.PURCHASE_ON_CREDIT, RECORD_PURCHASE_ON_CREDIT),
-        Map.entry(BookkeepingEntryKind.EXPENSE_SETTLED, RECORD_EXPENSE_SETTLED),
-        Map.entry(BookkeepingEntryKind.EXPENSE_ON_CREDIT, RECORD_EXPENSE_ON_CREDIT),
-        Map.entry(BookkeepingEntryKind.RECEIPT, RECORD_RECEIPT),
-        Map.entry(BookkeepingEntryKind.PAYMENT, RECORD_PAYMENT),
-        Map.entry(BookkeepingEntryKind.OWNER_CONTRIBUTION, RECORD_OWNER_CONTRIBUTION),
-        Map.entry(BookkeepingEntryKind.OWNER_WITHDRAWAL, RECORD_OWNER_WITHDRAWAL),
-        Map.entry(BookkeepingEntryKind.OPENING_POSITION, RECORD_OPENING_POSITION),
-        Map.entry(BookkeepingEntryKind.REVERSAL, RECORD_REVERSAL));
+    var stepKinds =
+        new java.util.EnumMap<BookkeepingEntryKind, LedgerStepKind>(BookkeepingEntryKind.class);
+    for (BookkeepingEntryKind entryKind : BookkeepingEntryKind.values()) {
+      stepKinds.put(
+          entryKind,
+          entryKind == BookkeepingEntryKind.DIRECT_JOURNAL
+              ? POST_ENTRY
+              : LedgerStepKind.valueOf("RECORD_" + entryKind.name()));
+    }
+    return Map.copyOf(stepKinds);
+  }
+
+  private static Set<LedgerStepKind> postingCommitSteps() {
+    var steps = EnumSet.copyOf(ENTRY_KIND_STEP_KINDS.values());
+    steps.add(POST_ENTRY);
+    return Set.copyOf(steps);
   }
 }

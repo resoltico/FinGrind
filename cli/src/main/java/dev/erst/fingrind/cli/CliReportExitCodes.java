@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 
@@ -52,6 +53,13 @@ final class CliReportExitCodes {
     return switch (result) {
       case IncomeStatementResult.Reported _ -> 0;
       case IncomeStatementResult.Rejected _ -> 2;
+    };
+  }
+
+  static int exitCodeFor(InventoryValuationResult result) {
+    return switch (result) {
+      case InventoryValuationResult.Reported _ -> 0;
+      case InventoryValuationResult.Rejected _ -> 2;
     };
   }
 

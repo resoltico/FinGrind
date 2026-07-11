@@ -16,7 +16,7 @@ public sealed interface TemplateDescriptorType
         ContractTemplates.SourceDocumentTemplateDescriptor,
         ContractTemplates.ApprovalTemplateDescriptor,
         ContractTemplates.ProvenanceTemplateDescriptor,
-        ContractTemplates.ReversalTemplateDescriptor,
+        ContractReversalTemplates.ReversalTemplateDescriptor,
         ContractTemplates.DeclareTaxRegistrationTemplateDescriptor,
         ContractTemplates.DeclareTaxCodeTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanTemplateDescriptor,

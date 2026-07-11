@@ -250,7 +250,10 @@ class JazzerSupportModelTest {
     UncheckedIOException missingResource =
         assertThrows(
             UncheckedIOException.class,
-            () -> JazzerTopology.loadResource("/dev/erst/fingrind/jazzer/support/missing.json"));
+            () ->
+                JazzerTopology.loadResources(
+                    "/dev/erst/fingrind/jazzer/support/jazzer-harnesses.json",
+                    "/dev/erst/fingrind/jazzer/support/missing.json"));
 
     assertTrue(
         String.valueOf(missingResource.getMessage()).contains("Failed to load Jazzer topology"));

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.core.AccountCode;
@@ -33,13 +34,14 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import dev.erst.fingrind.executor.bookkeeping.PostingOriginatingEntryValidator;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
@@ -70,6 +72,14 @@ final class SqlitePostingMapper {
                     accountRow,
                     SqlitePostingColumnIndexes.COL_ACCOUNT_CASH_FLOW_ASSET_CLASSIFICATION)
                 .map(CashFlowAssetClassification::fromWireValue)),
+        optionalText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_UNIT_OF_MEASURE)
+            .map(
+                token ->
+                    new UnitOfMeasure(
+                        token,
+                        requiredInt(
+                            accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_QUANTITY_SCALE)))
+            .orElse(null),
         requiredInt(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_ACTIVE) == 1,
         CanonicalTemporalText.parseUtcInstant(
             requiredText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_DECLARED_AT),
@@ -77,6 +87,7 @@ final class SqlitePostingMapper {
   }
 
   static CommittedPosting committedPosting(
+      SqliteNativeDatabase activeDatabase,
       SqliteNativeStatement postingRow,
       List<JournalLine> lines,
       AccountingEvidence evidence,
@@ -91,6 +102,9 @@ final class SqlitePostingMapper {
                 "posting.effectiveDate"),
             lines);
     PostingLineageModel postingLineage = readPostingLineageModel(postingRow);
+    dev.erst.fingrind.core.PostingKind postingKind =
+        dev.erst.fingrind.core.PostingKind.fromWireValue(
+            requiredText(postingRow, SqlitePostingColumnIndexes.COL_POSTING_KIND));
     PostingOriginKind postingOriginKind =
         PostingOriginKind.fromWireValue(
             requiredText(postingRow, SqlitePostingColumnIndexes.COL_POSTING_ORIGIN_KIND));
@@ -113,22 +127,54 @@ final class SqlitePostingMapper {
                 "posting.recordedAt"),
             SourceChannel.fromWireValue(
                 requiredText(postingRow, SqlitePostingColumnIndexes.COL_SOURCE_CHANNEL)));
-    return new CommittedPosting(
-        postingId,
-        journalEntry,
-        postingLineage,
-        dev.erst.fingrind.core.PostingKind.fromWireValue(
-            requiredText(postingRow, SqlitePostingColumnIndexes.COL_POSTING_KIND)),
-        postingOriginKind,
-        evidence,
-        provenance,
+    BookkeepingEntry callerAuthoredEntry =
         SqlitePostingOriginatingEntryMapper.originatingEntry(
+            activeDatabase,
             postingRow,
             journalEntry,
             postingLineage,
             postingOriginKind,
             appliedTax,
-            foreignExchangeDetails));
+            foreignExchangeDetails);
+    @Nullable BookkeepingEntry resolvedInventoryCostingEntry =
+        SqliteResolvedInventoryCostingReader.resolve(
+            activeDatabase, postingId, callerAuthoredEntry);
+    return new CommittedPosting(
+        postingId,
+        journalEntry,
+        postingLineage,
+        postingKind,
+        postingOriginKind,
+        evidence,
+        provenance,
+        callerAuthoredEntry,
+        resolvedInventoryCostingEntry == null
+            ? resolvedOriginatingEntry(
+                callerAuthoredEntry, journalEntry, postingLineage, postingKind, postingOriginKind)
+            : resolvedInventoryCostingEntry);
+  }
+
+  private static @Nullable BookkeepingEntry resolvedOriginatingEntry(
+      @Nullable BookkeepingEntry callerAuthoredEntry,
+      JournalEntry journalEntry,
+      PostingLineageModel postingLineage,
+      dev.erst.fingrind.core.PostingKind postingKind,
+      PostingOriginKind postingOriginKind) {
+    if (callerAuthoredEntry == null) {
+      return null;
+    }
+    try {
+      PostingOriginatingEntryValidator.requireResolvedMatches(
+          callerAuthoredEntry,
+          postingKind,
+          postingOriginKind,
+          journalEntry,
+          postingLineage,
+          "persisted posting");
+      return callerAuthoredEntry;
+    } catch (IllegalArgumentException | IllegalStateException exception) {
+      return null;
+    }
   }
 
   static List<JournalLine> journalLines(SqliteNativeStatement lineRows) {
@@ -222,7 +268,7 @@ final class SqlitePostingMapper {
 
   static String requiredText(SqliteNativeStatement row, int columnIndex) {
     String value = row.columnText(columnIndex);
-    return Objects.requireNonNull(
+    return java.util.Objects.requireNonNull(
         value, "Required value at SQLite column index " + columnIndex + " is null.");
   }
 

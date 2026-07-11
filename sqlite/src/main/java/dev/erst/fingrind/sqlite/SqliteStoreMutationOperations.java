@@ -4,6 +4,8 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
@@ -76,13 +78,8 @@ final class SqliteStoreMutationOperations {
   }
 
   dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome declareAccount(
-      dev.erst.fingrind.core.AccountCode accountCode,
-      dev.erst.fingrind.core.AccountName accountName,
-      dev.erst.fingrind.core.AccountType accountType,
-      dev.erst.fingrind.core.AccountTaxonomy accountTaxonomy,
-      Instant declaredAt) {
-    return administrationOperations.declareAccount(
-        accountCode, accountName, accountType, accountTaxonomy, declaredAt);
+      dev.erst.fingrind.executor.bookkeeping.AccountDeclaration declaration, Instant declaredAt) {
+    return administrationOperations.declareAccount(declaration, declaredAt);
   }
 
   DeclareTaxRegistrationResult declareTaxRegistration(
@@ -118,8 +115,9 @@ final class SqliteStoreMutationOperations {
                 CommittedPosting postingFact =
                     persistAcceptedPosting(
                         activeDatabase,
-                        postingDraft,
+                        accepted.acceptedPosting(),
                         accepted.requestFingerprint(),
+                        postingDraft.provenance(),
                         Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"));
                 SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
                 yield new PostingCommitResult.Committed(postingFact, false);
@@ -192,10 +190,11 @@ final class SqliteStoreMutationOperations {
 
   private CommittedPosting persistAcceptedPosting(
       SqliteNativeDatabase activeDatabase,
-      PostingDraft postingDraft,
+      AcceptedPosting acceptedPosting,
       dev.erst.fingrind.core.RequestFingerprint requestFingerprint,
+      CommittedProvenance provenance,
       PostingIdGenerator postingIdGenerator) {
     return closingOperations.persistAcceptedPosting(
-        activeDatabase, postingDraft, requestFingerprint, postingIdGenerator);
+        activeDatabase, acceptedPosting, requestFingerprint, provenance, postingIdGenerator);
   }
 }

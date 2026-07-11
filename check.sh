@@ -151,21 +151,21 @@ readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-$(fg_gradle_user_home_di
 prepare_python_runtime_env
 
 count_jazzer_regression_targets() {
-    local topology_path=$1
-    python3 - "${topology_path}" <<'PY'
+    local harnesses_path=$1
+    python3 - "${harnesses_path}" <<'PY'
 import json
 import sys
 from pathlib import Path
 
-topology_path = Path(sys.argv[1])
-document = json.loads(topology_path.read_text())
-print(len(document["harnesses"]))
+harnesses_path = Path(sys.argv[1])
+harnesses = json.loads(harnesses_path.read_text())
+print(len(harnesses))
 PY
 }
 
 readonly jazzer_regression_target_count="$(
     count_jazzer_regression_targets \
-        "${repo_root}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json"
+        "${repo_root}/jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-harnesses.json"
 )"
 
 print_failure_guidance() {

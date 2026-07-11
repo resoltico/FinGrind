@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.file.DuplicatesStrategy
 
 plugins {
     application
@@ -39,7 +40,8 @@ tasks.named<ShadowJar>("shadowJar") {
     inputs.property("shadowJarImplementationVendor", buildMetadata.implementationVendor)
     inputs.property("shadowJarImplementationLicense", buildMetadata.implementationLicense)
 
-    // Merge ServiceLoader registrations from all bundled JARs.
+    // Preserve every descriptor so the transformer can merge every ServiceLoader registration.
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles()
 
     // Exclude per-dependency META-INF license and notice files to prevent conflicts

@@ -14,6 +14,9 @@ final class SqlitePostingReadWriteSql {
           entry_amount_currency_code,
           entry_amount_minor,
           entry_adjunct_amount_minor,
+          entry_quantity,
+          entry_unit_cost_currency_code,
+          entry_unit_cost_minor,
           effective_date,
           recorded_at,
           actor_id,
@@ -41,6 +44,8 @@ final class SqlitePostingReadWriteSql {
           financial_position_line_classification,
           cash_flow_asset_classification,
           profit_and_loss_line_classification,
+          unit_of_measure,
+          quantity_scale,
           active,
           declared_at
       from account
@@ -118,6 +123,9 @@ final class SqlitePostingReadWriteSql {
           entry_amount_currency_code,
           entry_amount_minor,
           entry_adjunct_amount_minor,
+          entry_quantity,
+          entry_unit_cost_currency_code,
+          entry_unit_cost_minor,
           effective_date,
           recorded_at,
           actor_id,
@@ -131,7 +139,7 @@ final class SqlitePostingReadWriteSql {
           prior_posting_id,
           request_fingerprint_version,
           request_fingerprint_sha256
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_JOURNAL_LINE =
@@ -193,9 +201,11 @@ final class SqlitePostingReadWriteSql {
           financial_position_line_classification,
           cash_flow_asset_classification,
           profit_and_loss_line_classification,
+          unit_of_measure,
+          quantity_scale,
           active,
           declared_at
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       on conflict (account_code) do update set
           account_name = excluded.account_name,
           active = excluded.active,

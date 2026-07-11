@@ -124,7 +124,8 @@ class CoreTextValueObjectsTest {
             AccountingBasis.CASH,
             AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
             EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-            BookTemplateId.OWNER_MANAGED_SERVICE);
+            BookTemplateId.OWNER_MANAGED_SERVICE,
+            null);
 
     assertEquals(
         AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
@@ -135,6 +136,7 @@ class CoreTextValueObjectsTest {
         doctrine.accountingFrameworkPosition());
     assertEquals(EntityForm.OWNER_MANAGED_SINGLE_ENTITY, doctrine.entityForm());
     assertEquals(BookTemplateId.OWNER_MANAGED_SERVICE, doctrine.bookTemplateId());
+    assertEquals(null, doctrine.inventoryCostingDoctrine());
     assertThrows(
         NullPointerException.class,
         () ->
@@ -143,7 +145,8 @@ class CoreTextValueObjectsTest {
                 AccountingBasis.CASH,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                BookTemplateId.OWNER_MANAGED_SERVICE));
+                BookTemplateId.OWNER_MANAGED_SERVICE,
+                null));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -152,7 +155,8 @@ class CoreTextValueObjectsTest {
                 nullOf(),
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                BookTemplateId.OWNER_MANAGED_SERVICE));
+                BookTemplateId.OWNER_MANAGED_SERVICE,
+                null));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -161,7 +165,8 @@ class CoreTextValueObjectsTest {
                 AccountingBasis.CASH,
                 nullOf(),
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                BookTemplateId.OWNER_MANAGED_SERVICE));
+                BookTemplateId.OWNER_MANAGED_SERVICE,
+                null));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -170,7 +175,8 @@ class CoreTextValueObjectsTest {
                 AccountingBasis.CASH,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 nullOf(),
-                BookTemplateId.OWNER_MANAGED_SERVICE));
+                BookTemplateId.OWNER_MANAGED_SERVICE,
+                null));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -179,7 +185,28 @@ class CoreTextValueObjectsTest {
                 AccountingBasis.CASH,
                 AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
                 EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
-                nullOf()));
+                nullOf(),
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookDoctrine(
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
+                AccountingBasis.CASH,
+                AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+                EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+                BookTemplateId.OWNER_MANAGED_TRADING,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BookDoctrine(
+                AccountingKernelProfiles.INTERNAL_MANAGEMENT_BOOKKEEPING_KERNEL,
+                AccountingBasis.CASH,
+                AccountingFrameworkPosition.NON_STATUTORY_INTERNAL_MANAGEMENT,
+                EntityForm.OWNER_MANAGED_SINGLE_ENTITY,
+                BookTemplateId.OWNER_MANAGED_SERVICE,
+                InventoryCostingDoctrine.WEIGHTED_AVERAGE));
   }
 
   @Test
@@ -255,19 +282,23 @@ class CoreTextValueObjectsTest {
     assertEquals(
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         BookDoctrines.forTemplateAndBasis(
-            BookTemplateId.OWNER_MANAGED_SERVICE, AccountingBasis.CASH));
+            BookTemplateId.OWNER_MANAGED_SERVICE, AccountingBasis.CASH, null));
     assertEquals(
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
         BookDoctrines.forTemplateAndBasis(
-            BookTemplateId.OWNER_MANAGED_SERVICE, AccountingBasis.ACCRUAL));
+            BookTemplateId.OWNER_MANAGED_SERVICE, AccountingBasis.ACCRUAL, null));
     assertEquals(
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
         BookDoctrines.forTemplateAndBasis(
-            BookTemplateId.OWNER_MANAGED_TRADING, AccountingBasis.CASH));
+            BookTemplateId.OWNER_MANAGED_TRADING,
+            AccountingBasis.CASH,
+            InventoryCostingDoctrine.WEIGHTED_AVERAGE));
     assertEquals(
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL,
         BookDoctrines.forTemplateAndBasis(
-            BookTemplateId.OWNER_MANAGED_TRADING, AccountingBasis.ACCRUAL));
+            BookTemplateId.OWNER_MANAGED_TRADING,
+            AccountingBasis.ACCRUAL,
+            InventoryCostingDoctrine.WEIGHTED_AVERAGE));
   }
 
   @Test

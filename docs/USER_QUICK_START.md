@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: USER_QUICK_START
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -107,7 +107,8 @@ deterministically instead of mutating the existing book.
 
 This quick start chooses `OWNER_MANAGED_SERVICE` with `--accounting-basis CASH`. Use
 `--accounting-basis ACCRUAL` when you want the accrual owner-managed service chart. The
-cash-basis service chart includes these postable accounts:
+cash-basis service chart includes these postable accounts. To open a goods-trading book instead,
+use `OWNER_MANAGED_TRADING` and add `--inventory-costing WEIGHTED_AVERAGE` to `open-book`:
 
 - `cash`
 - `owner-capital`

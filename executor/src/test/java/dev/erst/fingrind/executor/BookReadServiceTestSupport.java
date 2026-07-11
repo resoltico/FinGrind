@@ -280,6 +280,12 @@ final class BookReadServiceTestSupport {
     }
 
     @Override
+    public List<dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord>
+        inventoryValuationMovements(Optional<LocalDate> effectiveDateAsOf) {
+      return delegate.inventoryValuationMovements(effectiveDateAsOf);
+    }
+
+    @Override
     public List<CommittedPosting> postings(
         dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
       return delegate.postings(effectiveDateRange);

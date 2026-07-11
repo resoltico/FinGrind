@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, response-json, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, capabilities, execute-plan, report-output]
   questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what report payloads does fingrind return"]
@@ -19,7 +19,7 @@ payloads returned by the CLI.
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `inspect-rekey-rollback`, `restore-rekey-rollback`, `delete-rekey-rollback`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `cash-flow-statement`, `changes-in-equity` | `status`, `payload`, optional `artifacts[]` |
+| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `inspect-rekey-rollback`, `restore-rekey-rollback`, `delete-rekey-rollback`, `declare-account`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `income-statement`, `cash-flow-statement`, `changes-in-equity` | `status`, `payload`, optional `artifacts[]` |
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, declare-tax-registration-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.resolvedJournal` |
 | `ok` | successful `record-sale-settled`, `record-sale-on-credit`, `record-expense-settled`, `record-expense-on-credit`, `record-receipt`, `record-payment`, `record-owner-contribution`, `record-owner-withdrawal`, `record-opening-position`, `record-reversal`, or `post-entry` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt`, `payload.idempotentReplay`, `payload.resolvedJournal` |
@@ -32,7 +32,7 @@ payloads returned by the CLI.
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - discovery JSON payloads from `help`, `capabilities`, and `version` now publish
-  `payload.protocolVersion`, and the current hard-break line is `"20"`
+  `payload.protocolVersion`, and the current hard-break line is `"21"`
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; both
   intentionally publish placeholder-first sample documents whose evidence and provenance values
@@ -50,7 +50,10 @@ Dynamic fields:
 - `open-book.payload.bookIdentity.bookTemplateId` currently publishes either
   `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING`, while `.accountingBasis` distinguishes
   the cash-basis and accrual charts within the selected template family
-- `declare-account.payload.declaredAt` is stamped from the FinGrind clock on first declaration
+- `declare-account.payload.outcome` is one of `declared`, `reactivated`, `renamed`, or
+  `unchanged`
+- `declare-account.payload.account.declaredAt` is stamped from the FinGrind clock on first
+  declaration and preserved on later reactivations, renames, and unchanged replays
 - `inspect-book.payload.bookFile` is a redacted public path hint for the selected book
 - `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
 - `list-postings` exposes `limit` plus an optional opaque `nextCursor`
@@ -69,8 +72,8 @@ Dynamic fields:
   and `fiscalYearStart`; the persisted initialized-book identity also carries
   `accountingKernelProfile`, `accountingBasis`, `accountingFrameworkPosition`, `entityForm`, and
   `bookTemplateId`
-- successful `declare-account` plan steps emit `accountCode`, `accountName`, `accountType`,
-  `normalBalance`, `active`, and `declaredAt`
+- successful `declare-account` plan steps emit `outcome` plus `account`, using the shared
+  declared-account payload
 - successful committed posting steps, raw `post-entry`, and `get-posting` plan steps emit typed
   `evidence` data with source document and approval entries
 - successful `assert-account-balance` plan steps emit typed `account` data plus repeated
@@ -181,6 +184,21 @@ Shared initialized-book identity payload:
 - `functionalCurrency`
 - `fiscalYearStart`
 
+Shared declared-account payload:
+- `accountCode`
+- `accountName`
+- `accountType`
+- `accountNodeKind`
+- optional `parentAccountCode`
+- optional `financialPositionLineClassification`
+- optional `cashFlowAssetClassification`
+- optional `profitAndLossLineClassification`
+- optional `unitOfMeasure`, where the nested object carries `token` and `quantityScale`; this is
+  present exactly for inventory accounts
+- `normalBalance`
+- `active`
+- `declaredAt`
+
 Shared resolved-journal payload:
 - `expandedLines.effectiveDate`
 - `expandedLines.lines[]`, where each line carries `accountCode`, `side`, and typed `amount`
@@ -243,6 +261,12 @@ Every response-side money object reuses the same exact money shape with `currenc
 - `payload.initializedAt`
 - `payload.bookIdentity`, using the shared initialized-book identity payload
 
+## Account Declaration Responses
+
+`declare-account` success returns:
+- `payload.outcome`, one of `declared`, `reactivated`, `renamed`, or `unchanged`
+- `payload.account`, using the shared declared-account payload
+
 ## Book Inspection And Query Responses
 
 `inspect-book` success returns:
@@ -298,10 +322,7 @@ and is not the restored live-book secret.
 - `payload.context.bookIdentity`, using the shared initialized-book identity payload
 - `payload.limit`
 - optional `payload.nextCursor`
-- `payload.accounts[]`, where each entry includes `accountCode`, `accountName`, `accountType`,
-  optional `parentAccountCode`, optional
-  `financialPositionLineClassification`, optional `profitAndLossLineClassification`,
-  `normalBalance`, `active`, and `declaredAt`
+- `payload.accounts[]`, where each entry uses the shared declared-account payload
 
 `get-posting` success returns:
 - `payload.context.bookIdentity`, using the shared initialized-book identity payload
@@ -381,6 +402,14 @@ Comparative report selection:
 - `payload.sections[]`, where each section includes `accountType`, `rows[]`, and `totals[]`
 - `payload.comparativeSections[]`, using the same section shape when one comparative as-of selection is requested and resolved
 
+`inventory-valuation` success returns one shared report-model payload with an optional inclusive
+`effectiveDateAsOf` context, one account table containing the inventory account, owned unit of
+measure, exact quantity on hand, informational `roundedMovingAverageUnitCostProjection`, and exact
+carrying value, plus ordered durable movement sections only when `--movements` is selected. The
+carrying value is the exact inventory cost pool, never quantity multiplied by the rounded display
+projection. `get-posting` likewise includes a costed sale's executor-derived cost of sales, relieved
+quantity, and informational rounded moving-average unit-cost projection when those facts exist.
+
 `income-statement` success returns:
 - `payload.effectiveDateFrom`
 - `payload.effectiveDateTo`
@@ -437,7 +466,7 @@ read/report commands support `--output csv` for spreadsheet import. Successful p
 stdout. Every non-plan deterministic failure or single-command business rejection uses one
 canonical JSON diagnostics envelope on stderr instead, regardless of the selected success output
 mode. Invalid invocation failures use that same diagnostics shape.
-`tax-obligation`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `income-statement`, `cash-flow-statement`, and `changes-in-equity` can additionally write one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the JSON report payload itself, but successful JSON success envelopes now also publish one `artifacts[]` entry with `format: "pdf"` and one redacted artifact `path` hint. When `--pdf-out` is selected together with `--output text`, stdout renders one artifact confirmation block instead of the full report body. `--output csv` cannot be combined with `--pdf-out`. If the requested PDF artifact cannot be written, the command returns one deterministic `pdf-export-failure` error instead of a successful report payload.
+`tax-obligation`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `income-statement`, `cash-flow-statement`, and `changes-in-equity` can additionally write one PDF artifact through `--pdf-out <path>`. That PDF export reuses the same canonical result model; it does not change the JSON report payload itself, but successful JSON success envelopes now also publish one `artifacts[]` entry with `format: "pdf"` and one redacted artifact `path` hint. When `--pdf-out` is selected together with `--output text`, stdout renders one artifact confirmation block instead of the full report body. `--output csv` cannot be combined with `--pdf-out`. If the requested PDF artifact cannot be written, the command returns one deterministic `pdf-export-failure` error instead of a successful report payload.
 Deterministic failures and single-command business rejections for commands that accept
 `--output text` keep the same JSON diagnostics envelope rather than switching to a separate text
 failure grammar.
@@ -481,13 +510,16 @@ Checked-in template and ledger-plan examples:
 | `account-type-conflict` | `declare-account` attempted to amend an existing account's immutable classification | `accountCode`, `existingAccountType`, `requestedAccountType` |
 | `unknown-account` | a query named an undeclared account | `accountCode` |
 | `posting-not-found` | `get-posting` targeted a posting id that does not exist in the selected book | `postingId` |
-| `account-state-violations` | `preflight-entry`, one of the typed `record-*` commit commands, or raw `post-entry` found one or more undeclared, inactive, or non-postable accounts, or one request attribute that would create or deepen a negative inventory carrying balance | `violations[]`, where each item includes `code`, `field`, `message`, `category`, `repair`, `accountCode`, and optional `accountNodeKind` |
+| `account-state-violations` | `preflight-entry`, one of the typed `record-*` commit commands, or raw `post-entry` found one or more undeclared, inactive, or non-postable accounts, one inventory movement that would backdate before an account horizon, one inventory quantity decrease that would drive on-hand quantity below zero, or one carrying-cost decrease that would drive an inventory pool below zero | `violations[]`, where each item includes `code`, `field`, `message`, `category`, `repair`, `accountCode`, and optional `accountNodeKind` |
 | `inactive-account` | one item inside `account-state-violations.violations[]` named an inactive account | `code`, `field`, `message`, `category`, `repair`, `accountCode` |
 | `non-postable-account` | one item inside `account-state-violations.violations[]` named a declared header account that cannot accept direct postings | `code`, `field`, `message`, `category`, `repair`, `accountCode`, `accountNodeKind` |
-| `inventory-balance-below-zero` | one item inside `account-state-violations.violations[]` named one inventory decrease that would create or deepen a credit inventory balance | `code`, `field`, `message`, `category`, `repair`, `accountCode` |
+| `inventory-movement-precedes-account-horizon` | one item inside `account-state-violations.violations[]` named one inventory movement whose effective date would backdate before the selected inventory account's accepted horizon | `code`, `field`, `message`, `category`, `repair`, `accountCode` |
+| `inventory-quantity-below-zero` | one item inside `account-state-violations.violations[]` named one inventory decrease that would drive exact quantity on hand below zero | `code`, `field`, `message`, `category`, `repair`, `accountCode` |
+| `inventory-write-down-exceeds-carrying-cost` | one item inside `account-state-violations.violations[]` named one carrying-cost decrease that would drive an inventory pool below zero | `code`, `field`, `message`, `category`, `repair`, `accountCode` |
 | `entry-semantics-violations` | `preflight-entry`, one of the typed `record-*` commit commands, or raw `post-entry` found one or more ordered entry-semantics conflicts in the selected posting request | `violations[]`, where each item includes `code`, `field`, `message`, `category`, and `repair` |
 | `economic-null-journal` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` lines net every referenced account to zero | `code`, `field`, `message`, `category`, `repair` |
 | `raw-journal-requires-cash-line` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` adjustment omits every declared cash account line on a cash-basis book | `code`, `field`, `message`, `category`, `repair` |
+| `raw-journal-touches-inventory` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` contains one line whose declared account resolves to the inventory role, even though raw journals do not own exact inventory quantity truth | `code`, `field`, `message`, `category`, `repair` |
 | `distinct-role-accounts-required` | one item inside `entry-semantics-violations.violations[]` found that two semantic role fields point to the same account even though the entry kind requires distinct accounts | `code`, `field`, `message`, `category`, `repair` |
 | `account-type-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one referenced account uses the wrong declared `accountType` for the selected entry kind | `code`, `field`, `message`, `category`, `repair` |
 | `cash-flow-asset-classification-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one referenced account uses the wrong declared `cashFlowAssetClassification` for the selected entry kind | `code`, `field`, `message`, `category`, `repair` |
@@ -502,10 +534,19 @@ Checked-in template and ledger-plan examples:
 | `verb-requires-trading-template` | one item inside `entry-semantics-violations.violations[]` found that the selected inventory-purchase verb is admitted only on trading-template books | `code`, `field`, `message`, `category`, `repair` |
 | `trading-sale-requires-inventory-relief` | one item inside `entry-semantics-violations.violations[]` found that a trading-template sale omitted the required `inventoryRelief` object | `code`, `field`, `message`, `category`, `repair` |
 | `inventory-relief-requires-trading-book` | one item inside `entry-semantics-violations.violations[]` found that `inventoryRelief` appeared on a non-trading sale request | `code`, `field`, `message`, `category`, `repair` |
+| `inventory-quantity-incompatible-with-unit-of-measure` | one item inside `entry-semantics-violations.violations[]` found that one inventory quantity field contradicts the selected inventory account's declared `unitOfMeasure` scale | `code`, `field`, `message`, `category`, `repair` |
+| `inventory-acquisition-cost-not-exact` | one item inside `entry-semantics-violations.violations[]` found that one inventory acquisition's `quantity` and `unitCost` cannot compose one exact carrying-cost amount at the currency minor-unit boundary | `code`, `field`, `message`, `category`, `repair` |
+| `inventory-acquisition-breaches-minor-unit-floor` | one item inside `entry-semantics-violations.violations[]` found that one inventory acquisition would leave a positive carrying-cost pool below the minimum minor-unit floor required to preserve zero-to-zero disposal truth | `code`, `field`, `message`, `category`, `repair` |
+| `inventory-acquisition-foreign-exchange-functional-amount-mismatch` | one item inside `entry-semantics-violations.violations[]` found that a foreign-exchange inventory acquisition's retained functional amount differs from the exact pre-tax acquisition cost resolved from `quantity × unitCost` | `code`, `field`, `message`, `category`, `repair` |
+| `inventory-capitalization-requires-quantity-on-hand` | one item inside `entry-semantics-violations.violations[]` found that a cost-only capitalization attempted to create a zero-quantity inventory pool | `code`, `field`, `message`, `category`, `repair` |
 | `evidence-class-conflict` | one item inside `entry-semantics-violations.violations[]` found that the retained evidence class contradicts the event class resolved from the request | `code`, `field`, `message`, `category`, `repair` |
 | `raw-journal-shadows-typed-event` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` resolves to one published typed business event and therefore must not be admitted through the raw path | `code`, `field`, `message`, `category`, `repair` |
 | `raw-journal-bundles-operational-events` | one item inside `entry-semantics-violations.violations[]` found that the supplied `DIRECT_JOURNAL` bundles multiple operational business events into one posting | `code`, `field`, `message`, `category`, `repair` |
 | `opening-window-account-not-permitted` | one item inside `entry-semantics-violations.violations[]` found that an `OPENING_POSITION` request referenced one account that the adoption opening window does not permit | `code`, `field`, `message`, `category`, `repair` |
+| `opening-inventory-requires-quantity` | one item inside `entry-semantics-violations.violations[]` found that an `OPENING_POSITION` request omitted `openingBalances[].quantity` for an inventory account and therefore cannot establish exact inventory on hand | `code`, `field`, `message`, `category`, `repair` |
+| `opening-quantity-requires-inventory` | one item inside `entry-semantics-violations.violations[]` found that a non-inventory opening balance carried `openingBalances[].quantity` | `code`, `field`, `message`, `category`, `repair` |
+| `inventory-opening-must-be-first-movement` | one item inside `entry-semantics-violations.violations[]` found that an inventory opening followed an existing durable movement for that account | `code`, `field`, `message`, `category`, `repair` |
+| `inventory-opening-carrying-cost-invalid` | one item inside `entry-semantics-violations.violations[]` found that an inventory opening did not supply a positive carrying cost consistent with its quantity | `code`, `field`, `message`, `category`, `repair` |
 | `idempotency-key-conflict` | the selected book already contains the same `idempotencyKey`, but it is bound to a different committed posting request | none |
 | `posting-effective-date-in-future` | the selected posting request uses an `effectiveDate` later than the current UTC date | `attemptedEffectiveDate`, `currentUtcDate` |
 | `book-functional-currency-mismatch` | the selected posting request uses one journal-line or typed-entry currency that does not match the selected book functional currency | `functionalCurrency`, `attemptedCurrency` |

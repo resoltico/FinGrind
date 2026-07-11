@@ -94,6 +94,7 @@ final class CliCommandParsingRegistry {
       binding(OperationId.ACCOUNT_LEDGER, CliReportArguments::parseAccountLedgerCommand),
       binding(OperationId.PERIOD_SUMMARY, CliReportArguments::parsePeriodSummaryCommand),
       binding(OperationId.FINANCIAL_POSITION, CliReportArguments::parseFinancialPositionCommand),
+      binding(OperationId.INVENTORY_VALUATION, CliReportArguments::parseInventoryValuationCommand),
       binding(OperationId.INCOME_STATEMENT, CliReportArguments::parseIncomeStatementCommand),
       binding(OperationId.CASH_FLOW_STATEMENT, CliReportArguments::parseCashFlowStatementCommand),
       binding(OperationId.CHANGES_IN_EQUITY, CliReportArguments::parseChangesInEquityCommand)
@@ -120,6 +121,21 @@ final class CliCommandParsingRegistry {
       binding(
           OperationId.RECORD_PURCHASE_ON_CREDIT,
           CliPostingMutationArguments::parseRecordPurchaseOnCreditCommand),
+      binding(
+          OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED,
+          CliInventoryPostingMutationArguments::parseRecordInventoryCapitalizationSettledCommand),
+      binding(
+          OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
+          CliInventoryPostingMutationArguments::parseRecordInventoryCapitalizationOnCreditCommand),
+      binding(
+          OperationId.RECORD_INVENTORY_WRITE_DOWN,
+          CliInventoryPostingMutationArguments::parseRecordInventoryWriteDownCommand),
+      binding(
+          OperationId.RECORD_INVENTORY_SHRINKAGE,
+          CliInventoryPostingMutationArguments::parseRecordInventoryShrinkageCommand),
+      binding(
+          OperationId.RECORD_INVENTORY_COUNT_INCREASE,
+          CliInventoryPostingMutationArguments::parseRecordInventoryCountIncreaseCommand),
       binding(
           OperationId.RECORD_EXPENSE_SETTLED,
           CliPostingMutationArguments::parseRecordExpenseSettledCommand),

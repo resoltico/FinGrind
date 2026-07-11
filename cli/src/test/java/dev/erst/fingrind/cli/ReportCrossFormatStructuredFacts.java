@@ -21,13 +21,23 @@ final class ReportCrossFormatStructuredFacts {
   private ReportCrossFormatStructuredFacts() {}
 
   static Set<String> modelFacts(ReportModel model) {
+    return modelFacts(model, true);
+  }
+
+  static Set<String> readableModelFacts(ReportModel model) {
+    return modelFacts(model, false);
+  }
+
+  private static Set<String> modelFacts(ReportModel model, boolean includeEmptySectionColumns) {
     Set<String> facts = new LinkedHashSet<>();
     appendVerdictFacts(facts, "summary", model.verdicts());
     appendVerdictFacts(facts, "context", model.context().rows());
     for (ReportSection section : model.sections()) {
       facts.add(sectionTitleFact(section.key(), section.title()));
       appendVerdictFacts(facts, section.key(), section.verdicts());
-      appendTableFacts(facts, section.key(), "table", section.columns(), section.rows());
+      if (includeEmptySectionColumns || !section.rows().isEmpty()) {
+        appendTableFacts(facts, section.key(), "table", section.columns(), section.rows());
+      }
       for (ReportTotals totals : section.totals()) {
         facts.add(totalsTitleFact(section.key(), totals.title()));
         appendTableFacts(facts, section.key(), totals.title(), totals.columns(), totals.rows());

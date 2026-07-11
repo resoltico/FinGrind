@@ -79,7 +79,8 @@ public final class JazzerPostEntryResultFixtures {
             CliFuzzFixtures.journalEntry(command),
             accountCode -> accountRole(accountCode, accountsByCode),
             evidenceClass(command),
-            structuralContext(entry)));
+            structuralContext(entry),
+            java.util.Optional.empty()));
   }
 
   private static AccountRole accountRole(

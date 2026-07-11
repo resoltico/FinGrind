@@ -15,26 +15,34 @@ final class BookkeepingEntryConstructionSupport {
       AccountCode cashAccountCode,
       AccountCode revenueAccountCode,
       MonetaryAmount amount,
-      @Nullable InventoryRelief inventoryRelief) {}
+      @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting) {}
 
   record SaleOnCreditState(
       LocalDate effectiveDate,
       AccountCode receivableAccountCode,
       AccountCode revenueAccountCode,
       MonetaryAmount amount,
-      @Nullable InventoryRelief inventoryRelief) {}
+      @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails) {}
 
   record PurchaseSettledState(
       LocalDate effectiveDate,
       AccountCode inventoryAccountCode,
       AccountCode cashAccountCode,
-      MonetaryAmount amount) {}
+      QuantityText quantity,
+      MonetaryAmount unitCost,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition) {}
 
   record PurchaseOnCreditState(
       LocalDate effectiveDate,
       AccountCode inventoryAccountCode,
       AccountCode payableAccountCode,
-      MonetaryAmount amount) {}
+      QuantityText quantity,
+      MonetaryAmount unitCost,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails) {}
 
   record ExpenseSettledState(
       LocalDate effectiveDate,
@@ -46,7 +54,8 @@ final class BookkeepingEntryConstructionSupport {
       LocalDate effectiveDate,
       AccountCode expenseAccountCode,
       AccountCode payableAccountCode,
-      MonetaryAmount amount) {}
+      MonetaryAmount amount,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails) {}
 
   private BookkeepingEntryConstructionSupport() {}
 
@@ -56,34 +65,35 @@ final class BookkeepingEntryConstructionSupport {
       AccountCode revenueAccountCode,
       MonetaryAmount amount,
       @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting,
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredCashAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(cashAccountCode, "cashAccountCode");
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
+            cashAccountCode, "cashAccountCode");
     AccountCode requiredRevenueAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             revenueAccountCode, "revenueAccountCode");
     MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    InventoryRelief requiredInventoryRelief =
-        BookkeepingEntryValidationSupport.requireOptionalInventoryRelief(
-            inventoryRelief, requiredAmount, "inventoryRelief");
-    BookkeepingEntryValidationSupport.requireTypedEntryForeignExchange(
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
+    BookkeepingEntryForeignExchangeValidationSupport.requireTypedEntryForeignExchange(
         requiredAmount,
         foreignExchangeDetails,
-        BookkeepingEntryValidationSupport.ForeignExchangeAllowance.SPOT_SETTLEMENT_ONLY,
+        BookkeepingEntryForeignExchangeValidationSupport.ForeignExchangeAllowance
+            .SPOT_TRANSACTION_ONLY,
         "sale");
-    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
         requiredAmount, taxSelection, appliedTax, TaxApplicationKind.OUTPUT_SALE);
     return new SaleSettledState(
         requiredEffectiveDate,
         requiredCashAccountCode,
         requiredRevenueAccountCode,
         requiredAmount,
-        requiredInventoryRelief);
+        inventoryRelief,
+        resolvedInventoryCosting);
   }
 
   static SaleOnCreditState saleOnCredit(
@@ -92,78 +102,133 @@ final class BookkeepingEntryConstructionSupport {
       AccountCode revenueAccountCode,
       MonetaryAmount amount,
       @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredReceivableAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             receivableAccountCode, "receivableAccountCode");
     AccountCode requiredRevenueAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             revenueAccountCode, "revenueAccountCode");
     MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    InventoryRelief requiredInventoryRelief =
-        BookkeepingEntryValidationSupport.requireOptionalInventoryRelief(
-            inventoryRelief, requiredAmount, "inventoryRelief");
-    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
+    BookkeepingEntryForeignExchangeValidationSupport.requireTypedEntryForeignExchange(
+        requiredAmount,
+        foreignExchangeDetails,
+        BookkeepingEntryForeignExchangeValidationSupport.ForeignExchangeAllowance
+            .SPOT_TRANSACTION_ONLY,
+        "saleOnCredit");
+    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
         requiredAmount, taxSelection, appliedTax, TaxApplicationKind.OUTPUT_SALE);
     return new SaleOnCreditState(
         requiredEffectiveDate,
         requiredReceivableAccountCode,
         requiredRevenueAccountCode,
         requiredAmount,
-        requiredInventoryRelief);
+        inventoryRelief,
+        resolvedInventoryCosting,
+        foreignExchangeDetails);
   }
 
   static PurchaseSettledState purchaseSettled(
       LocalDate effectiveDate,
       AccountCode inventoryAccountCode,
       AccountCode cashAccountCode,
-      MonetaryAmount amount,
-      @Nullable ForeignExchangeDetails foreignExchangeDetails) {
+      QuantityText quantity,
+      MonetaryAmount unitCost,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails,
+      @Nullable TaxSelection taxSelection,
+      @Nullable AppliedTax appliedTax) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredInventoryAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             inventoryAccountCode, "inventoryAccountCode");
     AccountCode requiredCashAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(cashAccountCode, "cashAccountCode");
-    MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    BookkeepingEntryValidationSupport.requireTypedEntryForeignExchange(
-        requiredAmount,
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
+            cashAccountCode, "cashAccountCode");
+    QuantityText requiredQuantity =
+        BookkeepingEntryScalarValidationSupport.requirePositiveQuantityText(quantity, "quantity");
+    MonetaryAmount requiredUnitCost =
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(unitCost, "unitCost");
+    BookkeepingEntryForeignExchangeValidationSupport.requireTypedEntryForeignExchangeTreatment(
         foreignExchangeDetails,
-        BookkeepingEntryValidationSupport.ForeignExchangeAllowance.SPOT_SETTLEMENT_ONLY,
+        BookkeepingEntryForeignExchangeValidationSupport.ForeignExchangeAllowance
+            .SPOT_TRANSACTION_ONLY,
         "purchase");
+    requirePurchaseTaxSelectionState(resolvedInventoryAcquisition, taxSelection, appliedTax);
     return new PurchaseSettledState(
         requiredEffectiveDate,
         requiredInventoryAccountCode,
         requiredCashAccountCode,
-        requiredAmount);
+        requiredQuantity,
+        requiredUnitCost,
+        resolvedInventoryAcquisition);
   }
 
   static PurchaseOnCreditState purchaseOnCredit(
       LocalDate effectiveDate,
       AccountCode inventoryAccountCode,
       AccountCode payableAccountCode,
-      MonetaryAmount amount) {
+      QuantityText quantity,
+      MonetaryAmount unitCost,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails,
+      @Nullable TaxSelection taxSelection,
+      @Nullable AppliedTax appliedTax) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredInventoryAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             inventoryAccountCode, "inventoryAccountCode");
     AccountCode requiredPayableAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             payableAccountCode, "payableAccountCode");
-    MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
+    QuantityText requiredQuantity =
+        BookkeepingEntryScalarValidationSupport.requirePositiveQuantityText(quantity, "quantity");
+    MonetaryAmount requiredUnitCost =
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(unitCost, "unitCost");
+    BookkeepingEntryForeignExchangeValidationSupport.requireTypedEntryForeignExchangeTreatment(
+        foreignExchangeDetails,
+        BookkeepingEntryForeignExchangeValidationSupport.ForeignExchangeAllowance
+            .SPOT_TRANSACTION_ONLY,
+        "purchaseOnCredit");
+    requirePurchaseTaxSelectionState(resolvedInventoryAcquisition, taxSelection, appliedTax);
     return new PurchaseOnCreditState(
         requiredEffectiveDate,
         requiredInventoryAccountCode,
         requiredPayableAccountCode,
-        requiredAmount);
+        requiredQuantity,
+        requiredUnitCost,
+        resolvedInventoryAcquisition,
+        foreignExchangeDetails);
+  }
+
+  private static void requirePurchaseTaxSelectionState(
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
+      @Nullable TaxSelection taxSelection,
+      @Nullable AppliedTax appliedTax) {
+    if (appliedTax == null) {
+      if (taxSelection == null) {
+        return;
+      }
+      return;
+    }
+    MonetaryAmount taxableAmount =
+        BookkeepingEntryInventoryValidationSupport.requireResolvedInventoryAcquisition(
+                resolvedInventoryAcquisition, "purchase")
+            .preTaxCost();
+    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
+        taxableAmount,
+        taxSelection,
+        appliedTax,
+        TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+        TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE);
   }
 
   static ExpenseSettledState expenseSettled(
@@ -175,20 +240,22 @@ final class BookkeepingEntryConstructionSupport {
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredExpenseAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             expenseAccountCode, "expenseAccountCode");
     AccountCode requiredCashAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(cashAccountCode, "cashAccountCode");
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
+            cashAccountCode, "cashAccountCode");
     MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    BookkeepingEntryValidationSupport.requireTypedEntryForeignExchange(
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
+    BookkeepingEntryForeignExchangeValidationSupport.requireTypedEntryForeignExchange(
         requiredAmount,
         foreignExchangeDetails,
-        BookkeepingEntryValidationSupport.ForeignExchangeAllowance.SPOT_SETTLEMENT_ONLY,
+        BookkeepingEntryForeignExchangeValidationSupport.ForeignExchangeAllowance
+            .SPOT_TRANSACTION_ONLY,
         "expense");
-    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
         requiredAmount,
         taxSelection,
         appliedTax,
@@ -203,19 +270,26 @@ final class BookkeepingEntryConstructionSupport {
       AccountCode expenseAccountCode,
       AccountCode payableAccountCode,
       MonetaryAmount amount,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredExpenseAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             expenseAccountCode, "expenseAccountCode");
     AccountCode requiredPayableAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             payableAccountCode, "payableAccountCode");
     MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    BookkeepingEntryValidationSupport.requireTaxSelectionState(
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
+    BookkeepingEntryForeignExchangeValidationSupport.requireTypedEntryForeignExchange(
+        requiredAmount,
+        foreignExchangeDetails,
+        BookkeepingEntryForeignExchangeValidationSupport.ForeignExchangeAllowance
+            .SPOT_TRANSACTION_ONLY,
+        "expenseOnCredit");
+    BookkeepingEntryTaxValidationSupport.requireTaxSelectionState(
         requiredAmount,
         taxSelection,
         appliedTax,
@@ -225,6 +299,7 @@ final class BookkeepingEntryConstructionSupport {
         requiredEffectiveDate,
         requiredExpenseAccountCode,
         requiredPayableAccountCode,
-        requiredAmount);
+        requiredAmount,
+        foreignExchangeDetails);
   }
 }

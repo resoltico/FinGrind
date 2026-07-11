@@ -225,7 +225,7 @@ final class PostingRejectionDescriptors {
         DetailRejectionOwner.ENTRY_SEMANTICS),
     ACCOUNT_STATE_VIOLATIONS(
         "account-state-violations",
-        "Posting refused because one or more posting attributes reference undeclared, inactive, or non-postable accounts, or would create or deepen a negative inventory carrying balance.",
+        "Posting refused because one or more posting attributes reference undeclared, inactive, or non-postable accounts, would append inventory before the account horizon, would drive inventory quantity below zero, or would reduce inventory carrying cost below zero.",
         DetailFieldOwner.ACCOUNT_STATE_VIOLATIONS,
         DetailRejectionOwner.ACCOUNT_STATE),
     IDEMPOTENCY_KEY_CONFLICT(

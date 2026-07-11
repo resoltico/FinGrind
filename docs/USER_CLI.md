@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: USER_CLI
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind"]
@@ -15,7 +15,7 @@ route:
 matches your host and unpack it. The published Linux bundles require glibc `2.34` or newer; treat
 [USER_INSTALL.md](./USER_INSTALL.md) and the extracted `bundle-manifest.json` as the authoritative
 compatibility owners. No separate Java install is required for that path. For source-driven local runs,
-`./gradlew :cli:run` manages SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 automatically.
+`./gradlew :cli:run` manages SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 automatically.
 For exact public package names, checksum commands, and the published container reference, start
 with [USER_INSTALL.md](./USER_INSTALL.md). The source-checkout wrapper
 `./scripts/source-checkout-cli.sh` or `.\scripts\source-checkout-cli.ps1` and the direct-Java
@@ -49,7 +49,9 @@ and output-contract descriptors, `--detail full` when you need embedded template
 vocabularies, or doctrine bodies, and `--focus` / `--category` when you want one machine-retrieval
 slice instead of the full catalog family.
 Request-file commands such as `declare-account`, `record-sale-settled`,
-`record-purchase-settled`, `record-expense-settled`, `record-owner-contribution`,
+`record-purchase-settled`, `record-inventory-capitalization-settled`,
+`record-inventory-write-down`, `record-inventory-shrinkage`, `record-inventory-count-increase`,
+`record-expense-settled`, `record-owner-contribution`,
 `record-owner-withdrawal`, `record-opening-position`, `record-reversal`, `post-entry`,
 `preflight-entry`, `declare-tax-registration`, and `execute-plan` also inline the accepted
 request shape, one canonical template, and the relevant enum vocabulary so an operator or agent
@@ -67,7 +69,7 @@ topic (`post-entry`, `preflight-entry`, or one of the `record-*` commands) emits
 caller-submittable posting shape.
 `preflight-entry` keeps the full published posting-request family, while `post-entry` emits the raw
 `DIRECT_JOURNAL` scaffold only, and that raw path still has to move at least one declared
-cash-and-cash-equivalent asset account.
+cash-and-cash-equivalent asset account while rejecting any inventory account line.
 `print-plan-template` returns one raw JSON ledger-plan scaffold that already includes
 `ensure-book` with explicit `bookTemplateId`, one minimal sale posting step, and one balance
 assertion.
@@ -78,7 +80,9 @@ commits successfully.
 The easiest path is one missing private parent directory that FinGrind can create securely, or one
 existing parent directory that you have already tightened to owner-only permissions.
 `open-book` explicitly initializes a new protected book from the selected built-in seed template
-and explicit accounting basis.
+and explicit accounting basis. `OWNER_MANAGED_TRADING` additionally requires
+`--inventory-costing WEIGHTED_AVERAGE`; service-template books reject that option because they do
+not own inventory costing.
 `rekey-book` rotates the passphrase that protects one existing initialized book and restores the
 pre-rekey file automatically if new-passphrase verification fails.
 `backup-book` exports one verified encrypted backup pair for a closed book, `restore-book`
@@ -91,7 +95,10 @@ passphrase source.
 `declare-account` inserts or reactivates one account in the selected book, with immutable
 `accountType`, immutable declared taxonomy, and derived `normalBalance`. Asset accounts also
 declare `cashFlowAssetClassification` so FinGrind can distinguish cash and cash-equivalent assets
-from non-cash assets.
+from non-cash assets. Inventory accounts additionally require one nested
+`unitOfMeasure { token, quantityScale }` object, while non-inventory accounts must not carry
+that field. When present, the same inventory unit metadata is echoed back by `declare-account`,
+`list-accounts`, and ledger-plan account-declaration results.
 `declare-tax-registration` declares or updates one owned tax registration in the selected book,
 including its payable and recoverable tax accounts, filing frequency, due offset, and declared tax
 code catalog.
@@ -115,11 +122,11 @@ migration policy for one selected book.
 `list-tax-registrations` returns one stable page of the current tax-registration registry.
 `get-posting` and `list-postings` expose read/query access to committed history.
 `account-balance` and `tax-obligation` answer one focused account or filing-period report
-question, while `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
+question, while `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`,
 `income-statement`, `cash-flow-statement`, and `changes-in-equity` answer broader
 office-worker reporting questions in one command.
 `trial-balance`, `financial-position`, `income-statement`, `cash-flow-statement`, and
-`changes-in-equity` also accept one opt-in `--comparative` selector so operators can request
+`changes-in-equity` accept one opt-in `--comparative` selector so operators can request
 `none`, one fiscal-year-anchored prior period, or one explicit comparison window.
 `execute-plan` runs one ordered ledger plan atomically and returns either a human-readable text
 summary or one JSON execution-journal envelope on stdout. Built-in default output is text;
@@ -128,9 +135,12 @@ journal in either surface.
 `preflight-entry`, the typed `record-*` commit commands, and raw `post-entry` all require an
 already initialized book plus declared active accounts for every referenced account, and they
 surface those failures as `account-state-violations` with structured `details.violations`. That
-same rejection family also owns inventory-carrying-balance protection: any request that would
-create or deepen a credit inventory balance is rejected before commit, including trading-sale
-`inventoryRelief` and raw direct-journal inventory credits.
+same rejection family also owns inventory quantity-floor protection: any quantity-aware inventory
+decrease that would drive exact quantity on hand below zero is rejected before commit, including
+trading-sale `inventoryRelief.quantity` and other inventory-command decreases. Raw direct journals
+cannot touch inventory accounts at all. Inventory request facts that contradict the selected
+inventory account's declared `unitOfMeasure` scale or exact acquisition-costing rules reject as
+`entry-semantics-violations` before commit rather than leaking core exception text.
 Settled-sale, sale-on-credit, settled-expense, and expense-on-credit request documents may also
 carry one nested `tax` selector naming one declared tax registration and one declared tax code.
 FinGrind does not expose one neutral free-form tax payload on the other entry families.
@@ -145,7 +155,7 @@ Every journal line and every typed entry amount still use the selected book func
 Foreign-currency business events are retained only through `foreignExchange`, and mixed-currency
 journal lines inside one entry remain unsupported.
 Every journal-line amount must be greater than zero.
-Protected books use SQLite3 Multiple Ciphers 2.3.5 with the upstream default `chacha20` cipher.
+Protected books use SQLite3 Multiple Ciphers 2.3.6 with the upstream default `chacha20` cipher.
 The operation catalog rendered in `help` and `capabilities` is contract-owned protocol metadata,
 so CLI help, parser aliases, output modes, summaries, query limits, and the separation between
 executable examples and operator notes share one source.
@@ -155,7 +165,7 @@ contract, so automation can read the per-command
 `executionMode`, `outputModes`, `artifactOutputs`, aliases, options, and summary directly
 instead of inferring stdout behavior from one global mode list.
 Discovery JSON payloads from `help`, `capabilities`, and `version` also publish one
-`protocolVersion` field. The current hard-break line is `"20"`.
+`protocolVersion` field. The current hard-break line is `"21"`.
 Commands that advertise `--output` default successful stdout to text unless you set
 `FINGRIND_DEFAULT_OUTPUT=json` for the current session. `FINGRIND_DEFAULT_OUTPUT=text` restores the
 text default explicitly, and per-command `--output ...` always wins over the session default.
@@ -196,10 +206,10 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>version</code></td><td><code>--version</code></td><td><code>[--output &lt;json|text&gt;]</code></td><td>Print application identity, version, and description.</td></tr>
     <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code><br><code>[--detail &lt;minimal|compact|full&gt; (json only)]</code><br><code>[--focus &lt;overview|commands|storage|request-input|currency-model|bookkeeping-kernel|response-contract&gt; (json only)]</code><br><code>[--category &lt;discovery|administration|query|write&gt; (json only)]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
     <tr><td><code>environment</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code></td><td>Print live runtime, distribution, and SQLite provenance facts for this launcher instance.</td></tr>
-    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|declare-tax-registration]</code><br><code>[--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;]</code></td><td>Print the canonical minimal request scaffold JSON document for a request-file command.</td></tr>
+    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-inventory-capitalization-settled|record-inventory-capitalization-on-credit|record-inventory-write-down|record-inventory-shrinkage|record-inventory-count-increase|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|declare-tax-registration]</code><br><code>[--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;]</code></td><td>Print the canonical minimal request scaffold JSON document for a request-file command.</td></tr>
     <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical minimal AI-agent ledger plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--book-key-file &lt;path&gt;</code><br><code>[--tighten-parents]</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Create a new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
-    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;</code><br><code>--accounting-basis &lt;CASH|ACCRUAL&gt;</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>[--tighten-parents]</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Initialize a new book file with the canonical schema, selected seed template, and explicit accounting basis.</td></tr>
+    <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;</code><br><code>--accounting-basis &lt;CASH|ACCRUAL&gt;</code><br><code>[--inventory-costing &lt;WEIGHTED_AVERAGE&gt;] (required for OWNER_MANAGED_TRADING)</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>[--tighten-parents]</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Initialize a new book file with the canonical schema, selected seed template, explicit accounting basis, and the inventory costing doctrine required by trading templates.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--new-book-key-file &lt;existing-path&gt; | --new-book-passphrase-stdin | --new-book-passphrase-prompt</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Rotate the passphrase that protects an existing book.</td></tr>
     <tr><td><code>backup-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Export a closed encrypted-book backup pair without overwriting any existing destination.</td></tr>
     <tr><td><code>restore-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt;</code><br><code>--backup-file &lt;path&gt;</code><br><code>--backup-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Restore a verified encrypted-book backup pair onto the selected live book path.</td></tr>
@@ -221,6 +231,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>account-ledger</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--account-code &lt;account-code&gt;</code><br><code>[--effective-date-from &lt;YYYY-MM-DD&gt;]</code><br><code>[--effective-date-to &lt;YYYY-MM-DD&gt;]</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute the running ledger for an account, including opening balances, per-posting movement, and closing balances.</td></tr>
     <tr><td><code>period-summary</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--posting-coverage &lt;all-posting-kinds|non-closing-postings&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded accounting-period summary with posting totals, currency totals, and per-account activity.</td></tr>
     <tr><td><code>financial-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--effective-date-as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--comparative &lt;none|prior-period|..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.</td></tr>
+    <tr><td><code>inventory-valuation</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>[--as-of &lt;YYYY-MM-DD&gt;]</code><br><code>[--movements]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute exact per-account inventory quantity and carrying value from the canonical inventory movement replay order. The rounded moving-average unit-cost projection is informational only.</td></tr>
     <tr><td><code>income-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded income statement for the selected reporting period.</td></tr>
     <tr><td><code>cash-flow-statement</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded statement of cash receipts and payments for the selected reporting period.</td></tr>
     <tr><td><code>changes-in-equity</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--period-start &lt;YYYY-MM-DD&gt;</code><br><code>--period-end &lt;YYYY-MM-DD&gt;</code><br><code>[--comparative &lt;none|prior-period|YYYY-MM-DD..YYYY-MM-DD&gt;]</code><br><code>[--pdf-out &lt;path&gt;]</code><br><code>[--output &lt;json|text|csv&gt;]</code></td><td>Compute a bounded statement of changes in equity for the selected reporting period.</td></tr>
@@ -230,6 +241,11 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>record-sale-on-credit</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a sale-on-credit entry into the selected SQLite book.</td></tr>
     <tr><td><code>record-purchase-settled</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a settled inventory purchase entry into the selected trading-template SQLite book.</td></tr>
     <tr><td><code>record-purchase-on-credit</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a purchase-on-credit inventory entry into the selected trading-template SQLite book.</td></tr>
+    <tr><td><code>record-inventory-capitalization-settled</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a settled landed-cost capitalization into an existing inventory pool.</td></tr>
+    <tr><td><code>record-inventory-capitalization-on-credit</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a payable landed-cost capitalization into an existing inventory pool.</td></tr>
+    <tr><td><code>record-inventory-write-down</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a carrying-cost write-down against an existing inventory pool.</td></tr>
+    <tr><td><code>record-inventory-shrinkage</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a quantity shrinkage adjustment with executor-derived carrying cost.</td></tr>
+    <tr><td><code>record-inventory-count-increase</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a count-discovered inventory increase at an exact per-unit carrying cost.</td></tr>
     <tr><td><code>record-expense-settled</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a settled expense entry into the selected SQLite book.</td></tr>
     <tr><td><code>record-expense-on-credit</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit an expense-on-credit entry into the selected SQLite book.</td></tr>
     <tr><td><code>record-receipt</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a trade-receivable settlement entry into the selected SQLite book.</td></tr>
@@ -238,7 +254,7 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>record-owner-withdrawal</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit an owner-withdrawal entry into the selected SQLite book.</td></tr>
     <tr><td><code>record-opening-position</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit an opening-position entry into the selected SQLite book.</td></tr>
     <tr><td><code>record-reversal</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a reversal entry into the selected SQLite book.</td></tr>
-    <tr><td><code>post-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a raw direct-journal posting request into the selected SQLite book. Prefer the record-* commands when a typed business-entry command matches the operator's intent.</td></tr>
+    <tr><td><code>post-entry</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--request-file &lt;path|-&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Commit a raw direct-journal posting request into the selected SQLite book. Prefer the record-* commands when a typed business-entry command matches the operator's intent; raw direct-journal requests do not admit inventory accounts.</td></tr>
   </tbody>
 </table>
 <!-- END GENERATED USER_CLI COMMAND TABLE -->
@@ -296,8 +312,13 @@ Edit `./request.json` and replace the placeholder evidence and provenance values
 the raw direct-journal scaffold. When the selected book doctrine is `OWNER_MANAGED_TRADING`, sale
 help and request templates surface the owned `inventoryRelief` block before first rejection, the
 typed sale requires it so one committed event carries both revenue and cost-of-sales relief, and
-purchase workflows stay on the typed surface through `record-purchase-settled` and
-`record-purchase-on-credit` only on trading-template books.
+trading-template books keep purchase, capitalization, write-down, shrinkage, and count-increase
+workflows on their corresponding `record-*` commands. Purchase and count-increase requests carry
+exact quantity plus unit cost; sale and shrinkage requests carry quantity while FinGrind derives
+the authoritative carrying cost from the inventory pool. `inventory-valuation` makes that exact
+pool visible by inventory account: `--as-of` replays through the selected date and `--movements`
+adds ordered durable movement evidence. Its rounded moving-average unit-cost projection is
+informational only; carrying value never equals quantity times that rounded display value.
 
 In the examples below, `fingrind` means the extracted Linux bundle launcher.
 Command-scoped help and repair hints emitted from a self-contained bundle use that same launcher
@@ -481,8 +502,8 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   path with that destination key file after the restore completes.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to
   `sqlite3`.
-- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.2 /
-  SQLite3 Multiple Ciphers 2.3.5 native library.
+- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.3 /
+  SQLite3 Multiple Ciphers 2.3.6 native library.
 - `environment.runtime.runtimeDistribution` tells you whether the current process is running from a
   self-contained bundle, container image, source-checkout Gradle launch, or direct Java wrapper
   invocation.
@@ -504,10 +525,10 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 - `list-postings` returns paginated payloads with `limit`, `postings`, and an optional opaque
   `nextCursor` that can be passed back through `--cursor`.
 - `inspect-book`, `list-accounts`, `list-postings`, `account-balance`, `trial-balance`,
-  `account-ledger`, `period-summary`, `financial-position`, `income-statement`,
+  `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `income-statement`,
   `cash-flow-statement`, and `changes-in-equity` accept `--output text`; all tabular read/report commands except
   `inspect-book` and `get-posting` also accept `--output csv`.
-- `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
+- `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`,
   `income-statement`, `cash-flow-statement`, and `changes-in-equity` can also write one PDF artifact through
   `--pdf-out <path>`. PDF export is explicit file output, not another stdout output mode. If the
   primary report succeeds, JSON success envelopes publish one redacted artifact-path hint under
@@ -565,7 +586,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
   `currencyModel` so agents can discover the advisory preflight contract plus the
   single-functional-currency and owned-foreign-exchange doctrine without reading source code.
 - Gradle-driven local runs, the source-checkout wrapper, and the container image use a
-  managed SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 shared library.
+  managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 shared library.
 - The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped
   native access when they run from a prepared checkout. Direct-Java launches outside that checkout
   shape are unsupported.

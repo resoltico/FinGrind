@@ -175,6 +175,7 @@ class CliFuzzSyntheticAccountFixturesTest {
                 new MonetaryAmount("EUR", "10000"),
                 null,
                 null,
+                null,
                 new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
                 appliedTax(
                     "vat-lv",
@@ -207,6 +208,7 @@ class CliFuzzSyntheticAccountFixturesTest {
                 new AccountCode("1000"),
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
+                null,
                 null,
                 null,
                 new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
@@ -246,6 +248,8 @@ class CliFuzzSyntheticAccountFixturesTest {
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
                 null,
+                null,
+                null,
                 new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
                 appliedTax(
                     "vat-lv",
@@ -261,6 +265,7 @@ class CliFuzzSyntheticAccountFixturesTest {
                 new AccountCode("6100"),
                 new AccountCode("2100"),
                 new MonetaryAmount("EUR", "12100"),
+                null,
                 new TaxSelection(
                     new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-expense")),
                 appliedTax(
@@ -323,11 +328,13 @@ class CliFuzzSyntheticAccountFixturesTest {
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                        new MonetaryAmount("SEK", "4200")),
+                        new MonetaryAmount("SEK", "4200"),
+                        null),
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                        new MonetaryAmount("SEK", "4200")))));
+                        new MonetaryAmount("SEK", "4200"),
+                        null))));
     PostEntryCommand openingPositionCommand =
         CliFuzzFixtures.readPostEntryCommand(
             CliFuzzHarnessTestSupport.openAccountingPositionRequestJson(

@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.QuantityText;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.tax.AppliedTax;
@@ -21,6 +22,10 @@ final class RequestFingerprintEntryFieldWriter {
   static void appendAmount(StringBuilder canonical, MonetaryAmount amount) {
     appendField(canonical, "callerAuthoredEntry.amountCurrency", amount.currencyCode());
     appendField(canonical, "callerAuthoredEntry.amountMinorUnits", amount.minorUnits());
+  }
+
+  static void appendQuantity(StringBuilder canonical, String fieldName, QuantityText quantity) {
+    appendField(canonical, "callerAuthoredEntry." + fieldName, quantity.value());
   }
 
   static void appendTaxedAmount(
@@ -79,6 +84,22 @@ final class RequestFingerprintEntryFieldWriter {
         appliedTax.taxAccountCode() == null ? "" : appliedTax.taxAccountCode().value());
   }
 
+  static void appendTaxSelection(StringBuilder canonical, @Nullable TaxSelection taxSelection) {
+    appendField(
+        canonical,
+        "callerAuthoredEntry.taxSelection.present",
+        Boolean.toString(taxSelection != null));
+    if (taxSelection == null) {
+      return;
+    }
+    appendField(
+        canonical,
+        "callerAuthoredEntry.taxSelection.taxRegistrationId",
+        taxSelection.taxRegistrationId().value());
+    appendField(
+        canonical, "callerAuthoredEntry.taxSelection.taxCode", taxSelection.taxCode().value());
+  }
+
   static void appendOptionalSettlementAdjunct(
       StringBuilder canonical, @Nullable SettlementAdjunct settlementAdjunct) {
     appendField(
@@ -121,12 +142,8 @@ final class RequestFingerprintEntryFieldWriter {
         inventoryRelief.costOfSalesAccountCode().value());
     appendField(
         canonical,
-        "callerAuthoredEntry.inventoryRelief.amountCurrency",
-        inventoryRelief.amount().currencyCode());
-    appendField(
-        canonical,
-        "callerAuthoredEntry.inventoryRelief.amountMinorUnits",
-        inventoryRelief.amount().minorUnits());
+        "callerAuthoredEntry.inventoryRelief.quantity",
+        inventoryRelief.quantity().value());
   }
 
   static void appendOptionalForeignExchangeDetails(
@@ -176,7 +193,7 @@ final class RequestFingerprintEntryFieldWriter {
         foreignExchangeDetails.treatmentKind().wireValue());
   }
 
-  private static void appendField(StringBuilder canonical, String fieldName, String value) {
+  static void appendField(StringBuilder canonical, String fieldName, String value) {
     RequestFingerprintOwner.append(canonical, fieldName, value);
   }
 }

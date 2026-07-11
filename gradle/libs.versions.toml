@@ -9,10 +9,10 @@ errorprone-plugin = "5.1.0"
 jspecify = "1.0.0"
 nullaway = "0.13.7"
 google-java-format = "1.35.0"
-pmd = "7.25.0"
+pmd = "7.26.0"
 archunit = "1.4.2"
-shadow = "9.4.3"
-spotless = "8.7.0"
+shadow = "9.5.1"
+spotless = "8.8.0"
 
 [libraries]
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }

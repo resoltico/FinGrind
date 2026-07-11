@@ -141,7 +141,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,parentAccountCode,accountType,financialPositionLineClassification,cashFlowAssetClassification,profitAndLossLineClassification,normalBalance,active,declaredAt,message");
+        "exportFamily,rowId,parentRowId,relationKind,recordKind,accountCode,accountName,parentAccountCode,accountType,unitOfMeasureToken,quantityScale,financialPositionLineClassification,cashFlowAssetClassification,profitAndLossLineClassification,normalBalance,active,declaredAt,message");
     assertCommandOutputContains(
         new String[] {
           "get-posting",
@@ -220,6 +220,20 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "csv"
         },
         "exportFamily,rowId,parentRowId,relationKind");
+    assertCommandOutputContains(
+        new String[] {
+          "inventory-valuation",
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--as-of",
+          "2026-04-30",
+          "--movements",
+          "--output",
+          "csv"
+        },
+        "inventory-valuation");
   }
 
   @Test

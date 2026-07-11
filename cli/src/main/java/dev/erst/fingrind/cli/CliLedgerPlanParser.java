@@ -14,7 +14,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
-import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -22,7 +21,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolBookRequestFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanRequestFieldSets;
-import dev.erst.fingrind.contract.protocol.ProtocolOpenBookFields;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
@@ -30,10 +28,7 @@ import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.BookDoctrines;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CanonicalTemporalText;
-import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
@@ -101,7 +96,7 @@ final class CliLedgerPlanParser {
     if (kind == LedgerStepKind.ENSURE_BOOK) {
       return new LedgerStep.EnsureBook(
           stepId,
-          readEnsureBookCommand(
+          CliLedgerPlanEnsureBookParser.read(
               requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ENSURE_BOOK)));
     }
     return new LedgerStep.DeclareAccount(
@@ -202,30 +197,6 @@ final class CliLedgerPlanParser {
             + " for "
             + actualKind.wireValue()
             + " ledger plan steps.");
-  }
-
-  private static OpenBookCommand readEnsureBookCommand(ObjectNode ensureBookNode) {
-    rejectUnexpectedFields(
-        ensureBookNode, "ensureBook", ProtocolBookRequestFieldSets.openBookFields());
-    return new OpenBookCommand(
-        new BookIdentity(
-            new EntityProfile(
-                CliOptionValues.parseBookEntityNameOption(
-                    requiredText(ensureBookNode, ProtocolOpenBookFields.ENTITY_NAME),
-                    "ensureBook." + ProtocolOpenBookFields.ENTITY_NAME)),
-            BookDoctrines.forTemplateAndBasis(
-                CliOptionValues.parseBookTemplateIdOption(
-                    requiredText(ensureBookNode, ProtocolOpenBookFields.BOOK_TEMPLATE_ID),
-                    "ensureBook." + ProtocolOpenBookFields.BOOK_TEMPLATE_ID),
-                CliOptionValues.parseAccountingBasisOption(
-                    requiredText(ensureBookNode, ProtocolOpenBookFields.ACCOUNTING_BASIS),
-                    "ensureBook." + ProtocolOpenBookFields.ACCOUNTING_BASIS)),
-            CliOptionValues.parseCurrencyUnitOption(
-                requiredText(ensureBookNode, ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
-                "ensureBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
-            CliOptionValues.parseFiscalYearStartOption(
-                requiredText(ensureBookNode, ProtocolOpenBookFields.FISCAL_YEAR_START),
-                "ensureBook." + ProtocolOpenBookFields.FISCAL_YEAR_START)));
   }
 
   private static LedgerAssertion readLedgerAssertion(ObjectNode assertionNode) {

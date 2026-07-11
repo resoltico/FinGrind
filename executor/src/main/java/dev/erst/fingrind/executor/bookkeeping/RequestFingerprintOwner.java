@@ -24,6 +24,7 @@ final class RequestFingerprintOwner {
 
   private static SourceChannel sourceChannel(PostingRequestModel postingRequest) {
     return switch (postingRequest) {
+      case AcceptedPosting acceptedPosting -> acceptedPosting.sourceChannel();
       case PostingCommand command -> command.sourceChannel();
       case dev.erst.fingrind.executor.spi.PostingDraft draft -> draft.sourceChannel();
     };
@@ -40,6 +41,11 @@ final class RequestFingerprintOwner {
   private static void appendJournalEntry(
       StringBuilder canonical, PostingRequestModel postingRequest) {
     append(canonical, "effectiveDate", postingRequest.journalEntry().effectiveDate().toString());
+    if (postingRequest.callerAuthoredEntry().isPresent()) {
+      append(canonical, "journalShape", "caller-authored-entry");
+      return;
+    }
+    append(canonical, "journalShape", "journal-entry");
     append(canonical, "lineCount", Integer.toString(postingRequest.journalEntry().lines().size()));
     for (int index = 0; index < postingRequest.journalEntry().lines().size(); index++) {
       var line = postingRequest.journalEntry().lines().get(index);

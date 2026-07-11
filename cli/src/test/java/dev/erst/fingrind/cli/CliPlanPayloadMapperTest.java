@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanLedgerFactJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -207,12 +208,13 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     CliPlanJsonModels.AccountCodeAssertionStepDataPayload accountAssertion =
         assertInstanceOf(CliPlanJsonModels.AccountCodeAssertionStepDataPayload.class, step.data());
     assertEquals("1000", accountAssertion.accountCode());
-    List<CliPlanJsonModels.LedgerFactPayload> failureFacts =
+    List<CliPlanLedgerFactJsonModels.LedgerFactPayload> failureFacts =
         Objects.requireNonNull(step.failure(), "failure").details();
-    assertInstanceOf(CliPlanJsonModels.FlagLedgerFactPayload.class, failureFacts.get(0));
-    assertInstanceOf(CliPlanJsonModels.CountLedgerFactPayload.class, failureFacts.get(1));
-    CliPlanJsonModels.GroupLedgerFactPayload failureGroup =
-        assertInstanceOf(CliPlanJsonModels.GroupLedgerFactPayload.class, failureFacts.get(2));
+    assertInstanceOf(CliPlanLedgerFactJsonModels.FlagLedgerFactPayload.class, failureFacts.get(0));
+    assertInstanceOf(CliPlanLedgerFactJsonModels.CountLedgerFactPayload.class, failureFacts.get(1));
+    CliPlanLedgerFactJsonModels.GroupLedgerFactPayload failureGroup =
+        assertInstanceOf(
+            CliPlanLedgerFactJsonModels.GroupLedgerFactPayload.class, failureFacts.get(2));
     assertEquals("context", failureGroup.name());
     assertEquals(1, failureGroup.facts().size());
   }

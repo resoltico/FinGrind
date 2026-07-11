@@ -10,14 +10,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.EconomicEventClass;
 import dev.erst.fingrind.core.EvidenceClass;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.Quantity;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.lang.reflect.InvocationTargetException;
 import java.time.LocalDate;
 import java.util.List;
@@ -142,6 +143,27 @@ class BookkeepingPostingRejectionTest {
             BookkeepingEntryKind.SALE_SETTLED.wireValue(),
             EvidenceClass.INVOICE,
             EconomicEventClass.SETTLED_SALE);
+    BookkeepingPostingRejection.EntrySemanticsViolation inventoryQuantityIncompatible =
+        InventoryEntrySemanticsViolations.inventoryQuantityIncompatibleWithUnitOfMeasure(
+            "inventoryRelief.quantity",
+            "0.5",
+            new AccountCode("inventory"),
+            new UnitOfMeasure("unit", 0),
+            "Quantity must not contain fractional digits at scale 0.");
+    BookkeepingPostingRejection.EntrySemanticsViolation inventoryAcquisitionCostNotExact =
+        InventoryEntrySemanticsViolations.inventoryAcquisitionCostNotExact(
+            "0.25",
+            Money.parse("EUR", "0.02"),
+            new AccountCode("inventory"),
+            new UnitOfMeasure("kg", 2));
+    BookkeepingPostingRejection.EntrySemanticsViolation inventoryAcquisitionBreachesFloor =
+        InventoryEntrySemanticsViolations.inventoryAcquisitionBreachesMinorUnitFloor(
+            "0.25",
+            Money.parse("EUR", "0.04"),
+            new AccountCode("inventory"),
+            new UnitOfMeasure("kg", 2),
+            25L,
+            Money.parse("EUR", "0.01"));
 
     assertEquals("account-type-mismatch", accountTypeMismatch.code());
     assertEquals("cashAccountCode", accountTypeMismatch.field());
@@ -179,6 +201,25 @@ class BookkeepingPostingRejectionTest {
     assertEquals(
         "entryKind 'SALE_SETTLED' resolves to eventClass 'SETTLED_SALE', but the evidence resolves to evidenceClass 'INVOICE'.",
         evidenceClassConflict.message());
+    assertEquals(
+        "inventory-quantity-incompatible-with-unit-of-measure",
+        inventoryQuantityIncompatible.code());
+    assertEquals("inventoryRelief.quantity", inventoryQuantityIncompatible.field());
+    assertEquals(
+        "inventoryRelief.quantity '0.5' is incompatible with inventoryAccountCode 'inventory' because that account declares unitOfMeasure 'unit' with quantityScale 0. Quantity must not contain fractional digits at scale 0.",
+        inventoryQuantityIncompatible.message());
+    assertEquals("inventory-acquisition-cost-not-exact", inventoryAcquisitionCostNotExact.code());
+    assertEquals("unitCost", inventoryAcquisitionCostNotExact.field());
+    assertEquals(
+        "unitCost 'EUR 0.02' cannot compose one exact acquisition carrying cost with quantity '0.25' for inventoryAccountCode 'inventory' because declared unitOfMeasure 'kg' owns quantityScale 2 and quantity multiplied by unitCost must resolve to one exact currency-minor-unit amount.",
+        inventoryAcquisitionCostNotExact.message());
+    assertEquals(
+        "inventory-acquisition-breaches-minor-unit-floor",
+        inventoryAcquisitionBreachesFloor.code());
+    assertEquals("unitCost", inventoryAcquisitionBreachesFloor.field());
+    assertEquals(
+        "unitCost 'EUR 0.04' with quantity '0.25' would leave inventoryAccountCode 'inventory' below the minimum carrying-cost floor required by declared unitOfMeasure 'kg' quantityScale 2. Resulting pool: EUR 0.01. Minimum required: EUR 0.25.",
+        inventoryAcquisitionBreachesFloor.message());
     assertNull(
         new BookkeepingPostingRejection.EntrySemanticsViolation("code", null, "message").field());
   }
@@ -243,41 +284,33 @@ class BookkeepingPostingRejectionTest {
   }
 
   @Test
-  void inventoryBalanceBelowZeroViolation_validatesFieldAndMoneyInvariants() {
+  void inventoryAccountStateViolations_validateFieldAndExactValueInvariants() {
     assertEquals(
-        new InventoryBalanceBelowZeroViolation(
+        new InventoryMovementPrecedesAccountHorizonViolation(
             new AccountCode("1400"),
-            "inventoryRelief.amount",
+            "effectiveDate",
             LocalDate.parse("2026-04-07"),
-            BalanceSide.DEBIT,
-            Money.parse("EUR", "10.00"),
-            Money.parse("EUR", "50.00"),
-            Money.parse("EUR", "40.00")),
-        new InventoryBalanceBelowZeroViolation(
+            LocalDate.parse("2026-04-08")),
+        new InventoryMovementPrecedesAccountHorizonViolation(
             new AccountCode("1400"),
-            "inventoryRelief.amount",
+            "effectiveDate",
             LocalDate.parse("2026-04-07"),
-            BalanceSide.DEBIT,
-            Money.parse("EUR", "10.00"),
-            Money.parse("EUR", "50.00"),
-            Money.parse("EUR", "40.00")));
+            LocalDate.parse("2026-04-08")));
     assertDoesNotThrow(
         () ->
-            new InventoryBalanceBelowZeroViolation(
+            new InventoryQuantityBelowZeroViolation(
                 new AccountCode("1400"),
-                "inventoryRelief.amount",
+                "inventoryRelief.quantity",
                 LocalDate.parse("2026-04-07"),
-                BalanceSide.ZERO,
-                Money.parse("EUR", "0.00"),
-                Money.parse("EUR", "50.00"),
-                Money.parse("EUR", "40.00")));
+                Quantity.ofScaledUnits(0, 1),
+                Quantity.ofScaledUnits(0, 5),
+                Quantity.ofScaledUnits(0, 4)));
     assertDoesNotThrow(
         () ->
-            new InventoryBalanceBelowZeroViolation(
+            new InventoryWriteDownExceedsCarryingCostViolation(
                 new AccountCode("1400"),
-                "inventoryRelief.amount",
+                "reversal.priorPostingId",
                 LocalDate.parse("2026-04-07"),
-                BalanceSide.CREDIT,
                 Money.parse("EUR", "10.00"),
                 Money.parse("EUR", "50.00"),
                 Money.parse("EUR", "40.00")));
@@ -287,84 +320,76 @@ class BookkeepingPostingRejectionTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    new InventoryBalanceBelowZeroViolation(
+                    new InventoryMovementPrecedesAccountHorizonViolation(
                         new AccountCode("1400"),
                         " ",
                         LocalDate.parse("2026-04-07"),
-                        BalanceSide.DEBIT,
-                        Money.parse("EUR", "10.00"),
-                        Money.parse("EUR", "50.00"),
-                        Money.parse("EUR", "40.00")))
+                        LocalDate.parse("2026-04-08")))
             .getMessage());
     assertEquals(
         "field must not be blank.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    new InventoryBalanceBelowZeroViolation(
+                    new InventoryQuantityBelowZeroViolation(
                         new AccountCode("1400"),
                         nullOf(),
                         LocalDate.parse("2026-04-07"),
-                        BalanceSide.DEBIT,
-                        Money.parse("EUR", "10.00"),
-                        Money.parse("EUR", "50.00"),
-                        Money.parse("EUR", "40.00")))
+                        Quantity.ofScaledUnits(0, 1),
+                        Quantity.ofScaledUnits(0, 5),
+                        Quantity.ofScaledUnits(0, 4)))
             .getMessage());
     assertEquals(
-        "requestedDecreaseAmount must be positive.",
+        "requestedDecreaseQuantity must be positive.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    new InventoryBalanceBelowZeroViolation(
+                    new InventoryQuantityBelowZeroViolation(
                         new AccountCode("1400"),
-                        "inventoryRelief.amount",
+                        "inventoryRelief.quantity",
                         LocalDate.parse("2026-04-07"),
-                        BalanceSide.DEBIT,
+                        Quantity.ofScaledUnits(0, 1),
+                        Quantity.zero(0),
+                        Quantity.ofScaledUnits(0, 4)))
+            .getMessage());
+    assertEquals(
+        "resultingShortfallQuantity must be positive.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new InventoryQuantityBelowZeroViolation(
+                        new AccountCode("1400"),
+                        "inventoryRelief.quantity",
+                        LocalDate.parse("2026-04-07"),
+                        Quantity.ofScaledUnits(0, 1),
+                        Quantity.ofScaledUnits(0, 5),
+                        Quantity.zero(0)))
+            .getMessage());
+    assertEquals(
+        "requestedCostDecrease must be positive.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new InventoryWriteDownExceedsCarryingCostViolation(
+                        new AccountCode("1400"),
+                        "reversal.priorPostingId",
+                        LocalDate.parse("2026-04-07"),
                         Money.parse("EUR", "10.00"),
                         Money.parse("EUR", "0.00"),
                         Money.parse("EUR", "40.00")))
             .getMessage());
     assertEquals(
-        "resultingCreditBalance must be positive.",
+        "resultingCostShortfall must be positive.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    new InventoryBalanceBelowZeroViolation(
+                    new InventoryWriteDownExceedsCarryingCostViolation(
                         new AccountCode("1400"),
-                        "inventoryRelief.amount",
+                        "reversal.priorPostingId",
                         LocalDate.parse("2026-04-07"),
-                        BalanceSide.DEBIT,
                         Money.parse("EUR", "10.00"),
                         Money.parse("EUR", "50.00"),
                         Money.parse("EUR", "0.00")))
-            .getMessage());
-    assertEquals(
-        "currentNetAmount must be zero when currentBalanceSide is ZERO.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                    new InventoryBalanceBelowZeroViolation(
-                        new AccountCode("1400"),
-                        "inventoryRelief.amount",
-                        LocalDate.parse("2026-04-07"),
-                        BalanceSide.ZERO,
-                        Money.parse("EUR", "1.00"),
-                        Money.parse("EUR", "50.00"),
-                        Money.parse("EUR", "40.00")))
-            .getMessage());
-    assertEquals(
-        "currentNetAmount must be positive when currentBalanceSide is not ZERO.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                    new InventoryBalanceBelowZeroViolation(
-                        new AccountCode("1400"),
-                        "inventoryRelief.amount",
-                        LocalDate.parse("2026-04-07"),
-                        BalanceSide.CREDIT,
-                        Money.parse("EUR", "0.00"),
-                        Money.parse("EUR", "50.00"),
-                        Money.parse("EUR", "40.00")))
             .getMessage());
   }
 }

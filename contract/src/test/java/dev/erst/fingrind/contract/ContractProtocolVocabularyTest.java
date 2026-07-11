@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractDiscovery;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
+import dev.erst.fingrind.contract.discovery.ContractReversalTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.discovery.ForeignExchangeTemplateDescriptor;
@@ -99,6 +100,11 @@ class ContractProtocolVocabularyTest {
             "SALE_ON_CREDIT",
             "PURCHASE_SETTLED",
             "PURCHASE_ON_CREDIT",
+            "INVENTORY_CAPITALIZATION_SETTLED",
+            "INVENTORY_CAPITALIZATION_ON_CREDIT",
+            "INVENTORY_WRITE_DOWN",
+            "INVENTORY_SHRINKAGE",
+            "INVENTORY_COUNT_INCREASE",
             "EXPENSE_SETTLED",
             "EXPENSE_ON_CREDIT",
             "RECEIPT",
@@ -111,7 +117,7 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         BookkeepingEntryKind.SALE_SETTLED, BookkeepingEntryKind.fromWireValue("SALE_SETTLED"));
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(38, BookFormatContract.FORMAT_VERSION);
+    assertEquals(39, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -251,7 +257,7 @@ class ContractProtocolVocabularyTest {
             ContractTemplates.SourceDocumentTemplateDescriptor.class,
             ContractTemplates.ApprovalTemplateDescriptor.class,
             ContractTemplates.ProvenanceTemplateDescriptor.class,
-            ContractTemplates.ReversalTemplateDescriptor.class,
+            ContractReversalTemplates.ReversalTemplateDescriptor.class,
             ContractTemplates.DeclareTaxRegistrationTemplateDescriptor.class,
             ContractTemplates.DeclareTaxCodeTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanTemplateDescriptor.class,
@@ -333,7 +339,12 @@ class ContractProtocolVocabularyTest {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -352,6 +363,11 @@ class ContractProtocolVocabularyTest {
             new ContractTemplates.PostingRequestTemplateDescriptor(
                 BookkeepingEntryKind.REVERSAL,
                 "2026-04-25",
+                null,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,

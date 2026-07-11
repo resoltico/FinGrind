@@ -65,6 +65,7 @@ final class SqlitePostingReader {
             SqlitePostingMapper.requiredText(statement, SqlitePostingColumnIndexes.COL_POSTING_ID));
     SqlitePostingAttachments attachments = loadAttachments(activeDatabase, postingId);
     return SqlitePostingMapper.committedPosting(
+        activeDatabase,
         statement,
         attachments.lines(),
         attachments.evidence(),

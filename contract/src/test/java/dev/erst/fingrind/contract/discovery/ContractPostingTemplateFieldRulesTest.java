@@ -5,7 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractReversalTemplates.ReversalTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.JournalLineTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.OpeningBalanceTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.TaxSelectionTemplateDescriptor;
+import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -40,6 +44,161 @@ class ContractPostingTemplateFieldRulesTest {
                     journalLine("1000", JournalLine.EntrySide.DEBIT, "1000"),
                     journalLine("2000", JournalLine.EntrySide.CREDIT, "1000")),
                 "journal"));
+  }
+
+  @Test
+  void scalarAndForbiddenFieldRules_coverPositiveAndAbsentBranches() {
+    assertEquals(
+        "cashAccountCode",
+        ContractPostingTemplateFieldRules.requireText("cashAccountCode", "fieldName"));
+    assertEquals(
+        new MonetaryAmount("EUR", "1250"),
+        ContractPostingTemplateFieldRules.requirePositiveAmount(new MonetaryAmount("EUR", "1250")));
+    assertEquals("3", ContractPostingTemplateFieldRules.requirePositiveQuantity("3"));
+    assertEquals(
+        new MonetaryAmount("EUR", "995"),
+        ContractPostingTemplateFieldRules.requirePositiveUnitCost(
+            new MonetaryAmount("EUR", "995")));
+
+    assertEquals(
+        "fieldName must not be null.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ContractPostingTemplateFieldRules.requireText(null, "fieldName"))
+            .getMessage());
+    assertEquals(
+        "amount must not be null.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ContractPostingTemplateFieldRules.requirePositiveAmount(null))
+            .getMessage());
+    assertEquals(
+        "amount must carry one positive minor-unit value.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.requirePositiveAmount(
+                        new MonetaryAmount("EUR", "0")))
+            .getMessage());
+    assertEquals(
+        "quantity must not be null.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ContractPostingTemplateFieldRules.requirePositiveQuantity(null))
+            .getMessage());
+    assertEquals(
+        "quantity must carry one positive quantity.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ContractPostingTemplateFieldRules.requirePositiveQuantity("0"))
+            .getMessage());
+    assertEquals(
+        "unitCost must not be null.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ContractPostingTemplateFieldRules.requirePositiveUnitCost(null))
+            .getMessage());
+    assertEquals(
+        "unitCost must carry one positive minor-unit value.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.requirePositiveUnitCost(
+                        new MonetaryAmount("EUR", "0")))
+            .getMessage());
+
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidText(null, "fieldName"));
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidAmount(null, "sale"));
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidQuantity(null, "purchase"));
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidUnitCost(null, "purchase"));
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidLines(null));
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidOpeningBalances(null));
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidTax(null, "sale"));
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidForeignExchange(null, "sale"));
+    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidReversal(null));
+
+    assertEquals(
+        "fieldName must be absent for this entryKind.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ContractPostingTemplateFieldRules.forbidText("cash", "fieldName"))
+            .getMessage());
+    assertEquals(
+        "amount must be absent for sale.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.forbidAmount(
+                        new MonetaryAmount("EUR", "100"), "sale"))
+            .getMessage());
+    assertEquals(
+        "quantity must be absent for purchase.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> ContractPostingTemplateFieldRules.forbidQuantity("2", "purchase"))
+            .getMessage());
+    assertEquals(
+        "unitCost must be absent for purchase.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.forbidUnitCost(
+                        new MonetaryAmount("EUR", "100"), "purchase"))
+            .getMessage());
+    assertEquals(
+        "lines must be absent for this entryKind.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.forbidLines(
+                        List.of(journalLine("1000", JournalLine.EntrySide.DEBIT, "1000"))))
+            .getMessage());
+    assertEquals(
+        "openingBalances must be absent for this entryKind.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.forbidOpeningBalances(
+                        List.of(
+                            new OpeningBalanceTemplateDescriptor(
+                                "1000",
+                                JournalLine.EntrySide.DEBIT,
+                                new MonetaryAmount("EUR", "1000")))))
+            .getMessage());
+    assertEquals(
+        "tax must be absent for sale.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.forbidTax(
+                        new TaxSelectionTemplateDescriptor("tax-reg-1", "vat-20"), "sale"))
+            .getMessage());
+    assertEquals(
+        "foreignExchange must be absent for sale.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.forbidForeignExchange(
+                        new ForeignExchangeTemplateDescriptor(
+                            new MonetaryAmount("USD", "1000"),
+                            new MonetaryAmount("EUR", "900"),
+                            new QuotedExchangeRateTemplateDescriptor(
+                                new MonetaryAmount("USD", "100"),
+                                new MonetaryAmount("EUR", "90"),
+                                "2026-07-06",
+                                "ECB"),
+                            ForeignExchangeTreatmentKind.SPOT_TRANSACTION),
+                        "sale"))
+            .getMessage());
+    assertEquals(
+        "reversal must be absent for this entryKind.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingTemplateFieldRules.forbidReversal(
+                        new ReversalTemplateDescriptor(
+                            "0197f663-1a08-7000-8c22-0d328f0db4ab", "operator correction")))
+            .getMessage());
   }
 
   private static JournalLineTemplateDescriptor journalLine(

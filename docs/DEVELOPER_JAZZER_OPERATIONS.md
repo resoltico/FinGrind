@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, docker, devcontainer, repo-lock]
   questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do i clean local jazzer state in fingrind", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]
@@ -26,6 +26,7 @@ route:
 | `jazzer/bin/fuzz-ledger-plan-request` | fuzz ledger-plan request parsing |
 | `jazzer/bin/fuzz-posting-workflow` | fuzz application write workflow |
 | `jazzer/bin/fuzz-sqlite-book-roundtrip` | fuzz durable SQLite single-book round-trips |
+| `jazzer/bin/fuzz-inventory-costing-math` | fuzz pure weighted-average disposal math, projection independence from rounded unit-cost reuse, and the pinned rounded-projection mismatch case |
 | `jazzer/bin/fuzz-all` | run all active fuzz tasks sequentially |
 | `jazzer/bin/replay` | replay one raw local input against one harness |
 | `jazzer/bin/list-findings` | classify raw local finding artifacts through deterministic replay |
@@ -73,9 +74,10 @@ verification command should run at a time.
 - wrapper arguments are forwarded through to Gradle tasks under `jazzer/`, so think of this
   surface as "project-owned launcher plus Gradle arguments", not as a bespoke standalone CLI
 - wrapper target discovery is contract-owned by the committed
-  `jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json` document;
+  `jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-harnesses.json` and
+  `jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-run-targets.json` catalogs;
   nested Gradle query tasks, the shell topology reader, and Java runtime support all project from
-  that one file in canonical order
+  that one topology in canonical order
 
 Do not run Jazzer workflows through raw `./gradlew -p jazzer ...` tasks. Those task names are an
 implementation detail under the wrapper, not a supported operator interface.
@@ -108,6 +110,7 @@ jazzer/bin/check --no-daemon --console=plain
 
 ```bash
 jazzer/bin/fuzz-sqlite-book-roundtrip -PjazzerMaxDuration=10s --console=plain
+jazzer/bin/fuzz-inventory-costing-math -PjazzerMaxDuration=10s --console=plain
 ```
 
 Accepted throttles still come directly from the nested build:
@@ -132,7 +135,7 @@ jazzer/bin/fuzz-all -PjazzerMaxDuration=10s --console=plain
 
 `-PjazzerMaxDuration` still applies per harness, not across the whole campaign.
 The all-target wrapper derives its harness list from the `activeFuzzing` targets in
-`jazzer-topology.json`, calls those per-harness wrapper scripts in topology order, prints
+`jazzer-run-targets.json`, calls those per-harness wrapper scripts in topology order, prints
 start/finish markers for each one, and stops immediately after an actionable harness failure.
 Bounded Jazzer completion exits successfully; wrapper exit `124` is reserved for timeout teardown
 only when a harness misses its stop window after libFuzzer has started or never reaches the

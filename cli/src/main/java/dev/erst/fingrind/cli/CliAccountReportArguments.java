@@ -124,7 +124,7 @@ final class CliAccountReportArguments {
       @Nullable LocalDate effectiveDateFrom,
       @Nullable LocalDate effectiveDateTo,
       PostingCoverage postingCoverage,
-      CliCommand.ReportOutput output) {}
+      CliReportOutput output) {}
 
   private static EffectiveDateRange validatedEffectiveDateRange(
       @Nullable LocalDate effectiveDateFrom, @Nullable LocalDate effectiveDateTo) {

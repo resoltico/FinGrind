@@ -12,7 +12,7 @@ import dev.erst.fingrind.core.SourceChannel;
 
 /** Minimal bookkeeping posting shape shared by preflight commands and commit drafts. */
 public sealed interface PostingRequestModel
-    permits PostingCommand, dev.erst.fingrind.executor.spi.PostingDraft {
+    permits AcceptedPosting, PostingCommand, dev.erst.fingrind.executor.spi.PostingDraft {
   /** Returns the journal entry carried by this posting attempt. */
   JournalEntry journalEntry();
 
@@ -48,4 +48,7 @@ public sealed interface PostingRequestModel
   default java.util.Optional<BookkeepingEntry> callerAuthoredEntry() {
     return java.util.Optional.empty();
   }
+
+  /** Returns the optional executor-resolved entry facts that own the journal truth. */
+  java.util.Optional<BookkeepingEntry> resolvedOriginatingEntry();
 }

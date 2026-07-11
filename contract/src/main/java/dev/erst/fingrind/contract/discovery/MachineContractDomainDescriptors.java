@@ -191,6 +191,9 @@ final class MachineContractDomainDescriptors {
                 ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION,
                 "Required for ASSET accounts and forbidden for every non-ASSET account. Declares whether the asset is cash and cash equivalents or one non-cash asset."),
             new ContractResponse.FieldDescriptor(
+                ProtocolDeclareAccountFields.UNIT_OF_MEASURE,
+                "Required when financialPositionLineClassification is INVENTORY and forbidden for every non-inventory account. Declares the inventory account's unit token and exact quantity scale."),
+            new ContractResponse.FieldDescriptor(
                 ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
                 "Required for REVENUE and EXPENSE accounts. Declares the account's profit-and-loss taxonomy.")),
         List.of(
@@ -211,6 +214,9 @@ final class MachineContractDomainDescriptors {
             new ContractResponse.FieldDescriptor(
                 "profitAndLossLineClassification",
                 "Declared profit-and-loss taxonomy classification when the account belongs to the income statement."),
+            new ContractResponse.FieldDescriptor(
+                "unitOfMeasure",
+                "Declared inventory unit-of-measure payload when the account belongs to inventory."),
             new ContractResponse.FieldDescriptor("normalBalance", "Declared normal balance side."),
             new ContractResponse.FieldDescriptor(
                 "active", "Whether the account currently accepts postings."),

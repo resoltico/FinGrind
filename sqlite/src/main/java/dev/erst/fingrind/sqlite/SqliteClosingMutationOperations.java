@@ -1,6 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
@@ -87,10 +89,11 @@ final class SqliteClosingMutationOperations {
 
   CommittedPosting persistAcceptedPosting(
       SqliteNativeDatabase activeDatabase,
-      dev.erst.fingrind.executor.spi.PostingDraft postingDraft,
+      AcceptedPosting acceptedPosting,
       dev.erst.fingrind.core.RequestFingerprint requestFingerprint,
+      CommittedProvenance provenance,
       PostingIdGenerator postingIdGenerator) {
     return postingPersistence.persistAcceptedPosting(
-        activeDatabase, postingDraft, requestFingerprint, postingIdGenerator);
+        activeDatabase, acceptedPosting, requestFingerprint, provenance, postingIdGenerator);
   }
 }

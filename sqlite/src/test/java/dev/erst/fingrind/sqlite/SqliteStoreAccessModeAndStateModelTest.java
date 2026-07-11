@@ -103,6 +103,8 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
                 SqliteBookContract.BOOK_META_TABLE,
                 SqliteBookContract.BOOK_IDENTITY_TABLE,
                 SqliteBookContract.ACCOUNT_TABLE,
+                SqliteBookContract.INVENTORY_MOVEMENT_TABLE,
+                SqliteBookContract.INVENTORY_ON_HAND_TABLE,
                 SqliteBookContract.POSTING_FACT_TABLE,
                 SqliteBookContract.JOURNAL_LINE_TABLE,
                 SqliteBookContract.INTERIM_RESULT_SWEEP_TABLE,

@@ -27,7 +27,8 @@ public record PostingDraft(
     AccountingEvidence evidence,
     RequestFingerprint requestFingerprint,
     CommittedProvenance provenance,
-    @Nullable BookkeepingEntry originatingEntry)
+    @Nullable BookkeepingEntry callerAuthoredEntryOrNull,
+    @Nullable BookkeepingEntry resolvedOriginatingEntryOrNull)
     implements PostingRequestModel {
   /** Validates the durable commit draft before one book session materializes it. */
   public PostingDraft {
@@ -38,8 +39,10 @@ public record PostingDraft(
     Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(requestFingerprint, "requestFingerprint");
     Objects.requireNonNull(provenance, "provenance");
-    PostingOriginatingEntryValidator.requireMatches(
-        originatingEntry,
+    PostingOriginatingEntryValidator.requireCallerAuthoredMatches(
+        callerAuthoredEntryOrNull, postingKind, postingOriginKind, postingLineage, "posting draft");
+    PostingOriginatingEntryValidator.requireResolvedMatches(
+        resolvedOriginatingEntryOrNull,
         postingKind,
         postingOriginKind,
         journalEntry,
@@ -64,6 +67,7 @@ public record PostingDraft(
         evidence,
         requestFingerprint,
         provenance,
+        null,
         null);
   }
 
@@ -84,7 +88,12 @@ public record PostingDraft(
 
   @Override
   public Optional<BookkeepingEntry> callerAuthoredEntry() {
-    return Optional.ofNullable(originatingEntry);
+    return Optional.ofNullable(callerAuthoredEntryOrNull);
+  }
+
+  @Override
+  public Optional<BookkeepingEntry> resolvedOriginatingEntry() {
+    return Optional.ofNullable(resolvedOriginatingEntryOrNull);
   }
 
   /** Materializes one durable posting fact after the store accepts this draft for commit. */
@@ -97,6 +106,7 @@ public record PostingDraft(
         postingOriginKind,
         evidence,
         provenance,
-        originatingEntry);
+        callerAuthoredEntryOrNull,
+        resolvedOriginatingEntryOrNull);
   }
 }

@@ -16,6 +16,7 @@ For active fuzzing, use only:
 - `jazzer/bin/fuzz-ledger-plan-request`
 - `jazzer/bin/fuzz-posting-workflow`
 - `jazzer/bin/fuzz-sqlite-book-roundtrip`
+- `jazzer/bin/fuzz-inventory-costing-math`
 - `jazzer/bin/fuzz-all`
 - `jazzer/bin/replay`
 - `jazzer/bin/list-findings`

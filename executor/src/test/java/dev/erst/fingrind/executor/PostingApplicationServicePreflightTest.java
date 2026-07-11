@@ -28,14 +28,25 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookDoctrines;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.EconomicEventClass;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.Quantity;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.WeightedAverageCostingMath;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -112,6 +123,7 @@ class PostingApplicationServicePreflightTest {
                   null,
                   null,
                   null,
+                  null,
                   null),
               generatedEvidence("idem-future", "cash-receipt"),
               requestProvenance("idem-future"),
@@ -154,6 +166,96 @@ class PostingApplicationServicePreflightTest {
   }
 
   @Test
+  void preflight_returnsResolvedJournalForTradingSettledSaleWithDerivedInventoryCosting() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.openBook(
+          PostingApplicationServiceTestSupport.FIXED_CLOCK.instant(),
+          new BookIdentity(
+              new EntityProfile(new BookEntityName("Acme Studio")),
+              BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
+              dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
+              FiscalYearStart.parse("01-01")),
+          List.of());
+      bookSession.declareAccount(
+          new AccountCode("1000"),
+          new dev.erst.fingrind.core.AccountName("Cash"),
+          dev.erst.fingrind.core.AccountType.ASSET,
+          ExecutorAccountingTestSupport.accountTaxonomy(
+              dev.erst.fingrind.core.AccountType.ASSET, dev.erst.fingrind.core.NormalBalance.DEBIT),
+          PostingApplicationServiceTestSupport.FIXED_CLOCK.instant());
+      bookSession.declareAccount(
+          new AccountCode("4000"),
+          new dev.erst.fingrind.core.AccountName("Sales Revenue"),
+          dev.erst.fingrind.core.AccountType.REVENUE,
+          ExecutorAccountingTestSupport.accountTaxonomy(
+              dev.erst.fingrind.core.AccountType.REVENUE,
+              dev.erst.fingrind.core.NormalBalance.CREDIT),
+          PostingApplicationServiceTestSupport.FIXED_CLOCK.instant());
+      bookSession.declareAccount(
+          new AccountDeclaration(
+              new AccountCode("1400"),
+              new dev.erst.fingrind.core.AccountName("Inventory"),
+              dev.erst.fingrind.core.AccountType.ASSET,
+              ExecutorAccountingTestSupport.financialPositionTaxonomy(
+                  dev.erst.fingrind.core.FinancialPositionLineClassification.INVENTORY),
+              new dev.erst.fingrind.core.UnitOfMeasure("unit", 0)),
+          PostingApplicationServiceTestSupport.FIXED_CLOCK.instant());
+      bookSession.declareAccount(
+          new AccountCode("5000"),
+          new dev.erst.fingrind.core.AccountName("Cost of Sales"),
+          dev.erst.fingrind.core.AccountType.EXPENSE,
+          ExecutorAccountingTestSupport.accountTaxonomy(dev.erst.fingrind.core.AccountType.EXPENSE),
+          PostingApplicationServiceTestSupport.FIXED_CLOCK.instant());
+      bookSession.inventoryStateByAccount.put(
+          new AccountCode("1400"),
+          new dev.erst.fingrind.executor.bookkeeping.InventoryAccountState(
+              new WeightedAverageCostingMath.InventoryPool(
+                  Quantity.ofScaledUnits(0, 2), Money.parse("EUR", "20.00")),
+              Optional.of(LocalDate.parse("2026-04-06"))));
+      PostingApplicationService applicationService = applicationService(bookSession);
+
+      PostEntryResult result =
+          applicationService.preflight(
+              new PostEntryCommand(
+                  new BookkeepingEntry.SaleSettled(
+                      LocalDate.parse("2026-04-07"),
+                      new AccountCode("1000"),
+                      new AccountCode("4000"),
+                      MonetaryAmount.of(Money.parse("EUR", "70.00")),
+                      new dev.erst.fingrind.contract.bookkeeping.InventoryRelief(
+                          new AccountCode("1400"),
+                          new AccountCode("5000"),
+                          new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+                      null,
+                      null,
+                      null,
+                      null),
+                  generatedEvidence("idem-trading-sale", "cash-receipt"),
+                  requestProvenance("idem-trading-sale"),
+                  SourceChannel.CLI));
+
+      PostEntryResult.PreflightAccepted accepted =
+          assertInstanceOf(PostEntryResult.PreflightAccepted.class, result);
+      assertEquals(
+          EconomicEventClass.SETTLED_SALE,
+          accepted.resolvedJournal().classification().eventClass());
+      assertEquals(4, accepted.resolvedJournal().expandedLines().lines().size());
+      assertEquals(
+          new AccountCode("5000"),
+          accepted.resolvedJournal().expandedLines().lines().get(2).accountCode());
+      assertEquals(
+          Money.parse("EUR", "10.00"),
+          accepted.resolvedJournal().expandedLines().lines().get(2).amount().money());
+      assertEquals(
+          new AccountCode("1400"),
+          accepted.resolvedJournal().expandedLines().lines().get(3).accountCode());
+      assertEquals(
+          Money.parse("EUR", "10.00"),
+          accepted.resolvedJournal().expandedLines().lines().get(3).amount().money());
+    }
+  }
+
+  @Test
   void preflight_rejectsTypedEntryWhenAccountsAndEvidenceContradictEntryKind() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
@@ -165,6 +267,7 @@ class PostingApplicationServicePreflightTest {
                   new AccountCode("2000"),
                   new AccountCode("1000"),
                   MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
                   null,
                   null,
                   null,
@@ -430,6 +533,114 @@ class PostingApplicationServicePreflightTest {
     }
   }
 
+  @Test
+  void applicationRejectionFor_translatesResolutionRejectionsAfterEarlierChecksPass() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          command(
+              "idem-reversal-missing",
+              reversalReference("posting-missing"),
+              Optional.of(new ReversalReason("operator reversal")),
+              reversalJournalEntry());
+
+      assertEquals(
+          Optional.of(
+              new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
+          invokePrivateOptionalRejection(applicationService, "applicationRejectionFor", command));
+    }
+  }
+
+  @Test
+  void declaredAccountRejectionFor_reusesOneDeclaredAccountWhenOnlyOneAccountIsReferenced() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.DirectJournal(
+                  new dev.erst.fingrind.core.JournalEntry(
+                      LocalDate.parse("2026-04-07"),
+                      List.of(
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              Money.parse("EUR", "10.00")))),
+                  null),
+              generatedEvidence("idem-single-account", "operator-note"),
+              requestProvenance("idem-single-account"),
+              SourceChannel.CLI);
+
+      assertEquals(
+          Optional.empty(),
+          invokePrivateOptionalRejection(
+              applicationService, "declaredAccountRejectionFor", command));
+    }
+  }
+
+  @Test
+  void applicationRejectionFor_translatesInventoryAdmissionFailuresAfterEarlierChecksPass() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.openBook(
+          PostingApplicationServiceTestSupport.FIXED_CLOCK.instant(),
+          PostEntrySemanticsPolicyTestSupport.tradingCashBookIdentity(),
+          List.of());
+      declareDefaultAccounts(bookSession);
+      bookSession.declareAccount(
+          new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+              new AccountCode("1400"),
+              new dev.erst.fingrind.core.AccountName("Inventory"),
+              dev.erst.fingrind.core.AccountType.ASSET,
+              ExecutorAccountingTestSupport.financialPositionTaxonomy(
+                  dev.erst.fingrind.core.FinancialPositionLineClassification.INVENTORY),
+              new dev.erst.fingrind.core.UnitOfMeasure("unit", 0)),
+          PostingApplicationServiceTestSupport.FIXED_CLOCK.instant());
+      bookSession.declareAccount(
+          new AccountCode("5000"),
+          new dev.erst.fingrind.core.AccountName("Cost of Sales"),
+          dev.erst.fingrind.core.AccountType.EXPENSE,
+          ExecutorAccountingTestSupport.accountTaxonomy(dev.erst.fingrind.core.AccountType.EXPENSE),
+          PostingApplicationServiceTestSupport.FIXED_CLOCK.instant());
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.SaleSettled(
+                  LocalDate.parse("2026-04-07"),
+                  new AccountCode("1000"),
+                  new AccountCode("2000"),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  new dev.erst.fingrind.contract.bookkeeping.InventoryRelief(
+                      new AccountCode("1400"),
+                      new AccountCode("5000"),
+                      new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+                  null,
+                  null,
+                  null,
+                  null),
+              generatedEvidence("idem-inventory-overdraw", "cash-receipt"),
+              requestProvenance("idem-inventory-overdraw"),
+              SourceChannel.CLI);
+
+      assertEquals(
+          Optional.of(
+              new PostingRejection.AccountStateViolations(
+                  List.of(
+                      new dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero(
+                          new AccountCode("1400"),
+                          "inventoryRelief.quantity",
+                          LocalDate.parse("2026-04-07"),
+                          dev.erst.fingrind.core.Quantity.zero(0),
+                          dev.erst.fingrind.core.Quantity.ofScaledUnits(0, 1),
+                          dev.erst.fingrind.core.Quantity.ofScaledUnits(0, 1))))),
+          invokePrivateOptionalRejection(applicationService, "applicationRejectionFor", command));
+    }
+  }
+
   private static void assertAccepted(PostEntryResult result, String idempotencyKey) {
     PostEntryResult.PreflightAccepted accepted =
         assertInstanceOf(PostEntryResult.PreflightAccepted.class, result);
@@ -437,5 +648,23 @@ class PostingApplicationServicePreflightTest {
     assertEquals(LocalDate.parse("2026-04-07"), accepted.effectiveDate());
     assertEquals(
         LocalDate.parse("2026-04-07"), accepted.resolvedJournal().expandedLines().effectiveDate());
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Optional<PostingRejection> invokePrivateOptionalRejection(
+      PostingApplicationService applicationService, String methodName, PostEntryCommand command) {
+    try {
+      MethodHandle methodHandle =
+          MethodHandles.privateLookupIn(PostingApplicationService.class, MethodHandles.lookup())
+              .findVirtual(
+                  PostingApplicationService.class,
+                  methodName,
+                  MethodType.methodType(Optional.class, PostEntryCommand.class));
+      return (Optional<PostingRejection>) methodHandle.invoke(applicationService, command);
+    } catch (RuntimeException | Error throwable) {
+      throw throwable;
+    } catch (Throwable throwable) {
+      throw new AssertionError(throwable);
+    }
   }
 }

@@ -11,8 +11,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Loads and validates the committed Jazzer topology model used by local tooling and wrappers. */
 final class JazzerTopology {
-  private static final String RESOURCE_PATH =
-      "/dev/erst/fingrind/jazzer/support/jazzer-topology.json";
+  private static final String HARNESSES_RESOURCE_PATH =
+      "/dev/erst/fingrind/jazzer/support/jazzer-harnesses.json";
+  private static final String RUN_TARGETS_RESOURCE_PATH =
+      "/dev/erst/fingrind/jazzer/support/jazzer-run-targets.json";
   private static final Registry REGISTRY = load();
 
   private JazzerTopology() {}
@@ -22,18 +24,22 @@ final class JazzerTopology {
   }
 
   private static Registry load() {
-    return loadResource(RESOURCE_PATH);
+    return loadResources(HARNESSES_RESOURCE_PATH, RUN_TARGETS_RESOURCE_PATH);
   }
 
-  static Registry loadResource(String resourcePath) {
-    Objects.requireNonNull(resourcePath, "resourcePath must not be null");
-    TopologyDocument document;
+  static Registry loadResources(String harnessesResourcePath, String runTargetsResourcePath) {
+    Objects.requireNonNull(harnessesResourcePath, "harnessesResourcePath must not be null");
+    Objects.requireNonNull(runTargetsResourcePath, "runTargetsResourcePath must not be null");
+    HarnessDocument[] harnessDocuments;
+    RunTargetDocument[] runTargetDocuments;
     try {
-      document = JazzerJson.readResource(resourcePath, TopologyDocument.class);
+      harnessDocuments = JazzerJson.readResource(harnessesResourcePath, HarnessDocument[].class);
+      runTargetDocuments =
+          JazzerJson.readResource(runTargetsResourcePath, RunTargetDocument[].class);
     } catch (IOException exception) {
       throw new UncheckedIOException("Failed to load Jazzer topology resource", exception);
     }
-    return load(document);
+    return load(new TopologyDocument(List.of(harnessDocuments), List.of(runTargetDocuments)));
   }
 
   static Registry load(TopologyDocument document) {

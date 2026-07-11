@@ -7,7 +7,8 @@ public enum JazzerHarnessKind {
   CLI_REQUEST("cli-request"),
   LEDGER_PLAN_REQUEST("ledger-plan-request"),
   POSTING_WORKFLOW("posting-workflow"),
-  SQLITE_BOOK_ROUND_TRIP("sqlite-book-roundtrip");
+  SQLITE_BOOK_ROUND_TRIP("sqlite-book-roundtrip"),
+  INVENTORY_COSTING_MATH("inventory-costing-math");
 
   private final String key;
 
@@ -28,6 +29,7 @@ public enum JazzerHarnessKind {
       case "ledger-plan-request" -> LEDGER_PLAN_REQUEST;
       case "posting-workflow" -> POSTING_WORKFLOW;
       case "sqlite-book-roundtrip" -> SQLITE_BOOK_ROUND_TRIP;
+      case "inventory-costing-math" -> INVENTORY_COSTING_MATH;
       default -> throw new IllegalArgumentException("Unknown Jazzer harness: " + key);
     };
   }
