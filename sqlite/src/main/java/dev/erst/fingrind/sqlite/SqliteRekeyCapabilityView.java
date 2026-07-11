@@ -4,9 +4,31 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import java.time.Instant;
+import java.util.Objects;
 
 /** Shared rekey delegation defaults for SQLite capability wrappers. */
 interface SqliteRekeyCapabilityView extends SqliteRekeySession {
+  /** Opens the package-private capability implementation behind the public rekey session view. */
+  static SqliteRekeySession open(SqlitePostingFactStore store) {
+    SqlitePostingFactStore checkedStore = Objects.requireNonNull(store, "store");
+    return new SqliteRekeyCapabilityView() {
+      @Override
+      public SqliteStoreMutationOperations storeMutationOperations() {
+        return checkedStore.storeMutationOperations();
+      }
+
+      @Override
+      public java.nio.file.Path storeBookPath() {
+        return checkedStore.storeBookPath();
+      }
+
+      @Override
+      public void close() {
+        checkedStore.close();
+      }
+    };
+  }
+
   /** Returns the mutation operations owner for the underlying SQLite store. */
   SqliteStoreMutationOperations storeMutationOperations();
 

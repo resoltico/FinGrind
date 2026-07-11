@@ -225,7 +225,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   }
 
   @Test
-  void persistAcceptedPosting_persistsInventoryMovementsAndSortedOnHandStates() {
+  void persistAcceptedPosting_persistsInventoryMovementsAndOnHandStates() {
     Path bookPath = tempDirectory.resolve("close-persistence-inventory-effects.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);

@@ -27,7 +27,7 @@ final class SqliteCapabilitySessions {
   }
 
   static SqliteRekeySession rekey(SqlitePostingFactStore store) {
-    return new SqliteRekeyCapabilitySession(store);
+    return SqliteRekeyCapabilityView.open(store);
   }
 
   static SqlitePostingFactStore storeOf(AutoCloseable session) {

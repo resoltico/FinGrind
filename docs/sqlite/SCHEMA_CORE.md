@@ -29,7 +29,8 @@ Each companion page embeds the exact canonical SQL for one schema responsibility
 - [SCHEMA_CORE_06z_POSTING_APPLIED_TAX.md](./SCHEMA_CORE_06z_POSTING_APPLIED_TAX.md): Per-posting resolved tax facts, posting-origin tax admissibility rules, and applied-tax append-only enforcement.
 - [SCHEMA_CORE_06za_POSTING_FOREIGN_EXCHANGE.md](./SCHEMA_CORE_06za_POSTING_FOREIGN_EXCHANGE.md): Per-posting owned foreign-exchange facts, posting-origin and functional-currency admissibility rules, and foreign-exchange append-only enforcement.
 - [SCHEMA_CORE_07_JOURNAL_LINES.md](./SCHEMA_CORE_07_JOURNAL_LINES.md): Committed journal-line storage and journal-line-side admission gates.
-- [SCHEMA_CORE_07z_INVENTORY_COSTING.md](./SCHEMA_CORE_07z_INVENTORY_COSTING.md): Durable inventory movement replay, materialized on-hand state, and inventory-account admission gates.
+- [SCHEMA_CORE_07z_INVENTORY_MOVEMENT.md](./SCHEMA_CORE_07z_INVENTORY_MOVEMENT.md): Append-only inventory movement replay, ordering, provenance, and opening-balance admission gates.
+- [SCHEMA_CORE_07za_INVENTORY_ON_HAND.md](./SCHEMA_CORE_07za_INVENTORY_ON_HAND.md): Materialized quantity and cost-pool state plus inventory-account admission gates.
 - [SCHEMA_CORE_08_INTERIM_RESULT_SWEEP_CORE.md](./SCHEMA_CORE_08_INTERIM_RESULT_SWEEP_CORE.md): Sweep-range facts and target-account doctrine for contiguous interim closes.
 - [SCHEMA_CORE_09_INTERIM_RESULT_SWEEP_LINKS.md](./SCHEMA_CORE_09_INTERIM_RESULT_SWEEP_LINKS.md): Per-currency sweep totals and generated sweep-posting linkage.
 - [SCHEMA_CORE_10_FISCAL_YEAR_CLOSE_TABLE.md](./SCHEMA_CORE_10_FISCAL_YEAR_CLOSE_TABLE.md): Year-close range facts and required target-account pointers.

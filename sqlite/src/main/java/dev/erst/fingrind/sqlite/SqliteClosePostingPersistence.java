@@ -155,19 +155,16 @@ final class SqliteClosePostingPersistence {
           movement.costDeltaMinor(),
           postingId);
     }
-    acceptedPosting.resultingInventoryStates().entrySet().stream()
-        .sorted(
-            java.util.Map.Entry.comparingByKey(
-                java.util.Comparator.comparing(value -> value.value())))
+    acceptedPosting
+        .resultingInventoryStates()
         .forEach(
-            entry ->
+            (inventoryAccount, state) ->
                 SqliteInventoryCostingWriter.upsertInventoryOnHand(
                     activeDatabase,
-                    entry.getKey(),
-                    entry.getValue().pool().quantityOnHand().scaledUnits(),
-                    entry.getValue().pool().costPool().minorUnits(),
-                    entry
-                        .getValue()
+                    inventoryAccount,
+                    state.pool().quantityOnHand().scaledUnits(),
+                    state.pool().costPool().minorUnits(),
+                    state
                         .lastMovementDate()
                         .orElseThrow(
                             () ->
