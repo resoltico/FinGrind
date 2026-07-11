@@ -8,6 +8,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
+import dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryView;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -87,6 +88,41 @@ final class SqliteStoreReportOperations {
     return queryReport(
         "Failed to query SQLite book.",
         activeDatabase -> context.reportReader().periodSummary(activeDatabase, query));
+  }
+
+  List<InventoryValuationMovementRecord> inventoryValuationMovements(
+      Optional<LocalDate> effectiveDateAsOf) {
+    lifecycle.ensureOpenSession();
+    Objects.requireNonNull(effectiveDateAsOf, "effectiveDateAsOf");
+    return queryReport(
+        "Failed to query SQLite inventory valuation movements.",
+        activeDatabase -> {
+          try (SqliteNativeStatement statement =
+              activeDatabase.prepare(
+                  SqliteInventoryCostingSql.LOAD_INVENTORY_VALUATION_MOVEMENTS)) {
+            String effectiveDateAsOfText = effectiveDateAsOf.map(LocalDate::toString).orElse(null);
+            statement.bindText(1, effectiveDateAsOfText);
+            statement.bindText(2, effectiveDateAsOfText);
+            List<InventoryValuationMovementRecord> movements = new java.util.ArrayList<>();
+            while (statement.step() == SqliteNativeResultCode.code("ROW")) {
+              movements.add(
+                  new InventoryValuationMovementRecord(
+                      new dev.erst.fingrind.core.AccountCode(
+                          SqlitePostingMapper.requiredText(statement, 0)),
+                      CanonicalTemporalText.parseLocalDate(
+                          SqlitePostingMapper.requiredText(statement, 1),
+                          "inventoryMovement.effectiveDate"),
+                      statement.columnLong(2),
+                      dev.erst.fingrind.core.InventoryMovementKind.fromWireValue(
+                          SqlitePostingMapper.requiredText(statement, 3)),
+                      statement.columnLong(4),
+                      statement.columnLong(5),
+                      new dev.erst.fingrind.core.PostingId(
+                          SqlitePostingMapper.requiredText(statement, 6))));
+            }
+            return List.copyOf(movements);
+          }
+        });
   }
 
   private SqliteNativeDatabase initializedReportDatabase() {

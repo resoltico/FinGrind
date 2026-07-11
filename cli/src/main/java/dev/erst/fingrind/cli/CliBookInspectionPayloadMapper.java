@@ -69,6 +69,9 @@ final class CliBookInspectionPayloadMapper {
         bookIdentity.bookDoctrine().accountingFrameworkPosition().wireValue(),
         bookIdentity.bookDoctrine().entityForm().wireValue(),
         bookIdentity.bookDoctrine().bookTemplateId().wireValue(),
+        bookIdentity.bookDoctrine().inventoryCostingDoctrine() == null
+            ? null
+            : bookIdentity.bookDoctrine().inventoryCostingDoctrine().wireValue(),
         bookIdentity.functionalCurrency().code(),
         bookIdentity.fiscalYearStart().wireValue());
   }

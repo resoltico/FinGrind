@@ -5,6 +5,8 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financial
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.profitAndLossTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.inventoryAssetAccount;
+import static dev.erst.fingrind.executor.PostEntrySemanticsPolicyTestSupport.tradingAccrualBookIdentity;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.requestProvenance;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -174,11 +176,13 @@ class PostEntrySemanticsPolicyCoverageTest {
                         new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("1000"),
                             dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                            MonetaryAmount.of(Money.parse("EUR", "10.00"))),
+                            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                            null),
                         new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("2000"),
                             dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                            MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                            null))),
                 generatedEvidence("opening-window-blocked", "opening-balance"),
                 requestProvenance("opening-window-blocked"),
                 SourceChannel.CLI),
@@ -189,6 +193,76 @@ class PostEntrySemanticsPolicyCoverageTest {
             receipt("receipt-adjunct-mismatch", "bank-deposit", new AccountCode("5601")),
             wrongSettlementRoleBook),
         "account-role-mismatch");
+  }
+
+  @Test
+  void rejectionFor_rejectsInventoryOpeningBalancesThatOmitQuantity() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble inventoryOpeningBook =
+        new PostingValidationStoreDouble(
+            tradingAccrualBookIdentity(),
+            Map.of(
+                new AccountCode("inventory"),
+                inventoryAssetAccount("inventory"),
+                new AccountCode("3200"),
+                equityAccount("3200", FinancialPositionLineClassification.EQUITY_CONTRIBUTION)));
+
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                new BookkeepingEntry.OpeningPosition(
+                    LocalDate.parse("2026-04-07"),
+                    List.of(
+                        new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                            new AccountCode("inventory"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                            null),
+                        new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
+                            new AccountCode("3200"),
+                            dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                            MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                            null))),
+                generatedEvidence("opening-inventory", "opening-balance"),
+                requestProvenance("opening-inventory"),
+                SourceChannel.CLI),
+            inventoryOpeningBook),
+        "opening-inventory-requires-quantity");
+  }
+
+  @Test
+  void rejectionFor_rejectsRawJournalInventoryMovementsBeforeAmountOnlyInventoryCanReachCommit() {
+    PostEntrySemanticsPolicy policy = PostEntrySemanticsPolicy.currentKernel();
+    PostingValidationStoreDouble inventoryJournalBook =
+        new PostingValidationStoreDouble(
+            tradingAccrualBookIdentity(),
+            Map.of(
+                new AccountCode("inventory"),
+                inventoryAssetAccount("inventory"),
+                new AccountCode("3200"),
+                equityAccount("3200", FinancialPositionLineClassification.EQUITY_CONTRIBUTION)));
+
+    assertSingleViolation(
+        policy.rejectionFor(
+            new PostEntryCommand(
+                new BookkeepingEntry.DirectJournal(
+                    new dev.erst.fingrind.core.JournalEntry(
+                        LocalDate.parse("2026-04-07"),
+                        List.of(
+                            new dev.erst.fingrind.core.JournalLine(
+                                new AccountCode("inventory"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                                Money.parse("EUR", "10.00")),
+                            new dev.erst.fingrind.core.JournalLine(
+                                new AccountCode("3200"),
+                                dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                                Money.parse("EUR", "10.00")))),
+                    null),
+                generatedEvidence("direct-journal-inventory", "working-note"),
+                requestProvenance("direct-journal-inventory"),
+                SourceChannel.CLI),
+            inventoryJournalBook),
+        "raw-journal-touches-inventory");
   }
 
   @Test
@@ -264,6 +338,7 @@ class PostEntrySemanticsPolicyCoverageTest {
                     new AccountCode("1000"),
                     new AccountCode("2000"),
                     MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                    null,
                     null,
                     null,
                     new dev.erst.fingrind.contract.tax.TaxSelection(
@@ -435,6 +510,7 @@ class PostEntrySemanticsPolicyCoverageTest {
             null,
             null,
             null,
+            null,
             null),
         "entryKind",
         "SALE_SETTLED");
@@ -448,6 +524,8 @@ class PostEntrySemanticsPolicyCoverageTest {
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
             null,
             null,
+            null,
+            null,
             null),
         "entryKind",
         "SALE_ON_CREDIT");
@@ -459,6 +537,7 @@ class PostEntrySemanticsPolicyCoverageTest {
             new AccountCode("3000"),
             new AccountCode("2100"),
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
             null,
             null),
         "entryKind",
@@ -517,7 +596,8 @@ class PostEntrySemanticsPolicyCoverageTest {
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("1000"),
                     dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                    MonetaryAmount.of(Money.parse("EUR", "10.00"))))),
+                    MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                    null))),
         "entryKind",
         "OPENING_POSITION");
     PostEntryRoleAccountSemantics.validate(
@@ -548,6 +628,7 @@ class PostEntrySemanticsPolicyCoverageTest {
                         new AccountCode("1000"),
                         new AccountCode("2000"),
                         MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                        null,
                         null,
                         null,
                         null,
@@ -588,6 +669,7 @@ class PostEntrySemanticsPolicyCoverageTest {
             null,
             null,
             null,
+            null,
             null),
         generatedEvidence(token, sourceDocumentType),
         requestProvenance(token),
@@ -603,6 +685,8 @@ class PostEntrySemanticsPolicyCoverageTest {
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
             null,
             null,
+            null,
+            null,
             null),
         generatedEvidence(token, sourceDocumentType),
         requestProvenance(token),
@@ -616,6 +700,7 @@ class PostEntrySemanticsPolicyCoverageTest {
             new AccountCode("3000"),
             new AccountCode("2100"),
             MonetaryAmount.of(Money.parse("EUR", "10.00")),
+            null,
             null,
             null),
         generatedEvidence(token, sourceDocumentType),

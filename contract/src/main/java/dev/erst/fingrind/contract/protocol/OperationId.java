@@ -65,6 +65,8 @@ public enum OperationId implements WireValue {
   PERIOD_SUMMARY,
   /** Computes one statement of financial position. */
   FINANCIAL_POSITION,
+  /** Computes exact per-account inventory carrying values from the inventory movement ledger. */
+  INVENTORY_VALUATION,
   /** Computes one bounded income statement. */
   INCOME_STATEMENT,
   /** Computes one bounded cash-flow statement. */
@@ -83,6 +85,16 @@ public enum OperationId implements WireValue {
   RECORD_PURCHASE_SETTLED,
   /** Commits one purchase-on-credit entry using the purchase-first request language. */
   RECORD_PURCHASE_ON_CREDIT,
+  /** Commits one settled inventory-capitalization entry. */
+  RECORD_INVENTORY_CAPITALIZATION_SETTLED,
+  /** Commits one inventory-capitalization-on-credit entry. */
+  RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
+  /** Commits one inventory write-down entry. */
+  RECORD_INVENTORY_WRITE_DOWN,
+  /** Commits one inventory shrinkage entry. */
+  RECORD_INVENTORY_SHRINKAGE,
+  /** Commits one inventory count-increase entry. */
+  RECORD_INVENTORY_COUNT_INCREASE,
   /** Commits one settled expense entry using the expense-first request language. */
   RECORD_EXPENSE_SETTLED,
   /** Commits one expense-on-credit entry using the expense-first request language. */
@@ -108,6 +120,11 @@ public enum OperationId implements WireValue {
           Map.entry(EconomicEventClass.CREDIT_SALE, RECORD_SALE_ON_CREDIT),
           Map.entry(EconomicEventClass.SETTLED_PURCHASE, RECORD_PURCHASE_SETTLED),
           Map.entry(EconomicEventClass.CREDIT_PURCHASE, RECORD_PURCHASE_ON_CREDIT),
+          Map.entry(
+              EconomicEventClass.INVENTORY_CAPITALIZATION, RECORD_INVENTORY_CAPITALIZATION_SETTLED),
+          Map.entry(EconomicEventClass.INVENTORY_WRITE_DOWN, RECORD_INVENTORY_WRITE_DOWN),
+          Map.entry(EconomicEventClass.INVENTORY_SHRINKAGE, RECORD_INVENTORY_SHRINKAGE),
+          Map.entry(EconomicEventClass.INVENTORY_COUNT_INCREASE, RECORD_INVENTORY_COUNT_INCREASE),
           Map.entry(EconomicEventClass.SETTLED_EXPENSE, RECORD_EXPENSE_SETTLED),
           Map.entry(EconomicEventClass.CREDIT_EXPENSE, RECORD_EXPENSE_ON_CREDIT),
           Map.entry(EconomicEventClass.AR_SETTLEMENT, RECORD_RECEIPT),

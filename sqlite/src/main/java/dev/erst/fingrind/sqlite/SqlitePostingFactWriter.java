@@ -1,8 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
-import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.core.CanonicalTemporalText;
@@ -20,42 +19,64 @@ final class SqlitePostingFactWriter {
       CommittedPosting postingFact,
       RequestFingerprint requestFingerprint) {
     RequestProvenance requestProvenance = postingFact.provenance().requestProvenance();
+    BookkeepingEntry retainedOriginatingEntry =
+        postingFact
+            .callerAuthoredEntry()
+            .orElse(postingFact.resolvedOriginatingEntry().orElse(null));
+    BookkeepingEntry resolvedOrRetainedOriginatingEntry =
+        postingFact
+            .resolvedOriginatingEntry()
+            .orElse(postingFact.callerAuthoredEntry().orElse(null));
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_FACT)) {
       statement.bindText(1, postingFact.postingId().value());
       statement.bindText(2, postingFact.postingKind().wireValue());
       statement.bindText(3, postingFact.postingOriginKind().wireValue());
-      bindOriginatingEntry(statement, postingFact.originatingEntry());
+      bindOriginatingEntry(statement, retainedOriginatingEntry);
       statement.bindText(
-          10, CanonicalTemporalText.formatLocalDate(postingFact.journalEntry().effectiveDate()));
+          13, CanonicalTemporalText.formatLocalDate(postingFact.journalEntry().effectiveDate()));
       statement.bindText(
-          11, CanonicalTemporalText.formatUtcInstant(postingFact.provenance().recordedAt()));
-      statement.bindText(12, requestProvenance.actorId().value());
-      statement.bindText(13, requestProvenance.actorType().wireValue());
-      statement.bindText(14, requestProvenance.commandId().value());
-      statement.bindText(15, requestProvenance.idempotencyKey().value());
-      statement.bindText(16, requestProvenance.causationId().value());
-      bindOptionalText(
-          statement,
-          17,
-          requestProvenance.correlationId().map(value -> value.value()).orElse(null));
-      bindOptionalText(
-          statement,
-          18,
-          postingFact.postingLineage().reversalReason().map(value -> value.value()).orElse(null));
-      statement.bindText(19, postingFact.provenance().sourceChannel().wireValue());
+          14, CanonicalTemporalText.formatUtcInstant(postingFact.provenance().recordedAt()));
+      statement.bindText(15, requestProvenance.actorId().value());
+      statement.bindText(16, requestProvenance.actorType().wireValue());
+      statement.bindText(17, requestProvenance.commandId().value());
+      statement.bindText(18, requestProvenance.idempotencyKey().value());
+      statement.bindText(19, requestProvenance.causationId().value());
       bindOptionalText(
           statement,
           20,
+          requestProvenance.correlationId().map(value -> value.value()).orElse(null));
+      bindOptionalText(
+          statement,
+          21,
+          postingFact.postingLineage().reversalReason().map(value -> value.value()).orElse(null));
+      statement.bindText(22, postingFact.provenance().sourceChannel().wireValue());
+      bindOptionalText(
+          statement,
+          23,
           postingFact
               .postingLineage()
               .reversalReference()
               .map(reference -> reference.priorPostingId().value())
               .orElse(null));
-      statement.bindInt(21, requestFingerprint.version());
-      statement.bindText(22, requestFingerprint.sha256Hex());
+      statement.bindInt(24, requestFingerprint.version());
+      statement.bindText(25, requestFingerprint.sha256Hex());
       statement.step();
     }
+    insertPostingSourceDocuments(activeDatabase, postingFact);
+    insertPostingApprovals(activeDatabase, postingFact);
+    insertPostingAppliedTax(
+        activeDatabase,
+        postingFact.postingId().value(),
+        appliedTax(resolvedOrRetainedOriginatingEntry));
+    insertPostingForeignExchange(
+        activeDatabase,
+        postingFact.postingId().value(),
+        foreignExchangeDetails(resolvedOrRetainedOriginatingEntry));
+  }
+
+  private static void insertPostingSourceDocuments(
+      SqliteNativeDatabase activeDatabase, CommittedPosting postingFact) {
     for (int index = 0; index < postingFact.evidence().sourceDocuments().size(); index++) {
       var sourceDocument = postingFact.evidence().sourceDocuments().get(index);
       try (SqliteNativeStatement statement =
@@ -68,6 +89,10 @@ final class SqlitePostingFactWriter {
         statement.step();
       }
     }
+  }
+
+  private static void insertPostingApprovals(
+      SqliteNativeDatabase activeDatabase, CommittedPosting postingFact) {
     for (int index = 0; index < postingFact.evidence().approvals().size(); index++) {
       var approval = postingFact.evidence().approvals().get(index);
       try (SqliteNativeStatement statement =
@@ -83,36 +108,44 @@ final class SqlitePostingFactWriter {
         statement.step();
       }
     }
-    AppliedTax appliedTax = appliedTax(postingFact.originatingEntry());
-    if (appliedTax != null) {
-      try (SqliteNativeStatement statement =
-          activeDatabase.prepare(SqliteTaxSql.INSERT_POSTING_APPLIED_TAX)) {
-        statement.bindText(1, postingFact.postingId().value());
-        statement.bindText(2, appliedTax.taxRegistrationId().value());
-        statement.bindText(3, appliedTax.taxCode().value());
-        statement.bindText(4, appliedTax.taxCodeName().value());
-        statement.bindInt(5, appliedTax.rate().partsPerMillionOfWhole());
-        statement.bindText(6, appliedTax.inclusionMode().wireValue());
-        statement.bindText(7, appliedTax.applicationKind().wireValue());
-        statement.bindText(8, appliedTax.taxableAmount().currencyCode());
-        statement.bindLong(9, Long.parseLong(appliedTax.taxableAmount().minorUnits()));
-        statement.bindLong(10, Long.parseLong(appliedTax.taxAmount().minorUnits()));
-        statement.bindLong(11, Long.parseLong(appliedTax.grossAmount().minorUnits()));
-        bindOptionalText(
-            statement,
-            12,
-            appliedTax.taxAccountCode() == null ? null : appliedTax.taxAccountCode().value());
-        statement.step();
-      }
+  }
+
+  private static void insertPostingAppliedTax(
+      SqliteNativeDatabase activeDatabase, String postingId, @Nullable AppliedTax appliedTax) {
+    if (appliedTax == null) {
+      return;
     }
-    ForeignExchangeDetails foreignExchangeDetails =
-        foreignExchangeDetails(postingFact.originatingEntry());
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqliteTaxSql.INSERT_POSTING_APPLIED_TAX)) {
+      statement.bindText(1, postingId);
+      statement.bindText(2, appliedTax.taxRegistrationId().value());
+      statement.bindText(3, appliedTax.taxCode().value());
+      statement.bindText(4, appliedTax.taxCodeName().value());
+      statement.bindInt(5, appliedTax.rate().partsPerMillionOfWhole());
+      statement.bindText(6, appliedTax.inclusionMode().wireValue());
+      statement.bindText(7, appliedTax.applicationKind().wireValue());
+      statement.bindText(8, appliedTax.taxableAmount().currencyCode());
+      statement.bindLong(9, Long.parseLong(appliedTax.taxableAmount().minorUnits()));
+      statement.bindLong(10, Long.parseLong(appliedTax.taxAmount().minorUnits()));
+      statement.bindLong(11, Long.parseLong(appliedTax.grossAmount().minorUnits()));
+      bindOptionalText(
+          statement,
+          12,
+          appliedTax.taxAccountCode() == null ? null : appliedTax.taxAccountCode().value());
+      statement.step();
+    }
+  }
+
+  private static void insertPostingForeignExchange(
+      SqliteNativeDatabase activeDatabase,
+      String postingId,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails) {
     if (foreignExchangeDetails == null) {
       return;
     }
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqlitePostingSql.INSERT_POSTING_FOREIGN_EXCHANGE)) {
-      statement.bindText(1, postingFact.postingId().value());
+      statement.bindText(1, postingId);
       statement.bindText(2, foreignExchangeDetails.treatmentKind().wireValue());
       statement.bindText(3, foreignExchangeDetails.transactionAmount().currencyCode());
       statement.bindLong(
@@ -141,102 +174,7 @@ final class SqlitePostingFactWriter {
 
   private static void bindOriginatingEntry(
       SqliteNativeStatement statement, @Nullable BookkeepingEntry originatingEntry) {
-    bindOriginatingEntryFactValues(statement, originatingEntryFactValues(originatingEntry));
-  }
-
-  private static OriginatingEntryFactValues originatingEntryFactValues(
-      @Nullable BookkeepingEntry originatingEntry) {
-    if (originatingEntry == null) {
-      return OriginatingEntryFactValues.empty();
-    }
-    return switch (originatingEntry) {
-      case BookkeepingEntry.SaleSettled sale ->
-          simpleOriginatingEntryFactValues(
-              sale.cashAccountCode().value(), sale.revenueAccountCode().value(), sale.amount());
-      case BookkeepingEntry.SaleOnCredit sale ->
-          simpleOriginatingEntryFactValues(
-              sale.receivableAccountCode().value(),
-              sale.revenueAccountCode().value(),
-              sale.amount());
-      case BookkeepingEntry.PurchaseSettled purchase ->
-          simpleOriginatingEntryFactValues(
-              purchase.inventoryAccountCode().value(),
-              purchase.cashAccountCode().value(),
-              purchase.amount());
-      case BookkeepingEntry.PurchaseOnCredit purchase ->
-          simpleOriginatingEntryFactValues(
-              purchase.inventoryAccountCode().value(),
-              purchase.payableAccountCode().value(),
-              purchase.amount());
-      case BookkeepingEntry.ExpenseSettled expense ->
-          simpleOriginatingEntryFactValues(
-              expense.expenseAccountCode().value(),
-              expense.cashAccountCode().value(),
-              expense.amount());
-      case BookkeepingEntry.ExpenseOnCredit expense ->
-          simpleOriginatingEntryFactValues(
-              expense.expenseAccountCode().value(),
-              expense.payableAccountCode().value(),
-              expense.amount());
-      case BookkeepingEntry.Receipt receipt ->
-          settlementOriginatingEntryFactValues(
-              receipt.cashAccountCode().value(),
-              receipt.receivableAccountCode().value(),
-              receipt.amount(),
-              receipt.settlementAdjunct());
-      case BookkeepingEntry.Payment payment ->
-          settlementOriginatingEntryFactValues(
-              payment.payableAccountCode().value(),
-              payment.cashAccountCode().value(),
-              payment.amount(),
-              payment.settlementAdjunct());
-      case BookkeepingEntry.OwnerContribution contribution ->
-          simpleOriginatingEntryFactValues(
-              contribution.cashAccountCode().value(),
-              contribution.equityAccountCode().value(),
-              contribution.amount());
-      case BookkeepingEntry.OwnerWithdrawal withdrawal ->
-          simpleOriginatingEntryFactValues(
-              withdrawal.equityAccountCode().value(),
-              withdrawal.cashAccountCode().value(),
-              withdrawal.amount());
-      default -> OriginatingEntryFactValues.empty();
-    };
-  }
-
-  private static void bindOriginatingEntryFactValues(
-      SqliteNativeStatement statement, OriginatingEntryFactValues factValues) {
-    bindOptionalText(statement, 4, factValues.primaryDebitAccountCode());
-    bindOptionalText(statement, 5, factValues.primaryCreditAccountCode());
-    bindOptionalText(statement, 6, factValues.adjunctAccountCode());
-    bindOptionalText(statement, 7, factValues.amountCurrencyCode());
-    bindOptionalLong(statement, 8, factValues.amountMinorUnits());
-    bindOptionalLong(statement, 9, factValues.adjunctAmountMinorUnits());
-  }
-
-  private static OriginatingEntryFactValues simpleOriginatingEntryFactValues(
-      String primaryDebitAccountCode, String primaryCreditAccountCode, MonetaryAmount amount) {
-    return new OriginatingEntryFactValues(
-        primaryDebitAccountCode,
-        primaryCreditAccountCode,
-        null,
-        amount.currencyCode(),
-        Long.parseLong(amount.minorUnits()),
-        null);
-  }
-
-  private static OriginatingEntryFactValues settlementOriginatingEntryFactValues(
-      String primaryDebitAccountCode,
-      String primaryCreditAccountCode,
-      MonetaryAmount amount,
-      @Nullable SettlementAdjunct settlementAdjunct) {
-    return new OriginatingEntryFactValues(
-        primaryDebitAccountCode,
-        primaryCreditAccountCode,
-        settlementAdjunct == null ? null : settlementAdjunct.accountCode().value(),
-        amount.currencyCode(),
-        Long.parseLong(amount.minorUnits()),
-        settlementAdjunct == null ? null : Long.parseLong(settlementAdjunct.amount().minorUnits()));
+    SqliteOriginatingEntryFactMapper.bindOriginatingEntry(statement, originatingEntry);
   }
 
   private static void bindOptionalText(
@@ -244,19 +182,16 @@ final class SqlitePostingFactWriter {
     statement.bindText(parameterIndex, value);
   }
 
-  private static void bindOptionalLong(
-      SqliteNativeStatement statement, int parameterIndex, @Nullable Long value) {
-    if (value == null) {
-      statement.bindNull(parameterIndex);
-      return;
-    }
-    statement.bindLong(parameterIndex, value);
-  }
-
   private static @Nullable AppliedTax appliedTax(@Nullable BookkeepingEntry originatingEntry) {
     return switch (originatingEntry) {
       case BookkeepingEntry.SaleSettled sale -> sale.appliedTax();
       case BookkeepingEntry.SaleOnCredit sale -> sale.appliedTax();
+      case BookkeepingEntry.PurchaseSettled purchase -> purchase.appliedTax();
+      case BookkeepingEntry.PurchaseOnCredit purchase -> purchase.appliedTax();
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled capitalization ->
+          capitalization.appliedTax();
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit capitalization ->
+          capitalization.appliedTax();
       case BookkeepingEntry.ExpenseSettled expense -> expense.appliedTax();
       case BookkeepingEntry.ExpenseOnCredit expense -> expense.appliedTax();
       case null, default -> null;
@@ -266,17 +201,5 @@ final class SqlitePostingFactWriter {
   private static @Nullable ForeignExchangeDetails foreignExchangeDetails(
       @Nullable BookkeepingEntry originatingEntry) {
     return originatingEntry == null ? null : originatingEntry.foreignExchangeDetails();
-  }
-
-  private record OriginatingEntryFactValues(
-      @Nullable String primaryDebitAccountCode,
-      @Nullable String primaryCreditAccountCode,
-      @Nullable String adjunctAccountCode,
-      @Nullable String amountCurrencyCode,
-      @Nullable Long amountMinorUnits,
-      @Nullable Long adjunctAmountMinorUnits) {
-    private static OriginatingEntryFactValues empty() {
-      return new OriginatingEntryFactValues(null, null, null, null, null, null);
-    }
   }
 }

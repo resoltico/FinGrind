@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -65,14 +66,16 @@ class BookTemplateAccountsTest {
         BookTemplateAccounts.declarations(
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL);
 
-    assertEquals(10, cashTrading.size());
-    assertEquals(14, accrualTrading.size());
+    assertEquals(13, cashTrading.size());
+    assertEquals(17, accrualTrading.size());
     assertEquals(
         FinancialPositionLineClassification.INVENTORY,
         declaration(cashTrading, "inventory")
             .accountTaxonomy()
             .financialPositionLineClassification()
             .orElseThrow());
+    assertEquals(
+        new UnitOfMeasure("unit", 0), declaration(cashTrading, "inventory").unitOfMeasure());
     assertEquals(
         ProfitAndLossLineClassification.OPERATING_REVENUE,
         declaration(cashTrading, "sales-revenue")
@@ -85,6 +88,9 @@ class BookTemplateAccountsTest {
             .accountTaxonomy()
             .profitAndLossLineClassification()
             .orElseThrow());
+    assertNotNull(declaration(cashTrading, "inventory-write-down-loss"));
+    assertNotNull(declaration(cashTrading, "inventory-shrinkage-loss"));
+    assertNotNull(declaration(cashTrading, "inventory-count-gain"));
     assertEquals(
         FinancialPositionLineClassification.TRADE_RECEIVABLE,
         declaration(accrualTrading, "accounts-receivable")

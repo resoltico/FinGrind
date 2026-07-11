@@ -35,13 +35,18 @@ public final class BookkeepingPostingService {
   /** Validates whether one posting command is admissible for later commit. */
   public PostingPreflightOutcome preflight(PostingCommand command) {
     Objects.requireNonNull(command, "command");
-    PostingAcceptancePolicy.Decision decision =
-        acceptancePolicy.decisionFor(command, validationStore);
-    if (decision instanceof PostingAcceptancePolicy.Decision.Rejected rejected) {
-      return new PostingPreflightOutcome.Rejected(rejected.rejection());
-    }
-    return new PostingPreflightOutcome.Accepted(
-        command.requestProvenance().idempotencyKey(), command.journalEntry().effectiveDate());
+    return switch (acceptancePolicy.decisionFor(command, validationStore)) {
+      case PostingAcceptancePolicy.Decision.Replay replay ->
+          new PostingPreflightOutcome.Accepted(
+              command.requestProvenance().idempotencyKey(),
+              replay.postingFact().journalEntry().effectiveDate());
+      case PostingAcceptancePolicy.Decision.Rejected rejected ->
+          new PostingPreflightOutcome.Rejected(rejected.rejection());
+      case PostingAcceptancePolicy.Decision.Accepted accepted ->
+          new PostingPreflightOutcome.Accepted(
+              command.requestProvenance().idempotencyKey(),
+              accepted.acceptedPosting().journalEntry().effectiveDate());
+    };
   }
 
   /** Commits one posting command into the selected book using the configured posting id source. */
@@ -55,15 +60,18 @@ public final class BookkeepingPostingService {
       case PostingAcceptancePolicy.Decision.Accepted accepted ->
           commitStore.commit(
               new PostingDraft(
-                  command.journalEntry(),
-                  command.postingLineage(),
-                  command.postingKind(),
-                  command.postingOriginKind(),
-                  command.evidence(),
+                  accepted.acceptedPosting().journalEntry(),
+                  accepted.acceptedPosting().postingLineage(),
+                  accepted.acceptedPosting().postingKind(),
+                  accepted.acceptedPosting().postingOriginKind(),
+                  accepted.acceptedPosting().evidence(),
                   accepted.requestFingerprint(),
                   new CommittedProvenance(
-                      command.requestProvenance(), clock.instant(), command.sourceChannel()),
-                  command.originatingEntry()),
+                      accepted.acceptedPosting().requestProvenance(),
+                      clock.instant(),
+                      accepted.acceptedPosting().sourceChannel()),
+                  accepted.acceptedPosting().callerAuthoredEntry().orElse(null),
+                  accepted.acceptedPosting().resolvedOriginatingEntry().orElse(null)),
               postingIdGenerator);
     };
   }

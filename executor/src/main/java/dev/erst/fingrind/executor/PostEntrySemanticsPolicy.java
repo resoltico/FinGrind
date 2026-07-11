@@ -10,6 +10,7 @@ import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.InventoryPostingResolution;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.ArrayList;
@@ -47,6 +48,9 @@ final class PostEntrySemanticsPolicy {
         authoredSemanticContext.selectorValue());
     Map<AccountCode, RegisteredAccount> authoredAccounts =
         book.findAccounts(authoredSemanticContext.referencedAccounts());
+    boolean allAuthoredAccountsResolved =
+        ResolvedJournalSupport.canResolveAllAccounts(
+            authoredSemanticContext.referencedAccounts(), authoredAccounts);
     PostEntryRoleAccountSemantics.validate(
         violations,
         authoredAccounts,
@@ -74,16 +78,35 @@ final class PostEntrySemanticsPolicy {
         authoredSemanticContext.selectorField(),
         authoredSemanticContext.selectorValue());
     PostEntryResolutionSupport.ResolutionOutcome resolutionOutcome =
-        PostEntryResolutionSupport.resolveAfterTaxValidation(
-            command.entry(), book, violations, violationCountBeforeTaxValidation);
-    if (resolutionOutcome.rejection().isPresent()) {
+        allAuthoredAccountsResolved
+            ? PostEntryResolutionSupport.resolveAfterTaxValidation(
+                command.entry(), book, violations, violationCountBeforeTaxValidation)
+            : new PostEntryResolutionSupport.ResolutionOutcome(
+                InventoryPostingResolution.withoutInventory(command.entry()), Optional.empty());
+    BookkeepingEntry resolvedEntry = resolutionOutcome.entry();
+    if (resolutionOutcome.rejection().isPresent()
+        && !(resolutionOutcome.rejection().orElseThrow()
+            instanceof BookkeepingPostingRejection.AccountStateViolations)) {
       return resolutionOutcome.rejection();
     }
-    BookkeepingEntry resolvedEntry = resolutionOutcome.entry();
     PostEntrySemanticContext resolvedSemanticContext =
         PostEntrySemanticContext.from(resolvedEntry, REQUEST_SURFACE);
     Map<AccountCode, RegisteredAccount> resolvedAccounts =
         book.findAccounts(resolvedSemanticContext.referencedAccounts());
+    if (ResolvedJournalSupport.canResolveAllAccounts(
+        resolvedSemanticContext.referencedAccounts(), resolvedAccounts)) {
+      BookkeepingPostingRejection.EntrySemanticsViolation rawJournalInventoryViolation =
+          PostEntryRequestValidationSupport.rawJournalTouchesInventory(
+              resolvedAccounts,
+              command.entry().entryKind(),
+              resolvedSemanticContext.selectorField(),
+              resolvedSemanticContext.selectorValue(),
+              resolvedSemanticContext.referencedAccounts());
+      if (rawJournalInventoryViolation != null) {
+        violations.add(rawJournalInventoryViolation);
+        return Optional.of(new BookkeepingPostingRejection.EntrySemanticsViolations(violations));
+      }
+    }
     if (canResolveResolvedJournal(resolvedEntry)
         && ResolvedJournalSupport.canResolveAllAccounts(
             resolvedSemanticContext.referencedAccounts(), resolvedAccounts)) {
@@ -92,7 +115,7 @@ final class PostEntrySemanticsPolicy {
       PostEntryRequestValidationSupport.requireOpeningWindowAccounts(
           violations,
           resolvedAccounts,
-          command.entry().entryKind(),
+          resolvedEntry,
           resolvedSemanticContext.selectorField(),
           resolvedSemanticContext.selectorValue(),
           resolvedSemanticContext.referencedAccounts());

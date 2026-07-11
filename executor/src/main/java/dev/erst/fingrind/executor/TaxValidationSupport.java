@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.TaxDefinitionViolation;
@@ -68,6 +69,12 @@ final class TaxValidationSupport {
     return switch (entry) {
       case BookkeepingEntry.SaleSettled sale -> sale.appliedTax();
       case BookkeepingEntry.SaleOnCredit sale -> sale.appliedTax();
+      case BookkeepingEntry.PurchaseSettled purchase -> purchase.appliedTax();
+      case BookkeepingEntry.PurchaseOnCredit purchase -> purchase.appliedTax();
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled capitalization ->
+          capitalization.appliedTax();
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit capitalization ->
+          capitalization.appliedTax();
       case BookkeepingEntry.ExpenseSettled expense -> expense.appliedTax();
       case BookkeepingEntry.ExpenseOnCredit expense -> expense.appliedTax();
       default -> null;

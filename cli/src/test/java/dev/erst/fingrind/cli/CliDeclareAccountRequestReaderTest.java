@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -38,6 +39,32 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
     assertEquals("1000", command.accountCode().value());
     assertEquals("Cash", command.accountName().value());
     assertEquals("ASSET", command.accountType().wireValue());
+  }
+
+  @Test
+  void readDeclareAccountCommand_readsInventoryUnitOfMeasure() throws IOException {
+    Path requestFile =
+        writeNamedRequest(
+            "declare-inventory-account.json",
+            """
+            {
+              "accountCode": "1400",
+              "accountName": "Inventory",
+              "accountType": "ASSET",
+              "accountNodeKind": "POSTABLE",
+              "financialPositionLineClassification": "INVENTORY",
+              "cashFlowAssetClassification": "NON_CASH",
+              "unitOfMeasure": {
+                "token": "kg",
+                "quantityScale": 3
+              }
+            }
+            """);
+    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
+
+    DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
+
+    assertEquals(new UnitOfMeasure("kg", 3), command.unitOfMeasure());
   }
 
   @Test

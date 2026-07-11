@@ -18,12 +18,12 @@ import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /** Request template descriptor namespace for discovery commands. */
-public interface ContractTemplates {
-  /** Canonical request-template document for print-request-template. */
+public interface ContractTemplates extends ContractReversalTemplates {
   public record PostingRequestTemplateDescriptor(
       BookkeepingEntryKind entryKind,
       String effectiveDate,
@@ -33,8 +33,13 @@ public interface ContractTemplates {
       @Nullable String revenueAccountCode,
       @Nullable String inventoryAccountCode,
       @Nullable String expenseAccountCode,
+      @Nullable String writeDownLossAccountCode,
+      @Nullable String shrinkageLossAccountCode,
+      @Nullable String countGainAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
+      @Nullable String quantity,
+      @Nullable MonetaryAmount unitCost,
       @Nullable InventoryReliefTemplateDescriptor inventoryRelief,
       @Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct,
       @Nullable ForeignExchangeTemplateDescriptor foreignExchange,
@@ -45,7 +50,6 @@ public interface ContractTemplates {
       ProvenanceTemplateDescriptor provenance,
       @Nullable ReversalTemplateDescriptor reversal)
       implements TemplateDescriptorType {
-    /** Validates one posting-request template descriptor payload. */
     public PostingRequestTemplateDescriptor {
       var validated =
           ContractPostingRequestTemplateDescriptorValidationSupport.validate(
@@ -59,8 +63,13 @@ public interface ContractTemplates {
                   revenueAccountCode,
                   inventoryAccountCode,
                   expenseAccountCode,
+                  writeDownLossAccountCode,
+                  shrinkageLossAccountCode,
+                  countGainAccountCode,
                   equityAccountCode,
                   amount,
+                  quantity,
+                  unitCost,
                   inventoryRelief,
                   settlementAdjunct,
                   foreignExchange,
@@ -78,8 +87,13 @@ public interface ContractTemplates {
       revenueAccountCode = validated.revenueAccountCode();
       inventoryAccountCode = validated.inventoryAccountCode();
       expenseAccountCode = validated.expenseAccountCode();
+      writeDownLossAccountCode = validated.writeDownLossAccountCode();
+      shrinkageLossAccountCode = validated.shrinkageLossAccountCode();
+      countGainAccountCode = validated.countGainAccountCode();
       equityAccountCode = validated.equityAccountCode();
       amount = validated.amount();
+      quantity = validated.quantity();
+      unitCost = validated.unitCost();
       inventoryRelief = validated.inventoryRelief();
       settlementAdjunct = validated.settlementAdjunct();
       foreignExchange = validated.foreignExchange();
@@ -92,10 +106,8 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical settlement-adjunct template nested inside receipt and payment requests. */
   public record SettlementAdjunctTemplateDescriptor(String accountCode, MonetaryAmount amount)
       implements TemplateDescriptorType {
-    /** Validates one settlement-adjunct template descriptor payload. */
     public SettlementAdjunctTemplateDescriptor {
       accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
       new AccountCode(accountCode);
@@ -106,10 +118,8 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical request-side tax selector nested inside one posting request template. */
   public record TaxSelectionTemplateDescriptor(String taxRegistrationId, String taxCode)
       implements TemplateDescriptorType {
-    /** Validates one tax-selection template descriptor payload. */
     public TaxSelectionTemplateDescriptor {
       taxRegistrationId =
           ContractDescriptorValidation.requireText(taxRegistrationId, "taxRegistrationId");
@@ -120,11 +130,9 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical request-template journal-line descriptor. */
   public record JournalLineTemplateDescriptor(
       String accountCode, JournalLine.EntrySide side, MonetaryAmount amount)
       implements TemplateDescriptorType {
-    /** Validates one journal-line template descriptor payload. */
     public JournalLineTemplateDescriptor {
       accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
       new AccountCode(accountCode);
@@ -136,11 +144,9 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical request-template opening-balance descriptor. */
   public record OpeningBalanceTemplateDescriptor(
       String accountCode, JournalLine.EntrySide side, MonetaryAmount amount)
       implements TemplateDescriptorType {
-    /** Validates one opening-balance template descriptor payload. */
     public OpeningBalanceTemplateDescriptor {
       accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
       new AccountCode(accountCode);
@@ -152,7 +158,6 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical request-template provenance descriptor. */
   public record ProvenanceTemplateDescriptor(
       String actorId,
       ActorType actorType,
@@ -161,7 +166,6 @@ public interface ContractTemplates {
       String causationId,
       @Nullable String correlationId)
       implements TemplateDescriptorType {
-    /** Validates one provenance template descriptor payload. */
     public ProvenanceTemplateDescriptor {
       var validated =
           ContractTemplateValidationSupport.validateProvenanceTemplate(
@@ -175,12 +179,10 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical request-template evidence descriptor. */
   public record AccountingEvidenceTemplateDescriptor(
       List<SourceDocumentTemplateDescriptor> sourceDocuments,
       List<ApprovalTemplateDescriptor> approvals)
       implements TemplateDescriptorType {
-    /** Validates one evidence-template descriptor payload. */
     public AccountingEvidenceTemplateDescriptor {
       var validated =
           ContractTemplateValidationSupport.validateAccountingEvidenceTemplate(
@@ -190,11 +192,9 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical request-template source-document descriptor. */
   public record SourceDocumentTemplateDescriptor(
       String sourceDocumentId, String sourceDocumentType, String documentDate)
       implements TemplateDescriptorType {
-    /** Validates one source-document template descriptor payload. */
     public SourceDocumentTemplateDescriptor {
       var validated =
           ContractTemplateValidationSupport.validateSourceDocumentTemplate(
@@ -205,7 +205,6 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical request-template approval descriptor. */
   public record ApprovalTemplateDescriptor(
       String approvalId,
       String approvalType,
@@ -214,7 +213,6 @@ public interface ContractTemplates {
       ApprovalDecision decision,
       String approvedAt)
       implements TemplateDescriptorType {
-    /** Validates one approval template descriptor payload. */
     public ApprovalTemplateDescriptor {
       var validated =
           ContractTemplateValidationSupport.validateApprovalTemplate(
@@ -228,17 +226,6 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical request-template reversal descriptor. */
-  public record ReversalTemplateDescriptor(String priorPostingId, String reason)
-      implements TemplateDescriptorType {
-    /** Validates one reversal template descriptor payload. */
-    public ReversalTemplateDescriptor {
-      priorPostingId = ContractDescriptorValidation.requireText(priorPostingId, "priorPostingId");
-      reason = ContractDescriptorValidation.requireText(reason, "reason");
-    }
-  }
-
-  /** Canonical declare-account template nested inside a ledger plan. */
   public record DeclareAccountTemplateDescriptor(
       String accountCode,
       String accountName,
@@ -247,9 +234,31 @@ public interface ContractTemplates {
       @Nullable String parentAccountCode,
       @Nullable FinancialPositionLineClassification financialPositionLineClassification,
       @Nullable ProfitAndLossLineClassification profitAndLossLineClassification,
-      @Nullable CashFlowAssetClassification cashFlowAssetClassification)
+      @Nullable CashFlowAssetClassification cashFlowAssetClassification,
+      @Nullable UnitOfMeasure unitOfMeasure)
       implements TemplateDescriptorType {
-    /** Validates one declare-account template descriptor payload. */
+    /** Convenience constructor for non-inventory account declaration templates. */
+    public DeclareAccountTemplateDescriptor(
+        String accountCode,
+        String accountName,
+        AccountType accountType,
+        AccountNodeKind accountNodeKind,
+        @Nullable String parentAccountCode,
+        @Nullable FinancialPositionLineClassification financialPositionLineClassification,
+        @Nullable ProfitAndLossLineClassification profitAndLossLineClassification,
+        @Nullable CashFlowAssetClassification cashFlowAssetClassification) {
+      this(
+          accountCode,
+          accountName,
+          accountType,
+          accountNodeKind,
+          parentAccountCode,
+          financialPositionLineClassification,
+          profitAndLossLineClassification,
+          cashFlowAssetClassification,
+          null);
+    }
+
     public DeclareAccountTemplateDescriptor {
       var validated =
           ContractDeclarationTemplateValidationSupport.validateDeclareAccountTemplate(
@@ -260,7 +269,8 @@ public interface ContractTemplates {
               parentAccountCode,
               financialPositionLineClassification,
               profitAndLossLineClassification,
-              cashFlowAssetClassification);
+              cashFlowAssetClassification,
+              unitOfMeasure);
       accountCode = validated.accountCode();
       accountName = validated.accountName();
       accountType = validated.accountType();
@@ -269,10 +279,10 @@ public interface ContractTemplates {
       financialPositionLineClassification = validated.financialPositionLineClassification();
       profitAndLossLineClassification = validated.profitAndLossLineClassification();
       cashFlowAssetClassification = validated.cashFlowAssetClassification();
+      unitOfMeasure = validated.unitOfMeasure();
     }
   }
 
-  /** Canonical declare-tax-registration request template descriptor. */
   public record DeclareTaxRegistrationTemplateDescriptor(
       String taxRegistrationId,
       String taxRegistrationName,
@@ -284,7 +294,6 @@ public interface ContractTemplates {
       int dueDaysAfterPeriodEnd,
       List<DeclareTaxCodeTemplateDescriptor> taxCodes)
       implements TemplateDescriptorType {
-    /** Validates one declare-tax-registration template descriptor payload. */
     public DeclareTaxRegistrationTemplateDescriptor {
       var validated =
           ContractDeclarationTemplateValidationSupport.validateDeclareTaxRegistrationTemplate(
@@ -309,7 +318,6 @@ public interface ContractTemplates {
     }
   }
 
-  /** Canonical declared tax-code template nested inside one tax registration. */
   public record DeclareTaxCodeTemplateDescriptor(
       String taxCode,
       String taxCodeName,
@@ -317,7 +325,6 @@ public interface ContractTemplates {
       TaxInclusionMode inclusionMode,
       TaxApplicationKind applicationKind)
       implements TemplateDescriptorType {
-    /** Validates one declared tax-code template descriptor payload. */
     public DeclareTaxCodeTemplateDescriptor {
       var validated =
           ContractDeclarationTemplateValidationSupport.validateDeclareTaxCodeTemplate(

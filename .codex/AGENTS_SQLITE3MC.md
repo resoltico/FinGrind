@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0
 **Updated:** 2026-06-13
-**Baseline:** SQLite3 Multiple Ciphers **2.3.5** (based on SQLite **3.53.2**)
+**Baseline:** SQLite3 Multiple Ciphers **2.3.6** (based on SQLite **3.53.3**)
 **Inherits:** [.codex/UNIVERSAL_ENGINEERING_CONTRACT.md](./UNIVERSAL_ENGINEERING_CONTRACT.md) v3.0.0+
 **Layers on:** [.codex/AGENTS_SQLITE.md](./AGENTS_SQLITE.md) — load it first. This file adds only the at-rest encryption layer.
 **Scope:** projects that encrypt SQLite databases with SQLite3 Multiple Ciphers — cipher and key lifecycle, encrypted database files, key/rekey flows, `PRAGMA key`/`rekey`, `ATTACH ... KEY`, the at-rest encryption boundary, and the secret-leakage surfaces around them, in any language or binding that wraps SQLite3MC.
@@ -31,11 +31,11 @@ Where the answer is not derivable from code, history, or conversation, surface t
 
 ---
 
-## 1. Baseline posture: SQLite3MC 2.3.5
+## 1. Baseline posture: SQLite3MC 2.3.6
 
-For repositories governed by this protocol, assume SQLite3 Multiple Ciphers **2.3.5**, based on SQLite **3.53.2**. Use the repository's pinned version when it is more specific. Do not upgrade or downgrade SQLite3MC without a compatibility judgment, migration-risk assessment, and verification plan.
+For repositories governed by this protocol, assume SQLite3 Multiple Ciphers **2.3.6**, based on SQLite **3.53.3**. Use the repository's pinned version when it is more specific. Do not upgrade or downgrade SQLite3MC without a compatibility judgment, migration-risk assessment, and verification plan.
 
-The SQLite3MC 2.3.x line hardened secure memory handling for cipher state: nullifying cipher data structures securely on freeing (issue #230, introduced in 2.3.3) and zeroing one-time keys for `chacha20`, `aegis`, and `ascon128` after encrypt/decrypt (2.3.4). These fixes are carried forward in 2.3.5. Treat any edit around cipher-state cleanup, zeroization, or nullification as security-sensitive. Do not remove these paths because they look redundant — this is exactly the kind of code where Naur's "amorphous additions" warning bites in reverse.
+The SQLite3MC 2.3.x line hardened secure memory handling for cipher state: nullifying cipher data structures securely on freeing (issue #230, introduced in 2.3.3) and zeroing one-time keys for `chacha20`, `aegis`, and `ascon128` after encrypt/decrypt (2.3.4). These fixes are carried forward in 2.3.6. Treat any edit around cipher-state cleanup, zeroization, or nullification as security-sensitive. Do not remove these paths because they look redundant — this is exactly the kind of code where Naur's "amorphous additions" warning bites in reverse.
 
 The underlying SQLite version baseline, the 3.52 withdrawal warning, and the WAL-reset fix are owned by AGENTS_SQLITE §3.
 

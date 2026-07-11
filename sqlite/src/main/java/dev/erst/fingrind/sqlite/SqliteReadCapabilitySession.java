@@ -18,6 +18,11 @@ class SqliteReadCapabilitySession extends SqliteDelegatingSession
   }
 
   @Override
+  public SqliteInventoryValuationReadOperations storeInventoryValuationReadOperations() {
+    return store.storeInventoryValuationReadOperations();
+  }
+
+  @Override
   public SqliteStoreLifecycle storeLifecycle() {
     return store.storeLifecycle();
   }

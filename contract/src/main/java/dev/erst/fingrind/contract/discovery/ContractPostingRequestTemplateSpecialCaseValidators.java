@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.discovery.ContractTemplates.ReversalTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractReversalTemplates.ReversalTemplateDescriptor;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /** Validation owners for posting-template variants that are not role-and-amount shaped. */
@@ -20,7 +21,10 @@ final class ContractPostingRequestTemplateSpecialCaseValidators {
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY);
+    ContractPostingRequestTemplateFieldSupport.forbidInventoryMaintenanceFields(fields, "journal");
     ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), "journal");
+    ContractPostingTemplateFieldRules.forbidQuantity(fields.quantity(), "journal");
+    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), "journal");
     ContractPostingRequestTemplateFieldSupport.requireNoSettlementAdjunct(fields, "journal");
     ContractPostingTemplateFieldRules.forbidTax(fields.tax(), "journal");
     ContractPostingTemplateFieldRules.forbidOpeningBalances(fields.openingBalances());
@@ -43,8 +47,12 @@ final class ContractPostingRequestTemplateSpecialCaseValidators {
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY);
+    ContractPostingRequestTemplateFieldSupport.forbidInventoryMaintenanceFields(
+        fields, "openingPosition");
     ContractPostingTemplateFieldRules.forbidLines(fields.lines());
     ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), "openingPosition");
+    ContractPostingTemplateFieldRules.forbidQuantity(fields.quantity(), "openingPosition");
+    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), "openingPosition");
     ContractPostingRequestTemplateFieldSupport.validateInventoryRelief(
         fields.inventoryRelief(),
         "openingPosition",
@@ -70,7 +78,10 @@ final class ContractPostingRequestTemplateSpecialCaseValidators {
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY);
+    ContractPostingRequestTemplateFieldSupport.forbidInventoryMaintenanceFields(fields, "reversal");
     ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), "reversal");
+    ContractPostingTemplateFieldRules.forbidQuantity(fields.quantity(), "reversal");
+    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), "reversal");
     ContractPostingRequestTemplateFieldSupport.validateInventoryRelief(
         fields.inventoryRelief(),
         "reversal",
@@ -80,5 +91,39 @@ final class ContractPostingRequestTemplateSpecialCaseValidators {
     if (reversal == null) {
       throw new IllegalArgumentException("reversal must be present for reversal.");
     }
+  }
+
+  static void validateInventoryShrinkageTemplate(
+      ContractPostingRequestTemplateValidators.PostingTemplateFields fields,
+      @Nullable ReversalTemplateDescriptor reversal) {
+    ContractPostingRequestTemplateFieldSupport.requireTextFields(
+        fields,
+        List.of(
+            ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
+            ContractPostingRequestTemplateFieldSupport.TemplateTextField.SHRINKAGE_LOSS));
+    ContractPostingRequestTemplateFieldSupport.forbidTextFields(
+        fields,
+        ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
+        ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE,
+        ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE,
+        ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE,
+        ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
+        ContractPostingRequestTemplateFieldSupport.TemplateTextField.WRITE_DOWN_LOSS,
+        ContractPostingRequestTemplateFieldSupport.TemplateTextField.COUNT_GAIN,
+        ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY);
+    ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), "inventoryShrinkage");
+    ContractPostingTemplateFieldRules.requirePositiveQuantity(fields.quantity());
+    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), "inventoryShrinkage");
+    ContractPostingRequestTemplateFieldSupport.validateInventoryRelief(
+        fields.inventoryRelief(),
+        "inventoryShrinkage",
+        ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.FORBIDDEN);
+    ContractPostingRequestTemplateFieldSupport.requireNoSettlementAdjunct(
+        fields, "inventoryShrinkage");
+    ContractPostingTemplateFieldRules.forbidTax(fields.tax(), "inventoryShrinkage");
+    ContractPostingTemplateFieldRules.forbidForeignExchange(
+        fields.foreignExchange(), "inventoryShrinkage");
+    ContractPostingRequestTemplateFieldSupport.forbidLinesAndOpeningBalances(fields);
+    ContractPostingTemplateFieldRules.forbidReversal(reversal);
   }
 }

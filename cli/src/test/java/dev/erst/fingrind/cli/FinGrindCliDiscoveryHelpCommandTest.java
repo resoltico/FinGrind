@@ -114,6 +114,10 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
             help,
             "Trading-template sale requests require this object so one committed sale can carry both revenue recognition and cost-of-sales relief."),
         help);
+    assertTrue(help.contains("Entry semantics"), help);
+    assertTrue(
+        containsCollapsedText(help, "lets FinGrind derive cost of sales from the inventory pool."),
+        help);
     assertTrue(help.contains("sourceDocumentType"), help);
     assertTrue(
         containsCollapsedText(
@@ -124,6 +128,34 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     assertFalse(help.contains("lines[].accountCode"), help);
     assertFalse(help.contains("openingBalances[].accountCode"), help);
     assertFalse(help.contains("reversal.priorPostingId"), help);
+  }
+
+  @Test
+  void run_creditInventoryAcquisitionHelpPublishesOptionalTaxAndForeignExchange() {
+    String purchaseHelp =
+        runCommandHelpText(
+            dev.erst.fingrind.contract.protocol.OperationId.RECORD_PURCHASE_ON_CREDIT);
+    String capitalizationHelp =
+        runCommandHelpText(
+            dev.erst.fingrind.contract.protocol.OperationId
+                .RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT);
+
+    assertTrue(
+        containsCollapsedText(
+            purchaseHelp,
+            "Purchase-on-credit request scaffolds publish inventory, payable, quantity, unitCost, optional tax and FX, evidence, and provenance fields."),
+        purchaseHelp);
+    assertTrue(
+        containsCollapsedText(
+            capitalizationHelp,
+            "Inventory-capitalization-on-credit scaffolds publish inventory, payable, pre-VAT amount, optional tax and FX, evidence, and provenance fields."),
+        capitalizationHelp);
+    assertTrue(capitalizationHelp.contains("Entry semantics"), capitalizationHelp);
+    assertTrue(
+        containsCollapsedText(
+            capitalizationHelp,
+            "recoverable tax remains outside the pool and nonrecoverable tax is capitalized."),
+        capitalizationHelp);
   }
 
   @Test
@@ -510,6 +542,11 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
         "as-of-date",
         "--effective-date-as-of",
         "Supply --effective-date-as-of to pin that cutoff explicitly");
+    assertTemporalScopeHelp(
+        "inventory-valuation",
+        "inventory-as-of-date",
+        "--as-of",
+        "Supply --as-of to pin the cutoff explicitly");
     assertTemporalScopeHelp(
         "tax-obligation",
         "bounded-period",

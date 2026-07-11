@@ -103,14 +103,37 @@ class CliLedgerBookQueryPayloadMapperTest {
                         List.of(
                             LedgerFact.text("inventoryAccountCode", "1400"),
                             LedgerFact.text("costOfSalesAccountCode", "5000"),
-                            LedgerFact.money("amount", new MonetaryAmount("EUR", "400")))))));
+                            LedgerFact.text("quantity", "4"))))));
 
     var entry = Objects.requireNonNull(payload.entry());
     var inventoryRelief = Objects.requireNonNull(entry.inventoryRelief());
 
     assertEquals("1400", inventoryRelief.inventoryAccountCode());
     assertEquals("5000", inventoryRelief.costOfSalesAccountCode());
-    assertEquals("400", inventoryRelief.amount().minorUnits());
+    assertEquals("4", inventoryRelief.quantity());
+  }
+
+  @Test
+  void accountPayload_mapsInventoryUnitOfMeasureFacts() {
+    var payload =
+        CliLedgerBookQueryPayloadMapper.accountPayload(
+            List.of(
+                LedgerFact.text("accountCode", "1400"),
+                LedgerFact.text("accountName", "Inventory"),
+                LedgerFact.text("accountType", "ASSET"),
+                LedgerFact.text("accountNodeKind", "POSTABLE"),
+                LedgerFact.text("financialPositionLineClassification", "INVENTORY"),
+                LedgerFact.text("cashFlowAssetClassification", "NON_CASH"),
+                LedgerFact.group(
+                    "unitOfMeasure",
+                    List.of(LedgerFact.text("token", "kg"), LedgerFact.count("quantityScale", 3))),
+                LedgerFact.text("normalBalance", "DEBIT"),
+                LedgerFact.flag("active", true),
+                LedgerFact.text("declaredAt", "2026-04-23T10:15:30Z")));
+
+    assertNotNull(payload.unitOfMeasure());
+    assertEquals("kg", payload.unitOfMeasure().token());
+    assertEquals(3, payload.unitOfMeasure().quantityScale());
   }
 
   private static List<LedgerFact> postingFacts(

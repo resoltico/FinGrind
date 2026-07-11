@@ -8,7 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.bookkeeping.InventoryBalanceBelowZero;
+import dev.erst.fingrind.contract.bookkeeping.InventoryMovementPrecedesAccountHorizon;
+import dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero;
+import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingCost;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostingInventoryRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
@@ -25,9 +29,12 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EconomicEventClass;
 import dev.erst.fingrind.core.EvidenceClass;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.Quantity;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -46,6 +53,9 @@ import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link PostingRejection}. */
 class PostingRejectionTest {
+  private static final List<Class<?>> ENTRY_SEMANTICS_OWNERS =
+      List.of(PostingInventoryRejectionSemantics.class, PostingRejectionSemantics.class);
+
   private static final List<String> ENTRY_SEMANTICS_FACTORY_NAMES =
       List.of(
           "accountRoleMismatch",
@@ -55,11 +65,21 @@ class PostingRejectionTest {
           "economicNullJournal",
           "evidenceClassConflict",
           "financialPositionClassificationMismatch",
+          "inventoryAcquisitionBreachesMinorUnitFloor",
+          "inventoryAcquisitionCostNotExact",
+          "inventoryAcquisitionForeignExchangeFunctionalAmountMismatch",
+          "inventoryCapitalizationRequiresQuantityOnHand",
+          "inventoryOpeningCarryingCostInvalid",
+          "inventoryOpeningMustBeFirstMovement",
+          "inventoryQuantityIncompatibleWithUnitOfMeasure",
           "inventoryReliefRequiresTradingBook",
+          "openingInventoryRequiresQuantity",
+          "openingQuantityRequiresInventory",
           "openingWindowAccountNotPermitted",
           "rawJournalBundlesOperationalEvents",
           "rawJournalRequiresCashLine",
           "rawJournalShadowsTypedEvent",
+          "rawJournalTouchesInventory",
           "sourceDocumentTypeNotAccepted",
           "tradingSaleRequiresInventoryRelief",
           "verbRequiresRole",
@@ -85,17 +105,29 @@ class PostingRejectionTest {
           "verb-requires-trading-template",
           "trading-sale-requires-inventory-relief",
           "inventory-relief-requires-trading-book",
+          "inventory-quantity-incompatible-with-unit-of-measure",
+          "inventory-acquisition-cost-not-exact",
+          "inventory-acquisition-breaches-minor-unit-floor",
+          "inventory-acquisition-foreign-exchange-functional-amount-mismatch",
           "evidence-class-conflict",
           "raw-journal-shadows-typed-event",
           "raw-journal-bundles-operational-events",
           "raw-journal-requires-cash-line",
-          "opening-window-account-not-permitted");
+          "raw-journal-touches-inventory",
+          "opening-window-account-not-permitted",
+          "opening-inventory-requires-quantity",
+          "opening-quantity-requires-inventory",
+          "inventory-capitalization-requires-quantity-on-hand",
+          "inventory-opening-carrying-cost-invalid",
+          "inventory-opening-must-be-first-movement");
   private static final List<String> ACCOUNT_STATE_CANONICAL_CODES =
       List.of(
           "unknown-account",
           "inactive-account",
           "non-postable-account",
-          "inventory-balance-below-zero");
+          "inventory-movement-precedes-account-horizon",
+          "inventory-quantity-below-zero",
+          "inventory-write-down-exceeds-carrying-cost");
 
   private static final List<String> ENTRY_SEMANTICS_DETAIL_FIELD_NAMES =
       List.of("code", "field", "message", "category", "repair");
@@ -171,7 +203,9 @@ class PostingRejectionTest {
             "unknown-account",
             "inactive-account",
             "non-postable-account",
-            "inventory-balance-below-zero"),
+            "inventory-movement-precedes-account-horizon",
+            "inventory-quantity-below-zero",
+            "inventory-write-down-exceeds-carrying-cost"),
         List.of(
             PostingRejection.wireCode(new PostingRejection.UnknownAccount(new AccountCode("1000"))),
             PostingRejection.wireCode(
@@ -180,14 +214,27 @@ class PostingRejectionTest {
                 new PostingRejection.NonPostableAccount(
                     new AccountCode("3000"), dev.erst.fingrind.core.AccountNodeKind.HEADER)),
             PostingRejection.wireCode(
-                new InventoryBalanceBelowZero(
+                new InventoryMovementPrecedesAccountHorizon(
                     new AccountCode("1400"),
-                    "inventoryRelief.amount",
+                    "inventoryRelief.quantity",
                     java.time.LocalDate.parse("2026-04-07"),
-                    dev.erst.fingrind.core.BalanceSide.DEBIT,
-                    dev.erst.fingrind.core.Money.parse("EUR", "10.00"),
-                    dev.erst.fingrind.core.Money.parse("EUR", "50.00"),
-                    dev.erst.fingrind.core.Money.parse("EUR", "40.00")))));
+                    java.time.LocalDate.parse("2026-04-08"))),
+            PostingRejection.wireCode(
+                new InventoryQuantityBelowZero(
+                    new AccountCode("1400"),
+                    "inventoryRelief.quantity",
+                    java.time.LocalDate.parse("2026-04-07"),
+                    Quantity.ofScaledUnits(0, 10),
+                    Quantity.ofScaledUnits(0, 50),
+                    Quantity.ofScaledUnits(0, 40))),
+            PostingRejection.wireCode(
+                new InventoryWriteDownExceedsCarryingCost(
+                    new AccountCode("1400"),
+                    "inventoryWriteDown.amount",
+                    java.time.LocalDate.parse("2026-04-07"),
+                    Money.parse("EUR", "10.00"),
+                    Money.parse("EUR", "50.00"),
+                    Money.parse("EUR", "40.00")))));
   }
 
   @Test
@@ -224,7 +271,8 @@ class PostingRejectionTest {
   void entrySemanticsOwner_remainsExhaustiveAndPublishesCanonicalDetailDescriptors() {
     assertEquals(
         ENTRY_SEMANTICS_FACTORY_NAMES,
-        Arrays.stream(PostingRejectionSemantics.class.getDeclaredMethods())
+        ENTRY_SEMANTICS_OWNERS.stream()
+            .flatMap(owner -> Arrays.stream(owner.getDeclaredMethods()))
             .filter(
                 method ->
                     Modifier.isStatic(method.getModifiers())
@@ -323,7 +371,7 @@ class PostingRejectionTest {
   }
 
   @Test
-  void rejectionFactories_exposeStableEntrySemanticsDetails() {
+  void accountEvidenceAndTaxRejectionFactories_exposeStableEntrySemanticsDetails() {
     PostingRejection.EntrySemanticsViolation accountTypeViolation =
         PostingRejectionSemantics.accountTypeMismatch(
             "SALE",
@@ -432,7 +480,10 @@ class PostingRejectionTest {
         taxApplicationKindMismatch
             .message()
             .contains(TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE.wireValue()));
+  }
 
+  @Test
+  void entryModeRejectionFactories_exposeStableEntrySemanticsDetails() {
     PostingRejection.EntrySemanticsViolation distinctRoleAccountsViolation =
         PostingRejectionSemantics.distinctRoleAccountsRequired(
             "SALE", "cashAccountCode", "revenueAccountCode", new AccountCode("1000"));
@@ -452,13 +503,40 @@ class PostingRejectionTest {
     PostingRejection.EntrySemanticsViolation verbRequiresPayableRole =
         PostingRejectionSemantics.verbRequiresRole("EXPENSE_ON_CREDIT", AccountRole.PAYABLE);
     PostingRejection.EntrySemanticsViolation verbRequiresTradingTemplate =
-        PostingRejectionSemantics.verbRequiresTradingTemplate(
+        PostingInventoryRejectionSemantics.verbRequiresTradingTemplate(
             "PURCHASE_ON_CREDIT", BookTemplateId.OWNER_MANAGED_SERVICE);
     PostingRejection.EntrySemanticsViolation tradingSaleRequiresInventoryRelief =
-        PostingRejectionSemantics.tradingSaleRequiresInventoryRelief("SALE_SETTLED");
+        PostingInventoryRejectionSemantics.tradingSaleRequiresInventoryRelief("SALE_SETTLED");
     PostingRejection.EntrySemanticsViolation inventoryReliefRequiresTradingBook =
-        PostingRejectionSemantics.inventoryReliefRequiresTradingBook(
+        PostingInventoryRejectionSemantics.inventoryReliefRequiresTradingBook(
             "SALE_SETTLED", BookTemplateId.OWNER_MANAGED_SERVICE);
+    PostingRejection.EntrySemanticsViolation inventoryQuantityIncompatibleWithUnitOfMeasure =
+        PostingInventoryRejectionSemantics.inventoryQuantityIncompatibleWithUnitOfMeasure(
+            "inventoryRelief.quantity",
+            "0.5",
+            new AccountCode("inventory"),
+            new UnitOfMeasure("unit", 0),
+            "Quantity must not contain fractional digits at scale 0.");
+    PostingRejection.EntrySemanticsViolation inventoryAcquisitionCostNotExact =
+        PostingInventoryRejectionSemantics.inventoryAcquisitionCostNotExact(
+            "0.25",
+            Money.parse("EUR", "0.02"),
+            new AccountCode("inventory"),
+            new UnitOfMeasure("kg", 2));
+    PostingRejection.EntrySemanticsViolation inventoryAcquisitionBreachesMinorUnitFloor =
+        PostingInventoryRejectionSemantics.inventoryAcquisitionBreachesMinorUnitFloor(
+            "0.25",
+            Money.parse("EUR", "0.04"),
+            new AccountCode("inventory"),
+            new UnitOfMeasure("kg", 2),
+            25L,
+            Money.parse("EUR", "0.01"));
+    PostingRejection.EntrySemanticsViolation foreignExchangeFunctionalAmountMismatch =
+        PostingInventoryRejectionSemantics
+            .inventoryAcquisitionForeignExchangeFunctionalAmountMismatch(
+                "PURCHASE_SETTLED",
+                new MonetaryAmount("EUR", "1000"),
+                new MonetaryAmount("EUR", "120"));
     PostingRejection.EntrySemanticsViolation evidenceClassConflict =
         PostingRejectionSemantics.evidenceClassConflict(
             "SALE_SETTLED", EvidenceClass.INVOICE, EconomicEventClass.SETTLED_SALE);
@@ -469,9 +547,15 @@ class PostingRejectionTest {
         PostingRejectionSemantics.rawJournalBundlesOperationalEvents(
             "DIRECT_JOURNAL",
             java.util.Set.of(EconomicEventClass.CREDIT_SALE, EconomicEventClass.AP_SETTLEMENT));
+    PostingRejection.EntrySemanticsViolation rawJournalTouchesInventory =
+        PostingInventoryRejectionSemantics.rawJournalTouchesInventory(
+            "DIRECT_JOURNAL", new AccountCode("inventory"));
     PostingRejection.EntrySemanticsViolation openingWindowAccountNotPermitted =
         PostingRejectionSemantics.openingWindowAccountNotPermitted(
             "OPENING_POSITION", new AccountCode("4100"));
+    PostingRejection.EntrySemanticsViolation openingInventoryRequiresQuantity =
+        PostingInventoryRejectionSemantics.openingInventoryRequiresQuantity(
+            "OPENING_POSITION", new AccountCode("inventory"));
     assertEquals("distinct-role-accounts-required", distinctRoleAccountsViolation.code());
     assertEquals(null, distinctRoleAccountsViolation.field());
     assertTrue(distinctRoleAccountsViolation.message().contains("cashAccountCode"));
@@ -516,12 +600,47 @@ class PostingRejectionTest {
     assertEquals("inventoryRelief", tradingSaleRequiresInventoryRelief.field());
     assertTrue(tradingSaleRequiresInventoryRelief.message().contains("trading-template book"));
     assertEquals(
+        "Add inventoryRelief with declared non-cash inventory, cost-of-sales, and quantity facts.",
+        tradingSaleRequiresInventoryRelief.repair());
+    assertEquals(
         "inventory-relief-requires-trading-book", inventoryReliefRequiresTradingBook.code());
     assertEquals("inventoryRelief", inventoryReliefRequiresTradingBook.field());
     assertTrue(
         inventoryReliefRequiresTradingBook
             .message()
             .contains(BookTemplateId.OWNER_MANAGED_SERVICE.wireValue()));
+    assertEquals(
+        "inventory-quantity-incompatible-with-unit-of-measure",
+        inventoryQuantityIncompatibleWithUnitOfMeasure.code());
+    assertEquals(
+        "inventoryRelief.quantity", inventoryQuantityIncompatibleWithUnitOfMeasure.field());
+    assertTrue(
+        inventoryQuantityIncompatibleWithUnitOfMeasure.message().contains("0.5"),
+        inventoryQuantityIncompatibleWithUnitOfMeasure.message());
+    assertTrue(
+        inventoryQuantityIncompatibleWithUnitOfMeasure.message().contains("quantityScale 0"),
+        inventoryQuantityIncompatibleWithUnitOfMeasure.message());
+    assertEquals("inventory-acquisition-cost-not-exact", inventoryAcquisitionCostNotExact.code());
+    assertEquals("unitCost", inventoryAcquisitionCostNotExact.field());
+    assertTrue(inventoryAcquisitionCostNotExact.message().contains("EUR 0.02"));
+    assertTrue(inventoryAcquisitionCostNotExact.message().contains("0.25"));
+    assertEquals(
+        "inventory-acquisition-breaches-minor-unit-floor",
+        inventoryAcquisitionBreachesMinorUnitFloor.code());
+    assertEquals("unitCost", inventoryAcquisitionBreachesMinorUnitFloor.field());
+    assertTrue(
+        inventoryAcquisitionBreachesMinorUnitFloor.message().contains("EUR 0.01"),
+        inventoryAcquisitionBreachesMinorUnitFloor.message());
+    assertTrue(
+        inventoryAcquisitionBreachesMinorUnitFloor.message().contains("EUR 0.25"),
+        inventoryAcquisitionBreachesMinorUnitFloor.message());
+    assertEquals(
+        "inventory-acquisition-foreign-exchange-functional-amount-mismatch",
+        foreignExchangeFunctionalAmountMismatch.code());
+    assertEquals(
+        "foreignExchange.functionalAmount", foreignExchangeFunctionalAmountMismatch.field());
+    assertTrue(foreignExchangeFunctionalAmountMismatch.message().contains("EUR 10.00"));
+    assertTrue(foreignExchangeFunctionalAmountMismatch.message().contains("EUR 1.20"));
     assertEquals("evidence-class-conflict", evidenceClassConflict.code());
     assertEquals("evidence.sourceDocuments[].sourceDocumentType", evidenceClassConflict.field());
     assertTrue(evidenceClassConflict.message().contains("SETTLED_SALE"));
@@ -538,11 +657,55 @@ class PostingRejectionTest {
             .message()
             .contains("multiple operational event classes"));
     assertTrue(rawJournalBundlesOperationalEvents.message().contains("Split it into"));
+    assertEquals("raw-journal-touches-inventory", rawJournalTouchesInventory.code());
+    assertEquals("lines[].accountCode", rawJournalTouchesInventory.field());
+    assertTrue(rawJournalTouchesInventory.message().contains("DIRECT_JOURNAL"));
+    assertTrue(rawJournalTouchesInventory.message().contains("inventory"));
     assertEquals("opening-window-account-not-permitted", openingWindowAccountNotPermitted.code());
     assertEquals("openingBalances[].accountCode", openingWindowAccountNotPermitted.field());
     assertTrue(openingWindowAccountNotPermitted.message().contains("OPENING_POSITION"));
     assertTrue(openingWindowAccountNotPermitted.message().contains("4100"));
+    assertEquals("opening-inventory-requires-quantity", openingInventoryRequiresQuantity.code());
+    assertEquals("openingBalances[].quantity", openingInventoryRequiresQuantity.field());
+    assertTrue(openingInventoryRequiresQuantity.message().contains("OPENING_POSITION"));
+    assertTrue(openingInventoryRequiresQuantity.message().contains("quantity"));
+    assertTrue(openingInventoryRequiresQuantity.message().contains("inventory"));
+  }
 
+  @Test
+  void inventoryOpeningAndCapitalizationRejections_exposeStableDetails() {
+    AccountCode inventoryAccountCode = new AccountCode("inventory");
+    PostingRejection.EntrySemanticsViolation openingQuantityRequiresInventory =
+        PostingInventoryRejectionSemantics.openingQuantityRequiresInventory(
+            "OPENING_POSITION", inventoryAccountCode);
+    PostingRejection.EntrySemanticsViolation capitalizationRequiresQuantity =
+        PostingInventoryRejectionSemantics.inventoryCapitalizationRequiresQuantityOnHand(
+            inventoryAccountCode);
+    PostingRejection.EntrySemanticsViolation openingMustBeFirstMovement =
+        PostingInventoryRejectionSemantics.inventoryOpeningMustBeFirstMovement(
+            inventoryAccountCode);
+    PostingRejection.EntrySemanticsViolation openingCarryingCostInvalid =
+        PostingInventoryRejectionSemantics.inventoryOpeningCarryingCostInvalid(
+            inventoryAccountCode);
+
+    assertEquals("opening-quantity-requires-inventory", openingQuantityRequiresInventory.code());
+    assertEquals("openingBalances[].quantity", openingQuantityRequiresInventory.field());
+    assertTrue(openingQuantityRequiresInventory.message().contains("non-inventory"));
+    assertEquals(
+        "inventory-capitalization-requires-quantity-on-hand",
+        capitalizationRequiresQuantity.code());
+    assertEquals("inventoryAccountCode", capitalizationRequiresQuantity.field());
+    assertTrue(capitalizationRequiresQuantity.message().contains("no quantity on hand"));
+    assertEquals("inventory-opening-must-be-first-movement", openingMustBeFirstMovement.code());
+    assertEquals("openingBalances[].accountCode", openingMustBeFirstMovement.field());
+    assertTrue(openingMustBeFirstMovement.message().contains("movement history"));
+    assertEquals("inventory-opening-carrying-cost-invalid", openingCarryingCostInvalid.code());
+    assertEquals("openingBalances[].amount", openingCarryingCostInvalid.field());
+    assertTrue(openingCarryingCostInvalid.message().contains("exact inventory pool"));
+  }
+
+  @Test
+  void referencedAccountSet_preservesInsertionOrderAndRejectsNulls() {
     assertIterableEquals(
         List.of(new AccountCode("1000"), new AccountCode("2000")),
         List.copyOf(

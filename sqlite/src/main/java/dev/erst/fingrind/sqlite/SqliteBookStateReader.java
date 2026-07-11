@@ -112,7 +112,8 @@ final class SqliteBookStateReader {
         return false;
       }
       return SqliteBookIntegrityVerifier.hasFunctionalCurrencyAlignedJournal(activeDatabase)
-          && SqliteBookIntegrityVerifier.hasValidPersistedPostingLifecycle(activeDatabase);
+          && SqliteBookIntegrityVerifier.hasValidPersistedPostingLifecycle(activeDatabase)
+          && SqliteBookIntegrityVerifier.hasConsistentInventoryOnHand(activeDatabase);
     } catch (IllegalArgumentException | IllegalStateException exception) {
       return false;
     }

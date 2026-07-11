@@ -22,6 +22,7 @@ public final class JazzerReplayRunner {
       case LEDGER_PLAN_REQUEST -> JazzerRequestReplay.replayLedgerPlanRequest(input);
       case POSTING_WORKFLOW -> JazzerPostingWorkflowReplay.replay(input);
       case SQLITE_BOOK_ROUND_TRIP -> JazzerSqliteBookRoundTripReplay.replay(input);
+      case INVENTORY_COSTING_MATH -> JazzerInventoryCostingMathReplay.replay(input);
     };
   }
 }

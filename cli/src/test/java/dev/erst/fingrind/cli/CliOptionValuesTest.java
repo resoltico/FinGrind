@@ -48,6 +48,17 @@ class CliOptionValuesTest {
   }
 
   @Test
+  void parseInventoryCostingDoctrineOption_rejectsUnsupportedDoctrines() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliOptionValues.parseInventoryCostingDoctrineOption("FIFO", "--inventory-costing"));
+
+    assertEquals("--inventory-costing", exception.argument());
+  }
+
+  @Test
   void parseFiscalYearStartOption_rejectsInvalidMonthDayTokens() {
     CliArgumentsException exception =
         assertThrows(

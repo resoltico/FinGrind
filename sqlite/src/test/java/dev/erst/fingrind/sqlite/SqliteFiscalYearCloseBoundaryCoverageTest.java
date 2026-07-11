@@ -441,10 +441,11 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
                 true,
                 Instant.parse("2026-12-31T23:59:59Z"))),
         postingFactStore.declareAccount(
-            new AccountCode(accountCode),
-            new AccountName(accountName),
-            AccountType.EQUITY,
-            financialPositionTaxonomy(classification),
+            new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                new AccountCode(accountCode),
+                new AccountName(accountName),
+                AccountType.EQUITY,
+                financialPositionTaxonomy(classification)),
             Instant.parse("2026-12-31T23:59:59Z")));
   }
 

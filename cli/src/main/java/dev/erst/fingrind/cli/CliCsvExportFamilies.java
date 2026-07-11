@@ -14,6 +14,7 @@ final class CliCsvExportFamilies {
   static final String PERIOD_SUMMARY = OperationId.PERIOD_SUMMARY.wireName();
   static final String FINANCIAL_POSITION = OperationId.FINANCIAL_POSITION.wireName();
   static final String INCOME_STATEMENT = OperationId.INCOME_STATEMENT.wireName();
+  static final String INVENTORY_VALUATION = OperationId.INVENTORY_VALUATION.wireName();
   static final String CASH_FLOW_STATEMENT = OperationId.CASH_FLOW_STATEMENT.wireName();
   static final String CHANGES_IN_EQUITY = OperationId.CHANGES_IN_EQUITY.wireName();
 

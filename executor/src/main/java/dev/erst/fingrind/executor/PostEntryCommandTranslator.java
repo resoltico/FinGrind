@@ -16,10 +16,13 @@ public final class PostEntryCommandTranslator {
       PostEntryCommand command, PostingValidationStore validationStore) {
     Objects.requireNonNull(command, "command");
     Objects.requireNonNull(validationStore, "validationStore");
-    return toInternalManagementSingleEntity(
-        command,
-        ReversalResolutionSupport.resolve(
-            TaxPostingResolution.resolve(command.entry(), validationStore), validationStore));
+    PostEntryResolutionSupport.ResolutionOutcome resolutionOutcome =
+        PostEntryResolutionSupport.resolve(command.entry(), validationStore);
+    if (resolutionOutcome.rejection().isPresent()) {
+      throw new IllegalStateException(
+          "Posting translation requires a resolvable entry after application rejection checks.");
+    }
+    return toInternalManagementSingleEntity(command, resolutionOutcome.entry());
   }
 
   private static PostingCommand toInternalManagementSingleEntity(
@@ -36,6 +39,7 @@ public final class PostEntryCommandTranslator {
         command.evidence(),
         command.requestProvenance(),
         command.sourceChannel(),
+        command.entry(),
         resolvedEntry);
   }
 

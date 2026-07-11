@@ -2,13 +2,17 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
@@ -28,6 +32,7 @@ import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.Quantity;
 import dev.erst.fingrind.executor.spi.TaxRegistrationLookupStore;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -53,6 +58,7 @@ class TaxPostingResolutionTest {
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "10000"),
+                    null,
                     null,
                     null,
                     new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
@@ -158,6 +164,7 @@ class TaxPostingResolutionTest {
             null,
             null,
             null,
+            null,
             null);
     BookkeepingEntry.SaleSettled resolvedSale =
         new BookkeepingEntry.SaleSettled(
@@ -165,6 +172,7 @@ class TaxPostingResolutionTest {
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "12100"),
+            null,
             null,
             null,
             new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
@@ -231,6 +239,7 @@ class TaxPostingResolutionTest {
                         new MonetaryAmount("EUR", "10000"),
                         null,
                         null,
+                        null,
                         new TaxSelection(
                             new TaxRegistrationId("missing-tax"), new TaxCode("vat-standard-sale")),
                         null),
@@ -249,6 +258,7 @@ class TaxPostingResolutionTest {
                         new MonetaryAmount("EUR", "10000"),
                         null,
                         null,
+                        null,
                         new TaxSelection(REGISTRATION_ID, new TaxCode("missing-code")),
                         null),
                     lookupStore(registration())));
@@ -265,6 +275,7 @@ class TaxPostingResolutionTest {
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
+                        null,
                         null,
                         null,
                         new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
@@ -306,6 +317,7 @@ class TaxPostingResolutionTest {
                     new MonetaryAmount("EUR", "1"),
                     null,
                     null,
+                    null,
                     new TaxSelection(REGISTRATION_ID, new TaxCode("half-up-sale")),
                     null),
                 lookupStore(roundingRegistration())));
@@ -326,7 +338,7 @@ class TaxPostingResolutionTest {
                 new MonetaryAmount("EUR", "10000"),
                 LocalDate.parse("2026-04-06"),
                 "ecb-spot"),
-            ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+            ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
 
     BookkeepingEntry.SaleSettled resolved =
         assertInstanceOf(
@@ -337,6 +349,7 @@ class TaxPostingResolutionTest {
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "10000"),
+                    null,
                     null,
                     foreignExchangeDetails,
                     new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
@@ -358,6 +371,8 @@ class TaxPostingResolutionTest {
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "10000"),
                     null,
+                    null,
+                    null,
                     new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                     null),
                 lookupStore(registration())));
@@ -370,6 +385,7 @@ class TaxPostingResolutionTest {
                     new AccountCode("5000"),
                     new AccountCode("2100"),
                     new MonetaryAmount("EUR", "12100"),
+                    null,
                     new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
                     null),
                 lookupStore(registration())));
@@ -387,6 +403,268 @@ class TaxPostingResolutionTest {
   }
 
   @Test
+  void resolve_inventoryAcquisitionAndCapitalizationVariants_applyInputTax() {
+    ResolvedInventoryAcquisition acquisition =
+        new ResolvedInventoryAcquisition(
+            Quantity.ofScaledUnits(0, 2),
+            new MonetaryAmount("EUR", "10000"),
+            new MonetaryAmount("EUR", "10000"));
+    TaxSelection inputTax =
+        new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-inventory"));
+
+    BookkeepingEntry.PurchaseSettled settledPurchase =
+        assertInstanceOf(
+            BookkeepingEntry.PurchaseSettled.class,
+            TaxPostingResolution.resolve(
+                new BookkeepingEntry.PurchaseSettled(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("1400"),
+                    new AccountCode("1000"),
+                    new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                    new MonetaryAmount("EUR", "5000"),
+                    acquisition,
+                    null,
+                    inputTax,
+                    null),
+                lookupStore(registration())));
+    BookkeepingEntry.PurchaseOnCredit creditPurchase =
+        assertInstanceOf(
+            BookkeepingEntry.PurchaseOnCredit.class,
+            TaxPostingResolution.resolve(
+                new BookkeepingEntry.PurchaseOnCredit(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("1400"),
+                    new AccountCode("2100"),
+                    new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                    new MonetaryAmount("EUR", "5000"),
+                    acquisition,
+                    null,
+                    inputTax,
+                    null),
+                lookupStore(registration())));
+    InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled settledCapitalization =
+        assertInstanceOf(
+            InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled.class,
+            TaxPostingResolution.resolve(
+                new InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("1400"),
+                    new AccountCode("1000"),
+                    new MonetaryAmount("EUR", "10000"),
+                    null,
+                    inputTax,
+                    null),
+                lookupStore(registration())));
+    InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit creditCapitalization =
+        assertInstanceOf(
+            InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit.class,
+            TaxPostingResolution.resolve(
+                new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("1400"),
+                    new AccountCode("2100"),
+                    new MonetaryAmount("EUR", "10000"),
+                    null,
+                    inputTax,
+                    null),
+                lookupStore(registration())));
+
+    assertEquals(
+        "2100", Objects.requireNonNull(settledPurchase.appliedTax()).taxAmount().minorUnits());
+    assertEquals(
+        "2100", Objects.requireNonNull(creditPurchase.appliedTax()).taxAmount().minorUnits());
+    assertEquals(
+        "2100",
+        Objects.requireNonNull(settledCapitalization.appliedTax()).taxAmount().minorUnits());
+    assertEquals(
+        "2100", Objects.requireNonNull(creditCapitalization.appliedTax()).taxAmount().minorUnits());
+  }
+
+  @Test
+  void resolve_inventoryPurchaseTaxRequiresExecutorOwnedQuantityResolution() {
+    TaxSelection inputTax =
+        new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-inventory"));
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            TaxPostingResolution.resolve(
+                new BookkeepingEntry.PurchaseSettled(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("1400"),
+                    new AccountCode("1000"),
+                    new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                    new MonetaryAmount("EUR", "5000"),
+                    null,
+                    null,
+                    inputTax,
+                    null),
+                lookupStore(registration())));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            TaxPostingResolution.resolve(
+                new BookkeepingEntry.PurchaseOnCredit(
+                    LocalDate.parse("2026-04-07"),
+                    new AccountCode("1400"),
+                    new AccountCode("2100"),
+                    new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                    new MonetaryAmount("EUR", "5000"),
+                    null,
+                    null,
+                    inputTax,
+                    null),
+                lookupStore(registration())));
+    assertTrue(
+        TaxPostingResolution.requiresInventoryQuantityResolution(
+            new BookkeepingEntry.PurchaseSettled(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1400"),
+                new AccountCode("1000"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                new MonetaryAmount("EUR", "5000"),
+                null,
+                null,
+                inputTax,
+                null)));
+    assertFalse(
+        TaxPostingResolution.requiresInventoryQuantityResolution(
+            new BookkeepingEntry.PurchaseOnCredit(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                new MonetaryAmount("EUR", "5000"),
+                null,
+                null,
+                null,
+                null)));
+  }
+
+  @Test
+  void resolve_inventoryVariantsReturnAlreadyResolvedOrUntaxedEntriesUnchanged() {
+    TaxSelection inputTax =
+        new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-inventory"));
+    ResolvedInventoryAcquisition acquisition =
+        new ResolvedInventoryAcquisition(
+            Quantity.ofScaledUnits(0, 2),
+            new MonetaryAmount("EUR", "10000"),
+            new MonetaryAmount("EUR", "10000"));
+    AppliedTax appliedTax = appliedInventoryTax();
+    BookkeepingEntry.PurchaseSettled settledPurchase =
+        new BookkeepingEntry.PurchaseSettled(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1400"),
+            new AccountCode("1000"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+            new MonetaryAmount("EUR", "5000"),
+            acquisition,
+            null,
+            inputTax,
+            appliedTax);
+    BookkeepingEntry.PurchaseOnCredit creditPurchase =
+        new BookkeepingEntry.PurchaseOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1400"),
+            new AccountCode("2100"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+            new MonetaryAmount("EUR", "5000"),
+            acquisition,
+            null,
+            inputTax,
+            appliedTax);
+    InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled settledCapitalization =
+        new InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1400"),
+            new AccountCode("1000"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            inputTax,
+            appliedTax);
+    InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit creditCapitalization =
+        new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1400"),
+            new AccountCode("2100"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            inputTax,
+            appliedTax);
+
+    assertSame(
+        settledPurchase,
+        TaxPostingResolution.resolve(settledPurchase, lookupStore(registration())));
+    assertSame(
+        creditPurchase, TaxPostingResolution.resolve(creditPurchase, lookupStore(registration())));
+    assertSame(
+        settledCapitalization,
+        TaxPostingResolution.resolve(settledCapitalization, lookupStore(registration())));
+    assertSame(
+        creditCapitalization,
+        TaxPostingResolution.resolve(creditCapitalization, lookupStore(registration())));
+    InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit untaxedCreditCapitalization =
+        new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+            LocalDate.parse("2026-04-07"),
+            new AccountCode("1400"),
+            new AccountCode("2100"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            null,
+            null);
+    assertSame(
+        untaxedCreditCapitalization,
+        TaxPostingResolution.resolve(untaxedCreditCapitalization, lookupStore(registration())));
+  }
+
+  @Test
+  void resolve_inventoryTaxRejectsOutputAndInclusiveTaxSelections() {
+    ResolvedInventoryAcquisition acquisition =
+        new ResolvedInventoryAcquisition(
+            Quantity.ofScaledUnits(0, 2),
+            new MonetaryAmount("EUR", "10000"),
+            new MonetaryAmount("EUR", "10000"));
+
+    IllegalArgumentException outputTax =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                TaxPostingResolution.resolve(
+                    new BookkeepingEntry.PurchaseSettled(
+                        LocalDate.parse("2026-04-07"),
+                        new AccountCode("1400"),
+                        new AccountCode("1000"),
+                        new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                        new MonetaryAmount("EUR", "5000"),
+                        acquisition,
+                        null,
+                        new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
+                        null),
+                    lookupStore(registration())));
+    IllegalArgumentException inclusiveTax =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                TaxPostingResolution.resolve(
+                    new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+                        LocalDate.parse("2026-04-07"),
+                        new AccountCode("1400"),
+                        new AccountCode("2100"),
+                        new MonetaryAmount("EUR", "10000"),
+                        null,
+                        new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
+                        null),
+                    lookupStore(registration())));
+
+    assertEquals(
+        "Inventory input taxSelection cannot resolve to applicationKind OUTPUT_SALE.",
+        outputTax.getMessage());
+    assertEquals(
+        "Inventory unitCost and capitalization amount are pre-VAT inputs, so taxSelection must use EXCLUSIVE inclusionMode.",
+        inclusiveTax.getMessage());
+  }
+
+  @Test
   void resolve_creditVariants_returnOriginalEntriesWhenAlreadyResolvedAndRejectKindMismatches() {
     BookkeepingEntry.SaleOnCredit noTaxSale =
         new BookkeepingEntry.SaleOnCredit(
@@ -396,6 +674,8 @@ class TaxPostingResolutionTest {
             new MonetaryAmount("EUR", "10000"),
             null,
             null,
+            null,
+            null,
             null);
     BookkeepingEntry.SaleOnCredit resolvedSale =
         new BookkeepingEntry.SaleOnCredit(
@@ -403,6 +683,8 @@ class TaxPostingResolutionTest {
             new AccountCode("1100"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "10000"),
+            null,
+            null,
             null,
             new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
             new AppliedTax(
@@ -422,6 +704,7 @@ class TaxPostingResolutionTest {
             new AccountCode("5000"),
             new AccountCode("2100"),
             new MonetaryAmount("EUR", "12100"),
+            null,
             new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
             new AppliedTax(
                 REGISTRATION_ID,
@@ -453,6 +736,8 @@ class TaxPostingResolutionTest {
                             new AccountCode("4000"),
                             new MonetaryAmount("EUR", "10000"),
                             null,
+                            null,
+                            null,
                             new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-expense")),
                             null),
                         lookupStore(registration())))
@@ -468,6 +753,7 @@ class TaxPostingResolutionTest {
                             new AccountCode("5000"),
                             new AccountCode("2100"),
                             new MonetaryAmount("EUR", "12100"),
+                            null,
                             new TaxSelection(REGISTRATION_ID, new TaxCode("vat-standard-sale")),
                             null),
                         lookupStore(registration())))
@@ -482,6 +768,7 @@ class TaxPostingResolutionTest {
             new AccountCode("1000"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "10000"),
+            null,
             null,
             null,
             null,
@@ -527,12 +814,32 @@ class TaxPostingResolutionTest {
                 TaxInclusionMode.INCLUSIVE,
                 TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE),
             new TaxCodeDefinition(
+                new TaxCode("vat-standard-inventory"),
+                new TaxCodeName("VAT Standard Inventory"),
+                new TaxRate(210_000),
+                TaxInclusionMode.EXCLUSIVE,
+                TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE),
+            new TaxCodeDefinition(
                 new TaxCode("vat-nonrecoverable-expense"),
                 new TaxCodeName("VAT Nonrecoverable Expense"),
                 new TaxRate(120_000),
                 TaxInclusionMode.INCLUSIVE,
                 TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE)),
         DECLARED_AT);
+  }
+
+  private static AppliedTax appliedInventoryTax() {
+    return new AppliedTax(
+        REGISTRATION_ID,
+        new TaxCode("vat-standard-inventory"),
+        new TaxCodeName("VAT Standard Inventory"),
+        new TaxRate(210_000),
+        TaxInclusionMode.EXCLUSIVE,
+        TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+        new MonetaryAmount("EUR", "10000"),
+        new MonetaryAmount("EUR", "2100"),
+        new MonetaryAmount("EUR", "12100"),
+        new AccountCode("1300"));
   }
 
   private static DeclaredTaxRegistration roundingRegistration() {

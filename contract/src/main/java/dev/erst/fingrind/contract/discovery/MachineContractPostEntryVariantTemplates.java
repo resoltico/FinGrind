@@ -20,9 +20,9 @@ final class MachineContractPostEntryVariantTemplates {
   private static final String SAMPLE_COMMAND_ID = ScaffoldPlaceholders.COMMAND_ID;
   private static final String SAMPLE_IDEMPOTENCY_KEY = ScaffoldPlaceholders.IDEMPOTENCY_KEY;
   private static final String SAMPLE_CAUSATION_ID = ScaffoldPlaceholders.CAUSATION_ID;
+  private static final String SAMPLE_QUANTITY = "5";
   private static final InventoryReliefTemplateDescriptor TRADING_SALE_INVENTORY_RELIEF =
-      new InventoryReliefTemplateDescriptor(
-          "inventory", "cost-of-sales", new MonetaryAmount("EUR", "600"));
+      new InventoryReliefTemplateDescriptor("inventory", "cost-of-sales", SAMPLE_QUANTITY);
   private static final List<ContractTemplates.JournalLineTemplateDescriptor> DIRECT_JOURNAL_LINES =
       List.of(
           new ContractTemplates.JournalLineTemplateDescriptor(
@@ -36,114 +36,51 @@ final class MachineContractPostEntryVariantTemplates {
               ignoredBookTemplateId -> directJournalTemplate()),
           Map.entry(
               BookkeepingEntryKind.SALE_SETTLED,
-              MachineContractPostEntryVariantTemplates::saleSettledTemplate),
+              MachineContractPostEntryTypedVariantTemplates::saleSettledTemplate),
           Map.entry(
               BookkeepingEntryKind.SALE_ON_CREDIT,
-              MachineContractPostEntryVariantTemplates::saleOnCreditTemplate),
+              MachineContractPostEntryTypedVariantTemplates::saleOnCreditTemplate),
           Map.entry(
               BookkeepingEntryKind.PURCHASE_SETTLED,
-              ignoredBookTemplateId ->
-                  roleAmountTemplate(
-                      BookkeepingEntryKind.PURCHASE_SETTLED,
-                      "cash",
-                      null,
-                      null,
-                      null,
-                      "inventory",
-                      null,
-                      null,
-                      null)),
+              MachineContractPostEntryTypedVariantTemplates::purchaseSettledTemplate),
           Map.entry(
               BookkeepingEntryKind.PURCHASE_ON_CREDIT,
-              ignoredBookTemplateId ->
-                  roleAmountTemplate(
-                      BookkeepingEntryKind.PURCHASE_ON_CREDIT,
-                      null,
-                      null,
-                      "accounts-payable",
-                      null,
-                      "inventory",
-                      null,
-                      null,
-                      null)),
+              MachineContractPostEntryTypedVariantTemplates::purchaseOnCreditTemplate),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
+              MachineContractPostEntryTypedVariantTemplates
+                  ::inventoryCapitalizationSettledTemplate),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+              MachineContractPostEntryTypedVariantTemplates
+                  ::inventoryCapitalizationOnCreditTemplate),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_WRITE_DOWN,
+              MachineContractPostEntryTypedVariantTemplates::inventoryWriteDownTemplate),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_SHRINKAGE,
+              MachineContractPostEntryTypedVariantTemplates::inventoryShrinkageTemplate),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
+              MachineContractPostEntryTypedVariantTemplates::inventoryCountIncreaseTemplate),
           Map.entry(
               BookkeepingEntryKind.EXPENSE_SETTLED,
-              ignoredBookTemplateId ->
-                  roleAmountTemplate(
-                      BookkeepingEntryKind.EXPENSE_SETTLED,
-                      "cash",
-                      null,
-                      null,
-                      null,
-                      null,
-                      "operating-expense",
-                      null,
-                      null)),
+              MachineContractPostEntryTypedVariantTemplates::expenseSettledTemplate),
           Map.entry(
               BookkeepingEntryKind.EXPENSE_ON_CREDIT,
-              ignoredBookTemplateId ->
-                  roleAmountTemplate(
-                      BookkeepingEntryKind.EXPENSE_ON_CREDIT,
-                      null,
-                      null,
-                      "accounts-payable",
-                      null,
-                      null,
-                      "operating-expense",
-                      null,
-                      null)),
+              MachineContractPostEntryTypedVariantTemplates::expenseOnCreditTemplate),
           Map.entry(
               BookkeepingEntryKind.RECEIPT,
-              ignoredBookTemplateId ->
-                  roleAmountTemplate(
-                      BookkeepingEntryKind.RECEIPT,
-                      "cash",
-                      "accounts-receivable",
-                      null,
-                      null,
-                      null,
-                      null,
-                      null,
-                      null)),
+              MachineContractPostEntryTypedVariantTemplates::receiptTemplate),
           Map.entry(
               BookkeepingEntryKind.PAYMENT,
-              ignoredBookTemplateId ->
-                  roleAmountTemplate(
-                      BookkeepingEntryKind.PAYMENT,
-                      "cash",
-                      null,
-                      "accounts-payable",
-                      null,
-                      null,
-                      null,
-                      null,
-                      null)),
+              MachineContractPostEntryTypedVariantTemplates::paymentTemplate),
           Map.entry(
               BookkeepingEntryKind.OWNER_CONTRIBUTION,
-              ignoredBookTemplateId ->
-                  roleAmountTemplate(
-                      BookkeepingEntryKind.OWNER_CONTRIBUTION,
-                      "cash",
-                      null,
-                      null,
-                      null,
-                      null,
-                      null,
-                      "owner-capital",
-                      null)),
+              MachineContractPostEntryTypedVariantTemplates::ownerContributionTemplate),
           Map.entry(
               BookkeepingEntryKind.OWNER_WITHDRAWAL,
-              ignoredBookTemplateId ->
-                  roleAmountTemplate(
-                      BookkeepingEntryKind.OWNER_WITHDRAWAL,
-                      "cash",
-                      null,
-                      null,
-                      null,
-                      null,
-                      null,
-                      "owner-draws",
-                      null)),
+              MachineContractPostEntryTypedVariantTemplates::ownerWithdrawalTemplate),
           Map.entry(
               BookkeepingEntryKind.OPENING_POSITION,
               ignoredBookTemplateId -> openingPositionTemplate()),
@@ -156,38 +93,15 @@ final class MachineContractPostEntryVariantTemplates {
     return Objects.requireNonNull(TEMPLATES.get(entryKind), "entryKind").build(bookTemplateId);
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor saleSettledTemplate(
-      @Nullable BookTemplateId bookTemplateId) {
-    return roleAmountTemplate(
-        BookkeepingEntryKind.SALE_SETTLED,
-        "cash",
-        null,
-        null,
-        salesRevenueAccountCode(bookTemplateId),
-        null,
-        null,
-        null,
-        tradingInventoryRelief(bookTemplateId));
-  }
-
-  private static ContractTemplates.PostingRequestTemplateDescriptor saleOnCreditTemplate(
-      @Nullable BookTemplateId bookTemplateId) {
-    return roleAmountTemplate(
-        BookkeepingEntryKind.SALE_ON_CREDIT,
-        null,
-        "accounts-receivable",
-        null,
-        salesRevenueAccountCode(bookTemplateId),
-        null,
-        null,
-        null,
-        tradingInventoryRelief(bookTemplateId));
-  }
-
   private static ContractTemplates.PostingRequestTemplateDescriptor directJournalTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.DIRECT_JOURNAL,
         SAMPLE_EFFECTIVE_DATE,
+        null,
+        null,
+        null,
+        null,
+        null,
         null,
         null,
         null,
@@ -211,6 +125,11 @@ final class MachineContractPostEntryVariantTemplates {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.OPENING_POSITION,
         SAMPLE_EFFECTIVE_DATE,
+        null,
+        null,
+        null,
+        null,
+        null,
         null,
         null,
         null,
@@ -252,13 +171,18 @@ final class MachineContractPostEntryVariantTemplates {
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
         evidenceTemplate(BookkeepingEntryKind.REVERSAL),
         provenanceTemplate(),
-        new ContractTemplates.ReversalTemplateDescriptor(
+        new ContractReversalTemplates.ReversalTemplateDescriptor(
             "018f0000-0000-7000-8000-000000000001", "operator-correction"));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor roleAmountTemplate(
+  static ContractTemplates.PostingRequestTemplateDescriptor roleAmountTemplate(
       BookkeepingEntryKind entryKind,
       @Nullable String cashAccountCode,
       @Nullable String receivableAccountCode,
@@ -277,8 +201,13 @@ final class MachineContractPostEntryVariantTemplates {
         revenueAccountCode,
         inventoryAccountCode,
         expenseAccountCode,
+        null,
+        null,
+        null,
         equityAccountCode,
         new MonetaryAmount("EUR", "1000"),
+        null,
+        null,
         inventoryRelief,
         null,
         null,
@@ -290,20 +219,20 @@ final class MachineContractPostEntryVariantTemplates {
         null);
   }
 
-  private static String salesRevenueAccountCode(@Nullable BookTemplateId bookTemplateId) {
+  static String salesRevenueAccountCode(@Nullable BookTemplateId bookTemplateId) {
     return bookTemplateId == BookTemplateId.OWNER_MANAGED_TRADING
         ? "sales-revenue"
         : "service-revenue";
   }
 
-  private static @Nullable InventoryReliefTemplateDescriptor tradingInventoryRelief(
+  static @Nullable InventoryReliefTemplateDescriptor tradingInventoryRelief(
       @Nullable BookTemplateId bookTemplateId) {
     return bookTemplateId == BookTemplateId.OWNER_MANAGED_TRADING
         ? TRADING_SALE_INVENTORY_RELIEF
         : null;
   }
 
-  private static ContractTemplates.AccountingEvidenceTemplateDescriptor evidenceTemplate(
+  static ContractTemplates.AccountingEvidenceTemplateDescriptor evidenceTemplate(
       BookkeepingEntryKind entryKind) {
     return new ContractTemplates.AccountingEvidenceTemplateDescriptor(
         List.of(
@@ -318,7 +247,7 @@ final class MachineContractPostEntryVariantTemplates {
         List.of());
   }
 
-  private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
+  static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
     return new ContractTemplates.ProvenanceTemplateDescriptor(
         SAMPLE_ACTOR_ID,
         ActorType.PERSON,

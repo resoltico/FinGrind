@@ -21,7 +21,6 @@ import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.ActorId;
 import dev.erst.fingrind.core.ActorType;
@@ -212,6 +211,7 @@ final class LedgerPlanServiceTestSupport {
             null,
             null,
             null,
+            null,
             null),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
@@ -260,13 +260,8 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public AccountDeclarationOutcome declareAccount(
-        AccountCode accountCode,
-        AccountName accountName,
-        AccountType accountType,
-        AccountTaxonomy accountTaxonomy,
-        Instant declaredAt) {
-      return delegate.declareAccount(
-          accountCode, accountName, accountType, accountTaxonomy, declaredAt);
+        AccountDeclaration declaration, Instant declaredAt) {
+      return delegate.declareAccount(declaration, declaredAt);
     }
 
     @Override
@@ -318,6 +313,12 @@ final class LedgerPlanServiceTestSupport {
     @Override
     public List<dev.erst.fingrind.executor.bookkeeping.RegisteredAccount> allAccounts() {
       return delegate.allAccounts();
+    }
+
+    @Override
+    public List<dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord>
+        inventoryValuationMovements(Optional<LocalDate> effectiveDateAsOf) {
+      return delegate.inventoryValuationMovements(effectiveDateAsOf);
     }
 
     @Override
@@ -471,11 +472,7 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public AccountDeclarationOutcome declareAccount(
-        AccountCode accountCode,
-        AccountName accountName,
-        AccountType accountType,
-        AccountTaxonomy accountTaxonomy,
-        Instant declaredAt) {
+        AccountDeclaration declaration, Instant declaredAt) {
       throw new IllegalStateException("declare boom");
     }
 

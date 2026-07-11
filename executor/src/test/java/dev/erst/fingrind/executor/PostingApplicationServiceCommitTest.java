@@ -145,6 +145,7 @@ class PostingApplicationServiceCommitTest {
                   null,
                   null,
                   null,
+                  null,
                   null),
               generatedEvidence("idem-semantics", "invoice"),
               requestProvenance("idem-semantics"),

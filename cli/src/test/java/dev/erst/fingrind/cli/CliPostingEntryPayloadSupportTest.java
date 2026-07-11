@@ -11,9 +11,11 @@ import dev.erst.fingrind.cli.json.CliForeignExchangeJsonModels;
 import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
 import dev.erst.fingrind.cli.json.CliTaxJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryCosting;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
@@ -30,6 +32,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.Quantity;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import java.time.LocalDate;
@@ -63,6 +66,8 @@ class CliPostingEntryPayloadSupportTest {
     assertEquals("PURCHASE_SETTLED", purchaseSettledPayload.entryKind());
     assertEquals("1000", purchaseSettledPayload.cashAccountCode());
     assertEquals("1400", purchaseSettledPayload.inventoryAccountCode());
+    assertEquals("1", purchaseSettledPayload.quantity());
+    assertEquals("1250", Objects.requireNonNull(purchaseSettledPayload.unitCost()).minorUnits());
 
     CliPostingEntryPayload purchaseOnCreditPayload =
         CliPostingEntryPayloadSupport.entryPayload(purchaseOnCreditEntry());
@@ -70,6 +75,8 @@ class CliPostingEntryPayloadSupportTest {
     assertEquals("PURCHASE_ON_CREDIT", purchaseOnCreditPayload.entryKind());
     assertEquals("2100", purchaseOnCreditPayload.payableAccountCode());
     assertEquals("1400", purchaseOnCreditPayload.inventoryAccountCode());
+    assertEquals("1", purchaseOnCreditPayload.quantity());
+    assertEquals("1250", Objects.requireNonNull(purchaseOnCreditPayload.unitCost()).minorUnits());
 
     CliPostingEntryPayload expensePayload =
         CliPostingEntryPayloadSupport.entryPayload(expenseEntry());
@@ -155,7 +162,12 @@ class CliPostingEntryPayloadSupportTest {
                 NullTestSupport.nullOf(String.class),
                 "5600",
                 NullTestSupport.nullOf(String.class),
+                NullTestSupport.nullOf(String.class),
+                NullTestSupport.nullOf(String.class),
+                NullTestSupport.nullOf(String.class),
                 new MonetaryAmount("EUR", "11200"),
+                NullTestSupport.nullOf(String.class),
+                NullTestSupport.nullOf(MonetaryAmount.class),
                 NullTestSupport.nullOf(CliPostingEntryPayload.InventoryReliefPayload.class),
                 NullTestSupport.nullOf(CliPostingEntryPayload.SettlementAdjunctPayload.class),
                 NullTestSupport.nullOf(CliForeignExchangeJsonModels.ForeignExchangePayload.class),
@@ -172,8 +184,9 @@ class CliPostingEntryPayloadSupportTest {
                     new MonetaryAmount("EUR", "11200"),
                     NullTestSupport.nullOf(String.class)),
                 NullTestSupport.nullOf(CliBookQueryJsonModels.ReversalPayload.class),
-                NullTestSupport
-                    .<List<dev.erst.fingrind.cli.json.CliOpeningBalancePayload>>nullOf()));
+                NullTestSupport.<List<dev.erst.fingrind.cli.json.CliOpeningBalancePayload>>nullOf(),
+                NullTestSupport.nullOf(
+                    CliPostingEntryPayload.ResolvedInventoryCostingPayload.class)));
 
     assertTrue(rendered.contains("Resolved tax code name"));
     assertTrue(rendered.contains("VAT Nonrecoverable Expense"));
@@ -197,13 +210,20 @@ class CliPostingEntryPayloadSupportTest {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 NullTestSupport.nullOf(CliPostingEntryPayload.InventoryReliefPayload.class),
                 NullTestSupport.nullOf(CliPostingEntryPayload.SettlementAdjunctPayload.class),
                 NullTestSupport.nullOf(CliForeignExchangeJsonModels.ForeignExchangePayload.class),
                 NullTestSupport.nullOf(CliTaxJsonModels.TaxSelectionPayload.class),
                 NullTestSupport.nullOf(CliTaxJsonModels.AppliedTaxPayload.class),
                 NullTestSupport.nullOf(CliBookQueryJsonModels.ReversalPayload.class),
-                List.of()));
+                List.of(),
+                NullTestSupport.nullOf(
+                    CliPostingEntryPayload.ResolvedInventoryCostingPayload.class)));
 
     assertTrue(openingFacts.contains("Opening balances"));
     assertTrue(openingFacts.contains("1000"));
@@ -272,8 +292,44 @@ class CliPostingEntryPayloadSupportTest {
     assertTrue(rendered.contains("1400"));
     assertTrue(rendered.contains("Cost of sales account"));
     assertTrue(rendered.contains("5000"));
-    assertTrue(rendered.contains("Inventory relief amount"));
-    assertTrue(rendered.contains("4.00"));
+    assertTrue(rendered.contains("Inventory relief quantity"));
+    assertTrue(rendered.contains("1"));
+  }
+
+  @Test
+  void entryPayload_andRenderedFacts_publishExecutorDerivedInventoryCosting() {
+    CliPostingEntryPayload payload = entryPayload(saleEntryWithResolvedInventoryCosting());
+    CliPostingEntryPayload.ResolvedInventoryCostingPayload resolvedInventoryCosting =
+        Objects.requireNonNull(payload.resolvedInventoryCosting());
+    String rendered = CliPostingEntryPayloadSupport.renderEntryFacts(payload);
+
+    assertEquals("5000", resolvedInventoryCosting.costOfSales().minorUnits());
+    assertEquals("6", resolvedInventoryCosting.quantityRelieved());
+    assertEquals(
+        "833", resolvedInventoryCosting.roundedMovingAverageUnitCostProjection().minorUnits());
+    assertTrue(rendered.contains("Derived cost of sales"));
+    assertTrue(rendered.contains("50.00"));
+    assertTrue(rendered.contains("Derived quantity relieved"));
+    assertTrue(rendered.contains("Moving-average unit cost (informational)"));
+    assertTrue(rendered.contains("8.33"));
+  }
+
+  @Test
+  void renderEntryFacts_rendersQuantityAndUnitCostFactsForPurchases() {
+    String settledPurchaseFacts =
+        CliPostingEntryPayloadSupport.renderEntryFacts(entryPayload(purchaseSettledEntry()));
+    String creditPurchaseFacts =
+        CliPostingEntryPayloadSupport.renderEntryFacts(entryPayload(purchaseOnCreditEntry()));
+
+    assertTrue(settledPurchaseFacts.contains("Quantity"));
+    assertTrue(settledPurchaseFacts.contains("1"));
+    assertTrue(settledPurchaseFacts.contains("Unit cost"));
+    assertTrue(settledPurchaseFacts.contains("12.50"));
+
+    assertTrue(creditPurchaseFacts.contains("Quantity"));
+    assertTrue(creditPurchaseFacts.contains("1"));
+    assertTrue(creditPurchaseFacts.contains("Unit cost"));
+    assertTrue(creditPurchaseFacts.contains("12.50"));
   }
 
   @Test
@@ -287,6 +343,8 @@ class CliPostingEntryPayloadSupportTest {
                 new MonetaryAmount("EUR", "1000"),
                 null,
                 null,
+                null,
+                null,
                 null));
     CliPostingEntryPayload creditExpensePayload =
         entryPayload(
@@ -295,6 +353,7 @@ class CliPostingEntryPayloadSupportTest {
                 new AccountCode("5000"),
                 new AccountCode("2100"),
                 new MonetaryAmount("EUR", "1210"),
+                null,
                 null,
                 null));
     CliPostingEntryPayload receiptPayload =
@@ -332,6 +391,7 @@ class CliPostingEntryPayloadSupportTest {
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "9200"),
                 null,
+                null,
                 foreignExchangeDetails(),
                 null,
                 null));
@@ -339,7 +399,7 @@ class CliPostingEntryPayloadSupportTest {
     assertNotNull(payload.foreignExchange());
     assertEquals("USD", payload.foreignExchange().transactionAmount().currencyCode());
     assertEquals("9200", payload.foreignExchange().functionalAmount().minorUnits());
-    assertEquals("SPOT_SETTLEMENT", payload.foreignExchange().treatmentKind());
+    assertEquals("SPOT_TRANSACTION", payload.foreignExchange().treatmentKind());
 
     String rendered = CliPostingEntryPayloadSupport.renderEntryFacts(payload);
     assertTrue(rendered.contains("Transaction amount"));
@@ -349,6 +409,133 @@ class CliPostingEntryPayloadSupportTest {
     assertTrue(rendered.contains("FX treatment"));
     assertTrue(rendered.contains("Quote source"));
     assertTrue(rendered.contains("ecb-spot"));
+  }
+
+  @Test
+  void entryPayload_preservesOwnedForeignExchangeDetailsForCreditVariants() {
+    ForeignExchangeDetails foreignExchangeDetails = foreignExchangeDetails();
+    List<CliPostingEntryPayload> payloads =
+        List.of(
+            Objects.requireNonNull(
+                entryPayload(
+                    new BookkeepingEntry.SaleOnCredit(
+                        LocalDate.parse("2026-04-07"),
+                        new AccountCode("1100"),
+                        new AccountCode("4000"),
+                        new MonetaryAmount("EUR", "9200"),
+                        null,
+                        null,
+                        foreignExchangeDetails,
+                        null,
+                        null))),
+            Objects.requireNonNull(
+                entryPayload(
+                    new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+                        LocalDate.parse("2026-04-07"),
+                        new AccountCode("1400"),
+                        new AccountCode("2100"),
+                        new MonetaryAmount("EUR", "9200"),
+                        foreignExchangeDetails,
+                        null,
+                        null))),
+            Objects.requireNonNull(
+                entryPayload(
+                    new BookkeepingEntry.ExpenseOnCredit(
+                        LocalDate.parse("2026-04-07"),
+                        new AccountCode("5000"),
+                        new AccountCode("2100"),
+                        new MonetaryAmount("EUR", "9200"),
+                        foreignExchangeDetails,
+                        null,
+                        null))));
+
+    payloads.forEach(
+        payload -> {
+          assertNotNull(payload.foreignExchange());
+          assertEquals("9200", payload.foreignExchange().functionalAmount().minorUnits());
+          assertEquals("SPOT_TRANSACTION", payload.foreignExchange().treatmentKind());
+        });
+  }
+
+  @Test
+  void entryPayload_mapsEveryInventoryMaintenanceVariant() {
+    CliPostingEntryPayload settledCapitalization =
+        entryPayload(
+            new InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1400"),
+                new AccountCode("1000"),
+                new MonetaryAmount("EUR", "1210"),
+                null,
+                taxSelection("vat-standard-expense"),
+                appliedExpenseTax("vat-standard-expense", "1300")));
+    CliPostingEntryPayload creditCapitalization =
+        entryPayload(
+            new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                new MonetaryAmount("EUR", "1250"),
+                null,
+                null,
+                null));
+    CliPostingEntryPayload writeDown =
+        entryPayload(
+            new InventoryBookkeepingEntryVariants.InventoryWriteDown(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1400"),
+                new AccountCode("6100"),
+                new MonetaryAmount("EUR", "125")));
+    CliPostingEntryPayload shrinkage =
+        entryPayload(
+            new InventoryBookkeepingEntryVariants.InventoryShrinkage(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1400"),
+                new AccountCode("6200"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                null));
+    CliPostingEntryPayload countIncrease =
+        entryPayload(
+            new InventoryBookkeepingEntryVariants.InventoryCountIncrease(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1400"),
+                new AccountCode("7100"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                new MonetaryAmount("EUR", "1250"),
+                null));
+
+    assertEquals("INVENTORY_CAPITALIZATION_SETTLED", settledCapitalization.entryKind());
+    assertEquals("1000", settledCapitalization.cashAccountCode());
+    assertEquals("1400", settledCapitalization.inventoryAccountCode());
+    assertNull(settledCapitalization.foreignExchange());
+    assertNotNull(settledCapitalization.taxSelection());
+    assertNotNull(settledCapitalization.appliedTax());
+    assertEquals("INVENTORY_CAPITALIZATION_ON_CREDIT", creditCapitalization.entryKind());
+    assertEquals("2100", creditCapitalization.payableAccountCode());
+    assertEquals("INVENTORY_WRITE_DOWN", writeDown.entryKind());
+    assertEquals("6100", writeDown.writeDownLossAccountCode());
+    assertEquals("INVENTORY_SHRINKAGE", shrinkage.entryKind());
+    assertEquals("6200", shrinkage.shrinkageLossAccountCode());
+    assertEquals("2", shrinkage.quantity());
+    assertEquals("INVENTORY_COUNT_INCREASE", countIncrease.entryKind());
+    assertEquals("7100", countIncrease.countGainAccountCode());
+    assertEquals("2", countIncrease.quantity());
+    assertEquals("1250", Objects.requireNonNull(countIncrease.unitCost()).minorUnits());
+  }
+
+  @Test
+  void entryPayload_mapsBothOwnerEquityDirections() {
+    CliPostingEntryPayload contribution =
+        Objects.requireNonNull(CliPostingEntryPayloadMapper.entryPayload(ownerContributionEntry()));
+    CliPostingEntryPayload withdrawal =
+        Objects.requireNonNull(CliPostingEntryPayloadMapper.entryPayload(ownerWithdrawalEntry()));
+
+    assertEquals("OWNER_CONTRIBUTION", contribution.entryKind());
+    assertEquals("1000", contribution.cashAccountCode());
+    assertEquals("3000", contribution.equityAccountCode());
+    assertEquals("OWNER_WITHDRAWAL", withdrawal.entryKind());
+    assertEquals("1000", withdrawal.cashAccountCode());
+    assertEquals("3010", withdrawal.equityAccountCode());
   }
 
   private static BookkeepingEntry directJournalEntry() {
@@ -372,6 +559,7 @@ class CliPostingEntryPayloadSupportTest {
         null,
         null,
         null,
+        null,
         null);
   }
 
@@ -382,7 +570,26 @@ class CliPostingEntryPayloadSupportTest {
         new AccountCode("4000"),
         new MonetaryAmount("EUR", "1250"),
         new InventoryRelief(
-            new AccountCode("1400"), new AccountCode("5000"), new MonetaryAmount("EUR", "400")),
+            new AccountCode("1400"),
+            new AccountCode("5000"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+        null,
+        null,
+        null,
+        null);
+  }
+
+  private static BookkeepingEntry saleEntryWithResolvedInventoryCosting() {
+    return new BookkeepingEntry.SaleSettled(
+        LocalDate.parse("2026-04-07"),
+        new AccountCode("1000"),
+        new AccountCode("4000"),
+        new MonetaryAmount("EUR", "12500"),
+        new InventoryRelief(
+            new AccountCode("1400"),
+            new AccountCode("5000"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("6")),
+        new ResolvedInventoryCosting(money("50.00"), Quantity.ofScaledUnits(0, 6L), money("8.33")),
         null,
         null,
         null);
@@ -404,7 +611,11 @@ class CliPostingEntryPayloadSupportTest {
         LocalDate.parse("2026-04-07"),
         new AccountCode("1400"),
         new AccountCode("1000"),
+        new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
         new MonetaryAmount("EUR", "1250"),
+        null,
+        null,
+        null,
         null);
   }
 
@@ -413,7 +624,12 @@ class CliPostingEntryPayloadSupportTest {
         LocalDate.parse("2026-04-07"),
         new AccountCode("1400"),
         new AccountCode("2100"),
-        new MonetaryAmount("EUR", "1250"));
+        new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+        new MonetaryAmount("EUR", "1250"),
+        null,
+        null,
+        null,
+        null);
   }
 
   private static BookkeepingEntry saleOnCreditEntry() {
@@ -422,6 +638,8 @@ class CliPostingEntryPayloadSupportTest {
         new AccountCode("1100"),
         new AccountCode("4000"),
         new MonetaryAmount("EUR", "1000"),
+        null,
+        null,
         null,
         taxSelection("vat-standard-sale"),
         appliedSaleTax("vat-standard-sale", "2100"));
@@ -433,6 +651,7 @@ class CliPostingEntryPayloadSupportTest {
         new AccountCode("5000"),
         new AccountCode("2100"),
         new MonetaryAmount("EUR", "1210"),
+        null,
         taxSelection("vat-standard-expense"),
         appliedExpenseTax("vat-standard-expense", "1300"));
   }
@@ -480,11 +699,13 @@ class CliPostingEntryPayloadSupportTest {
             new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                 new AccountCode("1000"),
                 JournalLine.EntrySide.DEBIT,
-                new MonetaryAmount("EUR", "1250")),
+                new MonetaryAmount("EUR", "1250"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("2")),
             new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                 new AccountCode("3000"),
                 JournalLine.EntrySide.CREDIT,
-                new MonetaryAmount("EUR", "1250"))));
+                new MonetaryAmount("EUR", "1250"),
+                null)));
   }
 
   private static BookkeepingEntry reversalEntry() {
@@ -521,7 +742,7 @@ class CliPostingEntryPayloadSupportTest {
             new MonetaryAmount("EUR", "9200"),
             LocalDate.parse("2026-04-06"),
             "ecb-spot"),
-        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+        ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
   }
 
   private static TaxSelection taxSelection(String taxCode) {

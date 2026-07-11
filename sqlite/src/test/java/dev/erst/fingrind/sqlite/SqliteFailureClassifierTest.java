@@ -44,8 +44,8 @@ class SqliteFailureClassifierTest {
                 "unexpected-source-id",
                 SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
                 "bundle",
-                "3.53.2",
-                "2.3.5")));
+                "3.53.3",
+                "2.3.6")));
     assertEquals(
         SqliteFailureClassifier.Category.PERSISTENCE_INVARIANT,
         SqliteFailureClassifier.classify(

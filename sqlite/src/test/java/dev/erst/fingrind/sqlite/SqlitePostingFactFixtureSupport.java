@@ -37,6 +37,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
@@ -46,6 +47,7 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -131,6 +133,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
                 Optional.of(new CorrelationId("corr-1"))),
             Instant.parse("2026-04-07T10:15:30Z"),
             SourceChannel.CLI),
+        originatingEntry(journalEntry, postingLineage),
         originatingEntry(journalEntry, postingLineage));
   }
 
@@ -158,6 +161,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
                 Optional.of(new CorrelationId("corr-1"))),
             recordedAt,
             SourceChannel.CLI),
+        new BookkeepingEntry.DirectJournal(journalEntry, null),
         new BookkeepingEntry.DirectJournal(journalEntry, null));
   }
 
@@ -170,6 +174,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
               new AccountCode("1000"),
               new AccountCode("2000"),
               MonetaryAmount.of(money("EUR", "10.00")),
+              null,
               null,
               null,
               null,
@@ -240,7 +245,8 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         postingFact.evidence(),
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         postingFact.provenance(),
-        postingFact.originatingEntry());
+        postingFact.callerAuthoredEntry().orElse(null),
+        postingFact.resolvedOriginatingEntry().orElse(null));
   }
 
   static StoredRequestPosting storedRequestPosting(CommittedPosting postingFact) {
@@ -445,7 +451,20 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       boolean active,
       Instant declaredAt) {
     return new RegisteredAccount(
-        accountCode, accountName, accountType, accountTaxonomy, active, declaredAt);
+        accountCode,
+        accountName,
+        accountType,
+        accountTaxonomy,
+        defaultUnitOfMeasure(accountTaxonomy).orElse(null),
+        active,
+        declaredAt);
+  }
+
+  private static Optional<UnitOfMeasure> defaultUnitOfMeasure(AccountTaxonomy accountTaxonomy) {
+    return accountTaxonomy
+        .financialPositionLineClassification()
+        .filter(classification -> classification == FinancialPositionLineClassification.INVENTORY)
+        .map(ignored -> new UnitOfMeasure("unit", 0));
   }
 
   static DeclaredAccount declaredAccount(
@@ -484,7 +503,9 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     return postingFactStore.declareAccount(
-        accountCode, accountName, accountType, accountTaxonomy, declaredAt);
+        new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+            accountCode, accountName, accountType, accountTaxonomy),
+        declaredAt);
   }
 
   static void openBookWithNoDeclaredAccounts(SqlitePostingFactStore postingFactStore) {
@@ -569,7 +590,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
 
   static void insertPostingFactRow(
       SqliteNativeDatabase database, String postingId, String idempotencyKey) {
-    String postingOriginKind = dev.erst.fingrind.core.PostingOriginKind.DIRECT_JOURNAL.wireValue();
+    String postingOriginKind = PostingOriginKind.DIRECT_JOURNAL.wireValue();
     database.executeStatement(
         """
         insert into posting_fact (

@@ -5,14 +5,12 @@ import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.distin
 import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.equityContribution;
 import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.equityWithdrawal;
 import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.expense;
-import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.inventory;
 import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.payable;
 import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.receivable;
 import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.revenue;
 import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.settlementAdjunct;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.AccountExpectation;
@@ -41,9 +39,15 @@ final class PostEntryRoleAccountSemantics {
       case BookkeepingEntry.SaleOnCredit sale ->
           validateSaleOnCredit(violations, accounts, sale, selectorField, selectorValue);
       case BookkeepingEntry.PurchaseSettled purchase ->
-          validatePurchaseSettled(violations, accounts, purchase, selectorField, selectorValue);
+          PostEntryInventoryRoleAccountSemantics.validate(
+              violations, accounts, purchase, selectorField, selectorValue);
       case BookkeepingEntry.PurchaseOnCredit purchase ->
-          validatePurchaseOnCredit(violations, accounts, purchase, selectorField, selectorValue);
+          PostEntryInventoryRoleAccountSemantics.validate(
+              violations, accounts, purchase, selectorField, selectorValue);
+      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
+              inventoryEntry ->
+          PostEntryInventoryRoleAccountSemantics.validate(
+              violations, accounts, inventoryEntry, selectorField, selectorValue);
       case BookkeepingEntry.ExpenseSettled expense ->
           validateExpenseSettled(violations, accounts, expense, selectorField, selectorValue);
       case BookkeepingEntry.ExpenseOnCredit expense ->
@@ -75,7 +79,7 @@ final class PostEntryRoleAccountSemantics {
         selectorValue,
         cash(sale.cashAccountCode(), "cashAccountCode"),
         revenue(sale.revenueAccountCode(), "revenueAccountCode"));
-    validateOptionalInventoryRelief(
+    PostEntryInventoryRoleAccountSemantics.validateOptionalInventoryRelief(
         violations, accounts, sale.inventoryRelief(), selectorField, selectorValue);
   }
 
@@ -92,38 +96,8 @@ final class PostEntryRoleAccountSemantics {
         selectorValue,
         receivable(sale.receivableAccountCode(), "receivableAccountCode"),
         revenue(sale.revenueAccountCode(), "revenueAccountCode"));
-    validateOptionalInventoryRelief(
+    PostEntryInventoryRoleAccountSemantics.validateOptionalInventoryRelief(
         violations, accounts, sale.inventoryRelief(), selectorField, selectorValue);
-  }
-
-  private static void validatePurchaseSettled(
-      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      Map<AccountCode, RegisteredAccount> accounts,
-      BookkeepingEntry.PurchaseSettled purchase,
-      String selectorField,
-      String selectorValue) {
-    validatePair(
-        violations,
-        accounts,
-        selectorField,
-        selectorValue,
-        inventory(purchase.inventoryAccountCode(), "inventoryAccountCode"),
-        cash(purchase.cashAccountCode(), "cashAccountCode"));
-  }
-
-  private static void validatePurchaseOnCredit(
-      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      Map<AccountCode, RegisteredAccount> accounts,
-      BookkeepingEntry.PurchaseOnCredit purchase,
-      String selectorField,
-      String selectorValue) {
-    validatePair(
-        violations,
-        accounts,
-        selectorField,
-        selectorValue,
-        inventory(purchase.inventoryAccountCode(), "inventoryAccountCode"),
-        payable(purchase.payableAccountCode(), "payableAccountCode"));
   }
 
   private static void validateExpenseSettled(
@@ -218,7 +192,7 @@ final class PostEntryRoleAccountSemantics {
         cash(withdrawal.cashAccountCode(), "cashAccountCode"));
   }
 
-  private static void validatePair(
+  static void validatePair(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       Map<AccountCode, RegisteredAccount> accounts,
       String selectorField,
@@ -253,29 +227,5 @@ final class PostEntryRoleAccountSemantics {
         settlementAdjunct == null
             ? null
             : settlementAdjunct(settlementAdjunct.accountCode(), "settlementAdjunct.accountCode"));
-  }
-
-  private static void validateOptionalInventoryRelief(
-      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      Map<AccountCode, RegisteredAccount> accounts,
-      @Nullable InventoryRelief inventoryRelief,
-      String selectorField,
-      String selectorValue) {
-    if (inventoryRelief == null) {
-      return;
-    }
-    PostEntryRoleAccountValidationSupport.validate(
-        violations,
-        accounts,
-        selectorField,
-        selectorValue,
-        distinct(
-            inventoryRelief.inventoryAccountCode(),
-            "inventoryRelief.inventoryAccountCode",
-            inventoryRelief.costOfSalesAccountCode(),
-            "inventoryRelief.costOfSalesAccountCode"),
-        inventory(inventoryRelief.inventoryAccountCode(), "inventoryRelief.inventoryAccountCode"),
-        expense(
-            inventoryRelief.costOfSalesAccountCode(), "inventoryRelief.costOfSalesAccountCode"));
   }
 }

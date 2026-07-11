@@ -18,20 +18,18 @@ import org.junit.jupiter.api.Test;
 /** Focused coverage for trading-sale inventory-relief discovery templates. */
 class InventoryReliefTemplateCoverageTest {
   @Test
-  void inventoryReliefTemplateDescriptor_validatesShapeAndPositiveAmount() {
+  void inventoryReliefTemplateDescriptor_validatesShapeAndPositiveQuantity() {
     InventoryReliefTemplateDescriptor validDescriptor =
-        new InventoryReliefTemplateDescriptor(
-            "inventory-on-hand", "cost-of-sales", new MonetaryAmount("EUR", "250"));
-    IllegalArgumentException zeroAmount =
+        new InventoryReliefTemplateDescriptor("inventory-on-hand", "cost-of-sales", "2.5");
+    IllegalArgumentException zeroQuantity =
         assertThrows(
             IllegalArgumentException.class,
-            () ->
-                new InventoryReliefTemplateDescriptor(
-                    "inventory-on-hand", "cost-of-sales", new MonetaryAmount("EUR", "0")));
+            () -> new InventoryReliefTemplateDescriptor("inventory-on-hand", "cost-of-sales", "0"));
 
     assertEquals("inventory-on-hand", validDescriptor.inventoryAccountCode());
     assertEquals("cost-of-sales", validDescriptor.costOfSalesAccountCode());
-    assertEquals("amount must carry one positive minor-unit value.", zeroAmount.getMessage());
+    assertEquals("2.5", validDescriptor.quantity());
+    assertEquals("quantity must carry one positive quantity.", zeroQuantity.getMessage());
   }
 
   @Test
@@ -50,11 +48,14 @@ class InventoryReliefTemplateCoverageTest {
                         null,
                         null,
                         null,
+                        null,
+                        null,
+                        null,
                         new MonetaryAmount("EUR", "1000"),
+                        null,
+                        null,
                         new InventoryReliefTemplateDescriptor(
-                            "inventory-on-hand",
-                            "inventory-on-hand",
-                            new MonetaryAmount("EUR", "250")),
+                            "inventory-on-hand", "inventory-on-hand", "1"),
                         null,
                         null,
                         null,
@@ -81,7 +82,12 @@ class InventoryReliefTemplateCoverageTest {
                     null,
                     null,
                     null,
+                    null,
+                    null,
+                    null,
                     new MonetaryAmount("EUR", "1000"),
+                    null,
+                    null,
                     inventoryRelief(),
                     null,
                     null,
@@ -108,13 +114,19 @@ class InventoryReliefTemplateCoverageTest {
                         null,
                         null,
                         null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         inventoryRelief(),
                         null,
                         null,
                         null,
                         null,
                         null),
-                    new ContractTemplates.ReversalTemplateDescriptor("posting-1", "correction")));
+                    new ContractReversalTemplates.ReversalTemplateDescriptor(
+                        "posting-1", "correction")));
 
     assertEquals("inventoryRelief must be absent for reversal.", violation.getMessage());
   }
@@ -192,7 +204,6 @@ class InventoryReliefTemplateCoverageTest {
   }
 
   private static InventoryReliefTemplateDescriptor inventoryRelief() {
-    return new InventoryReliefTemplateDescriptor(
-        "inventory-on-hand", "cost-of-sales", new MonetaryAmount("EUR", "250"));
+    return new InventoryReliefTemplateDescriptor("inventory-on-hand", "cost-of-sales", "1");
   }
 }

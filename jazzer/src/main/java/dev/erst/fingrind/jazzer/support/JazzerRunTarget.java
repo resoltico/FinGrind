@@ -96,6 +96,11 @@ public record JazzerRunTarget(
     return fromKey("sqlite-book-roundtrip");
   }
 
+  /** Returns the active inventory-costing math fuzz target. */
+  public static JazzerRunTarget inventoryCostingMath() {
+    return fromKey("inventory-costing-math");
+  }
+
   private static String requireNonBlank(String value, String fieldName) {
     Objects.requireNonNull(value, fieldName + " must not be null");
     String trimmed = value.trim();

@@ -1,18 +1,18 @@
 # Vendored SQLite3 Multiple Ciphers Source
 
-FinGrind vendors the official SQLite3 Multiple Ciphers 2.3.5 amalgamation in this directory so
+FinGrind vendors the official SQLite3 Multiple Ciphers 2.3.6 amalgamation in this directory so
 local Gradle runs, the nested Jazzer build, GitHub Actions, and the Docker image can all build
 against the same pinned protected-book native source instead of inheriting whichever `libsqlite3`
 version happens to exist on the host.
 
 Source provenance:
 - project page: [https://utelle.github.io/SQLite3MultipleCiphers/](https://utelle.github.io/SQLite3MultipleCiphers/)
-- upstream release: `SQLite3 Multiple Ciphers 2.3.5 (based on SQLite 3.53.2)`
+- upstream release: `SQLite3 Multiple Ciphers 2.3.6 (based on SQLite 3.53.3)`
 - official amalgamation asset:
-  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.5/sqlite3mc-2.3.5-sqlite-3.53.2-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.5/sqlite3mc-2.3.5-sqlite-3.53.2-amalgamation.zip)
+  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.6/sqlite3mc-2.3.6-sqlite-3.53.3-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.6/sqlite3mc-2.3.6-sqlite-3.53.3-amalgamation.zip)
 - upstream license: [../../LICENSE-SQLITE3MULTIPLECIPHERS](../../LICENSE-SQLITE3MULTIPLECIPHERS)
 - verified LF-normalized `sqlite3mc_amalgamation.c` SHA3-256:
-  `330ff26dea1db7e73ffa8a8cebbdf09bf63a2cf731b94b9735c75156618b0329`
+  `33725ff1edc60763060747a3491282befee52ae9f217c2cc6e0e1b2f86d4dec2`
 
 Build policy:
 - the Gradle task `verifyManagedSqliteSource` verifies the vendored `sqlite3mc_amalgamation.c`
@@ -26,8 +26,8 @@ Build policy:
 
 Runtime policy:
 - FinGrind deliberately builds `sqlite3mc_amalgamation.c`, the canonical encrypted amalgamation
-  shipped by the upstream 2.3.5 release bundle
-- controlled FinGrind surfaces pin SQLite 3.53.2 together with SQLite3 Multiple Ciphers 2.3.5
+  shipped by the upstream 2.3.6 release bundle
+- controlled FinGrind surfaces pin SQLite 3.53.3 together with SQLite3 Multiple Ciphers 2.3.6
 - FinGrind applies `sqlite3_key()` immediately after open and relies on the upstream default
   `sqleet` / `chacha20` cipher
 - the supported FinGrind passphrase transport contract is one explicit safe source

@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -134,6 +135,8 @@ class CashFlowStatementContractTypesTest {
     assertEquals(1, report.closingCashTotals().size());
     assertEquals(1, report.comparativeSections().size());
     assertSame(report, reported.report());
+    assertSame(report, reported.reported());
+    assertNull(reported.rejection());
     assertSame(rejection, rejected.rejection());
     assertEquals("reported", reported.fold(ignored -> "reported", ignored -> "rejected"));
     assertEquals("rejected", rejected.fold(ignored -> "reported", ignored -> "rejected"));

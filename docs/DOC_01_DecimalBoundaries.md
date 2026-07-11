@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: CORE_DECIMAL_BOUNDARIES
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
-  keywords: [fingrind, decimal, money, currency, percentage, tax-rate, exchange-rate, ratio, basis-points, boundaries]
-  questions: ["can I use Money for tax rates in fingrind", "how should future exchange rates be modeled in fingrind", "what are the decimal boundaries in fingrind", "why does fingrind forbid generic BigDecimal domain seams"]
+  keywords: [fingrind, decimal, money, quantity, unit-of-measure, inventory costing, weighted average, currency, percentage, tax-rate, exchange-rate, ratio, basis-points, boundaries]
+  questions: ["can I use Money for tax rates in fingrind", "how should future exchange rates be modeled in fingrind", "what are the decimal boundaries in fingrind", "why does fingrind forbid generic BigDecimal domain seams", "does fingrind have one exported non-money exact quantity type"]
 ---
 
 # Monetary And Decimal Boundaries
@@ -13,17 +13,24 @@ route:
 **Purpose**: define which decimal-bearing concepts already exist in FinGrind, which do not, and
 how future decimal domains must enter the model without reopening the retired free-form money seam.
 
-## Current Exact-Money Boundary
+## Current Exact Boundaries
 
-FinGrind currently models only one decimal-bearing business concept in the shared kernel:
+FinGrind currently models two exact numeric concept families in the shared kernel:
 
 - `CurrencyUnit`: one supported ISO currency unit plus its exact minor-unit scale
 - `Money`: one exact non-negative posted monetary value in minor units
 - `PositiveMoney`: one exact strictly positive journal-line monetary value
 - `MonetaryAmount`: the machine-facing published-language projection of exact money
+- `Quantity`: one exact non-negative scaled quantity with no embedded unit meaning
+- `UnitOfMeasure`: one stable unit token that owns which `Quantity` scale is admissible
+- `WeightedAverageCostingMath`: one pure weighted-average arithmetic owner that combines exact
+  `Quantity` and exact `Money` without publishing one generic decimal seam
 
-These types are only for posted monetary facts, derived balances, and machine/public projections of
-those same monetary facts.
+`CurrencyUnit`, `Money`, `PositiveMoney`, and `MonetaryAmount` are only for posted monetary
+facts, derived balances, and machine/public projections of those same monetary facts.
+
+`Quantity` and `UnitOfMeasure` are only for exact quantity-bearing facts. They do not create one
+generic decimal toolkit, and they do not own tax, FX, percentage, or ratio semantics.
 
 `CurrencyUnit` resolves from FinGrind's checked-in currency-unit registry snapshot, not from the
 host JVM's mutable runtime currency table. That keeps durable exact-money semantics under
@@ -73,7 +80,14 @@ Do not answer those questions later with a generic `BigDecimal` field and a comm
 
 ## Implemented And Remaining Type Split
 
-The current repository does not publish any exported non-money decimal domain type.
+The current repository now publishes one exported non-money exact quantity line:
+
+- `Quantity`: one exact scaled quantity with no embedded unit meaning
+- `UnitOfMeasure`: one stable per-account owner for the admissible `Quantity` scale
+- `WeightedAverageCostingMath`: one pure arithmetic owner that consumes exact quantity and exact
+  money without turning either into one generic decimal abstraction; its admitted positive pools
+  stay above one currency minor unit per smallest quantity increment so half-up disposal rounding
+  cannot strand positive quantity against a zero carrying-cost pool
 
 The next decimal-bearing concepts must arrive as separate types in their owning contexts rather
 than as a shared generic decimal seam:

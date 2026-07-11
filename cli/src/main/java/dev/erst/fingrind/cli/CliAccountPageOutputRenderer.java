@@ -31,6 +31,7 @@ final class CliAccountPageOutputRenderer {
                     "Account",
                     "Name",
                     "Type",
+                    "Unit",
                     "Financial position line",
                     "Cash-flow asset",
                     "Profit or loss line",
@@ -45,6 +46,7 @@ final class CliAccountPageOutputRenderer {
                                 account.accountName().value(),
                                 CliAccountStatementLabels.displayLineTypeLabel(
                                     account.accountType()),
+                                displayUnitOfMeasure(account),
                                 account
                                     .accountTaxonomy()
                                     .financialPositionLineClassification()
@@ -98,6 +100,8 @@ final class CliAccountPageOutputRenderer {
             "accountName",
             "parentAccountCode",
             "accountType",
+            "unitOfMeasureToken",
+            "quantityScale",
             "financialPositionLineClassification",
             "cashFlowAssetClassification",
             "profitAndLossLineClassification",
@@ -113,6 +117,8 @@ final class CliAccountPageOutputRenderer {
                     "",
                     "scope-empty",
                     RECORD_KIND,
+                    "",
+                    "",
                     "",
                     "",
                     "",
@@ -141,6 +147,10 @@ final class CliAccountPageOutputRenderer {
                                 .map(parent -> parent.value())
                                 .orElse(""),
                             account.accountType().wireValue(),
+                            account.unitOfMeasure() == null ? "" : account.unitOfMeasure().token(),
+                            account.unitOfMeasure() == null
+                                ? ""
+                                : Integer.toString(account.unitOfMeasure().quantityScale()),
                             account
                                 .accountTaxonomy()
                                 .financialPositionLineClassification()
@@ -161,5 +171,15 @@ final class CliAccountPageOutputRenderer {
                             account.declaredAt().toString(),
                             ""))
                 .toList());
+  }
+
+  private static String displayUnitOfMeasure(
+      dev.erst.fingrind.contract.bookkeeping.DeclaredAccount account) {
+    return account.unitOfMeasure() == null
+        ? "(none)"
+        : account.unitOfMeasure().token()
+            + " (scale "
+            + account.unitOfMeasure().quantityScale()
+            + ")";
   }
 }

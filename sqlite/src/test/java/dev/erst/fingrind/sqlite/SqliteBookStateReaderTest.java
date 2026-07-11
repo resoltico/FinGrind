@@ -114,6 +114,39 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void operationalSnapshot_rejectsMismatchedPersistedInventoryCostingDoctrine() {
+    Path bookPath = tempDirectory.resolve("book-state-operational-costing-mismatch.sqlite");
+    initializeBookOnDisk(bookPath);
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database ->
+            assertEquals(
+                SqliteBookState.INCOMPLETE_FINGRIND,
+                SqliteBookContract.BOOK_STATE_READER
+                    .operationalSnapshot(
+                        InterceptingSqliteNativeDatabase.replacing(
+                            database,
+                            SqlitePostingSql.FIND_BOOK_IDENTITY_CORE,
+                            """
+                            select
+                                entity_name,
+                                accounting_kernel_profile,
+                                accounting_basis,
+                                accounting_framework_position,
+                                entity_form,
+                                book_template_id,
+                                'WEIGHTED_AVERAGE' as costing_doctrine,
+                                functional_currency_code,
+                                fiscal_year_start_month,
+                                fiscal_year_start_day
+                            from book_identity
+                            where singleton_id = 1
+                            limit 1
+                            """))
+                    .state()));
+  }
+
+  @Test
   void initializedBookState_rejectsHealthyBookWhenPersistedMoneyAuditFails() {
     Path initializedBookPath = tempDirectory.resolve("book-state-invalid-persisted-money.sqlite");
     initializeBookOnDisk(initializedBookPath);
@@ -144,6 +177,38 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
                         database,
                         SqlitePostingSql.FIND_JOURNAL_LINE_OUTSIDE_FUNCTIONAL_CURRENCY,
                         "select 'posting-1'"))));
+  }
+
+  @Test
+  void initializedBookState_rejectsInventoryConsistencyProbeFailures() {
+    Path initializedBookPath = tempDirectory.resolve("book-state-inventory-probe-failure.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+    withStandaloneDatabase(
+        bookAccess(initializedBookPath),
+        database ->
+            assertEquals(
+                SqliteBookState.INCOMPLETE_FINGRIND,
+                SqliteBookContract.BOOK_STATE_READER.bookState(
+                    InterceptingSqliteNativeDatabase.throwing(
+                        database,
+                        SqliteInventoryCostingSql.LOAD_INVENTORY_MOVEMENT_REPLAY_ROWS,
+                        new IllegalStateException("forced inventory consistency probe failure")))));
+  }
+
+  @Test
+  void initializedBookState_rejectsInventoryConsistencyMismatches() {
+    Path initializedBookPath = tempDirectory.resolve("book-state-inventory-probe-mismatch.sqlite");
+    initializeBookOnDisk(initializedBookPath);
+    withStandaloneDatabase(
+        bookAccess(initializedBookPath),
+        database ->
+            assertEquals(
+                SqliteBookState.INCOMPLETE_FINGRIND,
+                SqliteBookContract.BOOK_STATE_READER.bookState(
+                    InterceptingSqliteNativeDatabase.replacing(
+                        database,
+                        SqliteInventoryCostingSql.LOAD_INVENTORY_ON_HAND_ROWS,
+                        "select '1400' as inventory_account, 1 as quantity, 100 as cost_pool_minor, '2026-04-07' as last_movement_date"))));
   }
 
   @Test

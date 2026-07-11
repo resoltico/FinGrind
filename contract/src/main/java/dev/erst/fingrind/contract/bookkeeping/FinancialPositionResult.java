@@ -6,11 +6,22 @@ import org.jspecify.annotations.Nullable;
 
 /** Closed family of public statement-of-financial-position outcomes. */
 public sealed interface FinancialPositionResult
+    extends BookQueryReportResult<FinancialPositionReport>
     permits FinancialPositionResult.Reported, FinancialPositionResult.Rejected {
 
   /** Folds the closed result family without transport-layer pattern switching. */
   <T extends @Nullable Object> T fold(
       Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper);
+
+  @Override
+  default @Nullable FinancialPositionReport reported() {
+    return fold(Reported::report, rejected -> null);
+  }
+
+  @Override
+  default @Nullable BookQueryRejection rejection() {
+    return fold(reported -> null, Rejected::rejection);
+  }
 
   /** Successful statement-of-financial-position result. */
   record Reported(FinancialPositionReport report) implements FinancialPositionResult {

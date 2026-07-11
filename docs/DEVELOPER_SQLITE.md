@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -40,11 +40,11 @@ That means:
   Windows ACL views
 - FinGrind intentionally rejects plaintext CLI passphrase arguments and environment-variable
   passphrase transport
-- newly opened books are protected through SQLite3 Multiple Ciphers 2.3.5 using the upstream
+- newly opened books are protected through SQLite3 Multiple Ciphers 2.3.6 using the upstream
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `37`, owned by `BookFormatContract`
+- the current supported book format is `43`, owned by `BookFormatContract`
 - accepted posting facts persist first-class accounting evidence through
   `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
@@ -96,8 +96,8 @@ Why this is the current design:
 - it gives one real SQLite transaction boundary per commit attempt
 - it keeps prepared statements and typed SQLite result codes close to the actual C API surface
 - the packaged CLI no longer requires an external `sqlite3` binary
-- controlled FinGrind surfaces can now pin one audited SQLite 3.53.2 / SQLite3 Multiple Ciphers
-  2.3.5 source contract instead of inheriting host-library drift
+- controlled FinGrind surfaces can now pin one audited SQLite 3.53.3 / SQLite3 Multiple Ciphers
+  2.3.6 source contract instead of inheriting host-library drift
 
 Observed implementation note:
 - we also reproduced a local `sqlite-jdbc` native-library load failure on this Java 26 macOS
@@ -112,7 +112,7 @@ point for design, configuration, and operator guidance:
 - upstream configuration guidance on URI key transport:
   [https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/](https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/)
 - vendored release asset:
-  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.5/sqlite3mc-2.3.5-sqlite-3.53.2-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.5/sqlite3mc-2.3.5-sqlite-3.53.2-amalgamation.zip)
+  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.6/sqlite3mc-2.3.6-sqlite-3.53.3-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.6/sqlite3mc-2.3.6-sqlite-3.53.3-amalgamation.zip)
 
 License and attribution stance:
 - SQLite3 Multiple Ciphers is MIT-licensed; the upstream text is copied verbatim in
@@ -123,8 +123,8 @@ License and attribution stance:
 ## Current Runtime Policy
 
 - root Gradle verification, the nested Jazzer build, `:cli:run`, GitHub workflows, and the Docker
-  image all build from the vendored official SQLite3 Multiple Ciphers 2.3.5 amalgamation under
-  [third_party/sqlite/sqlite3mc-amalgamation-2.3.5-sqlite-3530200/](../third_party/sqlite/sqlite3mc-amalgamation-2.3.5-sqlite-3530200)
+  image all build from the vendored official SQLite3 Multiple Ciphers 2.3.6 amalgamation under
+  [third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300/](../third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300)
 - [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned vendored SQLite3MC release
   manifest, including the amalgamation and companion headers, with LF-normalized digests before the
   managed native library is used, so Git checkout line-ending policy cannot create false integrity
@@ -436,7 +436,7 @@ Reasons for the current design:
 - Java 26 FFM works directly against the managed SQLite3MC library without reintroducing JNI glue
   code into FinGrind itself
 
-Managed runtime targets currently build SQLite 3.53.2 / SQLite3 Multiple Ciphers 2.3.5 from the
+Managed runtime targets currently build SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 from the
 vendored amalgamation on macOS and Linux. The public bundle launcher, Docker entrypoint,
 source-checkout wrapper, and developer direct-Java wrappers all grant native access only to the
 `fingrind` module. Selected Gradle `Test` and `JavaExec` task owners keep explicit classpath-era

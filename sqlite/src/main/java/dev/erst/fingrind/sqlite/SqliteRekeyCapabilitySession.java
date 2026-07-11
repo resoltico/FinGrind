@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 /** Rekey-only wrapper over the shared SQLite store core. */
-final class SqliteRekeyCapabilitySession extends SqliteDelegatingSession
+public final class SqliteRekeyCapabilitySession extends SqliteDelegatingSession
     implements SqliteRekeyCapabilityView {
   SqliteRekeyCapabilitySession(SqlitePostingFactStore store) {
     super(store);

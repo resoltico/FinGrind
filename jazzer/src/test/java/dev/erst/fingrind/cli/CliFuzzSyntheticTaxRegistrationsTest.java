@@ -63,6 +63,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
                         new MonetaryAmount("EUR", "10000"),
                         null,
                         null,
+                        null,
                         taxSelection("vat-lv", "vat-standard-sale"),
                         null))
                 .entry(),
@@ -137,6 +138,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
                         new MonetaryAmount("EUR", "10000"),
                         null,
                         null,
+                        null,
                         taxSelection("vat-lv", "vat-standard-sale"),
                         appliedTax(
                             "vat-lv",
@@ -197,6 +199,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
                         new AccountCode("1000"),
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
+                        null,
                         null,
                         null,
                         taxSelection("vat-lv", "vat-standard-sale"),
@@ -268,6 +271,8 @@ class CliFuzzSyntheticTaxRegistrationsTest {
                         new AccountCode("4000"),
                         new MonetaryAmount("EUR", "10000"),
                         null,
+                        null,
+                        null,
                         taxSelection("vat-lv", "vat-standard-sale"),
                         null))
                 .entry(),
@@ -290,6 +295,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
                         new AccountCode("6100"),
                         new AccountCode("2100"),
                         new MonetaryAmount("EUR", "11200"),
+                        null,
                         taxSelection("vat-lv", "vat-nonrecoverable-expense"),
                         null))
                 .entry(),
@@ -341,7 +347,7 @@ class CliFuzzSyntheticTaxRegistrationsTest {
     BookkeepingEntry.ExpenseSettled resolvedExpense =
         (BookkeepingEntry.ExpenseSettled)
             CliFuzzFixtures.bookkeepingCommand(nonrecoverableExpense)
-                .callerAuthoredEntry()
+                .resolvedOriginatingEntry()
                 .orElseThrow();
     AppliedTax appliedTax = resolvedExpense.appliedTax();
     assertNotNull(appliedTax);

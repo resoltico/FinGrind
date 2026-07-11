@@ -3,7 +3,6 @@ package dev.erst.fingrind.contract.bookkeeping;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.EconomicEventClass;
 import dev.erst.fingrind.core.EvidenceClass;
@@ -16,8 +15,9 @@ import org.jspecify.annotations.Nullable;
 /**
  * Canonical public namespace for posting entry-semantics rejection factories.
  *
- * <p>The behavior owners already live in narrower account, evidence, and entry-mode helpers. This
- * facade intentionally keeps the published factory vocabulary flat for callers.
+ * <p>The behavior owners already live in narrower account, evidence, and entry-mode helpers.
+ * Inventory-only admission boundaries publish through {@link PostingInventoryRejectionSemantics} so
+ * this facade can stay focused on the general posting-semantics vocabulary.
  */
 public final class PostingRejectionSemantics {
   private PostingRejectionSemantics() {}
@@ -91,27 +91,6 @@ public final class PostingRejectionSemantics {
   public static PostingRejection.EntrySemanticsViolation verbRequiresRole(
       String selectorValue, AccountRole requiredRole) {
     return PostingEntryModeRejectionSemantics.verbRequiresRole(selectorValue, requiredRole);
-  }
-
-  /** Returns one refusal when an inventory-purchase verb targets a non-trading book. */
-  public static PostingRejection.EntrySemanticsViolation verbRequiresTradingTemplate(
-      String selectorValue, BookTemplateId bookTemplateId) {
-    return PostingEntryModeRejectionSemantics.verbRequiresTradingTemplate(
-        "entryKind", selectorValue, bookTemplateId);
-  }
-
-  /** Returns one refusal when a trading-template sale omits required inventory relief. */
-  public static PostingRejection.EntrySemanticsViolation tradingSaleRequiresInventoryRelief(
-      String selectorValue) {
-    return PostingEntryModeRejectionSemantics.tradingSaleRequiresInventoryRelief(
-        "entryKind", selectorValue);
-  }
-
-  /** Returns one refusal when inventory relief appears on a non-trading book. */
-  public static PostingRejection.EntrySemanticsViolation inventoryReliefRequiresTradingBook(
-      String selectorValue, BookTemplateId bookTemplateId) {
-    return PostingEntryModeRejectionSemantics.inventoryReliefRequiresTradingBook(
-        "entryKind", selectorValue, bookTemplateId);
   }
 
   /** Returns one evidence-class conflict between retained evidence and the resolved event class. */

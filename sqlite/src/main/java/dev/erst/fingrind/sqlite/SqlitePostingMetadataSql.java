@@ -56,6 +56,7 @@ final class SqlitePostingMetadataSql {
           accounting_framework_position,
           entity_form,
           book_template_id,
+          costing_doctrine,
           functional_currency_code,
           fiscal_year_start_month,
           fiscal_year_start_day
@@ -80,10 +81,11 @@ final class SqlitePostingMetadataSql {
           accounting_framework_position,
           entity_form,
           book_template_id,
+          costing_doctrine,
           functional_currency_code,
           fiscal_year_start_month,
           fiscal_year_start_day
-      ) values (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private SqlitePostingMetadataSql() {}

@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -49,7 +51,7 @@ class ProtocolDocumentationIndexLintTest extends ProtocolContractDocumentationSu
   void apiIndexSymbolRoutesPointToExistingFilesAndSections() throws IOException {
     Map<String, Set<String>> headingsByFile = headingsByReferenceFile();
     Set<String> violations = new LinkedHashSet<>();
-    for (DocRoute route : symbolRoutes(apiIndexDocument())) {
+    for (DocRoute route : apiSymbolRoutes()) {
       Set<String> headings = headingsByFile.get(route.fileName());
       if (headings == null) {
         violations.add(
@@ -75,7 +77,7 @@ class ProtocolDocumentationIndexLintTest extends ProtocolContractDocumentationSu
   @Test
   void apiIndexRoutesAllPublicReferenceSymbols() throws IOException {
     Set<String> documentedSymbols =
-        symbolRoutes(apiIndexDocument()).stream()
+        apiSymbolRoutes().stream()
             .map(DocRoute::symbol)
             .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
     Set<String> expectedSymbols = new LinkedHashSet<>(exportedPublicReferenceSymbols());
@@ -87,6 +89,14 @@ class ProtocolDocumentationIndexLintTest extends ProtocolContractDocumentationSu
                 + sorted(expectedSymbols)
                 + "\nactual "
                 + sorted(documentedSymbols));
+  }
+
+  private List<DocRoute> apiSymbolRoutes() throws IOException {
+    List<DocRoute> routes = new ArrayList<>();
+    for (Path document : apiIndexDocuments()) {
+      routes.addAll(symbolRoutes(document));
+    }
+    return List.copyOf(routes);
   }
 
   @Test

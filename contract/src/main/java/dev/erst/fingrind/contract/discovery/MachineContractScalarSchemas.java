@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolMoneyFields;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.Quantity;
 import java.util.List;
 import java.util.Map;
 
@@ -99,6 +100,18 @@ final class MachineContractScalarSchemas {
                     : "Exact non-negative minor-unit amount encoded as one ASCII-digit string.",
                 positiveOnly)),
         ProtocolMoneyFields.fields());
+  }
+
+  static Map<String, Object> quantityTextSchema(String description) {
+    return MachineContractSchemaSupport.orderedMap(
+        "type",
+        "string",
+        "description",
+        description,
+        "pattern",
+        "^(0|[1-9]\\d*)(?:\\.\\d{1," + Quantity.maxSupportedScale() + "})?$",
+        "maxLength",
+        Quantity.maxScaledUnitsDigitCount() + 1 + Quantity.maxSupportedScale());
   }
 
   static Map<String, Object> pageLimitSchema() {

@@ -34,6 +34,54 @@ class ReversalResolutionSupportTest {
   }
 
   @Test
+  void resolve_returnsNonReversalEntriesUnchanged() {
+    BookkeepingEntry.SaleSettled settledSale =
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-04-07"),
+            new dev.erst.fingrind.core.AccountCode("1000"),
+            new dev.erst.fingrind.core.AccountCode("4000"),
+            new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            null,
+            null,
+            null);
+
+    BookkeepingEntry resolved =
+        ReversalResolutionSupport.resolve(settledSale, new PostingValidationStoreDouble(Map.of()));
+
+    assertSame(settledSale, resolved);
+  }
+
+  @Test
+  void resolve_dispatchesGenericReversalEntriesThroughReversalResolution() {
+    BookkeepingEntry entry =
+        new BookkeepingEntry.Reversal(
+            LocalDate.parse("2026-04-07"),
+            new PostingLineage.Reversal(
+                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReason("operator reversal")),
+            null,
+            null);
+    PostingValidationStoreDouble book =
+        new PostingValidationStoreDouble(
+            ExecutorAccountingTestSupport.bookIdentity(),
+            Map.of(),
+            Map.of(
+                new PostingId("posting-1"),
+                PostingApplicationServiceTestSupport.existingPosting("posting-1", "idem-1")));
+
+    BookkeepingEntry resolved = ReversalResolutionSupport.resolve(entry, book);
+
+    BookkeepingEntry.Reversal resolvedReversal =
+        org.junit.jupiter.api.Assertions.assertInstanceOf(
+            BookkeepingEntry.Reversal.class, resolved);
+    assertEquals(
+        PostingApplicationServiceTestSupport.reversalJournalEntry(),
+        resolvedReversal.resolvedJournalEntry());
+  }
+
+  @Test
   void unresolvedReversal_reportsMissingTargetBeforeAndDuringResolution() {
     BookkeepingEntry.Reversal unresolvedReversal =
         new BookkeepingEntry.Reversal(

@@ -437,6 +437,11 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
         List.of(
             new ContractTemplates.OpeningBalanceTemplateDescriptor(
                 "cash", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),

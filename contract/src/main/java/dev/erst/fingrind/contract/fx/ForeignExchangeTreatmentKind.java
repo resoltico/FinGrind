@@ -5,7 +5,7 @@ import java.util.List;
 
 /** Canonical treatment vocabulary for owned foreign-exchange accounting facts. */
 public enum ForeignExchangeTreatmentKind implements WireValue {
-  SPOT_SETTLEMENT,
+  SPOT_TRANSACTION,
   REALIZED_SETTLEMENT,
   UNREALIZED_REMEASUREMENT;
 
@@ -13,7 +13,7 @@ public enum ForeignExchangeTreatmentKind implements WireValue {
   @Override
   public String wireValue() {
     return switch (this) {
-      case SPOT_SETTLEMENT -> "SPOT_SETTLEMENT";
+      case SPOT_TRANSACTION -> "SPOT_TRANSACTION";
       case REALIZED_SETTLEMENT -> "REALIZED_SETTLEMENT";
       case UNREALIZED_REMEASUREMENT -> "UNREALIZED_REMEASUREMENT";
     };

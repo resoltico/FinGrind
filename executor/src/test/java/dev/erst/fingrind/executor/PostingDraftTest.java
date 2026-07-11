@@ -69,7 +69,7 @@ class PostingDraftTest {
   }
 
   @Test
-  void postingDraft_rejectsCallerAuthoredEntryWhenJournalEntryDrifts() {
+  void postingDraft_rejectsResolvedOriginatingEntryWhenJournalEntryDrifts() {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
@@ -82,6 +82,7 @@ class PostingDraftTest {
                     accountingEvidence("idem-2"),
                     new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
                     committedProvenance("idem-2"),
+                    null,
                     new BookkeepingEntry.SaleSettled(
                         LocalDate.parse("2026-04-08"),
                         new AccountCode("1000"),
@@ -91,10 +92,11 @@ class PostingDraftTest {
                         null,
                         null,
                         null,
+                        null,
                         null)));
 
     assertEquals(
-        "originatingEntry journalEntry must match the posting draft journalEntry.",
+        "resolvedOriginatingEntry journalEntry must match the posting draft journalEntry.",
         exception.getMessage());
   }
 

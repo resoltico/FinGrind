@@ -11,6 +11,7 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -104,6 +105,7 @@ public interface ContractPlanTemplates {
       String entityName,
       String bookTemplateId,
       String accountingBasis,
+      @Nullable String inventoryCosting,
       String functionalCurrency,
       String fiscalYearStart)
       implements TemplateDescriptorType {
@@ -116,6 +118,11 @@ public interface ContractPlanTemplates {
       accountingBasis =
           ContractDescriptorValidation.requireText(accountingBasis, "accountingBasis");
       AccountingBasis.fromWireValue(accountingBasis);
+      inventoryCosting =
+          ContractDescriptorValidation.requireOptionalText(inventoryCosting, "inventoryCosting");
+      if (inventoryCosting != null) {
+        InventoryCostingDoctrine.fromWireValue(inventoryCosting);
+      }
       functionalCurrency =
           ContractDescriptorValidation.requireText(functionalCurrency, "functionalCurrency");
       CurrencyUnit.of(functionalCurrency);

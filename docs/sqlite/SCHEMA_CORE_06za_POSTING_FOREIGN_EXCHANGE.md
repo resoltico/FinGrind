@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: SQLITE_SCHEMA_CORE_POSTING_FOREIGN_EXCHANGE
-updated: "2026-07-04"
+updated: "2026-07-11"
 ---
 
 # SQLite Schema: Posting Foreign Exchange
@@ -16,7 +16,7 @@ create table if not exists posting_foreign_exchange (
     posting_id text primary key references posting_fact (posting_id),
     treatment_kind text not null check (
         treatment_kind in (
-            'SPOT_SETTLEMENT',
+            'SPOT_TRANSACTION',
             'REALIZED_SETTLEMENT',
             'UNREALIZED_REMEASUREMENT'
         )
@@ -70,7 +70,7 @@ create table if not exists posting_foreign_exchange (
 create trigger if not exists posting_foreign_exchange_validate_origin_on_insert
 before insert on posting_foreign_exchange
 begin
-    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE_SETTLED, EXPENSE_SETTLED, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
+    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE_SETTLED, SALE_ON_CREDIT, PURCHASE_SETTLED, PURCHASE_ON_CREDIT, INVENTORY_CAPITALIZATION_SETTLED, INVENTORY_CAPITALIZATION_ON_CREDIT, EXPENSE_SETTLED, EXPENSE_ON_CREDIT, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
     where exists (
         select 1
         from posting_fact
@@ -79,7 +79,13 @@ begin
             and posting_fact.posting_origin_kind not in (
                 'DIRECT_JOURNAL',
                 'SALE_SETTLED',
+                'SALE_ON_CREDIT',
+                'PURCHASE_SETTLED',
+                'PURCHASE_ON_CREDIT',
+                'INVENTORY_CAPITALIZATION_SETTLED',
+                'INVENTORY_CAPITALIZATION_ON_CREDIT',
                 'EXPENSE_SETTLED',
+                'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
                 'OWNER_WITHDRAWAL',
                 'REVERSAL'

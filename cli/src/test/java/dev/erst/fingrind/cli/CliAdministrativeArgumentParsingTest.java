@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -438,6 +439,91 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
     assertEquals(
         dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
         command.command().bookIdentity().bookDoctrine());
+  }
+
+  @Test
+  void parse_openBook_requiresInventoryCostingOnlyForTradingBooks() {
+    OpenBook tradingBook =
+        assertInstanceOf(
+            OpenBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "open-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--entity-name",
+                  "Acme Store",
+                  "--book-template-id",
+                  "OWNER_MANAGED_TRADING",
+                  "--accounting-basis",
+                  "CASH",
+                  "--inventory-costing",
+                  "WEIGHTED_AVERAGE",
+                  "--functional-currency",
+                  "EUR",
+                  "--fiscal-year-start",
+                  "01-01"
+                }));
+    CliArgumentsException missingTradingCosting =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Store",
+                      "--book-template-id",
+                      "OWNER_MANAGED_TRADING",
+                      "--accounting-basis",
+                      "CASH",
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01"
+                    }));
+    CliArgumentsException serviceCosting =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
+                      "--accounting-basis",
+                      "CASH",
+                      "--inventory-costing",
+                      "WEIGHTED_AVERAGE",
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01"
+                    }));
+
+    assertEquals(
+        InventoryCostingDoctrine.WEIGHTED_AVERAGE,
+        tradingBook.command().bookIdentity().bookDoctrine().inventoryCostingDoctrine());
+    assertEquals("--inventory-costing", missingTradingCosting.argument());
+    assertEquals(
+        "Trading book doctrines require one inventoryCostingDoctrine.",
+        missingTradingCosting.getMessage());
+    assertEquals("--inventory-costing", serviceCosting.argument());
+    assertEquals(
+        "Service book doctrines must not declare an inventoryCostingDoctrine.",
+        serviceCosting.getMessage());
   }
 
   @Test

@@ -306,6 +306,12 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
+    public java.util.List<dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord>
+        inventoryValuationMovements(Optional<java.time.LocalDate> effectiveDateAsOf) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Optional<java.time.LocalDate> earliestPostingEffectiveDate() {
       return Optional.empty();
     }

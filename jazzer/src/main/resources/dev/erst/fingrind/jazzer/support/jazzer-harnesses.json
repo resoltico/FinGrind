@@ -1,0 +1,32 @@
+[
+  {
+    "key": "cli-request",
+    "displayName": "CLI Request",
+    "className": "dev.erst.fingrind.cli.CliRequestFuzzTest",
+    "methodName": "readPostEntryCommand"
+  },
+  {
+    "key": "ledger-plan-request",
+    "displayName": "Ledger Plan Request",
+    "className": "dev.erst.fingrind.cli.LedgerPlanRequestFuzzTest",
+    "methodName": "readLedgerPlan"
+  },
+  {
+    "key": "posting-workflow",
+    "displayName": "Posting Workflow",
+    "className": "dev.erst.fingrind.cli.PostingWorkflowFuzzTest",
+    "methodName": "exercisePostingWorkflow"
+  },
+  {
+    "key": "sqlite-book-roundtrip",
+    "displayName": "SQLite Book Round Trip",
+    "className": "dev.erst.fingrind.cli.SqliteBookRoundTripFuzzTest",
+    "methodName": "roundTripSingleBook"
+  },
+  {
+    "key": "inventory-costing-math",
+    "displayName": "Inventory Costing Math",
+    "className": "dev.erst.fingrind.core.WeightedAverageCostingMathFuzzTest",
+    "methodName": "disposeUsesExactPoolMath"
+  }
+]

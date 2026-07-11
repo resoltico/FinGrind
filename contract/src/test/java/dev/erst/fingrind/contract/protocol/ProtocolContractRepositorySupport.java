@@ -79,6 +79,16 @@ class ProtocolContractRepositorySupport {
     return repositoryRoot().resolve("docs/DOC_00_Index.md");
   }
 
+  protected final List<Path> apiIndexDocuments() throws IOException {
+    try (Stream<Path> files = Files.list(repositoryRoot().resolve("docs"))) {
+      return files
+          .filter(path -> path.getFileName().toString().startsWith("DOC_00_"))
+          .filter(path -> path.getFileName().toString().endsWith(".md"))
+          .sorted(Comparator.naturalOrder())
+          .toList();
+    }
+  }
+
   protected final Set<String> actualReferenceFiles() throws IOException {
     try (Stream<Path> files = Files.list(repositoryRoot().resolve("docs"))) {
       return files

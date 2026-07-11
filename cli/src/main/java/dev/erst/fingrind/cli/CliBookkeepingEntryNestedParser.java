@@ -10,6 +10,7 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredObject;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.QuantityText;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
@@ -131,7 +132,8 @@ final class CliBookkeepingEntryNestedParser {
             requiredText(
                 inventoryReliefObject,
                 ProtocolPostEntryFields.InventoryRelief.COST_OF_SALES_ACCOUNT_CODE)),
-        monetaryAmount(inventoryReliefObject, ProtocolPostEntryFields.InventoryRelief.AMOUNT));
+        new QuantityText(
+            requiredText(inventoryReliefObject, ProtocolPostEntryFields.InventoryRelief.QUANTITY)));
   }
 
   static PostingLineage.Reversal readRequiredReversal(ObjectNode rootNode) {

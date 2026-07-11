@@ -29,25 +29,25 @@ final class MachineContractPostEntrySchemas {
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryFieldSpecs.topLevelFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.lineFields()),
+            MachineContractPostEntryNestedFieldSpecs.lineFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.openingBalanceFields()),
+            MachineContractPostEntryNestedFieldSpecs.openingBalanceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryForeignExchangeFieldSpecs.foreignExchangeFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryForeignExchangeFieldSpecs.quotedRateFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.taxFields()),
+            MachineContractPostEntryNestedFieldSpecs.taxFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.evidenceFields()),
+            MachineContractPostEntryEvidenceFieldSpecs.evidenceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.sourceDocumentFields()),
+            MachineContractPostEntryEvidenceFieldSpecs.sourceDocumentFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.approvalFields()),
+            MachineContractPostEntryEvidenceFieldSpecs.approvalFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.provenanceFields()),
+            MachineContractPostEntryNestedFieldSpecs.provenanceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.reversalFields()),
+            MachineContractPostEntryNestedFieldSpecs.reversalFields()),
         requestSurface.bookkeepingEntryKinds().stream()
             .map(MachineContractPostEntrySchemas::entryKindSemanticsDescriptor)
             .toList(),
@@ -80,10 +80,10 @@ final class MachineContractPostEntrySchemas {
     return new ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor(
         topLevelFieldDescriptors(facts),
         nestedFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.lineFields(),
+            MachineContractPostEntryNestedFieldSpecs.lineFields(),
             facts.requiredTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.LINES)),
         nestedFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.openingBalanceFields(),
+            MachineContractPostEntryNestedFieldSpecs.openingBalanceFields(),
             facts
                 .requiredTopLevelFields()
                 .contains(ProtocolPostEntryFields.TopLevel.OPENING_BALANCES)),
@@ -98,18 +98,18 @@ final class MachineContractPostEntrySchemas {
                 .optionalTopLevelFields()
                 .contains(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE)),
         nestedFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.taxFields(),
+            MachineContractPostEntryNestedFieldSpecs.taxFields(),
             facts.optionalTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.TAX)),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.evidenceFields()),
+            MachineContractPostEntryEvidenceFieldSpecs.evidenceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.sourceDocumentFields(facts)),
+            MachineContractPostEntryEvidenceFieldSpecs.sourceDocumentFields(facts)),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.approvalFields()),
+            MachineContractPostEntryEvidenceFieldSpecs.approvalFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.provenanceFields()),
+            MachineContractPostEntryNestedFieldSpecs.provenanceFields()),
         nestedFieldDescriptors(
-            MachineContractPostEntryFieldSpecs.reversalFields(),
+            MachineContractPostEntryNestedFieldSpecs.reversalFields(),
             facts.requiredTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.REVERSAL)),
         List.of(entryKindSemanticsDescriptor(facts)),
         requestSurface.reachabilityMatrix().stream()

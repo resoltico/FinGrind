@@ -29,6 +29,7 @@ import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -235,7 +236,20 @@ public final class ExecutorAccountingTestSupport {
       boolean active,
       Instant declaredAt) {
     return new RegisteredAccount(
-        accountCode, accountName, accountType, accountTaxonomy, active, declaredAt);
+        accountCode,
+        accountName,
+        accountType,
+        accountTaxonomy,
+        defaultUnitOfMeasure(accountTaxonomy).orElse(null),
+        active,
+        declaredAt);
+  }
+
+  private static Optional<UnitOfMeasure> defaultUnitOfMeasure(AccountTaxonomy accountTaxonomy) {
+    return accountTaxonomy
+        .financialPositionLineClassification()
+        .filter(classification -> classification == FinancialPositionLineClassification.INVENTORY)
+        .map(ignored -> new UnitOfMeasure("unit", 0));
   }
 
   /** Returns one canonical test-only book identity for explicit open-book flows. */

@@ -1,9 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import java.nio.file.Path;
-import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Parsed CLI command model for one FinGrind process invocation. */
 sealed interface CliCommand
@@ -42,13 +39,6 @@ sealed interface CliCommand
   /** Command family whose successful output can target either terminal text/JSON or a PDF file. */
   sealed interface ReportCommand extends CliCommand permits CliBookQueryReportCommand {
     /** Selected report presentation settings for this command. */
-    ReportOutput output();
-  }
-
-  /** Shared report-presentation settings for one successful report command. */
-  record ReportOutput(OutputMode outputMode, @Nullable Path pdfOutPath) {
-    public ReportOutput {
-      Objects.requireNonNull(outputMode, "outputMode");
-    }
+    CliReportOutput output();
   }
 }

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliCloseTargetReadinessPayload;
 import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
+import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -15,6 +16,7 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -72,6 +74,11 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
     assertEquals("NON_STATUTORY_INTERNAL_MANAGEMENT", payload.accountingFrameworkPosition());
     assertEquals("OWNER_MANAGED_SINGLE_ENTITY", payload.entityForm());
     assertEquals("OWNER_MANAGED_SERVICE", payload.bookTemplateId());
+    assertNull(payload.inventoryCostingDoctrine());
+
+    var tradingPayload = CliBookPayloadMapper.bookIdentityPayload(tradingBookIdentity());
+
+    assertEquals("WEIGHTED_AVERAGE", tradingPayload.inventoryCostingDoctrine());
   }
 
   @Test
@@ -112,6 +119,20 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
     assertEquals("1000", amount.minorUnits());
     assertNull(entry.openingBalances());
     assertNull(entry.reversal());
+  }
+
+  @Test
+  void accountPayload_mapsInventoryUnitOfMeasure() {
+    DeclaredAccount inventoryAccount =
+        inventoryDeclaredAccount(
+            "1400", "Inventory", "kg", 3, true, Instant.parse("2026-04-23T10:15:30Z"));
+
+    CliBookQueryJsonModels.DeclaredAccountPayload payload =
+        CliBookPayloadMapper.accountPayload(inventoryAccount);
+
+    assertNotNull(payload.unitOfMeasure());
+    assertEquals("kg", payload.unitOfMeasure().token());
+    assertEquals(3, payload.unitOfMeasure().quantityScale());
   }
 
   @Test

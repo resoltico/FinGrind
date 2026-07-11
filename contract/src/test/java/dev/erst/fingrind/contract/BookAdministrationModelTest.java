@@ -14,15 +14,21 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the current book-administration model records. */
@@ -46,6 +52,47 @@ class BookAdministrationModelTest {
   }
 
   @Test
+  void declareAccountCommand_enforcesInventoryUnitDoctrine() {
+    UnitOfMeasure unitOfMeasure = new UnitOfMeasure("pcs", 0);
+    DeclareAccountCommand cashAccount =
+        ContractFixtures.declareAccountCommand("1000", "Cash", AccountType.ASSET);
+    DeclareAccountCommand inventoryAccount =
+        new DeclareAccountCommand(
+            new AccountCode("1400"),
+            new AccountName("Inventory"),
+            AccountType.ASSET,
+            inventoryTaxonomy(),
+            unitOfMeasure);
+
+    assertEquals(null, cashAccount.unitOfMeasure());
+    assertEquals(unitOfMeasure, inventoryAccount.unitOfMeasure());
+    assertEquals(
+        "Inventory account declarations require one unitOfMeasure.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new DeclareAccountCommand(
+                        new AccountCode("1400"),
+                        new AccountName("Inventory"),
+                        AccountType.ASSET,
+                        inventoryTaxonomy(),
+                        null))
+            .getMessage());
+    assertEquals(
+        "Only inventory account declarations may carry one unitOfMeasure.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new DeclareAccountCommand(
+                        new AccountCode("1000"),
+                        new AccountName("Cash"),
+                        AccountType.ASSET,
+                        ContractFixtures.accountTaxonomy(AccountType.ASSET),
+                        unitOfMeasure))
+            .getMessage());
+  }
+
+  @Test
   void openBookResultRejected_rejectsNullRejection() {
     assertThrows(NullPointerException.class, () -> new OpenBookResult.Rejected(nullOf()));
   }
@@ -63,6 +110,50 @@ class BookAdministrationModelTest {
     assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Reactivated(nullOf()));
     assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Renamed(nullOf()));
     assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Unchanged(nullOf()));
+  }
+
+  @Test
+  void declaredAccount_enforcesInventoryUnitDoctrine() {
+    UnitOfMeasure unitOfMeasure = new UnitOfMeasure("pcs", 0);
+    DeclaredAccount inventoryAccount =
+        new DeclaredAccount(
+            new AccountCode("1400"),
+            new AccountName("Inventory"),
+            AccountType.ASSET,
+            inventoryTaxonomy(),
+            unitOfMeasure,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+
+    assertEquals(unitOfMeasure, inventoryAccount.unitOfMeasure());
+    assertEquals(
+        "Inventory account snapshots require one unitOfMeasure.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new DeclaredAccount(
+                        new AccountCode("1400"),
+                        new AccountName("Inventory"),
+                        AccountType.ASSET,
+                        inventoryTaxonomy(),
+                        null,
+                        true,
+                        Instant.parse("2026-04-07T10:15:30Z")))
+            .getMessage());
+    assertEquals(
+        "Only inventory account snapshots may carry one unitOfMeasure.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new DeclaredAccount(
+                        new AccountCode("1000"),
+                        new AccountName("Cash"),
+                        AccountType.ASSET,
+                        ContractFixtures.accountTaxonomy(AccountType.ASSET),
+                        unitOfMeasure,
+                        true,
+                        Instant.parse("2026-04-07T10:15:30Z")))
+            .getMessage());
   }
 
   @Test
@@ -100,5 +191,14 @@ class BookAdministrationModelTest {
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
         FiscalYearStart.parse("01-01"));
+  }
+
+  private static AccountTaxonomy inventoryTaxonomy() {
+    return new AccountTaxonomy(
+        AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(FinancialPositionLineClassification.INVENTORY),
+        Optional.empty(),
+        Optional.of(CashFlowAssetClassification.NON_CASH));
   }
 }

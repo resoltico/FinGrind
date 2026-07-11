@@ -4,6 +4,18 @@ package dev.erst.fingrind.sqlite;
 interface SqlitePlanExecutionCapabilityView
     extends SqlitePlanExecutionSession, SqlitePostingCapabilityView {
   @Override
+  default java.util.Optional<dev.erst.fingrind.executor.bookkeeping.InventoryAccountState>
+      findInventoryAccountState(dev.erst.fingrind.core.AccountCode inventoryAccountCode) {
+    return SqlitePostingCapabilityView.super.findInventoryAccountState(inventoryAccountCode);
+  }
+
+  @Override
+  default java.util.List<dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord>
+      inventoryMovements(dev.erst.fingrind.core.PostingId postingId) {
+    return SqlitePostingCapabilityView.super.inventoryMovements(postingId);
+  }
+
+  @Override
   default void beginLedgerPlanTransaction() {
     storeThreadOwner().requireOwnerThread();
     storeLifecycle().transactions().begin();

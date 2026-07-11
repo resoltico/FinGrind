@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolOpenBookFields;
 import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BookTemplateId;
+import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.util.List;
 import java.util.Map;
 
@@ -158,6 +159,12 @@ final class MachineContractLedgerPlanStepPayloadFieldSpecs {
                 MachineContractScalarSchemas.enumStringSchema(
                     "Accounting basis persisted on the selected protected book.",
                     AccountingBasis.wireValues())),
+            MachineContractFieldSpec.conditional(
+                ProtocolOpenBookFields.INVENTORY_COSTING,
+                "Inventory costing doctrine required when bookTemplateId is OWNER_MANAGED_TRADING and forbidden when it is OWNER_MANAGED_SERVICE.",
+                MachineContractScalarSchemas.enumStringSchema(
+                    "Inventory costing doctrine required when bookTemplateId is OWNER_MANAGED_TRADING and forbidden when it is OWNER_MANAGED_SERVICE.",
+                    InventoryCostingDoctrine.wireValues())),
             MachineContractFieldSpec.required(
                 ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
                 "Three-letter ISO functional currency code for the selected book.",

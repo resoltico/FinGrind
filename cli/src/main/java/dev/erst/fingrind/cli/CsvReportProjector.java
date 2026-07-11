@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.reportmodel.ReportColumn;
+import dev.erst.fingrind.contract.reportmodel.ReportCsvProjection;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.reportmodel.ReportRow;
 import dev.erst.fingrind.contract.reportmodel.ReportSection;
@@ -29,6 +30,10 @@ final class CsvReportProjector {
 
   static String render(ReportModel reportModel) {
     ReportModel model = java.util.Objects.requireNonNull(reportModel, "reportModel");
+    ReportCsvProjection tabularCsvProjection = model.tabularCsvProjection();
+    if (tabularCsvProjection != null) {
+      return CliTextFormat.renderCsv(tabularCsvProjection.headers(), tabularCsvProjection.rows());
+    }
     List<List<String>> rows = new ArrayList<>();
     CsvScope scope = new CsvScope(model.family(), model.title());
     scope.selectSection("summary", "Summary");

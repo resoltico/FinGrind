@@ -18,7 +18,8 @@ class JazzerTopologyTest {
           JazzerHarness.cliRequest(),
           JazzerHarness.ledgerPlanRequest(),
           JazzerHarness.postingWorkflow(),
-          JazzerHarness.sqliteBookRoundTrip()
+          JazzerHarness.sqliteBookRoundTrip(),
+          JazzerHarness.inventoryCostingMath()
         },
         JazzerHarness.values());
   }
@@ -31,7 +32,8 @@ class JazzerTopologyTest {
           JazzerRunTarget.cliRequest(),
           JazzerRunTarget.ledgerPlanRequest(),
           JazzerRunTarget.postingWorkflow(),
-          JazzerRunTarget.sqliteBookRoundTrip()
+          JazzerRunTarget.sqliteBookRoundTrip(),
+          JazzerRunTarget.inventoryCostingMath()
         },
         JazzerRunTarget.values());
   }
@@ -47,6 +49,9 @@ class JazzerTopologyTest {
     assertEquals(
         "dev/erst/fingrind/cli/SqliteBookRoundTripFuzzTestInputs/roundTripSingleBook",
         JazzerHarness.sqliteBookRoundTrip().inputResourceDirectory());
+    assertEquals(
+        "dev/erst/fingrind/core/WeightedAverageCostingMathFuzzTestInputs/disposeUsesExactPoolMath",
+        JazzerHarness.inventoryCostingMath().inputResourceDirectory());
   }
 
   @Test
@@ -58,10 +63,16 @@ class JazzerTopologyTest {
             JazzerHarness.cliRequest(),
             JazzerHarness.ledgerPlanRequest(),
             JazzerHarness.postingWorkflow(),
-            JazzerHarness.sqliteBookRoundTrip()),
+            JazzerHarness.sqliteBookRoundTrip(),
+            JazzerHarness.inventoryCostingMath()),
         JazzerRunTarget.regression().harnesses());
     assertEquals(JazzerHarness.cliRequest(), JazzerRunTarget.cliRequest().replayHarness());
+    assertEquals(
+        JazzerRunTarget.inventoryCostingMath(),
+        JazzerRunTarget.fromTaskName("fuzzInventoryCostingMath"));
     assertEquals(JazzerHarnessKind.CLI_REQUEST, JazzerHarness.cliRequest().kind());
+    assertEquals(
+        JazzerHarnessKind.INVENTORY_COSTING_MATH, JazzerHarness.inventoryCostingMath().kind());
   }
 
   @Test

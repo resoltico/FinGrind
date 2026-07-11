@@ -76,7 +76,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
                 new ListAccountsResult.Listed(
                     accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,parentAccountCode,accountType,financialPositionLineClassification,cashFlowAssetClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
+        "accountCode,accountName,parentAccountCode,accountType,unitOfMeasureToken,quantityScale,financialPositionLineClassification,cashFlowAssetClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
     assertWriterOutput(
         writer ->
             writer.writeGetPostingResult(

@@ -40,15 +40,16 @@ final class BookkeepingEntryCashMovementConstructionSupport {
       MonetaryAmount amount,
       @Nullable SettlementAdjunct settlementAdjunct) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredCashAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(cashAccountCode, "cashAccountCode");
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
+            cashAccountCode, "cashAccountCode");
     AccountCode requiredReceivableAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             receivableAccountCode, "receivableAccountCode");
     MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    BookkeepingEntryValidationSupport.requireOptionalSettlementAdjunct(
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
+    BookkeepingEntryScalarValidationSupport.requireOptionalSettlementAdjunct(
         settlementAdjunct, requiredAmount, "settlementAdjunct");
     return new ReceiptState(
         requiredEffectiveDate,
@@ -64,15 +65,16 @@ final class BookkeepingEntryCashMovementConstructionSupport {
       MonetaryAmount amount,
       @Nullable SettlementAdjunct settlementAdjunct) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredPayableAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             payableAccountCode, "payableAccountCode");
     AccountCode requiredCashAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(cashAccountCode, "cashAccountCode");
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
+            cashAccountCode, "cashAccountCode");
     MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    BookkeepingEntryValidationSupport.requireOptionalSettlementAdjunct(
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
+    BookkeepingEntryScalarValidationSupport.requireOptionalSettlementAdjunct(
         settlementAdjunct, requiredAmount, "settlementAdjunct");
     return new PaymentState(
         requiredEffectiveDate, requiredPayableAccountCode, requiredCashAccountCode, requiredAmount);
@@ -85,18 +87,20 @@ final class BookkeepingEntryCashMovementConstructionSupport {
       MonetaryAmount amount,
       @Nullable ForeignExchangeDetails foreignExchangeDetails) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredCashAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(cashAccountCode, "cashAccountCode");
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
+            cashAccountCode, "cashAccountCode");
     AccountCode requiredEquityAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             equityAccountCode, "equityAccountCode");
     MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    BookkeepingEntryValidationSupport.requireTypedEntryForeignExchange(
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
+    BookkeepingEntryForeignExchangeValidationSupport.requireTypedEntryForeignExchange(
         requiredAmount,
         foreignExchangeDetails,
-        BookkeepingEntryValidationSupport.ForeignExchangeAllowance.SPOT_SETTLEMENT_ONLY,
+        BookkeepingEntryForeignExchangeValidationSupport.ForeignExchangeAllowance
+            .SPOT_TRANSACTION_ONLY,
         "ownerContribution");
     return new OwnerContributionState(
         requiredEffectiveDate, requiredCashAccountCode, requiredEquityAccountCode, requiredAmount);
@@ -109,18 +113,20 @@ final class BookkeepingEntryCashMovementConstructionSupport {
       MonetaryAmount amount,
       @Nullable ForeignExchangeDetails foreignExchangeDetails) {
     LocalDate requiredEffectiveDate =
-        BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
+        BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
     AccountCode requiredEquityAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
             equityAccountCode, "equityAccountCode");
     AccountCode requiredCashAccountCode =
-        BookkeepingEntryValidationSupport.requireAccountCode(cashAccountCode, "cashAccountCode");
+        BookkeepingEntryScalarValidationSupport.requireAccountCode(
+            cashAccountCode, "cashAccountCode");
     MonetaryAmount requiredAmount =
-        BookkeepingEntryValidationSupport.requirePositiveAmount(amount, "amount");
-    BookkeepingEntryValidationSupport.requireTypedEntryForeignExchange(
+        BookkeepingEntryScalarValidationSupport.requirePositiveAmount(amount, "amount");
+    BookkeepingEntryForeignExchangeValidationSupport.requireTypedEntryForeignExchange(
         requiredAmount,
         foreignExchangeDetails,
-        BookkeepingEntryValidationSupport.ForeignExchangeAllowance.SPOT_SETTLEMENT_ONLY,
+        BookkeepingEntryForeignExchangeValidationSupport.ForeignExchangeAllowance
+            .SPOT_TRANSACTION_ONLY,
         "ownerWithdrawal");
     return new OwnerWithdrawalState(
         requiredEffectiveDate, requiredEquityAccountCode, requiredCashAccountCode, requiredAmount);

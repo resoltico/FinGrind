@@ -117,6 +117,45 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
         });
   }
 
+  @Test
+  void loadBookIdentity_rejectsMismatchedPersistedCostingDoctrine() {
+    Path bookPath = tempDirectory.resolve("load-book-identity-costing-mismatch.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          SqliteStoreFixtureSupport.insertCanonicalInitializedBookMetadata(database);
+
+          IllegalStateException mismatch =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      SqliteStatementQueries.loadBookIdentity(
+                          redirectedDatabase(
+                              database,
+                              SqlitePostingSql.FIND_BOOK_IDENTITY_CORE,
+                              """
+                              select
+                                  entity_name,
+                                  accounting_kernel_profile,
+                                  accounting_basis,
+                                  accounting_framework_position,
+                                  entity_form,
+                                  book_template_id,
+                                  'WEIGHTED_AVERAGE' as costing_doctrine,
+                                  functional_currency_code,
+                                  fiscal_year_start_month,
+                                  fiscal_year_start_day
+                              from book_identity
+                              where singleton_id = 1
+                              limit 1
+                              """)));
+          assertEquals(
+              "Persisted SQLite book identity carries an inventory costing doctrine that does not match the selected book template.",
+              mismatch.getMessage());
+        });
+  }
+
   private static SqliteStatementRedirectingDatabase redirectedDatabase(
       SqliteNativeDatabase database, String targetSql, String replacementSql) {
     return new SqliteStatementRedirectingDatabase(

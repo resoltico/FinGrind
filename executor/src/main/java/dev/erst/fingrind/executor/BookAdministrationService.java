@@ -54,11 +54,6 @@ public final class BookAdministrationService {
     if (rejection.isPresent()) {
       return new AccountDeclarationOutcome.Rejected(rejection.orElseThrow());
     }
-    return bookStore.declareAccount(
-        command.accountCode(),
-        command.accountName(),
-        command.accountType(),
-        command.accountTaxonomy(),
-        clock.instant());
+    return bookStore.declareAccount(command, clock.instant());
   }
 }

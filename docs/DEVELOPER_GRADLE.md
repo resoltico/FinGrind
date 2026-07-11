@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -206,13 +206,13 @@ Maven Central before any Gradle verification stage runs.
 
 ### One managed-SQLite contract
 
-Both the root build and the nested Jazzer build compile the managed SQLite 3.53.2 / SQLite3
-Multiple Ciphers 2.3.5 runtime from the same vendored official amalgamation, through the same
+Both the root build and the nested Jazzer build compile the managed SQLite 3.53.3 / SQLite3
+Multiple Ciphers 2.3.6 runtime from the same vendored official amalgamation, through the same
 typed Gradle tasks. That keeps tests, CLI runs, and fuzzing on one native runtime contract instead
 of letting Gradle surfaces drift onto whatever system `libsqlite3` happened to be present.
 
 That contract now has a few explicit rules:
-- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.5-sqlite-3530200/`
+- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300/`
 - `verifyManagedSqliteSource` hashes `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c`
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
   `SQLITE_TEMP_STORE=3`, `SQLITE_SECURE_DELETE=1`, and `SQLITE3MC_SECURE_MEMORY=1`
@@ -259,15 +259,16 @@ That contract now has a few explicit rules:
 ### Committed Jazzer topology
 
 The Jazzer harness and run-target inventory lives in
-`jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json`. Shared Gradle
-build logic consumes that file for task registration, and Jazzer runtime support classes consume
-the same file for stable key lookup and topology assertions. That removes the old duplicated manual
-registry split between build logic and runtime code.
+`jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-harnesses.json` and
+`jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-run-targets.json`. Shared
+Gradle build logic consumes those catalogs for task registration, and Jazzer runtime support
+classes consume the same catalogs for stable key lookup and topology assertions. That removes the
+old duplicated manual registry split between build logic and runtime code.
 
 That same committed topology now feeds the nested Gradle `jazzerActiveTargets` and
 `jazzerReplayableTargets` query tasks, the repo-owned shell topology reader, and the Java operator
-entrypoints. The JSON document is the owner; Gradle, shell wrappers, and runtime support are
-projections over that one file rather than separate registries.
+entrypoints. The two JSON catalogs are the owner; Gradle, shell wrappers, and runtime support are
+projections over that one topology rather than separate registries.
 
 ### Thin consumer build scripts
 
@@ -404,7 +405,7 @@ Use this routing table before changing the build:
 | shared pulse scheduling | `gradle/build-logic/.../ScheduledPulseTestListener.kt` and concrete listeners |
 | dependency versions shared across product and Jazzer | `gradle/libs.versions.toml` |
 | nested Jazzer plugin wiring or imported catalogs | `jazzer/settings.gradle.kts` |
-| Jazzer harness and run-target topology | `jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json` |
+| Jazzer harness and run-target topology | `jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-harnesses.json`, `jazzer/src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-run-targets.json` |
 
 Rules:
 
@@ -432,8 +433,8 @@ These are the Gradle-level invariants worth preserving:
   contract
 - shared pulse scheduling lives in one base implementation, with build-specific listeners layered on
   top
-- the Jazzer topology file remains the single source of truth for harness keys, task names, and
-  working-directory ownership
+- the Jazzer harness and run-target catalogs remain the single source of truth for harness keys,
+  task names, and working-directory ownership
 - root `./gradlew check` stays focused on the product modules
 - active Jazzer fuzzing remains a wrapper-owned local operator flow through `jazzer/bin/*`
 - root `./check.sh` remains the supported whole-repo gate that sequences root verification, Jazzer
@@ -466,8 +467,8 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 - Are root and nested verification scopes still cleanly separated?
 - Are long-running test pulses still emitted from shared infrastructure rather than copy-pasted
   listeners?
-- Are root and nested builds still using the same managed SQLite 3.53.2 / SQLite3 Multiple
-  Ciphers 2.3.5 runtime contract?
+- Are root and nested builds still using the same managed SQLite 3.53.3 / SQLite3 Multiple
+  Ciphers 2.3.6 runtime contract?
 - Is source verification still pinned to the official SQLite3 Multiple Ciphers release input rather
   than an ad-hoc host library or repackaged archive?
 - Do the `jazzer/bin/*` wrappers still work on stock macOS `/bin/bash` 3.2 when no optional

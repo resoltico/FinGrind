@@ -4,11 +4,13 @@ import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Focused coverage for executable request-schema helper branches. */
@@ -135,5 +137,27 @@ class MachineContractRequestSchemasTest {
 
     assertThrows(
         NullPointerException.class, () -> MachineContractPostEntryVariantSchemas.schema(nullOf()));
+  }
+
+  @Test
+  void creditVariantSchemasPublishOwnedForeignExchangeFacts() {
+    List<BookkeepingEntryKind> creditVariants =
+        List.of(
+            BookkeepingEntryKind.SALE_ON_CREDIT,
+            BookkeepingEntryKind.PURCHASE_ON_CREDIT,
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+            BookkeepingEntryKind.EXPENSE_ON_CREDIT);
+
+    creditVariants.forEach(
+        entryKind ->
+            assertTrue(
+                schemaProperties(entryKind).containsKey("foreignExchange"), entryKind::wireValue));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> schemaProperties(BookkeepingEntryKind entryKind) {
+    return (Map<String, Object>)
+        Objects.requireNonNull(
+            MachineContractPostEntryVariantSchemas.schema(entryKind).get("properties"));
   }
 }

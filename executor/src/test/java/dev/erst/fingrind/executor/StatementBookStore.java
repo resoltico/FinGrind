@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
@@ -25,10 +26,19 @@ import java.util.concurrent.ConcurrentHashMap;
 final class StatementBookStore implements BookkeepingReadStore {
   private final List<RegisteredAccount> accounts;
   private final List<CommittedPosting> postings;
+  private final List<InventoryValuationMovementRecord> inventoryValuationMovements;
 
   StatementBookStore(List<RegisteredAccount> accounts, List<CommittedPosting> postings) {
+    this(accounts, postings, List.of());
+  }
+
+  StatementBookStore(
+      List<RegisteredAccount> accounts,
+      List<CommittedPosting> postings,
+      List<InventoryValuationMovementRecord> inventoryValuationMovements) {
     this.accounts = List.copyOf(accounts);
     this.postings = List.copyOf(postings);
+    this.inventoryValuationMovements = List.copyOf(inventoryValuationMovements);
   }
 
   @Override
@@ -66,6 +76,18 @@ final class StatementBookStore implements BookkeepingReadStore {
   @Override
   public List<RegisteredAccount> allAccounts() {
     return accounts;
+  }
+
+  @Override
+  public List<InventoryValuationMovementRecord> inventoryValuationMovements(
+      Optional<LocalDate> effectiveDateAsOf) {
+    return inventoryValuationMovements.stream()
+        .filter(
+            movement ->
+                effectiveDateAsOf
+                    .map(effectiveDate -> !movement.effectiveDate().isAfter(effectiveDate))
+                    .orElse(true))
+        .toList();
   }
 
   @Override

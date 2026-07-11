@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.BookQueryReportResult;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
@@ -18,6 +19,9 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationReport;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
@@ -30,6 +34,7 @@ import dev.erst.fingrind.contract.reportmodel.CashFlowStatementReportModelBuilde
 import dev.erst.fingrind.contract.reportmodel.ChangesInEquityReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.FinancialPositionReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.IncomeStatementReportModelBuilder;
+import dev.erst.fingrind.contract.reportmodel.InventoryValuationReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.PeriodSummaryReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.reportmodel.TaxObligationReportModelBuilder;
@@ -47,7 +52,6 @@ record CliReportCommandCatalog(
       accountBalance() {
     return configured(
         readWorkflow::accountBalance,
-        result -> result.fold(AccountBalanceResult.Reported::snapshot, rejected -> null),
         AccountBalanceReportModelBuilder::buildModel,
         responseWriter::writeAccountBalanceResult,
         CliReportExitCodes::exitCodeFor);
@@ -57,7 +61,6 @@ record CliReportCommandCatalog(
       trialBalance() {
     return configured(
         readWorkflow::trialBalance,
-        result -> result.fold(TrialBalanceResult.Reported::report, rejected -> null),
         TrialBalanceReportModelBuilder::buildModel,
         responseWriter::writeTrialBalanceResult,
         CliReportExitCodes::exitCodeFor);
@@ -67,7 +70,6 @@ record CliReportCommandCatalog(
       accountLedger() {
     return configured(
         readWorkflow::accountLedger,
-        result -> result.fold(AccountLedgerResult.Reported::report, rejected -> null),
         AccountLedgerReportModelBuilder::buildModel,
         responseWriter::writeAccountLedgerResult,
         CliReportExitCodes::exitCodeFor);
@@ -77,7 +79,6 @@ record CliReportCommandCatalog(
       periodSummary() {
     return configured(
         readWorkflow::periodSummary,
-        result -> result.fold(PeriodSummaryResult.Reported::report, rejected -> null),
         PeriodSummaryReportModelBuilder::buildModel,
         responseWriter::writePeriodSummaryResult,
         CliReportExitCodes::exitCodeFor);
@@ -88,7 +89,6 @@ record CliReportCommandCatalog(
       financialPosition() {
     return configured(
         readWorkflow::financialPosition,
-        result -> result.fold(FinancialPositionResult.Reported::report, rejected -> null),
         FinancialPositionReportModelBuilder::buildModel,
         responseWriter::writeFinancialPositionResult,
         CliReportExitCodes::exitCodeFor);
@@ -98,9 +98,18 @@ record CliReportCommandCatalog(
       incomeStatement() {
     return configured(
         readWorkflow::incomeStatement,
-        result -> result.fold(IncomeStatementResult.Reported::report, rejected -> null),
         IncomeStatementReportModelBuilder::buildModel,
         responseWriter::writeIncomeStatementResult,
+        CliReportExitCodes::exitCodeFor);
+  }
+
+  CliConfiguredReportHandler<
+          InventoryValuationQuery, InventoryValuationResult, InventoryValuationReport>
+      inventoryValuation() {
+    return configured(
+        readWorkflow::inventoryValuation,
+        InventoryValuationReportModelBuilder::buildModel,
+        responseWriter::writeInventoryValuationResult,
         CliReportExitCodes::exitCodeFor);
   }
 
@@ -109,7 +118,6 @@ record CliReportCommandCatalog(
       cashFlowStatement() {
     return configured(
         readWorkflow::cashFlowStatement,
-        result -> result.fold(CashFlowStatementResult.Reported::report, rejected -> null),
         CashFlowStatementReportModelBuilder::buildModel,
         responseWriter::writeCashFlowStatementResult,
         CliReportExitCodes::exitCodeFor);
@@ -119,7 +127,6 @@ record CliReportCommandCatalog(
       changesInEquity() {
     return configured(
         readWorkflow::changesInEquity,
-        result -> result.fold(ChangesInEquityResult.Reported::report, rejected -> null),
         ChangesInEquityReportModelBuilder::buildModel,
         responseWriter::writeChangesInEquityResult,
         CliReportExitCodes::exitCodeFor);
@@ -127,7 +134,7 @@ record CliReportCommandCatalog(
 
   CliConfiguredReportHandler<TaxObligationQuery, TaxObligationResult, TaxObligationReport>
       taxObligation() {
-    return configured(
+    return configuredTax(
         readWorkflow::taxObligation,
         result -> result.fold(TaxObligationResult.Reported::report, rejected -> null),
         TaxObligationReportModelBuilder::buildModel,
@@ -135,8 +142,22 @@ record CliReportCommandCatalog(
         CliBookQueryExitCodes::exitCodeFor);
   }
 
-  private static <QUERY, RESULT, REPORTED>
+  private static <QUERY, RESULT extends BookQueryReportResult<REPORTED>, REPORTED>
       CliConfiguredReportHandler<QUERY, RESULT, REPORTED> configured(
+          CliConfiguredReportHandler.WorkflowCall<QUERY, RESULT> workflowCall,
+          Function<REPORTED, ReportModel> reportModelBuilder,
+          CliConfiguredReportHandler.ResultWriter<RESULT> resultWriter,
+          ToIntFunction<RESULT> successExitCode) {
+    return new CliConfiguredReportHandler<>(
+        workflowCall,
+        BookQueryReportResult::reported,
+        reportModelBuilder,
+        resultWriter,
+        successExitCode);
+  }
+
+  private static <QUERY, RESULT, REPORTED>
+      CliConfiguredReportHandler<QUERY, RESULT, REPORTED> configuredTax(
           CliConfiguredReportHandler.WorkflowCall<QUERY, RESULT> workflowCall,
           CliConfiguredReportHandler.ReportedValue<RESULT, REPORTED> reportedValue,
           Function<REPORTED, ReportModel> reportModelBuilder,

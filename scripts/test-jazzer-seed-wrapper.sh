@@ -30,12 +30,23 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly promote_wrapper="${repo_root}/jazzer/bin/promote-seed"
 readonly audit_wrapper="${repo_root}/jazzer/bin/seed-audit"
 readonly regression_wrapper="${repo_root}/jazzer/bin/regression"
+readonly topology_reader="${repo_root}/scripts/read-jazzer-topology.py"
 readonly duplicate_seed_source="${repo_root}/jazzer/src/fuzz/resources/dev/erst/fingrind/cli/CliRequestFuzzTestInputs/readPostEntryCommand/basic_valid.json"
 
 [[ -x "${promote_wrapper}" ]] || die "missing promote-seed wrapper at ${promote_wrapper}"
 [[ -x "${audit_wrapper}" ]] || die "missing seed-audit wrapper at ${audit_wrapper}"
 [[ -x "${regression_wrapper}" ]] || die "missing regression wrapper at ${regression_wrapper}"
+[[ -f "${topology_reader}" ]] || die "missing topology reader at ${topology_reader}"
 [[ -f "${duplicate_seed_source}" ]] || die "missing duplicate-seed fixture at ${duplicate_seed_source}"
+
+readonly expected_replayable_targets_json="$(
+    python3 "${topology_reader}" replayable-target-keys \
+        | python3 -c 'import json,sys; print(json.dumps([line.strip() for line in sys.stdin if line.strip()]))'
+)"
+readonly expected_replayable_targets_csv="$(
+    python3 -c 'import json,sys; print(", ".join(json.loads(sys.argv[1])))' \
+        "${expected_replayable_targets_json}"
+)"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "${tmp_dir}"' EXIT
@@ -53,7 +64,7 @@ set -e
 [[ ${unknown_target_status} -eq 1 ]] || die "promote-seed should fail with exit 1 for an unknown target"
 [[ "${unknown_target_output}" == *'Unknown Jazzer run target: missing-target'* ]] ||
     die "promote-seed did not report the unknown target"
-[[ "${unknown_target_output}" == *'Supported targets: cli-request, ledger-plan-request, posting-workflow, sqlite-book-roundtrip'* ]] ||
+[[ "${unknown_target_output}" == *"Supported targets: ${expected_replayable_targets_csv}"* ]] ||
     die "promote-seed did not report the supported target list"
 [[ "${unknown_target_output}" != *'Task :'* ]] || die "promote-seed leaked Gradle task output for an unknown target"
 [[ "${unknown_target_output}" != *'BUILD FAILED'* ]] || die "promote-seed leaked Gradle failure output for an unknown target"
@@ -105,8 +116,9 @@ unknown_target_json_status=$?
 set -e
 
 [[ ${unknown_target_json_status} -eq 1 ]] || die "promote-seed should fail with exit 1 for an unknown target in JSON mode"
-python3 -c 'import json,sys; payload=json.loads(sys.argv[1]); assert payload["status"] == "error"; assert payload["command"] == "promote-seed"; assert "Unknown Jazzer run target: missing-target" in payload["message"]; assert payload["supportedTargetKeys"] == ["cli-request", "ledger-plan-request", "posting-workflow", "sqlite-book-roundtrip"]' \
-    "${unknown_target_json_output}" || die "promote-seed unknown-target JSON failure payload was not valid"
+python3 -c 'import json,sys; payload=json.loads(sys.argv[1]); expected=json.loads(sys.argv[2]); assert payload["status"] == "error"; assert payload["command"] == "promote-seed"; assert "Unknown Jazzer run target: missing-target" in payload["message"]; assert payload["supportedTargetKeys"] == expected' \
+    "${unknown_target_json_output}" "${expected_replayable_targets_json}" \
+    || die "promote-seed unknown-target JSON failure payload was not valid"
 
 set +e
 missing_input_json_output="$("${promote_wrapper}" cli-request "${missing_input_path}" --name test_seed --intent 'tmp' --json --console=plain 2>&1)"
@@ -151,8 +163,9 @@ seed_audit_unknown_json_status=$?
 set -e
 
 [[ ${seed_audit_unknown_json_status} -eq 1 ]] || die "seed-audit should fail with exit 1 for an unknown target in JSON mode"
-python3 -c 'import json,sys; payload=json.loads(sys.argv[1]); assert payload["status"] == "error"; assert payload["command"] == "seed-audit"; assert "Unknown Jazzer run target: missing-target" in payload["message"]; assert payload["supportedTargetKeys"] == ["cli-request", "ledger-plan-request", "posting-workflow", "sqlite-book-roundtrip"]' \
-    "${seed_audit_unknown_json_output}" || die "seed-audit unknown-target JSON failure payload was not valid"
+python3 -c 'import json,sys; payload=json.loads(sys.argv[1]); expected=json.loads(sys.argv[2]); assert payload["status"] == "error"; assert payload["command"] == "seed-audit"; assert "Unknown Jazzer run target: missing-target" in payload["message"]; assert payload["supportedTargetKeys"] == expected' \
+    "${seed_audit_unknown_json_output}" "${expected_replayable_targets_json}" \
+    || die "seed-audit unknown-target JSON failure payload was not valid"
 
 note 'seed-audit plain summary'
 set +e

@@ -56,6 +56,17 @@ final class ProtocolQueryOperationExamples {
             ProtocolOptions.OUTPUT);
   }
 
+  static String inventoryValuationExample() {
+    return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-30 %s %s text"
+        .formatted(
+            OperationId.INVENTORY_VALUATION.wireName(),
+            ProtocolOptions.BOOK_FILE,
+            ProtocolOptions.BOOK_KEY_FILE,
+            ProtocolOptions.AS_OF,
+            ProtocolOptions.MOVEMENTS,
+            ProtocolOptions.OUTPUT);
+  }
+
   static String incomeStatementExample() {
     return "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s 2026-04-01 %s 2026-04-30 %s text"
         .formatted(

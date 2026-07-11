@@ -2,13 +2,23 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.InventoryAdmissionPolicy;
+import dev.erst.fingrind.executor.bookkeeping.InventoryPostingResolution;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import java.util.List;
 import java.util.Optional;
 
 /** Post-tax entry resolution owner for typed-entry and reversal request expansion. */
-final class PostEntryResolutionSupport {
+public final class PostEntryResolutionSupport {
+  private static final InventoryAdmissionPolicy INVENTORY_ADMISSION_POLICY =
+      new InventoryAdmissionPolicy();
+
   private PostEntryResolutionSupport() {}
+
+  /** Resolves tax, reversal, and inventory-owned facts for one caller-authored entry. */
+  public static ResolutionOutcome resolve(BookkeepingEntry entry, PostingValidationStore book) {
+    return resolveAfterTaxValidation(entry, book, List.of(), 0);
+  }
 
   static ResolutionOutcome resolveAfterTaxValidation(
       BookkeepingEntry entry,
@@ -16,18 +26,40 @@ final class PostEntryResolutionSupport {
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       int violationCountBeforeTaxValidation) {
     if (violations.size() != violationCountBeforeTaxValidation) {
-      return new ResolutionOutcome(entry, Optional.empty());
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(entry), Optional.empty());
     }
-    BookkeepingEntry resolvedEntry = TaxPostingResolution.resolve(entry, book);
+    InventoryPostingResolution preTaxInventoryResolution;
+    try {
+      preTaxInventoryResolution =
+          TaxPostingResolution.requiresInventoryQuantityResolution(entry)
+              ? INVENTORY_ADMISSION_POLICY.resolve(entry, book)
+              : InventoryPostingResolution.withoutInventory(entry);
+    } catch (InventoryAdmissionPolicy.InventoryAdmissionFailure failure) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(entry), Optional.of(failure.rejection()));
+    }
+    BookkeepingEntry resolvedEntry =
+        TaxPostingResolution.resolve(preTaxInventoryResolution.resolvedEntry(), book);
     if (!violations.isEmpty()) {
-      return new ResolutionOutcome(resolvedEntry, Optional.empty());
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(resolvedEntry), Optional.empty());
     }
     Optional<BookkeepingPostingRejection> reversalRejection =
         reversalResolutionRejection(resolvedEntry, book);
     if (reversalRejection.isPresent()) {
-      return new ResolutionOutcome(resolvedEntry, reversalRejection);
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(resolvedEntry), reversalRejection);
     }
-    return new ResolutionOutcome(resolvedReversalEntry(resolvedEntry, book), Optional.empty());
+    BookkeepingEntry inventoryScopedEntry = resolvedReversalEntry(resolvedEntry, book);
+    try {
+      return new ResolutionOutcome(
+          INVENTORY_ADMISSION_POLICY.resolve(inventoryScopedEntry, book), Optional.empty());
+    } catch (InventoryAdmissionPolicy.InventoryAdmissionFailure failure) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(inventoryScopedEntry),
+          Optional.of(failure.rejection()));
+    }
   }
 
   private static Optional<BookkeepingPostingRejection> reversalResolutionRejection(
@@ -44,6 +76,16 @@ final class PostEntryResolutionSupport {
         : entry;
   }
 
-  record ResolutionOutcome(
-      BookkeepingEntry entry, Optional<BookkeepingPostingRejection> rejection) {}
+  public record ResolutionOutcome(
+      InventoryPostingResolution resolution, Optional<BookkeepingPostingRejection> rejection) {
+    public ResolutionOutcome {
+      java.util.Objects.requireNonNull(resolution, "resolution");
+      java.util.Objects.requireNonNull(rejection, "rejection");
+    }
+
+    /** Returns the resolved entry that downstream acceptance and commit paths should use. */
+    public BookkeepingEntry entry() {
+      return resolution.resolvedEntry();
+    }
+  }
 }

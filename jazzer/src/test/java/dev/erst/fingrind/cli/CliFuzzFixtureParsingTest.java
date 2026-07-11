@@ -121,11 +121,13 @@ class CliFuzzFixtureParsingTest {
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                        new MonetaryAmount("SEK", "4200")),
+                        new MonetaryAmount("SEK", "4200"),
+                        null),
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                        new MonetaryAmount("SEK", "4200")))));
+                        new MonetaryAmount("SEK", "4200"),
+                        null))));
     PostEntryCommand reversalCommand =
         CliFuzzFixtureCommandSupport.withEntry(
             typedCommand,

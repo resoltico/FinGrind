@@ -103,7 +103,7 @@ final class MachineContractTemplatesCatalog {
                 "ensure-book",
                 LedgerStepKind.ENSURE_BOOK,
                 new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-                    "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", "EUR", "01-01"),
+                    "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", null, "EUR", "01-01"),
                 null,
                 null,
                 null,

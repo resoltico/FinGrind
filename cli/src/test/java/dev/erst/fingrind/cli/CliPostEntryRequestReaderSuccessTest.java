@@ -136,7 +136,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "inventoryRelief": {
                 "inventoryAccountCode": "1400",
                 "costOfSalesAccountCode": "5000",
-                "amount": %s
+                "quantity": "4"
               },
               "provenance": {
                 "actorId": "actor-1",
@@ -147,7 +147,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               }
             }
             """
-                .formatted(eurMoneyJson("1000"), eurMoneyJson("400")));
+                .formatted(eurMoneyJson("1000")));
     PostEntryCommand creditSaleCommand =
         readFromStandardInput(
             """
@@ -160,7 +160,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "inventoryRelief": {
                 "inventoryAccountCode": "1400",
                 "costOfSalesAccountCode": "5000",
-                "amount": %s
+                "quantity": "4"
               },
               "provenance": {
                 "actorId": "actor-2",
@@ -171,7 +171,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               }
             }
             """
-                .formatted(eurMoneyJson("1000"), eurMoneyJson("400")));
+                .formatted(eurMoneyJson("1000")));
 
     BookkeepingEntry.SaleSettled settledSale =
         assertInstanceOf(BookkeepingEntry.SaleSettled.class, settledSaleCommand.entry());
@@ -182,10 +182,10 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
 
     assertEquals(new AccountCode("1400"), settledInventoryRelief.inventoryAccountCode());
     assertEquals(new AccountCode("5000"), settledInventoryRelief.costOfSalesAccountCode());
-    assertEquals("400", settledInventoryRelief.amount().minorUnits());
+    assertEquals("4", settledInventoryRelief.quantity().value());
     assertEquals(new AccountCode("1400"), creditInventoryRelief.inventoryAccountCode());
     assertEquals(new AccountCode("5000"), creditInventoryRelief.costOfSalesAccountCode());
-    assertEquals("400", creditInventoryRelief.amount().minorUnits());
+    assertEquals("4", creditInventoryRelief.quantity().value());
   }
 
   @Test
@@ -502,7 +502,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                   "quotedOn": "2026-04-06",
                   "quoteSource": "ecb-spot"
                 },
-                "treatmentKind": "SPOT_SETTLEMENT"
+                "treatmentKind": "SPOT_TRANSACTION"
               },
               "provenance": {
                 "actorId": "actor-1",
@@ -527,7 +527,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
     assertEquals("USD", entry.foreignExchangeDetails().transactionAmount().currencyCode());
     assertEquals("9200", entry.foreignExchangeDetails().functionalAmount().minorUnits());
     assertEquals(
-        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT,
+        ForeignExchangeTreatmentKind.SPOT_TRANSACTION,
         entry.foreignExchangeDetails().treatmentKind());
   }
 

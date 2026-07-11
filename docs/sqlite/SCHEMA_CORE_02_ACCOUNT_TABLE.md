@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: SQLITE_SCHEMA_CORE_ACCOUNT_TABLE
-updated: "2026-07-04"
+updated: "2026-07-11"
 ---
 
 # SQLite Schema: Account Table
@@ -28,6 +28,7 @@ create table if not exists account (
         financial_position_line_classification is null
         or financial_position_line_classification in (
             'CURRENT_ASSET',
+            'INVENTORY',
             'NONCURRENT_ASSET',
             'TRADE_RECEIVABLE',
             'CURRENT_LIABILITY',
@@ -62,6 +63,18 @@ create table if not exists account (
             'FINANCE_EXPENSE',
             'OTHER_EXPENSE'
         )
+    ),
+    unit_of_measure text check (
+        unit_of_measure is null
+        or (
+            length(unit_of_measure) between 1 and 64
+            and unit_of_measure glob '[A-Za-z0-9]*'
+            and unit_of_measure not glob '*[^A-Za-z0-9._:/-]*'
+        )
+    ),
+    quantity_scale integer check (
+        quantity_scale is null
+        or quantity_scale between 0 and 9
     ),
     active integer not null check (active in (0, 1)),
     declared_at text not null check (
@@ -114,9 +127,21 @@ create table if not exists account (
     ),
     check (
         (
+            financial_position_line_classification = 'INVENTORY'
+            and unit_of_measure is not null
+            and quantity_scale is not null
+        )
+        or (
+            coalesce(financial_position_line_classification, '') <> 'INVENTORY'
+            and unit_of_measure is null
+            and quantity_scale is null
+        )
+    ),
+    check (
+        (
             account_type = 'ASSET'
             and financial_position_line_classification in (
-                'CURRENT_ASSET', 'NONCURRENT_ASSET', 'TRADE_RECEIVABLE'
+                'CURRENT_ASSET', 'INVENTORY', 'NONCURRENT_ASSET', 'TRADE_RECEIVABLE'
             )
             and cash_flow_asset_classification in ('CASH_AND_CASH_EQUIVALENT', 'NON_CASH')
             and profit_and_loss_line_classification is null

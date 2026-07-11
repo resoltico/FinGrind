@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: SQLITE_SCHEMA_CORE_FOUNDATION
-updated: "2026-07-04"
+updated: "2026-07-11"
 ---
 
 # SQLite Schema: Foundation
@@ -13,7 +13,7 @@ updated: "2026-07-04"
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 38;
+pragma user_version = 39;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -97,6 +97,10 @@ create table if not exists book_identity (
     book_template_id text not null check (
         book_template_id in ('OWNER_MANAGED_SERVICE', 'OWNER_MANAGED_TRADING')
     ),
+    costing_doctrine text check (
+        costing_doctrine is null
+        or costing_doctrine in ('WEIGHTED_AVERAGE')
+    ),
     functional_currency_code text not null check (
         length(functional_currency_code) = 3
         and functional_currency_code glob '[A-Z][A-Z][A-Z]'
@@ -121,6 +125,16 @@ create table if not exists book_identity (
         (
             fiscal_year_start_month = 2
             and fiscal_year_start_day between 1 and 29
+        )
+    ),
+    check (
+        (
+            book_template_id = 'OWNER_MANAGED_SERVICE'
+            and costing_doctrine is null
+        )
+        or (
+            book_template_id = 'OWNER_MANAGED_TRADING'
+            and coalesce(costing_doctrine, '') = 'WEIGHTED_AVERAGE'
         )
     )
 ) strict;

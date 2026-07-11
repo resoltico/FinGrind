@@ -116,11 +116,13 @@ class RequestFingerprintOwnerTest {
                         new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("1000"),
                             JournalLine.EntrySide.DEBIT,
-                            new MonetaryAmount("EUR", "1000")),
+                            new MonetaryAmount("EUR", "1000"),
+                            null),
                         new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("3000"),
                             JournalLine.EntrySide.CREDIT,
-                            new MonetaryAmount("EUR", "1000")))),
+                            new MonetaryAmount("EUR", "1000"),
+                            null))),
                 new BookkeepingEntry.Reversal(
                     testJournalEntry().effectiveDate(),
                     new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
@@ -268,6 +270,7 @@ class RequestFingerprintOwnerTest {
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "9200"),
                     null,
+                    null,
                     foreignExchangeDetails("ecb-spot"),
                     null,
                     null)));
@@ -279,6 +282,7 @@ class RequestFingerprintOwnerTest {
                     new AccountCode("1000"),
                     new AccountCode("4000"),
                     new MonetaryAmount("EUR", "9200"),
+                    null,
                     null,
                     foreignExchangeDetails("bank-close"),
                     null,
@@ -293,12 +297,23 @@ class RequestFingerprintOwnerTest {
     RequestFingerprint noInventoryReliefFingerprint =
         RequestFingerprintOwner.fingerprint(postingCommand(sale(null, null)));
     RequestFingerprint inventoryReliefFingerprint =
-        RequestFingerprintOwner.fingerprint(postingCommand(saleWithInventoryRelief("400")));
+        RequestFingerprintOwner.fingerprint(postingCommand(saleWithInventoryRelief("4")));
     RequestFingerprint differentInventoryReliefFingerprint =
-        RequestFingerprintOwner.fingerprint(postingCommand(saleWithInventoryRelief("450")));
+        RequestFingerprintOwner.fingerprint(postingCommand(saleWithInventoryRelief("5")));
 
     assertNotEquals(noInventoryReliefFingerprint, inventoryReliefFingerprint);
     assertNotEquals(inventoryReliefFingerprint, differentInventoryReliefFingerprint);
+  }
+
+  @Test
+  void fingerprint_distinguishesAcceptedPostingSourceChannelBranch() {
+    BookkeepingEntry saleEntry = sale(null, null);
+    RequestFingerprint commandFingerprint =
+        RequestFingerprintOwner.fingerprint(postingCommand(saleEntry));
+    RequestFingerprint acceptedFingerprint =
+        RequestFingerprintOwner.fingerprint(acceptedPosting(saleEntry, SourceChannel.SYSTEM));
+
+    assertNotEquals(commandFingerprint, acceptedFingerprint);
   }
 
   private static PostingCommand postingCommand(
@@ -334,7 +349,7 @@ class RequestFingerprintOwnerTest {
     return new PostingCommand(
         entry.postingKind(),
         entry.postingOriginKind(),
-        entry.journalEntry(),
+        retainedJournalEntry(entry),
         switch (entry.postingLineage()) {
           case dev.erst.fingrind.contract.bookkeeping.PostingLineage.Direct _ ->
               PostingLineageModel.direct();
@@ -350,7 +365,16 @@ class RequestFingerprintOwnerTest {
             new CausationId("cause-entry"),
             Optional.of(new CorrelationId("corr-entry"))),
         SourceChannel.CLI,
-        entry);
+        entry,
+        null);
+  }
+
+  private static JournalEntry retainedJournalEntry(BookkeepingEntry entry) {
+    try {
+      return entry.journalEntry();
+    } catch (IllegalStateException ignored) {
+      return new JournalEntry(entry.effectiveDate(), testJournalEntry().lines());
+    }
   }
 
   private static PostingDraft postingDraft(
@@ -379,7 +403,35 @@ class RequestFingerprintOwnerTest {
                 Optional.of(new CorrelationId("corr-entry"))),
             Instant.parse("2026-04-07T12:00:00Z"),
             SourceChannel.CLI),
-        retainedEntry);
+        retainedEntry,
+        null);
+  }
+
+  private static AcceptedPosting acceptedPosting(
+      BookkeepingEntry entry, SourceChannel sourceChannel) {
+    return new AcceptedPosting(
+        entry.journalEntry(),
+        switch (entry.postingLineage()) {
+          case dev.erst.fingrind.contract.bookkeeping.PostingLineage.Direct _ ->
+              PostingLineageModel.direct();
+          case dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal reversal ->
+              PostingLineageModel.reversal(reversal.reference(), reversal.reason());
+        },
+        entry.postingKind(),
+        entry.postingOriginKind(),
+        accountingEvidence("accepted-entry-fingerprint"),
+        new RequestProvenance(
+            new ActorId("actor-accepted"),
+            ActorType.PERSON,
+            new CommandId("command-accepted"),
+            new IdempotencyKey("idem-accepted"),
+            new CausationId("cause-accepted"),
+            Optional.of(new CorrelationId("corr-accepted"))),
+        sourceChannel,
+        entry,
+        entry,
+        List.of(),
+        java.util.Map.of());
   }
 
   private static BookkeepingEntry.SaleSettled sale(
@@ -391,11 +443,12 @@ class RequestFingerprintOwnerTest {
         new MonetaryAmount("EUR", "1000"),
         null,
         null,
+        null,
         taxSelection,
         appliedTax);
   }
 
-  private static BookkeepingEntry.SaleSettled saleWithInventoryRelief(String inventoryMinorUnits) {
+  private static BookkeepingEntry.SaleSettled saleWithInventoryRelief(String inventoryQuantity) {
     return new BookkeepingEntry.SaleSettled(
         LocalDate.parse("2026-04-07"),
         new AccountCode("1000"),
@@ -404,7 +457,8 @@ class RequestFingerprintOwnerTest {
         new InventoryRelief(
             new AccountCode("1400"),
             new AccountCode("5000"),
-            new MonetaryAmount("EUR", inventoryMinorUnits)),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText(inventoryQuantity)),
+        null,
         null,
         null,
         null);
@@ -458,7 +512,7 @@ class RequestFingerprintOwnerTest {
             new MonetaryAmount("EUR", "9200"),
             LocalDate.parse("2026-04-06"),
             quoteSource),
-        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+        ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
   }
 
   private static JournalEntry testJournalEntry() {

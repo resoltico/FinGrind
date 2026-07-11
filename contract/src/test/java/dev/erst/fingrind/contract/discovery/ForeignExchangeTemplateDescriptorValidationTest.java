@@ -21,7 +21,7 @@ class ForeignExchangeTemplateDescriptorValidationTest {
             new MonetaryAmount("USD", "1100"),
             new MonetaryAmount("EUR", "1000"),
             quotedRate,
-            ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+            ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
 
     assertEquals("USD", foreignExchange.transactionAmount().currencyCode());
     assertEquals("ECB daily reference rate", quotedRate.quoteSource());
@@ -34,7 +34,7 @@ class ForeignExchangeTemplateDescriptorValidationTest {
                         new MonetaryAmount("USD", "0"),
                         new MonetaryAmount("EUR", "1000"),
                         quotedRate,
-                        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT))
+                        ForeignExchangeTreatmentKind.SPOT_TRANSACTION))
             .getMessage());
     assertEquals(
         "functionalAmount must carry one positive amount.",
@@ -45,7 +45,7 @@ class ForeignExchangeTemplateDescriptorValidationTest {
                         new MonetaryAmount("USD", "1100"),
                         new MonetaryAmount("EUR", "0"),
                         quotedRate,
-                        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT))
+                        ForeignExchangeTreatmentKind.SPOT_TRANSACTION))
             .getMessage());
     assertEquals(
         "transactionCurrencyAmount must carry one positive amount.",
@@ -77,6 +77,11 @@ class ForeignExchangeTemplateDescriptorValidationTest {
                     new ContractTemplates.PostingRequestTemplateDescriptor(
                         BookkeepingEntryKind.OPENING_POSITION,
                         "2026-04-25",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null,
                         null,
                         null,

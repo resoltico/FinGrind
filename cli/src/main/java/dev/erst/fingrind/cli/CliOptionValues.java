@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -93,6 +94,20 @@ final class CliOptionValues {
           Objects.requireNonNullElse(
               exception.getMessage(),
               "Option must be one supported accounting basis: " + optionName),
+          exception);
+    }
+  }
+
+  static InventoryCostingDoctrine parseInventoryCostingDoctrineOption(
+      String rawValue, String optionName) {
+    try {
+      return InventoryCostingDoctrine.fromWireValue(rawValue);
+    } catch (IllegalArgumentException exception) {
+      throw CliArgumentValueParser.invalid(
+          optionName,
+          Objects.requireNonNullElse(
+              exception.getMessage(),
+              "Option must be one supported inventory costing doctrine: " + optionName),
           exception);
     }
   }

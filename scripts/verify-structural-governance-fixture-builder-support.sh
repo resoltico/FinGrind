@@ -75,7 +75,7 @@ sql_fixture() {
 
 markdown_fixture() {
     local fixture_root=$1
-    mkdir -p "${fixture_root}/docs" "${fixture_root}/.codex"
+    mkdir -p "${fixture_root}/docs/sqlite" "${fixture_root}/.codex"
     cat > "${fixture_root}/README.md" <<'EOF'
 # FinGrind
 
@@ -93,6 +93,9 @@ EOF
 
 Focused protocol note.
 EOF
+    cp \
+        "${structural_governance_common_repo_root}/docs/sqlite/SCHEMA_CORE_04_POSTING_FACT.md" \
+        "${fixture_root}/docs/sqlite/SCHEMA_CORE_04_POSTING_FACT.md"
 }
 
 gradle_kts_fixture() {

@@ -30,6 +30,10 @@ final class CommittedRegressionSeedFixtures {
     return readHarnessInput(JazzerHarness.sqliteBookRoundTrip(), fileName);
   }
 
+  static byte[] inventoryCostingMathBytes(String fileName) {
+    return readHarnessInputBytes(JazzerHarness.inventoryCostingMath(), fileName);
+  }
+
   static ReplayExpectation expectation(JazzerHarness harness, String fileName) {
     return metadata(harness, fileName).expectation();
   }
@@ -50,11 +54,15 @@ final class CommittedRegressionSeedFixtures {
   }
 
   private static String readHarnessInput(JazzerHarness harness, String fileName) {
+    return new String(readHarnessInputBytes(harness, fileName), StandardCharsets.UTF_8);
+  }
+
+  private static byte[] readHarnessInputBytes(JazzerHarness harness, String fileName) {
     Objects.requireNonNull(harness, "harness must not be null");
     Objects.requireNonNull(fileName, "fileName must not be null");
     Path inputPath = harness.inputDirectory(PROJECT_DIRECTORY).resolve(fileName).normalize();
     try {
-      return Files.readString(inputPath, StandardCharsets.UTF_8);
+      return Files.readAllBytes(inputPath);
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Unable to read committed Jazzer seed input: " + inputPath, exception);

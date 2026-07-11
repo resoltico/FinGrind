@@ -2,10 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountTaxonomy;
-import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
@@ -22,6 +18,18 @@ import java.util.Optional;
 
 /** Shared posting delegation defaults for SQLite capability wrappers. */
 interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCapabilityView {
+  @Override
+  default java.util.Optional<dev.erst.fingrind.executor.bookkeeping.InventoryAccountState>
+      findInventoryAccountState(dev.erst.fingrind.core.AccountCode inventoryAccountCode) {
+    return SqliteReadCapabilityView.super.findInventoryAccountState(inventoryAccountCode);
+  }
+
+  @Override
+  default java.util.List<dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord>
+      inventoryMovements(dev.erst.fingrind.core.PostingId postingId) {
+    return SqliteReadCapabilityView.super.inventoryMovements(postingId);
+  }
+
   /** Returns the mutation operations owner for the underlying SQLite store. */
   SqliteStoreMutationOperations storeMutationOperations();
 
@@ -34,14 +42,9 @@ interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCa
 
   @Override
   default AccountDeclarationOutcome declareAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountTaxonomy accountTaxonomy,
-      Instant declaredAt) {
+      AccountDeclaration declaration, Instant declaredAt) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
-        .declareAccount(accountCode, accountName, accountType, accountTaxonomy, declaredAt);
+    return storeMutationOperations().declareAccount(declaration, declaredAt);
   }
 
   @Override

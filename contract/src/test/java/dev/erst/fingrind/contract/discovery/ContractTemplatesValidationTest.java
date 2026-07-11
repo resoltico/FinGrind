@@ -15,8 +15,10 @@ import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -81,6 +83,24 @@ class ContractTemplatesValidationTest {
   }
 
   @Test
+  void declareAccountTemplateDescriptor_acceptsInventoryUnitOfMeasure() {
+    UnitOfMeasure unitOfMeasure = new UnitOfMeasure("pcs", 0);
+    ContractTemplates.DeclareAccountTemplateDescriptor template =
+        new ContractTemplates.DeclareAccountTemplateDescriptor(
+            "1400",
+            "Inventory",
+            AccountType.ASSET,
+            AccountNodeKind.POSTABLE,
+            null,
+            FinancialPositionLineClassification.INVENTORY,
+            null,
+            CashFlowAssetClassification.NON_CASH,
+            unitOfMeasure);
+
+    assertEquals(unitOfMeasure, template.unitOfMeasure());
+  }
+
+  @Test
   void ledgerPlanStepTemplates_coverEveryCanonicalShape() {
     assertDoesNotThrow(
         () -> {
@@ -88,12 +108,14 @@ class ContractTemplatesValidationTest {
               "open",
               LedgerStepKind.ENSURE_BOOK,
               new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-                  "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", "EUR", "01-01"),
+                  "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", null, "EUR", "01-01"),
               null,
               null,
               null,
               null,
               null);
+          new ContractPlanTemplates.EnsureBookTemplateDescriptor(
+              "Acme Trading", "OWNER_MANAGED_TRADING", "CASH", "WEIGHTED_AVERAGE", "EUR", "01-01");
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null, null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
@@ -436,7 +458,7 @@ class ContractTemplatesValidationTest {
                     postingTemplateShape(
                         null,
                         null,
-                        new ContractTemplates.ReversalTemplateDescriptor(
+                        new ContractReversalTemplates.ReversalTemplateDescriptor(
                             "posting-1", "manual-correction"))));
     assertEquals("reversal must be absent for this entryKind.", forbiddenReversal.getMessage());
   }
@@ -560,7 +582,7 @@ class ContractTemplatesValidationTest {
                             journalLineTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
                             journalLineTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
                         null,
-                        new ContractTemplates.ReversalTemplateDescriptor(
+                        new ContractReversalTemplates.ReversalTemplateDescriptor(
                             "posting-1", "manual-correction"))));
     assertEquals("lines must be absent for this entryKind.", reversalForbidsLines.getMessage());
 
@@ -581,7 +603,7 @@ class ContractTemplatesValidationTest {
                         List.of(
                             openingBalanceTemplate("1000", JournalLine.EntrySide.DEBIT, "1000"),
                             openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
-                        new ContractTemplates.ReversalTemplateDescriptor(
+                        new ContractReversalTemplates.ReversalTemplateDescriptor(
                             "posting-1", "manual-correction"))));
     assertEquals(
         "openingBalances must be absent for this entryKind.",
@@ -602,7 +624,7 @@ class ContractTemplatesValidationTest {
                     postingTemplateShape(
                         null,
                         null,
-                        new ContractTemplates.ReversalTemplateDescriptor(
+                        new ContractReversalTemplates.ReversalTemplateDescriptor(
                             "posting-1", "manual-correction"))));
     assertEquals("amount must be absent for reversal.", forbiddenManualAmount.getMessage());
   }
@@ -611,7 +633,8 @@ class ContractTemplatesValidationTest {
   void postingRequestTemplateValidator_rejectsNullEntryKindWhenCalledDirectly() {
     ContractPostingRequestTemplateValidators.PostingTemplateFields fields =
         new ContractPostingRequestTemplateValidators.PostingTemplateFields(
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null);
 
     assertThrows(
         NullPointerException.class,
@@ -753,7 +776,8 @@ class ContractTemplatesValidationTest {
         postingTemplateShape(
             null,
             null,
-            new ContractTemplates.ReversalTemplateDescriptor("posting-1", "operator reversal")));
+            new ContractReversalTemplates.ReversalTemplateDescriptor(
+                "posting-1", "operator reversal")));
   }
 
   private static ContractTemplates.PostingRequestTemplateDescriptor directJournalPostingTemplate() {
@@ -776,12 +800,12 @@ class ContractTemplatesValidationTest {
   private record PostingTemplateShape(
       @Nullable List<ContractTemplates.JournalLineTemplateDescriptor> lines,
       @Nullable List<ContractTemplates.OpeningBalanceTemplateDescriptor> openingBalances,
-      ContractTemplates.@Nullable ReversalTemplateDescriptor reversal) {}
+      ContractReversalTemplates.@Nullable ReversalTemplateDescriptor reversal) {}
 
   private static PostingTemplateShape postingTemplateShape(
       @Nullable List<ContractTemplates.JournalLineTemplateDescriptor> lines,
       @Nullable List<ContractTemplates.OpeningBalanceTemplateDescriptor> openingBalances,
-      ContractTemplates.@Nullable ReversalTemplateDescriptor reversal) {
+      ContractReversalTemplates.@Nullable ReversalTemplateDescriptor reversal) {
     return new PostingTemplateShape(lines, openingBalances, reversal);
   }
 
@@ -803,8 +827,13 @@ class ContractTemplatesValidationTest {
         revenueAccountCode,
         null,
         expenseAccountCode,
+        null,
+        null,
+        null,
         equityAccountCode,
         amount,
+        null,
+        null,
         null,
         null,
         null,

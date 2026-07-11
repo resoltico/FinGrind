@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: CORE
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, core, journal, money, positive-money, posting-kind, posting-origin-kind, posting-coverage, reporting-period, request-provenance, currency-balance, normal-balance]
   questions: ["how does a journal entry work in fingrind", "where are money and posting primitives documented", "which doc file covers RequestProvenance", "what ledger primitives are in the fingrind core module"]
@@ -14,7 +14,8 @@ This companion file continues the exported `core` reference for journal grammar,
 types, durable posting vocabulary, bounded reporting periods, and caller-supplied request
 provenance.
 
-Account doctrine, book identity, temporal parsing, and shared kernel primitives remain in
+Book doctrine remains in [DOC_01_Core_BookDoctrine.md](./DOC_01_Core_BookDoctrine.md); book
+identity, temporal parsing, and the remaining shared-kernel primitives remain in
 [DOC_01_Core.md](./DOC_01_Core.md).
 
 ## `JournalEntry`
@@ -298,22 +299,30 @@ public enum BookkeepingEntryKind implements WireValue {
 - Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
-## `BookkeepingEntry`
+## `BookkeepingEntry`, `TypedBookkeepingEntry`, And `BookkeepingEntrySurface`
 
 `BookkeepingEntry` is the caller-authored closed set that the public write surface accepts before
-FinGrind materializes one canonical balanced journal entry.
+FinGrind materializes one canonical balanced journal entry. `TypedBookkeepingEntry` is its closed
+economic-event subset, while `BookkeepingEntrySurface` is the shared published view that every
+caller-authored variant implements.
 
 ```java
 public sealed interface BookkeepingEntry
+public sealed interface TypedBookkeepingEntry
+public interface BookkeepingEntrySurface
 ```
 
 - Purpose: model the typed business-event families and the raw direct-journal fallback without a
   second write kernel
-- Current variants: `DirectJournal`, `SaleSettled`, `SaleOnCredit`, `ExpenseSettled`,
-  `ExpenseOnCredit`, `Receipt`, `Payment`, `OwnerContribution`, `OwnerWithdrawal`,
-  `OpeningPosition`, and `Reversal`
-- Surface: `entryKind()` exposes the caller-authored public variant and `journalEntry()` derives
-  the exact `JournalEntry` that the write kernel validates and commits
+- Typed events: `SaleSettled`, `SaleOnCredit`, `PurchaseSettled`, `PurchaseOnCredit`, inventory
+  maintenance events, `ExpenseSettled`, `ExpenseOnCredit`, `Receipt`, `Payment`,
+  `OwnerContribution`, and `OwnerWithdrawal`
+- Distinct forms: `DirectJournal` carries a caller-authored journal, `OpeningPosition` establishes
+  opening balances, and `Reversal` references a prior posting rather than representing a new
+  economic event
+- Surface: `entryKind()`, `journalEntry()`, `postingKind()`, `postingOriginKind()`,
+  `postingLineage()`, `lines()`, and optional foreign-exchange facts live on
+  `BookkeepingEntrySurface`, giving every caller-authored variant one consistent derived view
 - Boundary: callers may bypass the typed business-event commands only through `DirectJournal`; no
   parallel recipe taxonomy survives on the public write surface
 - Adjuncts: `Receipt` and `Payment` may carry one optional settlement-side adjunct, while typed

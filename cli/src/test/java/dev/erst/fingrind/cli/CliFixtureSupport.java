@@ -163,6 +163,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
             null,
             null,
             null,
+            null,
             null);
     return new PostingFact(
         new PostingId("posting-sale-1"),

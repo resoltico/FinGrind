@@ -92,11 +92,13 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         JournalLine.EntrySide.DEBIT,
-                        new MonetaryAmount("EUR", "1000")),
+                        new MonetaryAmount("EUR", "1000"),
+                        null),
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         JournalLine.EntrySide.CREDIT,
-                        new MonetaryAmount("EUR", "1000")))),
+                        new MonetaryAmount("EUR", "1000"),
+                        null))),
             new AccountingEvidence(
                 List.of(
                     new SourceDocumentReference(
@@ -151,11 +153,13 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         JournalLine.EntrySide.DEBIT,
-                        new MonetaryAmount("EUR", "1000")),
+                        new MonetaryAmount("EUR", "1000"),
+                        null),
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         JournalLine.EntrySide.CREDIT,
-                        new MonetaryAmount("EUR", "1000")))),
+                        new MonetaryAmount("EUR", "1000"),
+                        null))),
             baseCommand.evidence(),
             baseCommand.requestProvenance(),
             baseCommand.sourceChannel());

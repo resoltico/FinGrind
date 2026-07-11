@@ -14,6 +14,7 @@ import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
@@ -108,11 +109,7 @@ final class CliFuzzFixtureStoreSupport {
 
     @Override
     public AccountDeclarationOutcome declareAccount(
-        AccountCode accountCode,
-        AccountName accountName,
-        AccountType accountType,
-        AccountTaxonomy accountTaxonomy,
-        Instant declaredAt) {
+        AccountDeclaration declaration, Instant declaredAt) {
       throw new UnsupportedOperationException("not used");
     }
 
@@ -183,6 +180,12 @@ final class CliFuzzFixtureStoreSupport {
 
     @Override
     public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public List<dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord>
+        inventoryValuationMovements(Optional<java.time.LocalDate> effectiveDateAsOf) {
       throw new UnsupportedOperationException("not used");
     }
 

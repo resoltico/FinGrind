@@ -168,6 +168,7 @@ class TaxReadServiceTest {
                             new MonetaryAmount("EUR", "10000"),
                             null,
                             null,
+                            null,
                             selection("vat-lv", "vat-standard-sale"),
                             appliedTax(
                                 "vat-lv",
@@ -186,6 +187,7 @@ class TaxReadServiceTest {
                             new AccountCode("1000"),
                             new AccountCode("4000"),
                             new MonetaryAmount("EUR", "5000"),
+                            null,
                             null,
                             null,
                             selection("vat-lv", "vat-standard-sale"),
@@ -244,6 +246,7 @@ class TaxReadServiceTest {
                             new AccountCode("1000"),
                             new AccountCode("4000"),
                             new MonetaryAmount("EUR", "1000"),
+                            null,
                             null,
                             null,
                             selection("vat-ee", "vat-standard-sale"),
@@ -393,7 +396,8 @@ class TaxReadServiceTest {
                 Optional.of(new CorrelationId("corr-" + postingId))),
             Instant.parse("2026-04-30T12:00:00Z"),
             SourceChannel.CLI),
-        entry);
+        entry,
+        null);
   }
 
   private static DeclaredTaxRegistration registration(String taxRegistrationId) {

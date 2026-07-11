@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
@@ -47,21 +48,8 @@ final class CliLedgerStepDataPayloadMapper {
   }
 
   private static boolean isCommittedJournalKind(LedgerJournalKind kind) {
-    return switch (kind) {
-      case RECORD_SALE_SETTLED,
-          RECORD_SALE_ON_CREDIT,
-          RECORD_EXPENSE_SETTLED,
-          RECORD_EXPENSE_ON_CREDIT,
-          RECORD_RECEIPT,
-          RECORD_PAYMENT,
-          RECORD_OWNER_CONTRIBUTION,
-          RECORD_OWNER_WITHDRAWAL,
-          RECORD_OPENING_POSITION,
-          RECORD_REVERSAL,
-          POST_ENTRY ->
-          true;
-      default -> false;
-    };
+    return kind != LedgerJournalKind.PLAN_BOUNDARY
+        && LedgerStepKind.valueOf(kind.name()).commitsPosting();
   }
 
   private static boolean isQueryJournalKind(LedgerJournalKind kind) {

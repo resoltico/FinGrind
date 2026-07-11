@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, declare-tax-registration, tax-obligation]
   questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented", "where is the tax request surface documented"]
@@ -426,7 +426,7 @@ public record QuotedExchangeRate(...)
   positive amount on both sides, and proves that the published functional amount equals the quoted
   rate translation exactly
 - `ForeignExchangeTreatmentKind`: closes the public treatment vocabulary to
-  `SPOT_SETTLEMENT`, `REALIZED_SETTLEMENT`, and `UNREALIZED_REMEASUREMENT`
+  `SPOT_TRANSACTION`, `REALIZED_SETTLEMENT`, and `UNREALIZED_REMEASUREMENT`
 - `QuotedExchangeRate`: owns one directional exact quote with quote date and quote source, and
   performs half-up translation from transaction currency into functional currency
 
@@ -471,15 +471,21 @@ public final class ProtocolLedgerPlanFields
   field-name registries
 - `ProtocolOpenBookFields`: owns the nested `entityName`, `functionalCurrency`, and
   `fiscalYearStart` field names for explicit book initialization
+- `ProtocolDeclareAccountFields`: owns the top-level account-declaration field names, including
+  the conditional nested `unitOfMeasure` object used only by inventory-account declarations
+- `ProtocolDeclareAccountFields.UnitOfMeasure`: owns the nested `token` and `quantityScale` field
+  names for that inventory unit-of-measure object
 - `ProtocolTaxRegistrationFields` and nested `.TaxCode` own the canonical top-level and declared
   tax-code field names for `declare-tax-registration`
 - `ProtocolPostEntryFields.TopLevel`, `.SettlementAdjunct`, `.ForeignExchange`, `.QuotedRate`,
-  `.InventoryRelief`, `.Tax`, `.JournalLine`, `.Provenance`, and `.Reversal` group the canonical
-  posting-request field families by JSON object scope; foreign-currency business events now carry
-  one nested `foreignExchange` object with one nested `quotedRate` object, receipt and payment
-  requests may carry one nested `settlementAdjunct` object, trading sale requests may carry one
-  nested `inventoryRelief` object, and journal-line `amount` remains one nested exact-money
-  object keyed by `ProtocolMoneyFields`
+  `.InventoryRelief`, `.Tax`, `.JournalLine`, `.OpeningBalance`, `.Provenance`, and `.Reversal`
+  group the canonical posting-request field families by JSON object scope; foreign-currency
+  business events carry one nested `foreignExchange` object with one nested `quotedRate` object,
+  trading inventory requests use the explicit top-level `inventoryAccountCode`,
+  `writeDownLossAccountCode`, `shrinkageLossAccountCode`, `countGainAccountCode`, `quantity`, and
+  `unitCost` facts as their selected entry kind requires, trading sale requests may carry one
+  nested `inventoryRelief` object, inventory opening balances carry nested `quantity`, and
+  journal-line `amount` remains one nested exact-money object keyed by `ProtocolMoneyFields`
 - `ProtocolLedgerPlanFields.Plan`, `.Step`, `.Query`, and `.Assertion` group the canonical
   ledger-plan field families by JSON object scope; assertion `netAmount` is the same nested
   exact-money object shape
@@ -504,6 +510,9 @@ public final class ProtocolLedgerPlanRequestFieldSets
   objects, including journal lines, evidence, tax selectors, and foreign-exchange fact bundles;
   `ProtocolLedgerPlanRequestFieldSets` owns ledger-plan top-level, step, query, and assertion
   objects
+- Current declare-account line: the accepted top-level field set includes `unitOfMeasure`, while
+  the narrower declare-account schema and parser-owning validation layer enforce the
+  inventory-only requiredness of that nested object
 - Boundary: these types own accepted-field inventories only; scalar grammar, requiredness, and
   nested object semantics remain owned by the narrower protocol field classes and request-shape
   descriptors
@@ -778,7 +787,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 38`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 39`
 
 ## `ProtectedBookFormatContract`
 

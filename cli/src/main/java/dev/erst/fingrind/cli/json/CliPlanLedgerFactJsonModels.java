@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Typed ledger-fact JSON payloads emitted by plan execution transport. */
-interface CliPlanLedgerFactJsonModels {
+public interface CliPlanLedgerFactJsonModels {
 
   /** JSON shape for one typed ledger fact observation. */
   sealed interface LedgerFactPayload

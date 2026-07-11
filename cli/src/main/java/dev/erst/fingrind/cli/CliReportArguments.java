@@ -45,6 +45,10 @@ final class CliReportArguments {
     return CliSummaryReportArguments.parseChangesInEquityCommand(arguments);
   }
 
+  static CliCommand parseInventoryValuationCommand(List<String> arguments) {
+    return CliInventoryValuationArguments.parseInventoryValuationCommand(arguments);
+  }
+
   static @Nullable LocalDate requireDateOption(
       @Nullable LocalDate currentValue, ListIterator<String> argumentIterator, String optionName) {
     if (currentValue != null) {

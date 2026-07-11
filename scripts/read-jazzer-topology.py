@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read committed Jazzer topology projections from the canonical topology JSON."""
+"""Read committed Jazzer run-target projections from the canonical run-target catalog."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from typing import Any
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="scripts/read-jazzer-topology.py",
-        description="Print canonical Jazzer target keys from the committed topology document.",
+        description="Print canonical Jazzer target keys from the committed run-target catalog.",
     )
     parser.add_argument(
         "projection",
@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
         "--topology-file",
         type=Path,
         default=None,
-        help="Optional override for the committed topology JSON path.",
+        help="Optional override for the committed Jazzer run-target JSON path.",
     )
     return parser.parse_args()
 
@@ -78,7 +78,7 @@ def topology_path(override: Path | None) -> Path:
         / "fingrind"
         / "jazzer"
         / "support"
-        / "jazzer-topology.json"
+        / "jazzer-run-targets.json"
     )
 
 
@@ -86,12 +86,11 @@ def read_run_targets(path: Path) -> list[dict[str, Any]]:
     try:
         root = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exception:
-        raise ValueError(f"Missing Jazzer topology file: {path}") from exception
+        raise ValueError(f"Missing Jazzer run-target catalog: {path}") from exception
     except json.JSONDecodeError as exception:
-        raise ValueError(f"Invalid Jazzer topology JSON: {path}") from exception
+        raise ValueError(f"Invalid Jazzer run-target JSON: {path}") from exception
 
-    document = require_object(root, "Jazzer topology")
-    run_targets = require_array(document.get("runTargets"), "runTargets")
+    run_targets = require_array(root, "runTargets")
     if not run_targets:
         raise ValueError("runTargets must not be empty")
     normalized_targets: list[dict[str, Any]] = []

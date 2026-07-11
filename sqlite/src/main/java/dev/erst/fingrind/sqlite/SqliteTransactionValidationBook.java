@@ -7,8 +7,14 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
+import dev.erst.fingrind.core.InventoryMovementKind;
+import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.Quantity;
+import dev.erst.fingrind.core.WeightedAverageCostingMath;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
+import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -101,6 +107,75 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
       return SqliteAccountStatementQueries.findAccounts(activeDatabase, accountCodes);
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
+    }
+  }
+
+  @Override
+  public Optional<InventoryAccountState> findInventoryAccountState(
+      AccountCode inventoryAccountCode) {
+    Objects.requireNonNull(inventoryAccountCode, "inventoryAccountCode");
+    Optional<RegisteredAccount> account = findAccount(inventoryAccountCode);
+    if (account.isEmpty() || account.orElseThrow().unitOfMeasure() == null) {
+      return Optional.empty();
+    }
+    try {
+      return SqliteStatementQueries.queryWithStatement(
+          activeDatabase,
+          SqliteInventoryCostingSql.LOAD_INVENTORY_ON_HAND_BY_ACCOUNT,
+          statement -> {
+            statement.bindText(1, inventoryAccountCode.value());
+            if (statement.step() == SqliteNativeResultCode.code("DONE")) {
+              return Optional.empty();
+            }
+            var unitOfMeasure = Objects.requireNonNull(account.orElseThrow().unitOfMeasure());
+            InventoryAccountState state =
+                new InventoryAccountState(
+                    new WeightedAverageCostingMath.InventoryPool(
+                        Quantity.ofScaledUnits(
+                            unitOfMeasure.quantityScale(), statement.columnLong(0)),
+                        Money.ofMinorUnits(
+                            requireInitializedBookIdentity().functionalCurrency(),
+                            statement.columnLong(1))),
+                    Optional.of(
+                        CanonicalTemporalText.parseLocalDate(
+                            SqlitePostingMapper.requiredText(statement, 2),
+                            "inventoryOnHand.lastMovementDate")));
+            if (statement.step() != SqliteNativeResultCode.code("DONE")) {
+              throw new IllegalStateException(
+                  "SQLite inventory_on_hand query returned more than one row for account "
+                      + inventoryAccountCode.value()
+                      + ".");
+            }
+            return Optional.of(state);
+          });
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure(
+          "Failed to query SQLite inventory state.", exception);
+    }
+  }
+
+  @Override
+  public List<InventoryMovementRecord> inventoryMovements(PostingId postingId) {
+    Objects.requireNonNull(postingId, "postingId");
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqliteInventoryCostingSql.LOAD_INVENTORY_MOVEMENTS_BY_POSTING_ID)) {
+      statement.bindText(1, postingId.value());
+      List<InventoryMovementRecord> movements = new java.util.ArrayList<>();
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
+        movements.add(
+            new InventoryMovementRecord(
+                new AccountCode(SqlitePostingMapper.requiredText(statement, 0)),
+                CanonicalTemporalText.parseLocalDate(
+                    SqlitePostingMapper.requiredText(statement, 1),
+                    "inventoryMovement.effectiveDate"),
+                InventoryMovementKind.fromWireValue(SqlitePostingMapper.requiredText(statement, 2)),
+                statement.columnLong(3),
+                statement.columnLong(4)));
+      }
+      return List.copyOf(movements);
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure(
+          "Failed to query SQLite inventory movements.", exception);
     }
   }
 

@@ -36,6 +36,7 @@ class BookkeepingEntryTest {
             null,
             null,
             null,
+            null,
             null);
     BookkeepingEntry.ExpenseSettled expense =
         new BookkeepingEntry.ExpenseSettled(
@@ -88,6 +89,7 @@ class BookkeepingEntryTest {
                     null,
                     null,
                     null,
+                    null,
                     null));
     assertEquals("amount must carry one positive amount.", nonPositiveAmount.getMessage());
   }
@@ -103,11 +105,13 @@ class BookkeepingEntryTest {
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new MonetaryAmount("EUR", "1000")),
+                    new MonetaryAmount("EUR", "1000"),
+                    null),
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("3000"),
                     JournalLine.EntrySide.CREDIT,
-                    new MonetaryAmount("EUR", "1000"))));
+                    new MonetaryAmount("EUR", "1000"),
+                    null)));
     BookkeepingEntry.Reversal reversal =
         new BookkeepingEntry.Reversal(
             LocalDate.parse("2026-04-07"),
@@ -144,6 +148,7 @@ class BookkeepingEntryTest {
             null,
             null,
             null,
+            null,
             null);
     BookkeepingEntry.ExpenseSettled expense =
         new BookkeepingEntry.ExpenseSettled(
@@ -175,11 +180,13 @@ class BookkeepingEntryTest {
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new MonetaryAmount("EUR", "1000")),
+                    new MonetaryAmount("EUR", "1000"),
+                    null),
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("3000"),
                     JournalLine.EntrySide.CREDIT,
-                    new MonetaryAmount("EUR", "1000"))));
+                    new MonetaryAmount("EUR", "1000"),
+                    null)));
     BookkeepingEntry.Reversal reversal =
         new BookkeepingEntry.Reversal(
             journalEntry().effectiveDate(),
@@ -275,7 +282,8 @@ class BookkeepingEntryTest {
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new MonetaryAmount("EUR", "0")));
+                    new MonetaryAmount("EUR", "0"),
+                    null));
     assertEquals("amount must carry one positive amount.", nonPositiveOpeningBalance.getMessage());
   }
 

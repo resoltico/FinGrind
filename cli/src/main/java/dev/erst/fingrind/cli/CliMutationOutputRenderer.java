@@ -44,6 +44,7 @@ final class CliMutationOutputRenderer {
                         .profitAndLossLineClassification()
                         .map(CliAccountStatementLabels::displayProfitAndLossLineClassification)
                         .orElse("(none)")),
+                List.of("Unit of measure", displayUnitOfMeasure(account)),
                 List.of(
                     "Normal balance",
                     CliAccountStatementLabels.displayNormalBalanceLabel(account.normalBalance())),
@@ -123,5 +124,14 @@ final class CliMutationOutputRenderer {
       case "unchanged" -> "Account Unchanged";
       default -> "Account Updated";
     };
+  }
+
+  private static String displayUnitOfMeasure(DeclaredAccount account) {
+    return account.unitOfMeasure() == null
+        ? "(none)"
+        : account.unitOfMeasure().token()
+            + " (scale "
+            + account.unitOfMeasure().quantityScale()
+            + ")";
   }
 }

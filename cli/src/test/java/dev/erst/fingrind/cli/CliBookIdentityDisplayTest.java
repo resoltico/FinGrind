@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -47,5 +48,22 @@ class CliBookIdentityDisplayTest {
     assertEquals(
         List.of("Accounting posture", "Non-statutory internal management"),
         CliBookIdentityDisplay.detailRows(bookIdentity).get(3));
+  }
+
+  @Test
+  void rows_includeInventoryCostingForTradingBooks() {
+    BookIdentity bookIdentity =
+        new BookIdentity(
+            new EntityProfile(new BookEntityName("Acme Trading")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("01-01"));
+
+    assertTrue(
+        CliBookIdentityDisplay.detailRows(bookIdentity)
+            .contains(List.of("Inventory costing", "WEIGHTED_AVERAGE")));
+    assertTrue(
+        CliBookIdentityDisplay.contextRows(bookIdentity)
+            .contains(List.of("Inventory costing", "WEIGHTED_AVERAGE")));
   }
 }

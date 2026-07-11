@@ -36,7 +36,8 @@ final class CliFuzzFixtureCommandSupport {
               index < splitIndex
                   ? dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT
                   : dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-              new MonetaryAmount("EUR", "100")));
+              new MonetaryAmount("EUR", "100"),
+              null));
     }
     return withEntry(
         CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8)),

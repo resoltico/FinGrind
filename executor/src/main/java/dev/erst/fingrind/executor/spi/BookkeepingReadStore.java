@@ -7,4 +7,5 @@ public interface BookkeepingReadStore
         AccountCatalogStore,
         PostingLookupStore,
         PostingHistoryStore,
+        InventoryValuationStore,
         BookkeepingReportStore {}

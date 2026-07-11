@@ -22,7 +22,8 @@ public record CommittedPosting(
     PostingOriginKind postingOriginKind,
     AccountingEvidence evidence,
     CommittedProvenance provenance,
-    @Nullable BookkeepingEntry originatingEntry) {
+    @Nullable BookkeepingEntry callerAuthoredEntryOrNull,
+    @Nullable BookkeepingEntry resolvedOriginatingEntryOrNull) {
   /** Validates one committed posting fact. */
   public CommittedPosting {
     Objects.requireNonNull(postingId, "postingId");
@@ -32,8 +33,14 @@ public record CommittedPosting(
     Objects.requireNonNull(postingOriginKind, "postingOriginKind");
     Objects.requireNonNull(evidence, "evidence");
     Objects.requireNonNull(provenance, "provenance");
-    PostingOriginatingEntryValidator.requireMatches(
-        originatingEntry,
+    PostingOriginatingEntryValidator.requireCallerAuthoredMatches(
+        callerAuthoredEntryOrNull,
+        postingKind,
+        postingOriginKind,
+        postingLineage,
+        "committed posting");
+    PostingOriginatingEntryValidator.requireResolvedMatches(
+        resolvedOriginatingEntryOrNull,
         postingKind,
         postingOriginKind,
         journalEntry,
@@ -58,6 +65,7 @@ public record CommittedPosting(
         postingOriginKind,
         evidence,
         provenance,
+        null,
         null);
   }
 
@@ -73,6 +81,11 @@ public record CommittedPosting(
 
   /** Returns the optional caller-authored entry facts retained with this committed posting. */
   public Optional<BookkeepingEntry> callerAuthoredEntry() {
-    return Optional.ofNullable(originatingEntry);
+    return Optional.ofNullable(callerAuthoredEntryOrNull);
+  }
+
+  /** Returns the optional executor-resolved entry facts retained with this committed posting. */
+  public Optional<BookkeepingEntry> resolvedOriginatingEntry() {
+    return Optional.ofNullable(resolvedOriginatingEntryOrNull);
   }
 }

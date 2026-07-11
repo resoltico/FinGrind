@@ -39,14 +39,18 @@ internal data class JazzerTopology(
         runTargetsByKey[key] ?: throw IllegalArgumentException("Unknown Jazzer run target key: $key")
 
     companion object {
-        private const val TOPOLOGY_PATH = "src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-topology.json"
+        private const val HARNESSES_PATH = "src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-harnesses.json"
+        private const val RUN_TARGETS_PATH = "src/main/resources/dev/erst/fingrind/jazzer/support/jazzer-run-targets.json"
 
         fun load(project: Project): JazzerTopology {
-            val topologyFile = project.layout.projectDirectory.file(TOPOLOGY_PATH).asFile
-            val root = JsonSlurper().parse(topologyFile) as? Map<*, *>
-                ?: throw IllegalArgumentException("Jazzer topology must be a JSON object: $TOPOLOGY_PATH")
+            val harnessesFile = project.layout.projectDirectory.file(HARNESSES_PATH).asFile
+            val runTargetsFile = project.layout.projectDirectory.file(RUN_TARGETS_PATH).asFile
+            val harnessesRoot = JsonSlurper().parse(harnessesFile) as? List<*>
+                ?: throw IllegalArgumentException("Jazzer harness catalog must be a JSON array: $HARNESSES_PATH")
+            val runTargetsRoot = JsonSlurper().parse(runTargetsFile) as? List<*>
+                ?: throw IllegalArgumentException("Jazzer run-target catalog must be a JSON array: $RUN_TARGETS_PATH")
             val harnesses =
-                maps(root["harnesses"], "harnesses").map { map ->
+                maps(harnessesRoot, "harnesses").map { map ->
                     JazzerHarnessSpec(
                         key = string(map, "key"),
                         displayName = string(map, "displayName"),
@@ -55,7 +59,7 @@ internal data class JazzerTopology(
                     )
                 }
             val runTargets =
-                maps(root["runTargets"], "runTargets").map { map ->
+                maps(runTargetsRoot, "runTargets").map { map ->
                     JazzerRunTargetSpec(
                         key = string(map, "key"),
                         displayName = string(map, "displayName"),
@@ -84,10 +88,10 @@ internal data class JazzerTopology(
         private fun boolean(map: Map<*, *>, key: String): Boolean =
             map[key] as? Boolean ?: throw IllegalArgumentException("Missing boolean field '$key' in Jazzer topology")
 
-        private fun maps(value: Any?, key: String): List<Map<*, *>> =
-            (value as? List<*>)?.map { item ->
+        private fun maps(value: List<*>, key: String): List<Map<*, *>> =
+            value.map { item ->
                 item as? Map<*, *> ?: throw IllegalArgumentException("Field '$key' must contain JSON objects")
-            } ?: throw IllegalArgumentException("Missing array field '$key' in Jazzer topology")
+            }
 
         private fun strings(value: Any?, key: String): List<String> =
             (value as? List<*>)?.map { item ->

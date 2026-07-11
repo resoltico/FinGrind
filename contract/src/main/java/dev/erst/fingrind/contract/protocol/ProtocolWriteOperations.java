@@ -90,12 +90,37 @@ final class ProtocolWriteOperations {
             OperationId.RECORD_PURCHASE_SETTLED,
             "Record Settled Purchase",
             "Commit a settled inventory purchase entry into the selected trading-template SQLite book.",
-            "Settled-purchase request scaffolds publish the trading-template inventory, cash, amount, evidence, and provenance fields."),
+            "Settled-purchase request scaffolds publish inventory, cash, quantity, unitCost, optional tax and FX, evidence, and provenance fields."),
         recordEntryOperation(
             OperationId.RECORD_PURCHASE_ON_CREDIT,
             "Record Purchase On Credit",
             "Commit a purchase-on-credit inventory entry into the selected trading-template SQLite book.",
-            "Purchase-on-credit request scaffolds publish the trading-template inventory, payable, amount, evidence, and provenance fields."),
+            "Purchase-on-credit request scaffolds publish inventory, payable, quantity, unitCost, optional tax and FX, evidence, and provenance fields."),
+        recordEntryOperation(
+            OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED,
+            "Record Settled Inventory Capitalization",
+            "Commit a settled landed-cost capitalization into an existing inventory pool.",
+            "Settled inventory-capitalization scaffolds publish inventory, cash, pre-VAT amount, optional tax and FX, evidence, and provenance fields."),
+        recordEntryOperation(
+            OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
+            "Record Inventory Capitalization On Credit",
+            "Commit a payable landed-cost capitalization into an existing inventory pool.",
+            "Inventory-capitalization-on-credit scaffolds publish inventory, payable, pre-VAT amount, optional tax and FX, evidence, and provenance fields."),
+        recordEntryOperation(
+            OperationId.RECORD_INVENTORY_WRITE_DOWN,
+            "Record Inventory Write-Down",
+            "Commit a carrying-cost write-down against an existing inventory pool.",
+            "Inventory write-down scaffolds publish inventory, writeDownLossAccountCode, amount, evidence, and provenance fields."),
+        recordEntryOperation(
+            OperationId.RECORD_INVENTORY_SHRINKAGE,
+            "Record Inventory Shrinkage",
+            "Commit a quantity shrinkage adjustment with executor-derived carrying cost.",
+            "Inventory shrinkage scaffolds publish inventory, shrinkageLossAccountCode, quantity, evidence, and provenance fields."),
+        recordEntryOperation(
+            OperationId.RECORD_INVENTORY_COUNT_INCREASE,
+            "Record Inventory Count Increase",
+            "Commit a count-discovered inventory increase at an exact per-unit carrying cost.",
+            "Inventory count-increase scaffolds publish inventory, countGainAccountCode, quantity, unitCost, evidence, and provenance fields."),
         recordEntryOperation(
             OperationId.RECORD_EXPENSE_SETTLED,
             "Record Settled Expense",
@@ -130,7 +155,7 @@ final class ProtocolWriteOperations {
             OperationId.RECORD_OPENING_POSITION,
             "Record Opening Position",
             "Commit an opening-position entry into the selected SQLite book.",
-            "Opening-position request scaffolds publish the opening-only request language with openingBalances, evidence, and provenance fields."),
+            "Opening-position request scaffolds publish openingBalances, evidence, and provenance fields. Inventory opening balances carry exact quantity alongside carrying cost."),
         recordEntryOperation(
             OperationId.RECORD_REVERSAL,
             "Record Reversal",
@@ -151,7 +176,7 @@ final class ProtocolWriteOperations {
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Commit a raw direct-journal posting request into the selected SQLite book. Prefer the record-* commands when a typed business-entry command matches the operator's intent.",
+        "Commit a raw direct-journal posting request into the selected SQLite book. Prefer the record-* commands when a typed business-entry command matches the operator's intent; raw direct-journal requests do not admit inventory accounts.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s > request.json"

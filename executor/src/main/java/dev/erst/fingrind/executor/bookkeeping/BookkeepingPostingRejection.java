@@ -37,7 +37,9 @@ public sealed interface BookkeepingPostingRejection
       permits BookkeepingPostingRejection.UnknownAccount,
           BookkeepingPostingRejection.InactiveAccount,
           BookkeepingPostingRejection.NonPostableAccount,
-          InventoryBalanceBelowZeroViolation {}
+          InventoryMovementPrecedesAccountHorizonViolation,
+          InventoryQuantityBelowZeroViolation,
+          InventoryWriteDownExceedsCarryingCostViolation {}
 
   /** Refusal for a posting request with one or more account-state violations. */
   record AccountStateViolations(List<AccountStateViolation> violations)

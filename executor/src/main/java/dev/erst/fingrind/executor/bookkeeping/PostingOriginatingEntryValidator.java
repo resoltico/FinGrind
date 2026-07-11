@@ -11,9 +11,9 @@ import org.jspecify.annotations.Nullable;
 public final class PostingOriginatingEntryValidator {
   private PostingOriginatingEntryValidator() {}
 
-  /** Rejects caller-authored entry facts that drift from the executor posting they annotate. */
-  public static void requireMatches(
-      @Nullable BookkeepingEntry originatingEntry,
+  /** Rejects resolved entry facts that drift from the executor posting they annotate. */
+  public static void requireResolvedMatches(
+      @Nullable BookkeepingEntry resolvedOriginatingEntry,
       PostingKind postingKind,
       PostingOriginKind postingOriginKind,
       JournalEntry journalEntry,
@@ -24,28 +24,56 @@ public final class PostingOriginatingEntryValidator {
     Objects.requireNonNull(journalEntry, "journalEntry");
     Objects.requireNonNull(postingLineage, "postingLineage");
     Objects.requireNonNull(subjectName, "subjectName");
-    if (originatingEntry == null) {
+    if (resolvedOriginatingEntry == null) {
       return;
     }
-    if (originatingEntry.postingKind() != postingKind) {
+    if (resolvedOriginatingEntry.postingKind() != postingKind) {
       throw mismatch("postingKind", subjectName);
     }
-    if (originatingEntry.postingOriginKind() != postingOriginKind) {
+    if (resolvedOriginatingEntry.postingOriginKind() != postingOriginKind) {
       throw mismatch("postingOriginKind", subjectName);
     }
-    if (!originatingEntry.journalEntry().equals(journalEntry)) {
+    if (!resolvedOriginatingEntry.journalEntry().equals(journalEntry)) {
       throw new IllegalArgumentException(
-          "originatingEntry journalEntry must match the " + subjectName + " journalEntry.");
+          "resolvedOriginatingEntry journalEntry must match the " + subjectName + " journalEntry.");
     }
-    if (!lineageEquals(originatingEntry, postingLineage)) {
+    if (!lineageEquals(resolvedOriginatingEntry, postingLineage)) {
       throw new IllegalArgumentException(
-          "originatingEntry postingLineage must match the " + subjectName + " lineage.");
+          "resolvedOriginatingEntry postingLineage must match the " + subjectName + " lineage.");
+    }
+  }
+
+  /** Rejects caller-authored entry facts whose durable identity drifts from the posting shape. */
+  public static void requireCallerAuthoredMatches(
+      @Nullable BookkeepingEntry callerAuthoredEntry,
+      PostingKind postingKind,
+      PostingOriginKind postingOriginKind,
+      PostingLineageModel postingLineage,
+      String subjectName) {
+    Objects.requireNonNull(postingKind, "postingKind");
+    Objects.requireNonNull(postingOriginKind, "postingOriginKind");
+    Objects.requireNonNull(postingLineage, "postingLineage");
+    Objects.requireNonNull(subjectName, "subjectName");
+    if (callerAuthoredEntry == null) {
+      return;
+    }
+    if (callerAuthoredEntry.postingKind() != postingKind) {
+      throw new IllegalArgumentException(
+          "callerAuthoredEntry postingKind must match the " + subjectName + ".");
+    }
+    if (callerAuthoredEntry.postingOriginKind() != postingOriginKind) {
+      throw new IllegalArgumentException(
+          "callerAuthoredEntry postingOriginKind must match the " + subjectName + ".");
+    }
+    if (!lineageEquals(callerAuthoredEntry, postingLineage)) {
+      throw new IllegalArgumentException(
+          "callerAuthoredEntry postingLineage must match the " + subjectName + " lineage.");
     }
   }
 
   private static IllegalArgumentException mismatch(String fieldName, String subjectName) {
     return new IllegalArgumentException(
-        "originatingEntry " + fieldName + " must match the " + subjectName + ".");
+        "resolvedOriginatingEntry " + fieldName + " must match the " + subjectName + ".");
   }
 
   private static boolean lineageEquals(

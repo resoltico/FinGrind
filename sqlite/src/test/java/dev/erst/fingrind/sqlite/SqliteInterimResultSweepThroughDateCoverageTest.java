@@ -35,10 +35,11 @@ class SqliteInterimResultSweepThroughDateCoverageTest extends SqlitePostingFactS
             SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       postingFactStore.declareAccount(
-          new AccountCode("3200"),
-          new AccountName("Result Holding"),
-          AccountType.EQUITY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+          new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+              new AccountCode("3200"),
+              new AccountName("Result Holding"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
           Instant.parse("2026-12-31T12:00:00Z"));
 
       InterimResultSweepOutcome.Rejected rejected =
@@ -66,10 +67,11 @@ class SqliteInterimResultSweepThroughDateCoverageTest extends SqlitePostingFactS
             SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       postingFactStore.declareAccount(
-          new AccountCode("3200"),
-          new AccountName("Result Holding"),
-          AccountType.EQUITY,
-          financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+          new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+              new AccountCode("3200"),
+              new AccountName("Result Holding"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
           SWEEPED_AT);
       commitPosting(
           postingFactStore,

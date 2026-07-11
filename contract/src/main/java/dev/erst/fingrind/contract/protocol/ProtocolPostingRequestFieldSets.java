@@ -34,28 +34,56 @@ public final class ProtocolPostingRequestFieldSets {
           ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.TAX,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> PURCHASE_SETTLED_FIELDS =
-      Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+  static final Set<String> PURCHASE_SETTLED_FIELDS =
+      inventoryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.QUANTITY,
+          ProtocolPostEntryFields.TopLevel.UNIT_COST,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX);
+  static final Set<String> PURCHASE_ON_CREDIT_FIELDS =
+      inventoryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.QUANTITY,
+          ProtocolPostEntryFields.TopLevel.UNIT_COST,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX);
+  static final Set<String> INVENTORY_CAPITALIZATION_SETTLED_FIELDS =
+      inventoryFields(
           ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
           ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
-  private static final Set<String> PURCHASE_ON_CREDIT_FIELDS =
-      Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+          ProtocolPostEntryFields.TopLevel.TAX);
+  static final Set<String> INVENTORY_CAPITALIZATION_ON_CREDIT_FIELDS =
+      inventoryFields(
           ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX);
+  static final Set<String> INVENTORY_WRITE_DOWN_FIELDS =
+      inventoryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.WRITE_DOWN_LOSS_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT);
+  static final Set<String> INVENTORY_SHRINKAGE_FIELDS =
+      inventoryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.SHRINKAGE_LOSS_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.QUANTITY);
+  static final Set<String> INVENTORY_COUNT_INCREASE_FIELDS =
+      inventoryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.COUNT_GAIN_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.QUANTITY,
+          ProtocolPostEntryFields.TopLevel.UNIT_COST);
   private static final Set<String> EXPENSE_SETTLED_FIELDS =
       Set.of(
           ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
@@ -74,6 +102,7 @@ public final class ProtocolPostingRequestFieldSets {
           ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
           ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
           ProtocolPostEntryFields.TopLevel.TAX,
           ProtocolPostEntryFields.TopLevel.EVIDENCE,
           ProtocolPostEntryFields.TopLevel.PROVENANCE);
@@ -135,6 +164,18 @@ public final class ProtocolPostingRequestFieldSets {
 
   private ProtocolPostingRequestFieldSets() {}
 
+  private static Set<String> inventoryFields(String... variantFields) {
+    var fields =
+        new java.util.LinkedHashSet<>(
+            Set.of(
+                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+                ProtocolPostEntryFields.TopLevel.EVIDENCE,
+                ProtocolPostEntryFields.TopLevel.PROVENANCE));
+    java.util.Collections.addAll(fields, variantFields);
+    return Set.copyOf(fields);
+  }
+
   /** Returns the accepted top-level fields shared by post-entry requests. */
   public static Set<String> postEntryTopLevelFields() {
     return POST_ENTRY_TOP_LEVEL_FIELDS;
@@ -153,16 +194,6 @@ public final class ProtocolPostingRequestFieldSets {
   /** Returns the accepted top-level fields for sale-on-credit requests. */
   public static Set<String> saleOnCreditFields() {
     return SALE_ON_CREDIT_FIELDS;
-  }
-
-  /** Returns the accepted top-level fields for settled-purchase requests. */
-  public static Set<String> purchaseSettledFields() {
-    return PURCHASE_SETTLED_FIELDS;
-  }
-
-  /** Returns the accepted top-level fields for purchase-on-credit requests. */
-  public static Set<String> purchaseOnCreditFields() {
-    return PURCHASE_ON_CREDIT_FIELDS;
   }
 
   /** Returns the accepted top-level fields for settled expense requests. */

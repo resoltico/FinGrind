@@ -1,10 +1,10 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: USER_EXAMPLES
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
-  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
+  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
 ---
 
@@ -130,8 +130,10 @@ One successful response:
 
 That initialized book starts from the explicitly selected owner-managed service seed template with
 an explicit cash basis. Use `--accounting-basis ACCRUAL` when you want the accrual
-owner-managed service chart instead. Review the seeded accounts with `list-accounts` before you
-declare any supplemental accounts.
+owner-managed service chart instead. To initialize the trading template, select
+`OWNER_MANAGED_TRADING` and add `--inventory-costing WEIGHTED_AVERAGE`; the selected trading seed
+then owns inventory quantity, cost-of-sales, and inventory-adjustment accounts. Review the seeded
+accounts with `list-accounts` before you declare any supplemental accounts.
 
 ## Inspect Compatibility Before Mutating
 
@@ -319,11 +321,14 @@ intentionally publish one placeholder-first sample document and default to one m
 seeded starter accounts.
 When the selected book uses `OWNER_MANAGED_TRADING`, fill the same sale request with
 `inventoryRelief.inventoryAccountCode`, `inventoryRelief.costOfSalesAccountCode`, and
-`inventoryRelief.amount` so the typed sale records revenue plus inventory relief together.
+`inventoryRelief.quantity` so the typed sale records revenue plus inventory relief together.
 Trading books can likewise stay on the typed inventory-acquisition path through
 `print-request-template record-purchase-settled` and
 `print-request-template record-purchase-on-credit`, which default to one inventory purchase shape
-instead of a raw adjustment journal.
+with `quantity` and `unitCost` instead of a raw adjustment journal. Use the matching
+`record-inventory-capitalization-*` templates for landed costs, `record-inventory-write-down` for
+carrying-cost impairment, `record-inventory-shrinkage` for a quantity loss with executor-derived
+cost, and `record-inventory-count-increase` for a count-discovered quantity increase.
 The scaffold is request-first rather than demo-runnable: `actorType` defaults to `PERSON`,
 `evidence.approvals` starts as an empty array that callers may populate when one posting requires
 explicit approval references, and every `replace-before-commit-*` evidence or provenance token must be
@@ -508,6 +513,14 @@ fingrind \
   --output text
 
 fingrind \
+  inventory-valuation \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
+  --as-of 2026-04-07 \
+  --movements \
+  --output text
+
+fingrind \
   cash-flow-statement \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
@@ -538,6 +551,9 @@ These report commands keep JSON as the default machine surface, while `--output 
 `--output csv` render accounting-grade display scale for operators and spreadsheet tools.
 `cash-flow-statement` is the bounded statement of cash receipts and payments and classifies
 movement into operating, investing, and financing sections from the declared counterpart accounts.
+`inventory-valuation` reports exact on-hand quantity and carrying value per inventory account; its
+rounded moving-average unit-cost projection is informational and is never multiplied back into the
+carrying value.
 `--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
 is selected on stdout, the success envelope also publishes one redacted PDF path hint under
 `artifacts[]`. `--output text --pdf-out <path>` writes one artifact confirmation block to stdout

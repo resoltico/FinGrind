@@ -27,6 +27,7 @@ final class CliPlanBookkeepingTextRenderer {
         List.of(
             "Profit and loss classification",
             displayOrNone(account.profitAndLossLineClassification())));
+    rows.add(List.of("Unit of measure", displayUnitOfMeasure(account.unitOfMeasure())));
     rows.add(List.of("Normal balance", CliTextDisplay.wireLabel(account.normalBalance())));
     rows.add(List.of("Active", CliQueryScopeText.displayBooleanLabel(account.active())));
     rows.add(List.of("Declared at", account.declaredAt()));
@@ -45,7 +46,7 @@ final class CliPlanBookkeepingTextRenderer {
             ? CliQueryScopeText.noMatchesLabel("accounts")
             : CliTextFormat.renderAdaptiveTable(
                 CliReportRenderSupport.TEXT_TABLE_WIDTH,
-                List.of("Account code", "Account name", "Type", "Normal balance", "Active"),
+                List.of("Account code", "Account name", "Type", "Unit", "Normal balance", "Active"),
                 accountPage.accounts().stream()
                     .map(
                         account ->
@@ -53,6 +54,7 @@ final class CliPlanBookkeepingTextRenderer {
                                 account.accountCode(),
                                 account.accountName(),
                                 CliTextDisplay.wireLabel(account.accountType()),
+                                displayUnitOfMeasure(account.unitOfMeasure()),
                                 CliTextDisplay.wireLabel(account.normalBalance()),
                                 CliQueryScopeText.displayBooleanLabel(account.active())))
                     .toList());
@@ -221,5 +223,12 @@ final class CliPlanBookkeepingTextRenderer {
 
   private static String displayOrNone(@Nullable String value) {
     return value == null ? "(none)" : value;
+  }
+
+  private static String displayUnitOfMeasure(
+      CliBookQueryJsonModels.@Nullable UnitOfMeasurePayload unitOfMeasure) {
+    return unitOfMeasure == null
+        ? "(none)"
+        : unitOfMeasure.token() + " (scale " + unitOfMeasure.quantityScale() + ")";
   }
 }

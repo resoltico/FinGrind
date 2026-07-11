@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
@@ -18,6 +19,7 @@ import dev.erst.fingrind.executor.bookkeeping.CashFlowStatementCriteria;
 import dev.erst.fingrind.executor.bookkeeping.ChangesInEquityCriteria;
 import dev.erst.fingrind.executor.bookkeeping.FinancialPositionCriteria;
 import dev.erst.fingrind.executor.bookkeeping.IncomeStatementCriteria;
+import dev.erst.fingrind.executor.bookkeeping.InventoryValuationCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
@@ -82,6 +84,11 @@ final class BookReadQueryTranslator {
     Objects.requireNonNull(query, "query");
     return new IncomeStatementCriteria(
         query.effectiveDateFrom(), query.effectiveDateTo(), query.comparativeSelection());
+  }
+
+  static InventoryValuationCriteria fromPublished(InventoryValuationQuery query) {
+    Objects.requireNonNull(query, "query");
+    return new InventoryValuationCriteria(query.effectiveDateAsOf(), query.includeMovements());
   }
 
   static CashFlowStatementCriteria fromPublished(CashFlowStatementQuery query) {

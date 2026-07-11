@@ -19,6 +19,7 @@ final class CliDiscoveryCommandGuidance {
           OperationId.ACCOUNT_LEDGER,
           OperationId.TRIAL_BALANCE,
           OperationId.FINANCIAL_POSITION,
+          OperationId.INVENTORY_VALUATION,
           OperationId.INCOME_STATEMENT,
           OperationId.CHANGES_IN_EQUITY,
           OperationId.PERIOD_SUMMARY,
@@ -34,6 +35,11 @@ final class CliDiscoveryCommandGuidance {
           OperationId.RECORD_SALE_ON_CREDIT,
           OperationId.RECORD_PURCHASE_SETTLED,
           OperationId.RECORD_PURCHASE_ON_CREDIT,
+          OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED,
+          OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
+          OperationId.RECORD_INVENTORY_WRITE_DOWN,
+          OperationId.RECORD_INVENTORY_SHRINKAGE,
+          OperationId.RECORD_INVENTORY_COUNT_INCREASE,
           OperationId.RECORD_EXPENSE_SETTLED,
           OperationId.RECORD_EXPENSE_ON_CREDIT,
           OperationId.RECORD_RECEIPT,
@@ -48,6 +54,7 @@ final class CliDiscoveryCommandGuidance {
           OperationId.ACCOUNT_LEDGER,
           OperationId.TRIAL_BALANCE,
           OperationId.FINANCIAL_POSITION,
+          OperationId.INVENTORY_VALUATION,
           OperationId.INCOME_STATEMENT,
           OperationId.CHANGES_IN_EQUITY,
           OperationId.PERIOD_SUMMARY,
@@ -205,7 +212,11 @@ final class CliDiscoveryCommandGuidance {
                     + operationId.wireName())),
         CliDiscoveryTextSupport.section(
             "Posting model",
-            CliDiscoveryPostingModelGuidance.renderPostingModel(postEntryShape, requestTemplate)));
+            CliDiscoveryPostingModelGuidance.renderPostingModel(postEntryShape, requestTemplate)),
+        CliDiscoveryTextSupport.section(
+            "Entry semantics",
+            CliDiscoveryPostingModelGuidance.renderEntrySemantics(
+                postEntryShape, requestTemplate)));
   }
 
   private static String renderDeclareAccountRequestGuidance(HelpDescriptor helpDescriptor) {

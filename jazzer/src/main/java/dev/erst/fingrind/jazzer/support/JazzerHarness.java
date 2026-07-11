@@ -87,6 +87,11 @@ public record JazzerHarness(
     return fromKind(JazzerHarnessKind.SQLITE_BOOK_ROUND_TRIP);
   }
 
+  /** Returns the canonical inventory-costing math harness. */
+  public static JazzerHarness inventoryCostingMath() {
+    return fromKind(JazzerHarnessKind.INVENTORY_COSTING_MATH);
+  }
+
   private static String requireNonBlank(String value, String fieldName) {
     Objects.requireNonNull(value, fieldName + " must not be null");
     String trimmed = value.trim();

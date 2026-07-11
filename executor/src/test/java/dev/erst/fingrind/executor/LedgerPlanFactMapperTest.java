@@ -145,6 +145,7 @@ class LedgerPlanFactMapperTest {
             null,
             null,
             null,
+            null,
             null);
     dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting =
         BookkeepingPublishedLanguageTranslator.fromPublished(
@@ -251,11 +252,13 @@ class LedgerPlanFactMapperTest {
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("1000"),
                     JournalLine.EntrySide.DEBIT,
-                    new MonetaryAmount("EUR", "1000")),
+                    new MonetaryAmount("EUR", "1000"),
+                    null),
                 new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                     new AccountCode("3000"),
                     JournalLine.EntrySide.CREDIT,
-                    new MonetaryAmount("EUR", "1000")))),
+                    new MonetaryAmount("EUR", "1000"),
+                    null))),
         facts -> assertEntryGroupContainsText(facts, "openingBalance", "accountCode", "1000"));
     assertEntryFacts(
         new BookkeepingEntry.Reversal(
@@ -331,9 +334,9 @@ class LedgerPlanFactMapperTest {
             new AccountTaxonomy(
                 AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1100")),
-                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                Optional.of(FinancialPositionLineClassification.INVENTORY),
                 Optional.empty(),
-                Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
+                Optional.of(CashFlowAssetClassification.NON_CASH)),
             true,
             FIXED_INSTANT);
 
@@ -353,6 +356,18 @@ class LedgerPlanFactMapperTest {
                     fact instanceof BookWorkflowFact.Text text
                         && "parentAccountCode".equals(text.name())
                         && "1100".equals(text.value())));
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Group group
+                        && "unitOfMeasure".equals(group.name())
+                        && group.facts().stream()
+                            .anyMatch(
+                                nested ->
+                                    nested instanceof BookWorkflowFact.Text text
+                                        && "token".equals(text.name())
+                                        && "unit".equals(text.value()))));
   }
 
   private static PostingFact reversalPostingFact() {

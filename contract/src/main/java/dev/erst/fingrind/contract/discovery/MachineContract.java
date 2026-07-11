@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable contract assembler for the FinGrind CLI surface. */
 public final class MachineContract {
-  private static final String PROTOCOL_VERSION = "20";
+  private static final String PROTOCOL_VERSION = "21";
 
   private MachineContract() {}
 

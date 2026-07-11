@@ -4,10 +4,12 @@ import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFact
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.openingPositionCommand;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.priorPosting;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityScenarioFactory.reversalCommand;
-import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.accrualBookIdentity;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.bookIdentity;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.candidateAccount;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.cellToken;
 import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.counterAuxiliaryAccount;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.isInventoryCell;
+import static dev.erst.fingrind.testsupport.PostingRouteReachabilityTestSupport.payableAuxiliaryAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -15,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -58,8 +61,9 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
   @Override
   public void assertOpeningPositionReachability(RequestSurfaceFacts.ReachabilityCellFacts cell) {
     ReachabilityValidationBook book =
-        new ReachabilityValidationBook(candidateAccount(cell), counterAuxiliaryAccount());
-    PostEntryCommand command = openingPositionCommand("opening-" + cellToken(cell));
+        new ReachabilityValidationBook(
+            bookIdentity(cell), candidateAccount(cell), counterAuxiliaryAccount());
+    PostEntryCommand command = openingPositionCommand(cell, "opening-" + cellToken(cell));
     Optional<BookkeepingPostingRejection> semanticRejection =
         ENTRY_SEMANTICS.rejectionFor(command, book);
 
@@ -90,12 +94,31 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
   @Override
   public void assertDirectJournalReachability(RequestSurfaceFacts.ReachabilityCellFacts cell) {
     ReachabilityValidationBook book =
-        new ReachabilityValidationBook(candidateAccount(cell), counterAuxiliaryAccount());
+        new ReachabilityValidationBook(
+            bookIdentity(cell), candidateAccount(cell), counterAuxiliaryAccount());
     PostEntryCommand command = directJournalCommand(cell, "journal-" + cellToken(cell));
+    Optional<BookkeepingPostingRejection> semanticRejection =
+        ENTRY_SEMANTICS.rejectionFor(command, book);
 
-    assertTrue(
-        ENTRY_SEMANTICS.rejectionFor(command, book).isEmpty(),
-        "entry semantics should accept " + cell);
+    if (isInventoryCell(cell)) {
+      BookkeepingPostingRejection.EntrySemanticsViolations semanticViolations =
+          assertInstanceOf(
+              BookkeepingPostingRejection.EntrySemanticsViolations.class,
+              semanticRejection.orElseThrow(),
+              "direct journal semantics should reject inventory cell " + cell);
+      assertEquals(
+          "raw-journal-touches-inventory", semanticViolations.violations().getFirst().code());
+      assertEquals(
+          "entryKind '"
+              + BookkeepingEntryKind.DIRECT_JOURNAL.wireValue()
+              + "' contains lines[].accountCode '"
+              + PostingRouteReachabilityTestSupport.CANDIDATE_ACCOUNT_CODE.value()
+              + "', which resolves to the inventory role. Raw direct-journal requests cannot create or change exact inventory quantity.",
+          semanticViolations.violations().getFirst().message());
+      return;
+    }
+
+    assertTrue(semanticRejection.isEmpty(), "entry semantics should accept " + cell);
     Optional<BookkeepingPostingRejection> rejection =
         POSTING_ACCEPTANCE.rejectionFor(
             PostEntryCommandTranslator.toPostingCommand(command, book), book);
@@ -125,7 +148,7 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
             new PostingId("posting-" + cellToken(cell).toLowerCase(java.util.Locale.ROOT)));
     ReachabilityValidationBook book =
         new ReachabilityValidationBook(
-            candidateAccount(cell), counterAuxiliaryAccount(), priorPosting);
+            bookIdentity(cell), candidateAccount(cell), counterAuxiliaryAccount(), priorPosting);
     PostEntryCommand command =
         reversalCommand(cell, "reversal-" + cellToken(cell), priorPosting.postingId());
 
@@ -164,33 +187,41 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
 
   /** Minimal posting-validation store tailored to one reachability scenario. */
   private static final class ReachabilityValidationBook implements PostingValidationStore {
+    private final BookIdentity bookIdentity;
     private final Map<AccountCode, RegisteredAccount> accounts;
     private final Optional<CommittedPosting> priorPosting;
 
     private ReachabilityValidationBook(
-        RegisteredAccount candidateAccount, RegisteredAccount counterAccount) {
+        BookIdentity bookIdentity,
+        RegisteredAccount candidateAccount,
+        RegisteredAccount counterAccount) {
+      this.bookIdentity = bookIdentity;
       this.accounts =
           Map.of(
               candidateAccount.accountCode(), candidateAccount,
-              counterAccount.accountCode(), counterAccount);
+              counterAccount.accountCode(), counterAccount,
+              payableAuxiliaryAccount().accountCode(), payableAuxiliaryAccount());
       this.priorPosting = Optional.empty();
     }
 
     private ReachabilityValidationBook(
+        BookIdentity bookIdentity,
         RegisteredAccount candidateAccount,
         RegisteredAccount counterAccount,
         CommittedPosting priorPosting) {
+      this.bookIdentity = bookIdentity;
       this.accounts =
           Map.of(
               candidateAccount.accountCode(), candidateAccount,
-              counterAccount.accountCode(), counterAccount);
+              counterAccount.accountCode(), counterAccount,
+              payableAuxiliaryAccount().accountCode(), payableAuxiliaryAccount());
       this.priorPosting = Optional.ofNullable(priorPosting);
     }
 
     @Override
     public BookLifecycleInspection inspectBook() {
       return new BookLifecycleInspection.Initialized(
-          1001, 1, 1, PostingRouteReachabilityTestSupport.DECLARED_AT, accrualBookIdentity());
+          1001, 1, 1, PostingRouteReachabilityTestSupport.DECLARED_AT, bookIdentity);
     }
 
     @Override

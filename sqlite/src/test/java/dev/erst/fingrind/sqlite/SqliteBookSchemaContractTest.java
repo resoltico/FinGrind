@@ -113,6 +113,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     assertTrue(schema.contains("document_date text not null check"));
     assertTrue(schema.contains("approved_at text not null check"));
     assertTrue(schema.contains("closed_at text not null check"));
+    assertTrue(schema.contains("last_movement_date text not null check"));
     assertTrue(schema.contains("meta_key = 'initialized_at'"));
     assertTrue(schema.contains("meta_key = 'schema_fingerprint_sha256'"));
     assertTrue(schema.contains("length(value) = 64"));
@@ -315,22 +316,7 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     Set<String> publishedValues = new LinkedHashSet<>();
     for (ContractRequestShapes.EntryKindSemanticsDescriptor semantics :
         postEntryShape.entryKindSemantics()) {
-      switch (semantics.entryKind()) {
-        case DIRECT_JOURNAL,
-            SALE_SETTLED,
-            SALE_ON_CREDIT,
-            PURCHASE_SETTLED,
-            PURCHASE_ON_CREDIT,
-            EXPENSE_SETTLED,
-            EXPENSE_ON_CREDIT,
-            RECEIPT,
-            PAYMENT,
-            OWNER_CONTRIBUTION,
-            OWNER_WITHDRAWAL,
-            REVERSAL ->
-            publishedValues.add(PostingKind.STANDARD.wireValue());
-        case OPENING_POSITION -> publishedValues.add(PostingKind.OPENING_BALANCE.wireValue());
-      }
+      publishedValues.add(postingKindFor(semantics.entryKind()).wireValue());
     }
     publishedValues.add(PostingKind.INTERIM_RESULT_SWEEP.wireValue());
     publishedValues.add(PostingKind.FISCAL_YEAR_CLOSE.wireValue());
@@ -343,7 +329,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     Set<String> publishedValues = new LinkedHashSet<>();
     for (ContractRequestShapes.EntryKindSemanticsDescriptor semantics :
         postEntryShape.entryKindSemantics()) {
-      publishedValues.add(postingOriginKindFor(semantics.entryKind()).wireValue());
+      publishedValues.add(
+          PostingOriginKind.fromWireValue(semantics.entryKind().wireValue()).wireValue());
     }
     publishedValues.add(PostingOriginKind.INTERIM_RESULT_SWEEP.wireValue());
     publishedValues.add(PostingOriginKind.FISCAL_YEAR_CLOSE.wireValue());
@@ -357,22 +344,10 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
         "Published machine contract must expose the bookkeeping-entry request shape.");
   }
 
-  private static PostingOriginKind postingOriginKindFor(BookkeepingEntryKind entryKind) {
-    return switch (entryKind) {
-      case DIRECT_JOURNAL -> PostingOriginKind.DIRECT_JOURNAL;
-      case SALE_SETTLED -> PostingOriginKind.SALE_SETTLED;
-      case SALE_ON_CREDIT -> PostingOriginKind.SALE_ON_CREDIT;
-      case PURCHASE_SETTLED -> PostingOriginKind.PURCHASE_SETTLED;
-      case PURCHASE_ON_CREDIT -> PostingOriginKind.PURCHASE_ON_CREDIT;
-      case EXPENSE_SETTLED -> PostingOriginKind.EXPENSE_SETTLED;
-      case EXPENSE_ON_CREDIT -> PostingOriginKind.EXPENSE_ON_CREDIT;
-      case RECEIPT -> PostingOriginKind.RECEIPT;
-      case PAYMENT -> PostingOriginKind.PAYMENT;
-      case OWNER_CONTRIBUTION -> PostingOriginKind.OWNER_CONTRIBUTION;
-      case OWNER_WITHDRAWAL -> PostingOriginKind.OWNER_WITHDRAWAL;
-      case OPENING_POSITION -> PostingOriginKind.OPENING_POSITION;
-      case REVERSAL -> PostingOriginKind.REVERSAL;
-    };
+  private static PostingKind postingKindFor(BookkeepingEntryKind entryKind) {
+    return entryKind == BookkeepingEntryKind.OPENING_POSITION
+        ? PostingKind.OPENING_BALANCE
+        : PostingKind.STANDARD;
   }
 
   @Test
@@ -401,6 +376,24 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
               queryInt(
                   database,
                   "select strict from pragma_table_list('account') where name = 'account'"));
+          assertEquals(
+              1,
+              queryInt(
+                  database,
+                  """
+                  select strict
+                  from pragma_table_list('inventory_movement')
+                  where name = 'inventory_movement'
+                  """));
+          assertEquals(
+              1,
+              queryInt(
+                  database,
+                  """
+                  select strict
+                  from pragma_table_list('inventory_on_hand')
+                  where name = 'inventory_on_hand'
+                  """));
           assertEquals(
               1,
               queryInt(
@@ -596,6 +589,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
                 SqliteBookContract.BOOK_META_TABLE,
                 SqliteBookContract.BOOK_IDENTITY_TABLE,
                 SqliteBookContract.ACCOUNT_TABLE,
+                SqliteBookContract.INVENTORY_MOVEMENT_TABLE,
+                SqliteBookContract.INVENTORY_ON_HAND_TABLE,
                 SqliteBookContract.POSTING_FACT_TABLE,
                 SqliteBookContract.JOURNAL_LINE_TABLE,
                 SqliteBookContract.INTERIM_RESULT_SWEEP_TABLE,

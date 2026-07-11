@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
@@ -61,7 +62,8 @@ final class ResolvedJournalSupport {
             expandedLines,
             accountCode -> accountRole(accountCode, accountsByCode),
             evidenceClass,
-            structural);
+            structural,
+            assertedTypedEventClass(entry));
     return new ResolvedJournal(
         expandedLines,
         TaxValidationSupport.appliedTax(entry),
@@ -92,6 +94,23 @@ final class ResolvedJournalSupport {
           new StructuralContext(
               Optional.of(reversal.reversal().reference().priorPostingId()), false);
       default -> StructuralContext.ordinary();
+    };
+  }
+
+  private static Optional<dev.erst.fingrind.core.EconomicEventClass> assertedTypedEventClass(
+      BookkeepingEntry entry) {
+    return switch (entry) {
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled _ ->
+          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_CAPITALIZATION);
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit _ ->
+          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_CAPITALIZATION);
+      case InventoryBookkeepingEntryVariants.InventoryWriteDown _ ->
+          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_WRITE_DOWN);
+      case InventoryBookkeepingEntryVariants.InventoryShrinkage _ ->
+          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_SHRINKAGE);
+      case InventoryBookkeepingEntryVariants.InventoryCountIncrease _ ->
+          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_COUNT_INCREASE);
+      default -> Optional.empty();
     };
   }
 

@@ -4,6 +4,7 @@ import static dev.erst.fingrind.core.AccountDoctrineTestSupport.assetTaxonomy;
 import static dev.erst.fingrind.core.AccountDoctrineTestSupport.nominalTaxonomy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.JournalLine.EntrySide;
@@ -192,7 +193,8 @@ class JournalClassifierTotalityTest {
             accountCode ->
                 Objects.requireNonNull(accountRoles.get(accountCode), accountCode.value()),
             EvidenceClass.OTHER,
-            StructuralContext.ordinary());
+            StructuralContext.ordinary(),
+            java.util.Optional.empty());
 
     assertEquals(EconomicEventClass.AR_SETTLEMENT, result.eventClass());
     assertEquals(
@@ -201,6 +203,70 @@ class JournalClassifierTotalityTest {
             new AnchorEntry(AccountRole.RECEIVABLE, EntrySide.CREDIT)),
         result.anchorSignature());
     assertEquals(Set.of(EconomicEventClass.AR_SETTLEMENT), result.containedTypedEvents());
+  }
+
+  @Test
+  void classify_validatesEveryAssertedInventoryEventAgainstItsOwnedAnchorSignature() {
+    assertAssertedInventoryEvent(
+        EconomicEventClass.INVENTORY_CAPITALIZATION,
+        journal(
+            line("inventory", EntrySide.DEBIT, "100.00"),
+            line("cash", EntrySide.CREDIT, "100.00")));
+    assertAssertedInventoryEvent(
+        EconomicEventClass.INVENTORY_CAPITALIZATION,
+        journal(
+            line("inventory", EntrySide.DEBIT, "100.00"),
+            line("payable", EntrySide.CREDIT, "100.00")));
+    assertAssertedInventoryEvent(
+        EconomicEventClass.INVENTORY_WRITE_DOWN,
+        journal(
+            line("expense", EntrySide.DEBIT, "100.00"),
+            line("inventory", EntrySide.CREDIT, "100.00")));
+    assertAssertedInventoryEvent(
+        EconomicEventClass.INVENTORY_SHRINKAGE,
+        journal(
+            line("expense", EntrySide.DEBIT, "100.00"),
+            line("inventory", EntrySide.CREDIT, "100.00")));
+    assertAssertedInventoryEvent(
+        EconomicEventClass.INVENTORY_COUNT_INCREASE,
+        journal(
+            line("inventory", EntrySide.DEBIT, "100.00"),
+            line("revenue", EntrySide.CREDIT, "100.00")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            JournalClassifier.classify(
+                journal(
+                    line("cash", EntrySide.DEBIT, "100.00"),
+                    line("revenue", EntrySide.CREDIT, "100.00")),
+                JournalClassifierTotalityTest::accountRoleForFixture,
+                EvidenceClass.OTHER,
+                StructuralContext.ordinary(),
+                java.util.Optional.of(EconomicEventClass.INVENTORY_CAPITALIZATION)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            JournalClassifier.classify(
+                journal(
+                    line("cash", EntrySide.DEBIT, "100.00"),
+                    line("revenue", EntrySide.CREDIT, "100.00")),
+                JournalClassifierTotalityTest::accountRoleForFixture,
+                EvidenceClass.OTHER,
+                StructuralContext.ordinary(),
+                java.util.Optional.of(EconomicEventClass.SETTLED_SALE)));
+  }
+
+  private static void assertAssertedInventoryEvent(
+      EconomicEventClass expectedEventClass, JournalEntry journalEntry) {
+    ClassificationResult result =
+        JournalClassifier.classify(
+            journalEntry,
+            JournalClassifierTotalityTest::accountRoleForFixture,
+            EvidenceClass.OTHER,
+            StructuralContext.ordinary(),
+            java.util.Optional.of(expectedEventClass));
+    assertEquals(expectedEventClass, result.eventClass());
+    assertEquals(Set.of(expectedEventClass), result.containedTypedEvents());
   }
 
   private static Stream<Arguments> structuralRows() {
@@ -404,7 +470,8 @@ class JournalClassifierTotalityTest {
         journalEntry,
         JournalClassifierTotalityTest::accountRoleForFixture,
         evidenceClass,
-        structural);
+        structural,
+        java.util.Optional.empty());
   }
 
   private static JournalEntry journal(JournalLine... lines) {

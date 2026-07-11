@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what remains uncovered by the jazzer suite"]
@@ -20,6 +20,7 @@ route:
 | `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` plus in-memory `LedgerPlanService.execute(...)` | ledger-plan parsing, canonical step-kind preservation, successful in-memory execution, structured list-query journal facts, rejected missing-book list-query plans without fake page facts, removal of the inert execution-policy block, ensure-book ordering, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `7` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
 | `sqlite-book-roundtrip` | `SqlitePostingSession` via `SqliteBookSessions` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, CLI response rendering across executed read/report commands, concurrent contender handling, corrupt pre-schema path failure shaping, derived reversal near misses, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
+| `inventory-costing-math` | `WeightedAverageCostingMath.dispose(...)` plus `roundedMovingAverageUnitCostProjection(...)` | projection independence asserted through direct exact-pool cost-of-sales derivation, one per-seed generated rounded-projection mismatch family, one pinned rounded-projection mismatch case, committed replay of one mismatch seed, and pure quantity/cost-pool invariant preservation under arbitrary byte-seed generation | `1` |
 
 ## `cli-request`
 
@@ -115,6 +116,21 @@ What it asserts:
 - reloaded store connections keep `foreign_keys = on` and `trusted_schema = off`
 - deterministic reversal rejections do not create or mutate durable book state
 
+## `inventory-costing-math`
+
+Surface:
+- raw byte seeds expanded into deterministic quantity-scale, quantity, and unit-cost scenarios
+- pure `WeightedAverageCostingMath.acquire(...)`, `dispose(...)`, and `roundedMovingAverageUnitCostProjection(...)`
+- exact `Quantity` plus `Money` state with no SQLite, CLI, or workflow I/O
+
+What it asserts:
+- one known weighted-average mismatch case keeps exact cost of sales distinct from one rounded
+  projection-based surrogate
+- arbitrary generated pools and disposals keep exact cost of sales equal to
+  `roundHalfUp(cost_pool × qtyDisposed / qtyOnHand)` over the exact pool and exact quantity
+- arbitrary generated pools preserve the zero-to-zero quantity and cost-pool truth after disposal
+- byte-seed variation does not turn this pure math harness into a parser or storage seam
+
 ## Committed Seed Inventory
 
 | Harness | Input | Meaning |
@@ -148,6 +164,7 @@ What it asserts:
 | `sqlite-book-roundtrip` | `nested_valid.json` | nested-path round-trip with optional provenance fields |
 | `sqlite-book-roundtrip` | `invalid_unicode_account_code.json` | invalid Unicode account-code rejection through the strict SQLite request path |
 | `sqlite-book-roundtrip` | `invalid_wrong_type.json` | `effectiveDate` wrong-type rejection |
+| `inventory-costing-math` | `exact_pool_math_seed.bin` | pinned byte-seed replay of the known rounded-projection mismatch case where exact disposal cost stays distinct from one projection-based surrogate |
 
 ## Remaining Gap Register
 

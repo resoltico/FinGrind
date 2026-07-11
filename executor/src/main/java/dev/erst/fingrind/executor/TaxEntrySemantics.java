@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
@@ -44,6 +45,18 @@ final class TaxEntrySemantics {
               TaxApplicationKind.OUTPUT_SALE,
               selectorField,
               selectorValue);
+      case BookkeepingEntry.PurchaseSettled purchase ->
+          validateSelection(
+              violations, book, purchase.taxSelection(), null, selectorField, selectorValue);
+      case BookkeepingEntry.PurchaseOnCredit purchase ->
+          validateSelection(
+              violations, book, purchase.taxSelection(), null, selectorField, selectorValue);
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled capitalization ->
+          validateSelection(
+              violations, book, capitalization.taxSelection(), null, selectorField, selectorValue);
+      case InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit capitalization ->
+          validateSelection(
+              violations, book, capitalization.taxSelection(), null, selectorField, selectorValue);
       case BookkeepingEntry.ExpenseSettled expense ->
           validateSelection(
               violations, book, expense.taxSelection(), null, selectorField, selectorValue);

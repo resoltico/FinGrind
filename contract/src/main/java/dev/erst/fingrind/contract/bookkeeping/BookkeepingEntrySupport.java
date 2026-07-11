@@ -32,6 +32,7 @@ final class BookkeepingEntrySupport {
       AccountCode revenueAccountCode,
       MonetaryAmount operatorAmount,
       @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting,
       @Nullable AppliedTax appliedTax) {
     if (appliedTax == null) {
       return saleEntry(
@@ -39,7 +40,8 @@ final class BookkeepingEntrySupport {
           settlementAccountCode,
           revenueAccountCode,
           operatorAmount,
-          inventoryRelief);
+          inventoryRelief,
+          resolvedInventoryCosting);
     }
     if (appliedTax.applicationKind() != TaxApplicationKind.OUTPUT_SALE) {
       throw new IllegalArgumentException("Resolved sale tax must use applicationKind OUTPUT_SALE.");
@@ -58,11 +60,11 @@ final class BookkeepingEntrySupport {
     if (appliedTax.taxAmount().toMoney().isPositive()) {
       lines.add(
           new JournalLine(
-              BookkeepingEntryValidationSupport.requireTaxAccountCode(appliedTax, "sale"),
+              BookkeepingEntryTaxValidationSupport.requireTaxAccountCode(appliedTax, "sale"),
               JournalLine.EntrySide.CREDIT,
               appliedTax.taxAmount().toMoney()));
     }
-    appendInventoryRelief(lines, inventoryRelief);
+    appendInventoryRelief(lines, inventoryRelief, resolvedInventoryCosting);
     return new JournalEntry(effectiveDate, lines);
   }
 
@@ -71,7 +73,8 @@ final class BookkeepingEntrySupport {
       AccountCode settlementAccountCode,
       AccountCode revenueAccountCode,
       MonetaryAmount operatorAmount,
-      @Nullable InventoryRelief inventoryRelief) {
+      @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting) {
     List<JournalLine> lines = new ArrayList<>();
     lines.add(
         new JournalLine(
@@ -79,25 +82,30 @@ final class BookkeepingEntrySupport {
     lines.add(
         new JournalLine(
             revenueAccountCode, JournalLine.EntrySide.CREDIT, operatorAmount.toMoney()));
-    appendInventoryRelief(lines, inventoryRelief);
+    appendInventoryRelief(lines, inventoryRelief, resolvedInventoryCosting);
     return new JournalEntry(effectiveDate, lines);
   }
 
   private static void appendInventoryRelief(
-      List<JournalLine> lines, @Nullable InventoryRelief inventoryRelief) {
+      List<JournalLine> lines,
+      @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting) {
     if (inventoryRelief == null) {
       return;
     }
+    ResolvedInventoryCosting requiredResolvedInventoryCosting =
+        BookkeepingEntryInventoryValidationSupport.requireResolvedInventoryCosting(
+            resolvedInventoryCosting, "sale");
     lines.add(
         new JournalLine(
             inventoryRelief.costOfSalesAccountCode(),
             JournalLine.EntrySide.DEBIT,
-            inventoryRelief.amount().toMoney()));
+            requiredResolvedInventoryCosting.costOfSales()));
     lines.add(
         new JournalLine(
             inventoryRelief.inventoryAccountCode(),
             JournalLine.EntrySide.CREDIT,
-            inventoryRelief.amount().toMoney()));
+            requiredResolvedInventoryCosting.costOfSales()));
   }
 
   static JournalEntry saleEntry(
@@ -107,7 +115,13 @@ final class BookkeepingEntrySupport {
       MonetaryAmount operatorAmount,
       AppliedTax appliedTax) {
     return saleEntry(
-        effectiveDate, settlementAccountCode, revenueAccountCode, operatorAmount, null, appliedTax);
+        effectiveDate,
+        settlementAccountCode,
+        revenueAccountCode,
+        operatorAmount,
+        null,
+        null,
+        appliedTax);
   }
 
   static JournalEntry expenseEntry(
@@ -125,7 +139,7 @@ final class BookkeepingEntrySupport {
       if (appliedTax.taxAmount().toMoney().isPositive()) {
         lines.add(
             new JournalLine(
-                BookkeepingEntryValidationSupport.requireTaxAccountCode(appliedTax, "expense"),
+                BookkeepingEntryTaxValidationSupport.requireTaxAccountCode(appliedTax, "expense"),
                 JournalLine.EntrySide.DEBIT,
                 appliedTax.taxAmount().toMoney()));
       }
@@ -142,6 +156,40 @@ final class BookkeepingEntrySupport {
     }
     throw new IllegalArgumentException(
         "Resolved expense tax cannot use applicationKind OUTPUT_SALE.");
+  }
+
+  static JournalEntry inventoryCostEntry(
+      LocalDate effectiveDate,
+      AccountCode inventoryAccountCode,
+      AccountCode settlementAccountCode,
+      AppliedTax appliedTax) {
+    if (appliedTax.applicationKind() == TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE) {
+      List<JournalLine> lines = new ArrayList<>();
+      lines.add(
+          new JournalLine(
+              inventoryAccountCode,
+              JournalLine.EntrySide.DEBIT,
+              appliedTax.taxableAmount().toMoney()));
+      if (appliedTax.taxAmount().toMoney().isPositive()) {
+        lines.add(
+            new JournalLine(
+                BookkeepingEntryTaxValidationSupport.requireTaxAccountCode(appliedTax, "inventory"),
+                JournalLine.EntrySide.DEBIT,
+                appliedTax.taxAmount().toMoney()));
+      }
+      lines.add(
+          new JournalLine(
+              settlementAccountCode,
+              JournalLine.EntrySide.CREDIT,
+              appliedTax.grossAmount().toMoney()));
+      return new JournalEntry(effectiveDate, lines);
+    }
+    if (appliedTax.applicationKind() == TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE) {
+      return pairedEntry(
+          effectiveDate, inventoryAccountCode, settlementAccountCode, appliedTax.grossAmount());
+    }
+    throw new IllegalArgumentException(
+        "Resolved inventory tax cannot use applicationKind OUTPUT_SALE.");
   }
 
   static JournalEntry receiptEntry(

@@ -4,75 +4,25 @@ import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.PostingKind;
-import dev.erst.fingrind.core.PostingOriginKind;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Public bookkeeping write model with one direct-journal path and typed entry variants. */
-public sealed interface BookkeepingEntry
+public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
     permits BookkeepingEntry.DirectJournal,
-        BookkeepingEntry.SaleSettled,
-        BookkeepingEntry.SaleOnCredit,
-        BookkeepingEntry.PurchaseSettled,
-        BookkeepingEntry.PurchaseOnCredit,
-        BookkeepingEntry.ExpenseSettled,
-        BookkeepingEntry.ExpenseOnCredit,
-        BookkeepingEntry.Receipt,
-        BookkeepingEntry.Payment,
-        BookkeepingEntry.OwnerContribution,
-        BookkeepingEntry.OwnerWithdrawal,
+        TypedBookkeepingEntry,
         BookkeepingEntry.OpeningPosition,
         BookkeepingEntry.Reversal {
-  /** Returns the stable caller-authored entry kind. */
-  default BookkeepingEntryKind entryKind() {
-    return BookkeepingEntrySurfaceSupport.entryKind(this);
-  }
-
-  /** Returns the effective date carried by this caller-authored entry. */
-  LocalDate effectiveDate();
-
-  /** Returns the canonical journal entry implied by this entry variant. */
-  default JournalEntry journalEntry() {
-    return BookkeepingEntrySurfaceSupport.journalEntry(this);
-  }
-
-  /** Returns the canonical durable posting kind implied by this entry variant. */
-  default PostingKind postingKind() {
-    return BookkeepingEntrySurfaceSupport.postingKind(this);
-  }
-
-  /** Returns the durable posting-origin vocabulary implied by this entry variant. */
-  default PostingOriginKind postingOriginKind() {
-    return BookkeepingEntrySurfaceSupport.postingOriginKind(this);
-  }
-
-  /** Returns the durable posting lineage implied by this entry variant. */
-  default PostingLineage postingLineage() {
-    return BookkeepingEntrySurfaceSupport.postingLineage(this);
-  }
-
-  /** Returns the caller-authored journal lines carried or implied by this entry variant. */
-  default List<JournalLine> lines() {
-    return journalEntry().lines();
-  }
-
-  /** Returns the optional owned foreign-exchange facts retained for this entry. */
-  default @Nullable ForeignExchangeDetails foreignExchangeDetails() {
-    return null;
-  }
-
   record DirectJournal(
       JournalEntry journalEntry, @Nullable ForeignExchangeDetails foreignExchangeDetails)
       implements BookkeepingEntry {
     public DirectJournal {
       Objects.requireNonNull(journalEntry, "journalEntry");
-      BookkeepingEntryValidationSupport.requireDirectJournalForeignExchange(
+      BookkeepingEntryForeignExchangeValidationSupport.requireDirectJournalForeignExchange(
           journalEntry, foreignExchangeDetails);
     }
 
@@ -88,10 +38,11 @@ public sealed interface BookkeepingEntry
       AccountCode revenueAccountCode,
       MonetaryAmount amount,
       @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting,
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements BookkeepingEntry {
+      implements TypedBookkeepingEntry {
     public SaleSettled {
       var state =
           BookkeepingEntryConstructionSupport.saleSettled(
@@ -100,6 +51,7 @@ public sealed interface BookkeepingEntry
               revenueAccountCode,
               amount,
               inventoryRelief,
+              resolvedInventoryCosting,
               foreignExchangeDetails,
               taxSelection,
               appliedTax);
@@ -108,6 +60,7 @@ public sealed interface BookkeepingEntry
       revenueAccountCode = state.revenueAccountCode();
       amount = state.amount();
       inventoryRelief = state.inventoryRelief();
+      resolvedInventoryCosting = state.resolvedInventoryCosting();
     }
   }
 
@@ -117,9 +70,11 @@ public sealed interface BookkeepingEntry
       AccountCode revenueAccountCode,
       MonetaryAmount amount,
       @Nullable InventoryRelief inventoryRelief,
+      @Nullable ResolvedInventoryCosting resolvedInventoryCosting,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements BookkeepingEntry {
+      implements TypedBookkeepingEntry {
     public SaleOnCredit {
       var state =
           BookkeepingEntryConstructionSupport.saleOnCredit(
@@ -128,6 +83,8 @@ public sealed interface BookkeepingEntry
               revenueAccountCode,
               amount,
               inventoryRelief,
+              resolvedInventoryCosting,
+              foreignExchangeDetails,
               taxSelection,
               appliedTax);
       effectiveDate = state.effectiveDate();
@@ -135,6 +92,8 @@ public sealed interface BookkeepingEntry
       revenueAccountCode = state.revenueAccountCode();
       amount = state.amount();
       inventoryRelief = state.inventoryRelief();
+      resolvedInventoryCosting = state.resolvedInventoryCosting();
+      foreignExchangeDetails = state.foreignExchangeDetails();
     }
   }
 
@@ -142,17 +101,31 @@ public sealed interface BookkeepingEntry
       LocalDate effectiveDate,
       AccountCode inventoryAccountCode,
       AccountCode cashAccountCode,
-      MonetaryAmount amount,
-      @Nullable ForeignExchangeDetails foreignExchangeDetails)
-      implements BookkeepingEntry {
+      QuantityText quantity,
+      MonetaryAmount unitCost,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails,
+      @Nullable TaxSelection taxSelection,
+      @Nullable AppliedTax appliedTax)
+      implements TypedBookkeepingEntry {
     public PurchaseSettled {
       var state =
           BookkeepingEntryConstructionSupport.purchaseSettled(
-              effectiveDate, inventoryAccountCode, cashAccountCode, amount, foreignExchangeDetails);
+              effectiveDate,
+              inventoryAccountCode,
+              cashAccountCode,
+              quantity,
+              unitCost,
+              resolvedInventoryAcquisition,
+              foreignExchangeDetails,
+              taxSelection,
+              appliedTax);
       effectiveDate = state.effectiveDate();
       inventoryAccountCode = state.inventoryAccountCode();
       cashAccountCode = state.cashAccountCode();
-      amount = state.amount();
+      quantity = state.quantity();
+      unitCost = state.unitCost();
+      resolvedInventoryAcquisition = state.resolvedInventoryAcquisition();
     }
   }
 
@@ -160,16 +133,32 @@ public sealed interface BookkeepingEntry
       LocalDate effectiveDate,
       AccountCode inventoryAccountCode,
       AccountCode payableAccountCode,
-      MonetaryAmount amount)
-      implements BookkeepingEntry {
+      QuantityText quantity,
+      MonetaryAmount unitCost,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails,
+      @Nullable TaxSelection taxSelection,
+      @Nullable AppliedTax appliedTax)
+      implements TypedBookkeepingEntry {
     public PurchaseOnCredit {
       var state =
           BookkeepingEntryConstructionSupport.purchaseOnCredit(
-              effectiveDate, inventoryAccountCode, payableAccountCode, amount);
+              effectiveDate,
+              inventoryAccountCode,
+              payableAccountCode,
+              quantity,
+              unitCost,
+              resolvedInventoryAcquisition,
+              foreignExchangeDetails,
+              taxSelection,
+              appliedTax);
       effectiveDate = state.effectiveDate();
       inventoryAccountCode = state.inventoryAccountCode();
       payableAccountCode = state.payableAccountCode();
-      amount = state.amount();
+      quantity = state.quantity();
+      unitCost = state.unitCost();
+      resolvedInventoryAcquisition = state.resolvedInventoryAcquisition();
+      foreignExchangeDetails = state.foreignExchangeDetails();
     }
   }
 
@@ -181,7 +170,7 @@ public sealed interface BookkeepingEntry
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements BookkeepingEntry {
+      implements TypedBookkeepingEntry {
     public ExpenseSettled {
       var state =
           BookkeepingEntryConstructionSupport.expenseSettled(
@@ -204,9 +193,10 @@ public sealed interface BookkeepingEntry
       AccountCode expenseAccountCode,
       AccountCode payableAccountCode,
       MonetaryAmount amount,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements BookkeepingEntry {
+      implements TypedBookkeepingEntry {
     public ExpenseOnCredit {
       var state =
           BookkeepingEntryConstructionSupport.expenseOnCredit(
@@ -214,12 +204,14 @@ public sealed interface BookkeepingEntry
               expenseAccountCode,
               payableAccountCode,
               amount,
+              foreignExchangeDetails,
               taxSelection,
               appliedTax);
       effectiveDate = state.effectiveDate();
       expenseAccountCode = state.expenseAccountCode();
       payableAccountCode = state.payableAccountCode();
       amount = state.amount();
+      foreignExchangeDetails = state.foreignExchangeDetails();
     }
   }
 
@@ -229,7 +221,7 @@ public sealed interface BookkeepingEntry
       AccountCode receivableAccountCode,
       MonetaryAmount amount,
       @Nullable SettlementAdjunct settlementAdjunct)
-      implements BookkeepingEntry {
+      implements TypedBookkeepingEntry {
     public Receipt {
       var state =
           BookkeepingEntryCashMovementConstructionSupport.receipt(
@@ -247,7 +239,7 @@ public sealed interface BookkeepingEntry
       AccountCode cashAccountCode,
       MonetaryAmount amount,
       @Nullable SettlementAdjunct settlementAdjunct)
-      implements BookkeepingEntry {
+      implements TypedBookkeepingEntry {
     public Payment {
       var state =
           BookkeepingEntryCashMovementConstructionSupport.payment(
@@ -265,7 +257,7 @@ public sealed interface BookkeepingEntry
       AccountCode equityAccountCode,
       MonetaryAmount amount,
       @Nullable ForeignExchangeDetails foreignExchangeDetails)
-      implements BookkeepingEntry {
+      implements TypedBookkeepingEntry {
     public OwnerContribution {
       var state =
           BookkeepingEntryCashMovementConstructionSupport.ownerContribution(
@@ -283,7 +275,7 @@ public sealed interface BookkeepingEntry
       AccountCode cashAccountCode,
       MonetaryAmount amount,
       @Nullable ForeignExchangeDetails foreignExchangeDetails)
-      implements BookkeepingEntry {
+      implements TypedBookkeepingEntry {
     public OwnerWithdrawal {
       var state =
           BookkeepingEntryCashMovementConstructionSupport.ownerWithdrawal(
@@ -298,14 +290,18 @@ public sealed interface BookkeepingEntry
   record OpeningPosition(LocalDate effectiveDate, List<OpeningAccountBalance> balances)
       implements BookkeepingEntry {
     public OpeningPosition {
-      effectiveDate = BookkeepingEntryValidationSupport.requireEffectiveDate(effectiveDate);
-      balances = BookkeepingEntryValidationSupport.requireOpeningBalances(balances);
+      effectiveDate = BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
+      balances = BookkeepingEntryScalarValidationSupport.requireOpeningBalances(balances);
     }
 
     public record OpeningAccountBalance(
-        AccountCode accountCode, JournalLine.EntrySide side, MonetaryAmount amount) {
+        AccountCode accountCode,
+        JournalLine.EntrySide side,
+        MonetaryAmount amount,
+        @Nullable QuantityText quantity) {
       public OpeningAccountBalance {
-        BookkeepingEntryValidationSupport.requireOpeningAccountBalance(accountCode, side, amount);
+        BookkeepingEntryScalarValidationSupport.requireOpeningAccountBalance(
+            accountCode, side, amount);
       }
     }
   }
@@ -317,13 +313,13 @@ public sealed interface BookkeepingEntry
       @Nullable JournalEntry resolvedJournalEntry)
       implements BookkeepingEntry {
     public Reversal {
-      BookkeepingEntryValidationSupport.requireResolvedReversal(
+      BookkeepingEntryReversalValidationSupport.requireResolvedReversal(
           effectiveDate, reversal, resolvedJournalEntry, foreignExchangeDetails);
     }
 
     @Override
     public JournalEntry journalEntry() {
-      return BookkeepingEntryValidationSupport.requireResolvedJournalEntry(
+      return BookkeepingEntryReversalValidationSupport.requireResolvedJournalEntry(
           resolvedJournalEntry, "Reversal");
     }
   }

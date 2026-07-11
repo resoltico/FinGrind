@@ -1,11 +1,11 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractReversalTemplates.ReversalTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.AccountingEvidenceTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.JournalLineTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.OpeningBalanceTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.ProvenanceTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.ReversalTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.SettlementAdjunctTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.TaxSelectionTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
@@ -40,11 +40,24 @@ final class ContractPostingRequestTemplateDescriptorValidationSupport {
     String expenseAccountCode =
         ContractDescriptorValidation.requireOptionalText(
             draft.expenseAccountCode(), "expenseAccountCode");
+    String writeDownLossAccountCode =
+        ContractDescriptorValidation.requireOptionalText(
+            draft.writeDownLossAccountCode(), "writeDownLossAccountCode");
+    String shrinkageLossAccountCode =
+        ContractDescriptorValidation.requireOptionalText(
+            draft.shrinkageLossAccountCode(), "shrinkageLossAccountCode");
+    String countGainAccountCode =
+        ContractDescriptorValidation.requireOptionalText(
+            draft.countGainAccountCode(), "countGainAccountCode");
     String equityAccountCode =
         ContractDescriptorValidation.requireOptionalText(
             draft.equityAccountCode(), "equityAccountCode");
     MonetaryAmount amount =
         ContractDescriptorValidation.requireOptionalValue(draft.amount(), "amount");
+    String quantity =
+        ContractDescriptorValidation.requireOptionalText(draft.quantity(), "quantity");
+    MonetaryAmount unitCost =
+        ContractDescriptorValidation.requireOptionalValue(draft.unitCost(), "unitCost");
     InventoryReliefTemplateDescriptor inventoryRelief =
         ContractDescriptorValidation.requireOptionalValue(
             draft.inventoryRelief(), "inventoryRelief");
@@ -78,8 +91,13 @@ final class ContractPostingRequestTemplateDescriptorValidationSupport {
             revenueAccountCode,
             inventoryAccountCode,
             expenseAccountCode,
+            writeDownLossAccountCode,
+            shrinkageLossAccountCode,
+            countGainAccountCode,
             equityAccountCode,
             amount,
+            quantity,
+            unitCost,
             inventoryRelief,
             settlementAdjunct,
             foreignExchange,
@@ -96,8 +114,13 @@ final class ContractPostingRequestTemplateDescriptorValidationSupport {
         revenueAccountCode,
         inventoryAccountCode,
         expenseAccountCode,
+        writeDownLossAccountCode,
+        shrinkageLossAccountCode,
+        countGainAccountCode,
         equityAccountCode,
         amount,
+        quantity,
+        unitCost,
         inventoryRelief,
         settlementAdjunct,
         foreignExchange,
@@ -118,8 +141,13 @@ final class ContractPostingRequestTemplateDescriptorValidationSupport {
       @Nullable String revenueAccountCode,
       @Nullable String inventoryAccountCode,
       @Nullable String expenseAccountCode,
+      @Nullable String writeDownLossAccountCode,
+      @Nullable String shrinkageLossAccountCode,
+      @Nullable String countGainAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
+      @Nullable String quantity,
+      @Nullable MonetaryAmount unitCost,
       @Nullable InventoryReliefTemplateDescriptor inventoryRelief,
       @Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct,
       @Nullable ForeignExchangeTemplateDescriptor foreignExchange,
@@ -139,8 +167,13 @@ final class ContractPostingRequestTemplateDescriptorValidationSupport {
       @Nullable String revenueAccountCode,
       @Nullable String inventoryAccountCode,
       @Nullable String expenseAccountCode,
+      @Nullable String writeDownLossAccountCode,
+      @Nullable String shrinkageLossAccountCode,
+      @Nullable String countGainAccountCode,
       @Nullable String equityAccountCode,
       @Nullable MonetaryAmount amount,
+      @Nullable String quantity,
+      @Nullable MonetaryAmount unitCost,
       @Nullable InventoryReliefTemplateDescriptor inventoryRelief,
       @Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct,
       @Nullable ForeignExchangeTemplateDescriptor foreignExchange,

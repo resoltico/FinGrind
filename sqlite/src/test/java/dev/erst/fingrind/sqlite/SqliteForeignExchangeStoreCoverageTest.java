@@ -185,7 +185,8 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
             entry.postingOriginKind(),
             SqlitePostingFactFixtureSupport.accountingEvidence(postingIdText),
             committedProvenance(postingIdText),
-            entry);
+            entry,
+            null);
     RequestFingerprint requestFingerprint =
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64));
 
@@ -200,6 +201,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
         new AccountCode("4000"),
         new MonetaryAmount("EUR", "9200"),
         null,
+        null,
         new ForeignExchangeDetails(
             new MonetaryAmount("USD", "10000"),
             new MonetaryAmount("EUR", "9200"),
@@ -208,7 +210,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
                 new MonetaryAmount("EUR", "9200"),
                 LocalDate.parse("2026-04-06"),
                 "ecb-spot"),
-            ForeignExchangeTreatmentKind.SPOT_SETTLEMENT),
+            ForeignExchangeTreatmentKind.SPOT_TRANSACTION),
         null,
         null);
   }

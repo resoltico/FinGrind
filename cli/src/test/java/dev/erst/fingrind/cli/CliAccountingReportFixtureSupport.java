@@ -18,6 +18,7 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -40,6 +41,34 @@ class CliAccountingReportFixtureSupport extends CliRequestDocumentFixtureSupport
         fixtureAccountTaxonomy(accountType),
         active,
         declaredAt);
+  }
+
+  protected static DeclaredAccount inventoryDeclaredAccount(
+      String accountCode,
+      String accountName,
+      String unitToken,
+      int quantityScale,
+      boolean active,
+      Instant declaredAt) {
+    return new DeclaredAccount(
+        new AccountCode(accountCode),
+        new AccountName(accountName),
+        AccountType.ASSET,
+        inventoryTaxonomy(),
+        new UnitOfMeasure(unitToken, quantityScale),
+        active,
+        declaredAt);
+  }
+
+  protected static DeclaredAccount inventoryDeclaredAccount(
+      String accountCode, String accountName, String unitToken, int quantityScale) {
+    return inventoryDeclaredAccount(
+        accountCode,
+        accountName,
+        unitToken,
+        quantityScale,
+        true,
+        Instant.parse("2026-04-07T10:15:30Z"));
   }
 
   protected static AccountTaxonomy fixtureAccountTaxonomy(AccountType accountType) {
@@ -76,6 +105,15 @@ class CliAccountingReportFixtureSupport extends CliRequestDocumentFixtureSupport
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
     };
+  }
+
+  protected static AccountTaxonomy inventoryTaxonomy() {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(FinancialPositionLineClassification.INVENTORY),
+        Optional.empty(),
+        Optional.of(CashFlowAssetClassification.NON_CASH));
   }
 
   protected static TrialBalanceReport trialBalanceReport(

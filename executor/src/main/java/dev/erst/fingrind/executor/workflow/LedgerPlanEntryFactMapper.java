@@ -1,8 +1,10 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.QuantityText;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -37,21 +39,23 @@ final class LedgerPlanEntryFactMapper {
                   BookkeepingEntry.SaleOnCredit::amount,
                   BookkeepingEntry.SaleOnCredit::inventoryRelief),
               BookkeepingEntryKind.PURCHASE_SETTLED,
-              pairDescriptor(
+              purchaseDescriptor(
                   BookkeepingEntry.PurchaseSettled.class,
                   "inventoryAccountCode",
                   BookkeepingEntry.PurchaseSettled::inventoryAccountCode,
                   "cashAccountCode",
                   BookkeepingEntry.PurchaseSettled::cashAccountCode,
-                  BookkeepingEntry.PurchaseSettled::amount),
+                  BookkeepingEntry.PurchaseSettled::quantity,
+                  BookkeepingEntry.PurchaseSettled::unitCost),
               BookkeepingEntryKind.PURCHASE_ON_CREDIT,
-              pairDescriptor(
+              purchaseDescriptor(
                   BookkeepingEntry.PurchaseOnCredit.class,
                   "inventoryAccountCode",
                   BookkeepingEntry.PurchaseOnCredit::inventoryAccountCode,
                   "payableAccountCode",
                   BookkeepingEntry.PurchaseOnCredit::payableAccountCode,
-                  BookkeepingEntry.PurchaseOnCredit::amount),
+                  BookkeepingEntry.PurchaseOnCredit::quantity,
+                  BookkeepingEntry.PurchaseOnCredit::unitCost),
               BookkeepingEntryKind.EXPENSE_SETTLED,
               pairDescriptor(
                   BookkeepingEntry.ExpenseSettled.class,
@@ -124,6 +128,10 @@ final class LedgerPlanEntryFactMapper {
       appendReversalFacts(facts, reversal);
       return;
     }
+    if (entry instanceof InventoryBookkeepingEntryVariants inventoryEntry) {
+      LedgerPlanInventoryEntryFactMapper.append(facts, inventoryEntry);
+      return;
+    }
     java.util.Objects.requireNonNull(TWO_ACCOUNT_ENTRY_FACTS.get(entry.entryKind()))
         .append(facts, entry);
   }
@@ -181,6 +189,28 @@ final class LedgerPlanEntryFactMapper {
         (facts, entry) -> {});
   }
 
+  private static <ENTRY extends BookkeepingEntry> TwoAccountEntryDescriptor purchaseDescriptor(
+      Class<ENTRY> entryType,
+      String firstFieldName,
+      Function<ENTRY, AccountCode> firstAccount,
+      String secondFieldName,
+      Function<ENTRY, AccountCode> secondAccount,
+      Function<ENTRY, QuantityText> quantity,
+      Function<ENTRY, MonetaryAmount> unitCost) {
+    return new TwoAccountEntryDescriptor(
+        entryType,
+        firstFieldName,
+        entry -> firstAccount.apply(entryType.cast(entry)).value(),
+        secondFieldName,
+        entry -> secondAccount.apply(entryType.cast(entry)).value(),
+        entry -> unitCost.apply(entryType.cast(entry)),
+        (facts, entry) -> {
+          ENTRY typedEntry = entryType.cast(entry);
+          facts.add(BookWorkflowFact.text("quantity", quantity.apply(typedEntry).value()));
+          facts.add(BookWorkflowFact.money("unitCost", unitCost.apply(typedEntry)));
+        });
+  }
+
   private static <ENTRY extends BookkeepingEntry> TwoAccountEntryDescriptor pairDescriptor(
       Class<ENTRY> entryType,
       String firstFieldName,
@@ -204,14 +234,16 @@ final class LedgerPlanEntryFactMapper {
     openingPosition
         .balances()
         .forEach(
-            balance ->
-                facts.add(
-                    BookWorkflowFact.group(
-                        "openingBalance",
-                        List.of(
-                            BookWorkflowFact.text("accountCode", balance.accountCode().value()),
-                            BookWorkflowFact.text("side", balance.side().wireValue()),
-                            BookWorkflowFact.money("amount", balance.amount())))));
+            balance -> {
+              List<BookWorkflowFact> balanceFacts = new ArrayList<>();
+              balanceFacts.add(BookWorkflowFact.text("accountCode", balance.accountCode().value()));
+              balanceFacts.add(BookWorkflowFact.text("side", balance.side().wireValue()));
+              balanceFacts.add(BookWorkflowFact.money("amount", balance.amount()));
+              if (balance.quantity() != null) {
+                balanceFacts.add(BookWorkflowFact.text("quantity", balance.quantity().value()));
+              }
+              facts.add(BookWorkflowFact.group("openingBalance", List.copyOf(balanceFacts)));
+            });
   }
 
   private static void appendReversalFacts(
@@ -263,7 +295,7 @@ final class LedgerPlanEntryFactMapper {
                     "inventoryAccountCode", inventoryRelief.inventoryAccountCode().value()),
                 BookWorkflowFact.text(
                     "costOfSalesAccountCode", inventoryRelief.costOfSalesAccountCode().value()),
-                BookWorkflowFact.money("amount", inventoryRelief.amount()))));
+                BookWorkflowFact.text("quantity", inventoryRelief.quantity().value()))));
   }
 
   private record TwoAccountEntryDescriptor(

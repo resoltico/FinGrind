@@ -72,8 +72,7 @@ final class CliPostingMutationArguments {
     return parseRecordEntryCommand(arguments, OperationId.RECORD_REVERSAL);
   }
 
-  private static CliCommand parseRecordEntryCommand(
-      List<String> arguments, OperationId operationId) {
+  static CliCommand parseRecordEntryCommand(List<String> arguments, OperationId operationId) {
     return parseRequestBoundOutputCommand(
         arguments,
         (bookAccess, requestFile, outputMode) ->

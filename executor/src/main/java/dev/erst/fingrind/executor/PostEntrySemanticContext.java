@@ -1,11 +1,13 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAccountSemanticsViolations;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -20,7 +22,8 @@ record PostEntrySemanticContext(
     Objects.requireNonNull(entryKind, "entryKind");
     Objects.requireNonNull(sourceDocumentTypes, "sourceDocumentTypes");
     referencedAccounts =
-        Set.copyOf(Objects.requireNonNull(referencedAccounts, "referencedAccounts"));
+        Collections.unmodifiableSet(
+            new LinkedHashSet<>(Objects.requireNonNull(referencedAccounts, "referencedAccounts")));
   }
 
   static PostEntrySemanticContext from(
@@ -62,10 +65,17 @@ record PostEntrySemanticContext(
               inventoryReliefAccountCode(sale.inventoryRelief(), true),
               inventoryReliefAccountCode(sale.inventoryRelief(), false));
       case BookkeepingEntry.PurchaseSettled purchase ->
-          referencedAccountSet(purchase.inventoryAccountCode(), purchase.cashAccountCode(), null);
+          referencedAccountSet(
+              purchase.inventoryAccountCode(),
+              purchase.cashAccountCode(),
+              taxAccountCode(purchase.appliedTax()));
       case BookkeepingEntry.PurchaseOnCredit purchase ->
           referencedAccountSet(
-              purchase.inventoryAccountCode(), purchase.payableAccountCode(), null);
+              purchase.inventoryAccountCode(),
+              purchase.payableAccountCode(),
+              taxAccountCode(purchase.appliedTax()));
+      case InventoryBookkeepingEntryVariants inventoryEntry ->
+          PostEntryInventorySemanticContext.referencedAccounts(inventoryEntry);
       case BookkeepingEntry.ExpenseSettled expense ->
           referencedAccountSet(
               expense.expenseAccountCode(),
@@ -134,7 +144,7 @@ record PostEntrySemanticContext(
     if (fifthAccountCode != null) {
       referencedAccounts.add(fifthAccountCode);
     }
-    return Set.copyOf(referencedAccounts);
+    return referencedAccounts;
   }
 
   private static @Nullable AccountCode taxAccountCode(@Nullable AppliedTax appliedTax) {

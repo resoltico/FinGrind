@@ -18,15 +18,21 @@ public record CliPostingEntryPayload(
     @Nullable String revenueAccountCode,
     @Nullable String inventoryAccountCode,
     @Nullable String expenseAccountCode,
+    @Nullable String writeDownLossAccountCode,
+    @Nullable String shrinkageLossAccountCode,
+    @Nullable String countGainAccountCode,
     @Nullable String equityAccountCode,
     @Nullable MonetaryAmount amount,
+    @Nullable String quantity,
+    @Nullable MonetaryAmount unitCost,
     CliPostingEntryPayload.@Nullable InventoryReliefPayload inventoryRelief,
     @Nullable SettlementAdjunctPayload settlementAdjunct,
     CliForeignExchangeJsonModels.@Nullable ForeignExchangePayload foreignExchange,
     CliTaxJsonModels.@Nullable TaxSelectionPayload taxSelection,
     CliTaxJsonModels.@Nullable AppliedTaxPayload appliedTax,
     CliBookQueryJsonModels.@Nullable ReversalPayload reversal,
-    @Nullable List<CliOpeningBalancePayload> openingBalances) {
+    @Nullable List<CliOpeningBalancePayload> openingBalances,
+    @Nullable ResolvedInventoryCostingPayload resolvedInventoryCosting) {
   /** Validates one caller-authored posting entry payload. */
   public CliPostingEntryPayload {
     entryKind = requireText(entryKind, "entryKind");
@@ -36,7 +42,13 @@ public record CliPostingEntryPayload(
     revenueAccountCode = requireOptionalText(revenueAccountCode, "revenueAccountCode");
     inventoryAccountCode = requireOptionalText(inventoryAccountCode, "inventoryAccountCode");
     expenseAccountCode = requireOptionalText(expenseAccountCode, "expenseAccountCode");
+    writeDownLossAccountCode =
+        requireOptionalText(writeDownLossAccountCode, "writeDownLossAccountCode");
+    shrinkageLossAccountCode =
+        requireOptionalText(shrinkageLossAccountCode, "shrinkageLossAccountCode");
+    countGainAccountCode = requireOptionalText(countGainAccountCode, "countGainAccountCode");
     equityAccountCode = requireOptionalText(equityAccountCode, "equityAccountCode");
+    quantity = requireOptionalText(quantity, "quantity");
     openingBalances = openingBalances == null ? null : copyList(openingBalances, "openingBalances");
   }
 
@@ -50,11 +62,24 @@ public record CliPostingEntryPayload(
 
   /** Public JSON payload for one optional trading-sale inventory-relief bundle. */
   public record InventoryReliefPayload(
-      String inventoryAccountCode, String costOfSalesAccountCode, MonetaryAmount amount) {
+      String inventoryAccountCode, String costOfSalesAccountCode, String quantity) {
     public InventoryReliefPayload {
       inventoryAccountCode = requireText(inventoryAccountCode, "inventoryAccountCode");
       costOfSalesAccountCode = requireText(costOfSalesAccountCode, "costOfSalesAccountCode");
-      Objects.requireNonNull(amount, "amount");
+      quantity = requireText(quantity, "quantity");
+    }
+  }
+
+  /** Executor-derived sale costing facts retained for committed-posting transparency. */
+  public record ResolvedInventoryCostingPayload(
+      MonetaryAmount costOfSales,
+      String quantityRelieved,
+      MonetaryAmount roundedMovingAverageUnitCostProjection) {
+    public ResolvedInventoryCostingPayload {
+      Objects.requireNonNull(costOfSales, "costOfSales");
+      quantityRelieved = requireText(quantityRelieved, "quantityRelieved");
+      Objects.requireNonNull(
+          roundedMovingAverageUnitCostProjection, "roundedMovingAverageUnitCostProjection");
     }
   }
 }

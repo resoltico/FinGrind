@@ -14,6 +14,11 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationAccount;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationMovement;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationReport;
+import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
@@ -30,8 +35,10 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadPagePublishedLangua
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadReportPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadStatementPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.InventoryValuationView;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
+import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingInventoryReadService;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
@@ -42,11 +49,13 @@ import java.util.function.Function;
 public final class BookReadService {
   private final BookkeepingReadStore bookStore;
   private final BookkeepingReadService bookkeepingReadService;
+  private final BookkeepingInventoryReadService bookkeepingInventoryReadService;
 
   /** Creates the read service with its application-owned inspection, query, and report seam. */
   public BookReadService(BookkeepingReadStore bookStore) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
     this.bookkeepingReadService = new BookkeepingReadService(this.bookStore);
+    this.bookkeepingInventoryReadService = new BookkeepingInventoryReadService(this.bookStore);
   }
 
   /** Inspects the selected book file without mutating it. */
@@ -162,6 +171,21 @@ public final class BookReadService {
         IncomeStatementResult.Rejected::new);
   }
 
+  /** Computes exact inventory carrying values from canonical durable movement replay. */
+  public InventoryValuationResult inventoryValuation(InventoryValuationQuery query) {
+    return mapReadOutcome(
+        bookkeepingInventoryReadService.inventoryValuation(
+            BookReadQueryTranslator.fromPublished(query)),
+        values ->
+            new InventoryValuationResult.Reported(
+                new InventoryValuationReport(
+                    bookkeepingReadService.requireInitializedBookIdentity(),
+                    query.effectiveDateAsOf(),
+                    query.includeMovements(),
+                    values.stream().map(BookReadService::toPublishedInventoryValuation).toList())),
+        InventoryValuationResult.Rejected::new);
+  }
+
   /** Computes one statement of cash receipts and payments for the selected book and period. */
   public CashFlowStatementResult cashFlowStatement(CashFlowStatementQuery query) {
     return mapReadOutcome(
@@ -194,6 +218,31 @@ public final class BookReadService {
     }
     BookkeepingReadOutcome.Rejected<V> rejected = (BookkeepingReadOutcome.Rejected<V>) outcome;
     return rejectedMapper.apply(mapReadOutcomeRejection(rejected.rejection()));
+  }
+
+  private static InventoryValuationAccount toPublishedInventoryValuation(
+      InventoryValuationView valuation) {
+    return new InventoryValuationAccount(
+        valuation.account().accountCode(),
+        valuation.account().accountName(),
+        Objects.requireNonNull(valuation.account().unitOfMeasure(), "inventory unitOfMeasure"),
+        valuation.pool().quantityOnHand(),
+        dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(valuation.pool().costPool()),
+        valuation.roundedMovingAverageUnitCostProjection() == null
+            ? null
+            : dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(
+                valuation.roundedMovingAverageUnitCostProjection()),
+        valuation.movements().stream()
+            .map(
+                movement ->
+                    new InventoryValuationMovement(
+                        movement.postingId(),
+                        movement.effectiveDate(),
+                        movement.accountSequence(),
+                        movement.kind(),
+                        movement.quantityDelta(),
+                        movement.costDeltaMinor()))
+            .toList());
   }
 
   private static BookQueryRejection mapReadOutcomeRejection(

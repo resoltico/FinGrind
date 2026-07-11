@@ -1,8 +1,11 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: CONTRACT_REPORT_MODEL
-updated: "2026-07-04"
+updated: "2026-07-11"
+scope:
+  paths: ["contract/src/main/java/dev/erst/fingrind/contract/reportmodel"]
+  symbols: ["ReportModel", "ReportCsvProjection", "InventoryValuationReportModelBuilder"]
 route:
   keywords: [fingrind, report-model, shared-report, report-builder, json, csv, pdf, text, projection, report-context]
   questions: ["where is the shared report model documented in fingrind", "which doc covers ReportModel and ReportSection", "where are the report model builders documented"]
@@ -36,6 +39,27 @@ public interface ReportModelBuilder<T>
 - Projection semantics: sections carry summary verdicts, tabular rows, and optional totals blocks,
   while `ReportColumn.Alignment` and `ReportModel.Orientation` expose formatter hints only
 
+## `ReportCsvProjection`
+
+`ReportCsvProjection` carries the validated tabular CSV headers and exact rows owned by one
+`ReportModel` when that report has a specialized CSV record family.
+
+```java
+public record ReportCsvProjection(List<String> headers, List<List<String>> rows)
+```
+
+- Invariant: headers are non-empty and unique, and every row has exactly one cell per header
+- Ownership: the family-specific report-model builder creates the projection; CLI CSV rendering
+  consumes it directly
+- Compatibility: internal projection data excluded from the public JSON report shape
+
+## `BookQueryReportResult`
+
+`BookQueryReportResult<REPORTED>` is the uniform public grammar for book-query report results:
+`reported()` returns the family-specific report on success and `rejection()` returns the
+deterministic `BookQueryRejection` otherwise. It lets shared output infrastructure preserve the
+closed success-or-rejection semantics without erasing the report family.
+
 ## `AccountBalanceReportModelBuilder`, `TrialBalanceReportModelBuilder`, `AccountLedgerReportModelBuilder`, `PeriodSummaryReportModelBuilder`, `FinancialPositionReportModelBuilder`, `IncomeStatementReportModelBuilder`, `CashFlowStatementReportModelBuilder`, `ChangesInEquityReportModelBuilder`, And `TaxObligationReportModelBuilder`
 
 These builders own the one-way translation from family-specific reported results into the shared
@@ -56,3 +80,19 @@ public final class TaxObligationReportModelBuilder
 - Purpose: keep report-family semantics local while projecting one shared content spine outward
 - Family coverage: account balance, trial balance, account ledger, period summary, financial
   position, income statement, cash receipts and payments, changes in equity, and tax obligation
+
+## `InventoryValuationReportModelBuilder`
+
+`InventoryValuationReportModelBuilder` projects exact inventory-pool valuation into the shared
+report model used by JSON, text, CSV, and PDF output.
+
+```java
+public final class InventoryValuationReportModelBuilder
+```
+
+- It labels `roundedMovingAverageUnitCostProjection` informational and keeps exact carrying value
+  separate from that rounded display projection
+- When movement detail is requested, it adds ordered durable movement sections without creating a
+  second report model
+- It owns the exact tabular CSV projection used by the production CSV renderer, so CSV, JSON,
+  text, and PDF share one valuation model rather than independently rebuilding valuation facts

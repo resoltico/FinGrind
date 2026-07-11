@@ -13,7 +13,8 @@ public final class ProtocolBookRequestFieldSets {
           ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE,
           ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
           ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
-          ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION);
+          ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION,
+          ProtocolDeclareAccountFields.UNIT_OF_MEASURE);
   private static final Set<String> DECLARE_TAX_REGISTRATION_FIELDS =
       Set.of(
           ProtocolTaxRegistrationFields.TAX_REGISTRATION_ID,
@@ -30,6 +31,7 @@ public final class ProtocolBookRequestFieldSets {
           ProtocolOpenBookFields.ENTITY_NAME,
           ProtocolOpenBookFields.BOOK_TEMPLATE_ID,
           ProtocolOpenBookFields.ACCOUNTING_BASIS,
+          ProtocolOpenBookFields.INVENTORY_COSTING,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
           ProtocolOpenBookFields.FISCAL_YEAR_START);
 

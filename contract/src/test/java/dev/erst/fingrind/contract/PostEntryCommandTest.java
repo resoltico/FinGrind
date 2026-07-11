@@ -70,11 +70,13 @@ class PostEntryCommandTest {
                         new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("1000"),
                             JournalLine.EntrySide.DEBIT,
-                            new MonetaryAmount("EUR", "1000")),
+                            new MonetaryAmount("EUR", "1000"),
+                            null),
                         new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                             new AccountCode("3000"),
                             JournalLine.EntrySide.CREDIT,
-                            new MonetaryAmount("EUR", "1000")))),
+                            new MonetaryAmount("EUR", "1000"),
+                            null))),
                 nullOf(),
                 ContractFixtures.requestProvenance("idem-1"),
                 SourceChannel.CLI));

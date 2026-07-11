@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -75,6 +75,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md): explicit bookkeeping and workflow consistency boundaries, invariants, and mutation owners
 - [ADR_ACCOUNTING_FOUNDATION.md](./ADR_ACCOUNTING_FOUNDATION.md): exact accounting-foundation target doctrine, current maturity, and hard-break implementation order for missing accounting contexts
 - [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md): current bookkeeping-kernel scope, public truth boundaries, and intentional exclusions
+- [ADR_INVENTORY_COSTING.md](./ADR_INVENTORY_COSTING.md): live inventory-costing doctrine, its exact pool-based truth boundary, and the constraints later inventory work must preserve
 - [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md): canonical bounded contexts, context map, and accounting-entity vocabulary
 - [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md): bundle layout, public artifact rules, and release-asset expectations
 - [DEVELOPER_UNSIGNED_DISTRIBUTION.md](./DEVELOPER_UNSIGNED_DISTRIBUTION.md): current unsigned macOS and Windows bundle policy, the quarantine and Mark-of-the-Web gates, and the checksum-plus-attestation trust model
@@ -102,13 +103,16 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 ## Reference And Schema
 
 - [DOC_00_Index.md](./DOC_00_Index.md)
+- [DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
+- [DOC_01_Core_BookDoctrine.md](./DOC_01_Core_BookDoctrine.md)
 - [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md)
 - [DOC_01_Core_EvidenceAndWire.md](./DOC_01_Core_EvidenceAndWire.md)
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
+- [DOC_02_InventoryValuation.md](./DOC_02_InventoryValuation.md)
 - [DOC_02_IncomeStatementPresentation.md](./DOC_02_IncomeStatementPresentation.md)
 - [DOC_02_SharedReportModel.md](./DOC_02_SharedReportModel.md)
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md)
@@ -120,11 +124,13 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [sqlite/SCHEMA_CORE_03_ACCOUNT_RULES.md](./sqlite/SCHEMA_CORE_03_ACCOUNT_RULES.md)
 - [sqlite/SCHEMA_CORE_03z_TAX_REGISTRATION.md](./sqlite/SCHEMA_CORE_03z_TAX_REGISTRATION.md)
 - [sqlite/SCHEMA_CORE_04_POSTING_FACT.md](./sqlite/SCHEMA_CORE_04_POSTING_FACT.md)
+- [sqlite/SCHEMA_CORE_04z_POSTING_FACT_ADMISSION.md](./sqlite/SCHEMA_CORE_04z_POSTING_FACT_ADMISSION.md)
 - [sqlite/SCHEMA_CORE_05_POSTING_SOURCE_DOCUMENT.md](./sqlite/SCHEMA_CORE_05_POSTING_SOURCE_DOCUMENT.md)
 - [sqlite/SCHEMA_CORE_06_POSTING_APPROVAL.md](./sqlite/SCHEMA_CORE_06_POSTING_APPROVAL.md)
 - [sqlite/SCHEMA_CORE_06z_POSTING_APPLIED_TAX.md](./sqlite/SCHEMA_CORE_06z_POSTING_APPLIED_TAX.md)
 - [sqlite/SCHEMA_CORE_06za_POSTING_FOREIGN_EXCHANGE.md](./sqlite/SCHEMA_CORE_06za_POSTING_FOREIGN_EXCHANGE.md)
 - [sqlite/SCHEMA_CORE_07_JOURNAL_LINES.md](./sqlite/SCHEMA_CORE_07_JOURNAL_LINES.md)
+- [sqlite/SCHEMA_CORE_07z_INVENTORY_COSTING.md](./sqlite/SCHEMA_CORE_07z_INVENTORY_COSTING.md)
 - [sqlite/SCHEMA_CORE_08_INTERIM_RESULT_SWEEP_CORE.md](./sqlite/SCHEMA_CORE_08_INTERIM_RESULT_SWEEP_CORE.md)
 - [sqlite/SCHEMA_CORE_09_INTERIM_RESULT_SWEEP_LINKS.md](./sqlite/SCHEMA_CORE_09_INTERIM_RESULT_SWEEP_LINKS.md)
 - [sqlite/SCHEMA_CORE_10_FISCAL_YEAR_CLOSE_TABLE.md](./sqlite/SCHEMA_CORE_10_FISCAL_YEAR_CLOSE_TABLE.md)

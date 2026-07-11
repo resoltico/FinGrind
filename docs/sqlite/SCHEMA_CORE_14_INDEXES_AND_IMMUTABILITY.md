@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: SQLITE_SCHEMA_CORE_INDEXES_AND_IMMUTABILITY
-updated: "2026-07-04"
+updated: "2026-07-11"
 ---
 
 # SQLite Schema: Indexes And Immutability
@@ -26,6 +26,12 @@ on posting_applied_tax (tax_registration_id, posting_id);
 
 create index if not exists journal_line_by_account_code
 on journal_line (account_code, posting_id, line_order);
+
+create index if not exists inventory_movement_by_account_replay
+on inventory_movement (inventory_account, effective_date, account_sequence);
+
+create index if not exists inventory_movement_by_posting_id
+on inventory_movement (posting_id, inventory_account, account_sequence);
 
 create index if not exists audit_event_by_recorded_at
 on audit_event (recorded_at, audit_event_order);
@@ -83,6 +89,18 @@ create trigger if not exists book_identity_reject_delete
 before delete on book_identity
 begin
     select raise(fail, 'book_identity rows are append-only.');
+end;
+
+create trigger if not exists inventory_movement_reject_update
+before update on inventory_movement
+begin
+    select raise(fail, 'inventory_movement rows are append-only.');
+end;
+
+create trigger if not exists inventory_movement_reject_delete
+before delete on inventory_movement
+begin
+    select raise(fail, 'inventory_movement rows are append-only.');
 end;
 
 create trigger if not exists audit_event_reject_update

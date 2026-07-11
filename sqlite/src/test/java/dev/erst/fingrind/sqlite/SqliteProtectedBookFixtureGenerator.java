@@ -267,10 +267,11 @@ public final class SqliteProtectedBookFixtureGenerator {
       RegisteredAccount expectedAccount) {
     AccountDeclarationOutcome outcome =
         postingFactStore.declareAccount(
-            accountCode,
-            accountName,
-            accountType,
-            SqlitePostingFactFixtureSupport.accountTaxonomy(accountType, normalBalance),
+            new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                accountCode,
+                accountName,
+                accountType,
+                SqlitePostingFactFixtureSupport.accountTaxonomy(accountType, normalBalance)),
             INITIALIZED_AT);
     AccountDeclarationOutcome expected = new AccountDeclarationOutcome.Declared(expectedAccount);
     if (!expected.equals(outcome)) {

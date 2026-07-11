@@ -1,0 +1,16 @@
+{
+  "relativePath": "docs/sqlite/SCHEMA_CORE_04_POSTING_FACT.md",
+  "owner": "sqlite-posting-fact-schema-reference",
+  "reason": "The posting_fact table is one durable schema object whose exact DDL must remain in one generated companion so the schema reference reconstructs the canonical SQL body.",
+  "splitTrigger": "Extract a separately durable posting-provenance record only when it owns independent state, constraints, and persistence; do not split one table's exact DDL into synthetic fragments.",
+  "reviewedRoleName": "docs-schema-exact-table",
+  "budgetVarianceReason": "The exact posting_fact DDL exceeds the companion logical-line budget after its admission triggers moved into their own responsibility page, and the renderer must preserve the canonical SQL text byte-for-byte.",
+  "approval": {
+    "physicalLines": 290,
+    "logicalLines": 287,
+    "importLikeLines": 1,
+    "functions": 0,
+    "nestedTypes": 0,
+    "expiresOn": "2026-10-01"
+  }
+}

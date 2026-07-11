@@ -169,6 +169,7 @@ final class CashFlowPostingMovementClassifier {
           SALE_ON_CREDIT,
           PURCHASE_SETTLED,
           PURCHASE_ON_CREDIT,
+          INVENTORY_CAPITALIZATION_SETTLED,
           EXPENSE_SETTLED,
           EXPENSE_ON_CREDIT,
           RECEIPT,

@@ -18,6 +18,12 @@ final class ProtocolQueryReportOperations {
     return pdfQueryOperation(operationId, title, asOfInvocationSyntax(), description, example);
   }
 
+  static ProtocolOperation inventoryValuationReportOperation(
+      OperationId operationId, String title, String description, String example) {
+    return pdfQueryOperation(
+        operationId, title, inventoryValuationInvocationSyntax(), description, example);
+  }
+
   static ProtocolOperation periodReportOperation(
       OperationId operationId,
       String title,
@@ -77,6 +83,16 @@ final class ProtocolQueryReportOperations {
         ProtocolOptions.currentPassphraseSourceSyntax(),
         "[" + ProtocolOptions.EFFECTIVE_DATE_AS_OF + " <YYYY-MM-DD>]",
         ProtocolOptions.optionalAsOfComparativeSyntax(),
+        ProtocolOptions.optionalPdfOutSyntax(),
+        ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+  }
+
+  private static List<String> inventoryValuationInvocationSyntax() {
+    return List.of(
+        ProtocolOptions.BOOK_FILE + " <path>",
+        ProtocolOptions.currentPassphraseSourceSyntax(),
+        "[" + ProtocolOptions.AS_OF + " <YYYY-MM-DD>]",
+        "[" + ProtocolOptions.MOVEMENTS + "]",
         ProtocolOptions.optionalPdfOutSyntax(),
         ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
   }

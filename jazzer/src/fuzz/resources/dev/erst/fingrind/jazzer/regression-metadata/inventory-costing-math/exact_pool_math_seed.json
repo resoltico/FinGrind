@@ -1,0 +1,31 @@
+{
+  "targetKey" : "inventory-costing-math",
+  "inputPath" : "src/fuzz/resources/dev/erst/fingrind/core/WeightedAverageCostingMathFuzzTestInputs/disposeUsesExactPoolMath/exact_pool_math_seed.bin",
+  "coverageIntent" : "stable raw-byte replay for exact weighted-average disposal invariants",
+  "expectation" : {
+    "outcomeKind" : "success",
+    "message" : "Replay completed without surfacing a bug.",
+    "details" : {
+      "type" : "INVENTORY_COSTING_MATH",
+      "seed" : 1289413831943862,
+      "exercisedScenarioCount" : 32,
+      "knownProjectionMismatchCaseProven" : true,
+      "seedDerivedProjectionMismatchCaseProven" : true,
+      "samplePool" : {
+        "quantityOnHand" : "3",
+        "quantityScaledUnits" : 3,
+        "quantityScale" : 0,
+        "costPool" : "0.58",
+        "costPoolMinorUnits" : 58
+      },
+      "sampleExercise" : {
+        "disposedQuantity" : "2",
+        "roundedProjection" : "0.19",
+        "exactCostOfSales" : "0.39",
+        "projectionBasedCostOfSales" : "0.38",
+        "remainingQuantityOnHand" : "1",
+        "remainingCostPool" : "0.19"
+      }
+    }
+  }
+}

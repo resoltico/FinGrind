@@ -21,6 +21,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -36,7 +37,8 @@ final class ContractDeclarationTemplateValidationSupport {
       @Nullable String parentAccountCode,
       @Nullable FinancialPositionLineClassification financialPositionLineClassification,
       @Nullable ProfitAndLossLineClassification profitAndLossLineClassification,
-      @Nullable CashFlowAssetClassification cashFlowAssetClassification) {
+      @Nullable CashFlowAssetClassification cashFlowAssetClassification,
+      @Nullable UnitOfMeasure unitOfMeasure) {
     String validatedAccountCode =
         ContractDescriptorValidation.requireText(accountCode, "accountCode");
     String validatedAccountName =
@@ -56,11 +58,16 @@ final class ContractDeclarationTemplateValidationSupport {
     @Nullable CashFlowAssetClassification validatedCashFlowAssetClassification =
         ContractDescriptorValidation.requireOptionalValue(
             cashFlowAssetClassification, "cashFlowAssetClassification");
+    @Nullable UnitOfMeasure validatedUnitOfMeasure =
+        ContractDescriptorValidation.requireOptionalValue(unitOfMeasure, "unitOfMeasure");
 
     new AccountCode(validatedAccountCode);
     new AccountName(validatedAccountName);
     if (validatedParentAccountCode != null) {
       new AccountCode(validatedParentAccountCode);
+    }
+    if (validatedUnitOfMeasure != null) {
+      new UnitOfMeasure(validatedUnitOfMeasure.token(), validatedUnitOfMeasure.quantityScale());
     }
     return new DeclareAccountTemplateValues(
         validatedAccountCode,
@@ -70,7 +77,8 @@ final class ContractDeclarationTemplateValidationSupport {
         validatedParentAccountCode,
         validatedFinancialPositionLineClassification,
         validatedProfitAndLossLineClassification,
-        validatedCashFlowAssetClassification);
+        validatedCashFlowAssetClassification,
+        validatedUnitOfMeasure);
   }
 
   static DeclareTaxRegistrationTemplateValues validateDeclareTaxRegistrationTemplate(
@@ -173,7 +181,8 @@ final class ContractDeclarationTemplateValidationSupport {
       @Nullable String parentAccountCode,
       @Nullable FinancialPositionLineClassification financialPositionLineClassification,
       @Nullable ProfitAndLossLineClassification profitAndLossLineClassification,
-      @Nullable CashFlowAssetClassification cashFlowAssetClassification) {}
+      @Nullable CashFlowAssetClassification cashFlowAssetClassification,
+      @Nullable UnitOfMeasure unitOfMeasure) {}
 
   /** Validated values for one declare-tax-registration template descriptor. */
   record DeclareTaxRegistrationTemplateValues(

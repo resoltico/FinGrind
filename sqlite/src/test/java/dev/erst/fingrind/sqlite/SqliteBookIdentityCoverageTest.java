@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.BookDoctrines;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -46,6 +48,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   accounting_framework_position,
                   entity_form,
                   book_template_id,
+                  costing_doctrine,
                   functional_currency_code,
                   fiscal_year_start_month,
                   fiscal_year_start_day
@@ -57,6 +60,7 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   'NON_STATUTORY_INTERNAL_MANAGEMENT',
                   'OWNER_MANAGED_SINGLE_ENTITY',
                   'OWNER_MANAGED_SERVICE',
+                  null,
                   'EUR',
                   1,
                   1
@@ -124,8 +128,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
-  void loadBookIdentity_roundTripsNarrowDoctrineIdentity() {
-    Path bookPath = tempDirectory.resolve("book-identity-narrow-doctrine.sqlite");
+  void loadBookIdentity_roundTripsCashServiceDoctrineIdentity() {
+    Path bookPath = tempDirectory.resolve("book-identity-cash-service-doctrine.sqlite");
     BookIdentity bookIdentity =
         new BookIdentity(
             new EntityProfile(new BookEntityName("Acme Studio")),
@@ -141,6 +145,11 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
 
           assertEquals(
               Optional.of(bookIdentity), SqliteStatementQueries.loadBookIdentity(database));
+          assertNull(
+              SqliteStatementQueries.loadBookIdentity(database)
+                  .orElseThrow()
+                  .bookDoctrine()
+                  .inventoryCostingDoctrine());
         });
   }
 
@@ -162,6 +171,33 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
 
           assertEquals(
               Optional.of(bookIdentity), SqliteStatementQueries.loadBookIdentity(database));
+        });
+  }
+
+  @Test
+  void loadBookIdentity_roundTripsTradingDoctrineIdentity() {
+    Path bookPath = tempDirectory.resolve("book-identity-trading-doctrine.sqlite");
+    BookIdentity bookIdentity =
+        new BookIdentity(
+            new EntityProfile(new BookEntityName("Acme Trading")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("01-01"));
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          insertInitializedAtRow(database);
+          SqliteMutationWriter.insertBookIdentity(database, bookIdentity);
+
+          assertEquals(
+              Optional.of(bookIdentity), SqliteStatementQueries.loadBookIdentity(database));
+          assertEquals(
+              InventoryCostingDoctrine.WEIGHTED_AVERAGE,
+              SqliteStatementQueries.loadBookIdentity(database)
+                  .orElseThrow()
+                  .bookDoctrine()
+                  .inventoryCostingDoctrine());
         });
   }
 

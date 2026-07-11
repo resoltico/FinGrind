@@ -25,10 +25,25 @@ final class CliTypedBookkeepingEntryReaders {
               CliTypedBookkeepingEntryReaders::readSaleOnCreditEntry),
           Map.entry(
               BookkeepingEntryKind.PURCHASE_SETTLED,
-              CliTypedBookkeepingEntryReaders::readPurchaseSettledEntry),
+              CliInventoryBookkeepingEntryReaders::readPurchaseSettledEntry),
           Map.entry(
               BookkeepingEntryKind.PURCHASE_ON_CREDIT,
-              CliTypedBookkeepingEntryReaders::readPurchaseOnCreditEntry),
+              CliInventoryBookkeepingEntryReaders::readPurchaseOnCreditEntry),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
+              CliInventoryBookkeepingEntryReaders::readInventoryCapitalizationSettledEntry),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+              CliInventoryBookkeepingEntryReaders::readInventoryCapitalizationOnCreditEntry),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_WRITE_DOWN,
+              CliInventoryBookkeepingEntryReaders::readInventoryWriteDownEntry),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_SHRINKAGE,
+              CliInventoryBookkeepingEntryReaders::readInventoryShrinkageEntry),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
+              CliInventoryBookkeepingEntryReaders::readInventoryCountIncreaseEntry),
           Map.entry(
               BookkeepingEntryKind.EXPENSE_SETTLED,
               CliTypedBookkeepingEntryReaders::readExpenseSettledEntry),
@@ -69,6 +84,7 @@ final class CliTypedBookkeepingEntryReaders {
             requiredText(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalInventoryRelief(rootNode),
+        null,
         CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode),
         CliBookkeepingEntryNestedParser.optionalTaxSelection(rootNode),
         null);
@@ -84,31 +100,10 @@ final class CliTypedBookkeepingEntryReaders {
             requiredText(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalInventoryRelief(rootNode),
+        null,
+        CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode),
         CliBookkeepingEntryNestedParser.optionalTaxSelection(rootNode),
         null);
-  }
-
-  private static BookkeepingEntry.PurchaseSettled readPurchaseSettledEntry(ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, ProtocolPostingRequestFieldSets.purchaseSettledFields());
-    return new BookkeepingEntry.PurchaseSettled(
-        CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
-        new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
-        CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
-        CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode));
-  }
-
-  private static BookkeepingEntry.PurchaseOnCredit readPurchaseOnCreditEntry(ObjectNode rootNode) {
-    rejectUnexpectedFields(
-        rootNode, null, ProtocolPostingRequestFieldSets.purchaseOnCreditFields());
-    return new BookkeepingEntry.PurchaseOnCredit(
-        CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
-        new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
-        new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE)),
-        CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode));
   }
 
   private static BookkeepingEntry.ExpenseSettled readExpenseSettledEntry(ObjectNode rootNode) {
@@ -133,6 +128,7 @@ final class CliTypedBookkeepingEntryReaders {
         new AccountCode(
             requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
+        CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode),
         CliBookkeepingEntryNestedParser.optionalTaxSelection(rootNode),
         null);
   }

@@ -86,7 +86,7 @@ class CliResolvedJournalPayloadMapperTest {
     assertEquals("vat-standard-sale", payload.appliedTax().taxCode());
     assertNotNull(payload.foreignExchangeDetails());
     assertEquals("USD", payload.foreignExchangeDetails().transactionAmount().currencyCode());
-    assertEquals("SPOT_SETTLEMENT", payload.foreignExchangeDetails().treatmentKind());
+    assertEquals("SPOT_TRANSACTION", payload.foreignExchangeDetails().treatmentKind());
   }
 
   @Test
@@ -152,7 +152,7 @@ class CliResolvedJournalPayloadMapperTest {
             new MonetaryAmount("EUR", "9200"),
             LocalDate.parse("2026-04-06"),
             "ecb-spot"),
-        ForeignExchangeTreatmentKind.SPOT_SETTLEMENT);
+        ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
   }
 
   private static Money money(String canonicalDecimal) {

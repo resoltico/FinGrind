@@ -102,8 +102,13 @@ class ProtocolRequestFieldSetsTest {
             "revenueAccountCode",
             "inventoryAccountCode",
             "expenseAccountCode",
+            "writeDownLossAccountCode",
+            "shrinkageLossAccountCode",
+            "countGainAccountCode",
             "equityAccountCode",
             "amount",
+            "quantity",
+            "unitCost",
             "inventoryRelief",
             "settlementAdjunct",
             "foreignExchange",
@@ -117,7 +122,8 @@ class ProtocolRequestFieldSetsTest {
     assertEquals(
         List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.journalLineFields());
     assertEquals(
-        List.of("accountCode", "side", "amount"), ProtocolPostEntryFields.openingBalanceFields());
+        List.of("accountCode", "side", "amount", "quantity"),
+        ProtocolPostEntryFields.openingBalanceFields());
     assertEquals(
         List.of("transactionAmount", "functionalAmount", "quotedRate", "treatmentKind"),
         ProtocolPostEntryFields.foreignExchangeFields());
@@ -137,6 +143,12 @@ class ProtocolRequestFieldSetsTest {
             "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),
         ProtocolPostEntryFields.provenanceFields());
     assertEquals(List.of("priorPostingId", "reason"), ProtocolPostEntryFields.reversalFields());
+    assertEquals(List.of("taxRegistrationId", "taxCode"), ProtocolPostEntryFields.taxFields());
+    assertEquals(
+        List.of("accountCode", "amount"), ProtocolPostEntryFields.settlementAdjunctFields());
+    assertEquals(
+        List.of("inventoryAccountCode", "costOfSalesAccountCode", "quantity"),
+        ProtocolPostEntryFields.inventoryReliefFields());
     assertEquals("transactionAmount", ProtocolPostEntryFields.ForeignExchange.TRANSACTION_AMOUNT);
     assertEquals("quotedRate", ProtocolPostEntryFields.ForeignExchange.QUOTED_RATE);
     assertEquals(
@@ -170,6 +182,8 @@ class ProtocolRequestFieldSetsTest {
     assertEquals(List.of("currencyCode", "minorUnits"), ProtocolMoneyFields.fields());
     assertEquals(ProtocolSharedRequestFields.CURRENCY_CODE, ProtocolMoneyFields.CURRENCY_CODE);
     assertEquals("minorUnits", ProtocolMoneyFields.MINOR_UNITS);
+    assertEquals(
+        Set.of("token", "quantityScale"), ProtocolDeclareAccountFields.UnitOfMeasure.fields());
   }
 
   @Test
@@ -183,7 +197,8 @@ class ProtocolRequestFieldSetsTest {
             "parentAccountCode",
             "financialPositionLineClassification",
             "profitAndLossLineClassification",
-            "cashFlowAssetClassification"),
+            "cashFlowAssetClassification",
+            "unitOfMeasure"),
         ProtocolBookRequestFieldSets.declareAccountFields());
     assertEquals(
         Set.of(
@@ -202,6 +217,7 @@ class ProtocolRequestFieldSetsTest {
             "entityName",
             "bookTemplateId",
             "accountingBasis",
+            "inventoryCosting",
             "functionalCurrency",
             "fiscalYearStart"),
         ProtocolBookRequestFieldSets.openBookFields());
@@ -232,6 +248,7 @@ class ProtocolRequestFieldSetsTest {
             "revenueAccountCode",
             "amount",
             "inventoryRelief",
+            "foreignExchange",
             "tax",
             "evidence",
             "provenance"),
@@ -242,11 +259,38 @@ class ProtocolRequestFieldSetsTest {
             "effectiveDate",
             "inventoryAccountCode",
             "cashAccountCode",
-            "amount",
+            "quantity",
+            "unitCost",
             "foreignExchange",
+            "tax",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.purchaseSettledFields());
+        ProtocolInventoryPostingRequestFieldSets.purchaseSettledFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "inventoryAccountCode",
+            "payableAccountCode",
+            "quantity",
+            "unitCost",
+            "foreignExchange",
+            "tax",
+            "evidence",
+            "provenance"),
+        ProtocolInventoryPostingRequestFieldSets.purchaseOnCreditFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "inventoryAccountCode",
+            "cashAccountCode",
+            "amount",
+            "foreignExchange",
+            "tax",
+            "evidence",
+            "provenance"),
+        ProtocolInventoryPostingRequestFieldSets.inventoryCapitalizationSettledFields());
     assertEquals(
         Set.of(
             "entryKind",
@@ -254,9 +298,42 @@ class ProtocolRequestFieldSetsTest {
             "inventoryAccountCode",
             "payableAccountCode",
             "amount",
+            "foreignExchange",
+            "tax",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.purchaseOnCreditFields());
+        ProtocolInventoryPostingRequestFieldSets.inventoryCapitalizationOnCreditFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "inventoryAccountCode",
+            "writeDownLossAccountCode",
+            "amount",
+            "evidence",
+            "provenance"),
+        ProtocolInventoryPostingRequestFieldSets.inventoryWriteDownFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "inventoryAccountCode",
+            "shrinkageLossAccountCode",
+            "quantity",
+            "evidence",
+            "provenance"),
+        ProtocolInventoryPostingRequestFieldSets.inventoryShrinkageFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "inventoryAccountCode",
+            "countGainAccountCode",
+            "quantity",
+            "unitCost",
+            "evidence",
+            "provenance"),
+        ProtocolInventoryPostingRequestFieldSets.inventoryCountIncreaseFields());
     assertEquals(
         Set.of(
             "entryKind",
@@ -276,6 +353,7 @@ class ProtocolRequestFieldSetsTest {
             "expenseAccountCode",
             "payableAccountCode",
             "amount",
+            "foreignExchange",
             "tax",
             "evidence",
             "provenance"),

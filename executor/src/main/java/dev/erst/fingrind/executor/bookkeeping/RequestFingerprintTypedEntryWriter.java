@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 
 /** Writes caller-authored typed-entry fingerprint fields other than shared FX details. */
 final class RequestFingerprintTypedEntryWriter {
@@ -11,9 +12,12 @@ final class RequestFingerprintTypedEntryWriter {
       case BookkeepingEntry.DirectJournal _ -> {}
       case BookkeepingEntry.SaleSettled sale -> appendSaleSettled(canonical, sale);
       case BookkeepingEntry.SaleOnCredit sale -> appendSaleOnCredit(canonical, sale);
-      case BookkeepingEntry.PurchaseSettled purchase -> appendPurchaseSettled(canonical, purchase);
+      case BookkeepingEntry.PurchaseSettled purchase ->
+          RequestFingerprintInventoryEntryWriter.append(canonical, purchase);
       case BookkeepingEntry.PurchaseOnCredit purchase ->
-          appendPurchaseOnCredit(canonical, purchase);
+          RequestFingerprintInventoryEntryWriter.append(canonical, purchase);
+      case InventoryBookkeepingEntryVariants inventoryEntry ->
+          RequestFingerprintInventoryEntryWriter.append(canonical, inventoryEntry);
       case BookkeepingEntry.ExpenseSettled expense -> appendExpenseSettled(canonical, expense);
       case BookkeepingEntry.ExpenseOnCredit expense -> appendExpenseOnCredit(canonical, expense);
       case BookkeepingEntry.Receipt receipt -> appendReceipt(canonical, receipt);
@@ -22,7 +26,8 @@ final class RequestFingerprintTypedEntryWriter {
           appendOwnerContribution(canonical, contribution);
       case BookkeepingEntry.OwnerWithdrawal withdrawal ->
           appendOwnerWithdrawal(canonical, withdrawal);
-      case BookkeepingEntry.OpeningPosition _ -> {}
+      case BookkeepingEntry.OpeningPosition openingPosition ->
+          appendOpeningPosition(canonical, openingPosition);
       case BookkeepingEntry.Reversal _ -> {}
     }
   }
@@ -59,24 +64,6 @@ final class RequestFingerprintTypedEntryWriter {
         canonical, "cashAccountCode", expense.cashAccountCode());
     RequestFingerprintEntryFieldWriter.appendTaxedAmount(
         canonical, expense.amount(), expense.taxSelection(), expense.appliedTax());
-  }
-
-  private static void appendPurchaseSettled(
-      StringBuilder canonical, BookkeepingEntry.PurchaseSettled purchase) {
-    RequestFingerprintEntryFieldWriter.appendAccountCode(
-        canonical, "inventoryAccountCode", purchase.inventoryAccountCode());
-    RequestFingerprintEntryFieldWriter.appendAccountCode(
-        canonical, "cashAccountCode", purchase.cashAccountCode());
-    RequestFingerprintEntryFieldWriter.appendAmount(canonical, purchase.amount());
-  }
-
-  private static void appendPurchaseOnCredit(
-      StringBuilder canonical, BookkeepingEntry.PurchaseOnCredit purchase) {
-    RequestFingerprintEntryFieldWriter.appendAccountCode(
-        canonical, "inventoryAccountCode", purchase.inventoryAccountCode());
-    RequestFingerprintEntryFieldWriter.appendAccountCode(
-        canonical, "payableAccountCode", purchase.payableAccountCode());
-    RequestFingerprintEntryFieldWriter.appendAmount(canonical, purchase.amount());
   }
 
   private static void appendExpenseOnCredit(
@@ -125,5 +112,26 @@ final class RequestFingerprintTypedEntryWriter {
     RequestFingerprintEntryFieldWriter.appendAccountCode(
         canonical, "cashAccountCode", withdrawal.cashAccountCode());
     RequestFingerprintEntryFieldWriter.appendAmount(canonical, withdrawal.amount());
+  }
+
+  private static void appendOpeningPosition(
+      StringBuilder canonical, BookkeepingEntry.OpeningPosition openingPosition) {
+    for (int index = 0; index < openingPosition.balances().size(); index++) {
+      BookkeepingEntry.OpeningPosition.OpeningAccountBalance balance =
+          openingPosition.balances().get(index);
+      String prefix = "callerAuthoredEntry.openingBalances[" + index + "].";
+      RequestFingerprintEntryFieldWriter.appendField(
+          canonical, prefix + "accountCode", balance.accountCode().value());
+      RequestFingerprintEntryFieldWriter.appendField(
+          canonical, prefix + "side", balance.side().wireValue());
+      RequestFingerprintEntryFieldWriter.appendField(
+          canonical, prefix + "amountCurrency", balance.amount().currencyCode());
+      RequestFingerprintEntryFieldWriter.appendField(
+          canonical, prefix + "amountMinorUnits", balance.amount().minorUnits());
+      RequestFingerprintEntryFieldWriter.appendField(
+          canonical,
+          prefix + "quantity",
+          balance.quantity() == null ? "" : balance.quantity().value());
+    }
   }
 }

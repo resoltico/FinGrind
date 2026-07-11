@@ -160,6 +160,7 @@ class TaxValidationSupportTest {
                 new MonetaryAmount("EUR", "10000"),
                 null,
                 null,
+                null,
                 new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
                 saleTax)));
     assertEquals(
@@ -183,6 +184,8 @@ class TaxValidationSupportTest {
                 new AccountCode("4000"),
                 new MonetaryAmount("EUR", "10000"),
                 null,
+                null,
+                null,
                 new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-sale")),
                 saleTax)));
     assertEquals(
@@ -193,6 +196,7 @@ class TaxValidationSupportTest {
                 new AccountCode("5000"),
                 new AccountCode("2100"),
                 new MonetaryAmount("EUR", "12100"),
+                null,
                 new TaxSelection(
                     new TaxRegistrationId("vat-lv"), new TaxCode("vat-standard-expense")),
                 expenseTax)));

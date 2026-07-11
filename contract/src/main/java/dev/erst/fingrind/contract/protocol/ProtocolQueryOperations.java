@@ -19,6 +19,7 @@ final class ProtocolQueryOperations {
         accountLedgerOperation(),
         periodSummaryOperation(),
         financialPositionOperation(),
+        inventoryValuationOperation(),
         incomeStatementOperation(),
         cashFlowStatementOperation(),
         changesInEquityOperation());
@@ -206,6 +207,14 @@ final class ProtocolQueryOperations {
         "Financial Position",
         "Compute a statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
         ProtocolQueryOperationExamples.financialPositionExample());
+  }
+
+  private static ProtocolOperation inventoryValuationOperation() {
+    return ProtocolQueryReportOperations.inventoryValuationReportOperation(
+        OperationId.INVENTORY_VALUATION,
+        "Inventory Valuation",
+        "Compute exact per-account inventory quantity and carrying value from the canonical inventory movement replay order. The rounded moving-average unit-cost projection is informational only.",
+        ProtocolQueryOperationExamples.inventoryValuationExample());
   }
 
   private static ProtocolOperation incomeStatementOperation() {

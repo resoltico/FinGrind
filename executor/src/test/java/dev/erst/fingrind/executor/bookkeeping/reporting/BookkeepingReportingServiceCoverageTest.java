@@ -544,6 +544,12 @@ class BookkeepingReportingServiceCoverageTest {
     }
 
     @Override
+    public List<dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord>
+        inventoryValuationMovements(Optional<LocalDate> effectiveDateAsOf) {
+      return List.of();
+    }
+
+    @Override
     public Optional<StoredRequestPosting> findExistingPosting(
         dev.erst.fingrind.core.IdempotencyKey idempotencyKey) {
       return Optional.empty();

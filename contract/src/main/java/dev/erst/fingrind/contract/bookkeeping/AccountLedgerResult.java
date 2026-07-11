@@ -5,12 +5,22 @@ import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
 /** Closed result family for account-ledger reports. */
-public sealed interface AccountLedgerResult
+public sealed interface AccountLedgerResult extends BookQueryReportResult<AccountLedgerReport>
     permits AccountLedgerResult.Reported, AccountLedgerResult.Rejected {
 
   /** Folds the closed result family without transport-layer pattern switching. */
   <T extends @Nullable Object> T fold(
       Function<Reported, T> reportedMapper, Function<Rejected, T> rejectedMapper);
+
+  @Override
+  default @Nullable AccountLedgerReport reported() {
+    return fold(Reported::report, rejected -> null);
+  }
+
+  @Override
+  default @Nullable BookQueryRejection rejection() {
+    return fold(reported -> null, Rejected::rejection);
+  }
 
   /** Success result carrying one canonical account-ledger report. */
   record Reported(AccountLedgerReport report) implements AccountLedgerResult {

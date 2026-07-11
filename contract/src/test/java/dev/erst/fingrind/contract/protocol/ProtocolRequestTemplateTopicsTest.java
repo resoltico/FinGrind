@@ -21,6 +21,11 @@ class ProtocolRequestTemplateTopicsTest {
             OperationId.RECORD_SALE_ON_CREDIT,
             OperationId.RECORD_PURCHASE_SETTLED,
             OperationId.RECORD_PURCHASE_ON_CREDIT,
+            OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED,
+            OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
+            OperationId.RECORD_INVENTORY_WRITE_DOWN,
+            OperationId.RECORD_INVENTORY_SHRINKAGE,
+            OperationId.RECORD_INVENTORY_COUNT_INCREASE,
             OperationId.RECORD_EXPENSE_SETTLED,
             OperationId.RECORD_EXPENSE_ON_CREDIT,
             OperationId.RECORD_RECEIPT,
@@ -40,6 +45,11 @@ class ProtocolRequestTemplateTopicsTest {
             "record-sale-on-credit",
             "record-purchase-settled",
             "record-purchase-on-credit",
+            "record-inventory-capitalization-settled",
+            "record-inventory-capitalization-on-credit",
+            "record-inventory-write-down",
+            "record-inventory-shrinkage",
+            "record-inventory-count-increase",
             "record-expense-settled",
             "record-expense-on-credit",
             "record-receipt",
@@ -52,7 +62,7 @@ class ProtocolRequestTemplateTopicsTest {
             "declare-tax-registration"),
         ProtocolRequestTemplateTopics.topicNames());
     assertEquals(
-        "[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|declare-tax-registration]",
+        "[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-inventory-capitalization-settled|record-inventory-capitalization-on-credit|record-inventory-write-down|record-inventory-shrinkage|record-inventory-count-increase|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|declare-tax-registration]",
         ProtocolRequestTemplateTopics.syntax());
   }
 

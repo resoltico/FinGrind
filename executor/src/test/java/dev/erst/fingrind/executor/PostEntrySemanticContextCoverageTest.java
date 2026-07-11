@@ -14,7 +14,6 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Direct coverage for account-reference extraction across caller-authored entry variants. */
@@ -37,7 +36,8 @@ class PostEntrySemanticContextCoverageTest {
                 new InventoryRelief(
                     new AccountCode("1400"),
                     new AccountCode("5000"),
-                    new MonetaryAmount("EUR", "400")),
+                    new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+                null,
                 null,
                 null,
                 null));
@@ -47,7 +47,11 @@ class PostEntrySemanticContextCoverageTest {
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1400"),
                 new AccountCode("1000"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
                 new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
+                null,
                 null));
     PostEntrySemanticContext purchaseOnCreditContext =
         context(
@@ -55,7 +59,12 @@ class PostEntrySemanticContextCoverageTest {
                 LocalDate.parse("2026-04-07"),
                 new AccountCode("1400"),
                 new AccountCode("2100"),
-                new MonetaryAmount("EUR", "1000")));
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+                new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
+                null,
+                null));
     PostEntrySemanticContext openingContext =
         context(
             new BookkeepingEntry.OpeningPosition(
@@ -64,11 +73,13 @@ class PostEntrySemanticContextCoverageTest {
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("1000"),
                         JournalLine.EntrySide.DEBIT,
-                        new MonetaryAmount("EUR", "1000")),
+                        new MonetaryAmount("EUR", "1000"),
+                        null),
                     new BookkeepingEntry.OpeningPosition.OpeningAccountBalance(
                         new AccountCode("3000"),
                         JournalLine.EntrySide.CREDIT,
-                        new MonetaryAmount("EUR", "1000")))));
+                        new MonetaryAmount("EUR", "1000"),
+                        null))));
     PostEntrySemanticContext unresolvedReversalContext =
         context(
             new BookkeepingEntry.Reversal(
@@ -92,29 +103,29 @@ class PostEntrySemanticContextCoverageTest {
     assertEquals("entryKind", directJournalContext.selectorField());
     assertEquals("DIRECT_JOURNAL", directJournalContext.selectorValue());
     assertEquals(
-        Set.of(new AccountCode("1000"), new AccountCode("4000")),
-        directJournalContext.referencedAccounts());
+        List.of(new AccountCode("1000"), new AccountCode("4000")),
+        List.copyOf(directJournalContext.referencedAccounts()));
     assertEquals(
-        Set.of(
+        List.of(
             new AccountCode("1000"),
             new AccountCode("4000"),
             new AccountCode("1400"),
             new AccountCode("5000")),
-        saleContext.referencedAccounts());
+        List.copyOf(saleContext.referencedAccounts()));
     assertEquals(
-        Set.of(new AccountCode("1400"), new AccountCode("1000")),
-        purchaseSettledContext.referencedAccounts());
+        List.of(new AccountCode("1400"), new AccountCode("1000")),
+        List.copyOf(purchaseSettledContext.referencedAccounts()));
     assertEquals(
-        Set.of(new AccountCode("1400"), new AccountCode("2100")),
-        purchaseOnCreditContext.referencedAccounts());
+        List.of(new AccountCode("1400"), new AccountCode("2100")),
+        List.copyOf(purchaseOnCreditContext.referencedAccounts()));
     assertEquals("purchase-receipt", purchaseSettledContext.sourceDocumentTypes().scaffoldValue());
     assertEquals(
-        Set.of(new AccountCode("1000"), new AccountCode("3000")),
-        openingContext.referencedAccounts());
-    assertEquals(Set.of(), unresolvedReversalContext.referencedAccounts());
+        List.of(new AccountCode("1000"), new AccountCode("3000")),
+        List.copyOf(openingContext.referencedAccounts()));
+    assertEquals(List.of(), List.copyOf(unresolvedReversalContext.referencedAccounts()));
     assertEquals(
-        Set.of(new AccountCode("1000"), new AccountCode("4000")),
-        resolvedReversalContext.referencedAccounts());
+        List.of(new AccountCode("1000"), new AccountCode("4000")),
+        List.copyOf(resolvedReversalContext.referencedAccounts()));
   }
 
   private static PostEntrySemanticContext context(BookkeepingEntry entry) {

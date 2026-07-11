@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.EconomicEventClass;
 import java.util.Objects;
 import java.util.Set;
@@ -61,47 +60,6 @@ final class PostingEntryModeRejectionSemantics {
                   .formatted(requiredSelectorField, requiredSelectorValue));
       default -> throw new IllegalArgumentException("requiredRole must be RECEIVABLE or PAYABLE.");
     };
-  }
-
-  static PostingRejection.EntrySemanticsViolation tradingSaleRequiresInventoryRelief(
-      String selectorField, String selectorValue) {
-    String requiredSelectorField =
-        PostingRejectionSemanticsSupport.requireSelectorField(selectorField);
-    String requiredSelectorValue =
-        PostingRejectionSemanticsSupport.requireSelectorValue(selectorValue);
-    return new PostingRejection.EntrySemanticsViolation(
-        "trading-sale-requires-inventory-relief",
-        "inventoryRelief",
-        "%s '%s' targets a trading-template book, so inventoryRelief is required on sale requests."
-            .formatted(requiredSelectorField, requiredSelectorValue));
-  }
-
-  static PostingRejection.EntrySemanticsViolation verbRequiresTradingTemplate(
-      String selectorField, String selectorValue, BookTemplateId bookTemplateId) {
-    String requiredSelectorField =
-        PostingRejectionSemanticsSupport.requireSelectorField(selectorField);
-    String requiredSelectorValue =
-        PostingRejectionSemanticsSupport.requireSelectorValue(selectorValue);
-    Objects.requireNonNull(bookTemplateId, "bookTemplateId");
-    return new PostingRejection.EntrySemanticsViolation(
-        "verb-requires-trading-template",
-        requiredSelectorField,
-        "%s '%s' is an inventory-purchase verb admitted only on trading-template books, but selected bookTemplateId '%s' does not admit that doctrine."
-            .formatted(requiredSelectorField, requiredSelectorValue, bookTemplateId.wireValue()));
-  }
-
-  static PostingRejection.EntrySemanticsViolation inventoryReliefRequiresTradingBook(
-      String selectorField, String selectorValue, BookTemplateId bookTemplateId) {
-    String requiredSelectorField =
-        PostingRejectionSemanticsSupport.requireSelectorField(selectorField);
-    String requiredSelectorValue =
-        PostingRejectionSemanticsSupport.requireSelectorValue(selectorValue);
-    Objects.requireNonNull(bookTemplateId, "bookTemplateId");
-    return new PostingRejection.EntrySemanticsViolation(
-        "inventory-relief-requires-trading-book",
-        "inventoryRelief",
-        "%s '%s' carries inventoryRelief, but selected bookTemplateId '%s' does not admit trading inventory relief."
-            .formatted(requiredSelectorField, requiredSelectorValue, bookTemplateId.wireValue()));
   }
 
   /** Returns one entry-semantics violation using the canonical selector field. */

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: ADAPTERS
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -85,19 +85,22 @@ public record AccountDeclaration(
     AccountCode accountCode,
     AccountName accountName,
     AccountType accountType,
-    AccountTaxonomy accountTaxonomy)
+    AccountTaxonomy accountTaxonomy,
+    @Nullable UnitOfMeasure unitOfMeasure)
 public sealed interface AccountDeclarationOutcome
 public sealed interface BookOpeningOutcome
 public record RegisteredAccount(...)
 ```
 
 - `AccountDeclaration`: bookkeeping-local declaration request after the public command crosses the
-  translator boundary
+  translator boundary, including the inventory account's owned unit token and exact quantity
+  scale when the declared taxonomy is `INVENTORY`
 - `AccountDeclarationOutcome`: closed family of accepted-versus-rejected declaration outcomes
 - `BookOpeningOutcome`: closed family of accepted-versus-rejected initialization outcomes
 - `RegisteredAccount`: local registry snapshot that owns redeclare/reactivate semantics and
-  preserves declared-at time while keeping `accountType` and `accountTaxonomy` immutable after the
-  first declaration while deriving `normalBalance()` from `AccountTaxonomyDoctrine`
+  preserves declared-at time while keeping `accountType`, `accountTaxonomy`, and the inventory
+  `unitOfMeasure` immutable after the first declaration while deriving `normalBalance()` from
+  `AccountTaxonomyDoctrine`
 
 ## `BookAuditEvent` And `BookAuditEventKind`
 
@@ -112,7 +115,7 @@ public enum BookAuditEventKind implements WireValue
 - `BookAuditEvent`: one validated durable audit fact carrying event time plus the local account or
   posting identity when the event kind requires it
 - `BookAuditEventKind`: the closed durable audit vocabulary
-- Current kinds: `BOOK_OPENED`, `ACCOUNT_DECLARED`, `ACCOUNT_REACTIVATED`,
+- Current kinds: `BOOK_OPENED`, `ACCOUNT_DECLARED`, `ACCOUNT_REACTIVATED`, `ACCOUNT_RENAMED`,
   `POSTING_COMMITTED`, `POSTING_REVERSED`, `BOOK_REKEYED`, `BACKUP_CREATED`,
   `BACKUP_RESTORED`, `REKEY_ROLLBACK_RESTORED`, `REKEY_ROLLBACK_DELETED`,
   `BACKUP_CREATED_COMPENSATED`, `REKEY_ROLLBACK_DELETED_COMPENSATED`,
@@ -194,6 +197,44 @@ public interface PostingValidationStore
 - Purpose: let application preflight and commit-time validation reuse one authoritative
   initialized-book lookup contract
 
+## `InventoryMovementRecord`, `InventoryValuationMovementRecord`, `InventoryAccountState`, `InventoryMovementLookupStore`, `InventoryValuationStore`, `InventoryStateLookupStore`, `SqliteResolvedInventoryCostingReader`, `InventoryMovementPrecedesAccountHorizonViolation`, `InventoryQuantityBelowZeroViolation`, And `InventoryWriteDownExceedsCarryingCostViolation`
+
+These local inventory-state models and lookup seams support executor-owned weighted-average
+admission before durable commit.
+
+```java
+public record InventoryMovementRecord(...)
+public record InventoryValuationMovementRecord(...)
+public record InventoryAccountState(...)
+public interface InventoryMovementLookupStore
+public interface InventoryValuationStore
+public interface InventoryStateLookupStore
+final class SqliteResolvedInventoryCostingReader
+public record InventoryMovementPrecedesAccountHorizonViolation(...)
+public record InventoryQuantityBelowZeroViolation(...)
+public record InventoryWriteDownExceedsCarryingCostViolation(...)
+```
+
+- `InventoryMovementRecord`: one exact per-account inventory movement carrying effective date,
+  movement kind, quantity delta, and carrying-cost delta
+- `InventoryAccountState`: one exact per-account on-hand pool plus the last accepted movement date
+  that defines the current effective-date horizon
+- `InventoryMovementLookupStore`: loads the committed inventory movements linked to one posting so
+  reversal and verification can replay durable inventory history
+- `InventoryValuationMovementRecord`: carries the store-owned account sequence and source posting
+  identity required to replay one inventory account in canonical `(effective_date, account_sequence)` order
+- `InventoryValuationStore`: loads those ordered durable ledger facts through an optional inclusive
+  inventory-valuation cutoff
+- `InventoryStateLookupStore`: loads the current exact inventory pool for one inventory account
+- `SqliteResolvedInventoryCostingReader`: reconstructs a costed sale's exact cost of sales,
+  relieved quantity, and informational rounded moving-average unit-cost projection from the sale's
+  disposal movement plus the preceding canonical inventory replay order; the rounded projection is
+  derived at read time and is never persisted as costing truth
+- `InventoryMovementPrecedesAccountHorizonViolation`,
+  `InventoryQuantityBelowZeroViolation`, and
+  `InventoryWriteDownExceedsCarryingCostViolation`: local account-state violations that the
+  executor later translates into the published inventory account-state detail family
+
 ## `BookLifecycleInspection` And `BookInspectionPublishedLanguageTranslator`
 
 `BookLifecycleInspection` is the executor-owned local lifecycle snapshot, and
@@ -212,19 +253,23 @@ public final class BookInspectionPublishedLanguageTranslator
 - `BookInspectionPublishedLanguageTranslator`: projects this local inspection family into the
   public `BookInspection` contract
 
-## `BookkeepingReadService` And `BookkeepingLookupOutcome`
+## `BookkeepingReadService`, `BookkeepingInventoryReadService`, And `BookkeepingLookupOutcome`
 
-`BookkeepingReadService` owns local bookkeeping inspection, lookup, query, and reporting semantics,
-and `BookkeepingLookupOutcome` preserves lifecycle rejection, ordinary absence, and presence
-distinctly for internal callers.
+`BookkeepingReadService` owns local bookkeeping inspection, lookup, and general reporting
+semantics; `BookkeepingInventoryReadService` owns lifecycle-gated inventory-ledger valuation; and
+`BookkeepingLookupOutcome` preserves lifecycle rejection, ordinary absence, and presence distinctly
+for internal callers.
 
 ```java
 public final class BookkeepingReadService
+public final class BookkeepingInventoryReadService
 public sealed interface BookkeepingLookupOutcome<T>
 ```
 
-- `BookkeepingReadService`: keeps local read/report behavior inside the bookkeeping context before
-  any public DTO or public query-rejection family is projected
+- `BookkeepingReadService`: keeps local account, posting, and financial-statement behavior inside
+  the bookkeeping context before any public DTO or public query-rejection family is projected
+- `BookkeepingInventoryReadService`: owns point-in-time inventory valuation and delegates exact
+  canonical movement replay to the reporting service without widening the general read-service seam
 - `BookkeepingLookupOutcome`: `Found`, `Missing`, and `Rejected` variants keep “book not
   initialized” distinct from ordinary account/posting absence in internal workflow and assertion
   helpers

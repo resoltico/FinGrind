@@ -144,6 +144,8 @@ final class CliDiscoveryPostingModelRowSupport {
     }
     return switch (fieldName) {
       case ProtocolPostEntryFields.TopLevel.AMOUNT -> postingTemplate.amount() != null;
+      case ProtocolPostEntryFields.TopLevel.QUANTITY -> postingTemplate.quantity() != null;
+      case ProtocolPostEntryFields.TopLevel.UNIT_COST -> postingTemplate.unitCost() != null;
       case ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE ->
           postingTemplate.foreignExchange() != null;
       case ProtocolPostEntryFields.TopLevel.TAX -> postingTemplate.tax() != null;

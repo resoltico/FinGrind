@@ -17,7 +17,9 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingOriginKind;
+import dev.erst.fingrind.core.Quantity;
 import java.time.LocalDate;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -34,26 +36,44 @@ class BookkeepingEntryVariantCoverageTest {
             new MonetaryAmount("EUR", "1000"),
             null,
             null,
+            null,
+            null,
             null);
     BookkeepingEntry.PurchaseSettled purchaseSettled =
         new BookkeepingEntry.PurchaseSettled(
             LocalDate.parse("2026-04-25"),
             new AccountCode("1400"),
             new AccountCode("1000"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
             new MonetaryAmount("EUR", "1000"),
+            new ResolvedInventoryAcquisition(
+                Quantity.parse(0, "1"),
+                new MonetaryAmount("EUR", "1000"),
+                new MonetaryAmount("EUR", "1000")),
+            null,
+            null,
             null);
     BookkeepingEntry.PurchaseOnCredit purchaseOnCredit =
         new BookkeepingEntry.PurchaseOnCredit(
             LocalDate.parse("2026-04-25"),
             new AccountCode("1400"),
             new AccountCode("2100"),
-            new MonetaryAmount("EUR", "1000"));
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+            new MonetaryAmount("EUR", "1000"),
+            new ResolvedInventoryAcquisition(
+                Quantity.parse(0, "1"),
+                new MonetaryAmount("EUR", "1000"),
+                new MonetaryAmount("EUR", "1000")),
+            null,
+            null,
+            null);
     BookkeepingEntry.ExpenseOnCredit expenseOnCredit =
         new BookkeepingEntry.ExpenseOnCredit(
             LocalDate.parse("2026-04-25"),
             new AccountCode("5000"),
             new AccountCode("2100"),
             new MonetaryAmount("EUR", "1000"),
+            null,
             null,
             null);
     BookkeepingEntry.Receipt receipt =
@@ -103,6 +123,79 @@ class BookkeepingEntryVariantCoverageTest {
   }
 
   @Test
+  void purchaseEntries_requireExecutorOwnedInventoryAcquisitionBeforeJournalDerivation() {
+    BookkeepingEntry.PurchaseSettled purchaseSettled =
+        new BookkeepingEntry.PurchaseSettled(
+            LocalDate.parse("2026-04-25"),
+            new AccountCode("1400"),
+            new AccountCode("1000"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            null,
+            null);
+    BookkeepingEntry.PurchaseOnCredit purchaseOnCredit =
+        new BookkeepingEntry.PurchaseOnCredit(
+            LocalDate.parse("2026-04-25"),
+            new AccountCode("1400"),
+            new AccountCode("2100"),
+            new dev.erst.fingrind.contract.bookkeeping.QuantityText("1"),
+            new MonetaryAmount("EUR", "1000"),
+            null,
+            null,
+            null,
+            null);
+
+    assertEquals(
+        "purchaseSettled inventory acquisition requires executor-owned quantity resolution before journalEntry() can be derived.",
+        assertThrows(IllegalStateException.class, purchaseSettled::journalEntry).getMessage());
+    assertEquals(
+        "purchaseOnCredit inventory acquisition requires executor-owned quantity resolution before journalEntry() can be derived.",
+        assertThrows(IllegalStateException.class, purchaseOnCredit::journalEntry).getMessage());
+  }
+
+  @Test
+  void
+      saleEntriesWithInventoryRelief_requireExecutorOwnedInventoryCostingBeforeJournalDerivation() {
+    BookkeepingEntry.SaleSettled saleSettled =
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-04-25"),
+            new AccountCode("1000"),
+            new AccountCode("4000"),
+            new MonetaryAmount("EUR", "1000"),
+            new InventoryRelief(
+                new AccountCode("1400"),
+                new AccountCode("5000"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+            null,
+            null,
+            null,
+            null);
+    BookkeepingEntry.SaleOnCredit saleOnCredit =
+        new BookkeepingEntry.SaleOnCredit(
+            LocalDate.parse("2026-04-25"),
+            new AccountCode("1200"),
+            new AccountCode("4000"),
+            new MonetaryAmount("EUR", "1000"),
+            new InventoryRelief(
+                new AccountCode("1400"),
+                new AccountCode("5000"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("1")),
+            null,
+            null,
+            null,
+            null);
+
+    assertEquals(
+        "sale inventory relief requires executor-owned inventory costing before journalEntry() can be derived.",
+        assertThrows(IllegalStateException.class, saleSettled::journalEntry).getMessage());
+    assertEquals(
+        "sale inventory relief requires executor-owned inventory costing before journalEntry() can be derived.",
+        assertThrows(IllegalStateException.class, saleOnCredit::journalEntry).getMessage());
+  }
+
+  @Test
   void creditEntries_deriveResolvedTaxJournalsWhenTaxSelectionIsPresent() {
     TaxSelection selection = new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat"));
     BookkeepingEntry.SaleOnCredit taxedSale =
@@ -111,6 +204,8 @@ class BookkeepingEntryVariantCoverageTest {
             new AccountCode("1200"),
             new AccountCode("4000"),
             new MonetaryAmount("EUR", "10000"),
+            null,
+            null,
             null,
             selection,
             appliedTax(
@@ -126,6 +221,7 @@ class BookkeepingEntryVariantCoverageTest {
             new AccountCode("5000"),
             new AccountCode("2100"),
             new MonetaryAmount("EUR", "12100"),
+            null,
             selection,
             appliedTax(
                 TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
@@ -140,6 +236,70 @@ class BookkeepingEntryVariantCoverageTest {
     assertEquals(3, taxedExpense.journalEntry().lines().size());
     assertEquals(
         12100L, taxedExpense.journalEntry().lines().getLast().amount().money().minorUnits());
+  }
+
+  @Test
+  void purchaseEntries_deriveResolvedInventoryTaxJournalsWhenTaxSelectionIsPresent() {
+    TaxSelection selection = new TaxSelection(new TaxRegistrationId("vat-lv"), new TaxCode("vat"));
+    ResolvedInventoryAcquisition acquisition =
+        new ResolvedInventoryAcquisition(
+            Quantity.parse(0, "1"),
+            new MonetaryAmount("EUR", "10000"),
+            new MonetaryAmount("EUR", "10000"));
+    BookkeepingEntry.PurchaseSettled selectedButUnresolvedPurchase =
+        new BookkeepingEntry.PurchaseSettled(
+            LocalDate.parse("2026-04-25"),
+            new AccountCode("1400"),
+            new AccountCode("1000"),
+            new QuantityText("1"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            null,
+            selection,
+            null);
+    BookkeepingEntry.PurchaseSettled recoverablePurchase =
+        new BookkeepingEntry.PurchaseSettled(
+            LocalDate.parse("2026-04-25"),
+            new AccountCode("1400"),
+            new AccountCode("1000"),
+            new QuantityText("1"),
+            new MonetaryAmount("EUR", "10000"),
+            acquisition,
+            null,
+            selection,
+            appliedTax(
+                TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
+                TaxInclusionMode.EXCLUSIVE,
+                "10000",
+                "2100",
+                "12100",
+                "1300"));
+    BookkeepingEntry.PurchaseOnCredit nonrecoverablePurchase =
+        new BookkeepingEntry.PurchaseOnCredit(
+            LocalDate.parse("2026-04-25"),
+            new AccountCode("1400"),
+            new AccountCode("2100"),
+            new QuantityText("1"),
+            new MonetaryAmount("EUR", "10000"),
+            acquisition,
+            null,
+            selection,
+            appliedTax(
+                TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE,
+                TaxInclusionMode.EXCLUSIVE,
+                "10000",
+                "2100",
+                "12100",
+                null));
+
+    assertEquals(selection, selectedButUnresolvedPurchase.taxSelection());
+    assertEquals(3, recoverablePurchase.journalEntry().lines().size());
+    assertEquals(2, nonrecoverablePurchase.journalEntry().lines().size());
+    assertEquals(
+        12100L, recoverablePurchase.journalEntry().lines().getLast().amount().money().minorUnits());
+    assertEquals(
+        12100L,
+        nonrecoverablePurchase.journalEntry().lines().getLast().amount().money().minorUnits());
   }
 
   @Test
@@ -216,7 +376,7 @@ class BookkeepingEntryVariantCoverageTest {
 
     assertEquals(new AccountCode("1190"), liveAdjunct.accountCode());
     assertNull(
-        BookkeepingEntryValidationSupport.requireOptionalSettlementAdjunct(
+        BookkeepingEntryScalarValidationSupport.requireOptionalSettlementAdjunct(
             null, new MonetaryAmount("EUR", "1000"), "settlementAdjunct"));
     assertDoesNotThrow(
         () ->
@@ -270,7 +430,7 @@ class BookkeepingEntryVariantCoverageTest {
       String taxableAmountMinorUnits,
       String taxAmountMinorUnits,
       String grossAmountMinorUnits,
-      String taxAccountCode) {
+      @Nullable String taxAccountCode) {
     return new AppliedTax(
         new TaxRegistrationId("vat-lv"),
         new TaxCode("vat"),
@@ -281,6 +441,6 @@ class BookkeepingEntryVariantCoverageTest {
         new MonetaryAmount("EUR", taxableAmountMinorUnits),
         new MonetaryAmount("EUR", taxAmountMinorUnits),
         new MonetaryAmount("EUR", grossAmountMinorUnits),
-        new AccountCode(taxAccountCode));
+        taxAccountCode == null ? null : new AccountCode(taxAccountCode));
   }
 }

@@ -1,9 +1,9 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.PostingInventoryRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
-import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.EconomicEventClass;
 import java.util.Set;
 
@@ -38,36 +38,6 @@ public final class BookkeepingEntryModeSemanticsViolations {
         PostingRejectionSemantics.verbRequiresRole(
             BookkeepingEntrySemanticsViolationSupport.requireSelectorValue(selectorValue),
             AccountRole.PAYABLE));
-  }
-
-  /** Creates one trading-template admission violation for inventory-purchase verbs. */
-  public static BookkeepingPostingRejection.EntrySemanticsViolation verbRequiresTradingTemplate(
-      String selectorField, String selectorValue, BookTemplateId bookTemplateId) {
-    BookkeepingEntrySemanticsViolationSupport.requireCanonicalSelectorField(selectorField);
-    return BookkeepingEntrySemanticsViolationSupport.toLocal(
-        PostingRejectionSemantics.verbRequiresTradingTemplate(
-            BookkeepingEntrySemanticsViolationSupport.requireSelectorValue(selectorValue),
-            bookTemplateId));
-  }
-
-  /** Creates one trading-sale inventory-relief requirement violation. */
-  public static BookkeepingPostingRejection.EntrySemanticsViolation
-      tradingSaleRequiresInventoryRelief(String selectorField, String selectorValue) {
-    BookkeepingEntrySemanticsViolationSupport.requireCanonicalSelectorField(selectorField);
-    return BookkeepingEntrySemanticsViolationSupport.toLocal(
-        PostingRejectionSemantics.tradingSaleRequiresInventoryRelief(
-            BookkeepingEntrySemanticsViolationSupport.requireSelectorValue(selectorValue)));
-  }
-
-  /** Creates one non-trading inventory-relief violation. */
-  public static BookkeepingPostingRejection.EntrySemanticsViolation
-      inventoryReliefRequiresTradingBook(
-          String selectorField, String selectorValue, BookTemplateId bookTemplateId) {
-    BookkeepingEntrySemanticsViolationSupport.requireCanonicalSelectorField(selectorField);
-    return BookkeepingEntrySemanticsViolationSupport.toLocal(
-        PostingRejectionSemantics.inventoryReliefRequiresTradingBook(
-            BookkeepingEntrySemanticsViolationSupport.requireSelectorValue(selectorValue),
-            bookTemplateId));
   }
 
   /** Creates one raw-journal shadowing violation for a direct journal. */
@@ -115,5 +85,27 @@ public final class BookkeepingEntryModeSemanticsViolations {
         PostingRejectionSemantics.openingWindowAccountNotPermitted(
             BookkeepingEntrySemanticsViolationSupport.requireSelectorValue(selectorValue),
             accountCode));
+  }
+
+  /** Creates one refusal when capitalization would create a cost-only inventory pool. */
+  public static BookkeepingPostingRejection.EntrySemanticsViolation
+      inventoryCapitalizationRequiresQuantityOnHand(AccountCode accountCode) {
+    return BookkeepingEntrySemanticsViolationSupport.toLocal(
+        PostingInventoryRejectionSemantics.inventoryCapitalizationRequiresQuantityOnHand(
+            accountCode));
+  }
+
+  /** Creates one refusal when an opening inventory movement is not the account's first movement. */
+  public static BookkeepingPostingRejection.EntrySemanticsViolation
+      inventoryOpeningMustBeFirstMovement(AccountCode accountCode) {
+    return BookkeepingEntrySemanticsViolationSupport.toLocal(
+        PostingInventoryRejectionSemantics.inventoryOpeningMustBeFirstMovement(accountCode));
+  }
+
+  /** Creates one refusal when an inventory opening balance cannot establish an exact pool. */
+  public static BookkeepingPostingRejection.EntrySemanticsViolation
+      inventoryOpeningCarryingCostInvalid(AccountCode accountCode) {
+    return BookkeepingEntrySemanticsViolationSupport.toLocal(
+        PostingInventoryRejectionSemantics.inventoryOpeningCarryingCostInvalid(accountCode));
   }
 }

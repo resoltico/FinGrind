@@ -19,7 +19,12 @@ class RequestSurfaceFactsTest {
     assertEquals(List.of("enumerated", "pattern-only"), SourceDocumentTypePolicyMode.wireValues());
     assertEquals(
         List.of(
-            "ranged-filter", "bounded-period", "through-date", "fiscal-year-label", "as-of-date"),
+            "ranged-filter",
+            "bounded-period",
+            "through-date",
+            "fiscal-year-label",
+            "as-of-date",
+            "inventory-as-of-date"),
         TemporalScopeArchetype.wireValues());
     assertEquals(
         SourceDocumentTypePolicyMode.ENUMERATED,

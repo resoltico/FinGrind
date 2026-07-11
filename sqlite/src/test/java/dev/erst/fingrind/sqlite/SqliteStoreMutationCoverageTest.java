@@ -58,10 +58,11 @@ class SqliteStoreMutationCoverageTest extends SqlitePostingFactStoreTestSupport 
                 IllegalStateException.class,
                 () ->
                     postingFactStore.declareAccount(
-                        new AccountCode("1000"),
-                        new AccountName("Cash"),
-                        AccountType.ASSET,
-                        accountTaxonomy(AccountType.ASSET),
+                        new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                            new AccountCode("1000"),
+                            new AccountName("Cash"),
+                            AccountType.ASSET,
+                            accountTaxonomy(AccountType.ASSET)),
                         FIXED_INSTANT));
         assertEquals("forced account audit failure", failure.getMessage());
         assertEquals(0, queryInt(realDatabase.get(), "select count(*) from account"));

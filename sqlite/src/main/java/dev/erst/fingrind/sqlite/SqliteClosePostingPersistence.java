@@ -1,6 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestFingerprint;
+import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -32,18 +35,21 @@ final class SqliteClosePostingPersistence {
 
   CommittedPosting persistAcceptedPosting(
       SqliteNativeDatabase activeDatabase,
-      PostingDraft postingDraft,
+      AcceptedPosting acceptedPosting,
       RequestFingerprint requestFingerprint,
+      CommittedProvenance provenance,
       PostingIdGenerator postingIdGenerator) {
     CommittedPosting postingFact =
-        postingDraft.materialize(
-            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator").nextPostingId());
+        acceptedPosting.materialize(
+            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator").nextPostingId(),
+            Objects.requireNonNull(provenance, "provenance"));
     SqliteMutationWriter.insertPostingFact(
         activeDatabase,
         postingFact,
         Objects.requireNonNull(requestFingerprint, "requestFingerprint"));
     commitFaultHook.afterPostingFactInserted(postingFact);
     SqliteMutationWriter.insertJournalLines(activeDatabase, postingFact, commitFaultHook);
+    persistInventoryCosting(activeDatabase, postingFact.postingId(), acceptedPosting);
     SqliteAuditEventWriter.insertAuditEvent(
         activeDatabase, BookAuditEvent.postingCommitted(postingFact));
     return postingFact;
@@ -69,8 +75,9 @@ final class SqliteClosePostingPersistence {
             closingPostings.add(
                 persistAcceptedPosting(
                     activeDatabase,
-                    closingPostingDraft,
+                    accepted.acceptedPosting(),
                     accepted.requestFingerprint(),
+                    closingPostingDraft.provenance(),
                     requiredPostingIdGenerator));
       }
     }
@@ -109,8 +116,9 @@ final class SqliteClosePostingPersistence {
             closePostings.add(
                 persistAcceptedPosting(
                     activeDatabase,
-                    closePostingDraft,
+                    accepted.acceptedPosting(),
                     accepted.requestFingerprint(),
+                    closePostingDraft.provenance(),
                     requiredPostingIdGenerator));
       }
     }
@@ -128,5 +136,46 @@ final class SqliteClosePostingPersistence {
         BookAuditEvent.fiscalYearClosed(
             closedFiscalYear.closedAt(), closedFiscalYear.closeOrder()));
     return closedFiscalYear;
+  }
+
+  private static void persistInventoryCosting(
+      SqliteNativeDatabase activeDatabase, PostingId postingId, AcceptedPosting acceptedPosting) {
+    Objects.requireNonNull(activeDatabase, "activeDatabase");
+    Objects.requireNonNull(postingId, "postingId");
+    Objects.requireNonNull(acceptedPosting, "acceptedPosting");
+    for (int index = 0; index < acceptedPosting.inventoryMovements().size(); index++) {
+      var movement = acceptedPosting.inventoryMovements().get(index);
+      SqliteInventoryCostingWriter.insertInventoryMovement(
+          activeDatabase,
+          inventoryMovementId(postingId, index),
+          movement.inventoryAccount(),
+          movement.effectiveDate(),
+          movement.kind(),
+          movement.quantityDelta(),
+          movement.costDeltaMinor(),
+          postingId);
+    }
+    acceptedPosting.resultingInventoryStates().entrySet().stream()
+        .sorted(
+            java.util.Map.Entry.comparingByKey(
+                java.util.Comparator.comparing(value -> value.value())))
+        .forEach(
+            entry ->
+                SqliteInventoryCostingWriter.upsertInventoryOnHand(
+                    activeDatabase,
+                    entry.getKey(),
+                    entry.getValue().pool().quantityOnHand().scaledUnits(),
+                    entry.getValue().pool().costPool().minorUnits(),
+                    entry
+                        .getValue()
+                        .lastMovementDate()
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    "Inventory state persisted after movement must own one last movement date."))));
+  }
+
+  private static String inventoryMovementId(PostingId postingId, int movementIndex) {
+    return postingId.value() + "/inventory/" + (movementIndex + 1);
   }
 }

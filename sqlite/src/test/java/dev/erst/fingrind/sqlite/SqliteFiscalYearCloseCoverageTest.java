@@ -211,28 +211,31 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
         declaredEquityAccount(
             "3000", "Capital", FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
         postingFactStore.declareAccount(
-            new AccountCode("3000"),
-            new AccountName("Capital"),
-            AccountType.EQUITY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+            new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                new AccountCode("3000"),
+                new AccountName("Capital"),
+                AccountType.EQUITY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
             CLOSED_AT));
     assertEquals(
         declaredEquityAccount(
             "3100", "Owner Draw", FinancialPositionLineClassification.EQUITY_WITHDRAWAL),
         postingFactStore.declareAccount(
-            new AccountCode("3100"),
-            new AccountName("Owner Draw"),
-            AccountType.EQUITY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL),
+            new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                new AccountCode("3100"),
+                new AccountName("Owner Draw"),
+                AccountType.EQUITY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
             CLOSED_AT));
     assertEquals(
         declaredEquityAccount(
             "3200", "Result Holding", FinancialPositionLineClassification.RESULT_HOLDING),
         postingFactStore.declareAccount(
-            new AccountCode("3200"),
-            new AccountName("Result Holding"),
-            AccountType.EQUITY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+            new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                new AccountCode("3200"),
+                new AccountName("Result Holding"),
+                AccountType.EQUITY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
             CLOSED_AT));
     assertEquals(
         declaredEquityAccount(
@@ -240,10 +243,12 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
             "Retained Accumulated",
             FinancialPositionLineClassification.RETAINED_ACCUMULATED),
         postingFactStore.declareAccount(
-            new AccountCode("3300"),
-            new AccountName("Retained Accumulated"),
-            AccountType.EQUITY,
-            financialPositionTaxonomy(FinancialPositionLineClassification.RETAINED_ACCUMULATED),
+            new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                new AccountCode("3300"),
+                new AccountName("Retained Accumulated"),
+                AccountType.EQUITY,
+                financialPositionTaxonomy(
+                    FinancialPositionLineClassification.RETAINED_ACCUMULATED)),
             CLOSED_AT));
     assertEquals(
         new AccountDeclarationOutcome.Declared(
@@ -255,10 +260,11 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 true,
                 CLOSED_AT)),
         postingFactStore.declareAccount(
-            new AccountCode("5000"),
-            new AccountName("Operating Expense"),
-            AccountType.EXPENSE,
-            accountTaxonomy(AccountType.EXPENSE),
+            new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+                new AccountCode("5000"),
+                new AccountName("Operating Expense"),
+                AccountType.EXPENSE,
+                accountTaxonomy(AccountType.EXPENSE)),
             CLOSED_AT));
   }
 

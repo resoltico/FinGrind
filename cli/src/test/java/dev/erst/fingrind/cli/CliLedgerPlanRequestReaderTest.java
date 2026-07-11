@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
+import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -70,6 +71,95 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     assertEquals(50, ((LedgerStep.ListAccounts) plan.steps().get(0)).query().limit());
     assertTrue(((LedgerStep.ListAccounts) plan.steps().get(0)).query().cursor().isEmpty());
     assertTrue(((LedgerStep.ListPostings) plan.steps().get(1)).query().cursor().isEmpty());
+  }
+
+  @Test
+  void readLedgerPlan_requiresInventoryCostingOnlyForTradingEnsureBookSteps() {
+    CliRequestReader missingTradingCostingReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [{
+                    "stepId": "open",
+                    "kind": "ensure-book",
+                    "ensureBook": {
+                      "entityName": "Acme Store",
+                      "bookTemplateId": "OWNER_MANAGED_TRADING",
+                      "accountingBasis": "CASH",
+                      "functionalCurrency": "EUR",
+                      "fiscalYearStart": "01-01"
+                    }
+                  }]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+    CliRequestReader tradingReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [{
+                    "stepId": "open",
+                    "kind": "ensure-book",
+                    "ensureBook": {
+                      "entityName": "Acme Store",
+                      "bookTemplateId": "OWNER_MANAGED_TRADING",
+                      "accountingBasis": "CASH",
+                      "inventoryCosting": "WEIGHTED_AVERAGE",
+                      "functionalCurrency": "EUR",
+                      "fiscalYearStart": "01-01"
+                    }
+                  }]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+    CliRequestReader serviceCostingReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "planId": "plan-1",
+                  "steps": [{
+                    "stepId": "open",
+                    "kind": "ensure-book",
+                    "ensureBook": {
+                      "entityName": "Acme Studio",
+                      "bookTemplateId": "OWNER_MANAGED_SERVICE",
+                      "accountingBasis": "CASH",
+                      "inventoryCosting": "WEIGHTED_AVERAGE",
+                      "functionalCurrency": "EUR",
+                      "fiscalYearStart": "01-01"
+                    }
+                  }]
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException missingTradingCosting =
+        assertThrows(
+            CliRequestException.class,
+            () -> missingTradingCostingReader.readLedgerPlan(Path.of("-")));
+    LedgerPlan tradingPlan = tradingReader.readLedgerPlan(Path.of("-"));
+    CliRequestException serviceCosting =
+        assertThrows(
+            CliRequestException.class, () -> serviceCostingReader.readLedgerPlan(Path.of("-")));
+
+    assertEquals(
+        "Trading book doctrines require one inventoryCostingDoctrine.",
+        missingTradingCosting.getMessage());
+    assertEquals(
+        InventoryCostingDoctrine.WEIGHTED_AVERAGE,
+        ((LedgerStep.EnsureBook) tradingPlan.steps().getFirst())
+            .command()
+            .bookIdentity()
+            .bookDoctrine()
+            .inventoryCostingDoctrine());
+    assertEquals(
+        "Service book doctrines must not declare an inventoryCostingDoctrine.",
+        serviceCosting.getMessage());
   }
 
   @Test

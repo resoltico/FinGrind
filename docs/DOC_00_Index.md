@@ -1,11 +1,11 @@
 ---
 afad: "4.0"
-version: "0.59.0"
+version: "0.60.0"
 domain: INDEX
-updated: "2026-07-04"
+updated: "2026-07-11"
 route:
-  keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, journal, money, posting]
-  questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface"]
+  keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, journal, money, quantity, inventory costing, weighted average, posting]
+  questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers quantity and weighted-average inventory costing primitives"]
 ---
 
 # API Index
@@ -16,7 +16,9 @@ route:
 
 - Public bookkeeping protocol:
   use [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md) for
-  administration, inspection, queries, reports, and read-side rejections; use
+  administration, inspection, non-inventory queries, reports, and read-side rejections; use
+  [DOC_02_InventoryValuation.md](./DOC_02_InventoryValuation.md) for point-in-time inventory
+  valuation and costed-sale readback; use
   [DOC_02_IncomeStatementPresentation.md](./DOC_02_IncomeStatementPresentation.md) for trading
   income-statement gross-profit and multi-step presentation helpers; use
   [DOC_02_SharedReportModel.md](./DOC_02_SharedReportModel.md) for the shared report content
@@ -30,13 +32,13 @@ route:
   use [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md) for machine-contract
   descriptors, runtime/distribution/storage facts, discovery metadata, and templates.
 - Decimal-boundary design:
-  use [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md) for the exact-money boundary
-  and the future split between money, rates, percentages, exchange rates, and other decimal
-  factors.
+  use [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md) for the exact-money boundary,
+  the exact-quantity boundary, and the future split between money, rates, percentages, exchange
+  rates, and other decimal factors.
+- Inventory-costing design:
+  use [ADR_INVENTORY_COSTING.md](./ADR_INVENTORY_COSTING.md) for the first inventory operational-subledger doctrine, the exact pool-based costing truth boundary, and the accepted weighted-average implementation line.
 - Bookkeeping-kernel scope and intentional exclusions:
-  use [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md) for the current
-  narrow built-in bookkeeping kernel, its public truth boundaries, and its intentional
-  exclusions.
+  use [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md) for the current narrow built-in bookkeeping kernel, its public truth boundaries, and its intentional exclusions.
 - Local bookkeeping context:
   use [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md) for executor-owned
   sessions plus local bookkeeping read/write models that cross those seams.
@@ -53,13 +55,16 @@ route:
 
 | File | Scope |
 |:-----|:------|
-| `DOC_01_Core.md` | exported accounting vocabulary, doctrine, identity, and shared temporal primitives from the `core` module |
+| `DOC_00_InventoryCosting.md` | inventory-costing symbol-routing continuation for inventory account state, admission, movements, and rejections |
+| `DOC_01_Core.md` | exported accounting vocabulary, identity, exact quantity, weighted-average costing, and shared temporal primitives from the `core` module |
+| `DOC_01_Core_BookDoctrine.md` | exported book-template, persisted doctrine, inventory-costing selection, and doctrine-display primitives from the `core` module |
 | `DOC_01_Core_LedgerAndPosting.md` | exported journal, money, posting, reporting-period, and request-provenance primitives from the `core` module |
 | `DOC_01_Core_EvidenceAndWire.md` | exported source-document evidence primitives, reversal lineage, source-channel provenance, and shared wire-vocabulary support from the `core` module |
-| `DOC_01_DecimalBoundaries.md` | exact-money boundary and future non-money decimal-domain rules |
+| `DOC_01_DecimalBoundaries.md` | exact-money boundary, exact-quantity boundary, and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, discovery namespaces, request/response descriptors, deterministic contract errors, and workflow/discovery owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
+| `DOC_02_InventoryValuation.md` | exported point-in-time inventory valuation models, report results, local valuation criteria/views, and costed-sale readback truth |
 | `DOC_02_IncomeStatementPresentation.md` | exported trading income-statement presentation helpers that keep gross-profit and multi-step section semantics truthful across projections |
 | `DOC_02_SharedReportModel.md` | exported shared report content types plus the family-specific builders that feed every public report projection |
 | `DOC_02_PostingAndLedgerPlans.md` | exported posting, rejection, lineage, ledger-plan, and plan-journal models plus exported `executor` write services |
@@ -67,6 +72,9 @@ route:
 | `DOC_04_CliAndPdfAdapters.md` | public CLI process entrypoint and exported PDF-report adapter |
 
 ## Symbol Routing
+
+Inventory account-state, admission, movement, and rejection symbols continue in
+[DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md).
 
 | Symbol | File | Section |
 |:-------|:-----|:--------|
@@ -84,7 +92,8 @@ route:
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
 | `AccountingBasis` | `DOC_01_Core.md` | `AccountingBasis` |
 | `AccountRole` | `DOC_01_Core_LedgerAndPosting.md` | `AccountRole` |
-| `AccountStateViolationDetail` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` And `PostingRejectionSemantics` |
+| `AccountStateViolationDetail` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics` |
+| `AcceptedPosting` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResolutionSupport`, `PostEntryResolutionSupport.ResolutionOutcome`, `InventoryPostingResolution`, `AcceptedPosting`, `PostingAccountStatePolicy`, `InventoryAdmissionPolicy`, And `InventoryAdmissionPolicy.InventoryAdmissionFailure` |
 | `AccountingEvidence` | `DOC_01_Core.md` | `AccountingEvidence` |
 | `AccountingFrameworkPosition` | `DOC_01_Core.md` | `AccountingFrameworkPosition` |
 | `AccountingKernelProfileId` | `DOC_01_Core.md` | `AccountingKernelProfileId` |
@@ -98,12 +107,12 @@ route:
 | `ApprovalType` | `DOC_01_Core.md` | `ApprovalType` |
 | `BalanceMath` | `DOC_01_Core.md` | `BalanceMath` |
 | `BalanceSide` | `DOC_01_Core.md` | `BalanceSide` |
-| `BookDoctrine` | `DOC_01_Core.md` | `BookDoctrine` |
-| `BookDoctrineDisplay` | `DOC_01_Core.md` | `BookDoctrineDisplay` |
-| `BookDoctrines` | `DOC_01_Core.md` | `BookDoctrines` |
+| `BookDoctrine` | `DOC_01_Core_BookDoctrine.md` | `BookDoctrine` |
+| `BookDoctrineDisplay` | `DOC_01_Core_BookDoctrine.md` | `BookDoctrineDisplay` |
+| `BookDoctrines` | `DOC_01_Core_BookDoctrine.md` | `BookDoctrines` |
 | `BookEntityName` | `DOC_01_Core.md` | `BookEntityName` |
 | `BookIdentity` | `DOC_01_Core.md` | `BookIdentity` |
-| `BookTemplateId` | `DOC_01_Core.md` | `BookTemplateId` |
+| `BookTemplateId` | `DOC_01_Core_BookDoctrine.md` | `BookTemplateId` |
 | `CanonicalTemporalText` | `DOC_01_Core.md` | `CanonicalTemporalText` |
 | `CausationId` | `DOC_01_Core.md` | `CausationId` |
 | `CommandId` | `DOC_01_Core.md` | `CommandId` |
@@ -142,11 +151,12 @@ route:
 | `PostingOriginKind` | `DOC_01_Core_LedgerAndPosting.md` | `PostingOriginKind` |
 | `ProfitAndLossAccountDoctrine` | `DOC_01_Core.md` | `ProfitAndLossAccountDoctrine` |
 | `ProfitAndLossLineClassification` | `DOC_01_Core.md` | `ProfitAndLossLineClassification` |
+| `Quantity` | `DOC_01_Core.md` | `Quantity` |
 | `ReportingPeriod` | `DOC_01_Core.md` | `ReportingPeriod` |
 | `RequestProvenance` | `DOC_01_Core_LedgerAndPosting.md` | `RequestProvenance` |
 | `ReversalReason` | `DOC_01_Core_EvidenceAndWire.md` | `ReversalReason` |
 | `ReversalReference` | `DOC_01_Core_EvidenceAndWire.md` | `ReversalReference` |
-| `ReversalTargetIsReversal` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` And `PostingRejectionSemantics` |
+| `ReversalTargetIsReversal` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics` |
 | `SourceChannel` | `DOC_01_Core_EvidenceAndWire.md` | `SourceChannel` |
 | `SourceDocumentId` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentId` |
 | `SourceDocumentReference` | `DOC_01_Core_EvidenceAndWire.md` | `SourceDocumentReference` |
@@ -221,6 +231,7 @@ route:
 | `ContractResponse.ResponseDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractResponse.ResponseModelDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractResponse.ReversalDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractReversalTemplates` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.AccountingEvidenceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ApprovalTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -241,11 +252,19 @@ route:
 | `ContractTemplates.PostingRequestTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ProvenanceTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `QuotedExchangeRateTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.ReversalTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.SourceDocumentTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.TaxSelectionTemplateDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `TemplateDescriptorType` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `TemporalScopeArchetype` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
+| `UnitOfMeasure` | `DOC_01_Core.md` | `UnitOfMeasure` |
+| `UnitOfMeasure.QuantityIncompatibleWithUnitOfMeasureException` | `DOC_01_Core.md` | `UnitOfMeasure.QuantityIncompatibleWithUnitOfMeasureException` |
+| `WeightedAverageCostingMath` | `DOC_01_Core.md` | `WeightedAverageCostingMath` |
+| `WeightedAverageCostingMath.Disposal` | `DOC_01_Core.md` | `WeightedAverageCostingMath.Disposal` |
+| `WeightedAverageCostingMath.DisposedQuantityExceedsOnHandException` | `DOC_01_Core.md` | `WeightedAverageCostingMath.DisposedQuantityExceedsOnHandException` |
+| `WeightedAverageCostingMath.InexactAcquisitionCostException` | `DOC_01_Core.md` | `WeightedAverageCostingMath.InexactAcquisitionCostException` |
+| `WeightedAverageCostingMath.InventoryPool` | `DOC_01_Core.md` | `WeightedAverageCostingMath.InventoryPool` |
+| `WeightedAverageCostingMath.InventoryPoolMinorUnitFloorException` | `DOC_01_Core.md` | `WeightedAverageCostingMath.InventoryPoolMinorUnitFloorException` |
+| `WeightedAverageCostingMath.InventoryPoolZeroEquivalenceException` | `DOC_01_Core.md` | `WeightedAverageCostingMath.InventoryPoolZeroEquivalenceException` |
 | `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `DescriptorNamespaceSupport` | `DOC_02_ProtocolAndDiscovery.md` | `DescriptorNamespaceSupport` |
 | `DiscoveryDetail` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryDetail` |
@@ -278,6 +297,7 @@ route:
 | `ProtocolInteractionLimits` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolInteractionLimits` |
 | `ProtocolCommandSignature` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
 | `ProtocolDeclareAccountFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
+| `ProtocolDeclareAccountFields.UnitOfMeasure` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolExampleStep` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolExampleStep` |
 | `ProtocolEnvelopeStatus` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolSuccessPayload` And `ProtocolEnvelopeStatus` |
 | `ProtocolLedgerPlanFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
@@ -307,6 +327,7 @@ route:
 | `ProtocolPostEntryFields.TopLevel` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolBookRequestFieldSets` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets` |
 | `ProtocolPostingRequestFieldSets` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets` |
+| `ProtocolInventoryPostingRequestFieldSets` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets` |
 | `ProtocolPostingNestedFieldSets` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets` |
 | `ProtocolPostingRequestTopics` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolPostingRequestTopics` |
 | `ProtocolRequestTemplateTopics` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolRequestTemplateTopics` |
@@ -334,11 +355,16 @@ route:
 | `RequestSurfaceFacts.SourceDocumentTypeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `RequestSurfaceFacts.TemporalScopeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `ResolvedJournal` | `DOC_02_PostingAndLedgerPlans.md` | `ResolvedJournal` |
+| `PostEntryResolutionSupport` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResolutionSupport`, `PostEntryResolutionSupport.ResolutionOutcome`, `InventoryPostingResolution`, `AcceptedPosting`, `PostingAccountStatePolicy`, `InventoryAdmissionPolicy`, And `InventoryAdmissionPolicy.InventoryAdmissionFailure` |
+| `PostEntryResolutionSupport.ResolutionOutcome` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResolutionSupport`, `PostEntryResolutionSupport.ResolutionOutcome`, `InventoryPostingResolution`, `AcceptedPosting`, `PostingAccountStatePolicy`, `InventoryAdmissionPolicy`, And `InventoryAdmissionPolicy.InventoryAdmissionFailure` |
+| `PostingAccountStatePolicy` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResolutionSupport`, `PostEntryResolutionSupport.ResolutionOutcome`, `InventoryPostingResolution`, `AcceptedPosting`, `PostingAccountStatePolicy`, `InventoryAdmissionPolicy`, And `InventoryAdmissionPolicy.InventoryAdmissionFailure` |
+| `QuantityText` | `DOC_02_PostingAndLedgerPlans.md` | `QuantityText`, `ResolvedInventoryAcquisition`, `ResolvedInventoryCosting`, And `ResolvedInventoryDisposal` |
+| `ResolvedInventoryAcquisition` | `DOC_02_PostingAndLedgerPlans.md` | `QuantityText`, `ResolvedInventoryAcquisition`, `ResolvedInventoryCosting`, And `ResolvedInventoryDisposal` |
+| `ResolvedInventoryCosting` | `DOC_02_PostingAndLedgerPlans.md` | `QuantityText`, `ResolvedInventoryAcquisition`, `ResolvedInventoryCosting`, And `ResolvedInventoryDisposal` |
+| `ResolvedInventoryDisposal` | `DOC_02_PostingAndLedgerPlans.md` | `QuantityText`, `ResolvedInventoryAcquisition`, `ResolvedInventoryCosting`, And `ResolvedInventoryDisposal` |
 | `RuntimeDistribution` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `ScaffoldPlaceholders` | `DOC_02_ProtocolAndDiscovery.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
 | `SelectableOutputDefaultsDescriptor` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `InventoryBalanceBelowZero` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` And `PostingRejectionSemantics` |
-| `InventoryBalanceBelowZeroViolation` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
 | `InventoryRelief` | `DOC_02_PostingAndLedgerPlans.md` | `InventoryRelief` |
 | `SettlementAdjunct` | `DOC_02_PostingAndLedgerPlans.md` | `SettlementAdjunct` |
 | `SqliteCompileOptionsVerificationStatus` | `DOC_02_ProtocolAndDiscovery.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -380,6 +406,7 @@ route:
 | `BookMigrationPolicy` | `DOC_02_AdministrationAndReports.md` | `BookMigrationPolicy` |
 | `BookMigrationPolicyMode` | `DOC_02_AdministrationAndReports.md` | `BookMigrationPolicy` |
 | `BookQueryRejection` | `DOC_02_AdministrationAndReports.md` | `BookQueryRejection` |
+| `BookQueryReportResult` | `DOC_02_SharedReportModel.md` | `BookQueryReportResult` |
 | `BookReadService` | `DOC_02_AdministrationAndReports.md` | `BookReadService` |
 | `BookkeepingReadPagePublishedLanguageTranslator` | `DOC_02_AdministrationAndReports.md` | `BookReadService` |
 | `BookkeepingReadReportPublishedLanguageTranslator` | `DOC_02_AdministrationAndReports.md` | `BookReadService` |
@@ -401,6 +428,7 @@ route:
 | `ReportColumn` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
 | `ReportColumn.Alignment` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
 | `ReportContext` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
+| `ReportCsvProjection` | `DOC_02_SharedReportModel.md` | `ReportCsvProjection` |
 | `ReportModel` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
 | `ReportModel.Orientation` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
 | `ReportModelBuilder` | `DOC_02_SharedReportModel.md` | `ReportModel`, `ReportSection`, `ReportColumn`, `ReportRow`, `ReportTotals`, `ReportVerdict`, `ReportContext`, `ReportModelBuilder`, `ReportColumn.Alignment`, And `ReportModel.Orientation` |
@@ -512,9 +540,11 @@ route:
 | `TrialBalanceRow` | `DOC_02_AdministrationAndReports.md` | `TrialBalanceQuery`, `TrialBalanceRow`, `TrialBalanceReport`, And `TrialBalanceResult` |
 | `BookkeepingAdministrationRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
 | `BookkeepingAdministrationRejectionPublishedMapper` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
-| `BookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
-| `BookkeepingEntryKind` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
-| `BookkeepingEntry.OpeningAccountBalance` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry` And `BookkeepingEntryKind` |
+| `BookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
+| `BookkeepingEntrySurface` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
+| `BookkeepingEntryKind` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
+| `BookkeepingEntry.OpeningAccountBalance` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
+| `TypedBookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
 | `BookkeepingAccountSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
 | `BookkeepingEvidenceSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
 | `BookkeepingEntryModeSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
@@ -554,8 +584,9 @@ route:
 | `PostingLineage` | `DOC_02_PostingAndLedgerPlans.md` | `PostingLineage` |
 | `PostingLineageModel` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel` |
 | `PostingOriginatingEntryValidator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel` |
-| `PostingRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` And `PostingRejectionSemantics` |
-| `PostingRejectionSemantics` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection` And `PostingRejectionSemantics` |
+| `PostingRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics` |
+| `PostingInventoryRejectionSemantics` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics` |
+| `PostingRejectionSemantics` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics` |
 | `PostingRequestModel` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel` |
 | `PreflightEntryResult` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
 | `UuidV7PostingIdGenerator` | `DOC_02_PostingAndLedgerPlans.md` | `UuidV7PostingIdGenerator` |

@@ -32,6 +32,7 @@ import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.StatementLineKind;
+import dev.erst.fingrind.core.UnitOfMeasure;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -134,6 +135,88 @@ class BookkeepingStatementModelTest {
                 AccountType.EQUITY,
                 accountTaxonomy(AccountType.EQUITY, NormalBalance.DEBIT))
             .normalBalance());
+  }
+
+  @Test
+  void inventoryAccountShapes_requireOwnedUnitOfMeasure() {
+    AccountTaxonomy inventoryTaxonomy =
+        new AccountTaxonomy(
+            AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(FinancialPositionLineClassification.INVENTORY),
+            Optional.empty(),
+            Optional.of(CashFlowAssetClassification.NON_CASH));
+    UnitOfMeasure unitOfMeasure = new UnitOfMeasure("unit", 0);
+
+    AccountDeclaration inventoryDeclaration =
+        new AccountDeclaration(
+            new AccountCode("1400"),
+            new AccountName("Inventory"),
+            AccountType.ASSET,
+            inventoryTaxonomy,
+            unitOfMeasure);
+    RegisteredAccount inventoryAccount =
+        new RegisteredAccount(
+            new AccountCode("1400"),
+            new AccountName("Inventory"),
+            AccountType.ASSET,
+            inventoryTaxonomy,
+            unitOfMeasure,
+            true,
+            FIXED_INSTANT);
+
+    assertEquals(unitOfMeasure, inventoryDeclaration.unitOfMeasure());
+    assertEquals(unitOfMeasure, inventoryAccount.unitOfMeasure());
+    assertEquals(
+        "Inventory account declarations require one unitOfMeasure.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new AccountDeclaration(
+                        new AccountCode("1400"),
+                        new AccountName("Inventory"),
+                        AccountType.ASSET,
+                        inventoryTaxonomy))
+            .getMessage());
+    assertEquals(
+        "Only inventory account declarations may carry one unitOfMeasure.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new AccountDeclaration(
+                        new AccountCode("1000"),
+                        new AccountName("Cash"),
+                        AccountType.ASSET,
+                        accountTaxonomy(AccountType.ASSET),
+                        unitOfMeasure))
+            .getMessage());
+    assertEquals(
+        "Inventory account snapshots require one unitOfMeasure.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new RegisteredAccount(
+                        new AccountCode("1400"),
+                        new AccountName("Inventory"),
+                        AccountType.ASSET,
+                        inventoryTaxonomy,
+                        true,
+                        FIXED_INSTANT))
+            .getMessage());
+    assertEquals(
+        "Only inventory account snapshots may carry one unitOfMeasure.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new RegisteredAccount(
+                        new AccountCode("1000"),
+                        new AccountName("Cash"),
+                        AccountType.ASSET,
+                        accountTaxonomy(AccountType.ASSET),
+                        unitOfMeasure,
+                        true,
+                        FIXED_INSTANT))
+            .getMessage());
   }
 
   @Test

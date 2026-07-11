@@ -73,7 +73,9 @@ public sealed interface PostingRejection
       permits PostingRejection.UnknownAccount,
           PostingRejection.InactiveAccount,
           PostingRejection.NonPostableAccount,
-          InventoryBalanceBelowZero {}
+          InventoryMovementPrecedesAccountHorizon,
+          InventoryQuantityBelowZero,
+          InventoryWriteDownExceedsCarryingCost {}
 
   /** Rejection for a posting request with one or more account-state violations. */
   record AccountStateViolations(List<AccountStateViolation> violations)

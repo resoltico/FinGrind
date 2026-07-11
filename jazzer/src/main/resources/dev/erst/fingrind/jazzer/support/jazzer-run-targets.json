@@ -1,0 +1,66 @@
+[
+  {
+    "key": "regression",
+    "displayName": "Regression",
+    "taskName": "jazzerRegression",
+    "workingDirectory": ".",
+    "activeFuzzing": false,
+    "harnessKeys": [
+      "cli-request",
+      "ledger-plan-request",
+      "posting-workflow",
+      "sqlite-book-roundtrip",
+      "inventory-costing-math"
+    ]
+  },
+  {
+    "key": "cli-request",
+    "displayName": "CLI Request",
+    "taskName": "fuzzCliRequest",
+    "workingDirectory": ".local/runs/cli-request",
+    "activeFuzzing": true,
+    "harnessKeys": [
+      "cli-request"
+    ]
+  },
+  {
+    "key": "ledger-plan-request",
+    "displayName": "Ledger Plan Request",
+    "taskName": "fuzzLedgerPlanRequest",
+    "workingDirectory": ".local/runs/ledger-plan-request",
+    "activeFuzzing": true,
+    "harnessKeys": [
+      "ledger-plan-request"
+    ]
+  },
+  {
+    "key": "posting-workflow",
+    "displayName": "Posting Workflow",
+    "taskName": "fuzzPostingWorkflow",
+    "workingDirectory": ".local/runs/posting-workflow",
+    "activeFuzzing": true,
+    "harnessKeys": [
+      "posting-workflow"
+    ]
+  },
+  {
+    "key": "sqlite-book-roundtrip",
+    "displayName": "SQLite Book Round Trip",
+    "taskName": "fuzzSqliteBookRoundTrip",
+    "workingDirectory": ".local/runs/sqlite-book-roundtrip",
+    "activeFuzzing": true,
+    "harnessKeys": [
+      "sqlite-book-roundtrip"
+    ]
+  },
+  {
+    "key": "inventory-costing-math",
+    "displayName": "Inventory Costing Math",
+    "taskName": "fuzzInventoryCostingMath",
+    "workingDirectory": ".local/runs/inventory-costing-math",
+    "activeFuzzing": true,
+    "harnessKeys": [
+      "inventory-costing-math"
+    ]
+  }
+]
