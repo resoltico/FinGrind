@@ -26,7 +26,7 @@ final class SqliteProtectedBookStagingFiles {
         SqliteBookPassphrase stagedBackupPassphrase = sourcePassphrase.copy();
         SqliteNativeDatabase sourceDatabase =
             SqliteNativeConnections.openWithoutRollbackArtifactWarning(
-                normalizedBookPath, sourcePassphrase, SqliteNativeOpenMode.READ_WRITE_EXISTING);
+                normalizedBookPath, sourcePassphrase, SqliteNativeOpenMode.READ_ONLY);
         SqliteNativeDatabase stagedBackupDatabase =
             SqliteNativeConnections.openWithoutRollbackArtifactWarning(
                 stagedBackupFilePath,
