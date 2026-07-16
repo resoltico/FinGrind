@@ -100,8 +100,9 @@ final class SqliteProtectedBookStagingSupport {
       @Nullable SqlitePreparedPairPublication preparedPublication) {
     Objects.requireNonNull(checkpointListener, "checkpointListener");
     Objects.requireNonNull(stagedSecretGenerator, "stagedSecretGenerator");
-    try (SqliteBookPassphrase ignoredSource = sourcePassphrase;
-        SqliteBookPassphrase exportPassphrase = sourcePassphrase.copy()) {
+    SqliteStagingSourcePassphraseLease sourceLease =
+        SqliteStagingSourcePassphraseLease.take(sourcePassphrase);
+    try {
       SqliteProtectedBookStagingFiles.ensureSecureBackupFileParentDirectory(
           normalizedBackupFilePath);
       SqliteProtectedBookStagingFiles.ensureSecureBackupKeyFileParentDirectory(
@@ -120,12 +121,12 @@ final class SqliteProtectedBookStagingSupport {
       try {
         checkpointListener.reached(StagingCheckpoint.BACKUP_EXPORT);
         exportBackupUsingSqlite(
-            normalizedBookPath, stagedBackupFile.stagedPath(), exportPassphrase);
+            normalizedBookPath, stagedBackupFile.stagedPath(), sourceLease.passphrase().copy());
         activeCheckpoint = StagingCheckpoint.BACKUP_SECRET_GENERATION;
         try (SqliteBookPassphrase stagedBackupPassphrase =
             SqliteDistinctStagedSecret.generate(
                 stagedBackupBookKeyFile.stagedPath(),
-                sourcePassphrase,
+                sourceLease.passphrase(),
                 StagingCheckpoint.BACKUP_SECRET_GENERATION,
                 checkpointListener,
                 stagedSecretGenerator)) {
@@ -133,7 +134,7 @@ final class SqliteProtectedBookStagingSupport {
           checkpointListener.reached(StagingCheckpoint.BACKUP_REKEY);
           rekeyStagedBookCopy(
               stagedBackupFile.stagedPath(),
-              sourcePassphrase.copy(),
+              sourceLease.passphrase().copy(),
               stagedBackupPassphrase.copy());
           SqlitePreparedPairPublication.@Nullable PublicationReservations reservations =
               preparedPublication == null ? null : preparedPublication.transferReservations();
@@ -156,6 +157,8 @@ final class SqliteProtectedBookStagingSupport {
         SqliteOwnedStagedArtifact.discardAll(stagedBackupFile, stagedBackupBookKeyFile);
         return stagingFailure(normalizedBackupFilePath, "backupFilePath", activeCheckpoint);
       }
+    } finally {
+      sourceLease.wipe();
     }
   }
 
@@ -220,7 +223,9 @@ final class SqliteProtectedBookStagingSupport {
     @Nullable SqliteOwnedStagedArtifact stagedBookFile = null;
     @Nullable SqliteOwnedStagedArtifact stagedBookKeyFile = null;
     SqliteStagedRestoredBookPair stagedRestoredBookPair;
-    try (SqliteBookPassphrase ignoredSource = sourcePassphrase) {
+    SqliteStagingSourcePassphraseLease sourceLease =
+        SqliteStagingSourcePassphraseLease.take(sourcePassphrase);
+    try {
       SqliteBookFileSecurity.requireSupportedSecureFilesystem(normalizedBookFilePath);
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedBookKeyFilePath);
       SqliteProtectedBookStagingFiles.ensureSecureBackupFileParentDirectory(normalizedBookFilePath);
@@ -247,14 +252,16 @@ final class SqliteProtectedBookStagingSupport {
         try (SqliteBookPassphrase restoredPassphrase =
             SqliteDistinctStagedSecret.generate(
                 stagedBookKeyFile.stagedPath(),
-                sourcePassphrase,
+                sourceLease.passphrase(),
                 activeCheckpoint,
                 checkpointListener,
                 stagedSecretGenerator)) {
           activeCheckpoint = StagingCheckpoint.RESTORE_REKEY;
           checkpointListener.reached(activeCheckpoint);
           rekeyStagedBookCopy(
-              stagedBookFile.stagedPath(), sourcePassphrase.copy(), restoredPassphrase.copy());
+              stagedBookFile.stagedPath(),
+              sourceLease.passphrase().copy(),
+              restoredPassphrase.copy());
           SqlitePreparedPairPublication.@Nullable PublicationReservations reservations =
               preparedPublication == null ? null : preparedPublication.transferReservations();
           stagedRestoredBookPair =
@@ -282,6 +289,8 @@ final class SqliteProtectedBookStagingSupport {
     } catch (RuntimeException exception) {
       SqliteOwnedStagedArtifact.discardAll(stagedBookFile, stagedBookKeyFile);
       throw exception;
+    } finally {
+      sourceLease.wipe();
     }
   }
 

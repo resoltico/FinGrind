@@ -170,15 +170,17 @@ abstract class SqliteProtectedBookMaintenanceStoreCoverageTestSupport
     };
   }
 
+  protected static MaintenanceFailure failedValue(MaintenanceDecision<?> decision) {
+    return switch (decision) {
+      case MaintenanceDecision.Accepted<?> accepted ->
+          throw new AssertionError("Expected failed maintenance decision but got " + accepted);
+      case MaintenanceDecision.Failed<?> failed -> failed.failure();
+    };
+  }
+
   protected static void assertFailedDescriptor(
       MaintenanceDecision<?> decision, ContractErrors.Descriptor expectedDescriptor) {
-    MaintenanceFailure failure =
-        switch (decision) {
-          case MaintenanceDecision.Accepted<?> accepted ->
-              throw new AssertionError("Expected failed maintenance decision but got " + accepted);
-          case MaintenanceDecision.Failed<?> failed -> failed.failure();
-        };
-    assertEquals(expectedDescriptor, failure.descriptor());
+    assertEquals(expectedDescriptor, failedValue(decision).descriptor());
   }
 
   protected static void assertVerificationFailure(

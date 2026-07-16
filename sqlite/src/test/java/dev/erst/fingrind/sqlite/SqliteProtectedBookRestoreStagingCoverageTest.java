@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
@@ -67,23 +69,26 @@ class SqliteProtectedBookRestoreStagingCoverageTest
     try (SqliteBookPassphrase sourcePassphrase =
         SqliteBookPassphrase.fromUtf8Bytes(
             "missing restore source", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8))) {
-      IllegalStateException ioFailure =
-          assertThrows(
-              IllegalStateException.class,
-              () ->
-                  SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
-                      missingSourceBookPath,
-                      ioTargetBookPath,
-                      ioTargetKeyPath,
-                      RestoredBookTargetPolicy.REPLACE_SELECTED,
-                      sourcePassphrase,
-                      VERIFICATION_SUPPORT,
-                      checkpoint -> {},
-                      SqliteBookKeyFileGenerator::generate));
+      MaintenanceFailure ioFailure =
+          failedValue(
+              SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
+                  missingSourceBookPath,
+                  ioTargetBookPath,
+                  ioTargetKeyPath,
+                  RestoredBookTargetPolicy.REPLACE_SELECTED,
+                  sourcePassphrase,
+                  VERIFICATION_SUPPORT,
+                  checkpoint -> {},
+                  SqliteBookKeyFileGenerator::generate));
 
-      assertTrue(
-          NullTestSupport.messageOf(ioFailure)
-              .contains("Failed to stage the restored FinGrind live-book pair"));
+      assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, ioFailure.descriptor());
+      assertEquals(
+          SqliteProtectedBookStagingSupport.StagingCheckpoint.RESTORE_COPY.failureMessage(),
+          ioFailure.message());
+      assertEquals("bookFilePath", ioFailure.argument());
+      assertEquals(
+          ioTargetBookPath.toAbsolutePath().normalize(),
+          java.util.Objects.requireNonNull(ioFailure.paths(), "failure paths").path());
     }
     assertNoRestoreStageArtifacts(ioTargetBookPath, ioTargetKeyPath);
 
@@ -97,9 +102,8 @@ class SqliteProtectedBookRestoreStagingCoverageTest
     try (SqliteBookPassphrase sourcePassphrase =
         SqliteBookPassphrase.fromUtf8Bytes(
             "bogus restore source", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8))) {
-      assertThrows(
-          RuntimeException.class,
-          () ->
+      MaintenanceFailure runtimeFailure =
+          failedValue(
               SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
                   bogusSourceBookPath,
                   runtimeTargetBookPath,
@@ -109,8 +113,59 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                   VERIFICATION_SUPPORT,
                   checkpoint -> {},
                   SqliteBookKeyFileGenerator::generate));
+      assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, runtimeFailure.descriptor());
+      assertEquals(
+          SqliteProtectedBookStagingSupport.StagingCheckpoint.RESTORE_REKEY.failureMessage(),
+          runtimeFailure.message());
+      assertEquals("bookFilePath", runtimeFailure.argument());
+      assertEquals(
+          runtimeTargetBookPath.toAbsolutePath().normalize(),
+          java.util.Objects.requireNonNull(runtimeFailure.paths(), "failure paths").path());
     }
     assertNoRestoreStageArtifacts(runtimeTargetBookPath, runtimeTargetKeyPath);
+  }
+
+  @Test
+  void directStagingSetupFailures_rethrowWithoutCreatingOwnedArtifacts() throws Exception {
+    Path sourceBookPath = tempDirectory.resolve("setup-failure").resolve("source.sqlite");
+    Path backupKeyPath = tempDirectory.resolve("setup-failure").resolve("backup.key");
+    Path restoredKeyPath = tempDirectory.resolve("setup-failure").resolve("restored.key");
+
+    try (SqliteBookPassphrase backupPassphrase =
+            SqliteBookPassphrase.fromUtf8Bytes(
+                "backup setup failure", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8));
+        SqliteBookPassphrase restorePassphrase =
+            SqliteBookPassphrase.fromUtf8Bytes(
+                "restore setup failure", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8))) {
+      assertThrows(
+          NullPointerException.class,
+          () ->
+              SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
+                  sourceBookPath,
+                  NullTestSupport.nullOf(Path.class),
+                  backupKeyPath,
+                  backupPassphrase,
+                  VERIFICATION_SUPPORT,
+                  checkpoint -> {},
+                  SqliteBookKeyFileGenerator::generate,
+                  null));
+      assertThrows(
+          NullPointerException.class,
+          () ->
+              SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
+                  sourceBookPath,
+                  NullTestSupport.nullOf(Path.class),
+                  restoredKeyPath,
+                  RestoredBookTargetPolicy.REPLACE_SELECTED,
+                  restorePassphrase,
+                  VERIFICATION_SUPPORT,
+                  checkpoint -> {},
+                  SqliteBookKeyFileGenerator::generate,
+                  null));
+    }
+
+    assertFalse(Files.exists(backupKeyPath));
+    assertFalse(Files.exists(restoredKeyPath));
   }
 
   @Test

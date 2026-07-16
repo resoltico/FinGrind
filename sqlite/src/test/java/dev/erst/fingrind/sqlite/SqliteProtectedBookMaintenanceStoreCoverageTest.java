@@ -734,9 +734,15 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
                 bogusSourcePath.toAbsolutePath().normalize(), bogusPassphrase.copy());
         ProtectedBookMaintenanceStore.PreparedPairPublication preparedPairPublication =
             prepareBackupPair(store, backupFilePath, backupKeyPath)) {
-      assertThrows(
-          RuntimeException.class,
-          () -> store.stageBackupPair(bogusVerifiedBook, preparedPairPublication));
+      var failure = failedValue(store.stageBackupPair(bogusVerifiedBook, preparedPairPublication));
+      assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
+      assertEquals(
+          SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_EXPORT.failureMessage(),
+          failure.message());
+      assertEquals("backupFilePath", failure.argument());
+      assertEquals(
+          backupFilePath.toAbsolutePath().normalize(),
+          java.util.Objects.requireNonNull(failure.paths(), "failure paths").path());
     }
     try (var children =
         Files.list(java.util.Objects.requireNonNull(backupFilePath.getParent(), "backup parent"))) {
